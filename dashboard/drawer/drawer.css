@@ -1,0 +1,165 @@
+/* Sidebar Wrapper */
+.sidebar {
+  width: 260px;
+  background-color: #202020;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  padding-top: 16px;
+  border-right: 1px solid #3a3a3a;
+  height: 100vh;
+  position: fixed;
+  top: 60px; /* Adjust if you have a fixed header */
+  left: 0;
+  z-index: 100;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+  transition: width 0.3s ease-in-out;
+  overflow-x: hidden;
+}
+
+/* State for the collapsed sidebar */
+.sidebar.close {
+  width: 75px;
+}
+
+/* Sidebar Scrollable Navigation */
+.sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 16px 20px;
+  scrollbar-width: thin;
+  scrollbar-color: #555 transparent;
+}
+
+/* Section spacing */
+.nav-section {
+  margin-bottom: 16px; /* Slightly reduced margin for a tighter look */
+}
+
+.nav-section ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+/* Main Navigation Link Styling */
+.nav-item a, .nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  /* FIX: Reduced vertical padding and min-height for a ~30px result */
+  padding: 6px 12px;
+  min-height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.25s ease, color 0.25s ease;
+  margin-bottom: 4px; /* Reduced margin */
+  font-weight: 400;
+  color: #e0e0e0;
+  text-decoration: none;
+}
+
+/* FIX: Center the icon when the sidebar is collapsed */
+.sidebar.close .nav-item a,
+.sidebar.close .nav-item {
+  justify-content: center;
+  padding: 6px; /* Adjust padding for closed state if needed */
+}
+
+.nav-item:hover {
+  background-color: #333;
+  color: #fff;
+}
+
+.nav-item.active {
+  background-color: #444;
+  color: #fff;
+  font-weight: 500;
+}
+
+/* Icon Styling */
+.nav-item i {
+  font-size: 16px;
+  opacity: 0.75;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+  transition: margin 0.3s ease-in-out; /* Smooth transition for margin change */
+}
+
+/* Remove the icon's right margin when sidebar is closed */
+.sidebar.close .nav-item i {
+    margin-right: 0;
+}
+
+/* Text Styling & Transition */
+.nav-item span,
+.section-header span {
+  white-space: nowrap;
+  opacity: 1;
+  transition: opacity 0.2s ease-in-out, max-width 0.3s ease-in-out;
+  overflow: hidden;
+  max-width: 180px;
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+/* Hide text smoothly when sidebar is closed */
+.sidebar.close .nav-item span,
+.sidebar.close .section-header span {
+  opacity: 0;
+  max-width: 0;
+  pointer-events: none;
+}
+
+/* Section Header Styling */
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 8px 12px;
+  font-weight: 500;
+  color: #ccc;
+  transition: background-color 0.2s ease;
+  border-radius: 6px;
+  margin-bottom: 4px;
+}
+
+.section-header:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Section Items Collapsing */
+.section-items {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-in-out;
+}
+
+.nav-section.open .section-items {
+  max-height: 500px;
+}
+
+/* Rotate chevron icon when open */
+.section-header .fa-chevron-right {
+  transition: transform 0.3s ease-in-out;
+}
+
+.nav-section.open .section-header .fa-chevron-right {
+  transform: rotate(90deg);
+}
+
+/* Project Item Specific Styling */
+.project-item {
+  gap: 12px;
+}
+
+.project-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: #3498db;
+  flex-shrink: 0;
+}

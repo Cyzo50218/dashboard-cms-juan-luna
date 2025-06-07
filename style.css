@@ -1,0 +1,61 @@
+/* Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #DEDEDE;
+    color: #151b26;
+    font-size: 14px;
+    line-height: 1.4;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Fixed Header */
+#top-header {
+    height: 60px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+}
+
+/* Main Layout Container */
+#main-container {
+    display: flex;
+    height: calc(100vh - 60px);
+    /* full height minus header */
+    position: relative;
+    margin-top: 60px;
+}
+
+/* Drawer (Left Sidebar) */
+#drawer {
+    width: 260px;
+    transition: width 0.3s ease;
+    overflow: hidden;
+    
+}
+
+#drawer.closed {
+    width: 60px;
+}
+
+/* Content */
+#content {
+    flex: 1;
+    padding: 6px 12px;
+    overflow-y: auto;
+    transition: margin 0.3s ease;
+}
+
+/* Optional Right Sidebar */
+#right-sidebar {
+    width: 0;
+}

@@ -1,0 +1,655 @@
+.content-area{
+    margin-top: 24px;
+}
+
+.app-container {
+    display: flex;
+    height: 100vh;
+    padding-top: 80px;
+    overflow: hidden;
+}
+
+.home-text{
+    color: #020202;
+}
+
+.greetings{
+    color: #141414;
+}
+.date{
+    color: #373737;
+}
+.project-item {
+    gap: 8px;
+}
+
+.project-color {
+    width: 12px;
+    height: 12px;
+    background-color: #4dc5ea;
+    border-radius: 2px;
+}
+
+.expand-icon {
+    margin-left: auto;
+    font-size: 10px;
+}
+
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.header-actions i {
+    color: #0C0C0D;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.header-actions i:hover {
+    color: #151b26;
+}
+
+.user-avatar {
+    width: 32px;
+    height: 32px;
+    background-color: #f06a6a;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 500;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.user-avatar.small {
+    width: 24px;
+    height: 24px;
+    font-size: 10px;
+}
+
+/* Content Area */
+.content-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+}
+
+.page-header h1 {
+    font-size: 24px;
+    font-weight: 400;
+    color: #54575C;
+    margin-bottom: 24px;
+}
+
+.welcome-section {
+    margin-bottom: 18px;
+}
+
+.date {
+    color: #292A2C;
+    font-size: 14px;
+    margin-bottom: 3px;
+}
+
+.welcome-section h2 {
+    font-size: 28px;
+    font-weight: 400;
+    margin-bottom: 20px;
+    color: #151b26;
+}
+
+.stats-bar {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.stats-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #9ca0a6;
+    font-size: 14px;
+}
+
+.stats-item i {
+    font-size: 12px;
+}
+
+.stats-label {
+    color: #70747A;
+    font-weight: 500;
+}
+
+.dropdown-menu-weeks {
+  position: absolute;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+  padding: 10px 0;
+  min-width: 140px;
+  display: none;
+  z-index: 1000;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  opacity: 0;
+  margin-top: 150px;
+}
+
+.dropdown-menu-weeks.show {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.dropdown-menu-weeks a {
+  display: block;
+  padding: 8px 16px;
+  color: #333;
+  text-decoration: none;
+  font-size: 14px;
+  transition: background-color 0.2s ease;
+  cursor: pointer;
+}
+
+
+
+.dropdown-menu-weeks a:hover {
+  background-color: #f0f0f0;
+  color: #007bff;
+  border-radius: 6px;
+}
+
+/* Dashboard Grid */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 32px;
+}
+
+.card {
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid #e1e4e6;
+    overflow: hidden;
+}
+
+.card-header {
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid #f1f2f4;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.section-title h3 {
+    font-size: 16px;
+    font-weight: 500;
+    color: #151b26;
+}
+
+.section-title i {
+    color: #9ca0a6;
+    font-size: 12px;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.recents-btn, .frequent-btn {
+    color: #9ca0a6;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.recents-btn:hover, .frequent-btn:hover {
+    color: #151b26;
+}
+
+/* My Tasks Card */
+.my-tasks-card {
+    grid-row: span 2;
+}
+
+.task-tabs {
+    display: flex;
+    padding: 0 20px;
+    border-bottom: 1px solid #f1f2f4;
+}
+
+.tab-btn {
+    padding: 12px 16px;
+    border: none;
+    background: none;
+    color: #9ca0a6;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    font-size: 14px;
+}
+
+.tab-btn.active {
+    color: #151b26;
+    border-bottom-color: #f06a6a;
+}
+
+.tab-btn:hover {
+    color: #151b26;
+}
+
+.task-list {
+    padding: 20px;
+}
+
+.create-task-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    border: none;
+    background: none;
+    color: #9ca0a6;
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+    border-radius: 6px;
+    margin-bottom: 12px;
+}
+
+.create-task-btn:hover {
+    background-color: #f6f7f8;
+    color: #151b26;
+}
+
+/* General Task Item Layout */
+.task-item {
+    display: flex; /* Use flexbox for horizontal alignment */
+    align-items: center; /* Vertically align items in the middle */
+    padding: 8px 15px; /* **Adjusted: Smaller padding for smaller height** */
+    border-bottom: 1px solid #f0f0f0; /* Subtle separator between tasks */
+    cursor: pointer;
+    transition: background-color 0.2s ease, opacity 0.3s ease; /* Smooth transitions */
+    background-color: #fff; /* White background for task items */
+    border-radius: 8px; /* Slightly rounded corners */
+    margin-bottom: 6px; /* **Adjusted: Smaller space between task items** */
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05); /* Subtle shadow for depth */
+}
+
+.task-item:hover {
+    background-color: #f5f5f5; /* Light hover effect */
+}
+
+/* Checkbox Styling */
+.task-checkbox {
+    margin-right: 12px; /* Space between checkbox and task content */
+    transform: scale(0.95); /* **Adjusted: Slightly smaller checkbox** */
+    accent-color: #6a0dad; /* Asana purple for checked state (or your project's primary color) */
+    /* **Ensuring custom checkbox appearance is not overridden by default browser styles if any** */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-color: #fff;
+    border: 2px solid #ccc;
+    border-radius: 4px; /* Slightly rounded for the checkbox itself */
+    width: 18px; /* Fixed width */
+    height: 18px; /* Fixed height */
+    display: grid;
+    place-content: center;
+}
+
+.task-checkbox::before {
+    content: "";
+    width: 10px;
+    height: 10px;
+    transform: scale(0);
+    transition: transform .120s ease-in-out;
+    box-shadow: inset 1em 1em #fff; /* White checkmark */
+    background-color: CanvasText; /* Fallback for browsers not supporting CanvasText */
+    clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 60%);
+}
+
+.task-checkbox:checked {
+    border-color: #DE4C58;
+    background-color: #DE4C58;
+}
+
+.task-checkbox:checked::before {
+    transform: scale(1);
+}
+
+
+/* Task Content (Name and Dates) */
+.task-content {
+    flex-grow: 1; /* Allows task name and dates to take available space */
+    display: flex;
+    flex-direction: column; /* Stack name and dates vertically */
+    justify-content: center;
+    /* **No height constraint here, it will be dictated by padding and font sizes** */
+}
+
+.task-text {
+    font-size: 14px; /* **Adjusted: Standard font size for task name, keep it concise** */
+    color: #151b26; /* Darker for primary text */
+    font-weight: 500; /* Medium weight for readability */
+    line-height: 1.2; /* **Adjusted: Tighter line height for compactness** */
+    white-space: nowrap; /* Prevent wrapping for single line tasks */
+    overflow: hidden; /* Hide overflow if text is too long */
+    text-overflow: ellipsis; /* Add ellipsis for overflowed text */
+}
+
+.task-dates {
+    font-size: 11px; /* **Adjusted: Even smaller font for dates** */
+    color: #7a7a7a; /* Lighter gray for secondary info */
+    margin-top: 2px; /* Small space above dates */
+}
+
+/* Assignee Profile Picture */
+.task-assignee {
+    margin-left: 10px; /* **Adjusted: Slightly less margin** */
+    width: 28px; /* **Adjusted: Smaller fixed width for circular icon** */
+    height: 28px; /* **Adjusted: Smaller fixed height for circular icon** */
+    border-radius: 50%; /* Makes the image circular */
+    overflow: hidden; /* Ensures the image stays within the circle */
+    border: 1px solid #e0e0e0; /* **Adjusted: Lighter, more subtle border** */
+    flex-shrink: 0; /* Prevent shrinking when space is limited */
+    background-color: #f0f0f0; /* Fallback background if image is not loaded */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.task-assignee img {
+    width: 100%; /* Image fills the container */
+    height: 100%; /* Image fills the container */
+    object-fit: cover; /* Ensures the image covers the area without distortion */
+}
+
+/* Border on the left (color indicator) */
+.task-item[style*="border-left"] {
+    padding-left: 11px; /* Adjust padding to account for the border width */
+}
+
+/* Ensure create task button inside task-list aligns with new task item styling */
+.task-list .create-task-btn {
+    width: 100%;
+    padding: 8px 15px; /* Matches new task item padding */
+    border: 1px dashed #d1d4d6; /* More subtle dashed border */
+    background-color: #fff; /* White background */
+    color: #9ca0a6;
+    text-align: left; /* Align text to left */
+    border-radius: 8px;
+    margin-top: 5px; /* Reduced margin */
+    margin-bottom: 12px; /* Add margin bottom to separate from first task */
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.task-list .create-task-btn:hover {
+    background-color: #f9f9f9; /* Light hover */
+    border-color: #f06a6a; /* Highlight border on hover */
+    color: #f06a6a; /* Highlight text on hover */
+}
+
+.task-list {
+    padding: 10px 20px; /* Adjusted padding of the list itself */
+    overflow-y: auto; /* Allow scrolling if many tasks */
+    max-height: calc(100% - 60px); /* Example: Max height for scrollable list, adjust as needed */
+}
+
+/* Projects Card */
+.project-list {
+    padding: 20px;
+}
+
+.create-project-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    border: 1px dashed #d1d4d6;
+    background: none;
+    color: #9ca0a6;
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+    border-radius: 6px;
+    margin-bottom: 16px;
+}
+
+.create-project-btn:hover {
+    border-color: #f06a6a;
+    color: #f06a6a;
+}
+
+.project-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.project-item:hover {
+    background-color: #f6f7f8;
+}
+
+.project-icon {
+    width: 32px;
+    height: 32px;
+    background-color: #4dc5ea;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.project-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.project-name {
+    font-weight: 500;
+    color: #151b26;
+}
+
+.project-meta {
+    font-size: 12px;
+    color: #9ca0a6;
+}
+
+/* People Card */
+.people-content {
+    padding: 20px;
+}
+
+.people-placeholder {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.people-icon {
+    width: 48px;
+    height: 48px;
+    background-color: #f6f7f8;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+    color: #9ca0a6;
+    font-size: 20px;
+}
+
+.people-placeholder p {
+    color: #9ca0a6;
+    margin-bottom: 16px;
+}
+
+.invite-btn {
+    background-color: #f06a6a;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.invite-btn:hover {
+    background-color: #e55a5a;
+}
+
+/* Learn Asana Section */
+.learn-section {
+    margin-bottom: 32px;
+}
+
+.learn-section h3 {
+    font-size: 18px;
+    font-weight: 500;
+    color: #151b26;
+    margin-bottom: 20px;
+}
+
+.learn-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.learn-card {
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid #e1e4e6;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.learn-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.learn-image {
+    height: 120px;
+    position: relative;
+    background-size: cover;
+    background-position: center;
+}
+
+.learn-image.getting-started {
+    background: linear-gradient(135deg, #a8e6cf 0%, #7fcdcd 100%);
+}
+
+.learn-image.productivity {
+    background: linear-gradient(135deg, #ffd3a5 0%, #fd9853 100%);
+}
+
+.video-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 40px;
+    height: 40px;
+    background-color: rgba(0, 0, 0, 0.7);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.video-duration {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.learn-content {
+    padding: 16px;
+}
+
+.learn-content h4 {
+    font-size: 14px;
+    font-weight: 500;
+    color: #151b26;
+    margin-bottom: 8px;
+}
+
+.learn-content p {
+    color: #9ca0a6;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+/* Customize Section */
+.customize-section {
+    background-color: white;
+    border: 2px dashed #d1d4d6;
+    border-radius: 8px;
+    padding: 40px;
+    text-align: center;
+}
+
+.customize-content p {
+    color: #434547;
+    margin-bottom: 16px;
+    font-size: 14px;
+}
+
+.customize-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background-color: #f06a6a;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.customize-btn:hover {
+    background-color: #e55a5a;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .learn-grid {
+        grid-template-columns: 1fr;
+    }
+}
