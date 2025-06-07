@@ -2,22 +2,26 @@
   "version": 2,
   "builds": [
     {
-      "src": "dashboard/**/*",
+      "src": "index.html",
       "use": "@vercel/static"
     },
     {
-    "src": "*",
-    "use": "@vercel/static"
+      "src": "dashboard/**/*",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
     {
-      "src": "/(.*)",
-      "dest": "/dashboard/$1"
+      "src": "^/$",
+      "dest": "/index.html"
     },
-     {
-      "src": "/(.*)",
-      "dest": "/$1"
-    
+    {
+      "src": "^/([^/]+)/?$",
+      "dest": "/dashboard/$1/index.html"
+    },
+    {
+      "src": "^/([^/]+)/(.+)$",
+      "dest": "/dashboard/$1/$2"
+    }
   ]
 }
