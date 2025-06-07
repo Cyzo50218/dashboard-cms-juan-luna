@@ -6,6 +6,14 @@
       "use": "@vercel/static"
     },
     {
+      "src": "style.css",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "main.js",
+      "use": "@vercel/static"
+    },
+    {
       "src": "dashboard/**/*",
       "use": "@vercel/static"
     }
@@ -14,6 +22,14 @@
     {
       "src": "^/$",
       "dest": "/index.html"
+    },
+    {
+      "src": "^/style.css$",
+      "dest": "/style.css"
+    },
+    {
+      "src": "^/main.js$",
+      "dest": "/main.js"
     },
     {
       "src": "^/([^/]+)/?$",
