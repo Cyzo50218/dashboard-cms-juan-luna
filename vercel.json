@@ -4,12 +4,20 @@
     {
       "src": "dashboard/**/*",
       "use": "@vercel/static"
+    },
+    {
+    "src": "*",
+    "use": "@vercel/static"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
       "dest": "/dashboard/$1"
-    }
+    },
+     {
+      "src": "/(.*)",
+      "dest": "/$1"
+    
   ]
 }
