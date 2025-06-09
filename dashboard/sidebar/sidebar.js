@@ -4,7 +4,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const taskCompleteBtn = document.getElementById('task-complete-btn');
     const taskNameEl = document.getElementById('task-name');
     const taskAssigneeEl = document.getElementById('task-assignee');
-    const taskDueDateEl = document.getElementById('task-due-date');
     const taskProjectEl = document.getElementById('task-project');
     const taskPriorityEl = document.getElementById('task-priority');
     const taskStatusEl = document.getElementById('task-status');
@@ -45,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ],
         activity: [
             { id: 'activity_1', userId: 'user_1', type: 'creation', text: 'created this task.', timestamp: new Date(2025, 5, 8, 9, 0, 0).toISOString() },
-            { id: 'activity_2', userId: 'user_3', type: 'comment', text: 'Have the marketing numbers been added yet?', timestamp: new Date(2025, 5, 9, 10, 0, 0).toISOString() }
+            { id: 'activity_2', userId: 'user_3', type: 'comment', text: `commented: "Have the marketing numbers been added yet?"`, timestamp: new Date(2025, 5, 9, 10, 0, 0).toISOString() }
         ]
     };
     const priorityOptions = ['High', 'Medium', 'Low'];
@@ -154,7 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
             id: `activity_${newAttachment.id}`,
             userId: currentUser.id,
             type: 'file_upload',
-            text: `uploaded a file.`,
+            text: `uploaded a file: ${file.name}`,
             timestamp: new Date().toISOString(),
             file: newAttachment.file
         };
@@ -221,7 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const flatpickrWrapper = document.createElement('div');
         flatpickrWrapper.className = 'flatpickr-wrapper';
-        flatpickrWrapper.dataset.control = 'date'; // Maintain the data-control for event handling context
+        flatpickrWrapper.dataset.control = 'date';
         flatpickrWrapper.innerHTML = `
             <input type="text" placeholder="No due date" data-input>
             <a class="input-button" title="Toggle" data-toggle>
@@ -235,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
             wrap: true,
             dateFormat: "Y-m-d",
             defaultDate: currentTask.dueDate,
-            onChange: function(selectedDates, dateStr) {
+            onChange: function(selectedDates, dateStr, instance) {
                 currentTask.dueDate = dateStr;
             },
         });
@@ -268,10 +267,48 @@ document.addEventListener('DOMContentLoaded', () => {
         positionElement(dropdown, targetEl);
     }
     
-    function createAssigneeDropdown() { /* ... function from previous steps ... */ }
+    function createAssigneeDropdown() {
+        closeDropdowns();
+        const dropdown = document.createElement('div');
+        dropdown.className = 'context-dropdown';
+        document.body.appendChild(dropdown);
+        const searchInput = document.createElement('input');
+        searchInput.type = 'search';
+        searchInput.placeholder = 'Search for an assignee...';
+        searchInput.className = 'assignee-dropdown-search';
+        dropdown.appendChild(searchInput);
+        const optionsList = document.createElement('div');
+        optionsList.id = 'assignee-options-list';
+        dropdown.appendChild(optionsList);
+        const renderAssigneeOptions = (filter = '') => {
+            optionsList.innerHTML = '';
+            const filteredUsers = allUsers.filter(user => user.name.toLowerCase().includes(filter.toLowerCase()));
+            filteredUsers.forEach(user => {
+                const item = document.createElement('div');
+                item.className = 'dropdown-item';
+                item.innerHTML = `<div class="avatar" style="background-image: url(${user.avatar})"></div><span>${user.name}</span>`;
+                item.addEventListener('click', () => {
+                    if (currentTask.assignees.includes(user.id)) {
+                        currentTask.assignees = currentTask.assignees.filter(id => id !== user.id);
+                    } else {
+                        currentTask.assignees.push(user.id);
+                    }
+                    renderSidebar(currentTask);
+                    closeDropdowns();
+                });
+                optionsList.appendChild(item);
+            });
+        };
+        searchInput.addEventListener('input', () => renderAssigneeOptions(searchInput.value));
+        renderAssigneeOptions();
+        positionElement(dropdown, taskAssigneeEl);
+        searchInput.focus();
+    }
+    
     function createTag(text, type) { return `<div class="tag ${type}-${text.toLowerCase().replace(/\s+/g, '-')}">${text}</div>`; }
     function closeDropdowns() { document.querySelectorAll('.context-dropdown').forEach(d => d.remove()); }
 
+    // --- Event Listeners ---
     taskCompleteBtn.addEventListener('click', () => { setTaskCompletion(currentTask.status !== 'Completed'); });
     
     sidebar.addEventListener('click', (e) => {

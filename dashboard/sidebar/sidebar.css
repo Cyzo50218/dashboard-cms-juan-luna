@@ -97,7 +97,7 @@ body {
 }
 
 /* Header */
-.sidebar-header {
+.sidebar-header-task {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -133,17 +133,17 @@ body {
 
 .task-complete-btn.completed .fa-circle-check { font-weight: 900; }
 
-.sidebar-actions {
+.sidebar-actions-task {
     display: flex;
     gap: 20px;
     font-size: 18px;
     color: #5f6368;
 }
-.sidebar-actions i { cursor: pointer; transition: color 0.2s; }
-.sidebar-actions i:hover { color: #1e1f21; }
+.sidebar-actions-task i { cursor: pointer; transition: color 0.2s; }
+.sidebar-actions-task i:hover { color: #1e1f21; }
 
 /* Main Content */
-.sidebar-content {
+.sidebar-content-task{
     flex-grow: 1;
     padding: 24px;
     overflow-y: auto;
@@ -219,7 +219,7 @@ body {
 
 
 /* Footer & Comments */
-.sidebar-footer {
+.sidebar-footer-task {
     border-top: 1px solid #e0e0e0;
     padding: 16px 24px;
     flex-shrink: 0;
