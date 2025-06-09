@@ -185,23 +185,19 @@ function attachDrawerToggleLogic() {
 
 // --- APPLICATION INITIALIZATION ---
 // This block runs once the initial HTML document has been fully loaded and parsed.
-// FIXED: Added 'async' keyword here to handle the 'await' for loading HTML.
 document.addEventListener("DOMContentLoaded", async () => {
-  
-  // Load persistent parts of the UI first
   await Promise.all([
     loadHTML("#top-header", "../dashboard/header/header.html"),
     loadHTML("#rootdrawer", "../dashboard/drawer/drawer.html"),
     loadHTML("#right-sidebar", "../dashboard/sidebar/sidebar.html"),
   ]);
   
-  // Go through navigation links and add a `data-section` attribute.
   document.querySelectorAll('.nav-item a[href^="#"]').forEach(link => {
     const section = link.getAttribute('href').substring(1);
     link.setAttribute('data-section', section);
   });
   
-  // Set up a single, central click handler for all main navigation.
+
   document.body.addEventListener('click', (e) => {
     const navLink = e.target.closest('a[data-section]');
     if (navLink) {

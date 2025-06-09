@@ -420,22 +420,16 @@ function createTaskRow(task) {
     return rowWrapper;
 }
 
-/**
- * Displays a sidebar with details for a specific task.
- * NOTE: This is a placeholder function to demonstrate the click event handler.
- * @param {number} taskId - The ID of the task to display.
- */
+
 function displaySideBarTasks(taskId) {
     console.log(`Task name clicked. Opening sidebar for task ID: ${taskId}`);
     
-    // In a real application, you would implement the logic to show the sidebar here.
-    // For example:
-    const { task } = findTaskAndSection(taskId);
-    if (task) {
-     const sidebarElement = document.getElementById('task-sidebar');
-    //  populateSidebarWithTaskData(sidebarElement, task);
-      sidebarElement.classList.add('is-visible');
-     }
+
+    if (window.TaskSidebar) {
+        window.TaskSidebar.open(taskId);
+    } else {
+        console.error("TaskSidebar module is not available.");
+    }
 }
 
 function updateTask(taskId, newProperties) {
