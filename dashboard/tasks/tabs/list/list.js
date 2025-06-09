@@ -4,6 +4,27 @@
  * declarations to prevent reference errors during module initialization.
  */
 
+// --- MODIFICATION START ---
+// --- Firebase Integration Example ---
+// In a real application, you would initialize Firebase here.
+// import { initializeApp } from "firebase/app";
+// import { getFirestore, doc, setDoc, updateDoc, deleteDoc, runTransaction } from "firebase/firestore";
+
+// const firebaseConfig = {
+//   apiKey: "YOUR_API_KEY",
+//   authDomain: "YOUR_AUTH_DOMAIN",
+//   projectId: "YOUR_PROJECT_ID",
+//   // ... other config properties
+// };
+
+// const app = initializeApp(firebaseConfig);
+// const db = getFirestore(app);
+
+// Assume we have a project ID from the URL or a parent module.
+const PROJECT_ID = 'project_123';
+// --- MODIFICATION END ---
+
+
 // --- Module-Scoped Variables ---
 
 // DOM Element Holders: Declared here with `let`, assigned in init()
@@ -34,6 +55,8 @@ const allUsers = [
     { id: 5, name: 'Paris Geller', avatar: 'https://i.imgur.com/lVceL5s.png' },
 ];
 
+// --- MODIFICATION START ---
+// Added a "Completed" section with an example task
 let project = {
     customColumns: [
         { id: 1, name: 'Budget', type: 'Costing', currency: '$', aggregation: 'Sum' },
@@ -46,8 +69,12 @@ let project = {
         { id: 2, title: 'Development', tasks: [
             { id: 201, name: 'Initial setup', dueDate: '2025-06-18', priority: 'Low', status: 'At risk', assignees: [], customFields: { 1: 3000 } },
         ], isCollapsed: false },
+        { id: 3, title: 'Completed', tasks: [
+            { id: 301, name: 'Kick-off meeting', dueDate: '2025-05-30', priority: 'Medium', status: 'Completed', assignees: [4, 5], customFields: { 1: 500 } },
+        ], isCollapsed: false },
     ],
 };
+// --- MODIFICATION END ---
 
 let currentlyFocusedSectionId = project.sections.length > 0 ? project.sections[0].id : null;
 const priorityOptions = ['High', 'Medium', 'Low'];
@@ -142,7 +169,14 @@ function setupEventListeners() {
             if (sectionEl) {
                 const section = project.sections.find(s => s.id == sectionEl.dataset.sectionId);
                 if (section) {
-                    section.tasks.push({ id: Date.now(), name: '', dueDate: '', priority: 'Low', status: 'On track', assignees: [], customFields: {} });
+                    const newTask = { id: Date.now(), name: '', dueDate: '', priority: 'Low', status: 'On track', assignees: [], customFields: {} };
+                    section.tasks.push(newTask);
+                    
+                    // --- MODIFICATION START ---
+                    // Example of adding the new task to Firebase
+                    addTaskToFirebase(section.id, newTask);
+                    // --- MODIFICATION END ---
+
                     if (section.isCollapsed) section.isCollapsed = false;
                     render();
                 }
@@ -153,6 +187,13 @@ function setupEventListeners() {
         const taskRow = e.target.closest('.task-row-wrapper');
         if (!taskRow) return;
         const taskId = Number(taskRow.dataset.taskId);
+        
+        // If the task name is clicked, open the sidebar and stop further event processing.
+        if (e.target.matches('.task-name')) {
+            displaySideBarTasks(taskId);
+            return;
+        }
+        
         const control = e.target.closest('[data-control]');
         if (!control) return;
         
@@ -205,7 +246,13 @@ function setupEventListeners() {
          if (!currentlyFocusedSectionId && project.sections.length > 0) currentlyFocusedSectionId = project.sections[0].id;
          const focusedSection = project.sections.find(s => s.id === currentlyFocusedSectionId);
          if (focusedSection) {
-             focusedSection.tasks.unshift({ id: Date.now(), name: '', dueDate: '', priority: 'Low', status: 'On track', assignees: [], customFields: {} });
+             const newTask = { id: Date.now(), name: '', dueDate: '', priority: 'Low', status: 'On track', assignees: [], customFields: {} };
+             focusedSection.tasks.unshift(newTask);
+
+             // --- MODIFICATION START ---
+             addTaskToFirebase(focusedSection.id, newTask);
+             // --- MODIFICATION END ---
+
              if (focusedSection.isCollapsed) focusedSection.isCollapsed = false;
              render();
          } else {
@@ -236,8 +283,6 @@ function setupEventListeners() {
 
 
 // --- Core Logic & UI Functions ---
-// FIX: All top-level functions are converted to standard `function` declarations
-// to ensure they are hoisted and available when `init()` is called.
 
 function closeFloatingPanels() {
     document.querySelectorAll('.context-dropdown, .datepicker, .dialog-overlay').forEach(p => p.remove());
@@ -375,13 +420,77 @@ function createTaskRow(task) {
     return rowWrapper;
 }
 
+/**
+ * Displays a sidebar with details for a specific task.
+ * NOTE: This is a placeholder function to demonstrate the click event handler.
+ * @param {number} taskId - The ID of the task to display.
+ */
+function displaySideBarTasks(taskId) {
+    console.log(`Task name clicked. Opening sidebar for task ID: ${taskId}`);
+    
+    // In a real application, you would implement the logic to show the sidebar here.
+    // For example:
+    const { task } = findTaskAndSection(taskId);
+    if (task) {
+     const sidebarElement = document.getElementById('task-sidebar');
+    //  populateSidebarWithTaskData(sidebarElement, task);
+      sidebarElement.classList.add('is-visible');
+     }
+}
+
 function updateTask(taskId, newProperties) {
     const { task } = findTaskAndSection(taskId);
     if (task) {
         Object.assign(task, newProperties);
+
+        // --- MODIFICATION START ---
+        // Example of updating the task in Firebase
+        updateTaskInFirebase(taskId, newProperties);
+        // --- MODIFICATION END ---
+        
         render();
     }
 }
+
+// --- MODIFICATION START ---
+// --- Firebase Integration Examples ---
+
+/**
+ * Updates a task document in Firestore.
+ * @param {number} taskId - The ID of the task to update.
+ * @param {object} propertiesToUpdate - An object with the task properties to update.
+ */
+async function updateTaskInFirebase(taskId, propertiesToUpdate) {
+    console.log(`Updating task ${taskId} in Firebase with:`, propertiesToUpdate);
+    // const taskDocRef = doc(db, "projects", PROJECT_ID, "tasks", String(taskId));
+    // try {
+    //   await updateDoc(taskDocRef, propertiesToUpdate);
+    //   console.log("Firebase document updated successfully!");
+    // } catch (error) {
+    //   console.error("Error updating Firebase document: ", error);
+    // }
+}
+
+/**
+ * Adds a new task document to a specific section in Firestore.
+ * @param {number} sectionId - The ID of the section to add the task to.
+ * @param {object} taskData - The full task object.
+ */
+async function addTaskToFirebase(sectionId, taskData) {
+    console.log(`Adding new task to section ${sectionId} in Firebase:`, taskData);
+    // This example assumes tasks are a subcollection of a project.
+    // The 'id' of the task object is used as the document ID in Firestore.
+    // const taskDocRef = doc(db, "projects", PROJECT_ID, "tasks", String(taskData.id));
+    // try {
+    //   // We also add a `sectionId` to the data for easy querying.
+    //   await setDoc(taskDocRef, { ...taskData, sectionId: sectionId });
+    //   console.log("New task added to Firebase with ID: ", taskData.id);
+    // } catch (error) {
+    //   console.error("Error adding document to Firebase: ", error);
+    // }
+}
+// --- MODIFICATION END ---
+
 
 function handleTaskCompletion(taskId, taskRowEl) {
     const { task, section: sourceSection } = findTaskAndSection(taskId);
@@ -398,6 +507,10 @@ function handleTaskCompletion(taskId, taskRowEl) {
             sourceSection.tasks = sourceSection.tasks.filter(t => t.id !== taskId);
             completedSection.tasks.unshift(task);
         }
+
+        // You would also update this change in Firebase, likely changing a 'sectionId' field on the task document.
+        updateTaskInFirebase(taskId, { status: 'Completed', sectionId: completedSection.id });
+
         render();
     }, 400);
 }
@@ -547,7 +660,7 @@ function openAddColumnDialog(columnType) {
                 <div class="dialog-body">
                      <div class="form-group"><label for="column-name">Column Name</label><input type="text" id="column-name" placeholder="e.g., Budget"></div>
                     ${typeSpecificFields}
-                    <div class="dialog-preview-box">${previewHTML}</div>
+                     <div class="dialog-preview-box">${previewHTML}</div>
                 </div>
                 <div class="dialog-footer">
                     <button class="dialog-button" id="cancel-add-column">Cancel</button>
@@ -639,7 +752,7 @@ function openAddColumnDialog(columnType) {
         render();
     };
     
-     deleteColumn = (columnId) => {
+   deleteColumn = (columnId) => {
         if (window.confirm('Are you sure you want to delete this column and all its data? This action cannot be undone.')) {
             project.customColumns = project.customColumns.filter(col => col.id !== columnId);
             project.sections.forEach(section => {
@@ -652,5 +765,3 @@ function openAddColumnDialog(columnType) {
             render();
         }
     };
-
-   

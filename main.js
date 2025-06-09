@@ -187,6 +187,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await Promise.all([
     loadHTML("#top-header", "../dashboard/header/header.html"),
     loadHTML("#rootdrawer", "../dashboard/drawer/drawer.html"),
+    loadHTML("#right-sidebar", "../dashboard/sidebar/sidebar.html"),
   ]);
   
   // Go through navigation links and add a `data-section` attribute.
