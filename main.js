@@ -119,7 +119,12 @@ async function loadHTML(selector, url) {
       cssId = "drawer-css";
       jsFileName = "drawer.js";
       jsId = "drawer-js";
-    }
+    } else if (url.includes("sidebar/sidebar.html")) {
+  cssFileName = "sidebar.css";
+  cssId = "sidebar-css";
+  jsFileName = "sidebar.js";
+  jsId = "sidebar-js";
+}
     
     // Load CSS
     if (cssFileName && cssId && !document.getElementById(cssId)) {
