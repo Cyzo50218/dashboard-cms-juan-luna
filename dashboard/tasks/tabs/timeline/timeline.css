@@ -1,0 +1,433 @@
+/* timeline.css */
+.timeline-container {
+display: flex;
+flex-direction: column;
+width: 100vw;
+height: 100vh;
+background-color: #ffffff;
+}
+
+/* Main Timeline Layout */
+.timeline-main-content {
+display: flex;
+flex-grow: 1;
+overflow: hidden;
+}
+
+/* Timeline Header */
+.timeline-header {
+display: flex;
+flex-direction: column;
+gap: 10px;
+padding: 10px 20px;
+background-color: #fff;
+border-bottom: 1px solid #dfe1e6;
+position: sticky;
+top: 0;
+left: 260px;
+width: calc(100% - 240px);
+box-sizing: border-box;
+align-self: flex-start;
+overflow-x: hidden;
+z-index: 20;
+}
+
+.timeline-header-scroll-wrapper {
+display: flex;
+min-width: fit-content;
+}
+
+/* Body Scroll Area */
+.timeline-body {
+display: flex;
+flex-grow: 1;
+overflow: auto;
+position: relative;
+}
+
+.timeline-grid {
+    flex-grow: 1;
+    position: relative;
+    overflow: hidden;
+    cursor: grab;
+    background-color: #fafbfc; /* Fallback color */
+    /* --- CHANGE: Updated gradient for straight vertical lines --- */
+    background-image: repeating-linear-gradient(
+        90deg,  /* Creates vertical lines */
+        transparent,
+        transparent 34px,
+        rgba(0, 0, 0, 0.07) 34px, /* Color of the vertical line */
+        rgba(0, 0, 0, 0.07) 35px  /* Creates a 1px wide line */
+    );
+}
+
+.timeline-grid.panning {
+cursor: grabbing;
+}
+
+.timeline-grid-lines,
+.timeline-tasks-overlay {
+position: absolute;
+top: 0;
+left: 0;
+height: 100%;
+box-sizing: border-box;
+}
+
+.timeline-grid-lines {
+display: flex;
+pointer-events: none;
+}
+
+.timeline-tasks-overlay {
+overflow: visible;
+z-index: 1;
+}
+
+/* Sections Panel */
+.timeline-sections {
+width: 260px;
+flex-shrink: 0;
+background-color: #fafbfc;
+border-right: 1px solid #dfe1e6;
+display: flex;
+flex-direction: column;
+position: sticky;
+left: 0;
+z-index: 15;
+overflow-y: auto;
+}
+
+.section {
+background-color: #fff;
+border-bottom: 1px solid #dfe1e6;
+display: flex;
+flex-direction: column;
+overflow: hidden;
+position: relative;
+transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+}
+
+.section-header-timeline {
+padding: 12px 5px 12px 0;
+background-color: #fafbfc;
+color: #172b4d;
+font-weight: 600;
+display: flex;
+align-items: center;
+flex-shrink: 0;
+position: sticky;
+top: 0;
+z-index: 10;
+user-select: none;
+cursor: grab;
+}
+
+.section-header-timeline:active {
+cursor: grabbing;
+}
+
+.section-title {
+flex-grow: 1;
+pointer-events: none;
+}
+
+.section-header-timeline .dropdown-arrow {
+margin-right: 8px;
+width: 10px;
+text-align: center;
+cursor: pointer;
+transition: transform 0.2s ease-out;
+color: #5e6c84;
+}
+
+.section.collapsed .dropdown-arrow {
+transform: rotate(-90deg);
+}
+
+.section-header-timeline .task-count {
+margin-left: 8px;
+color: #5e6c84;
+font-weight: 400;
+pointer-events: none;
+}
+
+.section-drag-handle {
+font-size: 18px;
+padding: 0 8px;
+color: #5e6c84;
+opacity: 0.5;
+pointer-events: none;
+transition: opacity 0.2s ease;
+}
+
+.section-header-timeline:hover .section-drag-handle {
+opacity: 1;
+}
+
+.section.dragging {
+background-color: #e6fcff;
+opacity: 0.5;
+}
+
+.section.drop-indicator-top::before,
+.section.drop-indicator-bottom::after {
+content: '';
+position: absolute;
+left: 0;
+right: 0;
+height: 3px;
+background-color: #0052cc;
+z-index: 100;
+}
+
+.section.drop-indicator-top::before {
+top: 0;
+}
+
+.section.drop-indicator-bottom::after {
+bottom: -1px;
+}
+
+/* Timeline Units & Headers */
+.timeline-weeks {
+display: flex;
+user-select: none;
+padding: 0;
+margin: 0;
+transition: none;
+}
+
+.header-unit {
+flex-shrink: 0;
+height: 32px;
+font-size: 12px;
+font-weight: 500;
+color: #5e6c84;
+border-right: 1px solid #f4f5f7;
+display: flex;
+align-items: center;
+justify-content: center;
+box-sizing: border-box;
+padding: 0;
+margin: 0;
+}
+
+/* Task Cards */
+.timeline-task {
+position: absolute;
+height: 36px;
+display: flex;
+align-items: center;
+gap: 8px;
+padding: 0 10px;
+font-size: 13px;
+font-weight: 500;
+color: #172b4d;
+background-color: #fff;
+border-left: 4px solid;
+border-radius: 4px;
+box-shadow: 0 1px 1px rgba(9, 30, 66, 0.25);
+cursor: grab;
+overflow: hidden;
+white-space: nowrap;
+text-overflow: ellipsis;
+transition: all 0.2s ease-in-out;
+box-sizing: border-box;
+}
+
+.timeline-task:hover {
+z-index: 99;
+box-shadow: 0 2px 5px rgba(9, 30, 66, 0.2);
+filter: brightness(1.05);
+}
+
+.timeline-task.dragging {
+z-index: 100;
+transform: scale(1.02);
+opacity: 0.8;
+cursor: grabbing;
+}
+
+.task-name {
+flex-grow: 1;
+overflow: hidden;
+text-overflow: ellipsis;
+pointer-events: none;
+}
+
+.profile-icon {
+width: 24px;
+height: 24px;
+border-radius: 50%;
+background-color: #dfe1e6;
+background-position: center;
+background-size: cover;
+flex-shrink: 0;
+border: 1px solid rgba(0, 0, 0, 0.05);
+pointer-events: none;
+}
+
+.task-actions {
+opacity: 0;
+font-size: 16px;
+color: #42526e;
+padding: 0 5px;
+cursor: pointer;
+transition: opacity 0.2s ease;
+}
+
+.timeline-task:hover .task-actions {
+opacity: 1;
+}
+
+/* Resize Handles */
+.resize-handle {
+position: absolute;
+top: 0;
+bottom: 0;
+width: 10px;
+z-index: 2;
+cursor: col-resize;
+transition: background-color 0.2s ease;
+}
+
+.resize-handle.left {
+left: -2px;
+border-radius: 5px 0 0 5px;
+}
+
+.resize-handle.right {
+right: -2px;
+border-radius: 0 5px 5px 0;
+}
+
+.timeline-task:hover .resize-handle {
+background-color: rgba(0, 82, 204, 0.4);
+}
+
+/* Tooltip */
+#resize-tooltip {
+position: fixed;
+display: none;
+padding: 5px 10px;
+font-size: 12px;
+font-weight: 500;
+color: white;
+background-color: #172b4d;
+border-radius: 4px;
+pointer-events: none;
+white-space: nowrap;
+z-index: 1001;
+}
+
+/* Drop Indicator */
+.drop-indicator {
+position: absolute;
+background-color: #0052cc4D;
+border: 1px dashed #0052cc;
+border-radius: 4px;
+z-index: 98;
+pointer-events: none;
+transition: top 0.1s ease, left 0.1s ease;
+box-sizing: border-box;
+}
+
+/* --- CHANGE: Updated nav styles --- */
+.timeline-nav {
+display: flex;
+justify-content: space-between; 
+align-items: center;
+}
+
+.nav-controls-right {
+    display: flex;
+    align-items: center;
+    margin-right: 150px;
+    gap: 20px;
+}
+
+/* --- END OF CHANGE --- */
+
+/* --- FIXED BUTTON STYLES --- */
+.add-task-btn,
+.add-section-btn {
+padding: 8px 15px;
+font-size: 14px;
+font-weight: 500;
+color: black;
+background-color: transparent;
+border-radius: 6px;
+cursor: pointer;
+transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.add-task-btn {
+    border: 1px solid black;
+}
+
+.add-section-btn {
+    border: 1px solid transparent;
+    margin-top: 18px;
+}
+.add-task-btn:hover,
+.add-section-btn:hover {
+background-color: black;
+color: white;
+}
+/* --- END OF FIX --- */
+
+.date-nav {
+display: flex;
+align-items: center;
+gap: 8px;
+}
+
+.date-nav span {
+font-weight: 600;
+color: #172b4d;
+padding: 5px 10px;
+border-radius: 4px;
+cursor: pointer;
+transition: background-color 0.2s ease;
+}
+
+.date-nav span:hover {
+background-color: #f4f5f7;
+}
+
+.arrow-btn,
+.zoom-btn {
+width: 32px;
+height: 32px;
+font-size: 20px;
+color: #42526e;
+background: none;
+border: 1px solid #c1c7d0;
+border-radius: 4px;
+padding: 0;
+display: flex;
+justify-content: center;
+align-items: center;
+cursor: pointer;
+transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.arrow-btn:hover,
+.zoom-btn:hover {
+background-color: #f4f5f7;
+}
+
+.zoom-btn:disabled {
+color: #a5adba;
+background-color: #fafbfc;
+cursor: not-allowed;
+}
+
+.zoom-controls {
+display: flex;
+align-items: center;
+gap: 8px;
+border-left: 1px solid #dfe1e6;
+padding-left: 20px;
+}

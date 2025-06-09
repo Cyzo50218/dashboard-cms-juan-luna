@@ -1,0 +1,155 @@
+/* Base styles for all SVGs used as icons */
+svg {
+    vertical-align: middle;
+    stroke-width: 2;
+}
+
+.project-container {
+    background-color: #fff;
+    border: 1px solid #e8e8e8;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.project-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px; /* Reduced */
+    border-bottom: 1px solid #e8e8e8;
+}
+
+.project-title-group {
+    display: flex;
+    align-items: center;
+    gap: 6px; /* Reduced */
+}
+
+.project-icon {
+    width: 28px; /* Reduced */
+    height: 28px; /* Reduced */
+    background-color: #cdeae3;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.project-icon .custom-icon {
+    color: #2c7762;
+    stroke-width: 1.5;
+}
+
+h1 {
+    font-size: 18px; /* Reduced */
+    font-weight: 500;
+    margin: 0;
+}
+
+.project-title-group .chevron-icon {
+    color: #6f6f6f;
+    cursor: pointer;
+}
+
+button {
+    border: 1px solid #c9c9c9;
+    background-color: #fff;
+    border-radius: 6px;
+    padding: 4px 10px; /* Reduced */
+    font-size: 13px; /* Reduced */
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px; /* Reduced */
+}
+
+button:hover {
+    background-color: #f0f0f0;
+}
+
+.set-status {
+    color: #6f6f6f;
+}
+
+.project-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Reduced */
+}
+
+.user-avatars .avatar {
+    width: 28px; /* Reduced */
+    height: 28px; /* Reduced */
+    background-color: #f4d76a;
+    border-radius: 50%;
+    display: inline-block;
+    border: 2px solid #fff;
+}
+
+.share-btn {
+    background-color: #2779bd;
+    color: #fff;
+    border-color: #2779bd;
+}
+
+.share-btn svg {
+    stroke: #fff;
+}
+
+.share-btn:hover {
+    background-color: #1e629a;
+}
+
+/* Tabs Styling */
+.project-tabs ul {
+    list-style: none;
+    margin: 0;
+    padding: 0 16px; /* Reduced */
+    display: flex;
+    gap: 12px; /* Reduced */
+}
+
+.project-tabs a {
+    text-decoration: none;
+    color: #6f6f6f;
+    padding: 8px 2px; /* Reduced */
+    display: flex;
+    align-items: center;
+    gap: 5px; /* Reduced */
+    border-bottom: 2px solid transparent;
+    font-size: 14px;
+    transition: color 0.2s ease;
+}
+
+.project-tabs a svg {
+    color: #6f6f6f;
+    transition: color 0.2s ease;
+}
+
+.project-tabs a:hover,
+.project-tabs a:hover svg {
+    color: #151515;
+}
+
+.project-tabs a.active {
+    color: #151515;
+    font-weight: 500;
+    border-bottom: 2px solid #151515;
+}
+
+.project-tabs a.active svg {
+    color: #151515;
+}
+
+.tabs-fragments {
+    padding: 16px; /* Reduced */
+    min-height: 100px;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}

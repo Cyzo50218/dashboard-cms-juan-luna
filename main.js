@@ -1,104 +1,114 @@
-// Keep track of the current section's cleanup logic
+// Keep track of the current section's cleanup logic to prevent memory leaks.
 let currentSectionCleanup = null;
 
-// Load a content section with HTML + JS + CSS (for all swappable sections, including 'home')
-async function loadSection(sectionName) {
-  const content = document.getElementById("content");
+/**
+ * Parses the browser's URL path into a structured object.
+ * This version correctly handles the root path ('/') and ignores 'index.html'.
+ */
+function parseRoute() {
+  const pathParts = window.location.pathname.split('/').filter(p => {
+    return p && p !== 'index.html';
+  });
+  const [section = 'home', accountId = null, tabId = null, projectId = null] = pathParts;
+  return { section, accountId, tabId, projectId };
+}
 
-  // Run cleanup for previous section
+/**
+ * Dynamically loads a section's HTML, CSS, and JS module into the main content area.
+ * @param {object} routeParams - The object of parameters returned by parseRoute().
+ */
+async function loadSection(routeParams) {
+  if (!routeParams || !routeParams.section) {
+    console.error("Invalid route parameters received. Defaulting to home.");
+    routeParams = { section: 'home' };
+  }
+  const { section } = routeParams;
+  const content = document.getElementById("content");
+  
+  // Run the cleanup function from the previously loaded section.
   if (typeof currentSectionCleanup === 'function') {
     currentSectionCleanup();
     currentSectionCleanup = null;
   }
-
-  // Reset content and remove old assets
+  
+  // Clear the content area and remove old assets.
   content.innerHTML = "";
-  document.getElementById("section-script")?.remove();
   document.getElementById("section-css")?.remove();
-
-  // Set section metadata
-  content.dataset.section = sectionName;
-
+  content.dataset.section = section;
+  
   try {
-    // Load HTML
-    const htmlRes = await fetch(`../dashboard/${sectionName}/${sectionName}.html`);
+    // Using absolute paths from the site root is most reliable for localhost.
+    const htmlPath = `/dashboard/${section}/${section}.html`;
+    const cssPath = `/dashboard/${section}/${section}.css`;
+    const jsPath = `/dashboard/${section}/${section}.js?v=${new Date().getTime()}`;
+    
+    // 1. Load HTML content
+    const htmlRes = await fetch(htmlPath);
+    if (!htmlRes.ok) throw new Error(`HTML file not found at ${htmlPath} (${htmlRes.status})`);
     content.innerHTML = await htmlRes.text();
-
-    // Load CSS
+    
+    // 2. Load CSS stylesheet
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = `../dashboard/${sectionName}/${sectionName}.css`;
+    link.href = cssPath;
     link.id = "section-css";
     document.head.appendChild(link);
-
-    // Dynamically import JS module
-    const sectionModule = await import(`../dashboard/${sectionName}/${sectionName}.js?v=${new Date().getTime()}`);
+    
+    // 3. Dynamically import the JavaScript module for the section
+    const sectionModule = await import(jsPath);
+    
     if (sectionModule.init) {
-      currentSectionCleanup = sectionModule.init(); // Store cleanup
-    }
-} catch (err) {
-    const sectionName = "home"; // Assuming sectionName is 'home' from your example
-    content.innerHTML = `<p>Error loading section: ${sectionName}</p>`;
-
-    console.error(`Failed to load section ${sectionName}:`, err);
-
-    // --- Added code to extract more details ---
-
-    // 1. Explicitly log the message and stack if available
-    if (err instanceof TypeError || err instanceof Error) {
-        console.error(`Error Type: ${err.name}`);
-        console.error(`Error Message: ${err.message}`);
-        if (err.stack) {
-            console.error(`Stack Trace:\n${err.stack}`);
-        } else {
-            console.error(`No stack trace available for this error.`);
-        }
+      currentSectionCleanup = sectionModule.init(routeParams);
     } else {
-        // Fallback for non-Error objects (e.g., if a string was thrown)
-        console.error(`Caught non-Error object:`, err);
+      console.warn(`Section "${section}" loaded, but it has no export function init().`);
     }
-
-    // 2. Use console.dir() for a more interactive object inspection
-    // This often reveals non-enumerable properties like 'message' and 'stack' in browser consoles.
+    
+  } catch (err) {
+    content.innerHTML = `<p>Error loading section: <strong>${section}</strong></p>`;
+    console.error(`Failed to load section ${section}:`, err);
     console.dir(err);
-
-    // 3. Try JSON.stringify with a replacer to handle non-enumerable properties
-    // This is more for getting a string representation that you might send to a server.
-    // It's less useful for direct browser console debugging if the above works.
-    try {
-        const errorDetails = JSON.stringify(err, Object.getOwnPropertyNames(err));
-        console.error(`Full error object (JSON stringified):`, errorDetails);
-    } catch (jsonErr) {
-        console.error(`Could not stringify error object:`, jsonErr);
-    }
+  }
+  
+  updateActiveNav(section);
 }
 
-
-
-  // Highlight the active nav item
-  updateActiveNav(sectionName);
+/**
+ * The main router function that orchestrates page loads.
+ */
+function router() {
+  const routeParams = parseRoute();
+  loadSection(routeParams);
 }
 
+/**
+ * Updates the visual 'active' state of the main navigation links.
+ */
 function updateActiveNav(sectionName) {
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-  const activeLink = document.querySelector(`.nav-item a[href="#${sectionName}"]`);
+  // This is the correct version that works with our modern router.
+  const activeLink = document.querySelector(`.nav-item a[data-section="${sectionName}"]`);
   if (activeLink) {
     activeLink.closest('.nav-item').classList.add('active');
   }
 }
 
-// Load persistent HTML with optional CSS and JS
+// DELETED: The duplicate, incorrect version of updateActiveNav has been removed.
+
+/**
+ * Loads persistent HTML components like the header or drawer.
+ * This function is left unchanged as requested.
+ */
 async function loadHTML(selector, url) {
   const container = document.querySelector(selector);
   try {
     const response = await fetch(url);
     container.innerHTML = await response.text();
-
+    
     let cssFileName = null;
     let cssId = null;
     let jsFileName = null;
     let jsId = null;
-
+    
     if (url.includes("header/header.html")) {
       cssFileName = "header.css";
       cssId = "header-css";
@@ -110,7 +120,7 @@ async function loadHTML(selector, url) {
       jsFileName = "drawer.js";
       jsId = "drawer-js";
     }
-
+    
     // Load CSS
     if (cssFileName && cssId && !document.getElementById(cssId)) {
       const link = document.createElement("link");
@@ -120,7 +130,7 @@ async function loadHTML(selector, url) {
       link.id = cssId;
       document.head.appendChild(link);
     }
-
+    
     // Load JS
     if (jsFileName && jsId && !document.getElementById(jsId)) {
       const script = document.createElement("script");
@@ -130,24 +140,28 @@ async function loadHTML(selector, url) {
       script.defer = true;
       document.body.appendChild(script);
     }
-
+    
     if (url.includes("drawer/drawer.html")) {
       attachDrawerToggleLogic();
     }
-
+    
   } catch (err) {
     container.innerHTML = `<p>Error loading ${url}</p>`;
     console.error("Failed to load HTML:", err);
   }
 }
 
+/**
+ * Attaches event listeners for the navigation drawer.
+ * This function is left unchanged as requested.
+ */
 function attachDrawerToggleLogic() {
   const sectionHeaders = document.querySelectorAll('.section-header');
   const drawer = document.getElementById("dashboardDrawer");
   const menuToggle = document.getElementById("menuToggle");
-
+  
   if (drawer) drawer.style.transition = "width 0.3s ease";
-
+  
   if (menuToggle && drawer) {
     menuToggle.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -155,7 +169,7 @@ function attachDrawerToggleLogic() {
       drawer.style.width = currentWidth > 100 ? "80px" : "260px";
     });
   }
-
+  
   sectionHeaders.forEach(header => {
     header.addEventListener('click', () => {
       const section = header.closest('.nav-section');
@@ -164,31 +178,43 @@ function attachDrawerToggleLogic() {
   });
 }
 
-// Hash-based router
-function router() {
-  const sectionName = window.location.hash.substring(1) || 'home';
-  loadSection(sectionName);
-}
-
-// DOM ready
+// --- APPLICATION INITIALIZATION ---
+// This block runs once the initial HTML document has been fully loaded and parsed.
+// FIXED: Added 'async' keyword here to handle the 'await' for loading HTML.
 document.addEventListener("DOMContentLoaded", async () => {
+  
+  // Load persistent parts of the UI first
   await Promise.all([
     loadHTML("#top-header", "../dashboard/header/header.html"),
     loadHTML("#rootdrawer", "../dashboard/drawer/drawer.html"),
   ]);
-
-  window.addEventListener('hashchange', router);
-  router(); // Load default
-
-document.body.addEventListener('click', (e) => {
-  const navItem = e.target.closest('.nav-item a[href^="#"]');
-  if (navItem) {
-    const targetHash = navItem.getAttribute("href");
-    if (targetHash) {
-      window.location.hash = targetHash;
-      e.preventDefault(); // avoid default link behavior
+  
+  // Go through navigation links and add a `data-section` attribute.
+  document.querySelectorAll('.nav-item a[href^="#"]').forEach(link => {
+    const section = link.getAttribute('href').substring(1);
+    link.setAttribute('data-section', section);
+  });
+  
+  // Set up a single, central click handler for all main navigation.
+  document.body.addEventListener('click', (e) => {
+    const navLink = e.target.closest('a[data-section]');
+    if (navLink) {
+      e.preventDefault();
+      const section = navLink.getAttribute('data-section');
+      let newUrl = `/${section}`;
+      
+      if (section === 'tasks') {
+        newUrl = `/tasks/22887391981/list/22887391981`;
+      }
+      
+      history.pushState({ path: newUrl }, '', newUrl);
+      router();
     }
-  }
-});
-
+  });
+  
+  // Listen for the 'popstate' event (browser back/forward buttons).
+  window.addEventListener('popstate', router);
+  
+  // Trigger the router on the initial page load.
+  router();
 });
