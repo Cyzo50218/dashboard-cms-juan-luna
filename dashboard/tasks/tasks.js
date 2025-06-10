@@ -118,3 +118,11 @@ export function init(params) {
         // ... cleanup for share/customize buttons if needed
     };
 }
+
+document.getElementById('share-project-btn').addEventListener('click', () => {
+    // Prevent creating multiple modals
+    if (document.getElementById('modalBackdrop')) {
+        return;
+    }
+    createShareModal();
+});

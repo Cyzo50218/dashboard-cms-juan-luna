@@ -822,5 +822,5 @@ closeIcon.addEventListener("click", function(event) {
   
 });
 
-
+document.getElementById('email-container-id-people').addEventListener('click', showEmailModal);
 document.getElementById('email-container-id').addEventListener('click', showEmailModal);
