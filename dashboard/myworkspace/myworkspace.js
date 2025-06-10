@@ -48,7 +48,8 @@
             { initials: 'MS', bgColor: '#f7d1e7', color: '#813a5f' },
             { initials: 'LP', bgColor: '#d1f7e0', color: '#3a8157' }
         ];
-        
+        addStffBtn.addEventListener('click', showEmailModal);
+        /*
         addStaffBtn.addEventListener('click', () => {
             if (currentStaffCount >= maxStaff) {
                 return; // Do nothing if the limit is reached
@@ -76,7 +77,8 @@
             if (currentStaffCount >= maxStaff) {
                 addStaffBtn.classList.add('disabled');
             }
-        });
+        });*/
+        
     }
     
     // ==================================================
