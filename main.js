@@ -142,6 +142,14 @@ async function loadHTML(selector, url) {
       const folderPath = url.substring(0, url.lastIndexOf('/'));
       script.src = `${folderPath}/${jsFileName}`;
       script.id = jsId;
+      script.onload = () => {
+  console.log(`${jsFileName} loaded successfully.`);
+  // If this is the sidebar script, call its init function now.
+  if (jsFileName === 'sidebar.js' && window.TaskSidebar && typeof window.TaskSidebar.init === 'function') {
+    window.TaskSidebar.init();
+  }
+  
+};
       script.defer = true;
       document.body.appendChild(script);
     }

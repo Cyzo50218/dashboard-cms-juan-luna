@@ -11,18 +11,25 @@
     --fixed-col-width: 35%;
 }
 
-.list-view-container { 
-    max-width: 1400px; 
-    padding-left: 8px;
-    margin: 0 auto; 
+.list-view-container {
+    display: flex;
+    flex-direction: column;
+    width: 100vw;
+    height: 100vh;
+    background-color: #ffffff;
     position: relative;
+    box-sizing: border-box;
+    gap: 1rem; /* Adds space between header, list, and button */
 }
 
 .header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1rem;
+    flex-shrink: 0; 
+    margin-bottom: 0;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 1rem;
 }
 
 .header-controls-right {
@@ -59,14 +66,19 @@ button:hover {
     border: none !important;
 }
 .dialog-button.primary:hover {
-     background-color: #3b5bdb !important;
-     color: white !important;
+    background-color: #3b5bdb !important;
+    color: white !important;
 }
 
 .task-list-wrapper {
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    
     overflow: hidden;
+    flex-grow: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
 }
 
 .task-list-header, .task-row-wrapper, .task-list-footer {
@@ -180,7 +192,13 @@ button:hover {
 
 .add-task-in-section-btn, .add-section-btn { border: none; padding: 0.75rem 1.75rem; margin-left: 3.5rem; }
 .add-task-in-section-btn:hover, .add-section-btn:hover { background: var(--secondary-bg); color: var(--text-color); }
-.add-section-btn { margin-top: 1rem; margin-left: 0; }
+
+.add-section-btn {
+    /* --- FIX: Stop the button from stretching and align it left --- */
+    align-self: flex-start;
+    margin-top: 0; /* Let the container's gap handle spacing */
+    margin-left: 0;
+}
 
 .datepicker {
     z-index: 120 !important;
