@@ -1,58 +1,58 @@
+// Creates a single, safe object on the window to interact with the sidebar.
 window.TaskSidebar = (function() {
     // --- 1. DATA & STATE ---
+    // This data is defined immediately and is available to the 'open' function right away.
     const allUsers = [
-        { id: 1, name: 'Lorelai Gilmore', avatar: 'https://i.imgur.com/k9qRkiG.png' },
-        { id: 2, name: 'Rory Gilmore', avatar: 'https://i.imgur.com/8mR4H4A.png' },
-        { id: 3, name: 'Luke Danes', avatar: 'https://i.imgur.com/wfz43s9.png' },
-        { id: 4, name: 'Sookie St. James', avatar: 'https://i.imgur.com/M2x1crz.png' },
-        { id: 5, name: 'Paris Geller', avatar: 'https://i.imgur.com/5c13bC4.png' }
+        { id: 'user_1', name: 'Lorelai Gilmore', avatar: 'https://i.imgur.com/k9qRkiG.png' },
+        { id: 'user_2', name: 'Rory Gilmore', avatar: 'https://i.imgur.com/8mR4H4A.png' },
+        { id: 'user_3', name: 'Luke Danes', avatar: 'https://i.imgur.com/wfz43s9.png' },
     ];
-    let project = {
-        name: 'New Brand Launch',
-        customColumns: [{ id: 1, name: 'Budget', type: 'Costing', currency: '$' }],
+    // MODIFIED: Added more sections and new fields (sku, itemType) to the task data
+    const project = {
         sections: [
-            { id: 1, title: 'Design', tasks: [
-                { id: 101, name: 'Create final mockups', description: "Develop high-fidelity mockups...", dueDate: '2025-06-12', priority: 'High', status: 'On track', assignees: [1, 2], customFields: { 1: 1500 }, liked: true, comments:[], activity:[] },
-                { id: 102, name: 'Review branding guidelines', description: "Ensure all design assets adhere...", dueDate: '2025-06-15', priority: 'Medium', status: 'On track', assignees: [3], customFields: { 1: 850 }, liked: false, comments:[], activity:[] },
-            ]},
-            { id: 2, title: 'Development', tasks: [
-                { id: 201, name: 'Initial setup', description: "Set up the repository, CI/CD pipeline...", dueDate: '2025-06-18', priority: 'Low', status: 'At risk', assignees: [], customFields: { 1: 3000 }, liked: false, comments:[], activity:[] },
-            ]},
-            { id: 3, title: 'Completed', tasks: [
-                { id: 301, name: 'Kick-off meeting', description: "Initial meeting to align on project goals...", dueDate: '2025-05-30', priority: 'Medium', status: 'Completed', assignees: [4, 5], customFields: { 1: 500 }, liked: false, comments:[], activity:[] },
-            ]},
-        ],
+            { id: 1, title: 'Design', tasks: [{ id: 102, sectionId: 1, name: 'Finalize quarterly report', description: 'Review all department data and compile the final report for the Q2 board meeting.', assignees: ['user_1', 'user_2'], dueDate: '2025-06-25', project: 'Q2 Financials', priority: 'High', status: 'On track', sku: 'Q2-REP-FIN', itemType: 'Report' }] },
+            { id: 2, title: 'Development', tasks: [{ id: 201, sectionId: 2, name: 'Build user authentication', description: 'Set up the login and registration flow.', assignees: ['user_3'], dueDate: '2025-07-10', project: 'Website V2', priority: 'High', status: 'At risk', sku: 'AUTH-MOD-01', itemType: 'Module' }] },
+            { id: 3, title: 'QA', tasks: [] },
+            { id: 4, title: 'Completed', tasks: [] }
+        ]
     };
+    const priorityOptions = ['High', 'Medium', 'Low'];
+    const statusOptions = ['On track', 'At risk', 'Off track', 'Completed'];
     
-    // --- State & Variables ---
+    // --- State variables ---
     let currentTask = null;
-    let currentUser = allUsers.find(u => u.id === 1);
+    let currentUser = allUsers.find(u => u.id === 'user_1');
     let activeTab = 'comments';
+    
+    // --- Initialization State ---
     let isInitialized = false;
-    let dueDateInstance = null;
 
-    // Direct variables for DOM elements, no more 'dom' object
-    let sidebar, taskCompleteBtn, taskNameEl, taskFieldsContainer, taskDescriptionTextEl, 
-        currentUserAvatarEl, activityLogEl, commentTabsContainer, uploadFileBtn, 
-        fileUploadInput, commentInput, sendCommentBtn, toggleFullscreenBtn, taskLikeBtn,
-        imageModal, modalImageContent, closeModalBtn, closeSidebarBtn;
+    // --- 2. DOM ELEMENT VARIABLES ---
+    // These will be assigned a value in the init() function.
+    let sidebar, openSidebarBtn, taskCompleteBtn, taskNameEl, taskProjectEl,
+        taskPriorityEl, taskStatusEl, taskDescriptionTextEl, currentUserAvatarEl,
+        activityLogEl, commentTabsContainer, uploadFileBtn, fileUploadInput,
+        commentInput, sendCommentBtn, dueDateInstance,
+        taskSkuEl, taskItemTypeEl, toggleFullViewBtn; // ADDED: New element variables
+
+    /*
+    // --- FIREBASE INTEGRATION EXAMPLE ---
+    // Variable to hold the real-time listener's unsubscribe function
+    let commentListenerUnsubscribe = null;
+    */
 
     /**
-     * Initializes the sidebar. Returns true on success, false on failure.
+     * INIT: Runs once the DOM is ready.
      */
     function init() {
-        if (isInitialized) return true;
-
+        // Get references to all DOM elements
         sidebar = document.getElementById('task-sidebar');
-        
-        if (!sidebar) {
-            console.error("Initialization Failed: Main #task-sidebar element not found.");
-            return false;
-        }
-        
+        openSidebarBtn = document.getElementById('open-sidebar-btn');
         taskCompleteBtn = document.getElementById('task-complete-btn');
         taskNameEl = document.getElementById('task-name');
-        taskFieldsContainer = document.getElementById('task-fields-container');
+        taskProjectEl = document.getElementById('task-project');
+        taskPriorityEl = document.getElementById('task-priority');
+        taskStatusEl = document.getElementById('task-status');
         taskDescriptionTextEl = document.getElementById('task-description-text');
         currentUserAvatarEl = document.getElementById('current-user-avatar');
         activityLogEl = document.getElementById('activity-log');
@@ -61,148 +61,101 @@ window.TaskSidebar = (function() {
         fileUploadInput = document.getElementById('file-upload-input');
         commentInput = document.getElementById('comment-input');
         sendCommentBtn = document.getElementById('send-comment-btn');
-        toggleFullscreenBtn = document.getElementById('toggle-fullscreen-btn');
-        taskLikeBtn = document.getElementById('task-like-btn');
-        imageModal = document.getElementById('image-modal');
-        modalImageContent = document.getElementById('modal-image-content');
-        closeSidebarBtn = document.getElementById('close-sidebar-btn');
-        closeModalBtn = document.querySelector('.image-modal-close');
-
-        if (!taskCompleteBtn || !taskNameEl || !closeSidebarBtn) {
-            console.error("Initialization failed: One or more required sidebar elements are missing from the DOM.");
-            return false;
-        }
+        
+        // ADDED: Get references to new DOM elements
+        taskSkuEl = document.getElementById('task-sku');
+        taskItemTypeEl = document.getElementById('task-item-type');
+        toggleFullViewBtn = document.getElementById('toggle-full-view-btn');
 
         attachEventListeners();
-        if (currentUser && currentUserAvatarEl) { 
-            currentUserAvatarEl.style.backgroundImage = `url(${currentUser.avatar})`; 
-        }
+        
+        if (currentUser) { currentUserAvatarEl.style.backgroundImage = `url(${currentUser.avatar})`; }
+        initFlatpickr();
 
         isInitialized = true;
-        console.log("TaskSidebar Initialized Successfully.");
-        return true;
+        console.log("TaskSidebar Initialized.");
     }
 
     /**
-     * Opens the sidebar and displays data for a given task ID.
+     * PUBLIC METHOD: open(taskId)
      */
     function open(taskId) {
-        if (!init()) {
-            console.error("Sidebar cannot be opened because initialization failed. Make sure the sidebar HTML is in the document.");
-            return;
+        if (!isInitialized) {
+            init(); // Failsafe: If somehow called before DOM load, initialize now.
         }
 
         let foundTask = null;
-        let sectionId = null;
         for (const section of project.sections) {
             const task = section.tasks.find(t => t.id === taskId);
             if (task) {
                 foundTask = task;
-                sectionId = section.id;
+                foundTask.comments = foundTask.comments || [];
+                foundTask.activity = foundTask.activity || [];
                 break;
             }
         }
-        
         if (foundTask) {
-            foundTask.sectionId = sectionId;
-            foundTask.comments = foundTask.comments || [];
-            foundTask.activity = foundTask.activity || [];
             currentTask = foundTask;
             renderSidebar(currentTask);
             sidebar.classList.add('is-visible');
         } else {
-            console.error(`Sidebar Error: Task with ID ${taskId} not found.`);
+            console.error("Sidebar Error: Task with ID not found:", taskId);
         }
     }
     
-    /**
-     * Renders all the content inside the sidebar based on the current task.
-     */
+    // --- 3. ALL HELPER FUNCTIONS ---
+
     function renderSidebar(task) {
-        if (!task || !isInitialized) return;
-
+        if (!task) return;
         updateCompletionUI(task.status === 'Completed');
-        updateLikeButtonUI(task.liked);
-        
         taskNameEl.textContent = task.name;
-        taskDescriptionTextEl.textContent = task.description || '';
-        taskFieldsContainer.innerHTML = '';
-        
-        const fragment = document.createDocumentFragment();
-        const standardFieldConfig = [
-            { label: 'Assignee', key: 'assignees', type: 'assignee', control: 'assignee' },
-            { label: 'Due date', key: 'dueDate', type: 'date' },
-            { label: 'Projects', key: 'project', type: 'project', control: 'section' },
-            { label: 'Priority', key: 'priority', type: 'tag', control: 'priority' },
-            { label: 'Status', key: 'status', type: 'tag', control: 'status' }
-        ];
-        const customFieldConfig = (project.customColumns || []).map(col => ({
-             label: col.name, key: `customFields.${col.id}`, type: 'custom', definition: col
-        }));
-        const fullFieldConfig = [...standardFieldConfig, ...customFieldConfig];
+        taskDescriptionTextEl.textContent = task.description;
 
-        fullFieldConfig.forEach(field => {
-            const labelEl = document.createElement('div');
-            labelEl.className = 'field-label';
-            labelEl.textContent = field.label;
-            let valueEl;
-            if (field.type === 'date') {
-                if (!dueDateInstance) {
-                     const flatpickrWrapper = document.createElement('div');
-                     flatpickrWrapper.className = 'flatpickr-wrapper';
-                     flatpickrWrapper.innerHTML = `<input type="text" placeholder="No due date" data-input>`;
-                     valueEl = flatpickrWrapper;
-                     dueDateInstance = flatpickr(flatpickrWrapper, {
-                         wrap: true, dateFormat: "Y-m-d",
-                         onChange: (selectedDates, dateStr) => { if (currentTask) currentTask.dueDate = dateStr; },
-                     });
-                } else { valueEl = dueDateInstance.element; }
-                dueDateInstance.setDate(task.dueDate || '', false);
+        // MODIFIED: Render new fields
+        taskSkuEl.textContent = task.sku || 'Not set';
+        taskItemTypeEl.textContent = task.itemType || 'Not set';
+        if (!task.sku) taskSkuEl.classList.add('placeholder-text');
+        else taskSkuEl.classList.remove('placeholder-text');
+        if (!task.itemType) taskItemTypeEl.classList.add('placeholder-text');
+        else taskItemTypeEl.classList.remove('placeholder-text');
+
+        if (dueDateInstance) {
+            dueDateInstance.setDate(task.dueDate, false);
+        }
+        
+        const assigneeEl = document.getElementById('task-assignee');
+        if (assigneeEl) {
+            assigneeEl.innerHTML = '';
+            if (task.assignees && task.assignees.length > 0) {
+                const assigneeFragment = document.createDocumentFragment();
+                task.assignees.forEach(userId => {
+                    const user = allUsers.find(u => u.id === userId);
+                    if (user) {
+                        const avatarDiv = document.createElement('div');
+                        avatarDiv.className = 'avatar';
+                        avatarDiv.style.backgroundImage = `url(${user.avatar})`;
+                        avatarDiv.title = user.name;
+                        assigneeFragment.appendChild(avatarDiv);
+                    }
+                });
+                assigneeEl.appendChild(assigneeFragment);
             } else {
-                valueEl = document.createElement('div');
-                valueEl.className = 'field-value';
-                if (field.control) {
-                    valueEl.classList.add('control');
-                    valueEl.dataset.control = field.control;
-                }
-                switch(field.type) {
-                    case 'assignee':
-                        if (task.assignees && task.assignees.length > 0) {
-                            task.assignees.forEach(userId => {
-                                const user = allUsers.find(u => u.id === userId);
-                                if (user) {
-                                    const avatarDiv = document.createElement('div');
-                                    avatarDiv.className = 'avatar';
-                                    avatarDiv.style.backgroundImage = `url(${user.avatar})`;
-                                    avatarDiv.title = user.name;
-                                    valueEl.appendChild(avatarDiv);
-                                }
-                            });
-                        } else { valueEl.innerHTML = `<i class="fa-regular fa-user"></i> <span class="placeholder-text">No assignee</span>`; }
-                        break;
-                    case 'project':
-                         const currentSection = project.sections.find(s => s.id === task.sectionId);
-                         valueEl.innerHTML = `<i class="fa-regular fa-folder-closed"></i> ${project.name || 'No Project'} &middot; <span class="section-name">${currentSection ? currentSection.title : ''}</span>`;
-                        break;
-                    case 'tag':
-                        valueEl.innerHTML = createTag(task[field.key], field.key);
-                        break;
-                    case 'custom':
-                        const value = task.customFields ? task.customFields[field.definition.id] : null;
-                        if (value !== null && value !== undefined) {
-                            valueEl.textContent = field.definition.currency ? `${field.definition.currency}${value.toLocaleString()}` : value;
-                        } else { valueEl.innerHTML = `<span class="placeholder-text">Not set</span>`; }
-                        break;
-                }
+                assigneeEl.innerHTML = `<span class="placeholder-text">No assignee</span>`;
             }
-            fragment.appendChild(labelEl);
-            fragment.appendChild(valueEl);
-        });
-        taskFieldsContainer.appendChild(fragment);
-        if (activeTab === 'comments') renderComments(task.comments);
-        else renderActivityLog(task.activity);
+        }
+        
+        const currentSection = project.sections.find(s => s.id === task.sectionId);
+        taskProjectEl.innerHTML = `${task.project || 'No Project'} &middot; <span class="section-name">${currentSection ? currentSection.title : ''}</span>`;
+        taskPriorityEl.innerHTML = createTag(task.priority, 'priority');
+        taskStatusEl.innerHTML = createTag(task.status, 'status');
+        
+        if (activeTab === 'comments') {
+            renderComments(task.comments);
+        } else {
+            renderActivityLog(task.activity);
+        }
     }
-    
+
     function setTaskCompletion(isComplete) {
         if (!currentTask) return;
         const isCurrentlyCompleted = currentTask.status === 'Completed';
@@ -212,12 +165,12 @@ window.TaskSidebar = (function() {
             currentTask.originalStatus = currentTask.status;
             currentTask.originalSectionId = currentTask.sectionId;
             currentTask.status = 'Completed';
-            if (completedSection) currentTask.sectionId = completedSection.id;
+            currentTask.sectionId = completedSection.id;
         } else {
             currentTask.status = currentTask.originalStatus || 'On track';
             currentTask.sectionId = currentTask.originalSectionId || project.sections[0].id;
-            delete currentTask.originalStatus;
-            delete currentTask.originalSectionId;
+            currentTask.originalStatus = null;
+            currentTask.originalSectionId = null;
         }
         renderSidebar(currentTask);
     }
@@ -229,62 +182,43 @@ window.TaskSidebar = (function() {
         taskCompleteBtn.querySelector('#task-complete-text').textContent = isCompleted ? 'Completed' : 'Mark complete';
     }
 
-    function updateLikeButtonUI(isLiked) {
-        if (!taskLikeBtn) return;
-        taskLikeBtn.classList.toggle('is-liked', isLiked);
-        taskLikeBtn.classList.toggle('fa-solid', isLiked);
-        taskLikeBtn.classList.toggle('fa-regular', !isLiked);
-        taskLikeBtn.title = isLiked ? 'Unlike task' : 'Like task';
-    }
-    
     function handleSendComment() {
-        if (!currentTask || !commentInput) return;
+        if (!currentTask) return;
         const text = commentInput.value.trim();
         if (text === '') return;
-        
-        const newComment = { id: `comment_${Date.now()}`, userId: currentUser.id, type: 'comment', text: text, timestamp: new Date().toISOString() };
-        currentTask.comments.push(newComment);
-        const newActivity = { id: `activity_${Date.now()}`, userId: currentUser.id, type: 'comment', text: `commented: "${text}"`, timestamp: new Date().toISOString() };
-        currentTask.activity.push(newActivity);
-        
+        const newEntry = { id: `entry_${Date.now()}`, userId: currentUser.id, type: 'comment', text: text, timestamp: new Date().toISOString() };
+        currentTask.comments.push(newEntry);
+        currentTask.activity.push({ ...newEntry, text: `commented: "${text}"`});
         commentInput.value = '';
         renderSidebar(currentTask);
     }
-
+    
     function handleFileUpload(event) {
         if (!currentTask) return;
-        const files = event.target.files;
-        if (!files || !files.length) return;
-        for (const file of files) {
-            const fileUrl = URL.createObjectURL(file);
-            const isImage = file.type.startsWith('image/');
-            const newAttachment = { id: `attachment_${Date.now()}_${file.name}`, userId: currentUser.id, type: 'attachment', timestamp: new Date().toISOString(), file: { name: file.name, size: file.size, type: file.type, url: fileUrl, isImage: isImage } };
-            currentTask.comments.push(newAttachment);
-            const newActivity = { id: `activity_upload_${newAttachment.id}`, userId: currentUser.id, type: 'file_upload', text: `uploaded a file: ${file.name}`, timestamp: new Date().toISOString(), file: newAttachment.file };
-            currentTask.activity.push(newActivity);
-        }
+        const file = event.target.files[0];
+        if (!file) return;
+        const fileUrl = URL.createObjectURL(file);
+        const isImage = file.type.startsWith('image/');
+        const newAttachment = { id: `entry_${Date.now()}`, userId: currentUser.id, type: 'attachment', timestamp: new Date().toISOString(), file: { name: file.name, size: file.size, type: file.type, url: fileUrl, isImage: isImage } };
+        const newActivity = { id: `activity_${newAttachment.id}`, userId: currentUser.id, type: 'file_upload', text: `uploaded a file: ${file.name}`, timestamp: new Date().toISOString(), file: newAttachment.file };
+        currentTask.comments.push(newAttachment);
+        currentTask.activity.push(newActivity);
         renderSidebar(currentTask);
         event.target.value = '';
     }
 
     function renderComments(comments) {
-        if (!activityLogEl) return;
         activityLogEl.innerHTML = '';
-        if (!comments || comments.length === 0) {
-             activityLogEl.innerHTML = `<div class="placeholder-text" style="padding: 0 24px;">No comments or attachments yet.</div>`;
-             return;
-        }
-        const sortedComments = [...comments].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        const sortedComments = [...(comments || [])].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
         sortedComments.forEach(item => {
             if (item.type !== 'comment' && item.type !== 'attachment') return;
             const user = allUsers.find(u => u.id === item.userId);
             const itemDiv = document.createElement('div');
             itemDiv.className = 'log-item';
-            
-            let contentHTML = `<div class="avatar" style="background-image: url(${user?.avatar || ''})"></div><div class="comment-body"><div class="comment-header"><div class="comment-author">${user?.name || 'Unknown User'}</div><div class="comment-timestamp">${new Date(item.timestamp).toLocaleString()}</div></div>`;
+            let contentHTML = `<div class="avatar" style="background-image: url(${user?.avatar})"></div><div class="comment-body"><div class="comment-header"><div class="comment-author">${user?.name || 'Unknown User'}</div><div class="comment-timestamp">${new Date(item.timestamp).toLocaleString()}</div></div>`;
             if (item.type === 'comment') {
                 contentHTML += `<div class="comment-text">${item.text}</div>`;
-            } else if (item.type === 'attachment' && item.file) {
+            } else if (item.type === 'attachment') {
                 contentHTML += renderAttachmentHTML(item.file);
             }
             contentHTML += `</div>`;
@@ -294,22 +228,16 @@ window.TaskSidebar = (function() {
     }
     
     function renderActivityLog(activity) {
-        if (!activityLogEl) return;
         activityLogEl.innerHTML = '';
-        if (!activity || activity.length === 0) {
-             activityLogEl.innerHTML = `<div class="placeholder-text" style="padding: 0 24px;">No activity yet.</div>`;
-             return;
-        }
-        const sortedActivity = [...activity].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        const sortedActivity = [...(activity || [])].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
         sortedActivity.forEach(item => {
             const user = allUsers.find(u => u.id === item.userId);
             const itemDiv = document.createElement('div');
             itemDiv.className = 'log-item';
-            
-            let contentHTML = `<div class="avatar" style="background-image: url(${user?.avatar || ''})"></div><div>`;
-            contentHTML += `<div class="log-text"><strong>${user?.name || 'Unknown'}</strong> ${item.text}</div>`;
+            let contentHTML = `<div class="avatar" style="background-image: url(${user?.avatar})"></div><div>`;
+            contentHTML += `<div class="log-text"><strong>${user?.name}</strong> ${item.text}</div>`;
             contentHTML += `<div class="log-time">${new Date(item.timestamp).toLocaleString()}</div>`;
-            if(item.type === 'file_upload' && item.file) {
+            if(item.type === 'file_upload') {
                 contentHTML += renderAttachmentHTML(item.file);
             }
             contentHTML += `</div>`;
@@ -319,25 +247,37 @@ window.TaskSidebar = (function() {
     }
     
     function renderAttachmentHTML(file) {
-        if (!file) return '';
         if (file.isImage) {
-            return `<div class="log-attachment"><img src="${file.url}" class="image-preview" alt="Image attachment" data-src="${file.url}"></div>`;
+            return `<div class="log-attachment"><a href="${file.url}" target="_blank" title="${file.name}"><img src="${file.url}" class="image-preview" alt="Image attachment"></a></div>`;
         } else {
             return `<div class="log-attachment"><a href="${file.url}" target="_blank" download="${file.name}"><div class="file-icon"><i class="fa-solid fa-file-arrow-down"></i></div><div class="file-info"><div class="file-name">${file.name}</div><div class="file-size">${(file.size / 1024).toFixed(1)} KB</div></div></a></div>`;
         }
     }
-
-    function createTag(text, type) { return `<div class="tag ${type}-${(text || '').toLowerCase().replace(/\s+/g, '-')}">${text}</div>`; }
     
-    function closeDropdowns() { 
-        const dropdowns = document.querySelectorAll('.context-dropdown');
-        dropdowns.forEach(d => d.remove());
+    function initFlatpickr() {
+        const originalDueDateElement = document.getElementById('task-due-date');
+        if (!originalDueDateElement) return;
+        const flatpickrWrapper = document.createElement('div');
+        flatpickrWrapper.className = 'flatpickr-wrapper';
+        flatpickrWrapper.dataset.control = 'date';
+        flatpickrWrapper.innerHTML = `<input type="text" placeholder="No due date" data-input><a class="input-button" title="Toggle" data-toggle><i class="fa-regular fa-calendar"></i></a>`;
+        originalDueDateElement.replaceWith(flatpickrWrapper);
+        dueDateInstance = flatpickr(flatpickrWrapper, {
+            wrap: true,
+            dateFormat: "Y-m-d",
+            onChange: function(selectedDates, dateStr) { if (currentTask) currentTask.dueDate = dateStr; renderSidebar(currentTask); },
+        });
     }
 
     function positionElement(elementToPosition, triggerElement) {
         const rect = triggerElement.getBoundingClientRect();
-        elementToPosition.style.top = `${rect.bottom + 8}px`;
-        elementToPosition.style.left = `${rect.left}px`;
+        let left = rect.left;
+        let top = rect.bottom + 8;
+        if (left + elementToPosition.offsetWidth > window.innerWidth) {
+            left = window.innerWidth - elementToPosition.offsetWidth - 10;
+        }
+        elementToPosition.style.top = `${top}px`;
+        elementToPosition.style.left = `${left}px`;
     }
 
     function createDropdown(targetEl, options, currentValue, onSelect) {
@@ -353,6 +293,7 @@ window.TaskSidebar = (function() {
             item.addEventListener('click', () => { onSelect(option); closeDropdowns(); });
             dropdown.appendChild(item);
         });
+        // THE FIX: Correct argument order
         positionElement(dropdown, targetEl);
     }
     
@@ -361,17 +302,14 @@ window.TaskSidebar = (function() {
         const dropdown = document.createElement('div');
         dropdown.className = 'context-dropdown';
         document.body.appendChild(dropdown);
-        
         const searchInput = document.createElement('input');
         searchInput.type = 'search';
         searchInput.placeholder = 'Search for an assignee...';
         searchInput.className = 'assignee-dropdown-search';
         dropdown.appendChild(searchInput);
-        
         const optionsList = document.createElement('div');
         optionsList.id = 'assignee-options-list';
         dropdown.appendChild(optionsList);
-        
         const renderAssigneeOptions = (filter = '') => {
             optionsList.innerHTML = '';
             const filteredUsers = allUsers.filter(user => user.name.toLowerCase().includes(filter.toLowerCase()));
@@ -381,7 +319,6 @@ window.TaskSidebar = (function() {
                 item.innerHTML = `<div class="avatar" style="background-image: url(${user.avatar})"></div><span>${user.name}</span>`;
                 item.addEventListener('click', () => {
                     if (!currentTask) return;
-                    if (!currentTask.assignees) currentTask.assignees = [];
                     if (currentTask.assignees.includes(user.id)) {
                         currentTask.assignees = currentTask.assignees.filter(id => id !== user.id);
                     } else {
@@ -393,98 +330,101 @@ window.TaskSidebar = (function() {
                 optionsList.appendChild(item);
             });
         };
-        
         searchInput.addEventListener('input', () => renderAssigneeOptions(searchInput.value));
         renderAssigneeOptions();
         positionElement(dropdown, triggerEl);
         searchInput.focus();
     }
     
+    function createTag(text, type) { return `<div class="tag ${type}-${(text || '').toLowerCase().replace(/\s+/g, '-')}">${text}</div>`; }
+    function closeDropdowns() { document.querySelectorAll('.context-dropdown').forEach(d => d.remove()); }
+
     function attachEventListeners() {
-        closeSidebarBtn.addEventListener('click', () => sidebar.classList.remove('is-visible'));
-        taskCompleteBtn.addEventListener('click', () => { if (currentTask) setTaskCompletion(currentTask.status !== 'Completed'); });
-        taskLikeBtn.addEventListener('click', () => {
-            if (!currentTask) return;
-            currentTask.liked = !currentTask.liked;
-            updateLikeButtonUI(currentTask.liked);
-        });
-        toggleFullscreenBtn.addEventListener('click', () => {
-            sidebar.classList.toggle('is-full-view');
-            const isFull = sidebar.classList.contains('is-full-view');
-            toggleFullscreenBtn.classList.toggle('fa-expand', !isFull);
-            toggleFullscreenBtn.classList.toggle('fa-compress', isFull);
-        });
-        sendCommentBtn.addEventListener('click', handleSendComment);
-        commentInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendComment(); } });
-        uploadFileBtn.addEventListener('click', () => fileUploadInput.click());
-        fileUploadInput.addEventListener('change', handleFileUpload);
-        activityLogEl.addEventListener('click', (event) => {
-            if (event.target.classList.contains('image-preview')) {
-                modalImageContent.src = event.target.dataset.src;
-                imageModal.style.display = 'flex';
-            }
-        });
-        closeModalBtn.addEventListener('click', () => { imageModal.style.display = 'none'; });
-        imageModal.addEventListener('click', (e) => { if (e.target === imageModal) imageModal.style.display = 'none'; });
-        commentTabsContainer.addEventListener('click', (e) => {
-            if (e.target.matches('.tab-btn')) {
-                activeTab = e.target.dataset.tab;
-                if(commentTabsContainer.querySelector('.active')) {
-                   commentTabsContainer.querySelector('.active').classList.remove('active');
+        if (openSidebarBtn) {
+            openSidebarBtn.addEventListener('click', () => {
+                const firstTask = project.sections[0]?.tasks[0];
+                if (firstTask) { open(firstTask.id); }
+            });
+        }
+        
+        // ADDED: Event listener for the full-view toggle button
+        if (toggleFullViewBtn) {
+            toggleFullViewBtn.addEventListener('click', () => {
+                sidebar.classList.toggle('is-full-view');
+                // Optional: Change icon based on state
+                if (sidebar.classList.contains('is-full-view')) {
+                    toggleFullViewBtn.classList.remove('fa-expand');
+                    toggleFullViewBtn.classList.add('fa-compress');
+                    toggleFullViewBtn.title = 'Exit full view';
+                } else {
+                    toggleFullViewBtn.classList.remove('fa-compress');
+                    toggleFullViewBtn.classList.add('fa-expand');
+                    toggleFullViewBtn.title = 'Toggle full view';
                 }
-                e.target.classList.add('active');
-                if (currentTask) renderSidebar(currentTask);
-            }
-        });
-        sidebar.addEventListener('click', (e) => {
-            if (!currentTask) return;
-            const control = e.target.closest('[data-control]');
-            if (!control || control.closest('.flatpickr-wrapper')) return;
-            
-            closeDropdowns();
-            const controlType = control.dataset.control;
-            switch (controlType) {
-                case 'assignee': createAssigneeDropdown(control); break;
-                case 'priority': createDropdown(control, ['High', 'Medium', 'Low'], currentTask.priority, (val) => { currentTask.priority = val; renderSidebar(currentTask); }); break;
-                case 'status': createDropdown(control, ['On track', 'At risk', 'Off track', 'Completed'], currentTask.status, (val) => { setTaskCompletion(val === 'Completed'); if (val !== 'Completed') { currentTask.status = val; renderSidebar(currentTask); } }); break;
-                case 'section': 
-                    const sectionNames = project.sections.map(s => s.title);
-                    const currentSectionName = project.sections.find(s => s.id === currentTask.sectionId)?.title;
-                    createDropdown(control, sectionNames, currentSectionName, (val) => { 
-                        if (val === 'Completed') { setTaskCompletion(true); } 
-                        else { 
-                            const newSection = project.sections.find(s => s.title === val); 
-                            if (newSection) { 
-                                setTaskCompletion(false); 
-                                currentTask.sectionId = newSection.id; 
-                                renderSidebar(currentTask); 
-                            } 
-                        } 
-                    }); 
-                    break;
-            }
-        });
+            });
+        }
+        
+        if (taskCompleteBtn) {
+            taskCompleteBtn.addEventListener('click', () => { if (currentTask) setTaskCompletion(currentTask.status !== 'Completed'); });
+        }
+        
+        if (sidebar) {
+            sidebar.addEventListener('click', (e) => {
+                if (!currentTask) return;
+                const control = e.target.closest('[data-control]');
+                if (!control || control.dataset.control === 'date') return;
+                closeDropdowns();
+                const assigneeEl = document.getElementById('task-assignee');
+                const priorityEl = document.getElementById('task-priority');
+                const statusEl = document.getElementById('task-status');
+                const sectionEl = document.getElementById('task-project');
+                
+                switch (control.dataset.control) {
+                    case 'assignee': createAssigneeDropdown(assigneeEl); break;
+                    case 'priority': createDropdown(priorityEl, priorityOptions, currentTask.priority, (val) => { currentTask.priority = val; renderSidebar(currentTask); }); break;
+                    case 'status': createDropdown(statusEl, statusOptions, currentTask.status, (val) => { setTaskCompletion(val === 'Completed'); if (val !== 'Completed') { currentTask.status = val; renderSidebar(currentTask); } }); break;
+                    case 'section': const sectionNames = project.sections.map(s => s.title); const currentSectionName = project.sections.find(s => s.id === currentTask.sectionId)?.title; createDropdown(sectionEl, sectionNames, currentSectionName, (val) => { if (val === 'Completed') { setTaskCompletion(true); } else { const newSection = project.sections.find(s => s.title === val); if (newSection) { setTaskCompletion(false); currentTask.sectionId = newSection.id; renderSidebar(currentTask); } } }); break;
+                }
+            });
+        }
         
         window.addEventListener('click', (e) => {
-             if (!sidebar || !sidebar.classList.contains('is-visible')) {
-                 return;
-             }
-             const clickedOnPopup = e.target.closest('.context-dropdown, .flatpickr-calendar');
-             if (!sidebar.contains(e.target) && !clickedOnPopup) {
-                 sidebar.classList.remove('is-visible');
-                 closeDropdowns();
-             }
+            if (!sidebar || !sidebar.classList.contains('is-visible')) return;
+            const clickedInsideSidebar = sidebar.contains(e.target);
+            const clickedOnTaskRow = e.target.closest('.task-row-wrapper');
+            const datepicker = document.querySelector('.flatpickr-calendar');
+            const dropdown = document.querySelector('.context-dropdown');
+            const clickedOnPopup = (datepicker && datepicker.contains(e.target)) || (dropdown && dropdown.contains(e.target));
+            if (!clickedInsideSidebar && !clickedOnTaskRow && !clickedOnPopup) {
+                sidebar.classList.remove('is-visible');
+            }
         });
+
+        if (sendCommentBtn) sendCommentBtn.addEventListener('click', handleSendComment);
+        if (commentInput) commentInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendComment(); } });
+        if (uploadFileBtn) uploadFileBtn.addEventListener('click', () => fileUploadInput.click());
+        if (fileUploadInput) fileUploadInput.addEventListener('change', handleFileUpload);
+        
+        if (commentTabsContainer) {
+            commentTabsContainer.addEventListener('click', (e) => {
+                if (e.target.matches('.tab-btn')) {
+                    activeTab = e.target.dataset.tab;
+                    commentTabsContainer.querySelector('.active').classList.remove('active');
+                    e.target.classList.add('active');
+                    if (currentTask) renderSidebar(currentTask);
+                }
+            });
+        }
     }
 
-    // --- Public Interface ---
+    // --- Return the public interface ---
     return {
         init: init,
         open: open
     };
 })();
 
-// This ensures all HTML is loaded before the script tries to find elements.
+// Attach the init function to be called when the DOM is ready.
 document.addEventListener('DOMContentLoaded', () => {
     if (window.TaskSidebar) {
         window.TaskSidebar.init();
