@@ -191,6 +191,180 @@ function attachDrawerToggleLogic() {
   });
 }
 
+function showEmailModal() {
+  // Inject styles if not already present
+  if (!document.getElementById("modalStyles")) {
+    const style = document.createElement("style");
+    style.id = "modalStyles";
+    style.textContent = `
+      .modalContainer {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 1.5rem;
+        width: 90%;
+        max-width: 500px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        border-radius: 12px;
+        z-index: 1000;
+      }
+      .closeButton {
+        cursor: pointer;
+        font-size: 24px;
+        float: right;
+      }
+      .inputGroup {
+        margin-top: 1rem;
+      }
+      .inputWrapper {
+        margin-top: 0.5rem;
+      }
+      .suggestionBox {
+        display: none;
+        background: #f3f3f3;
+        padding: 0.5rem;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-top: 0.5rem;
+        align-items: center;
+        gap: 6px;
+      }
+      .suggestionBox i {
+        font-size: 18px;
+      }
+      .sendButton {
+        margin-top: 1rem;
+        padding: 0.75rem 1rem;
+        background-color: #2d80f7;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      .tag {
+        display: inline-block;
+        background: #e0e0e0;
+        padding: 0.25rem 0.5rem;
+        margin: 0.25rem;
+        border-radius: 6px;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // Prevent duplicate modals
+  if (document.querySelector('.modalContainer')) return;
+
+  // Create modal
+  const modal = document.createElement('div');
+  modal.className = 'modalContainer';
+  modal.innerHTML = `
+    <div class="headerSection">
+      <h2>Invite people to My workspace</h2>
+      <span class="closeButton">×</span>
+    </div>
+    <div class="inputGroup">
+      <label>Email addresses <i class='bx bx-info-circle'></i></label>
+      <div class="inputWrapper">
+        <div class="tagInputContainer emailTagInputContainer" id="emailTagInputContainer">
+          <textarea id="emailInputField" class="inputField" placeholder="name@gmail.com, name@gmail.com, ..."></textarea>
+        </div>
+        <div class="suggestionBox" id="emailSuggestionBox">
+          <i class='bx bx-envelope'></i><span id="emailSuggestionText">Invite: h@gmail.com</span>
+        </div>
+      </div>
+    </div>
+    <div class="inputGroup">
+      <label>Add to projects <i class='bx bx-info-circle'></i></label>
+      <div class="inputWrapper">
+        <div class="tagInputContainer projectTagInputContainer" id="projectTagInputContainer">
+          <textarea id="projectInputField" class="inputField" placeholder="Start typing to add projects"></textarea>
+        </div>
+        <div class="suggestionBox" id="projectSuggestionBox">
+          <i class='bx bx-folder'></i><span id="projectSuggestionText">Project: h</span>
+        </div>
+      </div>
+    </div>
+    <button class="sendButton">Send</button>
+  `;
+
+  document.body.appendChild(modal);
+
+  // Add tag utility
+  function addTag(container, text, iconClass) {
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.setAttribute('data-value', text);
+    tag.innerHTML = `<i class='bx ${iconClass}'></i> ${text}`;
+    container.appendChild(tag);
+  }
+
+  // Selectors and logic
+  const emailInputField = modal.querySelector('#emailInputField');
+  const emailSuggestionBox = modal.querySelector('#emailSuggestionBox');
+  const emailSuggestionText = modal.querySelector('#emailSuggestionText');
+  const emailTagInputContainer = modal.querySelector('#emailTagInputContainer');
+  const projectInputField = modal.querySelector('#projectInputField');
+  const projectSuggestionBox = modal.querySelector('#projectSuggestionBox');
+  const projectSuggestionText = modal.querySelector('#projectSuggestionText');
+  const projectTagInputContainer = modal.querySelector('#projectTagInputContainer');
+
+  const projectDataModel = ["h", "home", "help"];
+
+  emailInputField.addEventListener('input', () => {
+    const value = emailInputField.value.trim();
+    if (value) {
+      emailSuggestionBox.style.display = 'flex';
+      emailSuggestionText.textContent = `Invite: ${value}@gmail.com`;
+    } else {
+      emailSuggestionBox.style.display = 'none';
+    }
+  });
+
+  emailSuggestionBox.addEventListener('click', () => {
+    const email = emailSuggestionText.textContent.replace('Invite: ', '');
+    addTag(emailTagInputContainer, email, 'bx-envelope');
+    emailInputField.value = '';
+    emailSuggestionBox.style.display = 'none';
+    emailInputField.focus();
+  });
+
+  projectInputField.addEventListener('input', () => {
+    const value = projectInputField.value.trim().toLowerCase();
+    const suggestion = projectDataModel.find(project => project.startsWith(value));
+    if (suggestion) {
+      projectSuggestionBox.style.display = 'flex';
+      projectSuggestionText.textContent = `Project: ${suggestion}`;
+    } else {
+      projectSuggestionBox.style.display = 'none';
+    }
+  });
+
+  projectSuggestionBox.addEventListener('click', () => {
+    const project = projectSuggestionText.textContent.replace('Project: ', '');
+    addTag(projectTagInputContainer, project, 'bx-folder');
+    projectInputField.value = '';
+    projectSuggestionBox.style.display = 'none';
+    projectInputField.focus();
+  });
+
+  modal.querySelector('.closeButton').addEventListener('click', () => {
+    modal.remove();
+  });
+
+  modal.querySelector('.sendButton').addEventListener('click', () => {
+    const emails = Array.from(emailTagInputContainer.querySelectorAll('.tag')).map(tag => tag.getAttribute('data-value'));
+    const projects = Array.from(projectTagInputContainer.querySelectorAll('.tag')).map(tag => tag.getAttribute('data-value'));
+    if (emails.length || projects.length) {
+      console.log('Inviting:', { emails, projects });
+    } else {
+      alert('Please enter at least one email address or project.');
+    }
+  });
+}
+
 // --- APPLICATION INITIALIZATION ---
 // This block runs once the initial HTML document has been fully loaded and parsed.
 document.addEventListener("DOMContentLoaded", async () => {
@@ -204,6 +378,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const section = link.getAttribute('href').substring(1);
     link.setAttribute('data-section', section);
   });
+  
   
 
   document.body.addEventListener('click', (e) => {
@@ -225,6 +400,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Listen for the 'popstate' event (browser back/forward buttons).
   window.addEventListener('popstate', router);
   
+
+
   // Trigger the router on the initial page load.
   router();
 });
+

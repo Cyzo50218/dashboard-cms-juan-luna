@@ -14,50 +14,22 @@
     <div class="sidebar-content-task">
         <h1 id="task-name" contenteditable="true"></h1>
         
-        <div class="task-fields">
-            <div class="field-label">Assignee</div>
-            <div id="task-assignee" class="field-value control" data-control="assignee">
-                <i class="fa-regular fa-user"></i> <span class="placeholder-text">No assignee</span>
-            </div>
-            
-            <div class="field-label">Due date</div>
-            <div id="task-due-date" class="field-value control" data-control="date">
-                <i class="fa-regular fa-calendar"></i> <span class="placeholder-text">No due date</span>
-            </div>
-            
-            <div class="field-label">Projects</div>
-            <div id="task-project" class="field-value control" data-control="section">
-                <i class="fa-regular fa-folder-closed"></i> <span class="section-name"></span>
-            </div>
-            
-            <div class="field-label">SKU</div>
-            <div id="task-sku" class="field-value">
-                <span class="placeholder-text">Not set</span>
-            </div>
-            
-            <div class="field-label">Item Type</div>
-            <div id="task-item-type" class="field-value">
-                <span class="placeholder-text">Not set</span>
-            </div>
-            
-            <div class="field-label">Priority</div>
-            <div id="task-priority" class="field-value control" data-control="priority"></div>
-            
-            <div class="field-label">Status</div>
-            <div id="task-status" class="field-value control" data-control="status"></div>
-            
-            <div class="field-label">Description</div>
-            <div id="task-description-text" class="description-text" contenteditable="true" placeholder="What is this task about?"></div>
-        </div>
+        <div id="task-fields-container" class="task-fields"></div>
+        
+        <div class="field-label">Description</div>
+        <div id="task-description-text" class="description-text" contenteditable="true" placeholder="What is this task about?"></div>
     </div>
     
     <div id="sidebar-footer-task" class="sidebar-footer-task">
         <div class="comment-section">
             <div id="comment-tabs-container" class="comment-tabs">
-                <button id="sidebar-task-btn-tab" class="tab-btn active" data-tab="comments">Comments</button>
-                <button id="sidebar-task-btn-tab" class="tab-btn" data-tab="activity">All activity</button>
+                <button id="sidebar-task-btn-tab"  class="tab-btn active" data-tab="comments">Comments</button>
+                <button id="sidebar-task-btn-tab"  class="tab-btn" data-tab="activity">All activity</button>
             </div>
             <div id="activity-log" class="activity-log"></div>
+            
+            <div id="pasted-image-preview-container" style="display: none;"></div>
+            
             <div id="add-comment-form" class="add-comment">
                 <div id="current-user-avatar" class="avatar"></div>
                 <div class="comment-input-wrapper">

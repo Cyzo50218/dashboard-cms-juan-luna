@@ -1,0 +1,114 @@
+// --- Collection: 'users' ---
+// Each object represents a document in the 'users' collection.
+{
+    "users": {
+        "882829827333": { // Lorelai Gilmore
+            "name": "Lorelai Gilmore",
+            "avatar": "https://i.imgur.com/k9qRkiG.png",
+            "role": "project_owner"
+        },
+        "262677332232": { // Rory Gilmore
+            "name": "Rory Gilmore",
+            "avatar": "https://i.imgur.com/8mR4H4A.png",
+            "role": "collaborator_view"
+        },
+        "4765322233": { // Sookie St. James
+            "name": "Sookie St. James",
+            "avatar": "https://i.imgur.com/E292S4a.png",
+            "role": "collaborator_view"
+        }
+    },
+    
+    // --- Collection: 'projects' ---
+    // Each object represents a document in the 'projects' collection.
+    "projects": {
+        "proj_stars_hollow_gazette": { // Document ID for "Stars Hollow Gazette Website Launch" project
+            "name": "Stars Hollow Gazette Website Launch",
+            "ownerId": "882829827333",
+            "collaboratorIds": ["262677332232", "4765322233"],
+            "sections": [ // Defined sections for task organization
+                { "id": "section_todo", "title": "To Do" },
+                { "id": "section_in_progress", "title": "In Progress" },
+                { "id": "section_completed", "title": "Completed" }
+            ]
+        }
+    },
+    
+    // --- Collection: 'shopifyOrders' ---
+    // Stores incoming Shopify order data.
+    "shopifyOrders": {
+        "S_ORDER_1001": { // Document ID for a Shopify Order
+            "orderNumber": "SHG-1001",
+            "createdAt": "2025-06-10T06:05:00Z", // Manila time: 2:05 PM, June 10, 2025
+            "customerName": "Kirk Gleason",
+            "lineItems": [
+                { "sku": "GAZETTE-WEB-LAUNCH", "productName": "Website Launch Package", "quantity": 1 }
+            ]
+        },
+        "S_ORDER_1002": { // Another Shopify Order
+            "orderNumber": "SHG-1002",
+            "createdAt": "2025-06-10T06:10:00Z", // Manila time: 2:10 PM, June 10, 2025
+            "customerName": "Miss Patty",
+            "lineItems": [
+                { "sku": "GAZETTE-WEB-LAUNCH", "productName": "Website Launch Package", "quantity": 1 }
+            ]
+        }
+    },
+    
+    // --- Collection: 'chats' ---
+    // Stores main chat documents, each linked to a task.
+    "chats": {
+        "chat_task_website_launch_fulfillment": { // Chat for the core fulfillment task
+            "taskId": "task_website_launch_fulfillment",
+            "projectId": "proj_stars_hollow_gazette",
+            "createdAt": "2025-06-01T10:00:00Z",
+            "participants": ["882829827333", "262677332232"]
+        }
+    },
+    
+    // --- Subcollection: 'projects/{projectId}/tasks' ---
+    "projects/proj_stars_hollow_gazette/tasks": {
+        "task_website_launch_fulfillment": { // This is the *existing* task for the SKU
+            "sectionId": "section_in_progress", // Can be 'To Do', 'In Progress', etc.
+            "name": "Website Launch Package Fulfillment Management",
+            "description": "Manage all aspects of website launch package fulfillment.",
+            "status": "In Progress",
+            "assignees": ["882829827333", "262677332232"],
+            "sku": "GAZETTE-WEB-LAUNCH", // The SKU this task manages
+            "linkedOrderIds": ["S_ORDER_1001", "S_ORDER_1002"], // Orders linked to this task
+            "generatedAt": "2025-06-01T10:00:00Z", // When this task was initially created
+            "dueDate": "2025-06-30", // Example: a planned due date
+            "chatId": "chat_task_website_launch_fulfillment" // Link to the chat for this task
+        }
+        // No other tasks with this SKU will be created if they already exist.
+    },
+    
+    // --- Subcollection: 'chats/{chatId}/messages' ---
+    // Each message/activity log is a document within a chat.
+    "chats/chat_task_website_launch_fulfillment/messages": {
+        "msg_1_initial": { // Initial setup message for the task
+            "senderId": "system",
+            "timestamp": "2025-06-01T10:00:05Z",
+            "text": "Task 'Website Launch Package Fulfillment Management' created.",
+            "type": "activity_log"
+        },
+        "msg_2_order_1001": { // Order S_ORDER_1001 comes in and links
+            "senderId": "system",
+            "timestamp": "2025-06-10T06:05:15Z", // Manila time: 2:05:15 PM, June 10, 2025
+            "text": "New Shopify Order #SHG-1001 (Website Launch Package) linked to this task.",
+            "type": "activity_log"
+        },
+        "msg_3_user_comment": { // User comment
+            "senderId": "882829827333", // Lorelai Gilmore
+            "timestamp": "2025-06-10T06:06:00Z",
+            "text": "Received order #SHG-1001. Starting review process.",
+            "type": "user_message"
+        },
+        "msg_4_order_1002": { // Order S_ORDER_1002 comes in and links
+            "senderId": "system",
+            "timestamp": "2025-06-10T06:10:15Z", // Manila time: 2:10:15 PM, June 10, 2025
+            "text": "New Shopify Order #SHG-1002 (Website Launch Package) linked to this task.",
+            "type": "activity_log"
+        }
+    }
+}
