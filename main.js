@@ -197,59 +197,149 @@ function showEmailModal() {
     const style = document.createElement("style");
     style.id = "modalStyles";
     style.textContent = `
-      .modalContainer {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: white;
-        padding: 1.5rem;
-        width: 90%;
-        max-width: 500px;
-        box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-        border-radius: 12px;
-        z-index: 1000;
-      }
-      .closeButton {
-        cursor: pointer;
-        font-size: 24px;
-        float: right;
-      }
-      .inputGroup {
-        margin-top: 1rem;
-      }
-      .inputWrapper {
-        margin-top: 0.5rem;
-      }
-      .suggestionBox {
-        display: none;
-        background: #f3f3f3;
-        padding: 0.5rem;
-        border-radius: 8px;
-        cursor: pointer;
-        margin-top: 0.5rem;
-        align-items: center;
-        gap: 6px;
-      }
-      .suggestionBox i {
-        font-size: 18px;
-      }
-      .sendButton {
-        margin-top: 1rem;
-        padding: 0.75rem 1rem;
-        background-color: #2d80f7;
-        color: white;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-      }
-      .tag {
-        display: inline-block;
-        background: #e0e0e0;
-        padding: 0.25rem 0.5rem;
-        margin: 0.25rem;
-        border-radius: 6px;
-      }
+   .modalContainer {
+  background: rgba(45, 45, 45, 0.6); /* translucent dark */
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 24px;
+  border-radius: 20px;
+  width: 400px;
+  max-width: 90%;
+  color: #f1f1f1;
+  font-family: "Inter", "Segoe UI", sans-serif;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+/* Header */
+.headerSection {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.closeButton {
+  cursor: pointer;
+  font-size: 22px;
+  color: #aaa;
+  transition: color 0.2s ease;
+}
+.closeButton:hover {
+  color: #fff;
+}
+
+/* Input Group */
+.inputGroup {
+  margin-bottom: 18px;
+}
+.inputGroup label {
+  display: block;
+  margin-bottom: 6px;
+  color: #ccc;
+  font-weight: 500;
+}
+
+/* Tag Input Area */
+.tagInputContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  align-items: flex-start;
+}
+.emailTagInputContainer {
+  min-height: 80px;
+}
+.projectTagInputContainer {
+  min-height: 100px;
+}
+
+/* Tags */
+.tag {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  color: #ffffff;
+  font-size: 14px;
+}
+.tag .tagIcon {
+  margin-right: 6px;
+}
+.tag .removeTag {
+  margin-left: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  color: #bbb;
+}
+.tag .removeTag:hover {
+  color: #fff;
+}
+
+/* Text Area */
+.inputField {
+  flex-grow: 1;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 15px;
+  outline: none;
+  min-width: 50px;
+  resize: none;
+  overflow-y: auto;
+  padding: 4px;
+}
+.inputField::placeholder {
+  color: #888;
+}
+
+/* Suggestion Box */
+.suggestionBox {
+  display: none;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  margin-top: 8px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.suggestionBox:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+.suggestionBox span {
+  color: #1e90ff;
+  margin-left: 8px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Send Button */
+.sendButton {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 12px 24px;
+  color: #fff;
+  border-radius: 16px;
+  cursor: pointer;
+  font-weight: 600;
+  float: right;
+  transition: background 0.3s ease, border 0.3s ease;
+}
+.sendButton:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
     `;
     document.head.appendChild(style);
   }

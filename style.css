@@ -16,17 +16,17 @@ body {
 }
 
 .modalContainer {
-  background: rgba(255, 255, 255, 0.07);
-  backdrop-filter: blur(18px) saturate(180%);
-  -webkit-backdrop-filter: blur(18px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(45, 45, 45, 0.6); /* translucent dark */
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   padding: 24px;
   border-radius: 20px;
   width: 400px;
   max-width: 90%;
-  color: #FFFFFF;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  color: #f1f1f1;
   font-family: "Inter", "Segoe UI", sans-serif;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
   overflow: hidden;
   transition: all 0.3s ease;
 }
@@ -41,8 +41,8 @@ body {
 
 .closeButton {
   cursor: pointer;
-  font-size: 24px;
-  color: #ccc;
+  font-size: 22px;
+  color: #aaa;
   transition: color 0.2s ease;
 }
 .closeButton:hover {
@@ -55,8 +55,8 @@ body {
 }
 .inputGroup label {
   display: block;
-  margin-bottom: 8px;
-  color: #ddd;
+  margin-bottom: 6px;
+  color: #ccc;
   font-weight: 500;
 }
 
@@ -67,7 +67,7 @@ body {
   gap: 8px;
   padding: 10px;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
   align-items: flex-start;
 }
@@ -83,7 +83,7 @@ body {
   display: flex;
   align-items: center;
   padding: 6px 12px;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 20px;
   color: #ffffff;
   font-size: 14px;
@@ -115,7 +115,7 @@ body {
   padding: 4px;
 }
 .inputField::placeholder {
-  color: #aaa;
+  color: #888;
 }
 
 /* Suggestion Box */
@@ -123,7 +123,7 @@ body {
   display: none;
   align-items: center;
   padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
   border-radius: 14px;
   margin-top: 8px;
   cursor: pointer;
@@ -133,7 +133,7 @@ body {
   background: rgba(255, 255, 255, 0.12);
 }
 .suggestionBox span {
-  color: #00bfff;
+  color: #1e90ff;
   margin-left: 8px;
   font-weight: 500;
   white-space: nowrap;
@@ -143,18 +143,19 @@ body {
 
 /* Send Button */
 .sendButton {
-  background: linear-gradient(135deg, #00c6ff, #0072ff);
-  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   padding: 12px 24px;
   color: #fff;
   border-radius: 16px;
   cursor: pointer;
   font-weight: 600;
   float: right;
-  transition: background 0.3s ease;
+  transition: background 0.3s ease, border 0.3s ease;
 }
 .sendButton:hover {
-  background: linear-gradient(135deg, #009cff, #005ce6);
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 /* Fixed Header */
