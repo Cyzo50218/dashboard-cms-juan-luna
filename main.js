@@ -596,129 +596,139 @@ function showEmailModal() {
 }
 
 
-   const createShareModal = () => {
+const createShareModal = () => {
     // --- CSS Styles --- (Complete and Corrected)
     const styles = `
-        .hidden { display: none !important; }
-        .shareproject-modal-backdrop {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0, 0, 0, 0.6); display: flex;
-            justify-content: center; align-items: center; z-index: 1000;
-            animation: fadeIn 0.3s ease;
-        }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .shareproject-modal {
-            background-color: white; border-radius: 12px;
-            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
-            width: 750px; display: flex; flex-direction: column;
-            font-family: 'Inter', sans-serif; animation: slideIn 0.3s ease-out;
-            max-height: 90vh; 
-            margin: auto; 
-        }
-        @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .shareproject-modal-header {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 16px 24px; border-bottom: 1px solid #f0f0f0;
-        }
-        .shareproject-modal-header h2 { margin: 0; font-size: 18px; font-weight: 600; color: #111; }
-        .shareproject-icon-btn {
-            background: none; border: none; cursor: pointer; padding: 6px;
-            border-radius: 50%; display: inline-flex; color: #555;
-        }
-        .shareproject-icon-btn:hover { background-color: #f4f4f4; }
-        .shareproject-modal-body { padding: 16px 24px; }
-        .shareproject-modal-body > p.shareproject-section-title { font-size: 14px; font-weight: 500; color: #333; margin: 16px 0 8px 0; }
-        .shareproject-invite-input-wrapper {
-            position: relative; 
-            display: flex; align-items: center; border: 1px solid #e0e0e0;
-            border-radius: 8px; padding: 4px; margin-bottom: 16px;
-            transition: all 0.2s ease;
-        }
-        .shareproject-invite-input-wrapper:focus-within { border-color: #1267FA; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
-        .shareproject-email-tags-container { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding-left: 8px; }
-        .shareproject-email-tag {
-            display: flex; align-items: center; background-color: #eef2ff; color: #4338ca;
-            padding: 4px 10px; border-radius: 6px; font-size: 14px; font-weight: 500;
-        }
-        .shareproject-email-tag .shareproject-remove-tag { cursor: pointer; margin-left: 8px; font-size: 16px; }
-        #shareproject-email-input {
-            flex-grow: 1; border: none; outline: none; padding: 8px;
-            font-size: 14px; background: transparent; min-width: 150px;
-        }
-        .shareproject-invite-controls { display: flex; align-items: center; gap: 8px; padding-right: 4px;}
-        .shareproject-role-selector, .shareproject-member-role { position: relative; }
-        .shareproject-dropdown-btn {
-            background-color: #fff; border: 1px solid #e0e0e0; border-radius: 6px;
-            padding: 8px 12px; cursor: pointer; display: flex; align-items: center;
-            font-size: 14px; white-space: nowrap;
-        }
-        .shareproject-dropdown-btn:hover { background-color: #f9f9f9; }
-        .shareproject-dropdown-content {
-            position: absolute; top: calc(100% + 5px); right: 0; background-color: white;
-            border: 1px solid #f0f0f0; border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 10; width: 300px;
-            overflow: hidden; animation: fadeIn 0.2s ease;
-        }
-        .shareproject-dropdown-content a { display: block; padding: 12px 16px; text-decoration: none; color: #333; }
-        .shareproject-dropdown-content a:hover { background-color: #f4f4f4; }
-        .shareproject-dropdown-content a.selected { background-color: #eef2ff; }
-        .shareproject-dropdown-content strong { font-weight: 500; display: flex; align-items: center; gap: 8px; }
-        .shareproject-dropdown-content .shareproject-check-icon { color: #1267FA; }
-        .shareproject-dropdown-content p { font-size: 13px; color: #666; margin: 4px 0 0 0; line-height: 1.4; }
-        .shareproject-invite-btn {
-            background-color: #3F7EEB; color: white; border: none;
-            padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500;
-            transition: background-color 0.2s ease;
-        }
-        .shareproject-invite-btn:hover { background-color: #1267FA; }
-        .shareproject-access-settings-wrapper { position: relative; }
-        .shareproject-access-settings-btn {
-            display: flex; align-items: center; width: 100%; text-align: left;
-            padding: 12px; border: 1px solid #e0e0e0; border-radius: 8px; cursor: pointer;
-        }
-        .shareproject-access-settings-btn:hover { background-color: #f9f9f9; }
-        .shareproject-access-settings-btn .material-icons { margin-right: 12px; color: #555; }
-        .shareproject-access-settings-btn div { flex-grow: 1; }
-        .shareproject-members-list { margin-top: 16px; }
-        .shareproject-member-item { display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
-        .shareproject-member-item:last-child { border-bottom: none; }
-        .shareproject-profile-pic {
-            width: 36px; height: 36px; border-radius: 50%; display: flex;
-            align-items: center; justify-content: center; color: white;
-            font-weight: 500; font-size: 14px; margin-right: 12px;
-        }
-        .shareproject-member-info { flex-grow: 1; }
-        .shareproject-member-info strong { font-size: 14px; font-weight: 500; color: #111; }
-        .shareproject-member-info p { font-size: 13px; color: #666; margin: 2px 0 0 0; }
-        .shareproject-member-role .shareproject-dropdown-btn { background: none; border: none; padding: 4px 8px; color: #555; }
-        .shareproject-member-role .shareproject-dropdown-btn:hover { background-color: #f4f4f4; }
-        .shareproject-member-role .shareproject-dropdown-content a.shareproject-leave { color: #ef4444; }
-        .shareproject-member-role .shareproject-dropdown-content a.shareproject-leave:hover { background-color: #fee2e2; }
-        .shareproject-modal-footer {
-            padding: 16px 24px; border-top: 1px solid #f0f0f0;
-            background-color: #f9fafb; display: flex; justify-content: flex-end;
-            border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;
-        }
-        .shareproject-copy-link-btn {
-            background: none; border: 1px solid #e0e0e0; border-radius: 6px;
-            padding: 8px 12px; cursor: pointer; display: flex;
-            align-items: center; font-size: 14px; font-weight: 500;
-        }
-        .shareproject-copy-link-btn:hover { background-color: #f4f4f4; }
-        .shareproject-copy-link-btn .material-icons { margin-right: 8px; color: #555; }
-        .shareproject-user-search-dropdown {
-            position: absolute; top: 100%; left: 0; right: 0;
-            background-color: white; border: 1px solid #f0f0f0;
-            border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            z-index: 20; max-height: 200px; overflow-y: auto;
-        }
-        .shareproject-user-search-dropdown a {
-            display: flex; align-items: center; padding: 8px 16px;
-            text-decoration: none; color: #333;
-        }
-        .shareproject-user-search-dropdown a:hover { background-color: #f4f4f4; }
-        .shareproject-user-search-dropdown a strong { font-weight: 500; margin-right: 8px; }
-        .shareproject-user-search-dropdown a span { font-size: 13px; color: #666; }
+    .hidden { display: none !important; }
+    .shareproject-modal-backdrop {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background-color: rgba(0, 0, 0, 0.6); display: flex;
+        justify-content: center; align-items: center; z-index: 1000;
+        animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .shareproject-modal {
+        background-color: white; border-radius: 12px;
+        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+        width: 750px; display: flex; flex-direction: column;
+        font-family: 'Inter', sans-serif; animation: slideIn 0.3s ease-out;
+        max-height: 90vh;
+        margin: auto;
+    }
+    @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .shareproject-modal-header {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 16px 24px; border-bottom: 1px solid #f0f0f0;
+    }
+    .shareproject-modal-header h2 { margin: 0; font-size: 18px; font-weight: 600; color: #111; }
+    .shareproject-icon-btn {
+        background: none; border: none; cursor: pointer; padding: 6px;
+        border-radius: 50%; display: inline-flex; color: #555;
+    }
+    .shareproject-icon-btn:hover { background-color: #f4f4f4; }
+    .shareproject-modal-body { padding: 16px 24px; overflow-y: auto; }
+    .shareproject-modal-body > p.shareproject-section-title { font-size: 14px; font-weight: 500; color: #333; margin: 16px 0 8px 0; }
+    .shareproject-invite-input-wrapper {
+        position: relative;
+        display: flex; align-items: center; border: 1px solid #e0e0e0;
+        border-radius: 8px; padding: 4px; margin-bottom: 16px;
+        transition: all 0.2s ease;
+    }
+    .shareproject-invite-input-wrapper:focus-within { border-color: #1267FA; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
+    .shareproject-email-tags-container { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding-left: 8px; }
+    .shareproject-email-tag {
+        display: flex; align-items: center; background-color: #eef2ff; color: #4338ca;
+        padding: 4px 10px; border-radius: 6px; font-size: 14px; font-weight: 500;
+    }
+    .shareproject-email-tag .shareproject-remove-tag { cursor: pointer; margin-left: 8px; font-size: 16px; }
+    #shareproject-email-input {
+        flex-grow: 1; border: none; outline: none; padding: 8px;
+        font-size: 14px; background: transparent; min-width: 150px;
+    }
+    .shareproject-invite-controls { display: flex; align-items: center; gap: 8px; padding-right: 4px;}
+    .shareproject-role-selector, .shareproject-member-role { position: relative; }
+    .shareproject-dropdown-btn {
+        background-color: #fff; border: 1px solid #e0e0e0; border-radius: 6px;
+        padding: 8px 12px; cursor: pointer; display: flex; align-items: center;
+        font-size: 14px; white-space: nowrap;
+    }
+    .shareproject-dropdown-btn:hover { background-color: #f9f9f9; }
+    /* Scope 1: Z-index the dropdown */
+    .shareproject-dropdown-content {
+        position: absolute; top: calc(100% + 5px); right: 0; background-color: white;
+        border: 1px solid #f0f0f0; border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 1010; width: 300px;
+        overflow: hidden; animation: fadeIn 0.2s ease;
+    }
+    .shareproject-dropdown-content a { display: block; padding: 12px 16px; text-decoration: none; color: #333; }
+    .shareproject-dropdown-content a:hover { background-color: #f4f4f4; }
+    .shareproject-dropdown-content a.selected { background-color: #eef2ff; }
+    .shareproject-dropdown-content strong { font-weight: 500; display: flex; align-items: center; gap: 8px; }
+    .shareproject-dropdown-content .shareproject-check-icon { color: #1267FA; }
+    .shareproject-dropdown-content p { font-size: 13px; color: #666; margin: 4px 0 0 0; line-height: 1.4; }
+    .shareproject-invite-btn {
+        background-color: #3F7EEB; color: white; border: none;
+        padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500;
+        transition: background-color 0.2s ease;
+    }
+    .shareproject-invite-btn:hover { background-color: #1267FA; }
+    .shareproject-access-settings-wrapper { position: relative; }
+    .shareproject-access-settings-btn {
+        display: flex; align-items: center; width: 100%; text-align: left;
+        padding: 12px; border: 1px solid #e0e0e0; border-radius: 8px; cursor: pointer;
+    }
+    .shareproject-access-settings-btn:hover { background-color: #f9f9f9; }
+    .shareproject-access-settings-btn .material-icons { margin-right: 12px; color: #555; }
+    .shareproject-access-settings-btn div { flex-grow: 1; }
+    .shareproject-members-list { margin-top: 16px; }
+    .shareproject-member-item, .shareproject-pending-item { display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+    .shareproject-member-item:last-child, .shareproject-pending-item:last-child { border-bottom: none; }
+    .shareproject-profile-pic {
+        width: 36px; height: 36px; border-radius: 50%; display: flex;
+        align-items: center; justify-content: center; color: white;
+        font-weight: 500; font-size: 14px; margin-right: 12px;
+    }
+    .shareproject-pending-icon {
+        width: 36px; height: 36px; border-radius: 50%; display: flex;
+        align-items: center; justify-content: center; margin-right: 12px;
+        background-color: #f3f4f6; color: #6b7280;
+    }
+    .shareproject-member-info { flex-grow: 1; }
+    .shareproject-member-info strong { font-size: 14px; font-weight: 500; color: #111; }
+    .shareproject-member-info p { font-size: 13px; color: #666; margin: 2px 0 0 0; }
+    .shareproject-resend-link { color: #3F7EEB; cursor: pointer; text-decoration: underline; }
+    .shareproject-member-role .shareproject-dropdown-btn { background: none; border: none; padding: 4px 8px; color: #555; }
+    .shareproject-member-role .shareproject-dropdown-btn:hover { background-color: #f4f4f4; }
+    .shareproject-member-role .shareproject-dropdown-content { width: 180px; }
+    .shareproject-member-role .shareproject-dropdown-content a { padding: 8px 12px; }
+    .shareproject-member-role .shareproject-dropdown-content a.shareproject-remove { color: #ef4444; }
+    .shareproject-member-role .shareproject-dropdown-content a.shareproject-remove:hover { background-color: #fee2e2; }
+    .shareproject-modal-footer {
+        padding: 16px 24px; border-top: 1px solid #f0f0f0;
+        background-color: #f9fafb; display: flex; justify-content: flex-end;
+        border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;
+    }
+    .shareproject-copy-link-btn {
+        background: none; border: 1px solid #e0e0e0; border-radius: 6px;
+        padding: 8px 12px; cursor: pointer; display: flex;
+        align-items: center; font-size: 14px; font-weight: 500;
+    }
+    .shareproject-copy-link-btn:hover { background-color: #f4f4f4; }
+    .shareproject-copy-link-btn .material-icons { margin-right: 8px; color: #555; }
+    /* Scope 1: Z-index the dropdown */
+    .shareproject-user-search-dropdown {
+        position: absolute; top: 100%; left: 0; right: 0;
+        background-color: white; border: 1px solid #f0f0f0;
+        border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        z-index: 1010; max-height: 200px; overflow-y: auto;
+    }
+    .shareproject-user-search-dropdown a {
+        display: flex; align-items: center; padding: 8px 16px;
+        text-decoration: none; color: #333;
+    }
+    .shareproject-user-search-dropdown a:hover { background-color: #f4f4f4; }
+    .shareproject-user-search-dropdown a strong { font-weight: 500; }
+    .shareproject-user-search-dropdown a span { font-size: 13px; color: #666; margin-left: 8px; }
     `;
     const styleSheet = document.createElement("style");
     styleSheet.innerText = styles;
@@ -726,55 +736,55 @@ function showEmailModal() {
 
     // --- HTML Structure ---
     const modalHTML = `
-        <div class="shareproject-modal">
-            <div class="shareproject-modal-header">
-                <h2>Share Dresmond Shirt Barong Supplier</h2>
-                <button id="shareproject-close-modal-btn" class="shareproject-icon-btn"><i class="material-icons">close</i></button>
-            </div>
-            <div class="shareproject-modal-body">
-                <div class="shareproject-invite-input-wrapper">
-                    <div id="shareproject-email-tags" class="shareproject-email-tags-container"></div>
-                    <input type="email" id="shareproject-email-input" placeholder="Add members by email or name...">
-                    <div class="shareproject-invite-controls">
-                        <div class="shareproject-role-selector">
-                            <button id="shareproject-role-dropdown-btn" class="shareproject-dropdown-btn">
-                                <span id="shareproject-selected-role">Editor</span><i class="material-icons">arrow_drop_down</i>
-                            </button>
-                            <div id="shareproject-role-dropdown" class="shareproject-dropdown-content hidden">
-                                </div>
-                        </div>
-                        <button id="shareproject-invite-btn" class="shareproject-invite-btn">Invite</button>
-                    </div>
-                </div>
-                
-                <div class="shareproject-access-settings-wrapper">
-                    <button id="shareproject-access-settings-btn" class="shareproject-access-settings-btn">
-                        <i class="material-icons" id="shareproject-access-icon">public</i>
-                        <div>
-                            <strong id="shareproject-access-title">My Workspace</strong>
-                            <p id="shareproject-access-desc">Everyone at workspace can find and access this project.</p>
-                        </div>
-                        <i class="material-icons">arrow_drop_down</i>
-                    </button>
-                    <div id="shareproject-access-dropdown" class="shareproject-dropdown-content hidden" style="width: 100%;">
-                        <a href="#" data-access="workspace">
-                            <strong><i class="material-icons">public</i> My Workspace</strong>
-                            <p>Everyone at workspace can find and access this project.</p>
-                        </a>
-                        <a href="#" data-access="private">
-                            <strong><i class="material-icons">lock</i> Private to Members</strong>
-                            <p>Only invited members can find and access this project.</p>
-                        </a>
-                    </div>
-                </div>
-
-                <p class="shareproject-section-title">Project Members</p>
-                <div class="shareproject-members-list" id="shareproject-members-list"></div>
-            </div>
-            <div class="shareproject-modal-footer">
-                <button class="shareproject-copy-link-btn"><i class="material-icons">link</i>Copy project link</button>
-            </div>
+    <div class="shareproject-modal">
+        <div class="shareproject-modal-header">
+            <h2>Share Dresmond Shirt Barong Supplier</h2>
+            <button id="shareproject-close-modal-btn" class="shareproject-icon-btn"><i class="material-icons">close</i></button>
         </div>
+        <div class="shareproject-modal-body">
+            <div class="shareproject-invite-input-wrapper">
+                <div id="shareproject-email-tags" class="shareproject-email-tags-container"></div>
+                <input type="email" id="shareproject-email-input" placeholder="Add members by email or name...">
+                <div class="shareproject-invite-controls">
+                    <div class="shareproject-role-selector">
+                        <button id="shareproject-role-dropdown-btn" class="shareproject-dropdown-btn">
+                            <span id="shareproject-selected-role">Editor</span><i class="material-icons">arrow_drop_down</i>
+                        </button>
+                        <div id="shareproject-role-dropdown" class="shareproject-dropdown-content hidden"></div>
+                    </div>
+                    <button id="shareproject-invite-btn" class="shareproject-invite-btn">Invite</button>
+                </div>
+            </div>
+
+            <div class="shareproject-access-settings-wrapper">
+                <button id="shareproject-access-settings-btn" class="shareproject-access-settings-btn">
+                    <i class="material-icons" id="shareproject-access-icon">public</i>
+                    <div>
+                        <strong id="shareproject-access-title">My Workspace</strong>
+                        <p id="shareproject-access-desc">Everyone at workspace can find and access this project.</p>
+                    </div>
+                    <i class="material-icons">arrow_drop_down</i>
+                </button>
+                <div id="shareproject-access-dropdown" class="shareproject-dropdown-content hidden" style="width: 100%;">
+                    <a href="#" data-access="workspace">
+                        <strong><i class="material-icons">public</i> My Workspace</strong>
+                        <p>Everyone at workspace can find and access this project.</p>
+                    </a>
+                    <a href="#" data-access="private">
+                        <strong><i class="material-icons">lock</i> Private to Members</strong>
+                        <p>Only invited members can find and access this project.</p>
+                    </a>
+                </div>
+            </div>
+
+            <p class="shareproject-section-title">Project Members</p>
+            <div class="shareproject-members-list" id="shareproject-members-list"></div>
+            <div id="shareproject-pending-list"></div>
+        </div>
+        <div class="shareproject-modal-footer">
+            <button class="shareproject-copy-link-btn"><i class="material-icons">link</i>Copy project link</button>
+        </div>
+    </div>
     `;
     const modalBackdrop = document.createElement('div');
     modalBackdrop.id = 'shareproject-modal-backdrop';
@@ -793,10 +803,17 @@ const setupModalLogic = () => {
         { id: 3, name: 'Clinton Ihegoro', email: 'myfavoritemappingswar@gmail.com', role: 'Project admin', isOwner: true },
         { id: 4, name: 'John Wick', email: 'john.wick@example.com', role: 'Editor' },
         { id: 5, name: 'Jane Doe', email: 'jane.doe@example.com', role: 'Viewer' },
-        { id: 6, name: 'Peter Jones', email: 'peter.jones@example.com', role: 'Commenter' },
-        { id: 7, name: 'Alice Smith', email: 'alice.smith@example.com', role: 'Editor' },
-        { id: 8, name: 'Bob Johnson', email: 'bob.johnson@example.com', role: 'Viewer' }
     ];
+
+    const projectData = {
+        uuid: crypto.randomUUID(),
+        projectName: 'Dresmond Shirt Barong Supplier',
+        participants: membersData.map(m => ({ id: m.id, role: m.role })),
+        accessLevel: 'workspace'
+    };
+
+
+    let pendingInvitations = [];
     const invitedEmails = [];
     const profileColors = ['#4A148C', '#004D40', '#BF360C', '#0D47A1', '#4E342E', '#AD1457', '#006064'];
 
@@ -806,6 +823,8 @@ const setupModalLogic = () => {
         { name: 'Commenter', description: "Can comment, but can't edit." },
         { name: 'Viewer', description: "Can view, but can't add comments." }
     ];
+
+    let projectAccessLevel = 'workspace';
 
     // --- DOM Elements ---
     const modalBackdrop = document.getElementById('shareproject-modal-backdrop');
@@ -818,9 +837,10 @@ const setupModalLogic = () => {
     const roleDropdown = document.getElementById('shareproject-role-dropdown');
     const selectedRoleSpan = document.getElementById('shareproject-selected-role');
     const membersList = document.getElementById('shareproject-members-list');
+    const pendingList = document.getElementById('shareproject-pending-list');
     const accessSettingsBtn = document.getElementById('shareproject-access-settings-btn');
     const accessDropdown = document.getElementById('shareproject-access-dropdown');
-    
+
     // --- Functions ---
     const closeModal = () => modalBackdrop.remove();
 
@@ -842,30 +862,47 @@ const setupModalLogic = () => {
         return pic;
     };
 
+    const renderAll = () => {
+        renderMembers();
+        renderPendingInvitations();
+    }
+
     const renderMembers = () => {
         membersList.innerHTML = '';
-        membersData.forEach(member => {
+        const visibleMembers = projectAccessLevel === 'private'
+            ? membersData.filter(m => !m.isGroup)
+            : membersData;
+
+        visibleMembers.forEach(member => {
+            if (!member || !member.name) return;
             const item = document.createElement('div');
             item.className = 'shareproject-member-item';
             item.dataset.id = member.id;
             const dropdownId = `shareproject-member-dropdown-${member.id}`;
+
+            const memberRoleOptions = rolesData.map(role =>
+                `<a href="#" data-role="${role.name}"><strong>${role.name}</strong></a>`
+            ).join('');
+
+            let dropdownLinks;
+            if (member.isOwner) {
+                dropdownLinks = `<a href="#" class="shareproject-remove"><i class="material-icons">logout</i> Leave project</a>`;
+            } else {
+                dropdownLinks = memberRoleOptions + `<a href="#" class="shareproject-remove"><i class="material-icons">person_remove</i> Remove member</a>`;
+            }
+
             item.innerHTML = `
                 <div class="shareproject-member-info">
                     <strong>${member.name}</strong>
                     <p>${member.email}</p>
                 </div>
                 <div class="shareproject-member-role">
-                    <button class="shareproject-dropdown-btn shareproject-member-role-btn">
+                    <button class="shareproject-dropdown-btn shareproject-member-role-btn" ${member.isOwner && member.role === 'Project admin' ? 'disabled' : ''}>
                         <span>${member.role}</span>
-                        <i class="material-icons">arrow_drop_down</i>
+                        ${!(member.isOwner && member.role === 'Project admin') ? '<i class="material-icons">arrow_drop_down</i>' : ''}
                     </button>
                     <div id="${dropdownId}" class="shareproject-dropdown-content hidden shareproject-member-dropdown-content">
-                        ${member.isOwner ?
-                            `<a href="#" class="shareproject-leave"><i class="material-icons">logout</i> Leave project</a>` :
-                            `<a href="#" data-role="Editor"><strong>Editor</strong></a>
-                             <a href="#" data-role="Commenter"><strong>Commenter</strong></a>
-                             <a href="#" data-role="Viewer"><strong>Viewer</strong></a>`
-                        }
+                        ${dropdownLinks}
                     </div>
                 </div>
             `;
@@ -873,6 +910,51 @@ const setupModalLogic = () => {
             membersList.appendChild(item);
         });
     };
+
+    const renderPendingInvitations = () => {
+        pendingList.innerHTML = '';
+        if (pendingInvitations.length > 0 && !document.querySelector('#shareproject-pending-list-title')) {
+             const title = document.createElement('p');
+             title.id = 'shareproject-pending-list-title';
+             title.className = 'shareproject-section-title';
+             title.textContent = 'Pending Invitations';
+             membersList.insertAdjacentElement('afterend', title);
+        } else if (pendingInvitations.length === 0) {
+            document.querySelector('#shareproject-pending-list-title')?.remove();
+        }
+
+
+        pendingInvitations.forEach(invite => {
+            const item = document.createElement('div');
+            item.className = 'shareproject-pending-item';
+            item.dataset.id = invite.id;
+            const dropdownId = `shareproject-pending-dropdown-${invite.id}`;
+            const roleOptions = rolesData.map(role => `<a href="#" data-role="${role.name}"><strong>${role.name}</strong></a>`).join('');
+
+            let statusHTML = invite.status === 'pending'
+                ? `Invitation sent`
+                : `<a href="#" class="shareproject-resend-link" data-id="${invite.id}">Resend invitation</a>`;
+
+            item.innerHTML = `
+                <div class="shareproject-pending-icon"><i class="material-icons">hourglass_top</i></div>
+                <div class="shareproject-member-info">
+                    <strong>${invite.email}</strong>
+                    <p>${statusHTML}</p>
+                </div>
+                <div class="shareproject-member-role">
+                    <button class="shareproject-dropdown-btn shareproject-member-role-btn">
+                        <span>${invite.role}</span>
+                        <i class="material-icons">arrow_drop_down</i>
+                    </button>
+                    <div id="${dropdownId}" class="shareproject-dropdown-content hidden shareproject-member-dropdown-content">
+                        ${roleOptions}
+                        <a href="#" class="shareproject-remove"><i class="material-icons">cancel</i> Cancel invite</a>
+                    </div>
+                </div>
+            `;
+            pendingList.appendChild(item);
+        });
+    }
 
     const renderRoleOptions = () => {
         roleDropdown.innerHTML = rolesData.map(role => `
@@ -902,16 +984,18 @@ const setupModalLogic = () => {
         });
     };
 
-    const addEmailTag = (email) => {
-        const trimmedEmail = email.trim();
-        if (trimmedEmail && !invitedEmails.includes(trimmedEmail)) {
-            invitedEmails.push(trimmedEmail);
+    const addEmailTag = (emailOrName) => {
+        const trimmedIdentifier = emailOrName.trim();
+        if (trimmedIdentifier && !invitedEmails.includes(trimmedIdentifier)) {
+            invitedEmails.push(trimmedIdentifier);
             renderEmailTags();
         }
         emailInput.value = '';
     };
 
     const updateAccessSettings = (type) => {
+        projectAccessLevel = type;
+        projectData.accessLevel = type;
         const icon = document.getElementById('shareproject-access-icon');
         const title = document.getElementById('shareproject-access-title');
         const desc = document.getElementById('shareproject-access-desc');
@@ -925,6 +1009,10 @@ const setupModalLogic = () => {
             desc.textContent = 'Only invited members can find and access this project.';
         }
         accessDropdown.classList.add('hidden');
+        renderMembers();
+        
+        // Scope 2: Add console log for project settings changes
+        console.log(`%c[Project Settings Change]%c Project access level changed to: %c${type}`, "color: #8B5CF6; font-weight: bold;", "color: initial;", "color: #10B981; font-weight: bold;");
     };
 
     // --- Event Handlers ---
@@ -935,7 +1023,7 @@ const setupModalLogic = () => {
             });
         }
     });
-    
+
     closeModalBtn.addEventListener('click', closeModal);
     modalBackdrop.addEventListener('click', (e) => { if (e.target === modalBackdrop) closeModal(); });
 
@@ -943,7 +1031,7 @@ const setupModalLogic = () => {
         e.stopPropagation();
         roleDropdown.classList.toggle('hidden');
     });
-    
+
     roleDropdown.addEventListener('click', (e) => {
         const link = e.target.closest('a[data-role]');
         if (link) {
@@ -965,11 +1053,13 @@ const setupModalLogic = () => {
             updateAccessSettings(link.dataset.access);
         }
     });
-    
+
     emailInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ',') {
+        if ((e.key === 'Enter' || e.key === ',') && e.target.value.trim() !== "") {
             e.preventDefault();
             addEmailTag(e.target.value);
+            let searchDropdown = document.querySelector('.shareproject-user-search-dropdown');
+            if (searchDropdown) searchDropdown.remove();
         }
     });
 
@@ -979,9 +1069,11 @@ const setupModalLogic = () => {
         if (searchDropdown) searchDropdown.remove();
 
         if (query.length > 0) {
-            const filteredMembers = membersData.filter(member => 
-                (member.name && member.name.toLowerCase().includes(query)) ||
-                (member.email && member.email.toLowerCase().includes(query))
+            const filteredMembers = membersData.filter(member =>
+                !member.isGroup && (
+                    (member.name && member.name.toLowerCase().includes(query)) ||
+                    (member.email && member.email.toLowerCase().includes(query))
+                )
             );
             if (filteredMembers.length > 0) {
                 searchDropdown = document.createElement('div');
@@ -994,7 +1086,7 @@ const setupModalLogic = () => {
                         addEmailTag(member.email);
                         if (searchDropdown) searchDropdown.remove();
                     });
-                    searchItem.innerHTML = `<strong>${member.name}</strong> <span>(${member.email})</span>`;
+                    searchItem.innerHTML = `<strong>${member.name}</strong> <span>${member.email}</span>`;
                     searchDropdown.appendChild(searchItem);
                 });
                 inviteInputWrapper.appendChild(searchDropdown);
@@ -1006,40 +1098,132 @@ const setupModalLogic = () => {
         if (emailInput.value.trim() !== "") {
             addEmailTag(emailInput.value);
         }
-        if (invitedEmails.length > 0) {
-            alert('Inviting: ' + invitedEmails.join(', '));
-            invitedEmails.length = 0;
-            renderEmailTags();
-        }
+        if (invitedEmails.length === 0) return;
+
+        const newRole = selectedRoleSpan.textContent;
+
+        invitedEmails.forEach(identifier => {
+            const lowercasedIdentifier = identifier.toLowerCase();
+            const existingMember = membersData.find(m =>
+                !m.isOwner && !m.isGroup && (
+                    (m.email && m.email.toLowerCase() === lowercasedIdentifier) ||
+                    (m.name && m.name.toLowerCase() === lowercasedIdentifier)
+                )
+            );
+
+            if (existingMember) {
+                // Scope 2: Log role update
+                console.log(`%c[Role Update]%c Updated role for %c${existingMember.name}%c to: %c${newRole}`, "color: #8B5CF6; font-weight: bold;", "color: initial;", "color: #3B82F6; font-weight: bold;", "color: initial;", "color: #10B981; font-weight: bold;");
+                existingMember.role = newRole;
+            } else {
+                if (pendingInvitations.some(p => p.email.toLowerCase() === lowercasedIdentifier)) return;
+                
+                // Scope 2: Log new invitation
+                console.log(`%c[New Invitation]%c Sent invite to %c${identifier}%c with role: %c${newRole}`, "color: #8B5CF6; font-weight: bold;", "color: initial;", "color: #3B82F6; font-weight: bold;", "color: initial;", "color: #10B981; font-weight: bold;");
+                const newInvite = {
+                    id: Date.now() + Math.random(),
+                    email: identifier,
+                    role: newRole,
+                    status: 'pending',
+                    timerId: null
+                };
+                newInvite.timerId = setTimeout(() => {
+                    const invite = pendingInvitations.find(p => p.id === newInvite.id);
+                    if (invite) {
+                        invite.status = 'expired';
+                        renderPendingInvitations();
+                    }
+                }, 30000);
+                pendingInvitations.push(newInvite);
+            }
+        });
+
+        invitedEmails.length = 0;
+        renderEmailTags();
+        renderAll();
     });
 
-    membersList.addEventListener('click', (e) => {
+    const listsContainer = document.querySelector('.shareproject-modal-body');
+
+    listsContainer.addEventListener('click', (e) => {
         e.stopPropagation();
         const button = e.target.closest('.shareproject-member-role-btn');
         if (button) {
+            document.querySelectorAll('.shareproject-member-dropdown-content').forEach(d => {
+                if (d !== button.nextElementSibling) d.classList.add('hidden');
+            });
             const dropdown = button.nextElementSibling;
-            dropdown.classList.toggle('hidden');
+            if (dropdown) dropdown.classList.toggle('hidden');
         }
+
         const roleLink = e.target.closest('.shareproject-member-dropdown-content a[data-role]');
         if (roleLink) {
             e.preventDefault();
-            const memberId = parseInt(roleLink.closest('.shareproject-member-item').dataset.id, 10);
-            const member = membersData.find(m => m.id === memberId);
-            if (member) member.role = roleLink.dataset.role;
-            renderMembers();
-        } else if (e.target.closest('.shareproject-member-dropdown-content a.shareproject-leave')) {
-            e.preventDefault();
-            const memberId = parseInt(e.target.closest('.shareproject-member-item').dataset.id, 10);
-            membersData = membersData.filter(m => m.id !== memberId);
-            renderMembers();
+            const memberItem = roleLink.closest('.shareproject-member-item, .shareproject-pending-item');
+            const id = parseFloat(memberItem.dataset.id);
+            const isPending = memberItem.classList.contains('shareproject-pending-item');
+            const list = isPending ? pendingInvitations : membersData;
+            
+            const member = list.find(m => m.id === id);
+            if (member && !member.isOwner) {
+                const oldRole = member.role;
+                const newRole = roleLink.dataset.role;
+                member.role = newRole;
+                // Scope 2: Log role change from list
+                 console.log(`%c[Role Update]%c Changed role for %c${member.name || member.email}%c from %c${oldRole}%c to %c${newRole}`, "color: #8B5CF6; font-weight: bold;", "color: initial;", "color: #3B82F6; font-weight: bold;", "color: initial;", "color: #F59E0B; font-weight: bold;", "color: initial;", "color: #10B981; font-weight: bold;");
+                renderAll();
+            }
         }
+        
+        const removeLink = e.target.closest('.shareproject-member-dropdown-content a.shareproject-remove');
+        if(removeLink) {
+             e.preventDefault();
+            const item = removeLink.closest('.shareproject-member-item, .shareproject-pending-item');
+            const id = parseFloat(item.dataset.id);
+            if (item.classList.contains('shareproject-pending-item')) {
+                const invite = pendingInvitations.find(p => p.id === id);
+                if(invite.timerId) clearTimeout(invite.timerId);
+                // Scope 2: Log cancelled invitation
+                console.log(`%c[Invite Cancelled]%c Cancelled invitation for: %c${invite.email}`, "color: #EF4444; font-weight: bold;", "color: initial;", "color: #3B82F6; font-weight: bold;");
+                pendingInvitations = pendingInvitations.filter(p => p.id !== id);
+            } else {
+                 const member = membersData.find(m => m.id === id);
+                 // Scope 2: Log member removal
+                 console.log(`%c[Member Removed]%c Removed member: %c${member.name}`, "color: #EF4444; font-weight: bold;", "color: initial;", "color: #3B82F6; font-weight: bold;");
+                 membersData = membersData.filter(m => m.id !== id);
+            }
+            renderAll();
+        }
+        
+        const resendLink = e.target.closest('a.shareproject-resend-link');
+        if(resendLink) {
+            e.preventDefault();
+            const id = parseFloat(resendLink.dataset.id);
+            const invite = pendingInvitations.find(p => p.id === id);
+            if(invite) {
+                 console.log(`%c[Invite Resent]%c Resending invitation to %c${invite.email}`, "color: #0EA5E9; font-weight: bold;", "color: initial;", "color: #3B82F6; font-weight: bold;");
+                 invite.status = 'pending';
+                 if(invite.timerId) clearTimeout(invite.timerId);
+                 invite.timerId = setTimeout(() => {
+                    const currentInvite = pendingInvitations.find(p => p.id === invite.id);
+                    if (currentInvite) {
+                        currentInvite.status = 'expired';
+                        renderPendingInvitations();
+                    }
+                }, 30000);
+                renderPendingInvitations();
+            }
+        }
+
     });
 
     // --- Initial Setup ---
-    renderMembers();
+    renderAll();
     renderEmailTags();
     renderRoleOptions();
-};
+    console.log("%cModal Initialized. Project Data:", "color: #22C55E; font-weight: bold;", projectData);
+}
+
 // 
 // --- APPLICATION INITIALIZATION ---
 // This block runs once the initial HTML document has been fully loaded and parsed.
