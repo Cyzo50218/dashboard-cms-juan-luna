@@ -95,12 +95,6 @@
   align-items: center;
 }
 
-/* --- [FIX] Field Value Alignment --- */
-.task-fields-table .field-value {
-  text-align: left;
-  justify-content: flex-start; /* For flex items like assignee avatars */
-}
-
 /* MODIFIED: Added styles for the full-view mode */
 .task-sidebar.is-full-view {
     width: 95vw; /* Expands to take up most of the viewport width */
@@ -655,8 +649,25 @@ min-height: 40px;
 
 .task-fields-table .field-label,
 .task-fields-table .field-value {
-  
   text-align: left;
+}
+
+/* --- [FIX] Field Value Alignment & In-Place Editing --- */
+.task-fields-table .field-value {
+  text-align: left;
+  /* For flex items like assignee avatars, forces them to the left */
+  justify-content: flex-start; 
+}
+
+.inline-edit-input {
+    width: 95%; 
+    padding: 6px 8px;
+    border: 1px solid var(--accent-color); 
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 14px;
+    box-shadow: 0 0 5px rgba(0, 82, 204, 0.2);
+    outline: none;
 }
 
 .task-fields-table .field-label {
@@ -839,6 +850,8 @@ min-height: 40px;
 .task-fields-table .field-value.control {
   cursor: pointer;
   border-radius: 6px;
+  padding-top: 8px;
+  padding-left: 8px;
   transition: background-color 0.2s;
 }
 

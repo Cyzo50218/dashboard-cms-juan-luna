@@ -1,53 +1,59 @@
 window.TaskSidebar = (function() {
     // --- 1. DATA & STATE ---
-    const allProjects = [{
-        id: 'proj-1',
-        name: 'Website Redesign',
-        sections: [{
-            id: 'sec-1',
-            title: 'Design',
-            tasks: [{
-                id: 101,
-                projectId: 'proj-1',
-                name: 'Create final mockups',
-                description: 'Develop final visual mockups for the new homepage.',
-                dueDate: '2025-06-12',
-                status: 'On track',
-                priority: 'High',
-                assignees: [1, 2],
-                SKU: 'WEB-DSN-003',
-                activity: [{
-                    id: 1718135000000,
-                    type: 'comment',
-                    user: 2,
-                    timestamp: new Date('2025-06-09T14:00:00Z'),
-                    content: 'This looks great! Just one question about the footer section.',
-                    reactions: { heart: [1], thumbsUp: [] }
+    const projectData = {
+        'proj-1': {
+            name: 'Website Redesign',
+            customColumns: [
+                { id: 1, name: 'Budget', type: 'Costing', currency: '$' },
+                { id: 2, name: 'Region', type: 'Text' }
+            ],
+            sections: [{
+                id: 'sec-1',
+                title: 'Design',
+                tasks: [{
+                    id: 101,
+                    name: 'Create final mockups',
+                    description: 'Develop final visual mockups for the new homepage.',
+                    dueDate: '2025-06-12',
+                    priority: 'High',
+                    status: 'On track',
+                    assignees: [1, 2],
+                    activity: [{
+                        id: 1718135000000,
+                        type: 'comment',
+                        user: 2,
+                        timestamp: new Date('2025-06-09T14:00:00Z'),
+                        content: 'This looks great!',
+                        reactions: { heart: [1], thumbsUp: [] }
+                    }, {
+                        id: 1718136360000,
+                        type: 'comment',
+                        user: 1,
+                        timestamp: new Date('2025-06-10T10:05:00Z'),
+                        content: 'Attaching the wireframe.',
+                        imageURL: 'https://i.imgur.com/v139Yw1.png',
+                        imageTitle: 'Homepage Wireframe v1',
+                        reactions: { heart: [], thumbsUp: [2] }
+                    }, {
+                        id: 1718139000000,
+                        type: 'change',
+                        user: 1,
+                        timestamp: new Date('2025-06-10T11:00:00Z'),
+                        details: `edited a comment.`
+                    }]
                 }, {
-                    id: 1718136000000,
-                    type: 'change',
-                    user: 2,
-                    timestamp: new Date('2025-06-10T10:00:00Z'),
-                    details: `set Priority to <strong>High</strong>`
-                }, {
-                    id: 1718136120000,
-                    type: 'change',
-                    user: 1,
-                    timestamp: new Date('2025-06-10T10:02:00Z'),
-                    details: `changed SKU to <strong>WEB-DSN-004</strong>`
-                }, {
-                    id: 1718136360000,
-                    type: 'comment',
-                    user: 1,
-                    timestamp: new Date('2025-06-10T10:05:00Z'),
-                    content: 'Good question, I\'ve attached an updated version with the footer details.',
-                    imageURL: 'https://i.imgur.com/v139Yw1.png',
-                    imageTitle: 'Homepage Wireframe with Footer',
-                    reactions: { heart: [], thumbsUp: [2] }
-                }]
-            }]
-        }]
-    }];
+                    id: 102,
+                    name: 'Review branding guidelines',
+                    dueDate: '2025-06-15',
+                    priority: 'Medium',
+                    status: 'On track',
+                    assignees: [3],
+                    activity: [],
+                    customFields: { 1: 850, 2: 'Europe' }
+                }, ]
+            }, ]
+        }
+    };
 
     const allUsers = [
         { id: 1, name: 'Lorelai Gilmore', avatar: 'https://i.imgur.com/k9qRkiG.png' },
@@ -55,12 +61,12 @@ window.TaskSidebar = (function() {
         { id: 3, name: 'Luke Danes', avatar: 'https://i.imgur.com/wfz43s9.png' },
         { id: 4, name: 'Sookie St. James', avatar: 'https://i.imgur.com/E292S4a.png' },
     ];
-
     const priorityOptions = ['High', 'Medium', 'Low'];
     const statusOptions = ['On track', 'At risk', 'Off track', 'Completed'];
 
     // --- State variables ---
     let currentTask = null;
+    let currentProject = null;
     const currentUser = allUsers[0];
     let isInitialized = false;
     let pastedImageURL = null;
@@ -85,7 +91,7 @@ window.TaskSidebar = (function() {
         commentInput = document.getElementById('comment-input');
         sendCommentBtn = document.getElementById('send-comment-btn');
         currentUserAvatarEl = document.getElementById('current-user-avatar');
-        imagePreviewContainer = document.getElementById('pasted-image-preview-container');
+        imagePreviewContainer = document.querySelector('.add-comment #pasted-image-preview-container');
         imagePreview = document.getElementById('pasted-image-preview');
         imageTitleInput = document.getElementById('pasted-image-title');
         cancelImageBtn = document.getElementById('cancel-image-btn');
@@ -95,21 +101,23 @@ window.TaskSidebar = (function() {
         isInitialized = true;
     }
 
-    function open(taskId) {
+    function open(taskId, projectId = 'proj-1') {
         if (!isInitialized) init();
+        currentProject = projectData[projectId];
         const task = findTaskById(taskId);
         if (task) {
             currentTask = task;
             renderSidebar(currentTask);
             sidebar.classList.add('is-visible');
         } else {
-            console.error(`Task with ID ${taskId} not found.`);
+            console.error(`Task with ID ${taskId} not found in project ${projectId}.`);
         }
     }
 
     function close() {
         sidebar.classList.remove('is-visible');
         currentTask = null;
+        currentProject = null;
     }
 
     function logActivity(type, details) {
@@ -118,6 +126,7 @@ window.TaskSidebar = (function() {
         if (type === 'comment') {
             newActivity.reactions = { heart: [], thumbsUp: [] };
         }
+        if(!currentTask.activity) currentTask.activity = [];
         currentTask.activity.push(newActivity);
         renderActivity();
     }
@@ -126,7 +135,7 @@ window.TaskSidebar = (function() {
     function renderSidebar(task) {
         if (!task) return;
         taskNameEl.textContent = task.name;
-        taskDescriptionEl.textContent = task.description;
+        taskDescriptionEl.textContent = task.description || '';
         currentUserAvatarEl.style.backgroundImage = `url(${currentUser.avatar})`;
         const isCompleted = task.status === 'Completed';
         sidebar.classList.toggle('task-is-completed', isCompleted);
@@ -143,44 +152,58 @@ window.TaskSidebar = (function() {
             dueDate: { label: 'Due date', html: renderDateValue(task.dueDate), controlType: 'date' },
             status: { label: 'Status', html: createTag(task.status, 'status'), controlType: 'dropdown', options: statusOptions },
             priority: { label: 'Priority', html: createTag(task.priority, 'priority'), controlType: 'dropdown', options: priorityOptions },
-            SKU: { label: 'SKU', html: task.SKU || 'N/A', controlType: 'text' },
         };
-        const fieldOrder = ['assignees', 'dueDate', 'status', 'priority', 'SKU'];
+        const standardFieldOrder = ['assignees', 'dueDate', 'status', 'priority'];
         const table = document.createElement('table');
         table.className = 'task-fields-table';
         const tbody = document.createElement('tbody');
-        fieldOrder.forEach(key => {
+
+        standardFieldOrder.forEach(key => {
             if (task.hasOwnProperty(key)) {
                 const config = fieldRenderMap[key];
-                if (config) {
-                    const row = tbody.insertRow();
-                    row.className = 'field-row';
-                    const labelCell = row.insertCell();
-                    labelCell.className = 'field-label';
-                    labelCell.textContent = config.label;
-                    const valueCell = row.insertCell();
-                    valueCell.className = 'field-value';
-                    valueCell.innerHTML = config.html;
-                    if (config.controlType) {
-                        valueCell.classList.add('control');
-                        valueCell.dataset.control = config.controlType;
-                        valueCell.dataset.key = key;
-                        if (config.options) {
-                            valueCell.dataset.options = JSON.stringify(config.options);
-                        }
-                    }
-                }
+                appendFieldToTable(tbody, key, config.label, config.html, config.controlType, config.options);
             }
         });
+        
+        currentProject.customColumns.forEach(column => {
+            const value = task.customFields ? task.customFields[column.id] : null;
+            let displayValue = value === null || value === undefined ? 'N/A' : value;
+            if (column.type === 'Costing' && value) {
+                displayValue = `${column.currency || '$'}${value}`;
+            }
+            appendFieldToTable(tbody, `custom-${column.id}`, column.name, displayValue, column.type.toLowerCase());
+        });
+
         table.appendChild(tbody);
         taskFieldsContainer.appendChild(table);
     }
+    
+    function appendFieldToTable(tbody, key, label, valueHTML, controlType, options = []) {
+        const row = tbody.insertRow();
+        row.className = 'field-row';
+        const labelCell = row.insertCell();
+        labelCell.className = 'field-label';
+        labelCell.textContent = label;
+        const valueCell = row.insertCell();
+        valueCell.className = 'field-value';
+        valueCell.innerHTML = `<span>${valueHTML}</span>`;
+        if (controlType) {
+            valueCell.classList.add('control');
+            valueCell.dataset.control = controlType;
+            valueCell.dataset.key = key;
+            if (options.length > 0) {
+                valueCell.dataset.options = JSON.stringify(options);
+            }
+        }
+    }
 
     function renderActivity() {
+        if (!activityLogContainer) return;
         activityLogContainer.innerHTML = '';
+        if (!currentTask || !currentTask.activity) return;
+        
         const activeTab = tabsContainer.querySelector('.tab-btn.active').dataset.tab;
         let activitiesToRender;
-
         if (activeTab === 'comments') {
             activitiesToRender = currentTask.activity.filter(a => a.type === 'comment');
         } else {
@@ -240,22 +263,20 @@ window.TaskSidebar = (function() {
             activityLogContainer.appendChild(item);
         });
     }
-    
+
     // --- HELPER & UI FUNCTIONS ---
     function findTaskById(taskId) {
-        for (const project of allProjects) {
-            for (const section of project.sections) {
-                const task = section.tasks.find(t => t.id === taskId);
-                if (task) return task;
-            }
+        for (const section of currentProject.sections) {
+            const task = section.tasks.find(t => t.id === taskId);
+            if (task) return task;
         }
         return null;
     }
 
     function renderDateValue(dateString) {
-        if (!dateString) return `<span>No Date</span>`;
+        if (!dateString) return `No Date`;
         const date = new Date(dateString);
-        return `<span>${date.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'})}</span>`;
+        return date.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'});
     }
 
     function createTag(text, type) {
@@ -275,7 +296,7 @@ window.TaskSidebar = (function() {
         pastedImageURL = url;
         imagePreview.src = url;
         imagePreviewContainer.style.display = 'block';
-        imageTitleInput.placeholder = 'Add an optional note for the image...';
+        commentInput.placeholder = 'Add an optional note for the image...';
     }
 
     function clearImagePreview() {
@@ -406,63 +427,104 @@ window.TaskSidebar = (function() {
 
         taskFieldsContainer.addEventListener('click', (e) => {
             if (currentTask.status === 'Completed') return;
-            const control = e.target.closest('.control');
-            if (!control) return;
-            const controlType = control.dataset.control;
-            const key = control.dataset.key;
-            const oldValue = currentTask[key];
+            const controlCell = e.target.closest('.control');
+            if (!controlCell || controlCell.querySelector('.inline-edit-input')) return;
 
-            if (controlType === 'assignee') {
-                const addBtn = e.target.closest('.assignee-add-btn');
-                const avatar = e.target.closest('.avatar[data-user-id]');
-                if (addBtn) {
-                    const unassigned = allUsers.filter(u => !currentTask.assignees.includes(u.id));
-                    createGenericDropdown(addBtn, unassigned.map(u => ({label: u.name, value: u.id, avatar: u.avatar})), null, (userId) => {
-                       const user = allUsers.find(u => u.id === userId);
-                       if(user) {
-                           currentTask.assignees.push(userId);
-                           logActivity('change', { details: `added <strong>${user.name}</strong> as an assignee` });
-                           renderSidebar(currentTask);
-                       }
-                    });
-                } else if (avatar) {
-                     createAssigneePopover(avatar, avatar.dataset.userId);
-                }
-                return;
-            }
-
-            switch (controlType) {
-                case 'date':
-                    flatpickr(control, {
-                        defaultDate: oldValue,
-                        onChange: (selectedDates, dateStr) => {
-                            if (dateStr !== oldValue) {
-                                currentTask[key] = dateStr;
-                                logActivity('change', { details: `set ${key.replace(/([A-Z])/g, ' $1')} to <strong>${renderDateValue(dateStr).match(/<span>(.*?)<\/span>/)[1]}</strong>` });
+            const controlType = controlCell.dataset.control;
+            const key = controlCell.dataset.key;
+            
+            const specialControls = ['assignee', 'date', 'dropdown'];
+            if (specialControls.includes(controlType)) {
+                 const oldValue = currentTask[key];
+                 switch (controlType) {
+                    case 'assignee':
+                         const addBtn = e.target.closest('.assignee-add-btn');
+                         const avatar = e.target.closest('.avatar[data-user-id]');
+                         if (addBtn) {
+                            const unassigned = allUsers.filter(u => !currentTask.assignees.includes(u.id));
+                            createGenericDropdown(addBtn, unassigned.map(u => ({label: u.name, value: u.id, avatar: u.avatar})), null, (userId) => {
+                               const user = allUsers.find(u => u.id === userId);
+                               if(user) {
+                                   currentTask.assignees.push(userId);
+                                   logActivity('change', { details: `added <strong>${user.name}</strong> as an assignee` });
+                                   renderSidebar(currentTask);
+                               }
+                            });
+                         } else if (avatar) {
+                            createAssigneePopover(avatar, avatar.dataset.userId);
+                         }
+                         break;
+                    case 'date':
+                        flatpickr(controlCell, {
+                            defaultDate: oldValue,
+                            onChange: (selectedDates, dateStr) => {
+                                if (dateStr !== oldValue) {
+                                    currentTask[key] = dateStr;
+                                    logActivity('change', { details: `set ${key.replace(/([A-Z])/g, ' $1')} to <strong>${renderDateValue(dateStr)}</strong>` });
+                                    renderSidebar(currentTask);
+                                }
+                            }
+                        }).open();
+                        break;
+                    case 'dropdown':
+                        const options = JSON.parse(controlCell.dataset.options);
+                        createGenericDropdown(controlCell, options.map(opt => ({ label: opt, value: opt })), oldValue, (val) => {
+                            if (val !== oldValue) {
+                                currentTask[key] = val;
+                                logActivity('change', { details: `changed ${key} from <strong>${oldValue}</strong> to <strong>${val}</strong>` });
                                 renderSidebar(currentTask);
                             }
-                        }
-                    }).open();
-                    break;
-                case 'text':
-                    const newValue = window.prompt(`Enter new value for ${key}:`, oldValue);
-                    if (newValue !== null && newValue !== oldValue) {
-                        currentTask[key] = newValue;
-                        logActivity('change', { details: `changed ${key} to <strong>${newValue}</strong>` });
-                        renderSidebar(currentTask);
-                    }
-                    break;
-                case 'dropdown':
-                    const options = JSON.parse(control.dataset.options);
-                    createGenericDropdown(control, options.map(opt => ({ label: opt, value: opt })), oldValue, (val) => {
-                        if (val !== oldValue) {
-                            currentTask[key] = val;
-                            logActivity('change', { details: `changed ${key} from <strong>${oldValue}</strong> to <strong>${val}</strong>` });
-                            renderSidebar(currentTask);
-                        }
-                    });
-                    break;
+                        });
+                        break;
+                 }
+                 return;
             }
+
+            // Default to in-place editing for text and costing
+            const originalSpan = controlCell.querySelector('span');
+            if(!originalSpan) return;
+            const originalText = originalSpan.textContent;
+            
+            const input = document.createElement('input');
+            input.className = 'inline-edit-input';
+            
+            if (controlType === 'costing') {
+                input.type = 'number';
+                input.value = parseFloat(originalText.replace(/[^0-9.-]+/g, "")) || 0;
+            } else {
+                input.type = 'text';
+                input.value = originalText === 'N/A' ? '' : originalText;
+            }
+
+            controlCell.innerHTML = '';
+            controlCell.appendChild(input);
+            input.select();
+
+            const saveChanges = () => {
+                const newValue = input.value.trim();
+                let isCustom = key.startsWith('custom-');
+                let dataKey = isCustom ? parseInt(key.split('-')[1]) : key;
+                let originalValueForCheck = (controlType === 'costing') ? (parseFloat(originalText.replace(/[^0-9.-]+/g, "")) || 0).toString() : originalText;
+                 
+                // Only save and log if there is a change
+                if (newValue !== originalValueForCheck && !(originalValueForCheck === 'N/A' && newValue === '')) {
+                    if (isCustom) {
+                        if (!currentTask.customFields) currentTask.customFields = {};
+                        currentTask.customFields[dataKey] = controlType === 'costing' ? parseFloat(newValue) : newValue;
+                    } else {
+                        currentTask[key] = newValue;
+                    }
+                    const fieldLabel = controlCell.previousElementSibling.textContent;
+                    logActivity('change', { details: `updated ${fieldLabel} to <strong>${newValue}</strong>` });
+                }
+                renderTaskFields(currentTask);
+            };
+            
+            input.addEventListener('blur', saveChanges);
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') input.blur();
+                if (e.key === 'Escape') renderTaskFields(currentTask);
+            });
         });
 
         sendCommentBtn.addEventListener('click', () => {
