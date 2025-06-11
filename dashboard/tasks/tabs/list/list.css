@@ -9,6 +9,8 @@
     --medium-priority: #ffa940;
     --low-priority: #52c41a;
     --fixed-col-width: 35%;
+    /* Added a variable for compact row height */
+    --row-height: 2.5rem; /* Approximately 40px, a good compact height */
 }
 
 .list-view-container {
@@ -19,17 +21,20 @@
     background-color: #ffffff;
     position: relative;
     box-sizing: border-box;
-    gap: 1rem; /* Adds space between header, list, and button */
+    /* Reduced vertical padding by removing gap and handling spacing with direct padding */
+    padding: 0;
+    overflow: hidden; /* Ensures content doesn't spill out, important for scrollability */
 }
 
 .header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    flex-shrink: 0; 
+    flex-shrink: 0;
     margin-bottom: 0;
     border-bottom: 1px solid var(--border-color);
-    padding-bottom: 1rem;
+    /* Reduced padding to make the header more compact */
+    padding: 0.75rem 1.25rem; /* Adjusted vertical padding */
 }
 
 .header-controls-right {
@@ -37,7 +42,6 @@
     align-items: center;
     gap: 0.5rem;
 }
-
 
 button {
     background-color: transparent;
@@ -54,6 +58,7 @@ button {
     justify-content: center;
     gap: 0.5rem;
 }
+
 button:hover {
     background-color: var(--text-color);
     color: var(--primary-bg);
@@ -65,6 +70,7 @@ button:hover {
     color: white !important;
     border: none !important;
 }
+
 .dialog-button.primary:hover {
     background-color: #3b5bdb !important;
     color: white !important;
@@ -73,19 +79,36 @@ button:hover {
 .task-list-wrapper {
     border-top: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
-    
-    overflow: hidden;
     flex-grow: 1;
-    overflow-y: auto;
+    overflow-y: auto; /* Allows vertical scrolling for tasks */
+    /* Enabled horizontal scrolling for the entire list content */
+    overflow-x: auto;
     display: flex;
     flex-direction: column;
 }
 
-.task-list-header, .task-row-wrapper, .task-list-footer {
+/* Hide scrollbar for a cleaner look */
+.task-list-wrapper::-webkit-scrollbar {
+    display: none;
+}
+.task-list-wrapper {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+}
+
+
+.task-list-header,
+.task-row-wrapper,
+.task-list-footer {
     display: flex;
     transition: background-color 0.2s ease-in-out;
+    /* Set a consistent min-height for all rows to make them compact */
+    min-height: var(--row-height);
+    flex-shrink: 0; /* Prevent rows from shrinking below their min-height */
 }
-.task-list-header, .task-row-wrapper {
+
+.task-list-header,
+.task-row-wrapper {
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -99,25 +122,32 @@ button:hover {
     border-right: 1px solid var(--border-color);
     display: flex;
     align-items: center;
-    padding: 0.75rem 1.25rem;
+    /* Adjusted padding for compact rows */
+    padding: 0.5rem 1.25rem;
     box-sizing: border-box;
     gap: 0.75rem;
 }
 
 .scrollable-columns-wrapper {
     flex-grow: 1;
-    overflow-x: auto;
+    /* Removed overflow-x from here, now handled by .task-list-wrapper */
+    overflow-x: unset;
 }
-.scrollable-columns-wrapper::-webkit-scrollbar { display: none; }
+
+.scrollable-columns-wrapper::-webkit-scrollbar {
+    display: none;
+}
 
 .scrollable-columns {
     display: flex;
+    /* Important for horizontal scrolling: Ensure columns don't wrap and maintain their width */
     min-width: max-content;
     padding-right: 12rem;
 }
 
 .task-col {
-    padding: 0.75rem 1.25rem;
+    /* Adjusted padding for compact cells */
+    padding: 0.5rem 1.25rem;
     box-sizing: border-box;
     white-space: nowrap;
     display: flex;
@@ -126,7 +156,9 @@ button:hover {
     transition: color 0.4s ease;
 }
 
-.task-list-header .task-col { cursor: default; }
+.task-list-header .task-col {
+    cursor: default;
+}
 
 .task-list-header {
     background-color: transparent;
@@ -144,67 +176,222 @@ button:hover {
     cursor: grab !important;
 }
 
-.header-assignee, .header-due-date, .header-priority, .header-status, .header-custom {
+.header-assignee,
+.header-due-date,
+.header-priority,
+.header-status,
+.header-custom {
     width: 150px;
     flex-shrink: 0;
     border-right: 1px solid var(--border-color);
 }
-.add-column-container { display: flex; align-items: center; padding: 0.5rem; }
-#add-column-btn { background: none; border: none; font-size: 1rem; cursor: pointer; color: var(--text-secondary-color); }
 
-.delete-column-btn { position: absolute; top: 50%; right: 5px; transform: translateY(-50%); display: none; background: none; border: none; cursor: pointer; color: var(--text-secondary-color); padding: 0.25rem; }
-.task-col.header-custom:hover .delete-column-btn { display: block; }
-.delete-column-btn:hover { color: var(--text-color); background-color: rgba(0,0,0,0.05); border-radius: 4px; }
+.add-column-container {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem;
+}
+
+#add-column-btn {
+    background: none;
+    border: none;
+    font-size: 1rem;
+    cursor: pointer;
+    color: var(--text-secondary-color);
+}
+
+.delete-column-btn {
+    position: absolute;
+    top: 50%;
+    right: 5px;
+    transform: translateY(-50%);
+    display: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-secondary-color);
+    padding: 0.25rem;
+}
+
+.task-col.header-custom:hover .delete-column-btn {
+    display: block;
+}
+
+.delete-column-btn:hover {
+    color: var(--text-color);
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+}
 
 
-.section-header-list { display: flex; align-items: center; font-weight: 600; position: relative; padding: 0.75rem 0; cursor: grab; border-bottom: 1px solid var(--border-color); }
-.task-section:hover .section-header-list, .task-row-wrapper:hover { background-color: var(--secondary-bg); }
-.section-header-list:hover .drag-handle, .task-row-wrapper:hover .drag-handle { opacity: 1; }
+.section-header-list {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    position: relative;
+    /* Adjusted padding for compact sections */
+    padding: 0.5rem 1.25rem;
+    cursor: grab;
+    border-bottom: 1px solid var(--border-color);
+    min-height: var(--row-height); /* Ensure section headers also have compact height */
+}
 
-.section-toggle, .task-row-wrapper [data-control] { cursor: pointer; }
-.section-toggle { padding: 0 0.5rem; transition: transform 0.2s ease-in-out; }
-.section-toggle.collapsed { transform: rotate(-90deg); }
-.section-title, [contenteditable="true"] { cursor: text; }
+.task-section:hover .section-header-list,
+.task-row-wrapper:hover {
+    background-color: var(--secondary-bg);
+}
 
-.tasks-container.hidden { display: none; }
+.section-header-list:hover .drag-handle,
+.task-row-wrapper:hover .drag-handle {
+    opacity: 1;
+}
 
-[contenteditable="true"]:focus { outline: 2px solid var(--accent-color); background-color: white; }
+.section-toggle,
+.task-row-wrapper [data-control] {
+    cursor: pointer;
+}
 
-.task-name { transition: color 0.4s ease, text-decoration-color 0.3s ease-in 0.1s; text-decoration-color: transparent; }
-.task-name.is-placeholder { color: var(--text-secondary-color); font-style: italic; }
+.section-toggle {
+    padding: 0 0.5rem;
+    transition: transform 0.2s ease-in-out;
+}
 
-.task-row-wrapper.is-completed { opacity: 0.7; }
+.section-toggle.collapsed {
+    transform: rotate(-90deg);
+}
+
+.section-title,
+[contenteditable="true"] {
+    cursor: text;
+}
+
+.tasks-container.hidden {
+    display: none;
+}
+
+[contenteditable="true"]:focus {
+    outline: 2px solid var(--accent-color);
+    background-color: white;
+}
+
+.task-name {
+    transition: color 0.4s ease, text-decoration-color 0.3s ease-in 0.1s;
+    text-decoration-color: transparent;
+}
+
+.task-name.is-placeholder {
+    color: var(--text-secondary-color);
+    font-style: italic;
+}
+
+.task-row-wrapper.is-completed {
+    opacity: 0.7;
+}
+
 .task-row-wrapper.is-completed .task-name,
-.task-row-wrapper.is-completed .task-col { color: var(--text-secondary-color); text-decoration: line-through; text-decoration-color: var(--text-secondary-color); }
-.fa-check-circle { transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-.is-completed .fa-check-circle { color: var(--accent-color) !important; font-family: "Font Awesome 6 Free"; font-weight: 900; transform: scale(1.1); }
+.task-row-wrapper.is-completed .task-col {
+    color: var(--text-secondary-color);
+    text-decoration: line-through;
+    text-decoration-color: var(--text-secondary-color);
+}
 
-.profile-picture-stack { display: flex; align-items: center; }
-.profile-picture { width: 28px; height: 28px; border-radius: 50%; background-size: cover; background-position: center; border: 2px solid white; background-color: #d8d8d8; }
-.priority-tag, .status-tag { padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.8rem; font-weight: 500; display: inline-block; border: none; }
-.priority-High { background-color: #ffccc7; color: var(--high-priority); }
-.priority-Medium { background-color: #ffe7ba; color: var(--medium-priority); }
-.priority-Low { background-color: #d9f7be; color: var(--low-priority); }
-.status-On-track { background-color: #b7eb8f; color: #389e0d; }
-.status-At-risk { background-color: #fff1b8; color: #d48806; }
-.status-Off-track { background-color: #ffccc7; color: #cf1322; }
-.status-Completed { background-color: #d9d9d9; color: var(--text-secondary-color); }
+.fa-check-circle {
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
 
-.add-task-in-section-btn, .add-section-btn { border: none; padding: 0.75rem 1.75rem; margin-left: 3.5rem; }
-.add-task-in-section-btn:hover, .add-section-btn:hover { background: var(--secondary-bg); color: var(--text-color); }
+.is-completed .fa-check-circle {
+    color: var(--accent-color) !important;
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    transform: scale(1.1);
+}
+
+.profile-picture-stack {
+    display: flex;
+    align-items: center;
+}
+
+.profile-picture {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+    border: 2px solid white;
+    background-color: #d8d8d8;
+}
+
+.priority-tag,
+.status-tag {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    display: inline-block;
+    border: none;
+}
+
+.priority-High {
+    background-color: #ffccc7;
+    color: var(--high-priority);
+}
+
+.priority-Medium {
+    background-color: #ffe7ba;
+    color: var(--medium-priority);
+}
+
+.priority-Low {
+    background-color: #d9f7be;
+    color: var(--low-priority);
+}
+
+.status-On-track {
+    background-color: #b7eb8f;
+    color: #389e0d;
+}
+
+.status-At-risk {
+    background-color: #fff1b8;
+    color: #d48806;
+}
+
+.status-Off-track {
+    background-color: #ffccc7;
+    color: #cf1322;
+}
+
+.status-Completed {
+    background-color: #d9d9d9;
+    color: var(--text-secondary-color);
+}
+
+.add-task-in-section-btn,
+.add-section-btn {
+    border: none;
+    /* Adjusted padding for compact buttons */
+    padding: 0.5rem 1.25rem;
+    margin-left: 3.5rem;
+}
+
+.add-task-in-section-btn:hover,
+.add-section-btn:hover {
+    background: var(--secondary-bg);
+    color: var(--text-color);
+}
 
 .add-section-btn {
-    /* --- FIX: Stop the button from stretching and align it left --- */
     align-self: flex-start;
-    margin-top: 0; /* Let the container's gap handle spacing */
+    margin-top: 0;
     margin-left: 0;
+    /* Added some top margin to visually separate it from the list */
+    margin-top: 1rem;
 }
 
 .datepicker {
     z-index: 120 !important;
 }
 
-/* MODIFIED: Made the datepicker control bar's border transparent */
 .datepicker-controls {
     border-bottom: 1px solid transparent !important;
 }
@@ -216,6 +403,7 @@ button:hover {
     color: var(--text-color) !important;
     font-weight: 500 !important;
 }
+
 .datepicker .datepicker-controls .button:hover {
     background-color: var(--secondary-bg) !important;
 }
@@ -225,44 +413,178 @@ button:hover {
     border-radius: 50% !important;
     border: 1px solid transparent !important;
 }
+
 .datepicker-cell:not(.selected):not(.disabled):not(.focused):hover {
     background-color: var(--secondary-bg) !important;
 }
-.datepicker-cell.selected, .datepicker-cell.selected:hover {
+
+.datepicker-cell.selected,
+.datepicker-cell.selected:hover {
     background-color: transparent !important;
     border-color: var(--accent-color) !important;
     color: var(--accent-color) !important;
     font-weight: 600 !important;
 }
+
 .datepicker-cell.today:not(.selected) {
     background-color: transparent !important;
     border-color: var(--low-priority) !important;
     color: var(--low-priority) !important;
 }
 
-.context-dropdown { position: absolute; z-index: 110; background: var(--primary-bg); border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); border-radius: 6px; padding: 0.5rem 0; min-width: 150px; }
-.dropdown-item { padding: 0.75rem 1rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-.dropdown-item:hover { background-color: var(--secondary-bg); }
+.context-dropdown {
+    position: absolute;
+    z-index: 110;
+    background: var(--primary-bg);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+    padding: 0.5rem 0;
+    min-width: 150px;
+}
 
-.task-list-footer { background-color: var(--secondary-bg); border-top: 2px solid var(--border-color); font-weight: 600; }
-.task-list-footer .task-col { color: var(--text-secondary-color); justify-content: flex-end; }
+.dropdown-item {
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
 
-.dialog-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; z-index: 2000; }
-.dialog-box { background: var(--primary-bg); border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); width: 90%; max-width: 450px; }
-.dialog-header { padding: 1rem 1.5rem; font-size: 1.1rem; font-weight: 600; border-bottom: 1px solid var(--border-color); }
-.dialog-body { padding: 1.5rem; }
-.dialog-footer { padding: 1rem 1.5rem; display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid var(--border-color); }
-.dialog-body .form-group { margin-bottom: 1.25rem; }
-.dialog-body label { display: block; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.9rem; }
-.dialog-body select, .dialog-body input { width: 100%; padding: 0.6rem; border: 1px solid var(--border-color); border-radius: 6px; box-sizing: border-box; background-color: white; }
-.dialog-preview-box { margin-top: 1rem; padding: 1rem; background-color: var(--secondary-bg); border: 1px dashed var(--border-color); border-radius: 6px; }
-.dialog-preview-box p { margin: 0; font-size: 0.9rem; color: var(--text-secondary-color); }
-.dialog-preview-box .preview-value { font-weight: 600; color: var(--text-color); font-size: 1rem; margin-top: 0.5rem; }
+.dropdown-item:hover {
+    background-color: var(--secondary-bg);
+}
 
-.context-dropdown.assignee-dropdown { padding: 0; }
-.dropdown-search-container { padding: 0.5rem; border-bottom: 1px solid var(--border-color); }
-.dropdown-search-input { border: none; outline: none; width: 100%; background: transparent; font-size: 0.9rem; padding: 0.25rem 0.5rem; }
-.dropdown-list { max-height: 200px; overflow-y: auto; padding: 0.5rem 0;}
-.dropdown-item .user-info { display: flex; align-items: center; gap: 0.75rem; }
-.dropdown-item .profile-picture { width: 24px; height: 24px; font-size: 0.6rem; }
-.dropdown-item .assigned-check { color: var(--accent-color); font-size: 0.9em; }
+.task-list-footer {
+    background-color: var(--secondary-bg);
+    border-top: 2px solid var(--border-color);
+    font-weight: 600;
+}
+
+.task-list-footer .task-col {
+    color: var(--text-secondary-color);
+    justify-content: flex-end;
+}
+
+.dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.dialog-box {
+    background: var(--primary-bg);
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    width: 90%;
+    max-width: 450px;
+}
+
+.dialog-header {
+    padding: 1rem 1.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.dialog-body {
+    padding: 1.5rem;
+}
+
+.dialog-footer {
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.dialog-body .form-group {
+    margin-bottom: 1.25rem;
+}
+
+.dialog-body label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.dialog-body select,
+.dialog-body input {
+    width: 100%;
+    padding: 0.6rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    box-sizing: border-box;
+    background-color: white;
+}
+
+.dialog-preview-box {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: var(--secondary-bg);
+    border: 1px dashed var(--border-color);
+    border-radius: 6px;
+}
+
+.dialog-preview-box p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary-color);
+}
+
+.dialog-preview-box .preview-value {
+    font-weight: 600;
+    color: var(--text-color);
+    font-size: 1rem;
+    margin-top: 0.5rem;
+}
+
+.context-dropdown.assignee-dropdown {
+    padding: 0;
+}
+
+.dropdown-search-container {
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.dropdown-search-input {
+    border: none;
+    outline: none;
+    width: 100%;
+    background: transparent;
+    font-size: 0.9rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.dropdown-list {
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 0.5rem 0;
+}
+
+.dropdown-item .user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.dropdown-item .profile-picture {
+    width: 24px;
+    height: 24px;
+    font-size: 0.6rem;
+}
+
+.dropdown-item .assigned-check {
+    color: var(--accent-color);
+    font-size: 0.9em;
+}

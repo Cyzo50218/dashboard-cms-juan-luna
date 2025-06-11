@@ -596,7 +596,27 @@ function showEmailModal() {
 }
 
 
-const createShareModal = () => {
+/**
+ * Creates and injects the Share Modal into the DOM.
+ * This function handles the creation of the modal's CSS and HTML structure.
+ *
+ * FIX: Now accepts the event object 'e' to stop propagation, preventing the
+ * modal from instantly closing. Also checks if a modal already exists.
+ *
+ * @param {Event} e The click event that triggered the modal creation.
+ */
+const createShareModal = (e) => {
+    // FIX: Stop the click that opened the modal from bubbling up to the body
+    // and triggering the close listener.
+    if (e) {
+        e.stopPropagation();
+    }
+
+    // FIX: Prevent creating duplicate modals if one is already open.
+    if (document.getElementById('shareproject-modal-backdrop')) {
+        return;
+    }
+
     // --- CSS Styles ---
     const styles = `
     .hidden { display: none !important; }
@@ -654,7 +674,7 @@ const createShareModal = () => {
         font-size: 14px; white-space: nowrap;
     }
     .shareproject-dropdown-btn:hover { background-color: #f9f9f9; }
-    .shareproject-dropdown-btn:disabled { background-color: #f9fafb; cursor: not-allowed; }
+    .shareproject-dropdown-btn:disabled { background-color: #f9fafb; cursor: not-allowed; color: #555;}
     .shareproject-dropdown-content {
         position: absolute; top: calc(100% + 5px); right: 0; background-color: white;
         border: 1px solid #f0f0f0; border-radius: 8px;
@@ -681,13 +701,14 @@ const createShareModal = () => {
     .shareproject-access-settings-wrapper { position: relative; }
     .shareproject-access-settings-btn {
         display: flex;
-        align-items: flex-start; 
+        align-items: flex-start;
         width: 100%;
         text-align: left;
         padding: 12px;
         border: 1px solid #e0e0e0;
         border-radius: 8px;
         cursor: pointer;
+        background: none;
     }
     .shareproject-access-settings-btn:hover { background-color: #f9f9f9; }
     .shareproject-access-settings-btn .material-icons { margin-right: 12px; color: #555; line-height: 1.4; }
@@ -710,11 +731,11 @@ const createShareModal = () => {
     .shareproject-member-info p { font-size: 13px; color: #666; margin: 2px 0 0 0; }
     .shareproject-resend-link { color: #3F7EEB; cursor: pointer; text-decoration: underline; }
     .shareproject-member-role .shareproject-dropdown-btn { background: none; border: none; padding: 4px 8px; color: #555; }
-    .shareproject-member-role .shareproject-dropdown-content { width: 180px; }
+    .shareproject-member-role .shareproject-dropdown-content { width: 300px; } /* Increased width for description */
     .shareproject-member-role .shareproject-dropdown-content a.shareproject-remove { color: #ef4444; }
     .shareproject-modal-footer {
         padding: 16px 24px; border-top: 1px solid #f0f0f0;
-        background-color: #f9fafb; display: flex; 
+        background-color: #f9fafb; display: flex;
         justify-content: space-between;
         align-items: center;
         border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;
@@ -725,13 +746,13 @@ const createShareModal = () => {
         align-items: center; font-size: 14px; font-weight: 500;
     }
     .shareproject-copy-link-btn:hover, #shareproject-leave-btn:hover { background-color: #f4f4f4; }
-    #shareproject-leave-btn { color: #ef4444; border-color: #ef4444; }
+    #shareproject-leave-btn { color: #ef4444; }
     #shareproject-leave-btn:hover { background-color: #fee2e2; }
     #shareproject-leave-btn .material-icons, .shareproject-copy-link-btn .material-icons { margin-right: 8px; color: #555; }
     #shareproject-leave-btn .material-icons { color: #ef4444; }
     .shareproject-user-search-dropdown {
         position: absolute; top: 100%; left: 0; right: 0;
-        background-color: white; border: 1px solid #f0f0f0;
+        background-color: white; border: 1px solid #e0e0e0;
         border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);
         z-index: 1010; max-height: 200px; overflow-y: auto;
     }
@@ -755,17 +776,17 @@ const createShareModal = () => {
         <div class="shareproject-modal-body">
             <div class="shareproject-invite-input-wrapper">
                 <div id="shareproject-email-tags" class="shareproject-email-tags-container"></div>
-                <input type="email" id="shareproject-email-input" placeholder="Add members by email or name...">
+                <input type="text" id="shareproject-email-input" placeholder="Add members by email or name...">
                 <div class="shareproject-invite-controls">
                     <div class="shareproject-role-selector">
                         <button id="shareproject-role-dropdown-btn" class="shareproject-dropdown-btn">
                             <span id="shareproject-selected-role">Editor</span><i class="material-icons">arrow_drop_down</i>
                         </button>
-                        <div id="shareproject-role-dropdown" class="shareproject-dropdown-content hidden"></div>
                     </div>
                     <button id="shareproject-invite-btn" class="shareproject-invite-btn">Invite</button>
                 </div>
             </div>
+            <div id="shareproject-role-dropdown" class="shareproject-dropdown-content hidden"></div>
             <div class="shareproject-access-settings-wrapper">
                 <button id="shareproject-access-settings-btn" class="shareproject-access-settings-btn">
                     <i class="material-icons" id="shareproject-access-icon">public</i>
@@ -775,16 +796,16 @@ const createShareModal = () => {
                     </div>
                     <i class="material-icons">arrow_drop_down</i>
                 </button>
-                <div id="shareproject-access-dropdown" class="shareproject-dropdown-content hidden" style="width: 100%;">
-                    <a href="#" data-access="workspace">
-                        <strong><i class="material-icons">public</i> My Workspace</strong>
-                        <p>Everyone at workspace can find and access this project.</p>
-                    </a>
-                    <a href="#" data-access="private">
-                        <strong><i class="material-icons">lock</i> Private to Members</strong>
-                        <p>Only invited members can find and access this project.</p>
-                    </a>
-                </div>
+            </div>
+            <div id="shareproject-access-dropdown" class="shareproject-dropdown-content hidden" style="width: 100%;">
+                <a href="#" data-access="workspace">
+                    <strong><i class="material-icons">public</i> My Workspace</strong>
+                    <p>Everyone at workspace can find and access this project.</p>
+                </a>
+                <a href="#" data-access="private">
+                    <strong><i class="material-icons">lock</i> Private to Members</strong>
+                    <p>Only invited members can find and access this project.</p>
+                </a>
             </div>
             <p class="shareproject-section-title">Project Members</p>
             <div class="shareproject-members-list" id="shareproject-members-list"></div>
@@ -802,25 +823,30 @@ const createShareModal = () => {
     modalBackdrop.innerHTML = modalHTML;
     document.body.appendChild(modalBackdrop);
 
+    // After adding the modal to the DOM, set up its logic
     setupModalLogic();
 };
 
+
+/**
+ * Sets up all the interactive logic for the Share Modal.
+ * This includes data handling, rendering, and event listeners.
+ */
 const setupModalLogic = () => {
     // --- Mock Data ---
-    const currentUserId = 3; 
+    const currentUserId = 3;
     let membersData = [
         { id: 1, name: 'Task collaborators', email: '', role: 'Editor', isGroup: true },
         { id: 2, name: 'My workspace', email: '2 members', role: 'Editor', isGroup: true },
         { id: 3, name: 'Clinton Ihegoro', email: 'myfavoritemappingswar@gmail.com', role: 'Project admin', isOwner: true },
-        { id: 4, name: 'John Wick', email: 'john.wick@example.com', role: 'Editor', isOwner: false},
-        { id: 5, name: 'Jane Doe', email: 'jane.doe@example.com', role: 'Viewer', isOwner: false}
+        { id: 4, name: 'John Wick', email: 'john.wick@example.com', role: 'Editor' },
+        { id: 5, name: 'Jane Doe', email: 'jane.doe@example.com', role: 'Viewer' }
     ];
     let pendingInvitations = [];
-    let invitationUsers = [];
     const invitedEmails = [];
     const profileColors = ['#4A148C', '#004D40', '#BF360C', '#0D47A1', '#4E342E', '#AD1457', '#006064'];
     const rolesData = [
-        { name: 'Project admin', description: 'Full access to change settings and modifly.' },
+        { name: 'Project admin', description: 'Full access to change settings and modify.' },
         { name: 'Editor', description: 'Can add, edit, and delete anything.' },
         { name: 'Commenter', description: "Can comment, but can't edit." },
         { name: 'Viewer', description: "Can view, but can't add comments." }
@@ -843,13 +869,21 @@ const setupModalLogic = () => {
     const pendingList = document.getElementById('shareproject-pending-list');
     const accessSettingsBtn = document.getElementById('shareproject-access-settings-btn');
     const accessDropdown = document.getElementById('shareproject-access-dropdown');
-    const listsContainer = document.querySelector('.shareproject-modal-body');
     const footerLeftContainer = document.getElementById('shareproject-footer-left');
     const modalFooter = document.querySelector('.shareproject-modal-footer');
 
-
     // --- Functions ---
-    const closeModal = () => modalBackdrop.remove();
+    const logActivity = (message) => {
+        const timestamp = new Date().toISOString();
+        console.log(`[Activity Log - ${timestamp}] ${message}`);
+    };
+
+    const closeModal = () => {
+        const backdrop = document.getElementById('shareproject-modal-backdrop');
+        if (backdrop) {
+            
+        }
+    };
 
     const createProfilePic = (name, isGroup = false) => {
         const pic = document.createElement('div');
@@ -873,7 +907,7 @@ const setupModalLogic = () => {
         renderMembers();
         renderPendingInvitations();
         renderFooter();
-    }
+    };
 
     const renderMembers = () => {
         membersList.innerHTML = '';
@@ -886,14 +920,18 @@ const setupModalLogic = () => {
             const item = document.createElement('div');
             item.className = 'shareproject-member-item';
             item.dataset.id = member.id;
-            
+
             let dropdownLinks = '';
             if (!member.isOwner) {
-                const memberRoleOptions = rolesData.map(role => `<button class="shareproject-dropdown-action" data-role="${role.name}"><strong>${role.name}</strong></button>`).join('');
-                const removeMemberLink = `<a href="#" class="shareproject-remove"><i class="material-icons">person_remove</i> Remove member</a>`;
+                const applicableRoles = member.isGroup ?
+                    rolesData.filter(r => r.name === 'Editor' || r.name === 'Viewer') :
+                    rolesData;
+
+                const memberRoleOptions = applicableRoles.map(role => `<button class="shareproject-dropdown-action" data-role="${role.name}"><strong>${role.name}</strong><p>${role.description}</p></button>`).join('');
+                const removeMemberLink = !member.isGroup ? `<a href="#" class="shareproject-remove"><i class="material-icons">person_remove</i> Remove member</a>` : '';
                 dropdownLinks = memberRoleOptions + removeMemberLink;
             }
-            
+
             item.innerHTML = `
                 <div class="shareproject-member-info">
                     <strong>${member.name}</strong>
@@ -930,7 +968,7 @@ const setupModalLogic = () => {
             const item = document.createElement('div');
             item.className = 'shareproject-pending-item';
             item.dataset.id = invite.id;
-            const roleOptions = rolesData.map(role => `<button class="shareproject-dropdown-action" data-role="${role.name}"><strong>${role.name}</strong></button>`).join('');
+            const roleOptions = rolesData.map(role => `<button class="shareproject-dropdown-action" data-role="${role.name}"><strong>${role.name}</strong><p>${role.description}</p></button>`).join('');
             let statusHTML = invite.status === 'pending' ? `Invitation sent` : `<a href="#" class="shareproject-resend-link" data-id="${invite.id}">Resend invitation</a>`;
 
             item.innerHTML = `
@@ -951,17 +989,20 @@ const setupModalLogic = () => {
             `;
             pendingList.appendChild(item);
         });
-    }
-    
+    };
+
     const renderFooter = () => {
         footerLeftContainer.innerHTML = '';
         const currentUser = membersData.find(m => m.id === currentUserId);
-        
-        if (currentUser && currentUser.isOwner) {
-            const leaveButton = document.createElement('button');
-            leaveButton.id = 'shareproject-leave-btn';
-            leaveButton.innerHTML = `<i class="material-icons">logout</i>Leave project`;
-            footerLeftContainer.appendChild(leaveButton);
+
+        if (currentUser) {
+            const ownerCount = membersData.filter(m => m.isOwner && !m.isGroup).length;
+            if (!currentUser.isOwner || (currentUser.isOwner && ownerCount > 1)) {
+                const leaveButton = document.createElement('button');
+                leaveButton.id = 'shareproject-leave-btn';
+                leaveButton.innerHTML = `<i class="material-icons">logout</i>Leave project`;
+                footerLeftContainer.appendChild(leaveButton);
+            }
         }
     };
 
@@ -1009,7 +1050,7 @@ const setupModalLogic = () => {
         modal.appendChild(dropdownEl);
         const modalRect = modal.getBoundingClientRect();
         const buttonRect = buttonEl.getBoundingClientRect();
-        const top = buttonRect.bottom - modalRect.top;
+        const top = buttonRect.bottom - modalRect.top + 2;
         const right = modalRect.right - buttonRect.right;
         dropdownEl.style.top = `${top}px`;
         dropdownEl.style.right = `${right}px`;
@@ -1017,33 +1058,13 @@ const setupModalLogic = () => {
         dropdownEl.classList.remove('hidden');
         activeDropdown = dropdownEl;
     };
-    
-    const updateAccessButtonUI = (type) => {
-        const icon = document.getElementById('shareproject-access-icon');
-        const title = document.getElementById('shareproject-access-title');
-        const desc = document.getElementById('shareproject-access-desc');
-    
-        if (type === 'workspace') {
-            icon.textContent = 'public';
-            title.textContent = 'My Workspace';
-            desc.textContent = 'Everyone at workspace can find and access this project.';
-        } else {
-            icon.textContent = 'lock';
-            title.textContent = 'Private to Members';
-            desc.textContent = 'Only invited members can find and access this project.';
-        }
-    };
 
     // --- Event Handlers ---
+    // This listener on the body handles closing the modal when clicking outside of it.
     document.body.addEventListener('click', (e) => {
-        if (!e.target.closest('.shareproject-role-selector, .shareproject-member-role, .shareproject-access-settings-wrapper, .shareproject-invite-input-wrapper')) {
-            document.querySelectorAll('.shareproject-dropdown-content, .shareproject-user-search-dropdown').forEach(d => {
-                if (d) d.classList.add('hidden');
-            });
-            if (activeDropdown) {
-                activeDropdown.classList.add('hidden');
-                activeDropdown = null;
-            }
+        // If a modal exists and the click is outside of it, close it.
+        if (document.getElementById('shareproject-modal-backdrop') && !e.target.closest('.shareproject-modal')) {
+             closeModal();
         }
     });
 
@@ -1053,67 +1074,65 @@ const setupModalLogic = () => {
         if (e.target === modalBackdrop) closeModal();
     });
 
-    //-- FINAL FIX: Corrected and simplified event handler --
-    listsContainer.addEventListener('click', (e) => {
+    // This single listener on the modal handles all internal actions.
+    modal.addEventListener('click', (e) => {
+        // Stop clicks inside the modal from bubbling to the body listener.
         e.stopPropagation();
+
         const dropdownButton = e.target.closest('.shareproject-member-role-btn');
-        const roleActionButton = e.target.closest('button[data-role]');
+        const roleActionButton = e.target.closest('.shareproject-dropdown-action[data-role]');
         const removeLink = e.target.closest('a.shareproject-remove');
         const resendLink = e.target.closest('a.shareproject-resend-link');
+        const accessLink = e.target.closest('#shareproject-access-dropdown a[data-access]');
 
+        // --- Logic for all modal interactions ---
         if (dropdownButton) {
             const dropdown = dropdownButton.nextElementSibling;
-            if (dropdown) {
-                if (dropdown.classList.contains('hidden')) {
-                    positionAndShowDropdown(dropdown, dropdownButton);
-                } else {
-                    dropdown.classList.add('hidden');
-                    activeDropdown = null;
-                }
+            if (dropdown && dropdown.classList.contains('hidden')) {
+                positionAndShowDropdown(dropdown, dropdownButton);
+            } else if (activeDropdown) {
+                activeDropdown.classList.add('hidden');
+                activeDropdown = null;
             }
-        } 
-        else if (roleActionButton) {
-            e.preventDefault();
+        } else if (roleActionButton) {
             const dropdown = roleActionButton.closest('.shareproject-dropdown-content');
             if (dropdown) {
-                const id = parseFloat(dropdown.id.split('-').pop());
                 const newRole = roleActionButton.dataset.role;
-
-                let memberToUpdate = membersData.find(m => m.id === id) || pendingInvitations.find(p => p.id === id);
-
-                if (memberToUpdate) {
-                    // Update role and owner status together
-                    memberToUpdate.role = newRole;
-                    if (!memberToUpdate.isGroup) {
-                        memberToUpdate.isOwner = (newRole === 'Project admin');
+                if (dropdown.id === 'shareproject-role-dropdown') {
+                    selectedRoleSpan.textContent = newRole;
+                } else {
+                    const id = parseFloat(dropdown.id.split('-').pop());
+                    let memberToUpdate = membersData.find(m => m.id === id) || pendingInvitations.find(p => p.id === id);
+                    if (memberToUpdate && memberToUpdate.role !== newRole) {
+                        logActivity(`Changed role for '${memberToUpdate.name || memberToUpdate.email}' from '${memberToUpdate.role}' to '${newRole}'.`);
+                        memberToUpdate.role = newRole;
+                        if (!memberToUpdate.isGroup) {
+                            memberToUpdate.isOwner = (newRole === 'Project admin');
+                        }
                     }
-                    renderAll();
                 }
-                
-                if (activeDropdown) {
-                    activeDropdown.classList.add('hidden');
-                    activeDropdown = null;
-                }
-            }
-        } 
-        else if (removeLink) {
-            e.preventDefault();
-            const dropdown = removeLink.closest('.shareproject-dropdown-content');
-            if(dropdown) {
-                const id = parseFloat(dropdown.id.split('-').pop());
-                membersData = membersData.filter(m => m.id !== id);
-                if (activeDropdown) {
-                    activeDropdown.remove();
-                    activeDropdown = null;
-                }
+                if (activeDropdown) activeDropdown.remove();
+                activeDropdown = null;
                 renderAll();
             }
-        } 
-        else if (resendLink) {
-            e.preventDefault();
+        } else if (removeLink) {
+            const dropdown = removeLink.closest('.shareproject-dropdown-content');
+            if (dropdown) {
+                const id = parseFloat(dropdown.id.split('-').pop());
+                const memberToRemove = membersData.find(m => m.id === id);
+                if (memberToRemove) {
+                    logActivity(`Removed member '${memberToRemove.name}' (ID: ${id}) from the project.`);
+                }
+                membersData = membersData.filter(m => m.id !== id);
+                if (activeDropdown) activeDropdown.remove();
+                activeDropdown = null;
+                renderAll();
+            }
+        } else if (resendLink) {
             const id = parseFloat(resendLink.dataset.id);
             const inviteToResend = pendingInvitations.find(p => p.id === id);
             if (inviteToResend) {
+                logActivity(`Resent invitation to '${inviteToResend.email}'.`);
                 inviteToResend.status = 'pending';
                 if (inviteToResend.timerId) clearTimeout(inviteToResend.timerId);
                 inviteToResend.timerId = setTimeout(() => {
@@ -1125,56 +1144,49 @@ const setupModalLogic = () => {
                 }, 30000);
                 renderPendingInvitations();
             }
+        } else if (accessLink) {
+            const oldAccessLevel = projectAccessLevel;
+            projectAccessLevel = accessLink.dataset.access;
+            if (oldAccessLevel !== projectAccessLevel) {
+                logActivity(`Project access changed from '${oldAccessLevel}' to '${projectAccessLevel}'.`);
+            }
+            if (activeDropdown) activeDropdown.remove();
+            activeDropdown = null;
+            renderAll();
+        } else if (!e.target.closest('.shareproject-dropdown-content')) {
+            // If the click was inside the modal but not on any specific control or open dropdown, close the dropdown.
+            if (activeDropdown) {
+                activeDropdown.classList.add('hidden');
+                activeDropdown = null;
+            }
         }
     });
 
     modalFooter.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent footer clicks from closing the modal via the body listener
         if (e.target.closest('#shareproject-leave-btn')) {
             const currentUser = membersData.find(m => m.id === currentUserId);
-            const ownerCount = membersData.filter(m => m.isOwner).length;
+            const ownerCount = membersData.filter(m => m.isOwner && !m.isGroup).length;
 
-            if (currentUser && currentUser.isOwner) {
-                if (ownerCount <= 1) {
-                    alert('You cannot leave the project as you are the only owner. Please assign another Project Admin first.');
-                    return;
-                } else {
-                    const confirmed = confirm('Are you sure you want to leave this project?');
-                    if (confirmed) {
-                        membersData = membersData.filter(m => m.id !== currentUserId);
-                        renderAll();
-                    }
-                }
+            if (currentUser && currentUser.isOwner && ownerCount <= 1) {
+                alert('You cannot leave the project as you are the only owner. Please assign another Project Admin first.');
+                return;
+            }
+
+            const confirmed = confirm('Are you sure you want to leave this project?');
+            if (confirmed) {
+                logActivity(`User '${currentUser.name}' (ID: ${currentUserId}) left the project.`);
+                closeModal();
             }
         }
     });
 
     roleDropdownBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        roleDropdown.classList.toggle('hidden');
-    });
-
-    roleDropdown.addEventListener('click', (e) => {
-        const roleButton = e.target.closest('button[data-role]');
-        if (roleButton) {
-            selectedRoleSpan.textContent = roleButton.dataset.role;
-            roleDropdown.classList.add('hidden');
-        }
+        positionAndShowDropdown(roleDropdown, roleDropdownBtn.parentElement);
     });
 
     accessSettingsBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        accessDropdown.classList.toggle('hidden');
-    });
-
-    accessDropdown.addEventListener('click', (e) => {
-        const link = e.target.closest('a[data-access]');
-        if (link) {
-            e.preventDefault();
-            projectAccessLevel = link.dataset.access;
-            updateAccessButtonUI(projectAccessLevel);
-            renderAll();
-            accessDropdown.classList.add('hidden');
-        }
+        positionAndShowDropdown(accessDropdown, accessSettingsBtn);
     });
 
     emailInput.addEventListener('keydown', (e) => {
@@ -1185,7 +1197,7 @@ const setupModalLogic = () => {
             if (searchDropdown) searchDropdown.remove();
         }
     });
-    
+
     emailInput.addEventListener('input', (e) => {
         const query = e.target.value.toLowerCase();
         let searchDropdown = inviteInputWrapper.querySelector('.shareproject-user-search-dropdown');
@@ -1214,8 +1226,8 @@ const setupModalLogic = () => {
             searchDropdown.appendChild(searchItem);
         });
 
-        const gmailRegex = /^[a-z0-9._%+-]+@gmail\.com$/i;
-        if (filteredMembers.length === 0 && gmailRegex.test(query)) {
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/i;
+        if (filteredMembers.length === 0 && emailRegex.test(query)) {
             const inviteItem = document.createElement('a');
             inviteItem.href = '#';
             inviteItem.addEventListener('click', (event) => {
@@ -1238,10 +1250,10 @@ const setupModalLogic = () => {
         }
         if (invitedEmails.length === 0) return;
 
-        const newRole = selectedRoleSpan.textContent;
+        const roleForInvite = selectedRoleSpan.textContent;
         invitedEmails.forEach(identifier => {
             const lowercasedIdentifier = identifier.toLowerCase();
-            
+
             const existingMember = membersData.find(m =>
                 !m.isGroup && (
                     (m.email && m.email.toLowerCase() === lowercasedIdentifier) ||
@@ -1250,20 +1262,24 @@ const setupModalLogic = () => {
             );
 
             if (existingMember) {
-                const adminCount = membersData.filter(m => m.isOwner).length;
-                if (existingMember.isOwner && newRole !== 'Project admin' && adminCount <= 1) {
+                const adminCount = membersData.filter(m => m.isOwner && !m.isGroup).length;
+                if (existingMember.isOwner && roleForInvite !== 'Project admin' && adminCount <= 1) {
                     alert('You cannot change the role of the last Project Admin. Please assign another Project Admin first.');
-                    return; 
+                    return;
                 }
-                existingMember.role = newRole;
-                existingMember.isOwner = newRole === 'Project admin';
+                const oldRole = existingMember.role;
+                if (oldRole !== roleForInvite) {
+                    existingMember.role = roleForInvite;
+                    existingMember.isOwner = roleForInvite === 'Project admin';
+                    logActivity(`Updated role for existing member '${existingMember.name}' from '${oldRole}' to '${roleForInvite}'.`);
+                }
             } else {
                 if (pendingInvitations.some(p => p.email.toLowerCase() === lowercasedIdentifier)) return;
-                
+
                 const newInvite = {
                     id: Date.now() + Math.random(),
                     email: identifier,
-                    role: newRole,
+                    role: roleForInvite,
                     status: 'pending',
                     timerId: null
                 };
@@ -1276,13 +1292,7 @@ const setupModalLogic = () => {
                     }
                 }, 30000);
                 pendingInvitations.push(newInvite);
-                
-                invitationUsers.push({
-                    email: newInvite.email,
-                    role: newInvite.role,
-                    status: 'pending',
-                    invitedAt: new Date().toISOString()
-                });
+                logActivity(`Invited '${newInvite.email}' to the project with the role '${newInvite.role}'.`);
             }
         });
 
@@ -1294,8 +1304,28 @@ const setupModalLogic = () => {
     // --- Initial Setup ---
     renderAll();
     renderRoleOptions();
+    logActivity("Share modal initialized.");
 };
 
+
+/**
+ * This is an example of how to trigger the modal.
+ * You would typically have a "Share" button on your page.
+ * We'll add one here and attach the event listener to it.
+ */
+document.addEventListener('DOMContentLoaded', () => {
+    // Create a button to open the modal for demonstration
+    const openModalButton = document.createElement('button');
+    openModalButton.textContent = 'Open Share Modal';
+    openModalButton.style.padding = '10px 20px';
+    openModalButton.style.position = 'absolute';
+    openModalButton.style.top = '20px';
+    openModalButton.style.left = '20px';
+    document.body.appendChild(openModalButton);
+
+    // Attach the listener to the button
+    openModalButton.addEventListener('click', createShareModal);
+});
 // 
 // --- APPLICATION INITIALIZATION ---
 // This block runs once the initial HTML document has been fully loaded and parsed.
