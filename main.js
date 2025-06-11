@@ -1063,11 +1063,13 @@ const setupModalLogic = () => {
     // --- Event Handlers ---
     // This listener on the body handles closing the modal when clicking outside of it.
     document.body.addEventListener('click', (e) => {
-        // If a modal exists and the click is outside of it, close it.
-        if (document.getElementById('shareproject-modal-backdrop') && !e.target.closest('.shareproject-modal')) {
-             closeModal();
+    if (!e.target.closest('.shareproject-role-selector, .shareproject-member-role, .shareproject-access-settings-wrapper, .shareproject-invite-input-wrapper')) {
+        if (activeDropdown) {
+            activeDropdown.classList.add('hidden');
+            activeDropdown = null;
         }
-    });
+    }
+});
 
     closeModalBtn.addEventListener('click', closeModal);
 
