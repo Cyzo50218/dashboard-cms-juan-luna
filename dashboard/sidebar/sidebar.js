@@ -59,10 +59,23 @@ window.TaskSidebar = (function() {
     let sidebar, taskNameEl, taskFieldsContainer, closeBtn, taskCompleteBtn, taskCompleteText,
         taskDescriptionEl, tabsContainer, activityLogContainer, commentInput, sendCommentBtn,
         currentUserAvatarEl, imagePreviewContainer, imagePreview, imageTitleInput, cancelImageBtn,
-        uploadFileBtn, fileUploadInput;
+        uploadFileBtn, fileUploadInput, commentInputWrapper;
+
+    // --- HELPER FUNCTIONS ---
+    function formatTimestamp(date) {
+        return new Date(date).toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
+    }
 
     // --- CORE FUNCTIONS ---
     function init() {
+        // Cache all DOM elements
         sidebar = document.getElementById('task-sidebar');
         taskNameEl = document.getElementById('task-name');
         taskDescriptionEl = document.getElementById('task-description-text');
@@ -75,12 +88,14 @@ window.TaskSidebar = (function() {
         commentInput = document.getElementById('comment-input');
         sendCommentBtn = document.getElementById('send-comment-btn');
         currentUserAvatarEl = document.getElementById('current-user-avatar');
-        imagePreviewContainer = document.querySelector('.comment-input-wrapper #pasted-image-preview-container');
+        imagePreviewContainer = document.getElementById('pasted-image-preview-container');
         imagePreview = document.getElementById('pasted-image-preview');
         imageTitleInput = document.getElementById('pasted-image-title');
         cancelImageBtn = document.getElementById('cancel-image-btn');
         uploadFileBtn = document.getElementById('upload-file-btn');
         fileUploadInput = document.getElementById('file-upload-input');
+        commentInputWrapper = document.querySelector('.comment-input-wrapper');
+
         attachEventListeners();
         isInitialized = true;
     }
@@ -91,6 +106,15 @@ window.TaskSidebar = (function() {
         const task = findTaskById(taskId);
         if (task) {
             currentTask = task;
+            if (!task.activity.some(a => a.type === 'system')) {
+                 task.activity.unshift({
+                    id: Date.now() - 100000,
+                    type: 'system',
+                    user: currentUser.id,
+                    timestamp: new Date(task.activity[0]?.timestamp || Date.now()).getTime() - 10000,
+                    details: `Task created by <strong>${currentUser.name}</strong> on ${formatTimestamp(new Date())}`
+                });
+            }
             renderSidebar(currentTask);
             sidebar.classList.add('is-visible');
         } else {
@@ -102,14 +126,28 @@ window.TaskSidebar = (function() {
         sidebar.classList.remove('is-visible');
         currentTask = null;
         currentProject = null;
+        clearImagePreview();
     }
 
-    function logActivity(type, details) {
+    function logActivity(type, data) {
         if (!currentTask) return;
-        const newActivity = { id: Date.now(), type, user: currentUser.id, timestamp: new Date(), ...details };
+        const newActivity = {
+            id: Date.now(),
+            type,
+            user: currentUser.id,
+            timestamp: new Date(),
+            ...data
+        };
+
         if (type === 'comment') {
             newActivity.reactions = { heart: [], thumbsUp: [] };
+        } else if (type === 'change') {
+            const { field, from, to } = data;
+            const fromValue = from || 'none';
+            const toValue = to || 'none';
+            newActivity.details = `<strong>${currentUser.name}</strong> changed ${field} from <strong>${fromValue}</strong> to <strong>${toValue}</strong>.`;
         }
+
         if(!currentTask.activity) currentTask.activity = [];
         currentTask.activity.push(newActivity);
         renderActivity();
@@ -148,7 +186,7 @@ window.TaskSidebar = (function() {
                 appendFieldToTable(tbody, key, config.label, config.html, config.controlType, config.options);
             }
         });
-        
+
         currentProject.customColumns.forEach(column => {
             const value = task.customFields ? task.customFields[column.id] : null;
             let displayValue = value === null || value === undefined ? 'N/A' : value;
@@ -161,7 +199,7 @@ window.TaskSidebar = (function() {
         table.appendChild(tbody);
         taskFieldsContainer.appendChild(table);
     }
-    
+
     function appendFieldToTable(tbody, key, label, valueHTML, controlType, options = []) {
         const row = tbody.insertRow();
         row.className = 'field-row';
@@ -185,61 +223,61 @@ window.TaskSidebar = (function() {
         if (!activityLogContainer) return;
         activityLogContainer.innerHTML = '';
         if (!currentTask || !currentTask.activity) return;
-        
+
         const activeTab = tabsContainer.querySelector('.tab-btn.active').dataset.tab;
         let activitiesToRender;
+
         if (activeTab === 'comments') {
             activitiesToRender = currentTask.activity.filter(a => a.type === 'comment');
-        } else {
+        } else if (activeTab === 'activity') {
             activitiesToRender = currentTask.activity.filter(a => a.type !== 'comment');
+        } else {
+            activitiesToRender = [...currentTask.activity];
         }
 
         if (activitiesToRender.length === 0) {
-            activityLogContainer.innerHTML = `<div class="placeholder-text" style="text-align:center; padding: 20px;">No ${activeTab} to show.</div>`;
+            activityLogContainer.innerHTML = `<div class="placeholder-text">No ${activeTab} to show.</div>`;
             return;
         }
+
+        activitiesToRender.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
         activitiesToRender.forEach(activity => {
             const user = allUsers.find(u => u.id === activity.user);
             if (!user) return;
+
             const item = document.createElement('div');
             item.className = activity.type === 'comment' ? 'comment-item' : 'log-item';
+            if(activity.type !== 'comment') item.classList.add(`log-type-${activity.type}`);
+
             item.dataset.activityId = activity.id;
             let contentHTML = '';
             let actionsHTML = '';
+            let headerMeta = `<span class="comment-author">${user.name}</span> <span class="comment-timestamp">${formatTimestamp(activity.timestamp)}</span>`;
 
             if (activity.type === 'comment') {
+                const imageHTML = activity.imageURL ? `<div class="log-attachment"><img src="${activity.imageURL}" alt="${activity.imageTitle || 'User attachment'}"><div class="attachment-note">${activity.imageTitle || ''}</div></div>` : '';
+                contentHTML = `<div class="comment-text">${activity.content || ''}</div>${imageHTML}`;
+
                 const reactions = activity.reactions || { heart: [], thumbsUp: [] };
                 const hasLiked = reactions.heart.includes(currentUser.id);
                 const likeCount = reactions.heart.length > 0 ? ` ${reactions.heart.length}` : '';
                 const heartBtnHTML = `<button class="heart-react-btn ${hasLiked ? 'reacted' : ''}" title="Like"><i class="fa-solid fa-heart"></i>${likeCount}</button>`;
-                
+
                 const hasThumbed = reactions.thumbsUp.includes(currentUser.id);
                 const thumbCount = reactions.thumbsUp.length > 0 ? ` ${reactions.thumbsUp.length}` : '';
                 const thumbBtnHTML = `<button class="thumb-react-btn ${hasThumbed ? 'reacted' : ''}" title="Thumbs Up"><i class="fa-solid fa-thumbs-up"></i>${thumbCount}</button>`;
-
-                actionsHTML = `<div class="comment-actions">${heartBtnHTML}${thumbBtnHTML}`;
-                if (activity.user === currentUser.id) {
-                    actionsHTML += `<button class="edit-comment-btn" title="Edit"><i class="fa-solid fa-pencil"></i></button>
-                                    <button class="delete-comment-btn" title="Delete"><i class="fa-solid fa-trash-can"></i></button>`;
-                }
-                actionsHTML += `</div>`;
-                
-                const noteClass = activity.imageTitle ? 'has-note' : '';
-                const imageHTML = activity.imageURL ? `<div class="log-attachment ${noteClass}"><img src="${activity.imageURL}" class="scalable-image image-preview" alt="${activity.imageTitle || ''}"><div class="attachment-note">${activity.imageTitle || ''}</div></div>` : '';
-                contentHTML = `<div class="comment-text">${activity.content || ''}</div>${imageHTML}`;
+                actionsHTML = `<div class="comment-actions">${heartBtnHTML}${thumbBtnHTML}</div>`;
             } else {
                 contentHTML = `<div class="activity-change-log">${activity.details}</div>`;
+                headerMeta = '';
             }
 
             item.innerHTML = `
                 <div class="avatar" style="background-image: url(${user.avatar})"></div>
                 <div class="comment-body">
                     <div class="comment-header">
-                        <div class="comment-meta">
-                            <span class="comment-author">${user.name}</span>
-                            <span class="comment-timestamp">${new Date(activity.timestamp).toLocaleString()}</span>
-                        </div>
+                        <div class="comment-meta">${headerMeta}</div>
                         ${actionsHTML}
                     </div>
                     ${contentHTML}
@@ -248,7 +286,6 @@ window.TaskSidebar = (function() {
         });
     }
 
-    // --- HELPER & UI FUNCTIONS ---
     function findTaskById(taskId) {
         for (const section of currentProject.sections) {
             const task = section.tasks.find(t => t.id === taskId);
@@ -259,8 +296,7 @@ window.TaskSidebar = (function() {
 
     function renderDateValue(dateString) {
         if (!dateString) return `No Date`;
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'});
+        return new Date(dateString).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'});
     }
 
     function createTag(text, type) {
@@ -279,7 +315,8 @@ window.TaskSidebar = (function() {
     function showImagePreview(url) {
         pastedImageURL = url;
         imagePreview.src = url;
-        imagePreviewContainer.style.display = 'block';
+        imagePreviewContainer.style.display = 'grid';
+        commentInputWrapper.classList.add('preview-active');
         commentInput.placeholder = 'Add an optional note for the image...';
     }
 
@@ -287,17 +324,22 @@ window.TaskSidebar = (function() {
         pastedImageURL = null;
         imageTitleInput.value = '';
         imagePreviewContainer.style.display = 'none';
-        commentInput.placeholder = 'Add a comment or paste an image link...';
-        fileUploadInput.value = ""; // Clear file input
+        commentInputWrapper.classList.remove('preview-active');
+        commentInput.placeholder = 'Add a comment, paste an image, or upload a file...';
+        fileUploadInput.value = "";
     }
 
     function removeAssignee(userIdToRemove) {
         if (!currentTask) return;
         const id = parseInt(userIdToRemove, 10);
         const user = allUsers.find(u => u.id === id);
-        currentTask.assignees = currentTask.assignees.filter(assigneeId => assigneeId !== id);
         if (user) {
-            logActivity('change', { details: `removed <strong>${user.name}</strong> from assignees` });
+            currentTask.assignees = currentTask.assignees.filter(assigneeId => assigneeId !== id);
+            logActivity('change', {
+                field: 'Assignee',
+                from: `<strong>${user.name}</strong>`,
+                to: 'removed'
+            });
         }
         renderSidebar(currentTask);
         closePopovers();
@@ -351,170 +393,72 @@ window.TaskSidebar = (function() {
         dropdown.style.left = `${rect.left}px`;
     }
 
-    // --- EVENT HANDLERS ---
-    function handleActivityLogClicks(e) {
-        const itemElement = e.target.closest('.comment-item, .log-item');
-        if (!itemElement) return;
-        const activityId = parseInt(itemElement.dataset.activityId, 10);
-        const activity = currentTask.activity.find(a => a.id === activityId);
-        if (!activity) return;
-
-        const toggleReaction = (reactionType) => {
-            if (!activity.reactions) activity.reactions = { heart: [], thumbsUp: [] };
-            const reactionArray = activity.reactions[reactionType];
-            const reactionIndex = reactionArray.indexOf(currentUser.id);
-            if (reactionIndex > -1) {
-                reactionArray.splice(reactionIndex, 1);
-            } else {
-                reactionArray.push(currentUser.id);
-            }
-            renderActivity();
-        };
-
-        if (e.target.closest('.heart-react-btn')) {
-            toggleReaction('heart');
-        } else if (e.target.closest('.thumb-react-btn')) {
-            toggleReaction('thumbsUp');
-        } else if (e.target.closest('.delete-comment-btn')) {
-            if (window.confirm('Are you sure you want to delete this comment?')) {
-                logActivity('change', { details: `deleted a comment.` });
-                currentTask.activity = currentTask.activity.filter(a => a.id !== activityId);
-                renderActivity();
-            }
-        } else if (e.target.closest('.edit-comment-btn')) {
-            const bodyDiv = itemElement.querySelector('.comment-body');
-            if (bodyDiv.querySelector('.comment-edit-area')) return;
-            const contentDiv = itemElement.querySelector('.comment-text');
-            const originalContent = activity.content || '';
-            const originalImageTitle = activity.imageTitle || '';
-            let editUI = `<textarea class="comment-edit-input" placeholder="Add a comment...">${originalContent}</textarea>`;
-            if (activity.imageURL) {
-                editUI += `<div class="log-attachment" style="margin-top:8px;"><img src="${activity.imageURL}" class="scalable-image image-preview"></div>
-                           <textarea class="image-note-input" placeholder="Add or edit the image note...">${originalImageTitle}</textarea>`;
-            }
-            contentDiv.innerHTML = `<div class="comment-edit-area">${editUI}<div class="comment-edit-actions"><button class="btn-cancel-edit">Cancel</button><button class="btn-save-edit">Save</button></div></div>`;
-            bodyDiv.querySelector('.btn-save-edit').onclick = () => {
-                activity.content = bodyDiv.querySelector('.comment-edit-input').value.trim();
-                if (activity.imageURL) {
-                    activity.imageTitle = bodyDiv.querySelector('.image-note-input').value.trim();
-                }
-                logActivity('change', { details: `edited a comment.` });
-                renderActivity();
-            };
-            bodyDiv.querySelector('.btn-cancel-edit').onclick = () => renderActivity();
-        }
-    }
-
+    // --- EVENT HANDLERS & LOGIC ---
     function attachEventListeners() {
         closeBtn.addEventListener('click', close);
-        activityLogContainer.addEventListener('click', handleActivityLogClicks);
         cancelImageBtn.addEventListener('click', clearImagePreview);
 
+        taskCompleteBtn.addEventListener('click', () => {
+            if (!currentTask) return;
+            const oldStatus = currentTask.status;
+            const newStatus = oldStatus === 'Completed' ? 'On track' : 'Completed';
+            currentTask.status = newStatus;
+            logActivity('change', { field: 'status', from: oldStatus, to: newStatus });
+            renderSidebar(currentTask);
+        });
+
         taskFieldsContainer.addEventListener('click', (e) => {
-            if (currentTask.status === 'Completed') return;
-            const controlCell = e.target.closest('.control');
-            if (!controlCell || controlCell.querySelector('.inline-edit-input')) return;
+             if (currentTask.status === 'Completed') return;
+             const controlCell = e.target.closest('.control');
+             if (!controlCell) return;
 
-            const controlType = controlCell.dataset.control;
-            const key = controlCell.dataset.key;
-            
-            const specialControls = ['assignee', 'date', 'dropdown'];
-            if (specialControls.includes(controlType)) {
-                const oldValue = currentTask[key];
-                 switch (controlType) {
-                    case 'assignee':
-                         const addBtn = e.target.closest('.assignee-add-btn');
-                         const avatar = e.target.closest('.avatar[data-user-id]');
-                         if (addBtn) {
-                            const unassigned = allUsers.filter(u => !currentTask.assignees.includes(u.id));
-                            createGenericDropdown(addBtn, unassigned.map(u => ({label: u.name, value: u.id, avatar: u.avatar})), null, (userId) => {
-                               const user = allUsers.find(u => u.id === userId);
-                               if(user) {
-                                   currentTask.assignees.push(userId);
-                                   logActivity('change', { details: `added <strong>${user.name}</strong> as an assignee` });
-                                   renderSidebar(currentTask);
-                               }
-                            });
-                         } else if (avatar) {
-                            createAssigneePopover(avatar, avatar.dataset.userId);
+             const controlType = controlCell.dataset.control;
+             const key = controlCell.dataset.key;
+             const oldValue = currentTask[key];
+
+             if (controlType === 'assignee') {
+                const addBtn = e.target.closest('.assignee-add-btn');
+                const avatar = e.target.closest('.avatar[data-user-id]');
+                if (addBtn) {
+                     const unassigned = allUsers.filter(u => !currentTask.assignees.includes(u.id));
+                     createGenericDropdown(addBtn, unassigned.map(u => ({label: u.name, value: u.id, avatar: u.avatar})), null, (userId) => {
+                         const user = allUsers.find(u => u.id === userId);
+                         if(user) {
+                             currentTask.assignees.push(userId);
+                             logActivity('change', { field: 'Assignee', from: 'none', to: `<strong>${user.name}</strong>` });
+                             renderSidebar(currentTask);
                          }
-                         break;
-                    case 'date':
-                        flatpickr(controlCell, {
-                            defaultDate: oldValue,
-                            onChange: (selectedDates, dateStr) => {
-                                if (dateStr !== oldValue) {
-                                    currentTask[key] = dateStr;
-                                    logActivity('change', { details: `set ${key.replace(/([A-Z])/g, ' $1')} to <strong>${renderDateValue(dateStr)}</strong>` });
-                                    renderSidebar(currentTask);
-                                }
-                            }
-                        }).open();
-                        break;
-                    case 'dropdown':
-                        const options = JSON.parse(controlCell.dataset.options);
-                        createGenericDropdown(controlCell, options.map(opt => ({ label: opt, value: opt })), oldValue, (val) => {
-                            if (val !== oldValue) {
-                                currentTask[key] = val;
-                                logActivity('change', { details: `changed ${key} from <strong>${oldValue}</strong> to <strong>${val}</strong>` });
-                                renderSidebar(currentTask);
-                            }
-                        });
-                        break;
-                 }
-                 return;
-            }
-
-            const originalSpan = controlCell.querySelector('span');
-            if(!originalSpan) return;
-            const originalText = originalSpan.textContent;
-            
-            const input = document.createElement('input');
-            input.className = 'inline-edit-input';
-            
-            if (controlType === 'costing') {
-                input.type = 'number';
-                input.value = parseFloat(originalText.replace(/[^0-9.-]+/g, "")) || 0;
-            } else {
-                input.type = 'text';
-                input.value = originalText === 'N/A' ? '' : originalText;
-            }
-
-            controlCell.innerHTML = '';
-            controlCell.appendChild(input);
-            input.select();
-
-            const saveChanges = () => {
-                const newValue = input.value.trim();
-                let isCustom = key.startsWith('custom-');
-                let dataKey = isCustom ? parseInt(key.split('-')[1]) : key;
-                let originalValueForCheck = (controlType === 'costing') ? (parseFloat(originalText.replace(/[^0-9.-]+/g, "")) || 0).toString() : originalText;
-                 
-                if (newValue !== originalValueForCheck && !(originalValueForCheck === 'N/A' && newValue === '')) {
-                    if (isCustom) {
-                        if (!currentTask.customFields) currentTask.customFields = {};
-                        currentTask.customFields[dataKey] = controlType === 'costing' ? parseFloat(newValue) : newValue;
-                    } else {
-                        currentTask[key] = newValue;
-                    }
-                    const fieldLabel = controlCell.previousElementSibling.textContent;
-                    logActivity('change', { details: `updated ${fieldLabel} to <strong>${newValue}</strong>` });
+                     });
+                } else if (avatar) {
+                     createAssigneePopover(avatar, avatar.dataset.userId);
                 }
-                renderTaskFields(currentTask);
-            };
-            
-            input.addEventListener('blur', saveChanges);
-            input.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') input.blur();
-                if (e.key === 'Escape') renderTaskFields(currentTask);
-            });
+             } else if (controlType === 'dropdown') {
+                const options = JSON.parse(controlCell.dataset.options);
+                createGenericDropdown(controlCell, options.map(opt => ({ label: opt, value: opt })), oldValue, (newValue) => {
+                    if (newValue !== oldValue) {
+                        currentTask[key] = newValue;
+                        logActivity('change', { field: key, from: oldValue, to: newValue });
+                        renderSidebar(currentTask);
+                    }
+                });
+             }
         });
 
         sendCommentBtn.addEventListener('click', () => {
             const commentText = commentInput.value.trim();
             const imageTitle = imageTitleInput.value.trim();
             if (pastedImageURL || commentText) {
-                logActivity('comment', { content: commentText, imageURL: pastedImageURL, imageTitle: imageTitle });
+                let logDetails = { content: commentText };
+                if (pastedImageURL) {
+                    logDetails.imageURL = pastedImageURL;
+                    logDetails.imageTitle = imageTitle;
+                    logDetails.details = `<strong>${currentUser.name}</strong> added a comment and attached an image.`;
+                } else {
+                    logDetails.details = `<strong>${currentUser.name}</strong> added a comment.`;
+                }
+
+                logActivity('comment', logDetails);
+
                 clearImagePreview();
                 commentInput.value = '';
                 setTimeout(() => activityLogContainer.scrollTop = activityLogContainer.scrollHeight, 0);
@@ -522,6 +466,21 @@ window.TaskSidebar = (function() {
         });
 
         commentInput.addEventListener('paste', (e) => {
+            const items = (e.clipboardData || window.clipboardData).items;
+            let imageFile = null;
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image') !== -1) {
+                    imageFile = items[i].getAsFile();
+                    break;
+                }
+            }
+            if (imageFile) {
+                e.preventDefault();
+                const reader = new FileReader();
+                reader.onload = (event) => showImagePreview(event.target.result);
+                reader.readAsDataURL(imageFile);
+                return;
+            }
             const pastedText = (e.clipboardData || window.clipboardData).getData('text');
             if (pastedText.match(/\.(jpeg|jpg|gif|png|webp)$/i)) {
                 e.preventDefault();
@@ -530,44 +489,32 @@ window.TaskSidebar = (function() {
         });
 
         tabsContainer.addEventListener('click', (e) => {
-            if (e.target.matches('.tab-btn')) {
-                tabsContainer.querySelector('.active').classList.remove('active');
-                e.target.classList.add('active');
-                renderActivity();
-            }
-        });
-        
-        taskCompleteBtn.addEventListener('click', () => {
-             if (!currentTask) return;
-             const newStatus = currentTask.status === 'Completed' ? 'On track' : 'Completed';
-             logActivity('change', { details: `marked this task as <strong>${newStatus}</strong>` });
-             currentTask.status = newStatus;
-             renderSidebar(currentTask);
+             if (e.target.matches('.tab-btn')) {
+                 tabsContainer.querySelector('.active').classList.remove('active');
+                 e.target.classList.add('active');
+                 renderActivity();
+             }
         });
 
-        uploadFileBtn.addEventListener('click', () => {
-            fileUploadInput.click();
-        });
+        uploadFileBtn.addEventListener('click', () => fileUploadInput.click());
 
         fileUploadInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file && file.type.startsWith('image/')) {
                 const reader = new FileReader();
-                reader.onload = (event) => {
-                    showImagePreview(event.target.result);
-                };
+                reader.onload = (event) => showImagePreview(event.target.result);
                 reader.readAsDataURL(file);
             } else if (file) {
-                 logActivity('change', { details: `attached file: <strong>${file.name}</strong>` });
+                 logActivity('system', { details: `<strong>${currentUser.name}</strong> attached file: <strong>${file.name}</strong>` });
             }
         });
 
         document.body.addEventListener('click', (e) => {
-            if (e.target.closest('.popover-remove-btn')) {
-                removeAssignee(e.target.closest('.popover-remove-btn').dataset.userId);
-            } else if (!e.target.closest('.assignee-popover, .avatar[data-user-id], .context-dropdown, .control, .flatpickr-calendar')) {
-                closePopovers();
-            }
+             if (e.target.closest('.popover-remove-btn')) {
+                 removeAssignee(e.target.closest('.popover-remove-btn').dataset.userId);
+             } else if (!e.target.closest('.assignee-popover, .avatar[data-user-id], .context-dropdown, .control, .flatpickr-calendar')) {
+                 closePopovers();
+             }
         }, true);
     }
 
@@ -577,6 +524,7 @@ window.TaskSidebar = (function() {
         open
     };
 })();
+
 document.addEventListener('DOMContentLoaded', () => {
     if (window.TaskSidebar) {
         window.TaskSidebar.init();
