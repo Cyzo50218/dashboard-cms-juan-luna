@@ -621,10 +621,20 @@ min-height: 40px;
 
 .log-attachment .image-preview {
     max-width: 100%;
-    max-height: 400px; /* MODIFIED: Increased max-height for larger image previews */
+    max-height: 200px; /* MODIFIED: Increased max-height for larger image previews */
     border-radius: 6px;
     object-fit: cover;
     border: 1px solid #e0e0e0;
+}
+
+/* --- [FIX] Resize Image Preview in Comment Input --- */
+#pasted-image-preview-container #pasted-image-preview {
+  display: block;
+  max-width: 100%; /* Ensures the image is never wider than its container */
+  max-height: 180px; /* Constrains the vertical size of the preview */
+  border-radius: 6px;
+  margin-bottom: 8px; /* Adds space between the preview and the title input */
+  object-fit: contain; /* Ensures the entire image is visible without being cropped */
 }
 
 /* SCOPE 1: NEW STYLES FOR THE TASK FIELDS TABLE
