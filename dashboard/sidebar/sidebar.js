@@ -4,8 +4,7 @@ window.TaskSidebar = (function() {
         'proj-1': {
             name: 'Website Redesign',
             customColumns: [
-                { id: 1, name: 'Budget', type: 'Costing', currency: '$' },
-                { id: 2, name: 'Region', type: 'Text' }
+                { id: 1, name: 'Budget', type: 'Costing', currency: '$' }
             ],
             sections: [{
                 id: 'sec-1',
@@ -34,24 +33,9 @@ window.TaskSidebar = (function() {
                         imageURL: 'https://i.imgur.com/v139Yw1.png',
                         imageTitle: 'Homepage Wireframe v1',
                         reactions: { heart: [], thumbsUp: [2] }
-                    }, {
-                        id: 1718139000000,
-                        type: 'change',
-                        user: 1,
-                        timestamp: new Date('2025-06-10T11:00:00Z'),
-                        details: `edited a comment.`
                     }]
-                }, {
-                    id: 102,
-                    name: 'Review branding guidelines',
-                    dueDate: '2025-06-15',
-                    priority: 'Medium',
-                    status: 'On track',
-                    assignees: [3],
-                    activity: [],
-                    customFields: { 1: 850, 2: 'Europe' }
-                }, ]
-            }, ]
+                }]
+            }]
         }
     };
 
@@ -91,7 +75,7 @@ window.TaskSidebar = (function() {
         commentInput = document.getElementById('comment-input');
         sendCommentBtn = document.getElementById('send-comment-btn');
         currentUserAvatarEl = document.getElementById('current-user-avatar');
-        imagePreviewContainer = document.querySelector('.add-comment #pasted-image-preview-container');
+        imagePreviewContainer = document.querySelector('.comment-input-wrapper #pasted-image-preview-container');
         imagePreview = document.getElementById('pasted-image-preview');
         imageTitleInput = document.getElementById('pasted-image-title');
         cancelImageBtn = document.getElementById('cancel-image-btn');
@@ -304,6 +288,7 @@ window.TaskSidebar = (function() {
         imageTitleInput.value = '';
         imagePreviewContainer.style.display = 'none';
         commentInput.placeholder = 'Add a comment or paste an image link...';
+        fileUploadInput.value = ""; // Clear file input
     }
 
     function removeAssignee(userIdToRemove) {
@@ -435,7 +420,7 @@ window.TaskSidebar = (function() {
             
             const specialControls = ['assignee', 'date', 'dropdown'];
             if (specialControls.includes(controlType)) {
-                 const oldValue = currentTask[key];
+                const oldValue = currentTask[key];
                  switch (controlType) {
                     case 'assignee':
                          const addBtn = e.target.closest('.assignee-add-btn');
@@ -480,7 +465,6 @@ window.TaskSidebar = (function() {
                  return;
             }
 
-            // Default to in-place editing for text and costing
             const originalSpan = controlCell.querySelector('span');
             if(!originalSpan) return;
             const originalText = originalSpan.textContent;
@@ -506,7 +490,6 @@ window.TaskSidebar = (function() {
                 let dataKey = isCustom ? parseInt(key.split('-')[1]) : key;
                 let originalValueForCheck = (controlType === 'costing') ? (parseFloat(originalText.replace(/[^0-9.-]+/g, "")) || 0).toString() : originalText;
                  
-                // Only save and log if there is a change
                 if (newValue !== originalValueForCheck && !(originalValueForCheck === 'N/A' && newValue === '')) {
                     if (isCustom) {
                         if (!currentTask.customFields) currentTask.customFields = {};
@@ -568,8 +551,14 @@ window.TaskSidebar = (function() {
 
         fileUploadInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
-            if (file) {
-                logActivity('change', { details: `attached file: <strong>${file.name}</strong>` });
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    showImagePreview(event.target.result);
+                };
+                reader.readAsDataURL(file);
+            } else if (file) {
+                 logActivity('change', { details: `attached file: <strong>${file.name}</strong>` });
             }
         });
 
@@ -588,7 +577,6 @@ window.TaskSidebar = (function() {
         open
     };
 })();
-
 document.addEventListener('DOMContentLoaded', () => {
     if (window.TaskSidebar) {
         window.TaskSidebar.init();
