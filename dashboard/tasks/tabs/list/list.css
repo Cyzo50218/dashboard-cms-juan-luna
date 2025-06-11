@@ -1,611 +1,581 @@
-/* Add this :root block at the very top of your sidebar.css file */
 :root {
     --primary-bg: #ffffff;
-    --secondary-bg: #f5f5f5;      /* Light grey for hover effects */
-    --border-color: #e0e0e0;       /* Your existing border color */
-    --text-color: #1e1f21;         /* Your existing text color */
-    --text-secondary-color: #5f6368;
-    --accent-color: #0052cc;       /* Blue for selected items */
-    --low-priority: #34C759;       /* Green for the 'today' date */
+    --secondary-bg: #f9f9f9;
+    --border-color: #e9e9e9;
+    --text-color: #1a1a1a;
+    --text-secondary-color: #6c757d;
+    --accent-color: #4c6ef5;
+    --high-priority: #ff4d4f;
+    --medium-priority: #ffa940;
+    --low-priority: #52c41a;
+    --fixed-col-width: 35%;
+    --row-height: 2.2rem; /* Further reduced row height for more compactness */
+    --header-padding-y: 0.5rem; /* New variable for vertical header padding */
+    --column-padding-y: 0.4rem; /* New variable for vertical column padding */
 }
 
-
-/* --- NEW: flatpickr Theme Overrides --- */
-/* Add this new block to your sidebar.css file */
-
-/* --- NEW: Styles for flatpickr Wrapper and Icon --- */
-.flatpickr-wrapper {
-    position: relative;
-    width: 100%;
-}
-
-/* Style the input field created by flatpickr */
-.flatpickr-input {
-    background-color: #f5f5f5;
-    border: 1px solid transparent;
-    border-radius: 6px;
-    padding: 8px;
-    padding-left: 12px;
-    font-size: 14px;
-    font-family: inherit;
-    width: 100%;
-    box-sizing: border-box;
-    cursor: pointer;
-}
-.flatpickr-input:hover {
-    border-color: #c1c7d0;
-}
-
-/* Position the calendar icon inside the input */
-.flatpickr-wrapper .input-button {
-    position: absolute;
-    right: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #5f6368;
-    pointer-events: none; /* Let clicks pass through to the input */
-}
-
-/* Changes the color of the selected day */
-.flatpickr-day.selected {
-    background: #0052cc;
-    border-color: #0052cc;
-}
-
-/* Changes the color of today's date */
-.flatpickr-day.today {
-    border-color: #34C759;
-}
-
-/* Hover effect */
-.flatpickr-day:hover {
-    background: #f5f5f5;
-}
-
-/* Makes the calendar fit the modern UI */
-.flatpickr-calendar {
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-    border: 1px solid #e0e0e0;
-}
-
-/* Sidebar Container */
-.task-sidebar {
-    position: fixed;
-    top: 0;
-    right: 0;
-    width: 600px; /* Increased width for better spacing */
-    height: 100vh;
-    background-color: #ffffff;
-    border-left: 1px solid #e0e0e0;
-    box-shadow: -2px 0 15px rgba(0, 0, 0, 0.05);
+.list-view-container {
     display: flex;
     flex-direction: column;
-    transform: translateX(100%);
-    transition: transform 0.3s ease-in-out, width 0.3s ease-in-out; /* MODIFIED: Added width transition */
-    overflow-y: auto; /* MODIFIED: This makes the entire sidebar the single scrollable container */
+    width: 100vw;
+    height: 100vh;
+    background-color: #ffffff;
+    position: relative;
+    box-sizing: border-box;
+    padding: 0;
+    overflow: hidden;
 }
 
-
-/* Add this CSS to your stylesheet */
-#task-fields-container {
-  display: grid;
-  grid-template-columns: 110px 1fr; /* Adjust the first column width as needed */
-  gap: 12px 16px; /* Vertical and horizontal spacing */
-  align-items: center;
-}
-
-/* MODIFIED: Added styles for the full-view mode */
-.task-sidebar.is-full-view {
-    width: 95vw; /* Expands to take up most of the viewport width */
-}
-
-.task-sidebar.is-visible {
-    transform: translateX(0);
-}
-
-/* Header */
-.sidebar-header-task {
+.header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 60px;
-    padding: 12px 24px;
-    border-bottom: 1px solid #e0e0e0;
     flex-shrink: 0;
+    margin-bottom: 0;
+    border-bottom: 1px solid var(--border-color);
+    
 }
 
-.task-complete-btn {
+.header-controls-right {
     display: flex;
-    align-items: center;
-    gap: 8px;
+    /* Reduced gap between header buttons */
+    gap: 0.25rem;
+}
+
+button {
     background-color: transparent;
-    border: 1px solid #e0e0e0;
-    padding: 6px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 14px;
-    color: #1e1f21;
-}
-.task-complete-btn:hover { background-color: #f5f5f5; }
-.task-complete-btn.completed {
-    background-color: #34C759; /* A modern, vibrant green, common in UI design */
-    color: #ffffff;           /* White text for high contrast */
-    border-color: #34C759;     /* Border matches the background for a solid look */
-    font-weight: 600;
-}
-
-.task-complete-btn.completed:hover {
-    background-color: #2faa4f; /* A slightly darker green on hover */
-    border-color: #2faa4f;
-}
-
-.task-complete-btn.completed .fa-circle-check { font-weight: 900; }
-
-.sidebar-actions-task {
-    display: flex;
-    gap: 20px;
-    font-size: 18px;
-    color: #5f6368;
-}
-.sidebar-actions-task i { cursor: pointer; transition: color 0.2s; }
-.sidebar-actions-task i:hover { color: #1e1f21; }
-
-/* Main Content */
-.sidebar-content-task{
-    flex-grow: 1; /* MODIFIED: Allow this section to grow but not scroll independently */
-    padding: 24px;
-    /* REMOVED: overflow-y: auto; */
-}
-
-
-#task-name {
-    font-size: 28px;
-    font-weight: 600;
-    margin: 0 0 32px 0; /* Increased margin */
-    border: none;
-    outline: none;
-    width: 100%;
-}
-
-.task-fields {
-    display: grid;
-    grid-template-columns: 130px 1fr; /* Label column and value column */
-    align-items: baseline; /* Perfectly aligns the baseline of the text */
-    row-gap: 24px; /* Spacing between rows */
-    column-gap: 16px;
-    font-size: 14px;
-}
-
-.field-label {
-    color: #5f6368; /* Softer color for labels */
-    padding-top: 5px; /* Fine-tune alignment */
-}
-
-.field-value {
-    display: flex;
-    flex-wrap: wrap; /* Allow avatars to wrap */
-    align-items: center;
-    gap: 8px;
-    min-height: 28px; /* Ensure consistent row height */
-    color: var(--text-color); /* MODIFIED: Explicitly set color for non-control fields */
-}
-
-.field-value.control {
-    cursor: pointer;
-    padding: 4px 8px;
-    margin: -4px -8px; /* Counteract padding to maintain alignment */
-    border-radius: 6px;
-    background-color: transparent;
-    border: 1px solid transparent;
-    transition: background-color 0.2s, border-color 0.2s;
-    justify-content: flex-start; /* Align icon and text to the left */
-}
-.field-value.control:hover { 
-    background-color: #f5f5f5;
-    border-color: #e0e0e0;
-}
-
-.placeholder-text {
-    color: #8c8c8c;
-}
-
-.description-text {
-    width: 100%;
-    min-height: 80px;
-    border: none;
-    padding: 0;
-    outline: none;
-    line-height: 1.5;
-    align-self: start;
-}
-.description-text:empty:before {
-    content: attr(placeholder);
-    color: #a5adba;
-    pointer-events: none;
-}
-.description-text:focus {
-    border-bottom: 1px solid #4c9aff;
-}
-
-
-/* ====================================================================
-   UPDATED FOOTER AND COMMENTS SECTION
-====================================================================
-*/
-
-/* --- THE SELECTOR IS NOW AN ID (#) FOR SPECIFICITY --- */
-#sidebar-footer-task {
-    border-top: 1px solid #e0e0e0;
-    flex-shrink: 0;
-    background-color: #fcfcfc;
-    display: flex;
-    flex-direction: column;
-    /* REMOVED: max-height: 70vh; */
-}
-
-
-.comment-section {
-    display: flex;
-    flex-direction: column;
-    /* REMOVED: height: 100%; */
-    /* REMOVED: overflow: hidden; */
-}
-
-
-.comment-tabs {
-    display: flex; 
-    align-items: center;
-    margin-bottom: 16px;
-    flex-shrink: 0;
-    padding: 16px 24px 0 24px;
-}
-
-#sidebar-task-btn-tab {
-    background: none;
-    border: none;
-    padding: 8px 4px;
-    margin-right: 16px;
-    border-radius: 0px;
-    cursor: pointer;
-    font-size: 14px;
-    color: #5f6368;
-    border-bottom: 2px solid transparent;
-    transition: color 0.2s; /* Add a smooth transition */
-}
-
-/* --- FIX: Add a proper hover state to prevent the default black color --- */
-#sidebar-task-btn-tab:hover {
-    color: #1e1f21; /* Change to the main text color on hover */
-}
-
-#sidebar-task-btn-tab.active { 
-    color: #0052cc; 
-    border-bottom-color: #0052cc; 
-    font-weight: 600; 
-}
-
-
-.activity-log {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    margin-bottom: 16px;
-    padding: 0 24px;
-    /* REMOVED: overflow-y: auto; */
-    /* REMOVED: flex-grow: 1; */
-}
-
-
-.log-item { display: flex; gap: 12px; font-size: 14px; align-items: flex-start; }
-
-.add-comment {
-    border-top: 1px solid #e0e0e0;
-    margin-top: 0;
-    padding: 16px 24px;
-    flex-shrink: 0;
-}
-
-.comment-input-wrapper { display: flex; gap: 12px; }
-#comment-input {
-    flex-grow: 1;
-    border: 1px solid #e0e0e0;
-    border-radius: 6px;
-    padding: 10px;
-    font-family: inherit;
-    resize: vertical;
-    background-color: #fff;
-    min-height: 40px;
-}
-#comment-input:focus { border-color: #4c9aff; outline: none; }
-
-.comment-action-btn {
-    background-color: transparent;
-    border: 1px solid #dcdcdc;
-    color: #5f6368;
-    border-radius: 6px;
-    width: 42px;
-    height: 42px;
-    cursor: pointer;
-    font-size: 16px;
-    transition: background-color 0.2s, color 0.2s;
-    align-self: flex-start;
-    flex-shrink: 0;
-}
-
-.comment-action-btn:hover {
-    background-color: #E4E4E4;
-    color: #1e1f21;
-}
-
-#send-comment-btn {
-    background-color: #0052cc;
-    color: white;
-    border-color: #0052cc;
-}
-#send-comment-btn:hover {
-    background-color: #004499;
-    color: white;
-}
-
-.comment-item { display: flex; gap: 12px; margin-bottom: 16px; align-items: flex-start; }
-.comment-body { flex-grow: 1; }
-.comment-header { display: flex; align-items: center; margin-bottom: 4px; }
-.comment-author { font-weight: bold; margin-right: 8px; }
-.comment-timestamp { color: #5f6368; font-size: 12px; }
-.comment-text { font-size: 16px; line-height: 1.4; }
-
-/* --- Comment Edit Area --- */
-.comment-edit-area {
-    margin-top: 10px; /* Space from the header/timestamp */
-    padding: 10px;
-    background-color: #f9f9f9; /* Light background to distinguish it */
-    border: 1px solid #ddd;
+    border: 1px solid var(--text-secondary-color);
     border-radius: 8px;
-    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05); /* Subtle inner shadow */
-}
-
-.comment-edit-input {
-    width: 100%; /* Take full width of its parent */
-    min-height: 80px; /* Minimum height for better typing experience */
-    padding: 8px 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    font-family: inherit; /* Inherit font from body/parent */
-    font-size: 0.95em;
-    resize: vertical; /* Allow vertical resizing only */
-    box-sizing: border-box; /* Include padding and border in the element's total width and height */
-    line-height: 1.5; /* Improve readability of text inside textarea */
-}
-
-.comment-edit-input:focus {
-    outline: none;
-    border-color: #007bff; /* Highlight border on focus */
-    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25); /* Glow effect on focus */
-}
-
-.comment-edit-actions {
-    display: flex; /* Arrange buttons horizontally */
-    justify-content: flex-end; /* Push buttons to the right */
-    gap: 10px; /* Space between buttons */
-    margin-top: 10px; /* Space above the buttons */
-}
-
-/* Base button styles - apply to both cancel and save */
-.comment-edit-actions button {
-    padding: 8px 15px;
-    border: none;
-    border-radius: 5px;
+    /* Slightly reduced button padding */
+    padding: 0.4rem 0.8rem;
     cursor: pointer;
-    font-size: 0.9em;
+    font-size: 0.85rem; /* Slightly smaller font size for buttons */
     font-weight: 500;
-    transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-.btn-cancel-edit {
-    background-color: #6c757d; /* Muted grey for cancel */
-    color: white;
-}
-
-.btn-cancel-edit:hover {
-    background-color: #5a6268;
-}
-
-.btn-save-edit {
-    background-color: #007bff; /* Primary blue for save */
-    color: white;
-}
-
-.btn-save-edit:hover {
-    background-color: #0056b3;
-}
-
-/* --- Comment Actions Container (New) --- */
-.comment-actions {
-    display: flex; /* Aligns edit and delete buttons horizontally */
-    gap: 8px; /* Space between the two buttons */
-    margin-left: 10px; /* Space from the timestamp */
-    align-items: center; /* Vertically centers the buttons */
-}
-
-/* --- Comment Delete Button (New) --- */
-.comment-delete-btn {
-    cursor: pointer;
-    font-size: 0.9em;
-    color: #888; /* Default color, similar to edit */
+    color: var(--text-color);
+    transition: background-color 0.2s, color 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    transition: background-color 0.2s ease, color 0.2s ease;
+    gap: 0.4rem; /* Reduced gap inside buttons */
 }
 
-.comment-delete-btn:hover {
-    background-color: #fcebeb; /* Light red background on hover */
-    color: #dc3545; /* Red icon color on hover */
+button:hover {
+    background-color: var(--text-color);
+    color: var(--primary-bg);
+    border-color: var(--text-color);
 }
 
-/* Utility Classes */
-.avatar {
-    width: 24px;
+.dialog-button.primary {
+    background-color: var(--accent-color) !important;
+    color: white !important;
+    border: none !important;
+}
+
+.dialog-button.primary:hover {
+    background-color: #3b5bdb !important;
+    color: white !important;
+}
+
+.task-list-wrapper {
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    flex-grow: 1;
+    overflow-y: auto;
+    overflow-x: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.task-list-wrapper::-webkit-scrollbar {
+    display: none;
+}
+.task-list-wrapper {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+}
+
+.task-list-header,
+.task-row-wrapper,
+.task-list-footer {
+    display: flex;
+    transition: background-color 0.2s ease-in-out;
+    min-height: var(--row-height); /* Uses the more reduced row height */
+    flex-shrink: 0;
+}
+
+.task-list-header,
+.task-row-wrapper {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.task-row-wrapper {
+    transition: opacity 0.4s ease-in-out;
+}
+
+.fixed-column {
+    flex-shrink: 0;
+    width: var(--fixed-col-width);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    /* Reduced padding for fixed column */
+    padding: var(--column-padding-y) 1rem; /* Uses new variable for y-padding */
+    box-sizing: border-box;
+    gap: 0.75rem;
+}
+
+.scrollable-columns-wrapper {
+    flex-grow: 1;
+    overflow-x: unset;
+}
+
+.scrollable-columns-wrapper::-webkit-scrollbar {
+    display: none;
+}
+
+.scrollable-columns {
+    display: flex;
+    min-width: max-content;
+    padding-right: 12rem;
+}
+
+.task-col {
+    /* Reduced padding for all task columns */
+    padding: var(--column-padding-y) 1rem; /* Uses new variable for y-padding */
+    box-sizing: border-box;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    position: relative;
+    transition: color 0.4s ease;
+}
+
+.task-list-header .task-col {
+    cursor: default;
+}
+
+.task-list-header {
+    background-color: transparent;
+    font-weight: 600;
+    font-size: 0.75rem; /* Slightly smaller font size for header text */
+    text-transform: uppercase;
+    color: var(--text-color);
+}
+
+.drag-handle {
+    opacity: 0;
+    color: var(--text-secondary-color);
+    transition: opacity 0.2s;
+    font-size: 1rem; /* Slightly smaller drag handle */
+    cursor: grab !important;
+}
+
+.header-assignee,
+.header-due-date,
+.header-priority,
+.header-status,
+.header-custom {
+    width: 150px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border-color);
+}
+
+.add-column-container {
+    display: flex;
+    align-items: center;
+    padding: 0.4rem; /* Adjusted padding */
+}
+
+#add-column-btn {
+    background: none;
+    border: none;
+    font-size: 0.9rem; /* Smaller plus icon */
+    cursor: pointer;
+    color: var(--text-secondary-color);
+}
+
+.delete-column-btn {
+    position: absolute;
+    top: 50%;
+    right: 5px;
+    transform: translateY(-50%);
+    display: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-secondary-color);
+    padding: 0.2rem; /* Adjusted padding */
+}
+
+.task-col.header-custom:hover .delete-column-btn {
+    display: block;
+}
+
+.delete-column-btn:hover {
+    color: var(--text-color);
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+}
+
+.section-header-list {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    position: relative;
+    /* Reduced padding for section headers */
+    padding: var(--column-padding-y) 1rem; /* Uses new variable for y-padding */
+    cursor: grab;
+    border-bottom: 1px solid var(--border-color);
+    min-height: var(--row-height);
+}
+
+.task-section:hover .section-header-list,
+.task-row-wrapper:hover {
+    background-color: var(--secondary-bg);
+}
+
+.section-header-list:hover .drag-handle,
+.task-row-wrapper:hover .drag-handle {
+    opacity: 1;
+}
+
+.section-toggle,
+.task-row-wrapper [data-control] {
+    cursor: pointer;
+}
+
+.section-toggle {
+    padding: 0 0.4rem; /* Adjusted padding */
+    transition: transform 0.2s ease-in-out;
+}
+
+.section-toggle.collapsed {
+    transform: rotate(-90deg);
+}
+
+.section-title,
+[contenteditable="true"] {
+    cursor: text;
+}
+
+.tasks-container.hidden {
+    display: none;
+}
+
+[contenteditable="true"]:focus {
+    outline: 2px solid var(--accent-color);
+    background-color: white;
+}
+
+.task-name {
+    transition: color 0.4s ease, text-decoration-color 0.3s ease-in 0.1s;
+    text-decoration-color: transparent;
+}
+
+.task-name.is-placeholder {
+    color: var(--text-secondary-color);
+    font-style: italic;
+}
+
+.task-row-wrapper.is-completed {
+    opacity: 0.7;
+}
+
+.task-row-wrapper.is-completed .task-name,
+.task-row-wrapper.is-completed .task-col {
+    color: var(--text-secondary-color);
+    text-decoration: line-through;
+    text-decoration-color: var(--text-secondary-color);
+}
+
+.fa-check-circle {
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.is-completed .fa-check-circle {
+    color: var(--accent-color) !important;
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    transform: scale(1.1);
+}
+
+.profile-picture-stack {
+    display: flex;
+    align-items: center;
+}
+
+.profile-picture {
+    width: 24px; /* Slightly smaller profile picture */
     height: 24px;
     border-radius: 50%;
     background-size: cover;
     background-position: center;
-    flex-shrink: 0;
+    border: 2px solid white;
+    background-color: #d8d8d8;
 }
 
-/* Tags (Priority, Status) */
-.tag {
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
+.priority-tag,
+.status-tag {
+    padding: 0.2rem 0.6rem; /* Reduced tag padding */
+    border-radius: 10px; /* Slightly smaller border-radius for tags */
+    font-size: 0.75rem; /* Slightly smaller font for tags */
+    font-weight: 500;
+    display: inline-block;
+    border: none;
 }
-.priority-high { background-color: #ffebe6; color: #bf2600; }
-.priority-medium { background-color: #fffae6; color: #ff8b00; }
-.priority-low { background-color: #deebff; color: #0747a6; }
-.status-on-track { background-color: #deebff; color: #0747a6; }
-.status-at-risk { background-color: #fffae6; color: #ff8b00; }
-.status-off-track { background-color: #ffdddd; color: #cc0000; }
-.status-completed { background-color: #e3fcef; color: #006442; }
 
-/* Reusable Dropdown */
+.priority-High {
+    background-color: #ffccc7;
+    color: var(--high-priority);
+}
+
+.priority-Medium {
+    background-color: #ffe7ba;
+    color: var(--medium-priority);
+}
+
+.priority-Low {
+    background-color: #d9f7be;
+    color: var(--low-priority);
+}
+
+.status-On-track {
+    background-color: #b7eb8f;
+    color: #389e0d;
+}
+
+.status-At-risk {
+    background-color: #fff1b8;
+    color: #d48806;
+}
+
+.status-Off-track {
+    background-color: #ffccc7;
+    color: #cf1322;
+}
+
+.status-Completed {
+    background-color: #d9d9d9;
+    color: var(--text-secondary-color);
+}
+
+.add-task-in-section-btn,
+.add-section-btn {
+    border: none;
+    padding: 0.4rem 1.2rem; /* Adjusted padding */
+    margin-left: 3rem; /* Slightly reduced margin */
+    font-size: 0.85rem; /* Smaller font size */
+}
+
+.add-task-in-section-btn:hover,
+.add-section-btn:hover {
+    background: var(--secondary-bg);
+    color: var(--text-color);
+}
+
+.add-section-btn {
+    align-self: flex-start;
+    margin-top: 0.5rem; /* Reduced top margin */
+    margin-left: 0;
+}
+
+.datepicker {
+    z-index: 120 !important;
+}
+
+.datepicker-controls {
+    border-bottom: 1px solid transparent !important;
+}
+
+.datepicker .datepicker-controls .button {
+    background-color: transparent !important;
+    border: 1px solid transparent !important;
+    border-radius: 6px !important;
+    color: var(--text-color) !important;
+    font-weight: 500 !important;
+}
+
+.datepicker .datepicker-controls .button:hover {
+    background-color: var(--secondary-bg) !important;
+}
+
+.datepicker-cell {
+    background-color: transparent !important;
+    border-radius: 50% !important;
+    border: 1px solid transparent !important;
+}
+
+.datepicker-cell:not(.selected):not(.disabled):not(.focused):hover {
+    background-color: var(--secondary-bg) !important;
+}
+
+.datepicker-cell.selected,
+.datepicker-cell.selected:hover {
+    background-color: transparent !important;
+    border-color: var(--accent-color) !important;
+    color: var(--accent-color) !important;
+    font-weight: 600 !important;
+}
+
+.datepicker-cell.today:not(.selected) {
+    background-color: transparent !important;
+    border-color: var(--low-priority) !important;
+    color: var(--low-priority) !important;
+}
+
 .context-dropdown {
     position: absolute;
-    background-color: white;
+    z-index: 110;
+    background: var(--primary-bg);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    border: 1px solid #e0e0e0;
-    padding: 8px;
-    z-index: 100;
-    min-width: 240px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    padding: 0.5rem 0;
+    min-width: 150px;
 }
+
 .dropdown-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px;
+    padding: 0.6rem 1rem; /* Adjusted padding */
     cursor: pointer;
-    font-size: 14px;
-    border-radius: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
-.dropdown-item:hover { background-color: #f5f5f5; }
 
-/* --- NEW: Style for selected item --- */
-.dropdown-item.is-selected {
-    background-color: #e9f2ff;
-    color: #0052cc;
+.dropdown-item:hover {
+    background-color: var(--secondary-bg);
+}
+
+.task-list-footer {
+    background-color: var(--secondary-bg);
+    border-top: 2px solid var(--border-color);
     font-weight: 600;
 }
-.dropdown-item.is-selected i {
-    visibility: visible;
-}
-.dropdown-item i.fa-check {
-    visibility: hidden;
-    margin-left: auto;
+
+.task-list-footer .task-col {
+    color: var(--text-secondary-color);
+    justify-content: flex-end;
 }
 
-/* --- NEW: Assignee Dropdown Specific Styles --- */
-.assignee-dropdown-search {
-    width: 100%;
-    padding: 8px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    margin-bottom: 8px;
-    box-sizing: border-box;
-}
-
-#assignee-options-list {
-    max-height: 200px;
-    overflow-y: auto;
-}
-
-/* Add these new rules to the end of your sidebar.css file */
-
-/* --- NEW: Styles for Completed Task State --- */
-.task-sidebar.task-is-completed #task-name {
-    text-decoration: line-through;
-    color: #8c8c8c;
-}
-
-/* Apply strikethrough and muted color to all field values when task is complete */
-.task-sidebar.task-is-completed .field-value {
-    text-decoration: line-through;
-    color: #8c8c8c;
-}
-
-/* Visually mute the avatar images */
-.task-sidebar.task-is-completed .field-value .avatar {
-    filter: grayscale(80%);
-}
-
-/* Visually mute the tags */
-.task-sidebar.task-is-completed .tag {
-    background-color: #e0e0e0 !important;
-    color: #8c8c8c !important;
-    border: 1px solid #ccc;
-}
-
-/* Disable clicks on all controls when task is complete */
-.task-sidebar.task-is-completed .field-value.control {
-    pointer-events: none;
-    background-color: transparent !important;
-}
-
-.task-sidebar.task-is-completed #task-description-text {
-    text-decoration: line-through;
-    color: #8c8c8c;
-}
-
-
-/* --- NEW: Styles for Attachments in the Log --- */
-.log-attachment {
-    margin-top: 8px;
-    max-width: 100%;
-}
-
-.log-attachment a {
+.dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
     display: flex;
     align-items: center;
-    background-color: #f5f5f5;
-    border: 1px solid #e0e0e0;
-    border-radius: 6px;
-    padding: 8px 12px;
-    text-decoration: none;
-    color: #1e1f21;
-    gap: 10px;
-    transition: background-color 0.2s;
+    justify-content: center;
+    z-index: 2000;
 }
 
-.log-attachment a:hover {
-    background-color: #e9e9e9;
+.dialog-box {
+    background: var(--primary-bg);
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    width: 90%;
+    max-width: 450px;
 }
 
-.log-attachment .file-icon {
-    font-size: 1.5rem;
-    color: #5f6368;
-}
-
-.log-attachment .file-info .file-name {
+.dialog-header {
+    padding: 0.8rem 1.2rem; /* Adjusted padding */
+    font-size: 1rem; /* Slightly smaller font */
     font-weight: 600;
+    border-bottom: 1px solid var(--border-color);
 }
 
-.log-attachment .file-info .file-size {
-    font-size: 0.8rem;
-    color: #5f6368;
+.dialog-body {
+    padding: 1.2rem; /* Adjusted padding */
 }
 
-.log-attachment .image-preview {
-    max-width: 100%;
-    max-height: 400px; /* MODIFIED: Increased max-height for larger image previews */
+.dialog-footer {
+    padding: 0.8rem 1.2rem; /* Adjusted padding */
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.4rem; /* Adjusted gap */
+    border-top: 1px solid var(--border-color);
+}
+
+.dialog-body .form-group {
+    margin-bottom: 1rem; /* Adjusted margin */
+}
+
+.dialog-body label {
+    display: block;
+    margin-bottom: 0.4rem; /* Adjusted margin */
+    font-weight: 500;
+    font-size: 0.85rem; /* Adjusted font size */
+}
+
+.dialog-body select,
+.dialog-body input {
+    width: 100%;
+    padding: 0.5rem; /* Adjusted padding */
+    border: 1px solid var(--border-color);
     border-radius: 6px;
-    object-fit: cover;
-    border: 1px solid #e0e0e0;
+    box-sizing: border-box;
+    background-color: white;
+}
+
+.dialog-preview-box {
+    margin-top: 0.8rem; /* Adjusted margin */
+    padding: 0.8rem; /* Adjusted padding */
+    background-color: var(--secondary-bg);
+    border: 1px dashed var(--border-color);
+    border-radius: 6px;
+}
+
+.dialog-preview-box p {
+    margin: 0;
+    font-size: 0.85rem; /* Adjusted font size */
+    color: var(--text-secondary-color);
+}
+
+.dialog-preview-box .preview-value {
+    font-weight: 600;
+    color: var(--text-color);
+    font-size: 0.9rem; /* Adjusted font size */
+    margin-top: 0.4rem; /* Adjusted margin */
+}
+
+.context-dropdown.assignee-dropdown {
+    padding: 0;
+}
+
+.dropdown-search-container {
+    padding: 0.4rem; /* Adjusted padding */
+    border-bottom: 1px solid var(--border-color);
+}
+
+.dropdown-search-input {
+    border: none;
+    outline: none;
+    width: 100%;
+    background: transparent;
+    font-size: 0.85rem; /* Adjusted font size */
+    padding: 0.2rem 0.4rem; /* Adjusted padding */
+}
+
+.dropdown-list {
+    max-height: 180px; /* Slightly reduced max height */
+    overflow-y: auto;
+    padding: 0.4rem 0; /* Adjusted padding */
+}
+
+.dropdown-item .user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem; /* Reduced gap */
+}
+
+.dropdown-item .profile-picture {
+    width: 22px; /* Even smaller profile picture */
+    height: 22px;
+    font-size: 0.55rem;
+}
+
+.dropdown-item .assigned-check {
+    color: var(--accent-color);
+    font-size: 0.8em; /* Adjusted font size */
 }
