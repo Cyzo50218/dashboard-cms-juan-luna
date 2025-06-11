@@ -881,7 +881,8 @@ const setupModalLogic = () => {
     const closeModal = () => {
         const backdrop = document.getElementById('shareproject-modal-backdrop');
         if (backdrop) {
-            
+            backdrop.remove();
+            logActivity("Share modal closed.");
         }
     };
 

@@ -9,8 +9,9 @@
     --medium-priority: #ffa940;
     --low-priority: #52c41a;
     --fixed-col-width: 35%;
-    /* Added a variable for compact row height */
-    --row-height: 2.5rem; /* Approximately 40px, a good compact height */
+    --row-height: 2.2rem; /* Further reduced row height for more compactness */
+    --header-padding-y: 0.5rem; /* New variable for vertical header padding */
+    --column-padding-y: 0.4rem; /* New variable for vertical column padding */
 }
 
 .list-view-container {
@@ -21,9 +22,8 @@
     background-color: #ffffff;
     position: relative;
     box-sizing: border-box;
-    /* Reduced vertical padding by removing gap and handling spacing with direct padding */
     padding: 0;
-    overflow: hidden; /* Ensures content doesn't spill out, important for scrollability */
+    overflow: hidden;
 }
 
 .header {
@@ -33,30 +33,31 @@
     flex-shrink: 0;
     margin-bottom: 0;
     border-bottom: 1px solid var(--border-color);
-    /* Reduced padding to make the header more compact */
-    padding: 0.75rem 1.25rem; /* Adjusted vertical padding */
+    /* Reduced header padding even more */
+    padding: var(--header-padding-y) 1rem; /* Uses the new variable */
 }
 
 .header-controls-right {
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    /* Reduced gap between header buttons */
+    gap: 0.25rem;
 }
 
 button {
     background-color: transparent;
     border: 1px solid var(--text-secondary-color);
     border-radius: 8px;
-    padding: 0.5rem 1rem;
+    /* Slightly reduced button padding */
+    padding: 0.4rem 0.8rem;
     cursor: pointer;
-    font-size: 0.9rem;
+    font-size: 0.85rem; /* Slightly smaller font size for buttons */
     font-weight: 500;
     color: var(--text-color);
     transition: background-color 0.2s, color 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
+    gap: 0.4rem; /* Reduced gap inside buttons */
 }
 
 button:hover {
@@ -80,31 +81,27 @@ button:hover {
     border-top: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
     flex-grow: 1;
-    overflow-y: auto; /* Allows vertical scrolling for tasks */
-    /* Enabled horizontal scrolling for the entire list content */
+    overflow-y: auto;
     overflow-x: auto;
     display: flex;
     flex-direction: column;
 }
 
-/* Hide scrollbar for a cleaner look */
 .task-list-wrapper::-webkit-scrollbar {
     display: none;
 }
 .task-list-wrapper {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
 }
-
 
 .task-list-header,
 .task-row-wrapper,
 .task-list-footer {
     display: flex;
     transition: background-color 0.2s ease-in-out;
-    /* Set a consistent min-height for all rows to make them compact */
-    min-height: var(--row-height);
-    flex-shrink: 0; /* Prevent rows from shrinking below their min-height */
+    min-height: var(--row-height); /* Uses the more reduced row height */
+    flex-shrink: 0;
 }
 
 .task-list-header,
@@ -122,15 +119,14 @@ button:hover {
     border-right: 1px solid var(--border-color);
     display: flex;
     align-items: center;
-    /* Adjusted padding for compact rows */
-    padding: 0.5rem 1.25rem;
+    /* Reduced padding for fixed column */
+    padding: var(--column-padding-y) 1rem; /* Uses new variable for y-padding */
     box-sizing: border-box;
     gap: 0.75rem;
 }
 
 .scrollable-columns-wrapper {
     flex-grow: 1;
-    /* Removed overflow-x from here, now handled by .task-list-wrapper */
     overflow-x: unset;
 }
 
@@ -140,14 +136,13 @@ button:hover {
 
 .scrollable-columns {
     display: flex;
-    /* Important for horizontal scrolling: Ensure columns don't wrap and maintain their width */
     min-width: max-content;
     padding-right: 12rem;
 }
 
 .task-col {
-    /* Adjusted padding for compact cells */
-    padding: 0.5rem 1.25rem;
+    /* Reduced padding for all task columns */
+    padding: var(--column-padding-y) 1rem; /* Uses new variable for y-padding */
     box-sizing: border-box;
     white-space: nowrap;
     display: flex;
@@ -163,7 +158,7 @@ button:hover {
 .task-list-header {
     background-color: transparent;
     font-weight: 600;
-    font-size: 0.8rem;
+    font-size: 0.75rem; /* Slightly smaller font size for header text */
     text-transform: uppercase;
     color: var(--text-color);
 }
@@ -172,7 +167,7 @@ button:hover {
     opacity: 0;
     color: var(--text-secondary-color);
     transition: opacity 0.2s;
-    font-size: 1.1rem;
+    font-size: 1rem; /* Slightly smaller drag handle */
     cursor: grab !important;
 }
 
@@ -189,13 +184,13 @@ button:hover {
 .add-column-container {
     display: flex;
     align-items: center;
-    padding: 0.5rem;
+    padding: 0.4rem; /* Adjusted padding */
 }
 
 #add-column-btn {
     background: none;
     border: none;
-    font-size: 1rem;
+    font-size: 0.9rem; /* Smaller plus icon */
     cursor: pointer;
     color: var(--text-secondary-color);
 }
@@ -210,7 +205,7 @@ button:hover {
     border: none;
     cursor: pointer;
     color: var(--text-secondary-color);
-    padding: 0.25rem;
+    padding: 0.2rem; /* Adjusted padding */
 }
 
 .task-col.header-custom:hover .delete-column-btn {
@@ -223,17 +218,16 @@ button:hover {
     border-radius: 4px;
 }
 
-
 .section-header-list {
     display: flex;
     align-items: center;
     font-weight: 600;
     position: relative;
-    /* Adjusted padding for compact sections */
-    padding: 0.5rem 1.25rem;
+    /* Reduced padding for section headers */
+    padding: var(--column-padding-y) 1rem; /* Uses new variable for y-padding */
     cursor: grab;
     border-bottom: 1px solid var(--border-color);
-    min-height: var(--row-height); /* Ensure section headers also have compact height */
+    min-height: var(--row-height);
 }
 
 .task-section:hover .section-header-list,
@@ -252,7 +246,7 @@ button:hover {
 }
 
 .section-toggle {
-    padding: 0 0.5rem;
+    padding: 0 0.4rem; /* Adjusted padding */
     transition: transform 0.2s ease-in-out;
 }
 
@@ -312,8 +306,8 @@ button:hover {
 }
 
 .profile-picture {
-    width: 28px;
-    height: 28px;
+    width: 24px; /* Slightly smaller profile picture */
+    height: 24px;
     border-radius: 50%;
     background-size: cover;
     background-position: center;
@@ -323,9 +317,9 @@ button:hover {
 
 .priority-tag,
 .status-tag {
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.8rem;
+    padding: 0.2rem 0.6rem; /* Reduced tag padding */
+    border-radius: 10px; /* Slightly smaller border-radius for tags */
+    font-size: 0.75rem; /* Slightly smaller font for tags */
     font-weight: 500;
     display: inline-block;
     border: none;
@@ -369,9 +363,9 @@ button:hover {
 .add-task-in-section-btn,
 .add-section-btn {
     border: none;
-    /* Adjusted padding for compact buttons */
-    padding: 0.5rem 1.25rem;
-    margin-left: 3.5rem;
+    padding: 0.4rem 1.2rem; /* Adjusted padding */
+    margin-left: 3rem; /* Slightly reduced margin */
+    font-size: 0.85rem; /* Smaller font size */
 }
 
 .add-task-in-section-btn:hover,
@@ -382,10 +376,8 @@ button:hover {
 
 .add-section-btn {
     align-self: flex-start;
-    margin-top: 0;
+    margin-top: 0.5rem; /* Reduced top margin */
     margin-left: 0;
-    /* Added some top margin to visually separate it from the list */
-    margin-top: 1rem;
 }
 
 .datepicker {
@@ -444,7 +436,7 @@ button:hover {
 }
 
 .dropdown-item {
-    padding: 0.75rem 1rem;
+    padding: 0.6rem 1rem; /* Adjusted padding */
     cursor: pointer;
     display: flex;
     justify-content: space-between;
@@ -482,45 +474,45 @@ button:hover {
 .dialog-box {
     background: var(--primary-bg);
     border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
     width: 90%;
     max-width: 450px;
 }
 
 .dialog-header {
-    padding: 1rem 1.5rem;
-    font-size: 1.1rem;
+    padding: 0.8rem 1.2rem; /* Adjusted padding */
+    font-size: 1rem; /* Slightly smaller font */
     font-weight: 600;
     border-bottom: 1px solid var(--border-color);
 }
 
 .dialog-body {
-    padding: 1.5rem;
+    padding: 1.2rem; /* Adjusted padding */
 }
 
 .dialog-footer {
-    padding: 1rem 1.5rem;
+    padding: 0.8rem 1.2rem; /* Adjusted padding */
     display: flex;
     justify-content: flex-end;
-    gap: 0.5rem;
+    gap: 0.4rem; /* Adjusted gap */
     border-top: 1px solid var(--border-color);
 }
 
 .dialog-body .form-group {
-    margin-bottom: 1.25rem;
+    margin-bottom: 1rem; /* Adjusted margin */
 }
 
 .dialog-body label {
     display: block;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.4rem; /* Adjusted margin */
     font-weight: 500;
-    font-size: 0.9rem;
+    font-size: 0.85rem; /* Adjusted font size */
 }
 
 .dialog-body select,
 .dialog-body input {
     width: 100%;
-    padding: 0.6rem;
+    padding: 0.5rem; /* Adjusted padding */
     border: 1px solid var(--border-color);
     border-radius: 6px;
     box-sizing: border-box;
@@ -528,8 +520,8 @@ button:hover {
 }
 
 .dialog-preview-box {
-    margin-top: 1rem;
-    padding: 1rem;
+    margin-top: 0.8rem; /* Adjusted margin */
+    padding: 0.8rem; /* Adjusted padding */
     background-color: var(--secondary-bg);
     border: 1px dashed var(--border-color);
     border-radius: 6px;
@@ -537,15 +529,15 @@ button:hover {
 
 .dialog-preview-box p {
     margin: 0;
-    font-size: 0.9rem;
+    font-size: 0.85rem; /* Adjusted font size */
     color: var(--text-secondary-color);
 }
 
 .dialog-preview-box .preview-value {
     font-weight: 600;
     color: var(--text-color);
-    font-size: 1rem;
-    margin-top: 0.5rem;
+    font-size: 0.9rem; /* Adjusted font size */
+    margin-top: 0.4rem; /* Adjusted margin */
 }
 
 .context-dropdown.assignee-dropdown {
@@ -553,7 +545,7 @@ button:hover {
 }
 
 .dropdown-search-container {
-    padding: 0.5rem;
+    padding: 0.4rem; /* Adjusted padding */
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -562,29 +554,29 @@ button:hover {
     outline: none;
     width: 100%;
     background: transparent;
-    font-size: 0.9rem;
-    padding: 0.25rem 0.5rem;
+    font-size: 0.85rem; /* Adjusted font size */
+    padding: 0.2rem 0.4rem; /* Adjusted padding */
 }
 
 .dropdown-list {
-    max-height: 200px;
+    max-height: 180px; /* Slightly reduced max height */
     overflow-y: auto;
-    padding: 0.5rem 0;
+    padding: 0.4rem 0; /* Adjusted padding */
 }
 
 .dropdown-item .user-info {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.6rem; /* Reduced gap */
 }
 
 .dropdown-item .profile-picture {
-    width: 24px;
-    height: 24px;
-    font-size: 0.6rem;
+    width: 22px; /* Even smaller profile picture */
+    height: 22px;
+    font-size: 0.55rem;
 }
 
 .dropdown-item .assigned-check {
     color: var(--accent-color);
-    font-size: 0.9em;
+    font-size: 0.8em; /* Adjusted font size */
 }
