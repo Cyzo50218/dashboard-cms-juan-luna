@@ -33,8 +33,6 @@
     flex-shrink: 0;
     margin-bottom: 0;
     border-bottom: 1px solid var(--border-color);
-    /* Reduced header padding even more */
-    padding: var(--header-padding-y) 1rem; /* Uses the new variable */
 }
 
 .header-controls-right {
