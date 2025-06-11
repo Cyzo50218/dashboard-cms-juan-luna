@@ -305,25 +305,50 @@
 
 .log-item { display: flex; gap: 12px; font-size: 14px; align-items: flex-start; }
 
+/* --- [FIX] Comment Input Area Layout --- */
 .add-comment {
-    border-top: 1px solid #e0e0e0;
-    margin-top: 0;
-    padding: 16px 24px;
-    flex-shrink: 0;
+  display: flex;
+  align-items: flex-start; /* Aligns top of avatar with top of input */
+  gap: 12px;             /* Space between avatar and input area */
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-color);
+}
+
+.comment-input-wrapper {
+  flex-grow: 1; /* Allows the input area to take up all remaining space */
+  position: relative; /* For positioning action buttons inside */
+}
+
+/* Ensure the textarea takes full width */
+#comment-input {
+    width: 100%;
+    box-sizing: border-box; /* Include padding and border in the width */
+    padding-right: 80px; /* Make space for the two action buttons */
+    flex-grow: 1;
+border: 1px solid #e0e0e0;
+border-radius: 6px;
+padding: 10px;
+font-family: inherit;
+resize: vertical;
+background-color: #fff;
+min-height: 40px;
 }
 
 .comment-input-wrapper { display: flex; gap: 12px; }
-#comment-input {
-    flex-grow: 1;
-    border: 1px solid #e0e0e0;
-    border-radius: 6px;
-    padding: 10px;
-    font-family: inherit;
-    resize: vertical;
-    background-color: #fff;
-    min-height: 40px;
-}
+
 #comment-input:focus { border-color: #4c9aff; outline: none; }
+
+
+#upload-file-btn {
+    position: absolute;
+    right: 45px;
+    bottom: 8px;
+}
+#send-comment-btn {
+    position: absolute;
+    right: 5px;
+    bottom: 8px;
+}
 
 .comment-action-btn {
     background-color: transparent;
@@ -541,28 +566,49 @@
     color: #8c8c8c;
 }
 
-
-/* --- NEW: Styles for Attachments in the Log --- */
-.log-attachment {
-    margin-top: 8px;
-    max-width: 100%;
+/* --- [SCOPE 4 FIX] Dynamic Image Sizing --- */
+/* Default big size for an image with no note */
+.log-attachment .scalable-image {
+  max-height: 400px;
+  transition: max-height 0.3s ease;
 }
 
-.log-attachment a {
-    display: flex;
-    align-items: center;
-    background-color: #f5f5f5;
-    border: 1px solid #e0e0e0;
-    border-radius: 6px;
-    padding: 8px 12px;
-    text-decoration: none;
-    color: #1e1f21;
-    gap: 10px;
-    transition: background-color 0.2s;
+/* Smaller size for an image WHEN it has a note */
+.log-attachment.has-note .scalable-image {
+  max-height: 250px;
 }
 
-.log-attachment a:hover {
-    background-color: #e9e9e9;
+.sidebar-content-task {
+    flex-grow: 1; /* Allows this section to fill available space */
+    overflow-y: auto; /* Makes THIS the scrollable container */
+    padding: 24px;
+}
+
+#sidebar-footer-task {
+    flex-shrink: 0;
+    border-top: 1px solid var(--border-color);
+}
+
+
+/* --- CSS for New Reaction Buttons --- */
+.like-btn, .thumb-react-btn {
+    /* base styles for reaction buttons */
+    background-color: #f0f0f0;
+    border: 1px solid #dcdcdc;
+    color: #5f6368;
+    /* other styles... */
+}
+
+.like-btn.reacted {
+    background-color: #ffebee; /* Light red background */
+    color: #e53935;           /* Red icon/text */
+    border-color: #e53935;
+}
+
+.thumb-react-btn.reacted {
+    background-color: #e3f2fd; /* Light blue background */
+    color: #1e88e5;           /* Blue icon/text */
+    border-color: #1e88e5;
 }
 
 .log-attachment .file-icon {
@@ -610,7 +656,6 @@
 .task-fields-table .field-label,
 .task-fields-table .field-value {
   padding: 12px 8px;
-  vertical-align: middle;
   text-align: left;
 }
 
@@ -784,8 +829,6 @@
 .task-fields-table .field-label,
 .task-fields-table .field-value {
   padding: 12px 8px;
-  vertical-align: middle;
-  text-align: left;
   border-bottom: 1px solid #e0e0e0; /* --border-color variable */
 }
 

@@ -9,7 +9,6 @@ window.TaskSidebar = (function() {
             tasks: [{
                 id: 101,
                 projectId: 'proj-1',
-                sectionId: 'sec-1',
                 name: 'Create final mockups',
                 description: 'Develop final visual mockups for the new homepage.',
                 dueDate: '2025-06-12',
@@ -17,21 +16,34 @@ window.TaskSidebar = (function() {
                 priority: 'High',
                 assignees: [1, 2],
                 SKU: 'WEB-DSN-003',
-                'Item Type': 'Design Asset',
                 activity: [{
-                    id: 1718136360000,
-                    type: 'comment',
-                    user: 1,
-                    timestamp: new Date('2025-06-10T10:05:00Z'),
-                    content: 'This is the initial wireframe.',
-                    imageURL: 'https://i.imgur.com/v139Yw1.png',
-                    imageTitle: 'Homepage Wireframe v1'
-                }, {
                     id: 1718135000000,
                     type: 'comment',
                     user: 2,
                     timestamp: new Date('2025-06-09T14:00:00Z'),
-                    content: 'Just a text comment for testing.'
+                    content: 'This looks great! Just one question about the footer section.',
+                    reactions: { heart: [1], thumbsUp: [] }
+                }, {
+                    id: 1718136000000,
+                    type: 'change',
+                    user: 2,
+                    timestamp: new Date('2025-06-10T10:00:00Z'),
+                    details: `set Priority to <strong>High</strong>`
+                }, {
+                    id: 1718136120000,
+                    type: 'change',
+                    user: 1,
+                    timestamp: new Date('2025-06-10T10:02:00Z'),
+                    details: `changed SKU to <strong>WEB-DSN-004</strong>`
+                }, {
+                    id: 1718136360000,
+                    type: 'comment',
+                    user: 1,
+                    timestamp: new Date('2025-06-10T10:05:00Z'),
+                    content: 'Good question, I\'ve attached an updated version with the footer details.',
+                    imageURL: 'https://i.imgur.com/v139Yw1.png',
+                    imageTitle: 'Homepage Wireframe with Footer',
+                    reactions: { heart: [], thumbsUp: [2] }
                 }]
             }]
         }]
@@ -56,10 +68,11 @@ window.TaskSidebar = (function() {
     // --- DOM element variables ---
     let sidebar, taskNameEl, taskFieldsContainer, closeBtn, taskCompleteBtn, taskCompleteText,
         taskDescriptionEl, tabsContainer, activityLogContainer, commentInput, sendCommentBtn,
-        currentUserAvatarEl, imagePreviewContainer, imagePreview, imageTitleInput, cancelImageBtn;
+        currentUserAvatarEl, imagePreviewContainer, imagePreview, imageTitleInput, cancelImageBtn,
+        uploadFileBtn, fileUploadInput;
 
+    // --- CORE FUNCTIONS ---
     function init() {
-        // Cache DOM elements
         sidebar = document.getElementById('task-sidebar');
         taskNameEl = document.getElementById('task-name');
         taskDescriptionEl = document.getElementById('task-description-text');
@@ -76,6 +89,8 @@ window.TaskSidebar = (function() {
         imagePreview = document.getElementById('pasted-image-preview');
         imageTitleInput = document.getElementById('pasted-image-title');
         cancelImageBtn = document.getElementById('cancel-image-btn');
+        uploadFileBtn = document.getElementById('upload-file-btn');
+        fileUploadInput = document.getElementById('file-upload-input');
         attachEventListeners();
         isInitialized = true;
     }
@@ -99,16 +114,15 @@ window.TaskSidebar = (function() {
 
     function logActivity(type, details) {
         if (!currentTask) return;
-        currentTask.activity.unshift({
-            id: Date.now(),
-            type,
-            user: currentUser.id,
-            timestamp: new Date(),
-            ...details
-        });
+        const newActivity = { id: Date.now(), type, user: currentUser.id, timestamp: new Date(), ...details };
+        if (type === 'comment') {
+            newActivity.reactions = { heart: [], thumbsUp: [] };
+        }
+        currentTask.activity.push(newActivity);
         renderActivity();
     }
 
+    // --- RENDERING FUNCTIONS ---
     function renderSidebar(task) {
         if (!task) return;
         taskNameEl.textContent = task.name;
@@ -130,9 +144,8 @@ window.TaskSidebar = (function() {
             status: { label: 'Status', html: createTag(task.status, 'status'), controlType: 'dropdown', options: statusOptions },
             priority: { label: 'Priority', html: createTag(task.priority, 'priority'), controlType: 'dropdown', options: priorityOptions },
             SKU: { label: 'SKU', html: task.SKU || 'N/A', controlType: 'text' },
-            'Item Type': { label: 'Item Type', html: task['Item Type'] || 'N/A', controlType: 'text' }
         };
-        const fieldOrder = ['assignees', 'dueDate', 'status', 'priority', 'SKU', 'Item Type'];
+        const fieldOrder = ['assignees', 'dueDate', 'status', 'priority', 'SKU'];
         const table = document.createElement('table');
         table.className = 'task-fields-table';
         const tbody = document.createElement('tbody');
@@ -166,9 +179,18 @@ window.TaskSidebar = (function() {
     function renderActivity() {
         activityLogContainer.innerHTML = '';
         const activeTab = tabsContainer.querySelector('.tab-btn.active').dataset.tab;
-        const activitiesToRender = (activeTab === 'comments')
-            ? currentTask.activity.filter(a => a.type === 'comment')
-            : currentTask.activity;
+        let activitiesToRender;
+
+        if (activeTab === 'comments') {
+            activitiesToRender = currentTask.activity.filter(a => a.type === 'comment');
+        } else {
+            activitiesToRender = currentTask.activity.filter(a => a.type !== 'comment');
+        }
+
+        if (activitiesToRender.length === 0) {
+            activityLogContainer.innerHTML = `<div class="placeholder-text" style="text-align:center; padding: 20px;">No ${activeTab} to show.</div>`;
+            return;
+        }
 
         activitiesToRender.forEach(activity => {
             const user = allUsers.find(u => u.id === activity.user);
@@ -180,19 +202,24 @@ window.TaskSidebar = (function() {
             let actionsHTML = '';
 
             if (activity.type === 'comment') {
+                const reactions = activity.reactions || { heart: [], thumbsUp: [] };
+                const hasLiked = reactions.heart.includes(currentUser.id);
+                const likeCount = reactions.heart.length > 0 ? ` ${reactions.heart.length}` : '';
+                const heartBtnHTML = `<button class="heart-react-btn ${hasLiked ? 'reacted' : ''}" title="Like"><i class="fa-solid fa-heart"></i>${likeCount}</button>`;
+                
+                const hasThumbed = reactions.thumbsUp.includes(currentUser.id);
+                const thumbCount = reactions.thumbsUp.length > 0 ? ` ${reactions.thumbsUp.length}` : '';
+                const thumbBtnHTML = `<button class="thumb-react-btn ${hasThumbed ? 'reacted' : ''}" title="Thumbs Up"><i class="fa-solid fa-thumbs-up"></i>${thumbCount}</button>`;
+
+                actionsHTML = `<div class="comment-actions">${heartBtnHTML}${thumbBtnHTML}`;
                 if (activity.user === currentUser.id) {
-                    actionsHTML = `
-                        <div class="comment-actions">
-                            <button class="edit-comment-btn" title="Edit"><i class="fa-solid fa-pencil"></i></button>
-                            <button class="delete-comment-btn" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
-                        </div>`;
+                    actionsHTML += `<button class="edit-comment-btn" title="Edit"><i class="fa-solid fa-pencil"></i></button>
+                                    <button class="delete-comment-btn" title="Delete"><i class="fa-solid fa-trash-can"></i></button>`;
                 }
-                const imageHTML = activity.imageURL
-                    ? `<div class="log-attachment">
-                           <img src="${activity.imageURL}" class="scalable-image image-preview" alt="${activity.imageTitle || 'User image'}">
-                           ${activity.imageTitle ? `<div class="attachment-note">${activity.imageTitle}</div>` : ''}
-                       </div>`
-                    : '';
+                actionsHTML += `</div>`;
+                
+                const noteClass = activity.imageTitle ? 'has-note' : '';
+                const imageHTML = activity.imageURL ? `<div class="log-attachment ${noteClass}"><img src="${activity.imageURL}" class="scalable-image image-preview" alt="${activity.imageTitle || ''}"><div class="attachment-note">${activity.imageTitle || ''}</div></div>` : '';
                 contentHTML = `<div class="comment-text">${activity.content || ''}</div>${imageHTML}`;
             } else {
                 contentHTML = `<div class="activity-change-log">${activity.details}</div>`;
@@ -213,7 +240,7 @@ window.TaskSidebar = (function() {
             activityLogContainer.appendChild(item);
         });
     }
-
+    
     // --- HELPER & UI FUNCTIONS ---
     function findTaskById(taskId) {
         for (const project of allProjects) {
@@ -286,9 +313,7 @@ window.TaskSidebar = (function() {
                 <span class="popover-username">${user.name}</span>
             </div>
             <div class="popover-body">
-                <button class="popover-remove-btn" data-user-id="${user.id}">
-                    <i class="fa-solid fa-user-minus"></i> Remove from task
-                </button>
+                <button class="popover-remove-btn" data-user-id="${user.id}"><i class="fa-solid fa-user-minus"></i> Remove from task</button>
             </div>`;
         document.body.appendChild(popover);
         const rect = avatarElement.getBoundingClientRect();
@@ -304,10 +329,10 @@ window.TaskSidebar = (function() {
             const item = document.createElement('div');
             item.className = 'dropdown-item';
             if (option.value === currentValue) item.classList.add('is-selected');
-            item.innerHTML = `<span>${option.label}</span>`;
             if (option.avatar) {
-                item.insertAdjacentHTML('afterbegin', `<div class="avatar" style="background-image: url(${option.avatar})"></div>`);
+                item.innerHTML = `<div class="avatar" style="background-image: url(${option.avatar})"></div>`;
             }
+            item.innerHTML += `<span>${option.label}</span>`;
             item.addEventListener('click', () => {
                 onSelect(option.value);
                 closePopovers();
@@ -322,45 +347,52 @@ window.TaskSidebar = (function() {
 
     // --- EVENT HANDLERS ---
     function handleActivityLogClicks(e) {
-        const commentItem = e.target.closest('.comment-item');
-        if (!commentItem) return;
-        const activityId = parseInt(commentItem.dataset.activityId, 10);
+        const itemElement = e.target.closest('.comment-item, .log-item');
+        if (!itemElement) return;
+        const activityId = parseInt(itemElement.dataset.activityId, 10);
         const activity = currentTask.activity.find(a => a.id === activityId);
+        if (!activity) return;
 
-        if (e.target.closest('.delete-comment-btn')) {
+        const toggleReaction = (reactionType) => {
+            if (!activity.reactions) activity.reactions = { heart: [], thumbsUp: [] };
+            const reactionArray = activity.reactions[reactionType];
+            const reactionIndex = reactionArray.indexOf(currentUser.id);
+            if (reactionIndex > -1) {
+                reactionArray.splice(reactionIndex, 1);
+            } else {
+                reactionArray.push(currentUser.id);
+            }
+            renderActivity();
+        };
+
+        if (e.target.closest('.heart-react-btn')) {
+            toggleReaction('heart');
+        } else if (e.target.closest('.thumb-react-btn')) {
+            toggleReaction('thumbsUp');
+        } else if (e.target.closest('.delete-comment-btn')) {
             if (window.confirm('Are you sure you want to delete this comment?')) {
+                logActivity('change', { details: `deleted a comment.` });
                 currentTask.activity = currentTask.activity.filter(a => a.id !== activityId);
                 renderActivity();
             }
         } else if (e.target.closest('.edit-comment-btn')) {
-            const bodyDiv = commentItem.querySelector('.comment-body');
+            const bodyDiv = itemElement.querySelector('.comment-body');
             if (bodyDiv.querySelector('.comment-edit-area')) return;
-
+            const contentDiv = itemElement.querySelector('.comment-text');
             const originalContent = activity.content || '';
             const originalImageTitle = activity.imageTitle || '';
             let editUI = `<textarea class="comment-edit-input" placeholder="Add a comment...">${originalContent}</textarea>`;
-            
             if (activity.imageURL) {
-                editUI += `
-                    <div class="log-attachment" style="margin-top:8px;">
-                        <img src="${activity.imageURL}" class="scalable-image image-preview">
-                    </div>
-                    <textarea class="image-note-input" placeholder="Add or edit the image note...">${originalImageTitle}</textarea>`;
+                editUI += `<div class="log-attachment" style="margin-top:8px;"><img src="${activity.imageURL}" class="scalable-image image-preview"></div>
+                           <textarea class="image-note-input" placeholder="Add or edit the image note...">${originalImageTitle}</textarea>`;
             }
-            bodyDiv.innerHTML = `
-                <div class="comment-edit-area">
-                    ${editUI}
-                    <div class="comment-edit-actions">
-                        <button class="btn-cancel-edit">Cancel</button>
-                        <button class="btn-save-edit">Save</button>
-                    </div>
-                </div>`;
-
+            contentDiv.innerHTML = `<div class="comment-edit-area">${editUI}<div class="comment-edit-actions"><button class="btn-cancel-edit">Cancel</button><button class="btn-save-edit">Save</button></div></div>`;
             bodyDiv.querySelector('.btn-save-edit').onclick = () => {
                 activity.content = bodyDiv.querySelector('.comment-edit-input').value.trim();
                 if (activity.imageURL) {
                     activity.imageTitle = bodyDiv.querySelector('.image-note-input').value.trim();
                 }
+                logActivity('change', { details: `edited a comment.` });
                 renderActivity();
             };
             bodyDiv.querySelector('.btn-cancel-edit').onclick = () => renderActivity();
@@ -376,7 +408,6 @@ window.TaskSidebar = (function() {
             if (currentTask.status === 'Completed') return;
             const control = e.target.closest('.control');
             if (!control) return;
-
             const controlType = control.dataset.control;
             const key = control.dataset.key;
             const oldValue = currentTask[key];
@@ -438,13 +469,10 @@ window.TaskSidebar = (function() {
             const commentText = commentInput.value.trim();
             const imageTitle = imageTitleInput.value.trim();
             if (pastedImageURL || commentText) {
-                logActivity('comment', {
-                    content: commentText,
-                    imageURL: pastedImageURL,
-                    imageTitle: imageTitle
-                });
+                logActivity('comment', { content: commentText, imageURL: pastedImageURL, imageTitle: imageTitle });
                 clearImagePreview();
                 commentInput.value = '';
+                setTimeout(() => activityLogContainer.scrollTop = activityLogContainer.scrollHeight, 0);
             }
         });
 
@@ -472,15 +500,27 @@ window.TaskSidebar = (function() {
              renderSidebar(currentTask);
         });
 
+        uploadFileBtn.addEventListener('click', () => {
+            fileUploadInput.click();
+        });
+
+        fileUploadInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                logActivity('change', { details: `attached file: <strong>${file.name}</strong>` });
+            }
+        });
+
         document.body.addEventListener('click', (e) => {
             if (e.target.closest('.popover-remove-btn')) {
                 removeAssignee(e.target.closest('.popover-remove-btn').dataset.userId);
-            } else if (!e.target.closest('.assignee-popover, .avatar[data-user-id], .context-dropdown, .control')) {
+            } else if (!e.target.closest('.assignee-popover, .avatar[data-user-id], .context-dropdown, .control, .flatpickr-calendar')) {
                 closePopovers();
             }
         }, true);
     }
 
+    // --- PUBLIC INTERFACE ---
     return {
         init,
         open
