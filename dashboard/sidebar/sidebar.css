@@ -350,9 +350,6 @@
 
 .comment-item { display: flex; gap: 12px; margin-bottom: 16px; align-items: flex-start; }
 .comment-body { flex-grow: 1; }
-.comment-header { display: flex; align-items: center; margin-bottom: 4px; }
-.comment-author { font-weight: bold; margin-right: 8px; }
-.comment-timestamp { color: #5f6368; font-size: 12px; }
 .comment-text { font-size: 16px; line-height: 1.4; }
 
 /* --- Comment Edit Area --- */
@@ -420,32 +417,6 @@
     background-color: #0056b3;
 }
 
-/* --- Comment Actions Container (New) --- */
-.comment-actions {
-    display: flex; /* Aligns edit and delete buttons horizontally */
-    gap: 8px; /* Space between the two buttons */
-    margin-left: 10px; /* Space from the timestamp */
-    align-items: center; /* Vertically centers the buttons */
-}
-
-/* --- Comment Delete Button (New) --- */
-.comment-delete-btn {
-    cursor: pointer;
-    font-size: 0.9em;
-    color: #888; /* Default color, similar to edit */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-.comment-delete-btn:hover {
-    background-color: #fcebeb; /* Light red background on hover */
-    color: #dc3545; /* Red icon color on hover */
-}
 
 /* Utility Classes */
 .avatar {
@@ -1046,4 +1017,71 @@
 .context-dropdown .avatar {
     width: 24px;
     height: 24px;
+}
+
+/* --- [FIX] Comment Header and Actions Alignment --- */
+
+/* 1. Make the entire comment header a flex container */
+.comment-header {
+  display: flex;
+  justify-content: space-between; /* Pushes the two inner groups apart */
+  align-items: flex-start;      /* Aligns avatar top with text top */
+  width: 100%;
+}
+
+/* 2. Create a group for the author and timestamp */
+.comment-meta {
+  display: flex;
+  flex-direction: column; /* Stack author on top of timestamp */
+  align-items: flex-start;
+}
+
+.comment-author {
+  font-weight: 600; /* A slightly more modern bold */
+  font-size: 14px;
+  color: var(--text-color, #1e1f21);
+}
+
+.comment-timestamp {
+  color: var(--text-secondary-color, #5f6368);
+  font-size: 12px;
+  line-height: 1.4; /* Add line-height for spacing */
+}
+
+/* 3. This is the container for the edit/delete buttons */
+.comment-actions {
+  display: flex;      /* Aligns buttons horizontally */
+  align-items: center;
+  gap: 4px;         /* A small gap between the buttons */
+  flex-shrink: 0;     /* Prevents the buttons from shrinking */
+
+  /* Make the actions appear subtly on hover for a cleaner UI */
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+
+/* 4. When you hover over the ENTIRE comment item, show the actions */
+.comment-item:hover .comment-actions,
+.comment-body:focus-within .comment-actions { /* Also show when editing */
+  opacity: 1;
+}
+
+/* 5. Style the individual action buttons */
+.comment-actions button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary-color, #5f6368);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.comment-actions button:hover {
+  background-color: var(--secondary-bg, #f5f5f5);
+  color: var(--text-color, #1e1f21);
 }

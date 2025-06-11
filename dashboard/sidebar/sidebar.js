@@ -74,11 +74,12 @@ window.TaskSidebar = (function() {
     let currentTask = null;
     const currentUser = allUsers[0]; // Assume Lorelai is the current user for logging actions
     let isInitialized = false;
-
+    let pastedImageURL = null;
+    
     // --- DOM element variables ---
-    let sidebar, taskNameEl, taskFieldsContainer, closeBtn,
-        taskCompleteBtn, taskCompleteText, taskDescriptionEl,
-        tabsContainer, activityLogContainer, commentInput, sendCommentBtn, currentUserAvatarEl;
+    let sidebar, taskNameEl, taskFieldsContainer, closeBtn, taskCompleteBtn, taskCompleteText,
+        taskDescriptionEl, tabsContainer, activityLogContainer, commentInput, sendCommentBtn,
+        currentUserAvatarEl, imagePreviewContainer, imagePreview, imageTitleInput, cancelImageBtn;
 
     function init() {
         // Cache DOM elements
@@ -94,6 +95,11 @@ window.TaskSidebar = (function() {
         commentInput = document.getElementById('comment-input');
         sendCommentBtn = document.getElementById('send-comment-btn');
         currentUserAvatarEl = document.getElementById('current-user-avatar');
+        
+        imagePreviewContainer = document.getElementById('pasted-image-preview-container');
+        imagePreview = document.getElementById('pasted-image-preview');
+        imageTitleInput = document.getElementById('pasted-image-title');
+        cancelImageBtn = document.getElementById('cancel-image-btn');
 
         attachEventListeners();
         isInitialized = true;
@@ -120,22 +126,23 @@ window.TaskSidebar = (function() {
     }
 
     function close() {
-        sidebar.classList.remove('is-visible');
-        currentTask = null;
-    }
+    sidebar.classList.remove('is-visible');
+    currentTask = null;
+}
 
     /** Helper function to log an activity and re-render the view. */
-    function logActivity(type, details) {
-        if (!currentTask) return;
-        const newActivity = {
-            type,
-            user: currentUser.id,
-            timestamp: new Date(),
-            ...details
-        };
-        currentTask.activity.unshift(newActivity); // Add to the beginning for chronological order
-        renderActivity(); // Re-render the activity log
-    }
+   function logActivity(type, details) {
+    if (!currentTask) return;
+    const newActivity = {
+        id: Date.now(), // SCOPE 3: Add unique ID for editing/deleting
+        type,
+        user: currentUser.id,
+        timestamp: new Date(),
+        ...details
+    };
+    currentTask.activity.unshift(newActivity);
+    renderActivity();
+}
 
     function renderSidebar(task) {
         if (!task) return;
@@ -159,41 +166,36 @@ window.TaskSidebar = (function() {
      * and then loops over any other properties in the task object to display them.
      */
     function renderTaskFields(task) {
-        if (!taskFieldsContainer) return;
-        taskFieldsContainer.innerHTML = '';
-        const fragment = document.createDocumentFragment();
-
-        // Defines how to render specific fields. The key is the property in the task object.
-        const fieldRenderMap = {
-            assignees: { label: 'Assignee', html: renderAssigneeValue(task.assignees), control: null, class: 'assignee-value-wrapper' },
-            dueDate: { label: 'Due date', html: task.dueDate || `<span class="placeholder-text">No due date</span>`, control: 'date' },
-            projectId: { label: 'Project', html: allProjects.find(p => p.id === task.projectId)?.name, control: 'project' },
-            priority: { label: 'Priority', html: createTag(task.priority, 'priority'), control: 'priority' },
-            status: { label: 'Status', html: createTag(task.status, 'status'), control: 'status' }
-        };
-        
-        // Render known fields in a specific order
-        const fieldOrder = ['assignees', 'dueDate', 'projectId', 'priority', 'status'];
-        
-        fieldOrder.forEach(key => {
-            if (task.hasOwnProperty(key)) {
-                const config = fieldRenderMap[key];
-                appendField(fragment, config.label, config.html, config.control, config.class);
-            }
-        });
-
-        // [SCOPE 2] Render any other fields found in the task object that aren't standard
-        const standardKeys = new Set(['id', 'name', 'description', 'activity', 'sectionId', ...fieldOrder]);
-        for (const key in task) {
-            if (task.hasOwnProperty(key) && !standardKeys.has(key) && task[key]) {
-                 // Format the key as a label, e.g., 'Item Type' -> 'Item Type', 'SKU' -> 'SKU'
-                const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-                appendField(fragment, label, task[key]);
-            }
+    if (!taskFieldsContainer) return;
+    taskFieldsContainer.innerHTML = '';
+    const fragment = document.createDocumentFragment();
+    
+    const fieldRenderMap = {
+        assignees: { label: 'Assignee', html: renderAssigneeValue(task.assignees), control: null, class: 'assignee-value-wrapper' },
+        dueDate: { label: 'Due date', html: task.dueDate || `No due date`, control: 'date' },
+        projectId: { label: 'Project', html: allProjects.find(p => p.id === task.projectId)?.name, control: 'project' },
+        priority: { label: 'Priority', html: createTag(task.priority, 'priority'), control: 'priority' },
+        status: { label: 'Status', html: createTag(task.status, 'status'), control: 'status' },
+        'Shop Type': { label: 'Shop Type', html: createTag(task['Shop Type'], 'shop-type'), control: 'shopType' }
+    };
+    
+    const fieldOrder = ['assignees', 'dueDate', 'projectId', 'priority', 'status', 'Shop Type'];
+    
+    fieldOrder.forEach(key => {
+        if (task.hasOwnProperty(key)) {
+            appendField(fragment, fieldRenderMap[key].label, fieldRenderMap[key].html, fieldRenderMap[key].control, fieldRenderMap[key].class);
         }
-        
-        taskFieldsContainer.appendChild(fragment);
+    });
+    
+    const standardKeys = new Set(['id', 'name', 'description', 'activity', 'sectionId', ...fieldOrder]);
+    for (const key in task) {
+        if (task.hasOwnProperty(key) && !standardKeys.has(key) && task[key]) {
+            const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+            appendField(fragment, label, task[key]);
+        }
     }
+    taskFieldsContainer.appendChild(fragment);
+}
 
     function appendField(fragment, label, valueHTML, controlName = null, valueContainerClass = '') {
         const labelDiv = document.createElement('div');
@@ -215,50 +217,89 @@ window.TaskSidebar = (function() {
     /**
      * [SCOPE 1 REFINED] Renders the content of the activity log based on the active tab.
      */
-    function renderActivity() {
-        if (!activityLogContainer || !currentTask) return;
-        activityLogContainer.innerHTML = '';
-        const fragment = document.createDocumentFragment();
-        const activeTab = tabsContainer.querySelector('.tab-btn.active').dataset.tab;
-
-        const activitiesToRender = (activeTab === 'comments')
-            ? currentTask.activity.filter(a => a.type === 'comment')
-            : currentTask.activity;
-
-        if (activitiesToRender.length === 0) {
-            activityLogContainer.innerHTML = `<div class="placeholder-text" style="text-align: center; padding: 20px; color: #888;">No ${activeTab} yet.</div>`;
-            return;
-        }
-
-        activitiesToRender.forEach(activity => {
-            const user = allUsers.find(u => u.id === activity.user);
-            if (!user) return; // Skip if user not found
-
-            const item = document.createElement('div');
-            item.className = 'activity-item';
-            
-            let bodyHTML = '';
-            if (activity.type === 'comment') {
-                bodyHTML = `<div class="activity-body">${activity.content}</div>`;
-            } else if (activity.type === 'change') {
-                bodyHTML = `<div class="activity-change-log">${activity.details}</div>`;
-            }
-
-            item.innerHTML = `
-                <div class="avatar" style="background-image: url(${user.avatar})" title="${user.name}"></div>
+     function renderActivity() {
+     if (!activityLogContainer || !currentTask) return;
+     activityLogContainer.innerHTML = '';
+     const fragment = document.createDocumentFragment();
+     const activeTab = tabsContainer.querySelector('.tab-btn.active').dataset.tab;
+     
+     const activitiesToRender = (activeTab === 'comments') ?
+         currentTask.activity.filter(a => a.type === 'comment') :
+         currentTask.activity;
+     
+     if (activitiesToRender.length === 0) { /* ... */ }
+     
+     activitiesToRender.forEach(activity => {
+         const user = allUsers.find(u => u.id === activity.user);
+         if (!user) return;
+         
+         const item = document.createElement('div');
+         item.className = 'activity-item';
+         item.dataset.activityId = activity.id;
+         
+         let bodyHTML = '';
+         let actionsHTML = '';
+         
+         if (activity.type === 'comment') {
+             // SCOPE 3: Add edit/delete buttons for current user's comments
+             if (activity.user === currentUser.id) {
+                 actionsHTML = `
+                        <div class="comment-actions">
+                            <button class="edit-comment-btn" title="Edit"><i class="fa-solid fa-pencil"></i></button>
+                            <button class="delete-comment-btn" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>`;
+             }
+             
+             let imageHTML = '';
+             if (activity.imageURL) {
+                 imageHTML = `
+                        <div class="comment-image-container">
+                            ${activity.imageTitle ? `<div class="title">${activity.imageTitle}</div>` : ''}
+                            <img src="${activity.imageURL}" alt="${activity.imageTitle || 'User attached image'}">
+                        </div>`;
+             }
+             
+             bodyHTML = `<div class="activity-body">
+                                <div class="comment-text-content">${activity.content || ''}</div>
+                                ${imageHTML}
+                            </div>`;
+             
+         } else if (activity.type === 'change') {
+             bodyHTML = `<div class="activity-change-log">${activity.details}</div>`;
+         }
+         
+         item.innerHTML = `
+                <div class="avatar" style="background-image: url(${user.avatar})"></div>
                 <div class="activity-content">
                     <div class="activity-header">
                         ${user.name}
                         <span class="timestamp">${new Date(activity.timestamp).toLocaleString()}</span>
+                        ${actionsHTML}
                     </div>
                     ${bodyHTML}
-                </div>
-            `;
-            fragment.appendChild(item);
-        });
-        activityLogContainer.appendChild(fragment);
-    }
-
+                </div>`;
+         fragment.appendChild(item);
+     });
+     activityLogContainer.appendChild(fragment);
+ }
+ 
+ // --- Image Preview Functions (SCOPE 1) ---
+ function showImagePreview(url) {
+     pastedImageURL = url;
+     imagePreview.src = url;
+     imagePreviewContainer.style.display = 'block';
+     commentInput.placeholder = 'Image selected. Add an optional comment...';
+ }
+ 
+ function clearImagePreview() {
+     pastedImageURL = null;
+     imagePreview.src = '';
+     imageTitleInput.value = '';
+     imagePreviewContainer.style.display = 'none';
+     commentInput.placeholder = 'Add a comment or paste an image link...';
+ }
+  
+     
     function createTag(text, type) {
         const statusClass = (text || '').toLowerCase().replace(/\s+/g, '-');
         return `<div class="tag ${type}-${statusClass}">${text}</div>`;
@@ -351,113 +392,151 @@ window.TaskSidebar = (function() {
         dropdown.style.left = `${rect.left}px`;
     }
 
-    function attachEventListeners() {
-        closeBtn.addEventListener('click', close);
-
-        // [SCOPE 1] Handle comment submission
-        sendCommentBtn.addEventListener('click', () => {
-            const commentText = commentInput.value.trim();
-            if (commentText) {
-                logActivity('comment', { content: commentText });
-                commentInput.value = ''; // Clear input
-            }
-        });
-        commentInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendCommentBtn.click();
-            }
-        });
-
-
-        // [SCOPE 1] Handle tab switching
-        tabsContainer.addEventListener('click', (e) => {
-            const tabButton = e.target.closest('.tab-btn');
-            if (tabButton) {
-                tabsContainer.querySelector('.active').classList.remove('active');
-                tabButton.classList.add('active');
+   function handleActivityLogClicks(e) {
+    const activityItem = e.target.closest('.activity-item');
+    if (!activityItem) return;
+    const activityId = parseInt(activityItem.dataset.activityId, 10);
+    
+    // Handle Delete
+    if (e.target.closest('.delete-comment-btn')) {
+        if (window.confirm('Are you sure you want to delete this comment?')) {
+            const activityIndex = currentTask.activity.findIndex(a => a.id === activityId);
+            if (activityIndex > -1) {
+                currentTask.activity.splice(activityIndex, 1);
                 renderActivity();
             }
+        }
+        return;
+    }
+    
+    // Handle Edit
+    if (e.target.closest('.edit-comment-btn')) {
+        const activity = currentTask.activity.find(a => a.id === activityId);
+        const activityBody = activityItem.querySelector('.activity-body');
+        
+        if (activityBody.querySelector('.edit-controls')) return;
+        
+        const originalHTML = activityBody.innerHTML;
+        const editHTML = `
+                <textarea class="edit-textarea" style="width: 100%; min-height: 60px;">${activity.content || ''}</textarea>
+                ${activity.imageURL ? `<input type="text" class="edit-image-title" value="${activity.imageTitle || ''}" placeholder="Image Title">` : ''}
+                <div class="edit-controls">
+                    <button class="save-btn">Save</button>
+                    <button class="cancel-btn">Cancel</button>
+                </div>`;
+        activityBody.innerHTML = editHTML;
+        
+        activityBody.querySelector('.save-btn').addEventListener('click', () => {
+            activity.content = activityBody.querySelector('.edit-textarea').value.trim();
+            if (activity.imageURL) {
+                activity.imageTitle = activityBody.querySelector('.edit-image-title').value.trim();
+            }
+            renderActivity();
         });
         
-        // [SCOPE 1] Handle marking task as complete
-        taskCompleteBtn.addEventListener('click', () => {
-            if (!currentTask) return;
-            const isCompleted = currentTask.status === 'Completed';
-            const oldStatus = currentTask.status;
-            const newStatus = isCompleted ? 'On track' : 'Completed';
-            
-            if (oldStatus !== newStatus) {
-                currentTask.status = newStatus;
-                logActivity('change', { details: `marked this task as <strong>${newStatus}</strong>` });
-                renderSidebar(currentTask);
-            }
+        activityBody.querySelector('.cancel-btn').addEventListener('click', () => {
+            activityBody.innerHTML = originalHTML;
         });
+    }
+}
 
-        // Main listener for field controls and assignee interactions
-        taskFieldsContainer.addEventListener('click', (e) => {
-            if (!currentTask) return;
-            
-            const addAssigneeBtn = e.target.closest('.assignee-add-btn');
-            const avatar = e.target.closest('.avatar[data-user-id]');
-            const control = e.target.closest('.control');
-            
-            if (addAssigneeBtn) {
-                const unassignedUsers = allUsers.filter(u => !currentTask.assignees.includes(u.id));
-                const assigneeOptions = unassignedUsers.map(u => ({ label: u.name, value: u.id, avatar: u.avatar }));
-                createGenericDropdown(addAssigneeBtn, assigneeOptions, null, (userId) => {
-                    const user = allUsers.find(u => u.id === userId);
-                    currentTask.assignees.push(userId);
-                    if (user) {
-                        logActivity('change', { details: `added <strong>${user.name}</strong> as an assignee` });
+/** Attaches all initial event listeners to the DOM elements. */
+function attachEventListeners() {
+    closeBtn.addEventListener('click', close);
+    
+    sendCommentBtn.addEventListener('click', () => {
+        const commentText = commentInput.value.trim();
+        const imageTitle = imageTitleInput.value.trim();
+        if (pastedImageURL) {
+            logActivity('comment', { content: commentText, imageURL: pastedImageURL, imageTitle: imageTitle });
+            clearImagePreview();
+            commentInput.value = '';
+        } else if (commentText) {
+            logActivity('comment', { content: commentText });
+            commentInput.value = '';
+        }
+    });
+    
+    commentInput.addEventListener('paste', (e) => {
+        const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+        if (pastedText.match(/\.(jpeg|jpg|gif|png)$/i)) { // Case-insensitive
+            e.preventDefault();
+            showImagePreview(pastedText);
+        }
+    });
+    
+    commentInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendCommentBtn.click();
+        }
+    });
+    
+    cancelImageBtn.addEventListener('click', clearImagePreview);
+    activityLogContainer.addEventListener('click', handleActivityLogClicks);
+    
+    tabsContainer.addEventListener('click', (e) => {
+        const tabButton = e.target.closest('.tab-btn');
+        if (tabButton) {
+            tabsContainer.querySelector('.active').classList.remove('active');
+            tabButton.classList.add('active');
+            renderActivity();
+        }
+    });
+    
+    taskCompleteBtn.addEventListener('click', () => {
+        if (!currentTask) return;
+        const isCompleted = currentTask.status === 'Completed';
+        const oldStatus = currentTask.status;
+        const newStatus = isCompleted ? 'On track' : 'Completed';
+        if (oldStatus !== newStatus) {
+            currentTask.status = newStatus;
+            logActivity('change', { details: `marked this task as <strong>${newStatus}</strong>` });
+            renderSidebar(currentTask);
+        }
+    });
+    
+    taskFieldsContainer.addEventListener('click', (e) => {
+        if (!currentTask) return;
+        
+        const control = e.target.closest('.control');
+        if (!control) return;
+        
+        const fieldName = control.dataset.control;
+        const oldValue = currentTask[fieldName] || currentTask['Shop Type'];
+        
+        switch (fieldName) {
+            case 'priority':
+                createGenericDropdown(control, priorityOptions.map(p => ({ label: p, value: p })), oldValue, (val) => {
+                    if (val !== oldValue) {
+                        currentTask.priority = val;
+                        logActivity('change', { details: `changed Priority from <strong>${oldValue}</strong> to <strong>${val}</strong>` });
+                        renderSidebar(currentTask);
                     }
-                    renderSidebar(currentTask);
                 });
-                return;
-            }
-
-            if (avatar) {
-                createAssigneePopover(avatar, avatar.dataset.userId);
-                return;
-            }
-
-            if (control) {
-                const fieldName = control.dataset.control;
-                const oldValue = currentTask[fieldName];
-                switch (fieldName) {
-                    case 'priority':
-                        const priorityOpts = priorityOptions.map(p => ({ label: p, value: p }));
-                        createGenericDropdown(control, priorityOpts, currentTask.priority, (val) => {
-                            if (val !== oldValue) {
-                                currentTask.priority = val;
-                                logActivity('change', { details: `changed Priority from <strong>${oldValue}</strong> to <strong>${val}</strong>` });
-                                renderSidebar(currentTask);
-                            }
-                        });
-                        break;
-                    case 'status':
-                        const statusOpts = statusOptions.map(s => ({ label: s, value: s }));
-                        createGenericDropdown(control, statusOpts, currentTask.status, (val) => {
-                             if (val !== oldValue) {
-                                currentTask.status = val;
-                                logActivity('change', { details: `changed Status from <strong>${oldValue}</strong> to <strong>${val}</strong>` });
-                                renderSidebar(currentTask);
-                            }
-                        });
-                        break;
-                    case 'project':
-                        const projectOptions = allProjects.map(p => ({ label: p.name, value: p.id }));
-                        createGenericDropdown(control, projectOptions, currentTask.projectId, (newProjectId) => {
-                            // In a real app, this would be a more complex operation
-                            currentTask.projectId = newProjectId;
-                            renderSidebar(currentTask);
-                        });
-                        break;
-                    
-                }
-            }
-        });
+                break;
+            case 'status':
+                createGenericDropdown(control, statusOptions.map(s => ({ label: s, value: s })), oldValue, (val) => {
+                    if (val !== oldValue) {
+                        currentTask.status = val;
+                        logActivity('change', { details: `changed Status from <strong>${oldValue}</strong> to <strong>${val}</strong>` });
+                        renderSidebar(currentTask);
+                    }
+                });
+                break;
+            case 'shopType':
+                createGenericDropdown(control, shopTypeOptions.map(o => ({ label: o, value: o })), oldValue, (val) => {
+                    if (val !== oldValue) {
+                        currentTask['Shop Type'] = val;
+                        logActivity('change', { details: `changed Shop Type from <strong>${oldValue}</strong> to <strong>${val}</strong>` });
+                        renderSidebar(currentTask);
+                    }
+                });
+                break;
+        }
+    });
         
+         
         // Global listener to close popovers and handle popover button clicks
         document.body.addEventListener('click', (e) => {
             const removeBtn = e.target.closest('.popover-remove-btn');
@@ -484,3 +563,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.TaskSidebar.init();
     }
 });
+
+
+
+
