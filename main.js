@@ -1063,7 +1063,7 @@ const setupModalLogic = () => {
     // --- Event Handlers ---
     // This listener on the body handles closing the modal when clicking outside of it.
     document.body.addEventListener('click', (e) => {
-    if (!e.target.closest('.shareproject-role-selector, .shareproject-member-role, .shareproject-access-settings-wrapper, .shareproject-invite-input-wrapper')) {
+    if (!e.target.closest('.shareproject-role-selector, .shareproject-member-role, .shareproject-access-settings-wrapper')) {
         if (activeDropdown) {
             activeDropdown.classList.add('hidden');
             activeDropdown = null;
