@@ -36,6 +36,20 @@ window.TaskSidebar = (function () {
                     }]
                 }]
             }]
+        },
+        'proj-2': {
+            name: 'Mobile App Development',
+            customColumns: [],
+            sections: [{
+                id: 'sec-mob-1',
+                title: 'Backend',
+                tasks: []
+            }]
+        },
+        'proj-3': {
+            name: 'Marketing Campaign',
+            customColumns: [],
+            sections: [] // This project starts with no sections
         }
     };
 
@@ -51,6 +65,7 @@ window.TaskSidebar = (function () {
     // --- State variables ---
     let currentTask = null;
     let currentProject = null;
+    let currentProjectId = null; // <-- NEW: To keep track of the current project's ID
     const currentUser = allUsers[0];
     let isInitialized = false;
     let pastedImageURL = null;
@@ -100,6 +115,7 @@ window.TaskSidebar = (function () {
 
     function open(taskId, projectId = 'proj-1') {
         if (!isInitialized) init();
+        currentProjectId = projectId; // <-- NEW: Store the project ID
         currentProject = projectData[projectId];
         const task = findTaskById(taskId);
         if (task) {
@@ -124,6 +140,7 @@ window.TaskSidebar = (function () {
         sidebar.classList.remove('is-visible');
         currentTask = null;
         currentProject = null;
+        currentProjectId = null; // <-- NEW: Clear the project ID
         clearImagePreview();
     }
 
@@ -151,6 +168,60 @@ window.TaskSidebar = (function () {
         renderActivity();
     }
 
+    // --- NEW FUNCTION: Handles the logic of moving a task ---
+    function moveTaskToProject(newProjectId) {
+        if (!currentTask || !currentProjectId || newProjectId === currentProjectId) {
+            return;
+        }
+
+        const oldProject = projectData[currentProjectId];
+        const newProject = projectData[newProjectId];
+
+        if (!oldProject || !newProject) {
+            console.error("Could not find old or new project.");
+            return;
+        }
+
+        // 1. Find and remove the task from the old project
+        let taskRemoved = false;
+        for (const section of oldProject.sections) {
+            const taskIndex = section.tasks.findIndex(t => t.id === currentTask.id);
+            if (taskIndex > -1) {
+                section.tasks.splice(taskIndex, 1);
+                taskRemoved = true;
+                break;
+            }
+        }
+
+        if (!taskRemoved) {
+            console.error("Could not find the task in the original project to remove it.");
+            return;
+        }
+
+        // 2. Add the task to the new project
+        // If the new project has no sections, create a default one
+        if (newProject.sections.length === 0) {
+            newProject.sections.push({
+                id: `sec-${newProjectId}-default`,
+                title: 'General',
+                tasks: []
+            });
+        }
+        newProject.sections[0].tasks.push(currentTask);
+
+        // 3. Log the activity
+        logActivity('change', {
+            field: 'Project',
+            from: `<strong>${oldProject.name}</strong>`,
+            to: `<strong>${newProject.name}</strong>`
+        });
+
+        // 4. Close the sidebar, as the context has now changed.
+        alert(`Task "${currentTask.name}" has been moved to the "${newProject.name}" project.`);
+        close();
+    }
+
+
     // --- RENDERING FUNCTIONS ---
     function renderSidebar(task) {
         if (!task) return;
@@ -165,23 +236,37 @@ window.TaskSidebar = (function () {
         renderActivity();
     }
 
+    // --- MODIFIED FUNCTION ---
     function renderTaskFields(task) {
         taskFieldsContainer.innerHTML = '';
         const fieldRenderMap = {
+            // NEW entry for project
+            project: { label: 'Project', html: currentProject.name, controlType: 'project' },
             assignees: { label: 'Assignee', html: renderAssigneeValue(task.assignees), controlType: 'assignee' },
             dueDate: { label: 'Due date', html: renderDateValue(task.dueDate), controlType: 'date' },
             status: { label: 'Status', html: createTag(task.status, 'status'), controlType: 'dropdown', options: statusOptions },
             priority: { label: 'Priority', html: createTag(task.priority, 'priority'), controlType: 'dropdown', options: priorityOptions },
         };
-        const standardFieldOrder = ['assignees', 'dueDate', 'status', 'priority'];
+
+        // NEW field order
+        const standardFieldOrder = ['project', 'assignees', 'dueDate', 'status', 'priority'];
         const table = document.createElement('table');
         table.className = 'task-fields-table';
         const tbody = document.createElement('tbody');
 
         standardFieldOrder.forEach(key => {
-            if (task.hasOwnProperty(key)) {
+            // Note: 'project' isn't a property of the task, so we handle it directly
+            if (task.hasOwnProperty(key) || key === 'project') {
                 const config = fieldRenderMap[key];
-                appendFieldToTable(tbody, key, config.label, config.html, config.controlType, config.options);
+                let controlType = config.controlType;
+                let options = config.options;
+
+                // For the 'project' field, we'll generate options dynamically later
+                if (key === 'project') {
+                    // We don't need to pass options here, they are generated on click.
+                }
+
+                appendFieldToTable(tbody, key, config.label, config.html, controlType, options);
             }
         });
 
@@ -253,8 +338,6 @@ window.TaskSidebar = (function () {
             let actionsHTML = '';
             let headerMeta = `<span class="comment-author">${user.name}</span> <span class="comment-timestamp">${formatTimestamp(activity.timestamp)}</span>`;
 
-            // --- Replace the existing block in your renderActivity function with this one ---
-
             // Replace the entire 'if (activity.type === 'comment')' block with this
             if (activity.type === 'comment') {
                 // --- 1. Generate Reaction Buttons (for all users) ---
@@ -273,19 +356,19 @@ window.TaskSidebar = (function () {
                 const isAuthor = activity.user === currentUser.id;
                 if (isAuthor) {
                     authorActionsHTML = `
-            <div class="author-actions">
-                <button class="edit-comment-btn" title="Edit"><i class="fa-solid fa-pencil"></i></button>
-                <button class="delete-comment-btn" title="Delete"><i class="fa-solid fa-trash"></i></button>
-            </div>
-        `;
+                <div class="author-actions">
+                    <button class="edit-comment-btn" title="Edit"><i class="fa-solid fa-pencil"></i></button>
+                    <button class="delete-comment-btn" title="Delete"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            `;
                 }
 
                 // --- 3. Combine ALL actions into the main actions container ---
                 actionsHTML = `
-        <div class="comment-actions">
-            <div class="reaction-actions">${heartBtnHTML}${thumbBtnHTML}</div>
-            ${authorActionsHTML}
-        </div>`;
+                <div class="comment-actions">
+                    <div class="reaction-actions">${heartBtnHTML}${thumbBtnHTML}</div>
+                    ${authorActionsHTML}
+                </div>`;
 
                 // --- 4. Generate the rest of the comment body (this is the same as before) ---
                 const commentTextHTML = activity.content ? `<div class="comment-text">${activity.content}</div>` : '';
@@ -294,21 +377,21 @@ window.TaskSidebar = (function () {
                     const noteClass = activity.imageTitle ? ' has-note' : '';
                     const noteHTML = activity.imageTitle ? `<div class="attachment-note">${activity.imageTitle}</div>` : '';
                     imageHTML = `
-            <div class="log-attachment${noteClass}">
-                <img class="scalable-image" src="${activity.imageURL}" alt="${activity.imageTitle || 'User attachment'}">
-                ${noteHTML}
-            </div>`;
+                <div class="log-attachment${noteClass}">
+                    <img class="scalable-image" src="${activity.imageURL}" alt="${activity.imageTitle || 'User attachment'}">
+                    ${noteHTML}
+                </div>`;
                 }
 
                 const editText = activity.content || activity.imageTitle || '';
                 const editFormHTML = `
-        <div class="comment-edit-area">
-            <textarea class="comment-edit-input">${editText}</textarea>
-            <div class="comment-edit-actions">
-                <button class="btn-cancel-edit">Cancel</button>
-                <button class="btn-save-edit">Save</button>
-            </div>
-        </div>`;
+                <div class="comment-edit-area">
+                    <textarea class="comment-edit-input">${editText}</textarea>
+                    <div class="comment-edit-actions">
+                        <button class="btn-cancel-edit">Cancel</button>
+                        <button class="btn-save-edit">Save</button>
+                    </div>
+                </div>`;
 
                 contentHTML = `${commentTextHTML}${imageHTML}${editFormHTML}`;
 
@@ -318,14 +401,14 @@ window.TaskSidebar = (function () {
             }
 
             item.innerHTML = `
-                <div class="avatar" style="background-image: url(${user.avatar})"></div>
-                <div class="comment-body">
-                    <div class="comment-header">
-                        <div class="comment-meta">${headerMeta}</div>
-                        ${actionsHTML}
-                    </div>
-                    ${contentHTML}
-                </div>`;
+                  <div class="avatar" style="background-image: url(${user.avatar})"></div>
+                  <div class="comment-body">
+                      <div class="comment-header">
+                          <div class="comment-meta">${headerMeta}</div>
+                          ${actionsHTML}
+                      </div>
+                      ${contentHTML}
+                  </div>`;
             activityLogContainer.appendChild(item);
         });
     }
@@ -356,61 +439,38 @@ window.TaskSidebar = (function () {
         return `<div class="assignee-list-wrapper">${avatarsHTML}<button class="assignee-add-btn" title="Add assignee"><i class="fa-solid fa-plus"></i></button></div>`;
     }
 
-    // This is an example of what your new function would look like
     function addImagePreview(file, fileDataURL) {
-        // Make the main container visible (your old code did this)
         commentInputWrapper.classList.add('preview-active');
         commentInput.placeholder = 'Add an optional note for the image(s)...';
-
-        // 1. Create the wrapper for the new thumbnail
         const previewItem = document.createElement('div');
         previewItem.className = 'image-preview-item';
-        // Store a unique identifier on the element itself
         previewItem.dataset.fileId = file.name + file.lastModified;
-
-        // 2. Create the image tag
         const img = document.createElement('img');
         img.src = fileDataURL;
         img.alt = file.name;
-
-        // 3. Create the remove button
         const removeBtn = document.createElement('button');
         removeBtn.className = 'remove-preview-btn';
         removeBtn.title = 'Remove ' + file.name;
         removeBtn.innerHTML = '<i class="fa-solid fa-times"></i>';
-
-        // 4. Add the logic for the remove button
         removeBtn.onclick = function () {
-            // Find the file to remove in your array
             const fileIdToRemove = previewItem.dataset.fileId;
             pastedFiles = pastedFiles.filter(f => (f.name + f.lastModified) !== fileIdToRemove);
-
-            // Remove the thumbnail from the DOM
             previewItem.remove();
-
-            // Optional: if no previews are left, hide the container
             if (pastedFiles.length === 0) {
                 commentInputWrapper.classList.remove('preview-active');
                 commentInput.placeholder = 'Add a comment...';
             }
         };
-
-        // 5. Assemble and append the new thumbnail
         previewItem.appendChild(img);
         previewItem.appendChild(removeBtn);
         imagePreviewContainer.appendChild(previewItem);
     }
 
     function clearImagePreview() {
-        // 1. Reset the files array
         pastedFiles = [];
-
-        // 2. Remove all child elements (the preview items) from the container
         if (imagePreviewContainer) {
             imagePreviewContainer.innerHTML = '';
         }
-
-        // 3. Reset the state of the comment input area
         if (commentInputWrapper) {
             commentInputWrapper.classList.remove('preview-active');
         }
@@ -418,7 +478,7 @@ window.TaskSidebar = (function () {
             commentInput.placeholder = 'Add a comment...';
         }
         if (fileUploadInput) {
-            fileUploadInput.value = ""; // Resets the file input so the same file can be selected again
+            fileUploadInput.value = "";
         }
     }
 
@@ -486,19 +546,15 @@ window.TaskSidebar = (function () {
         dropdown.style.left = `${rect.left}px`;
     }
 
-    // Add this with your other helper functions
     function readFileAsDataURL(file) {
         return new Promise((resolve, reject) => {
-            // Handle mock files created from pasted URLs
             if (file.type === 'image/url') {
                 resolve({
-                    dataURL: file.name, // The 'name' is the URL
+                    dataURL: file.name,
                     title: file.name.substring(file.name.lastIndexOf('/') + 1)
                 });
                 return;
             }
-
-            // Handle real File objects
             const reader = new FileReader();
             reader.onload = () => resolve({ dataURL: reader.result, title: file.name });
             reader.onerror = (error) => reject(error);
@@ -510,67 +566,45 @@ window.TaskSidebar = (function () {
     function attachEventListeners() {
         closeBtn.addEventListener('click', close);
 
-        // Add this new listener to your attachEventListeners function
-        // Replace your existing listener with this one that handles all comment actions
         activityLogContainer.addEventListener('click', (e) => {
             const target = e.target;
             const commentItem = target.closest('.comment-item');
             if (!commentItem) return;
-
             const activityId = parseInt(commentItem.dataset.activityId, 10);
             const activityIndex = currentTask.activity.findIndex(a => a.id === activityId);
             if (activityIndex === -1) return;
-
             const activity = currentTask.activity[activityIndex];
-
-            // --- [NEW] Handle REACTION button clicks ---
             const reactionBtn = target.closest('.react-btn');
             if (reactionBtn) {
-                const reactionType = reactionBtn.dataset.reaction; // 'heart' or 'thumbsUp'
-
-                // Ensure the reactions object and array exist
+                const reactionType = reactionBtn.dataset.reaction;
                 if (!activity.reactions) activity.reactions = { heart: [], thumbsUp: [] };
                 if (!activity.reactions[reactionType]) activity.reactions[reactionType] = [];
-
                 const reactionArray = activity.reactions[reactionType];
                 const userIndex = reactionArray.indexOf(currentUser.id);
-
                 if (userIndex > -1) {
-                    // User has already reacted, so remove the reaction (unlike)
                     reactionArray.splice(userIndex, 1);
                 } else {
-                    // User has not reacted, so add the reaction (like)
                     reactionArray.push(currentUser.id);
                 }
-                renderActivity(); // Re-render to show updated counts and styles
+                renderActivity();
             }
-
-            // --- Handle DELETE button click ---
             if (target.closest('.delete-comment-btn')) {
                 if (confirm('Are you sure you want to delete this comment?')) {
                     currentTask.activity.splice(activityIndex, 1);
                     renderActivity();
                 }
             }
-
-            // --- Handle EDIT button click ---
             if (target.closest('.edit-comment-btn')) {
                 commentItem.classList.add('is-editing');
             }
-
-            // --- Handle CANCEL EDIT button click ---
             if (target.closest('.btn-cancel-edit')) {
                 commentItem.classList.remove('is-editing');
             }
-
-            // --- Handle SAVE EDIT button click ---
             if (target.closest('.btn-save-edit')) {
                 const editInput = commentItem.querySelector('.comment-edit-input');
                 const newText = editInput.value.trim();
-
                 if (activity.hasOwnProperty('content')) activity.content = newText;
                 if (activity.hasOwnProperty('imageTitle')) activity.imageTitle = newText;
-
                 commentItem.classList.remove('is-editing');
                 renderActivity();
             }
@@ -585,6 +619,7 @@ window.TaskSidebar = (function () {
             renderSidebar(currentTask);
         });
 
+        // --- MODIFIED EVENT LISTENER ---
         taskFieldsContainer.addEventListener('click', (e) => {
             if (currentTask.status === 'Completed') return;
             const controlCell = e.target.closest('.control');
@@ -594,7 +629,15 @@ window.TaskSidebar = (function () {
             const key = controlCell.dataset.key;
             const oldValue = currentTask[key];
 
-            if (controlType === 'assignee') {
+            if (controlType === 'project') { // <-- NEW: Handle project changes
+                const projectOptions = Object.keys(projectData).map(projId => ({
+                    label: projectData[projId].name,
+                    value: projId
+                }));
+                createGenericDropdown(controlCell, projectOptions, currentProjectId, (newProjectId) => {
+                    moveTaskToProject(newProjectId);
+                });
+            } else if (controlType === 'assignee') {
                 const addBtn = e.target.closest('.assignee-add-btn');
                 const avatar = e.target.closest('.avatar[data-user-id]');
                 if (addBtn) {
@@ -622,41 +665,32 @@ window.TaskSidebar = (function () {
             }
         });
 
-        // Replace your sendCommentBtn listener with this simplified and corrected version
         sendCommentBtn.addEventListener('click', () => {
             const noteText = commentInput.value.trim();
-            const files = [...pastedFiles]; // Work with a copy
-
+            const files = [...pastedFiles];
             if (!noteText && files.length === 0) {
-                return; // Do nothing if there's nothing to send
+                return;
             }
-
-            // Case 1: There are images to upload (the noteText is their caption)
             if (files.length > 0) {
                 files.forEach(file => {
-                    // This self-executing function helps handle each file read independently
                     (async () => {
                         try {
                             const { dataURL } = await readFileAsDataURL(file);
                             logActivity('comment', {
-                                content: "", // Main content is empty
+                                content: "",
                                 imageURL: dataURL,
-                                imageTitle: noteText // The input text is the note
+                                imageTitle: noteText
                             });
                         } catch (error) {
                             console.error("Error processing file:", error);
                         }
                     })();
                 });
-            }
-            // Case 2: There is only text to send
-            else if (noteText) {
+            } else if (noteText) {
                 logActivity('comment', {
                     content: noteText
                 });
             }
-
-            // Finally, clear the input form
             clearImagePreview();
             commentInput.value = '';
         });
@@ -664,21 +698,13 @@ window.TaskSidebar = (function () {
         commentInput.addEventListener('paste', (e) => {
             const items = (e.clipboardData || window.clipboardData).items;
             let hasHandledImage = false;
-
-            // Loop through all pasted items to find and handle all images
             for (let i = 0; i < items.length; i++) {
                 if (items[i].type.indexOf('image') !== -1) {
                     hasHandledImage = true;
                     const imageFile = items[i].getAsFile();
-
                     if (imageFile) {
-                        // Add the file to our array
                         pastedFiles.push(imageFile);
-
                         const reader = new FileReader();
-
-                        // --- CHANGE IS HERE ---
-                        // Call addImagePreview for each pasted image file
                         reader.onload = (event) => {
                             addImagePreview(imageFile, event.target.result);
                         };
@@ -686,26 +712,19 @@ window.TaskSidebar = (function () {
                     }
                 }
             }
-
-            // If we handled an image, prevent the text from being pasted
             if (hasHandledImage) {
                 e.preventDefault();
                 return;
             }
-
-            // Fallback for pasting a URL that ends in an image extension
             const pastedText = (e.clipboardData || window.clipboardData).getData('text');
             if (pastedText.match(/\.(jpeg|jpg|gif|png|webp)$/i)) {
                 e.preventDefault();
-
-                // Create a mock file object since we only have a URL
                 const mockFile = {
                     name: pastedText.substring(pastedText.lastIndexOf('/') + 1),
-                    type: 'image/url', // Indicate this was from a URL paste
-                    lastModified: Date.now() // Add timestamp for unique ID
+                    type: 'image/url',
+                    lastModified: Date.now()
                 };
-                pastedFiles.push(mockFile); // Add mock file to array
-                // Call addImagePreview with the mock file and the URL
+                pastedFiles.push(mockFile);
                 addImagePreview(mockFile, pastedText);
             }
         });
@@ -723,33 +742,21 @@ window.TaskSidebar = (function () {
         fileUploadInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) {
-                return; // No file was selected
+                return;
             }
-
-            // Robustly check if the selected file is an image
             const isImage = file.type.startsWith('image/') ||
                 /\.(jpe?g|png|gif|webp|bmp)$/i.test(file.name);
-
             if (isImage) {
-                // Add the file to our array of files to be uploaded
                 pastedFiles.push(file);
-
                 const reader = new FileReader();
-
-                // --- CHANGE IS HERE ---
-                // Call addImagePreview with both the file object and the data URL result
                 reader.onload = (event) => {
                     addImagePreview(file, event.target.result);
                 };
-
                 reader.onerror = (error) => {
                     console.error("Error reading file:", error);
                 };
-
                 reader.readAsDataURL(file);
-
             } else {
-                // If not an image, handle as a generic file attachment
                 logActivity('system', { details: `<strong>${currentUser.name}</strong> attached file: <strong>${file.name}</strong>` });
             }
         });
