@@ -655,7 +655,7 @@ min-height: 40px;
 
 .task-fields-table .field-label,
 .task-fields-table .field-value {
-  padding: 12px 8px;
+  
   text-align: left;
 }
 
@@ -824,12 +824,6 @@ min-height: 40px;
   border-collapse: collapse;
   font-size: 14px;
   margin-top: 24px;
-}
-
-.task-fields-table .field-label,
-.task-fields-table .field-value {
-  padding: 12px 8px;
-  border-bottom: 1px solid #e0e0e0; /* --border-color variable */
 }
 
 .task-fields-table tr:last-child .field-label,
