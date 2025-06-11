@@ -1286,24 +1286,7 @@ const setupModalLogic = () => {
     logActivity("Share modal initialized.");
 };
 
-/**
- * This is an example of how to trigger the modal.
- * You would typically have a "Share" button on your page.
- * We'll add one here and attach the event listener to it.
- */
-document.addEventListener('DOMContentLoaded', () => {
-    // Create a button to open the modal for demonstration
-    const openModalButton = document.createElement('button');
-    openModalButton.textContent = 'Open Share Modal';
-    openModalButton.style.padding = '10px 20px';
-    openModalButton.style.position = 'absolute';
-    openModalButton.style.top = '20px';
-    openModalButton.style.left = '20px';
-    document.body.appendChild(openModalButton);
 
-    // Attach the listener to the button
-    openModalButton.addEventListener('click', createShareModal);
-});
 // 
 // --- APPLICATION INITIALIZATION ---
 // This block runs once the initial HTML document has been fully loaded and parsed.
