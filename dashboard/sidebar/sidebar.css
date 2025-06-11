@@ -83,7 +83,9 @@
     flex-direction: column;
     transform: translateX(100%);
     transition: transform 0.3s ease-in-out, width 0.3s ease-in-out; /* MODIFIED: Added width transition */
+    overflow-y: auto; /* MODIFIED: This makes the entire sidebar the single scrollable container */
 }
+
 
 /* Add this CSS to your stylesheet */
 #task-fields-container {
@@ -151,10 +153,11 @@
 
 /* Main Content */
 .sidebar-content-task{
-    flex-grow: 1;
+    flex-grow: 1; /* MODIFIED: Allow this section to grow but not scroll independently */
     padding: 24px;
-    overflow-y: auto;
+    /* REMOVED: overflow-y: auto; */
 }
+
 
 #task-name {
     font-size: 28px;
@@ -227,7 +230,7 @@
 
 
 /* ====================================================================
-    UPDATED FOOTER AND COMMENTS SECTION
+   UPDATED FOOTER AND COMMENTS SECTION
 ====================================================================
 */
 
@@ -238,15 +241,17 @@
     background-color: #fcfcfc;
     display: flex;
     flex-direction: column;
-    max-height: 70vh; /* MODIFIED: Increased max-height for larger comment area */
+    /* REMOVED: max-height: 70vh; */
 }
+
 
 .comment-section {
     display: flex;
     flex-direction: column;
-    height: 100%;
-    overflow: hidden;
+    /* REMOVED: height: 100%; */
+    /* REMOVED: overflow: hidden; */
 }
+
 
 .comment-tabs {
     display: flex; 
@@ -286,10 +291,11 @@
     flex-direction: column;
     gap: 16px;
     margin-bottom: 16px;
-    overflow-y: auto;
-    flex-grow: 1;
     padding: 0 24px;
+    /* REMOVED: overflow-y: auto; */
+    /* REMOVED: flex-grow: 1; */
 }
+
 
 .log-item { display: flex; gap: 12px; font-size: 14px; align-items: flex-start; }
 
