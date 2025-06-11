@@ -95,6 +95,12 @@
   align-items: center;
 }
 
+/* --- [FIX] Field Value Alignment --- */
+.task-fields-table .field-value {
+  text-align: left;
+  justify-content: flex-start; /* For flex items like assignee avatars */
+}
+
 /* MODIFIED: Added styles for the full-view mode */
 .task-sidebar.is-full-view {
     width: 95vw; /* Expands to take up most of the viewport width */
