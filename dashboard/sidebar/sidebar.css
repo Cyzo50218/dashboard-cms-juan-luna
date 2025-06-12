@@ -1305,8 +1305,9 @@ task-fields-table .field-value {
 
 /* Styles the value cell (e.g., the avatars, the date text) */
 .sidebarprojectfield-value {
-    width: 100%;
-    text-align: left; /* Ensures content is left-aligned */
+    /* MODIFIED: Set a fixed width and centered the text */
+    width: 500px;
+    text-align: center; 
     vertical-align: middle;
     padding: 8px 0;
 }
