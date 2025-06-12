@@ -1328,11 +1328,24 @@ task-fields-table .field-value {
 }
 
 /* === ASSIGNEE FIELD === */
-/* It can expand content-wise, but won't affect other rows */
 .sidebarprojectfield-value.assignee-field {
-    width: 100%;
+    width: auto;
+    /* Let it grow naturally but don't affect others */
     max-width: 100%;
     text-align: left;
+    vertical-align: middle;
+    padding: 8px 0;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+/* Optional: Keep avatars or chips in row */
+.sidebarprojectfield-value.assignee-field>span {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: 100%;
 }
 
 /* === STATUS AND PRIORITY FIELDS === */
