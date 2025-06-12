@@ -156,8 +156,6 @@ async function loadHTML(selector, url) {
     
     if (url.includes("drawer/drawer.html")) {
       attachDrawerToggleLogic();
-      initializeSidebar();
-    
     }
     
   } catch (err) {
@@ -1394,6 +1392,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         loadHTML("#rootdrawer", "../dashboard/drawer/drawer.html"),
         loadHTML("#right-sidebar", "../dashboard/sidebar/sidebar.html"),
     ]);
+    
+    setTimeout(initializeSidebar, 0);
     
     // --- Global router setup (can run after loading) ---
     document.querySelectorAll('.nav-item a[href^="#"]').forEach(link => {
