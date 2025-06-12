@@ -1295,7 +1295,7 @@ task-fields-table .field-value {
 
 /* --- Sidebar Project Field Table Styles --- */
 
-/* Label Cell */
+/* Label styling */
 .sidebarprojectfield-label {
     color: var(--text-secondary-color);
     white-space: nowrap;
@@ -1303,34 +1303,40 @@ task-fields-table .field-value {
     vertical-align: middle;
 }
 
-/* Common styles for all value cells */
+/* Common styles */
 .sidebarprojectfield-value {
     vertical-align: middle;
     padding: 8px 0;
-    white-space: nowrap;   /* Prevent text from wrapping */
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-/* Project field: fixed width, no wrap */
+/* Project field */
 .sidebarprojectfield-value.project-field {
-    width: 200px; /* Adjust as needed */
+    width: 200px;
     text-align: left;
 }
 
-/* Assignee field: full width, no wrap */
+/* Assignee field */
 .sidebarprojectfield-value.assignee-field {
     width: 100%;
     text-align: left;
 }
 
-/* Other fields: fixed width, no wrap */
+/* Status & Priority field */
+.sidebarprojectfield-value.status-priority-field {
+    width: 100%;
+    text-align: center;
+}
+
+/* Other fields */
 .sidebarprojectfield-value.other-field {
-    width: 300px; /* Adjust as needed */
+    width: 300px;
     text-align: left;
 }
 
-/* Hover styling for interactive controls */
+/* Hover effect for interactive fields */
 .sidebarprojectfield-value.control:hover > span {
     background-color: var(--secondary-bg, #f9f9f9);
     border-radius: 4px;

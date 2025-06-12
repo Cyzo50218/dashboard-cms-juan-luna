@@ -389,6 +389,8 @@ window.TaskSidebar = (function() {
         valueCell.className = 'sidebarprojectfield-value project-field';
     } else if (key === 'assignee') {
         valueCell.className = 'sidebarprojectfield-value assignee-field';
+    } else if (key === 'status' || key === 'priority') {
+        valueCell.className = 'sidebarprojectfield-value status-priority-field';
     } else {
         valueCell.className = 'sidebarprojectfield-value other-field';
     }
