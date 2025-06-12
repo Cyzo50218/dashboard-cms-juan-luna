@@ -1292,3 +1292,37 @@ task-fields-table .field-value {
     box-shadow: 0 0 0 2px var(--accent-color, #4c6ef5); /* Use your existing accent color */
     outline: none;
 }
+
+/* --- Sidebar Project Field Table Styles --- */
+
+/* Styles the label cell (e.g., "Assignee", "Due Date") */
+.sidebarprojectfield-label {
+    color: var(--text-secondary-color);
+    white-space: nowrap; /* Prevents the label from wrapping */
+    padding: 8px 16px 8px 0;
+    vertical-align: middle;
+}
+
+/* Styles the value cell (e.g., the avatars, the date text) */
+.sidebarprojectfield-value {
+    width: 100%;
+    text-align: left; /* Ensures content is left-aligned */
+    vertical-align: middle;
+    padding: 8px 0;
+}
+
+/* Adds a hover effect ONLY to value cells that are interactive */
+.sidebarprojectfield-value.control:hover > span {
+    background-color: var(--secondary-bg, #f9f9f9);
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+/* Ensure the content inside the span has some padding on hover */
+.sidebarprojectfield-value.control > span {
+    padding: 4px 8px;
+    margin: -4px -8px; /* Negative margin prevents layout shifts on hover */
+    display: inline-block;
+    width: 100%;
+    box-sizing: border-box;
+}

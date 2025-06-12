@@ -375,24 +375,30 @@ window.TaskSidebar = (function() {
     }
     
     function appendFieldToTable(tbody, key, label, valueHTML, controlType, options = []) {
-        const row = tbody.insertRow();
-        row.className = 'field-row';
-        const labelCell = row.insertCell();
-        labelCell.className = 'field-label';
-        labelCell.textContent = label;
-        const valueCell = row.insertCell();
-        valueCell.className = 'field-value';
-        valueCell.innerHTML = `<span>${valueHTML}</span>`;
-        if (controlType) {
-            valueCell.classList.add('control');
-            valueCell.dataset.control = controlType;
-            valueCell.dataset.key = key;
-            if (options.length > 0) {
-                valueCell.dataset.options = JSON.stringify(options);
-            }
+    const row = tbody.insertRow();
+    // MODIFIED: Added a specific class to the table row
+    row.className = 'sidebarprojectfield-row';
+    
+    const labelCell = row.insertCell();
+    // MODIFIED: Changed class name for the label cell
+    labelCell.className = 'sidebarprojectfield-label';
+    labelCell.textContent = label;
+    
+    const valueCell = row.insertCell();
+    // MODIFIED: Changed class name for the value cell
+    valueCell.className = 'sidebarprojectfield-value';
+    valueCell.innerHTML = `<span>${valueHTML}</span>`;
+    
+    if (controlType) {
+        valueCell.classList.add('control');
+        valueCell.dataset.control = controlType;
+        valueCell.dataset.key = key;
+        if (options.length > 0) {
+            valueCell.dataset.options = JSON.stringify(options);
         }
     }
-    
+}
+
     function renderActivity() {
         if (!activityLogContainer) return;
         activityLogContainer.innerHTML = '';
