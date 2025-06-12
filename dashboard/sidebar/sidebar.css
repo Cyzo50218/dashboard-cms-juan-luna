@@ -420,7 +420,52 @@
   }
 }
 
-/* --- [NEW] CSS for Comment Actions and Edit/Delete --- */
+/* Buttons are now standard flex items, NOT absolutely positioned */
+.comment-action-btn {
+    position: absolute;
+    bottom: 12px; /* Aligns with the bottom padding of the textarea */
+    width: 36px;
+    height: 36px;
+    border: none;
+    background-color: transparent;
+    color: var(--text-secondary-color);
+    cursor: pointer;
+    font-size: 16px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center; /* Perfectly centers the icon */
+    transition: background-color 0.2s;
+}
+
+.comment-action-btn:hover {
+    background-color: #f1f3f4;
+    border-color: #c5c5c5;
+}
+
+#upload-file-btn {
+    right: 50px; /* Positioned to the left of the send button */
+}
+
+#send-comment-btn {
+    right: 8px;
+    background-color: #0052cc;
+    color: white;
+    border-color: #0052cc;
+}
+
+.comment-action-btn:hover {
+    background-color: #E4E4E4;
+    color: #1e1f21;
+}
+
+#send-comment-btn:hover {
+    background-color: #004499;
+    color: white;
+}
+
+.comment-item { display: flex; gap: 12px; margin-bottom: 16px; align-items: flex-start; }
+.comment-body { flex-grow: 1; }
+.comment-text { font-size: 16px; line-height: 1.4; }
 
 /* Style for Edit/Delete buttons in the comment header */
 .comment-actions {
