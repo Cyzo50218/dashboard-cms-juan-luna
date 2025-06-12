@@ -154,6 +154,9 @@ async function loadHTML(selector, url) {
       document.body.appendChild(script);
     }
     
+    if (url.includes("drawer/drawer.html")) {
+      attachDrawerToggleLogic();
+    }
     
   } catch (err) {
     container.innerHTML = `<p>Error loading ${url}</p>`;
@@ -161,6 +164,32 @@ async function loadHTML(selector, url) {
   }
 }
 
+/**
+ * Attaches event listeners for the navigation drawer.
+ * This function is left unchanged as requested.
+ */
+function attachDrawerToggleLogic() {
+  const sectionHeaders = document.querySelectorAll('.section-header');
+  const drawer = document.getElementById("dashboardDrawer");
+  const menuToggle = document.getElementById("menuToggle");
+  
+  if (drawer) drawer.style.transition = "width 0.3s ease";
+  
+  if (menuToggle && drawer) {
+    menuToggle.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const currentWidth = parseInt(getComputedStyle(drawer).width, 10);
+      drawer.style.width = currentWidth > 100 ? "80px" : "260px";
+    });
+  }
+  
+  sectionHeaders.forEach(header => {
+    header.addEventListener('click', () => {
+      const section = header.closest('.nav-section');
+      section.classList.toggle('open');
+    });
+  });
+}
 
 function showEmailModal() {
     let modalStyles = document.getElementById("modalStyles");

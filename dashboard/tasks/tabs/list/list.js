@@ -29,7 +29,7 @@ const allUsers = [
 ];
 
 let project = {
-    customColumns: [{ id: 1, name: 'Budget', type: 'Costing', currency: '₱', aggregation: 'Sum' }],
+    customColumns: [{ id: 1, name: 'Budget', type: 'Costing', currency: '', aggregation: 'Sum' }],
     sections: [
     {
         id: 1,
@@ -548,7 +548,7 @@ function createTaskRow(task, customColumns) {
             /* END MODIFICATION */
         } else {
             // This is the original logic for other column types.
-            const displayValue = col.type === 'Costing' && value ? `${col.currency || ''}${value}` : value;
+            const displayValue = col.type === 'Costing' && value ? `${col.currency || '$'}${value}` : value;
             customFieldsHTML += `<div class="task-col header-custom" data-control="custom" data-column-id="${col.id}" contenteditable="true">${displayValue}</div>`;
         }
     });
