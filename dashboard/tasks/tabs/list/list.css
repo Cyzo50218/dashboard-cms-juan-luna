@@ -26,22 +26,25 @@
     overflow: hidden;
 }
 
-.header {
+.listview-header {
     display: flex;
-    justify-content: space-between;
+    /* This aligns all items to the start initially */
+    justify-content: flex-start; 
     align-items: center;
     flex-shrink: 0;
     margin-bottom: 0;
     border-bottom: 1px solid var(--border-color);
-    
+    /* Add some padding for better spacing */
+    padding: 0.5rem 1rem;
 }
 
 .header-controls-right {
     display: flex;
-    /* Reduced gap between header buttons */
-    gap: 0.25rem;
+    gap: 0.5rem; /* Increased gap slightly for better visuals */
+    /* This is the key change: an auto left margin will push this
+       element all the way to the right of the flex container. */
+    margin-left: auto; 
 }
-
 button {
     background-color: transparent;
     border: 1px solid var(--text-secondary-color);
@@ -580,9 +583,67 @@ button:hover {
     font-size: 0.8em; /* Adjusted font size */
 }
 
+/* --- Styles for Filter/Sort Buttons and Dialogs --- */
+
+/* Add a visual indicator to buttons when a filter or sort is active */
+#filter-btn.active, #sort-btn.active {
+    background-color: #e0eaff; /* A light blue to show it's active */
+    color: #0052cc;
+}
+
+/* Style for the main dialog overlay */
+.dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+/* General dialog box styling */
+.dialog-box {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    width: 90%;
+    max-width: 480px;
+}
+
+/* Styles for the filter panel specifically */
+.filter-dialog .dialog-body {
+    padding: 8px 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 16px;
+}
+
+.filter-dialog fieldset {
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 8px 12px;
+}
+
+.filter-dialog legend {
+    padding: 0 8px;
+    font-weight: 500;
+    color: #333;
+}
+
+.filter-dialog label {
+    display: block;
+    margin-bottom: 8px;
+    cursor: pointer;
+}
+
+/* CSS for the task name placeholder */
 [contenteditable][data-placeholder]:empty::before {
     content: attr(data-placeholder);
-    color: #888; /* A typical placeholder color */
-    pointer-events: none; /* Ensures you can click on the element */
-    display: inline-block; /* Required for the placeholder to appear */
+    color: #888; /* Placeholder text color */
+    pointer-events: none;
+    display: inline-block;
 }
