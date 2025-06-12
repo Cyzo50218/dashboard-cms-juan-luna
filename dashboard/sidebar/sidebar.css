@@ -1324,7 +1324,7 @@ task-fields-table .field-value {
 /* === PROJECT FIELD === */
 .sidebarprojectfield-value.project-field {
     width: 300px;
-    text-align: left;
+    text-align: right;
 }
 
 /* === ASSIGNEE FIELD === */
