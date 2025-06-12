@@ -32,7 +32,7 @@ body {
     height: calc(100vh - 60px);
     /* full height minus header */
     position: relative;
-    margin-top: 60px;
+    
 }
 
 /* Drawer (Left Sidebar) */

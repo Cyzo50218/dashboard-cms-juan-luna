@@ -1,0 +1,387 @@
+:root {
+    --high-priority-color: #f5222d;
+    --high-priority-bg: #fff1f0;
+    --medium-priority-color: #faad14;
+    --medium-priority-bg: #fffbe6;
+    --low-priority-color: #1890ff;
+    --low-priority-bg: #e6f7ff;
+    --on-track-color: #52c41a;
+    --on-track-bg: #f6ffed;
+    --at-risk-color: var(--medium-priority-color);
+    --at-risk-bg: var(--medium-priority-bg);
+    --completed-color: #9d9d9d;
+    --completed-bg: #f0f0f0;
+    --overdue-color: var(--high-priority-color);
+}
+
+.boardtasks-task-checked .boardtasks-task-check {
+    color: var(--on-track-color);
+}
+
+.boardtasks-task-checked p {
+    text-decoration: line-through;
+    color: #888;
+}
+
+.boardtasks-task-checked {
+    background-color: #f9f9f9;
+}
+
+.boardtasks-task-checked .boardtasks-assignee-avatar {
+    filter: grayscale(1);
+    opacity: 0.7;
+}
+
+.boardtasks-task-checked .boardtasks-tag {
+    background-color: var(--completed-bg) !important;
+    color: var(--completed-color) !important;
+}
+
+.boardtasks-task-checked .boardtasks-due-date {
+    color: var(--completed-color) !important;
+    font-weight: normal;
+}
+
+/* --- Containers & Headers --- */
+.boardtasks-board-container {
+    max-width: 1200px;
+    margin: auto;
+    position: relative;
+}
+
+.boardtasks-board-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding: 0 0.5rem;
+}
+
+.boardtasks-board-header button {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #333;
+}
+
+.boardtasks-board-header button:hover {
+    background-color: #f0f0f0;
+}
+
+.boardtasks-header-options {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* --- Tools Panel --- */
+#boardtasks-tools-panel {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+#boardtasks-tools-panel.boardtasks-hidden {
+    display: none;
+}
+
+.boardtasks-tool-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.boardtasks-tool-group label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #555;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.boardtasks-tool-group input[type="text"] {
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.boardtasks-tool-group button {
+    background-color: #f7f8fa;
+    border: 1px solid #ccc;
+    padding: 0.3rem 0.8rem;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.boardtasks-tool-group button:hover {
+    background-color: #e9e9e9;
+}
+
+/* --- Kanban Columns --- */
+.boardtasks-kanban-board {
+    display: flex;
+    gap: 1.5rem;
+    overflow-x: auto;
+    padding-bottom: 1rem;
+    align-items: flex-start;
+}
+
+.boardtasks-kanban-column {
+    flex: 0 0 280px;
+    background-color: #f7f8fa;
+    border-radius: 8px;
+    border: 1px solid #EAECEE;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    max-height: 80vh;
+}
+
+.boardtasks-column-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    cursor: move;
+    border-bottom: 1px solid #EAECEE;
+}
+
+.boardtasks-column-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.boardtasks-task-count {
+    background-color: #EAECEE;
+    color: #555;
+    font-size: 0.8rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+}
+
+.boardtasks-tasks-container {
+    padding: 0.5rem;
+    overflow-y: auto;
+}
+
+
+
+/* --- Task Card General --- */
+.boardtasks-task-card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin: 0.5rem;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    transition: box-shadow 0.2s;
+    display: flex;
+    flex-direction: column;
+}
+
+.boardtasks-task-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.boardtasks-task-content {
+    padding: 1rem;
+}
+
+/* --- Task Card Details --- */
+.boardtasks-task-attachment {
+    width: 100%;
+    height: auto; /* Allow image to determine its own height */
+    max-height: 600px; /* Prevent excessively tall images */
+    object-fit: cover;
+    border-radius: 7px 7px 0 0;
+    display: block; /* Ensures proper rendering */
+}
+
+.boardtasks-task-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.boardtasks-task-header p {
+    margin: 0;
+    flex-grow: 1;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.boardtasks-task-check {
+    cursor: pointer;
+    font-size: 1.1rem;
+    color: #aaa;
+}
+
+/* --- Assignees --- */
+.boardtasks-task-assignees {
+    display: flex;
+    margin-left: 0.25rem;
+}
+
+.boardtasks-assignee-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    object-fit: cover;
+    background-color: #eee;
+}
+
+.boardtasks-assignee-avatar:not(:first-child) {
+    margin-left: -8px;
+}
+
+/* --- Tags & Status --- */
+.boardtasks-task-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.boardtasks-tag {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.boardtasks-priority-High { background-color: var(--high-priority-bg); color: var(--high-priority-color); }
+.boardtasks-priority-Medium { background-color: var(--medium-priority-bg); color: var(--medium-priority-color); }
+.boardtasks-priority-Low { background-color: var(--low-priority-bg); color: var(--low-priority-color); }
+
+.boardtasks-status-On\.track { background-color: var(--on-track-bg); color: var(--on-track-color); }
+.boardtasks-status-At\.risk { background-color: var(--at-risk-bg); color: var(--at-risk-color); }
+.boardtasks-status-Completed { background-color: var(--completed-bg); color: var(--completed-color); }
+
+.boardtasks-task-checked .boardtasks-task-check {
+    color: var(--on-track-color);
+}
+
+.boardtasks-task-checked p {
+    text-decoration: line-through;
+    color: #888;
+}
+
+/* --- Footer & Actions --- */
+.boardtasks-task-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: #888;
+}
+
+.boardtasks-due-date.boardtasks-date-overdue {
+    color: var(--overdue-color); /* Red */
+    font-weight: 600;
+}
+
+.boardtasks-due-date.boardtasks-date-near {
+    color: var(--medium-priority-color); /* Yellow */
+    font-weight: 600;
+}
+
+.boardtasks-task-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.boardtasks-task-actions i {
+    cursor: pointer;
+    transition: color 0.2s, transform 0.2s;
+}
+
+.boardtasks-task-actions i:hover {
+    transform: scale(1.2);
+}
+
+.boardtasks-task-actions .fa-heart.liked {
+    color: var(--high-priority-color);
+    font-weight: 900; /* Makes it a solid heart */
+}
+
+/* --- Add Button & Sidebar --- */
+.boardtasks-add-task-btn {
+    background: transparent;
+    border: none;
+    color: #555;
+    width: 100%;
+    text-align: left;
+    padding: 0.75rem 1rem;
+    border-radius: 0 0 6px 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    border-top: 1px solid #EAECEE;
+    margin-top: auto;
+}
+
+.boardtasks-add-task-btn:hover {
+    background-color: #e9e9e9;
+}
+
+.boardtasks-sidebar {
+    position: fixed;
+    top: 0;
+    right: -350px;
+    width: 350px;
+    height: 100%;
+    background: #fff;
+    box-shadow: -4px 0 15px rgba(0,0,0,0.1);
+    z-index: 1000;
+    transition: right 0.3s ease-in-out;
+    padding: 1.5rem;
+}
+
+.boardtasks-sidebar.boardtasks-open {
+    right: 0;
+}
+
+.boardtasks-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.4);
+    z-index: 999;
+}
+
+.boardtasks-hidden {
+    display: none !important;
+}
+
+/* --- SortableJS Ghost Classes --- */
+.boardtasks-task-ghost {
+    background: #f0f0f0;
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+}
+
+.boardtasks-column-ghost {
+    background: #e3e3e3;
+    opacity: 0.7;
+    border: 1px solid #dcdcdc;
+    border-radius: 8px;
+}
+

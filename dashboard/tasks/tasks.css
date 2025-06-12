@@ -8,6 +8,7 @@ svg {
     background-color: #fff;
     border-radius: 8px;
     overflow: hidden;
+    margin-top: 60px;
 }
 
 .project-header {

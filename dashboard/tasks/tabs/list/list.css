@@ -579,3 +579,10 @@ button:hover {
     color: var(--accent-color);
     font-size: 0.8em; /* Adjusted font size */
 }
+
+[contenteditable][data-placeholder]:empty::before {
+    content: attr(data-placeholder);
+    color: #888; /* A typical placeholder color */
+    pointer-events: none; /* Ensures you can click on the element */
+    display: inline-block; /* Required for the placeholder to appear */
+}
