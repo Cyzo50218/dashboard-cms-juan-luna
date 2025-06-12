@@ -76,21 +76,24 @@
     
     /** Manages the project dropdown menu. */
     function toggleProjectDropdown(buttonElement) {
-        const closeDropdown = () => document.querySelector('.drawerprojects-dropdown')?.remove();
-        
-        if (document.querySelector('.drawerprojects-dropdown')) {
-            closeDropdown();
-            return;
-        }
-        const dropdown = document.createElement('div');
-        dropdown.className = 'drawerprojects-dropdown';
-        dropdown.innerHTML = `<ul><li id="add-project-action"><i class="fas fa-plus"></i><span>Add Project</span></li></ul>`;
-        document.body.appendChild(dropdown);
-        
-        const rect = buttonElement.getBoundingClientRect();
-        dropdown.style.top = `${rect.bottom + 5}px`;
-        dropdown.style.left = `${rect.right - dropdown.offsetWidth}px`;
+    const closeDropdown = () => document.querySelector('.drawerprojects-dropdown')?.remove();
+    
+    if (document.querySelector('.drawerprojects-dropdown')) {
+        closeDropdown();
+        return;
     }
+    const dropdown = document.createElement('div');
+    dropdown.className = 'drawerprojects-dropdown';
+    dropdown.innerHTML = `<ul><li id="add-project-action"><i class="fas fa-plus"></i><span>Add Project</span></li></ul>`;
+    document.body.appendChild(dropdown);
+    
+    const rect = buttonElement.getBoundingClientRect();
+    dropdown.style.top = `${rect.bottom + 5}px`;
+    
+    // This is more reliable for right-alignment
+    dropdown.style.left = 'auto';
+    dropdown.style.right = `${window.innerWidth - rect.right}px`;
+}
     
     // A single, delegated event listener for all clicks within the sidebar
     sidebar.addEventListener('click', (e) => {

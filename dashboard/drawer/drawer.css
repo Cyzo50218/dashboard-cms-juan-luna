@@ -234,15 +234,48 @@
   flex-shrink: 0;
 }
 
+/* --- Dropdown Menu Styling --- */
+
 .drawerprojects-dropdown {
   position: absolute;
-  background-color: #F0F0F0;
-  border: 1px solid var(--drawer-border-color);
+  /* A lighter background for the dropdown */
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  /* Use a very high z-index to ensure it's on top of all other content */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   z-index: 9999;
-  width: 180px;
-  padding: 8px;
+  width: 200px; /* A bit wider for better spacing */
+  padding: 6px; /* Add some padding around the list */
   font-size: 14px;
+}
+
+/* Remove default list styling */
+.drawerprojects-dropdown ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Style the "Add Project" list item */
+.drawerprojects-dropdown li {
+  display: flex;
+  align-items: center;
+  gap: 12px; /* Space between icon and text */
+  padding: 10px 12px; /* Vertical and horizontal padding */
+  border-radius: 6px;
+  cursor: pointer;
+  color: #212529; /* Darker text for readability on a light background */
+  transition: background-color 0.2s ease;
+}
+
+.drawerprojects-dropdown li:hover {
+  background-color: #e9ecef; /* A subtle hover effect */
+}
+
+/* Style the icon inside the dropdown item */
+.drawerprojects-dropdown li .fa-plus {
+  width: 16px; /* A specific width for alignment */
+  font-size: 14px;
+  text-align: center;
+  color: #495057; /* A slightly softer icon color */
 }
