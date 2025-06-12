@@ -720,7 +720,6 @@ function createAssigneeHTML(assignees) {
             <img class="profile-picture" src="${user.avatar}" title="${user.name}">
             <div class="assignee-details">
                 <span class="assignee-name">${user.name}</span>
-                <span class="assignee-email">${user.email}</span>
             </div>
             <button class="remove-assignee-btn" data-control="remove-assignee" title="Remove Assignee">&times;</button>
         </div>
