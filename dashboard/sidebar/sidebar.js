@@ -113,6 +113,8 @@ window.TaskSidebar = (function() {
         fileUploadInput = document.getElementById('file-upload-input');
         commentInputWrapper = document.querySelector('.comment-input-wrapper');
         
+        taskNameEl.setAttribute('contenteditable', 'true');
+        
         attachEventListeners();
         isInitialized = true;
     }
@@ -173,55 +175,55 @@ window.TaskSidebar = (function() {
     }
     
     function makeFieldEditable(cell, task, key) {
-    const span = cell.querySelector('span');
-    if (!span || cell.querySelector('input')) return; // Already editing
-    
-    // --- MODIFICATION START ---
-    // 1. Get the column ID and find the column's configuration.
-    const columnId = parseInt(key.split('-')[1], 10);
-    const column = currentProject.customColumns.find(c => c.id === columnId);
-    
-    // 2. Get the RAW value from the data, not the displayed text.
-    const rawValue = task.customFields ? (task.customFields[columnId] || '') : '';
-    
-    const input = document.createElement('input');
-    // For 'Costing' fields, explicitly set the input type to 'number' for a better UX.
-    input.type = (column && column.type === 'Costing') ? 'number' : 'text';
-    input.value = rawValue; // 3. The input now only contains the number (e.g., 1500).
-    input.className = 'field-edit-input';
-    
-    span.replaceWith(input);
-    input.focus();
-    
-    const saveChanges = () => {
-        // 4. When saving, get the new value and compare it to the original raw value.
-        let newValue = input.value;
+        const span = cell.querySelector('span');
+        if (!span || cell.querySelector('input')) return; // Already editing
         
-        // 5. If it's a Costing field, ensure we save it as a number.
-        if (column && column.type === 'Costing') {
-            newValue = parseFloat(newValue) || 0;
-        }
+        // --- MODIFICATION START ---
+        // 1. Get the column ID and find the column's configuration.
+        const columnId = parseInt(key.split('-')[1], 10);
+        const column = currentProject.customColumns.find(c => c.id === columnId);
         
-        if (newValue !== rawValue) {
-            if (!task.customFields) task.customFields = {};
-            task.customFields[columnId] = newValue;
-            logActivity('change', { field: column.name, from: rawValue, to: newValue });
-            renderSidebar(task);
-        } else {
-            input.replaceWith(span); // Revert if no change was made
-        }
-    };
-    // --- MODIFICATION END ---
-    
-    input.addEventListener('blur', saveChanges);
-    input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') input.blur();
-        if (e.key === 'Escape') {
-            input.value = rawValue;
-            input.blur();
-        }
-    });
-}
+        // 2. Get the RAW value from the data, not the displayed text.
+        const rawValue = task.customFields ? (task.customFields[columnId] || '') : '';
+        
+        const input = document.createElement('input');
+        // For 'Costing' fields, explicitly set the input type to 'number' for a better UX.
+        input.type = (column && column.type === 'Costing') ? 'number' : 'text';
+        input.value = rawValue; // 3. The input now only contains the number (e.g., 1500).
+        input.className = 'field-edit-input';
+        
+        span.replaceWith(input);
+        input.focus();
+        
+        const saveChanges = () => {
+            // 4. When saving, get the new value and compare it to the original raw value.
+            let newValue = input.value;
+            
+            // 5. If it's a Costing field, ensure we save it as a number.
+            if (column && column.type === 'Costing') {
+                newValue = parseFloat(newValue) || 0;
+            }
+            
+            if (newValue !== rawValue) {
+                if (!task.customFields) task.customFields = {};
+                task.customFields[columnId] = newValue;
+                logActivity('change', { field: column.name, from: rawValue, to: newValue });
+                renderSidebar(task);
+            } else {
+                input.replaceWith(span); // Revert if no change was made
+            }
+        };
+        // --- MODIFICATION END ---
+        
+        input.addEventListener('blur', saveChanges);
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') input.blur();
+            if (e.key === 'Escape') {
+                input.value = rawValue;
+                input.blur();
+            }
+        });
+    }
     
     function submitComment() {
         const noteText = commentInput.value.trim();
@@ -655,6 +657,38 @@ window.TaskSidebar = (function() {
     function attachEventListeners() {
         closeBtn.addEventListener('click', close);
         
+        taskNameEl.addEventListener('keydown', (e) => {
+            // When Enter is pressed, we want to save (by triggering a blur).
+            if (e.key === 'Enter') {
+                e.preventDefault(); // Prevents adding a new line in the element.
+                taskNameEl.blur(); // Triggers the blur event to save the changes.
+            }
+            // When Escape is pressed, we want to cancel the edit and revert to the original name.
+            if (e.key === 'Escape') {
+                if (currentTask) taskNameEl.textContent = currentTask.name;
+                taskNameEl.blur();
+            }
+        });
+        
+        taskNameEl.addEventListener('blur', () => {
+            if (!currentTask) return; // Safety check if no task is open.
+            
+            const newName = taskNameEl.textContent.trim().replace(/\s+/g, ' ');
+            const oldName = currentTask.name;
+            
+            // If the new name is empty, revert to the old name. A task must have a name.
+            if (!newName) {
+                taskNameEl.textContent = oldName;
+                return;
+            }
+            
+            // If the name has changed, update the data and log the activity.
+            if (newName !== oldName) {
+                currentTask.name = newName;
+                logActivity('change', { field: 'Name', from: oldName, to: newName });
+            }
+        });
+        
         activityLogContainer.addEventListener('click', (e) => {
             const target = e.target;
             const commentItem = target.closest('.comment-item');
@@ -754,55 +788,55 @@ window.TaskSidebar = (function() {
             }
             // MODIFIED: Handle Due Date with a date picker
             else if (controlType === 'date') {
-    const isCustom = key.startsWith('custom-');
-    const columnId = isCustom ? parseInt(key.split('-')[1], 10) : null;
-    const column = isCustom ? currentProject.customColumns.find(c => c.id === columnId) : { name: 'Due Date' };
-    
-    const oldValue = isCustom ? currentTask.customFields?.[columnId] : currentTask.dueDate;
-    
-    const fp = flatpickr(e.target, {
-        defaultDate: oldValue || 'today',
-        dateFormat: "Y-m-d",
-        onClose: function(selectedDates) {
-            const newDate = selectedDates[0] ? flatpickr.formatDate(selectedDates[0], 'Y-m-d') : null;
+                const isCustom = key.startsWith('custom-');
+                const columnId = isCustom ? parseInt(key.split('-')[1], 10) : null;
+                const column = isCustom ? currentProject.customColumns.find(c => c.id === columnId) : { name: 'Due Date' };
+                
+                const oldValue = isCustom ? currentTask.customFields?.[columnId] : currentTask.dueDate;
+                
+                const fp = flatpickr(e.target, {
+                    defaultDate: oldValue || 'today',
+                    dateFormat: "Y-m-d",
+                    onClose: function(selectedDates) {
+                        const newDate = selectedDates[0] ? flatpickr.formatDate(selectedDates[0], 'Y-m-d') : null;
+                        
+                        if (newDate !== oldValue) {
+                            if (isCustom) {
+                                if (!currentTask.customFields) currentTask.customFields = {};
+                                currentTask.customFields[columnId] = newDate;
+                            } else {
+                                currentTask.dueDate = newDate;
+                            }
+                            logActivity('change', { field: column.name, from: renderDateValue(oldValue), to: renderDateValue(newDate) });
+                            renderSidebar(currentTask);
+                        }
+                        // It's crucial to destroy the flatpickr instance after use
+                        fp.destroy();
+                    }
+                });
+                fp.open();
+            }
             
-            if (newDate !== oldValue) {
-                if (isCustom) {
-                    if (!currentTask.customFields) currentTask.customFields = {};
-                    currentTask.customFields[columnId] = newDate;
-                } else {
-                    currentTask.dueDate = newDate;
+            // --- Handle Editable Text/Costing Custom Fields ---
+            else if (key.startsWith('custom-')) {
+                const columnId = parseInt(key.split('-')[1], 10);
+                const column = currentProject.customColumns.find(c => c.id === columnId);
+                if (!column) return;
+                
+                if (column.type === 'Text' || column.type === 'Costing') {
+                    makeFieldEditable(controlCell, currentTask, key);
+                } else if (column.type === 'Selector') {
+                    const oldSelectorValue = currentTask.customFields?.[columnId];
+                    createGenericDropdown(controlCell, column.options.map(opt => ({ label: opt, value: opt })), oldSelectorValue, (newValue) => {
+                        if (newValue !== oldSelectorValue) {
+                            if (!currentTask.customFields) currentTask.customFields = {};
+                            currentTask.customFields[columnId] = newValue;
+                            logActivity('change', { field: column.name, from: oldSelectorValue, to: newValue });
+                            renderSidebar(currentTask);
+                        }
+                    });
                 }
-                logActivity('change', { field: column.name, from: renderDateValue(oldValue), to: renderDateValue(newDate) });
-                renderSidebar(currentTask);
             }
-            // It's crucial to destroy the flatpickr instance after use
-            fp.destroy();
-        }
-    });
-    fp.open();
-}
-
-// --- Handle Editable Text/Costing Custom Fields ---
-else if (key.startsWith('custom-')) {
-    const columnId = parseInt(key.split('-')[1], 10);
-    const column = currentProject.customColumns.find(c => c.id === columnId);
-    if (!column) return;
-    
-    if (column.type === 'Text' || column.type === 'Costing') {
-        makeFieldEditable(controlCell, currentTask, key);
-    } else if (column.type === 'Selector') {
-        const oldSelectorValue = currentTask.customFields?.[columnId];
-        createGenericDropdown(controlCell, column.options.map(opt => ({ label: opt, value: opt })), oldSelectorValue, (newValue) => {
-            if (newValue !== oldSelectorValue) {
-                if (!currentTask.customFields) currentTask.customFields = {};
-                currentTask.customFields[columnId] = newValue;
-                logActivity('change', { field: column.name, from: oldSelectorValue, to: newValue });
-                renderSidebar(currentTask);
-            }
-        });
-    }
-}
         });
         
         sendCommentBtn.addEventListener('click', submitComment);
