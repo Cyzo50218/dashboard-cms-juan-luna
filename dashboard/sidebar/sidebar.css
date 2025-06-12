@@ -1295,7 +1295,7 @@ task-fields-table .field-value {
 
 /* --- Sidebar Project Field Table Styles --- */
 
-/* Label styling */
+/* Label Cell */
 .sidebarprojectfield-label {
     color: var(--text-secondary-color);
     white-space: nowrap;
@@ -1303,7 +1303,7 @@ task-fields-table .field-value {
     vertical-align: middle;
 }
 
-/* Common styles */
+/* Common to all value cells */
 .sidebarprojectfield-value {
     vertical-align: middle;
     padding: 8px 0;
@@ -1324,29 +1324,32 @@ task-fields-table .field-value {
     text-align: left;
 }
 
-/* Status & Priority field */
+/* Status and Priority: full width + centered */
 .sidebarprojectfield-value.status-priority-field {
     width: 100%;
     text-align: center;
 }
 
-/* Other fields */
+/* Other fields: fixed width + centered */
 .sidebarprojectfield-value.other-field {
     width: 300px;
-    text-align: left;
+    text-align: center;
 }
 
-/* Hover effect for interactive fields */
-.sidebarprojectfield-value.control:hover > span {
+/* Hover effect ONLY on interactive fields */
+.sidebarprojectfield-value.control:hover>span {
     background-color: var(--secondary-bg, #f9f9f9);
     border-radius: 4px;
     cursor: pointer;
 }
 
-.sidebarprojectfield-value.control > span {
+/* Center hover area without layout shift */
+.sidebarprojectfield-value.control>span {
     padding: 4px 8px;
-    margin: -4px -8px;
+    margin: 0 auto;
+    /* Center the hover span */
     display: inline-block;
-    width: 100%;
     box-sizing: border-box;
+    max-width: 100%;
+    text-align: center;
 }
