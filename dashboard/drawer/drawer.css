@@ -12,7 +12,7 @@
   --drawer-width-expanded: 260px;
 }
 
-/* Sidebar Wrapper */
+/* === Sidebar Wrapper === */
 .sidebar {
   width: var(--drawer-width-expanded);
   background-color: var(--drawer-primary-bg);
@@ -31,12 +31,10 @@
   overflow-x: hidden;
 }
 
-/* State for the collapsed sidebar */
 .sidebar.close {
   width: var(--drawer-width-collapsed);
 }
 
-/* Sidebar Scrollable Navigation */
 .sidebar-nav {
   flex: 1;
   overflow-y: auto;
@@ -45,7 +43,7 @@
   scrollbar-color: var(--drawer-scrollbar-color) transparent;
 }
 
-/* Section spacing */
+/* === Section Layout === */
 .sidebar .nav-section {
   margin-bottom: 16px;
 }
@@ -56,10 +54,13 @@
   margin: 0;
 }
 
-/* Main Navigation Link Styling */
-.sidebar .nav-item a, .sidebar .nav-item {
+/* === Main Navigation Item Styling === */
+.sidebar .nav-item a,
+.sidebar .nav-item {
   display: flex;
   align-items: center;
+  /* Use space-between to push content to the ends for complex items */
+  justify-content: space-between;
   gap: 12px;
   padding: 6px 12px;
   min-height: 32px;
@@ -72,11 +73,9 @@
   text-decoration: none;
 }
 
-/* Center the icon when the sidebar is collapsed */
-.sidebar.close .nav-item a,
-.sidebar.close .nav-item {
-  justify-content: center;
-  padding: 6px;
+/* Override for simple items (like projects) to align left */
+.sidebar .project-item {
+  justify-content: flex-start;
 }
 
 .sidebar .nav-item:hover {
@@ -90,46 +89,63 @@
   font-weight: 500;
 }
 
-/* Icon Styling */
+/* === NEW: Wrapper for main icon and text === */
+.nav-item-main-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  /* These prevent the text from wrapping or shrinking oddly */
+  flex-shrink: 1;
+  overflow: hidden;
+}
+
+/* === Icon Styling === */
 .sidebar .nav-item i {
   font-size: 16px;
   opacity: var(--drawer-icon-opacity);
-  flex-shrink: 0;
+  flex-shrink: 0; /* Prevents icons from shrinking */
   width: 20px;
   text-align: center;
-  transition: margin 0.3s ease-in-out;
 }
 
-/* Remove the icon's right margin when sidebar is closed */
-.sidebar.close .nav-item i {
-  margin-right: 0;
+.sidebar .expand-icon {
+  font-size: 12px;
+  opacity: 0.6;
 }
 
-/* Text Styling & Transition */
+/* === Text and Expand Icon Styling === */
 .sidebar .nav-item span,
 .sidebar .section-header span {
   white-space: nowrap;
   opacity: 1;
-  transition: opacity 0.2s ease-in-out, max-width 0.3s ease-in-out;
-  overflow: hidden;
+  transition: opacity 0.2s ease, max-width 0.3s ease;
   max-width: 180px;
-  display: flex;
-  align-items: center;
-  height: 100%;
 }
 
-/* Hide text smoothly when sidebar is closed */
+/* === COLLAPSED SIDEBAR STATE === */
+.sidebar.close .nav-item a,
+.sidebar.close .nav-item {
+  /* Center the remaining content (the primary icon) */
+  justify-content: center;
+  padding: 6px;
+}
+
+/* CORRECTED: Hide text AND the expand icon when collapsed */
 .sidebar.close .nav-item span,
-.sidebar.close .section-header span {
+.sidebar.close .section-header span,
+.sidebar.close .expand-icon {
   opacity: 0;
   max-width: 0;
   pointer-events: none;
+  /* Add display: none as a fallback to ensure it's hidden */
+  display: none;
 }
 
-/* Section Header Styling */
+/* === Section Header & Collapsing Logic (Unchanged) === */
 .sidebar .section-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
   cursor: pointer;
   padding: 8px 12px;
@@ -144,7 +160,12 @@
   background-color: rgba(255, 255, 255, 0.05);
 }
 
-/* Section Items Collapsing */
+.sidebar .section-header .section-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .sidebar .section-items {
   max-height: 0;
   overflow: hidden;
@@ -152,10 +173,9 @@
 }
 
 .sidebar .nav-section.open .section-items {
-  max-height: 500px;
+  max-height: 500px; /* Adjust as needed */
 }
 
-/* Rotate chevron icon when open */
 .sidebar .section-header .fa-chevron-right {
   transition: transform 0.3s ease-in-out;
 }
@@ -164,9 +184,11 @@
   transform: rotate(90deg);
 }
 
-/* Project Item Specific Styling */
-.sidebar .project-item {
+/* === Project Item Styling (Unchanged) === */
+.sidebar .project-item a {
+  justify-content: flex-start;
   gap: 12px;
+  width: 100%;
 }
 
 .sidebar .project-color {
@@ -175,98 +197,4 @@
   border-radius: 50%;
   background-color: #3498db;
   flex-shrink: 0;
-}
-
-/* --- Add these new rules to your drawer.css file --- */
-
-/* Make section header a flex container to align items */
-.sidebar .section-header {
-  justify-content: space-between;
-}
-
-/* New wrapper for the section title and chevron */
-.sidebar .section-header-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* Styling for the new 'Add Project' button */
-.sidebar .add-project-btn {
-  background: none;
-  border: none;
-  color: var(--drawer-text-secondary-color);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.2s ease, color 0.2s ease;
-  opacity: 1;
-  transition: opacity 0.2s ease-in-out;
-}
-
-.sidebar .add-project-btn:hover {
-  background-color: var(--drawer-hover-bg);
-  color: #fff;
-}
-
-/* Hide plus button when sidebar is collapsed */
-.sidebar.close .add-project-btn {
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* Make the entire project item clickable */
-.sidebar .project-item a {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  color: var(--drawer-text-color);
-  text-decoration: none;
-}
-
-/* Style for the currently active project */
-.sidebar .project-item.active {
-  background-color: var(--drawer-active-bg);
-}
-
-.sidebar .project-item.active a {
-  color: #fff;
-  font-weight: 500;
-}
-
-/* Styling for the "Add Project" dropdown menu */
-.drawerprojects-dropdown {
-  position: absolute;
-  background-color: #2d2d2d;
-  border: 1px solid var(--drawer-border-color);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  z-index: 110;
-  width: 180px;
-  padding: 8px;
-  font-size: 14px;
-}
-
-.drawerprojects-dropdown ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.drawerprojects-dropdown li {
-  padding: 8px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--drawer-text-color);
-}
-
-.drawerprojects-dropdown li:hover {
-  background-color: var(--drawer-hover-bg);
 }
