@@ -505,7 +505,6 @@ window.TaskSidebar = (function () {
 
         sendCommentBtn.addEventListener('click', () => {
             const commentText = commentInput.value.trim();
-            const imageTitle = imageTitleInput.value.trim();
             if (pastedImageURL || commentText) {
                 let logDetails = { content: commentText };
                 if (pastedImageURL) {
@@ -583,8 +582,6 @@ window.TaskSidebar = (function () {
 
         uploadFileBtn.addEventListener('click', () => fileUploadInput.click());
 
-        // Replace your existing fileUploadInput listener with this robust version
-        // Temporarily add these console.logs for debugging
         fileUploadInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) {
