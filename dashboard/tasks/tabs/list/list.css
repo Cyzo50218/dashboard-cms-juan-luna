@@ -676,45 +676,275 @@ button:hover {
     font-style: italic;
 }
 
-/* General dialog box styling */
-.dialog-box {
-    background-color: white;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    width: 90%;
-    max-width: 480px;
+/* --- DIALOG & FILTER PANEL STYLES --- */
+
+/* This creates the dark, full-screen background overlay and centers the dialog */
+.dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000; /* Ensures it's on top of everything else */
 }
 
-/* Styles for the filter panel specifically */
-.filter-dialog .dialog-body {
-    padding: 8px 24px;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 16px;
+/* This is the white dialog box itself */
+.dialog-box {
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    width: 90%;
+    max-width: 400px; /* You can adjust this width */
+    display: flex;
+    flex-direction: column;
+}
+
+/* Styles for the header area of the dialog */
+.dialog-header {
+    padding: 1rem 1.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-bottom: 1px solid #e9e9e9;
+}
+
+/* Styles for the main content area of the dialog */
+.dialog-body {
+    padding: 1rem 1.5rem;
 }
 
 .filter-dialog fieldset {
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    padding: 8px 12px;
+    border: none;
+    padding: 0;
+    margin: 0;
 }
 
 .filter-dialog legend {
-    padding: 0 8px;
     font-weight: 500;
-    color: #333;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+.filter-dialog hr {
+    border: none;
+    border-top: 1px solid #e9e9e9;
+    margin: 0.75rem 0;
+}
+
+/* Styles the list of checkboxes */
+.section-checkbox-list {
+    max-height: 200px;
+    overflow-y: auto;
 }
 
 .filter-dialog label {
     display: block;
-    margin-bottom: 8px;
+    padding: 0.5rem 0;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
 }
 
+.filter-dialog label:hover {
+    background-color: #f9f9f9;
+}
+
+/* Styles for the footer with the "Apply" button */
+.dialog-footer {
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: flex-end;
+    border-top: 1px solid #e9e9e9;
+    background-color: #f9f9f9;
+}
 /* CSS for the task name placeholder */
 [contenteditable][data-placeholder]:empty::before {
     content: attr(data-placeholder);
     color: #888; /* Placeholder text color */
     pointer-events: none;
     display: inline-block;
+}
+
+/* --- Modern Dialog Design --- */
+
+/* Keyframes for smooth animations */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes popIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* The full-screen backdrop */
+.filterlistview-dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(10, 20, 30, 0.5); /* A darker, slightly blue overlay */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* The main dialog container */
+.filterlistview-dialog-box {
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1), 0 1px 4px rgba(0, 0, 0, 0.05);
+    border: 1px solid #ededed;
+    width: 90%;
+    max-width: 420px;
+    display: flex;
+    flex-direction: column;
+    animation: popIn 0.3s ease-out forwards;
+}
+
+/* Dialog Header Styling */
+.filterlistview-dialog-header {
+    padding: 1.25rem 1.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1a1a1a;
+    border-bottom: 1px solid #e9e9e9;
+}
+
+/* Dialog Body Styling */
+.filterlistview-dialog-body {
+    padding: 1rem 1.5rem;
+    font-size: 0.95rem;
+}
+
+.filterlistview-filter-dialog fieldset {
+    border: none;
+    padding: 0;
+    margin: 0;
+}
+
+.filterlistview-filter-dialog legend {
+    font-weight: 500;
+    padding: 0;
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+.filterlistview-filter-dialog hr {
+    border: none;
+    border-top: 1px solid #e9e9e9;
+    margin: 0.75rem 0;
+}
+
+/* The container for the list of section checkboxes */
+.filterlistview-section-checkbox-list {
+    max-height: 250px;
+    overflow-y: auto;
+    margin-right: -1.5rem; /* Hides scrollbar visually on some browsers */
+    padding-right: 1.5rem; /* Adds the space back */
+}
+
+/* Custom Checkbox Styling */
+.filterlistview-filter-dialog label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.25rem;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background-color 0.2s ease;
+}
+
+.filterlistview-filter-dialog label:hover {
+    background-color: #f9f9f9;
+}
+
+.filterlistview-filter-dialog input[type="checkbox"] {
+    /* Hide the default checkbox */
+    appearance: none;
+    -webkit-appearance: none;
+    margin: 0;
+    
+    /* Custom checkbox styles */
+    height: 1.25em;
+    width: 1.25em;
+    background-color: #f0f0f0;
+    border: 1px solid #d9d9d9;
+    border-radius: 4px;
+    cursor: pointer;
+    display: grid;
+    place-content: center;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.filterlistview-filter-dialog input[type="checkbox"]::before {
+    content: '';
+    width: 0.65em;
+    height: 0.65em;
+    transform: scale(0);
+    transition: 120ms transform ease-in-out;
+    box-shadow: inset 1em 1em #4c6ef5; /* Accent color for the checkmark */
+    transform-origin: bottom left;
+    clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+
+.filterlistview-filter-dialog input[type="checkbox"]:checked {
+    background-color: #4c6ef5;
+    border-color: #4c6ef5;
+}
+
+.filterlistview-filter-dialog input[type="checkbox"]:checked::before {
+    transform: scale(1);
+    box-shadow: inset 1em 1em #ffffff; /* White checkmark */
+}
+
+/* Dialog Footer Styling */
+.filterlistview-dialog-footer {
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: flex-end;
+    border-top: 1px solid #e9e9e9;
+    background-color: #f9f9f9;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+}
+
+/* Dialog Button Styling */
+.filterlistview-dialog-button {
+    border: none;
+    padding: 0.6rem 1.2rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.1s ease, background-color 0.2s ease;
+}
+
+.filterlistview-dialog-button:active {
+    transform: scale(0.97); /* Press-down effect */
+}
+
+.filterlistview-primary {
+    background-color: #4c6ef5;
+    color: white;
+}
+
+.filterlistview-primary:hover {
+    background-color: #3b5bdb;
 }

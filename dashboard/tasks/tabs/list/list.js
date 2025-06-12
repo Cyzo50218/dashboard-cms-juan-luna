@@ -1,6 +1,6 @@
 /*
  * @file list.js
- * @description Controls the List View tab with enhanced filtering and sorting.
+ * @description Controls the List View tab with refined section filtering and date sorting.
  */
 
 // --- Firebase Integration Example ---
@@ -9,16 +9,16 @@ const PROJECT_ID = 'project_123';
 // --- Module-Scoped Variables ---
 
 // DOM Element Holders
-let taskListHeaderEl, taskListBody, taskListFooter, addSectionBtn, addTaskHeaderBtn, mainContainer, assigneeDropdownTemplate, filterBtn, sortBtn, activeFiltersContainer, searchInput;
+let taskListHeaderEl, taskListBody, taskListFooter, addSectionBtn, addTaskHeaderBtn, mainContainer, assigneeDropdownTemplate, filterBtn, sortBtn;
 
 // Event Handler References
-let headerClickListener, bodyClickListener, bodyFocusOutListener, addTaskHeaderBtnListener, addSectionBtnListener, windowClickListener, filterBtnListener, sortBtnListener, searchInputListener;
+let headerClickListener, bodyClickListener, bodyFocusOutListener, addTaskHeaderBtnListener, addSectionBtnListener, windowClickListener, filterBtnListener, sortBtnListener;
 let sortableSections;
 const sortableTasks = [];
 
 // --- Data ---
-let activeFilters = {};
-let activeSort = { key: 'default', direction: 'asc' };
+let activeFilters = {}; // Will hold { visibleSections: [id1, id2] }
+let activeSortState = 'default'; // 'default', 'asc' (oldest), 'desc' (newest)
 
 const allUsers = [
     { id: 1, name: 'Lorelai Gilmore', avatar: 'https://i.imgur.com/k9qRkiG.png' },
@@ -69,7 +69,6 @@ const baseColumnTypes = ['Text', 'Numbers', 'Costing'];
 export function init(params) {
     console.log("Initializing List View Module...", params);
     
-    // --- Get DOM Elements ---
     taskListHeaderEl = document.getElementById('task-list-header');
     taskListBody = document.getElementById('task-list-body');
     taskListFooter = document.getElementById('task-list-footer');
@@ -79,26 +78,6 @@ export function init(params) {
     assigneeDropdownTemplate = document.getElementById('assignee-dropdown-template');
     filterBtn = document.getElementById('filter-btn');
     sortBtn = document.getElementById('sort-btn');
-    
-    // Create and inject new UI elements for enhanced features
-    const headerControls = mainContainer.querySelector('.header-controls-left');
-    if (headerControls) {
-        // Search Input
-        const searchContainer = document.createElement('div');
-        searchContainer.className = 'listview-search-container';
-        searchContainer.innerHTML = `<i class="fas fa-search"></i>`;
-        searchInput = document.createElement('input');
-        searchInput.type = 'search';
-        searchInput.placeholder = 'Search tasks...';
-        searchInput.id = 'task-search-input';
-        searchContainer.appendChild(searchInput);
-        headerControls.appendChild(searchContainer);
-        
-        // Active Filters Display Area
-        activeFiltersContainer = document.createElement('div');
-        activeFiltersContainer.id = 'active-filters-container';
-        headerControls.parentElement.insertAdjacentElement('afterend', activeFiltersContainer);
-    }
     
     if (!mainContainer || !taskListBody) {
         console.error("List view could not initialize: Essential containers not found.");
@@ -118,7 +97,6 @@ export function init(params) {
         if (windowClickListener) window.removeEventListener('click', windowClickListener);
         if (filterBtnListener) filterBtn.removeEventListener('click', filterBtnListener);
         if (sortBtnListener) sortBtn.removeEventListener('click', sortBtnListener);
-        if (searchInputListener) searchInput.removeEventListener('input', searchInputListener);
         
         if (sortableSections) sortableSections.destroy();
         sortableTasks.forEach(st => st.destroy());
@@ -248,30 +226,28 @@ function setupEventListeners() {
         render();
     };
     
+    // This is the corrected version:
     windowClickListener = (e) => {
-        if (!e.target.closest('.datepicker, .context-dropdown, [data-control], .dialog-overlay, .delete-column-btn, #add-column-btn')) {
-            closeFloatingPanels();
+    // We add #filter-btn AND the dialog's own class to the list of elements that should NOT close the panels.
+    if (!e.target.closest('.datepicker, .context-dropdown, [data-control], .dialog-overlay, .delete-column-btn, #add-column-btn, #filter-btn, .filterlistview-dialog-overlay')) {
+        closeFloatingPanels();
+    }
+};
+    
+    filterBtnListener = () => {
+        // DEBUG: Confirm the listener is firing
+        console.log("Filter button clicked. Opening section filter panel...");
+        openSectionFilterPanel();
+    }
+    
+    sortBtnListener = () => {
+        if (activeSortState === 'default') {
+            activeSortState = 'asc'; // asc = Oldest first
+        } else if (activeSortState === 'asc') {
+            activeSortState = 'desc'; // desc = Newest first
+        } else {
+            activeSortState = 'default';
         }
-    };
-    
-    filterBtnListener = () => openFilterPanel();
-    
-    sortBtnListener = (e) => {
-        const options = ['Default', 'Due Date', 'Priority', 'Name'];
-        createDropdown(options, e.target, (option) => {
-            const newKey = option.toLowerCase().replace(' ', '-');
-            if (activeSort.key === newKey) {
-                activeSort.direction = activeSort.direction === 'asc' ? 'desc' : 'asc';
-            } else {
-                activeSort.key = newKey;
-                activeSort.direction = 'asc';
-            }
-            render();
-        });
-    };
-    
-    searchInputListener = (e) => {
-        activeFilters.searchTerm = e.target.value;
         render();
     };
     
@@ -284,145 +260,111 @@ function setupEventListeners() {
     window.addEventListener('click', windowClickListener);
     if (filterBtn) filterBtn.addEventListener('click', filterBtnListener);
     if (sortBtn) sortBtn.addEventListener('click', sortBtnListener);
-    if (searchInput) searchInput.addEventListener('input', searchInputListener);
 }
 
 // --- Core Logic & UI Functions ---
 
-function openFilterPanel() {
+function openSectionFilterPanel() {
     closeFloatingPanels();
     const dialogOverlay = document.createElement('div');
-    dialogOverlay.className = 'dialog-overlay';
+    // MODIFIED: Changed class name
+    dialogOverlay.className = 'filterlistview-dialog-overlay';
     
-    const assigneeOptions = allUsers.map(u => `<div><label><input type="checkbox" name="assignee" value="${u.id}"> ${u.name}</label></div>`).join('');
-    const statusOptionsHTML = statusOptions.map(s => `<div><label><input type="checkbox" name="status" value="${s}"> ${s}</label></div>`).join('');
-    const priorityOptionsHTML = priorityOptions.map(p => `<div><label><input type="checkbox" name="priority" value="${p}"> ${p}</label></div>`).join('');
+    const sectionOptionsHTML = project.sections.map(s => {
+        const isChecked = !activeFilters.visibleSections || activeFilters.visibleSections.includes(s.id);
+        // MODIFIED: Changed class name for checkboxes
+        return `<div><label><input type="checkbox" class="filterlistview-section-checkbox" name="section" value="${s.id}" ${isChecked ? 'checked' : ''}> ${s.title}</label></div>`;
+    }).join('');
     
+    const allChecked = !activeFilters.visibleSections;
+    
+    // MODIFIED: Changed all class names within the HTML string
     dialogOverlay.innerHTML = `
-        <div class="dialog-box filter-dialog">
-            <div class="dialog-header">Filter Tasks</div>
-            <div class="dialog-body">
-                <fieldset><legend>Status</legend>${statusOptionsHTML}</fieldset>
-                <fieldset><legend>Assignee</legend>${assigneeOptions}<div><label><input type="checkbox" name="assignee" value="unassigned"> Unassigned</label></div></fieldset>
-                <fieldset><legend>Priority</legend>${priorityOptionsHTML}</fieldset>
+    <div class="filterlistview-dialog-box filterlistview-filter-dialog">
+        <div class="filterlistview-dialog-header">Filter by Section</div>
+            <div class="filterlistview-dialog-body">
+                <fieldset>
+                    <legend>Sections</legend>
+                    <div><label><input type="checkbox" id="select-all-sections" ${allChecked ? 'checked' : ''}> <strong>Select All</strong></label></div>
+                    <hr>
+                <div class="filterlistview-section-checkbox-list">${sectionOptionsHTML}</div>
+            </fieldset>
             </div>
-            <div class="dialog-footer">
-                <button class="dialog-button" id="clear-filters-btn">Clear All</button>
-                <button class="dialog-button primary" id="apply-filters-btn">Apply</button>
+            <div class="filterlistview-dialog-footer">
+                <button class="filterlistview-dialog-button filterlistview-primary" id="apply-filters-btn">Apply</button>
             </div>
         </div>`;
     
     document.body.appendChild(dialogOverlay);
     
-    for (const key in activeFilters) {
-        if (key === 'searchTerm') continue;
-        activeFilters[key].forEach(value => {
-            const input = dialogOverlay.querySelector(`input[name="${key}"][value="${value}"]`);
-            if (input) input.checked = true;
-        });
-    }
+    const applyBtn = dialogOverlay.querySelector('#apply-filters-btn');
+    const selectAllBox = dialogOverlay.querySelector('#select-all-sections');
+    // MODIFIED: Changed selector to match new class name
+    const allSectionBoxes = dialogOverlay.querySelectorAll('.filterlistview-section-checkbox');
     
-    dialogOverlay.querySelector('#apply-filters-btn').addEventListener('click', () => {
-        const searchTerm = activeFilters.searchTerm;
-        activeFilters = {};
-        if (searchTerm) activeFilters.searchTerm = searchTerm;
+    selectAllBox.addEventListener('change', (e) => {
+        allSectionBoxes.forEach(box => box.checked = e.target.checked);
+    });
+    
+    applyBtn.addEventListener('click', () => {
+        const checkedBoxes = Array.from(allSectionBoxes).filter(box => box.checked);
         
-        dialogOverlay.querySelectorAll('input[type="checkbox"]:checked').forEach(input => {
-            const name = input.name;
-            const value = input.value === 'unassigned' ? input.value : (isNaN(Number(input.value)) ? input.value : Number(input.value));
-            if (!activeFilters[name]) activeFilters[name] = [];
-            activeFilters[name].push(value);
-        });
+        if (checkedBoxes.length === allSectionBoxes.length) {
+            delete activeFilters.visibleSections;
+        } else {
+            activeFilters.visibleSections = checkedBoxes.map(box => Number(box.value));
+        }
+        
         closeFloatingPanels();
         render();
     });
     
-    dialogOverlay.querySelector('#clear-filters-btn').addEventListener('click', () => {
-        const searchTerm = activeFilters.searchTerm;
-        activeFilters = {};
-        if (searchTerm) activeFilters.searchTerm = searchTerm;
+    // MODIFIED: Changed selector to match new class name
+    dialogOverlay.addEventListener('click', e => {
+    if (e.target.classList.contains('filterlistview-dialog-overlay')) {
         closeFloatingPanels();
-        render();
-    });
-    
-    dialogOverlay.addEventListener('click', e => { if (e.target === e.currentTarget) closeFloatingPanels(); });
+    }
+});
+
 }
 
 function getFilteredProject() {
-    // BUG FIX: Start with a deep copy to prevent any mutation of original data.
+    // DEBUG: See what filters are being applied at the start of the render cycle
+    // console.log("getFilteredProject called with state:", JSON.stringify(activeFilters));
     const projectCopy = JSON.parse(JSON.stringify(project));
     
-    const filtersPresent = Object.keys(activeFilters).length > 0;
-    if (!filtersPresent) return projectCopy;
+    if (activeFilters.visibleSections && activeFilters.visibleSections.length < project.sections.length) {
+        projectCopy.sections = projectCopy.sections.filter(section =>
+            activeFilters.visibleSections.includes(section.id)
+        );
+    }
     
-    const searchTerm = activeFilters.searchTerm?.toLowerCase() || '';
-    
-    const filteredProject = {
-        ...projectCopy,
-        sections: projectCopy.sections.map(section => ({
-            ...section,
-            tasks: section.tasks.filter(task => {
-                // Search Term Filter
-                if (searchTerm && !task.name.toLowerCase().includes(searchTerm)) {
-                    return false;
-                }
-                
-                // Other Filters
-                return Object.entries(activeFilters).every(([key, values]) => {
-                    if (key === 'searchTerm') return true;
-                    if (!values || values.length === 0) return true;
-                    
-                    switch (key) {
-                        case 'status':
-                            return values.includes(task.status);
-                        case 'priority':
-                            return values.includes(task.priority);
-                        case 'assignee':
-                            if (task.assignees.length === 0) return values.includes('unassigned');
-                            return task.assignees.some(id => values.includes(id));
-                        default:
-                            return true;
-                    }
-                });
-            })
-        })).filter(section => section.tasks.length > 0)
-    };
-    return filteredProject;
+    return projectCopy;
 }
 
 function getSortedProject(data) {
-    if (activeSort.key === 'default') return data;
+    if (activeSortState === 'default') return data;
     
-    const priorityOrder = { 'High': 1, 'Medium': 2, 'Low': 3 };
-    const direction = activeSort.direction === 'asc' ? 1 : -1;
+    const direction = activeSortState === 'asc' ? 1 : -1;
     
     data.sections.forEach(section => {
         section.tasks.sort((a, b) => {
-            let valA, valB;
-            switch (activeSort.key) {
-                case 'name':
-                    return a.name.localeCompare(b.name) * direction;
-                case 'due-date':
-                    valA = a.dueDate ? new Date(a.dueDate) : 0;
-                    valB = b.dueDate ? new Date(b.dueDate) : 0;
-                    if (!valA && !valB) return 0;
-                    if (!valA) return 1 * direction;
-                    if (!valB) return -1 * direction;
-                    return (valA - valB) * direction;
-                case 'priority':
-                    valA = priorityOrder[a.priority] || 99;
-                    valB = priorityOrder[b.priority] || 99;
-                    return (valA - valB) * direction;
-                default:
-                    return 0;
-            }
+            const valA = a.dueDate ? new Date(a.dueDate) : 0;
+            const valB = b.dueDate ? new Date(b.dueDate) : 0;
+            
+            if (!valA && !valB) return 0;
+            if (!valA) return 1 * direction;
+            if (!valB) return -1 * direction;
+            
+            return (valA - valB) * direction;
         });
     });
+    
     return data;
 }
 
 function closeFloatingPanels() {
-    document.querySelectorAll('.context-dropdown, .datepicker, .dialog-overlay').forEach(p => p.remove());
+   document.querySelectorAll('.context-dropdown, .datepicker, .dialog-overlay, .filterlistview-dialog-overlay').forEach(p => p.remove());
 }
 
 function findTaskAndSection(taskId) {
@@ -445,12 +387,17 @@ function render() {
     renderHeader(projectToRender);
     renderBody(projectToRender);
     renderFooter(projectToRender);
-    renderActiveFilters();
     syncScroll(scrollStates);
     
-    const isSortActive = activeSort.key !== 'default';
+    const isSortActive = activeSortState !== 'default';
     
-    sortBtn.innerHTML = `<i class="fas fa-sort"></i> Sort ${isSortActive ? (activeSort.direction === 'asc' ? '▲' : '▼') : ''}`;
+    if (activeSortState === 'asc') {
+        sortBtn.innerHTML = `<i class="fas fa-sort-amount-up-alt"></i> Oldest`;
+    } else if (activeSortState === 'desc') {
+        sortBtn.innerHTML = `<i class="fas fa-sort-amount-down-alt"></i> Newest`;
+    } else {
+        sortBtn.innerHTML = `<i class="fas fa-sort"></i> Sort`;
+    }
     
     if (sortableSections) sortableSections.destroy();
     sortableSections = new Sortable(taskListBody, { handle: '.section-header-list .drag-handle', animation: 150, disabled: isSortActive });
@@ -461,7 +408,7 @@ function render() {
         sortableTasks.push(new Sortable(container, { group: 'tasks', handle: '.fixed-column .drag-handle', animation: 150, disabled: isSortActive }));
     });
     
-    filterBtn?.classList.toggle('active', Object.keys(activeFilters).length > 0 && (Object.keys(activeFilters).length > 1 || !activeFilters.searchTerm));
+    filterBtn?.classList.toggle('active', !!activeFilters.visibleSections);
     sortBtn?.classList.toggle('active', isSortActive);
 }
 
@@ -492,15 +439,14 @@ function renderBody(projectToRender) {
     taskListBody.innerHTML = '';
     
     projectToRender.sections.forEach(section => {
-        // Pass the custom columns from the rendered project down the chain
         const sectionElement = createSection(section, projectToRender.customColumns);
         if (sectionElement) taskListBody.appendChild(sectionElement);
     });
     
-    if (!taskListBody.hasChildNodes()) {
+    if (projectToRender.sections.length === 0) {
         const noResultsEl = document.createElement('div');
         noResultsEl.className = 'no-results-message';
-        noResultsEl.textContent = 'No tasks match your current filters.';
+        noResultsEl.textContent = 'No sections match your current filter.';
         taskListBody.appendChild(noResultsEl);
     }
 }
@@ -526,32 +472,6 @@ function renderFooter(projectToRender) {
     });
     taskListFooter.innerHTML = `<div class="fixed-column"></div><div class="scrollable-columns-wrapper"><div class="scrollable-columns"><div class="task-col header-assignee"></div><div class="task-col header-due-date"></div><div class="task-col header-priority"></div><div class="task-col header-status"></div>${customColsHTML}</div></div>`;
     taskListFooter.style.display = 'flex';
-}
-
-function renderActiveFilters() {
-    if (!activeFiltersContainer) return;
-    activeFiltersContainer.innerHTML = '';
-    
-    Object.entries(activeFilters).forEach(([key, values]) => {
-        if (key === 'searchTerm' || !values || values.length === 0) return;
-        
-        values.forEach(value => {
-            const tagEl = document.createElement('div');
-            tagEl.className = 'filter-tag';
-            let label = value;
-            if (key === 'assignee') {
-                label = value === 'unassigned' ? 'Unassigned' : (allUsers.find(u => u.id === value)?.name || value);
-            }
-            tagEl.innerHTML = `<span>${key}: <strong>${label}</strong></span><button class="remove-tag-btn">&times;</button>`;
-            
-            tagEl.querySelector('.remove-tag-btn').addEventListener('click', () => {
-                activeFilters[key] = activeFilters[key].filter(v => v !== value);
-                if (activeFilters[key].length === 0) delete activeFilters[key];
-                render();
-            });
-            activeFiltersContainer.appendChild(tagEl);
-        });
-    });
 }
 
 function createSection(sectionData, customColumns) {
