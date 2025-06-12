@@ -33,7 +33,7 @@
     flex-shrink: 0;
     margin-bottom: 0;
     border-bottom: 1px solid var(--border-color);
-
+    padding-bottom: 6px;
 }
 
 .header-controls-right {
@@ -601,6 +601,79 @@ button:hover {
     justify-content: center;
     align-items: center;
     z-index: 1000;
+}
+
+/* --- Styles for NEW Enhanced Features --- */
+
+/* Search Bar in Header */
+.search-container {
+    display: flex;
+    align-items: center;
+    background-color: var(--secondary-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0 0.5rem;
+    margin-left: 1rem;
+}
+.search-container .fa-search {
+    color: var(--text-secondary-color);
+    font-size: 0.8rem;
+}
+#task-search-input {
+    border: none;
+    background: transparent;
+    outline: none;
+    padding: 0.4rem 0.5rem;
+    width: 250px;
+}
+
+/* Container for Active Filter Tags */
+#active-filters-container {
+    padding: 0.5rem 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+    background-color: #fdfdfd;
+}
+#active-filters-container:empty {
+    display: none; /* Hide the container when no filters are active */
+}
+
+/* Individual Filter Tag styling */
+.filter-tag {
+    display: flex;
+    align-items: center;
+    background-color: #eef2ff;
+    color: #4361ee;
+    font-size: 0.8rem;
+    border-radius: 4px;
+    padding: 0.2rem 0.2rem 0.2rem 0.6rem;
+}
+.filter-tag strong {
+    margin-left: 4px;
+}
+.remove-tag-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    margin-left: 0.4rem;
+    padding: 0;
+    color: #4361ee;
+    opacity: 0.7;
+}
+.remove-tag-btn:hover {
+    opacity: 1;
+}
+
+/* "No Results" Message */
+.no-results-message {
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-secondary-color);
+    font-style: italic;
 }
 
 /* General dialog box styling */
