@@ -85,7 +85,7 @@ export function init(params) {
     if (headerControls) {
         // Search Input
         const searchContainer = document.createElement('div');
-        searchContainer.className = 'search-container';
+        searchContainer.className = 'listview-search-container';
         searchContainer.innerHTML = `<i class="fas fa-search"></i>`;
         searchInput = document.createElement('input');
         searchInput.type = 'search';

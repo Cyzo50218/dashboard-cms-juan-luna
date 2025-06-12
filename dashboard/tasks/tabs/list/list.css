@@ -606,7 +606,7 @@ button:hover {
 /* --- Styles for NEW Enhanced Features --- */
 
 /* Search Bar in Header */
-.search-container {
+.listview-search-container {
     display: flex;
     align-items: center;
     background-color: var(--secondary-bg);
@@ -615,7 +615,7 @@ button:hover {
     padding: 0 0.5rem;
     margin-left: 1rem;
 }
-.search-container .fa-search {
+.listview-search-container .fa-search {
     color: var(--text-secondary-color);
     font-size: 0.8rem;
 }
