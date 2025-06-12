@@ -1159,6 +1159,7 @@ button:hover {
 }
 
 .move-task-btn:hover {
-    opacity: 1;
+    opacity: 0.10;
+    background: transparent;
     color: var(--accent-color);
 }
