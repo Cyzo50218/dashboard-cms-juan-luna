@@ -61,8 +61,9 @@ let project = {
 let currentlyFocusedSectionId = project.sections.length > 0 ? project.sections[0].id : null;
 const priorityOptions = ['High', 'Medium', 'Low'];
 const statusOptions = ['On track', 'At risk', 'Off track', 'Completed'];
-const columnTypeOptions = ['Text', 'Numbers', 'Costing', 'Custom'];
-const baseColumnTypes = ['Text', 'Numbers', 'Costing'];
+const columnTypeOptions = ['Text', 'Numbers', 'Costing', 'Type', 'Custom'];
+const typeColumnOptions = ['Invoice', 'Payment'];
+const baseColumnTypes = ['Text', 'Numbers', 'Costing', 'Type'];
 
 // --- Main Initialization and Cleanup ---
 
@@ -176,6 +177,23 @@ function setupEventListeners() {
             case 'status':
                 createDropdown(statusOptions, control, (v) => updateTask(taskId, { status: v }));
                 break;
+            case 'custom-select': {
+    const columnId = Number(control.dataset.columnId);
+    const column = project.customColumns.find(c => c.id === columnId);
+    if (column && column.options) {
+        // Create a dropdown with the column's specific options ('Invoice', 'Payment').
+        // The callback updates the task's custom field with the selected value.
+        createDropdown(column.options, control, (selectedValue) => {
+            updateTask(taskId, {
+                customFields: {
+                    ...task.customFields,
+                    [columnId]: selectedValue
+                }
+            });
+        });
+    }
+    break;
+}    
             case 'assignee': { // Using block scope for the `task` constant
                 const { task } = findTaskAndSection(taskId);
                 // MODIFICATION: Only open the dropdown if NO user is currently assigned.
@@ -508,8 +526,31 @@ function createTaskRow(task, customColumns) {
     let customFieldsHTML = '';
     customColumns.forEach(col => {
         const value = task.customFields[col.id] || '';
-        const displayValue = col.type === 'Costing' && value ? `${col.currency || '$'}${value}` : value;
-        customFieldsHTML += `<div class="task-col header-custom" data-control="custom" data-column-id="${col.id}" contenteditable="true">${displayValue}</div>`;
+        
+        if (col.type === 'Type' && col.options) {
+            /* START MODIFICATION */
+            let displayValue = '<span class="add-value">+ Select</span>'; // Default text if no value is set
+            
+            if (value) {
+                // Check the value and apply the desired priority class for styling.
+                if (value === 'Invoice') {
+                    // Style 'Invoice' like a 'High' priority tag.
+                    displayValue = createTag(value, 'priority', 'priority-High');
+                } else if (value === 'Payment') {
+                    // Style 'Payment' like a 'Medium' priority tag.
+                    displayValue = createTag(value, 'priority', 'priority-Medium');
+                } else {
+                    // Fallback for any other potential value, using status styling.
+                    displayValue = createStatusTag(value);
+                }
+            }
+            customFieldsHTML += `<div class="task-col header-custom" data-control="custom-select" data-column-id="${col.id}">${displayValue}</div>`;
+            /* END MODIFICATION */
+        } else {
+            // This is the original logic for other column types.
+            const displayValue = col.type === 'Costing' && value ? `${col.currency || '$'}${value}` : value;
+            customFieldsHTML += `<div class="task-col header-custom" data-control="custom" data-column-id="${col.id}" contenteditable="true">${displayValue}</div>`;
+        }
     });
     
     rowWrapper.innerHTML = `<div class="fixed-column"><i class="fas fa-grip-vertical drag-handle"></i><i class="far fa-check-circle" data-control="check"></i><span class="task-name" contenteditable="true" data-placeholder="Add task name">${displayName}</span></div><div class="scrollable-columns-wrapper"><div class="scrollable-columns"><div class="task-col header-assignee" data-control="assignee">${createAssigneeHTML(task.assignees)}</div><div class="task-col header-due-date" data-control="due-date">${displayDate}</div><div class="task-col header-priority" data-control="priority">${createPriorityTag(task.priority)}</div><div class="task-col header-status" data-control="status">${createStatusTag(task.status)}</div>${customFieldsHTML}</div></div>`;
@@ -756,6 +797,11 @@ function addNewColumn(config) {
         currency: config.currency || null,
         aggregation: (config.type === 'Costing' || config.type === 'Numbers') ? 'Sum' : null,
     };
+    
+    if (config.type === 'Type') {
+        newColumn.options = typeColumnOptions;
+    }
+    
     project.customColumns.push(newColumn);
     render();
 }
