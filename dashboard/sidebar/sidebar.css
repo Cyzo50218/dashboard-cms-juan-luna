@@ -1293,63 +1293,77 @@ task-fields-table .field-value {
     outline: none;
 }
 
-/* --- Sidebar Project Field Table Styles --- */
+/* TABLE LAYOUT: Prevent column shifting across rows */
+.sidebarprojectfield-table {
+    width: 100%;
+    table-layout: fixed; /* Ensures column widths are consistent across all rows */
+    border-collapse: collapse;
+}
 
-/* Label Cell */
+/* TABLE ROW (optional if you want row-specific styling) */
+.sidebarprojectfield-row {
+    /* Add styling here if needed */
+}
+
+/* === LABEL CELL === */
 .sidebarprojectfield-label {
     color: var(--text-secondary-color);
     white-space: nowrap;
     padding: 8px 16px 8px 0;
     vertical-align: middle;
+    width: 120px; /* Fixed width for the label column */
 }
 
-/* Common to all value cells */
+/* === COMMON VALUE CELL STYLING === */
 .sidebarprojectfield-value {
     vertical-align: middle;
     padding: 8px 0;
-    white-space: nowrap;
+    white-space: nowrap;         /* Prevent text wrapping */
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-/* Project field */
+/* === PROJECT FIELD === */
 .sidebarprojectfield-value.project-field {
     width: 200px;
     text-align: left;
 }
 
-/* Assignee field */
+/* === ASSIGNEE FIELD === */
+/* Takes full width only in its own row — won't affect other rows */
 .sidebarprojectfield-value.assignee-field {
     width: 100%;
+    max-width: 100%;
     text-align: left;
 }
 
-/* Status and Priority: full width + centered */
+/* === STATUS AND PRIORITY FIELDS === */
 .sidebarprojectfield-value.status-priority-field {
-    width: 100%;
+    width: 300px; /* Fixed width */
     text-align: center;
 }
 
-/* Other fields: fixed width + centered */
+/* === OTHER FIELDS === */
 .sidebarprojectfield-value.other-field {
-    width: 300px;
+    width: 300px; /* Fixed width */
     text-align: center;
 }
 
-/* Hover effect ONLY on interactive fields */
-.sidebarprojectfield-value.control:hover>span {
+/* === CONTROL HOVER EFFECT === */
+.sidebarprojectfield-value.control:hover > span {
     background-color: var(--secondary-bg, #f9f9f9);
     border-radius: 4px;
     cursor: pointer;
 }
 
-/* Center hover area without layout shift */
-.sidebarprojectfield-value.control>span {
+/* === CONTROL SPAN STYLING === */
+/* Ensures the hover background is centered and doesn't shift layout */
+.sidebarprojectfield-value.control > span {
     padding: 4px 8px;
-    margin: 0 auto;
-    /* Center the hover span */
+    margin: 0 auto;                 /* Center the hover area */
     display: inline-block;
     box-sizing: border-box;
-    max-width: 100%;
     text-align: center;
+    max-width: 100%;
+    min-width: 80px;                /* Optional: ensure the span doesn't look too small */
 }
