@@ -1273,3 +1273,22 @@ task-fields-table .field-value {
   background-color: var(--secondary-bg, #f5f5f5);
   color: var(--text-color, #1e1f21);
 }
+
+/* Style for the editable task name in the sidebar */
+#task-name[contenteditable="true"] {
+    cursor: text;
+    padding: 0.25rem 0.5rem;
+    margin: -0.25rem -0.5rem; /* Negative margin to keep layout stable */
+    border-radius: 4px;
+    transition: background-color 0.2s, box-shadow 0.2s;
+}
+
+#task-name[contenteditable="true"]:hover {
+    background-color: #f5f5f5;
+}
+
+#task-name[contenteditable="true"]:focus {
+    background-color: #ffffff;
+    box-shadow: 0 0 0 2px var(--accent-color, #4c6ef5); /* Use your existing accent color */
+    outline: none;
+}
