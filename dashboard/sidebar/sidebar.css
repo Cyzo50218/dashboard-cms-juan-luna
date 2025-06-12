@@ -1295,41 +1295,51 @@ task-fields-table .field-value {
 
 /* --- Sidebar Project Field Table Styles --- */
 
-/* Styles the label cell (e.g., "Assignee", "Due Date") */
+/* Label Cell */
 .sidebarprojectfield-label {
     color: var(--text-secondary-color);
-    white-space: nowrap; /* Prevents the label from wrapping */
+    white-space: nowrap;
     padding: 8px 16px 8px 0;
     vertical-align: middle;
 }
 
-/* Styles the value cell (e.g., the avatars, the date text) */
+/* Common styles for all value cells */
 .sidebarprojectfield-value {
-    width: 100%;
-    text-align: center;
     vertical-align: middle;
     padding: 8px 0;
-    word-break: break-word;
+    white-space: nowrap;   /* Prevent text from wrapping */
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-/* For wide fields like assignee or custom ones */
-.sidebarprojectfield-value.fullwidth {
+/* Project field: fixed width, no wrap */
+.sidebarprojectfield-value.project-field {
+    width: 200px; /* Adjust as needed */
+    text-align: left;
+}
+
+/* Assignee field: full width, no wrap */
+.sidebarprojectfield-value.assignee-field {
     width: 100%;
     text-align: left;
 }
 
+/* Other fields: fixed width, no wrap */
+.sidebarprojectfield-value.other-field {
+    width: 300px; /* Adjust as needed */
+    text-align: left;
+}
 
-/* Adds a hover effect ONLY to value cells that are interactive */
+/* Hover styling for interactive controls */
 .sidebarprojectfield-value.control:hover > span {
     background-color: var(--secondary-bg, #f9f9f9);
     border-radius: 4px;
     cursor: pointer;
 }
 
-/* Ensure the content inside the span has some padding on hover */
 .sidebarprojectfield-value.control > span {
     padding: 4px 8px;
-    margin: -4px -8px; /* Negative margin prevents layout shifts on hover */
+    margin: -4px -8px;
     display: inline-block;
     width: 100%;
     box-sizing: border-box;

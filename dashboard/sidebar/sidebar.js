@@ -384,11 +384,13 @@ window.TaskSidebar = (function() {
 
     const valueCell = row.insertCell();
 
-    // Apply a dynamic class for 100% width fields
-    if (key === 'assignee' || key === 'custom' || key === 'project') {
-        valueCell.className = 'sidebarprojectfield-value fullwidth';
+    // Assign specific classes based on key
+    if (key === 'project') {
+        valueCell.className = 'sidebarprojectfield-value project-field';
+    } else if (key === 'assignee') {
+        valueCell.className = 'sidebarprojectfield-value assignee-field';
     } else {
-        valueCell.className = 'sidebarprojectfield-value';
+        valueCell.className = 'sidebarprojectfield-value other-field';
     }
 
     valueCell.innerHTML = `<span>${valueHTML}</span>`;
