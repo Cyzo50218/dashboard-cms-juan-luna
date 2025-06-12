@@ -808,14 +808,15 @@ task-fields-table .field-value {
 .attachment-note {
     font-size: 14px;
     color: #333;
+    font-weight: 600;
     padding: 10px 12px;
     background-color: #f8f9fa;
     border: 1px solid var(--border-color);
-    border-top: none; /* Avoids a double border. */
-    margin-top: -1px; /* Overlaps borders for a seamless look. */
-    border-radius: 0 0 8px 8px; /* Matches the image's bottom corners. */
+    border-top: none;
+    margin-top: -1px;
+    border-radius: 0 0 8px 8px;
     line-height: 1.4;
-    white-space: pre-wrap; /* Displays line breaks entered by the user. */
+    white-space: pre-wrap;
 }
 
 /* Input for adding a note/title to a new pasted image */

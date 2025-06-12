@@ -381,25 +381,25 @@ window.TaskSidebar = (function () {
     }
 
     function clearImagePreview() {
-    // 1. Reset the files array
-    pastedFiles = [];
+        // 1. Reset the files array
+        pastedFiles = [];
 
-    // 2. Remove all child elements (the preview items) from the container
-    if (imagePreviewContainer) {
-        imagePreviewContainer.innerHTML = '';
+        // 2. Remove all child elements (the preview items) from the container
+        if (imagePreviewContainer) {
+            imagePreviewContainer.innerHTML = '';
+        }
+
+        // 3. Reset the state of the comment input area
+        if (commentInputWrapper) {
+            commentInputWrapper.classList.remove('preview-active');
+        }
+        if (commentInput) {
+            commentInput.placeholder = 'Add a comment...';
+        }
+        if (fileUploadInput) {
+            fileUploadInput.value = ""; // Resets the file input so the same file can be selected again
+        }
     }
-    
-    // 3. Reset the state of the comment input area
-    if (commentInputWrapper) {
-        commentInputWrapper.classList.remove('preview-active');
-    }
-    if (commentInput) {
-        commentInput.placeholder = 'Add a comment...';
-    }
-    if (fileUploadInput) {
-        fileUploadInput.value = ""; // Resets the file input so the same file can be selected again
-    }
-}
 
     function removeAssignee(userIdToRemove) {
         if (!currentTask) return;
@@ -465,6 +465,26 @@ window.TaskSidebar = (function () {
         dropdown.style.left = `${rect.left}px`;
     }
 
+    // Add this with your other helper functions
+    function readFileAsDataURL(file) {
+        return new Promise((resolve, reject) => {
+            // Handle mock files created from pasted URLs
+            if (file.type === 'image/url') {
+                resolve({
+                    dataURL: file.name, // The 'name' is the URL
+                    title: file.name.substring(file.name.lastIndexOf('/') + 1)
+                });
+                return;
+            }
+
+            // Handle real File objects
+            const reader = new FileReader();
+            reader.onload = () => resolve({ dataURL: reader.result, title: file.name });
+            reader.onerror = (error) => reject(error);
+            reader.readAsDataURL(file);
+        });
+    }
+
     // --- EVENT HANDLERS & LOGIC ---
     function attachEventListeners() {
         closeBtn.addEventListener('click', close);
@@ -515,51 +535,41 @@ window.TaskSidebar = (function () {
             }
         });
 
-        sendCommentBtn.addEventListener('click', () => {
-    const commentText = commentInput.value.trim();
+        sendCommentBtn.addEventListener('click', async () => {
+            // This text will now be the note for all attached images.
+            const imageNoteText = commentInput.value.trim();
+            const filesToProcess = [...pastedFiles];
 
-    // Proceed only if there is text to send OR files to upload.
-    if (commentText || pastedFiles.length > 0) {
+            if (imageNoteText || filesToProcess.length > 0) {
 
-        // 1. First, send the text content as its own comment, if it exists.
-        if (commentText) {
-            logActivity('comment', {
-                content: commentText,
-                details: `<strong>${currentUser.name}</strong> added a comment.`
-            });
-        }
+                if (filesToProcess.length > 0) {
+                    // --- Case 1: There are images ---
+                    // The text from the comment box will be the note for every image.
+                    for (const file of filesToProcess) {
+                        try {
+                            const { dataURL } = await readFileAsDataURL(file);
 
-        // 2. Second, loop through the files array and send each image as a separate comment.
-        pastedFiles.forEach(file => {
-            // Check if it's a real file that needs to be read, or a mock file from a pasted URL.
-            if (file.type === 'image/url') {
-                // It's a pasted URL. The 'file.name' is the URL itself.
-                logActivity('comment', {
-                    content: '', // This log entry is just for the image
-                    imageURL: file.name,
-                    imageTitle: file.name.substring(file.name.lastIndexOf('/') + 1), // Extract a title
-                    details: `<strong>${currentUser.name}</strong> attached an image.`
-                });
-            } else {
-                // It's a real file. We need to use FileReader to get its data URL.
-                const reader = new FileReader();
-                reader.onload = (e) => {
+                            logActivity('comment', {
+                                content: "", // The main content is empty now.
+                                imageURL: dataURL,
+                                imageTitle: imageNoteText // The input text becomes the title/note.
+                            });
+                        } catch (error) {
+                            console.error("Error processing file:", error);
+                        }
+                    }
+                } else {
+                    // --- Case 2: Text only, no images ---
                     logActivity('comment', {
-                        content: '', // This log entry is just for the image
-                        imageURL: e.target.result,
-                        imageTitle: file.name,
-                        details: `<strong>${currentUser.name}</strong> attached an image.`
+                        content: imageNoteText
                     });
-                };
-                reader.readAsDataURL(file);
+                }
+
+                // --- Finally, clear the input form ---
+                clearImagePreview();
+                commentInput.value = '';
             }
         });
-
-        // 3. Finally, clear the comment input and all image previews.
-        clearImagePreview();
-        commentInput.value = '';
-    }
-});
 
         commentInput.addEventListener('paste', (e) => {
             const items = (e.clipboardData || window.clipboardData).items;
