@@ -148,7 +148,7 @@ async function loadHTML(selector, url) {
     
     // If the drawer was loaded, call the new, robust logic to make it interactive.
     if (url.includes("drawer/drawer.html")) {
-      attachDrawerToggleLogic();
+      
     }
     
   } catch (err) {
@@ -1379,12 +1379,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     loadHTML("#right-sidebar", "../dashboard/sidebar/sidebar.html"),
   ]);
   
-  
+  attachDrawerToggleLogic();
 
-  document.querySelectorAll('.nav-item a[href^="#"]').forEach(link => {
-    const section = link.getAttribute('href').substring(1);
-    link.setAttribute('data-section', section);
-  });
+  
   
 
   document.body.addEventListener('click', (e) => {
