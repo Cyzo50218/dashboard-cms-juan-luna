@@ -4,7 +4,7 @@ window.TaskSidebar = (function() {
         'proj-1': {
             name: 'Website Redesign',
             customColumns: [
-                { id: 1, name: 'Budget', type: 'Costing', currency: '$' },
+                { id: 1, name: 'Costing', type: 'Costing', currency: '$' },
                 // NEW: Added more custom column types for demonstration
                 { id: 2, name: 'Launch Date', type: 'Date' },
                 { id: 3, name: 'Team', type: 'Selector', options: ['Marketing', 'Product', 'Engineering'] }
@@ -173,42 +173,55 @@ window.TaskSidebar = (function() {
     }
     
     function makeFieldEditable(cell, task, key) {
-        const span = cell.querySelector('span');
-        if (!span || cell.querySelector('input')) return; // Already editing
+    const span = cell.querySelector('span');
+    if (!span || cell.querySelector('input')) return; // Already editing
+    
+    // --- MODIFICATION START ---
+    // 1. Get the column ID and find the column's configuration.
+    const columnId = parseInt(key.split('-')[1], 10);
+    const column = currentProject.customColumns.find(c => c.id === columnId);
+    
+    // 2. Get the RAW value from the data, not the displayed text.
+    const rawValue = task.customFields ? (task.customFields[columnId] || '') : '';
+    
+    const input = document.createElement('input');
+    // For 'Costing' fields, explicitly set the input type to 'number' for a better UX.
+    input.type = (column && column.type === 'Costing') ? 'number' : 'text';
+    input.value = rawValue; // 3. The input now only contains the number (e.g., 1500).
+    input.className = 'field-edit-input';
+    
+    span.replaceWith(input);
+    input.focus();
+    
+    const saveChanges = () => {
+        // 4. When saving, get the new value and compare it to the original raw value.
+        let newValue = input.value;
         
-        const oldValue = span.textContent;
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.value = oldValue;
-        input.className = 'field-edit-input';
+        // 5. If it's a Costing field, ensure we save it as a number.
+        if (column && column.type === 'Costing') {
+            newValue = parseFloat(newValue) || 0;
+        }
         
-        span.replaceWith(input);
-        input.focus();
-        
-        const saveChanges = () => {
-            const newValue = input.value;
-            // Find the column ID from a key like "custom-1"
-            const columnId = parseInt(key.split('-')[1], 10);
-            
-            if (newValue !== oldValue) {
-                if (!task.customFields) task.customFields = {};
-                task.customFields[columnId] = newValue;
-                logActivity('change', { field: `custom field ${columnId}`, from: oldValue, to: newValue });
-                renderSidebar(task);
-            } else {
-                input.replaceWith(span); // Revert if no change
-            }
-        };
-        
-        input.addEventListener('blur', saveChanges);
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') input.blur();
-            if (e.key === 'Escape') {
-                input.value = oldValue; // Revert on escape
-                input.blur();
-            }
-        });
-    }
+        if (newValue !== rawValue) {
+            if (!task.customFields) task.customFields = {};
+            task.customFields[columnId] = newValue;
+            logActivity('change', { field: column.name, from: rawValue, to: newValue });
+            renderSidebar(task);
+        } else {
+            input.replaceWith(span); // Revert if no change was made
+        }
+    };
+    // --- MODIFICATION END ---
+    
+    input.addEventListener('blur', saveChanges);
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') input.blur();
+        if (e.key === 'Escape') {
+            input.value = rawValue;
+            input.blur();
+        }
+    });
+}
     
     function submitComment() {
         const noteText = commentInput.value.trim();
