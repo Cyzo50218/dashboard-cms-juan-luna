@@ -82,8 +82,8 @@
     display: flex;
     flex-direction: column;
     transform: translateX(100%);
-    transition: transform 0.3s ease-in-out, width 0.3s ease-in-out; /* MODIFIED: Added width transition */
-    overflow-y: auto; /* MODIFIED: This makes the entire sidebar the single scrollable container */
+    transition: transform 0.3s ease-in-out, width 0.3s ease-in-out;
+    overflow-y: auto; 
 }
 
 
@@ -112,7 +112,6 @@
     margin-top: 60px;
     padding: 12px 24px;
     border-bottom: 1px solid #e0e0e0;
-    flex-shrink: 0;
 }
 
 .task-complete-btn {
@@ -153,9 +152,7 @@
 
 /* Main Content */
 .sidebar-content-task{
-    flex-grow: 1; /* MODIFIED: Allow this section to grow but not scroll independently */
     padding: 24px;
-    /* REMOVED: overflow-y: auto; */
 }
 
 
@@ -237,7 +234,6 @@
 /* --- THE SELECTOR IS NOW AN ID (#) FOR SPECIFICITY --- */
 #sidebar-footer-task {
     border-top: 1px solid #e0e0e0;
-    flex-shrink: 0;
     background-color: #fcfcfc;
     display: flex;
     flex-direction: column;
@@ -247,8 +243,6 @@
 .comment-section {
     display: flex;
     flex-direction: column;
-    /* REMOVED: height: 100%; */
-    /* REMOVED: overflow: hidden; */
 }
 
 
@@ -291,32 +285,26 @@
     gap: 16px;
     margin-bottom: 16px;
     padding: 0 24px;
-    /* REMOVED: overflow-y: auto; */
-    /* REMOVED: flex-grow: 1; */
 }
 
 
 .log-item { display: flex; gap: 12px; font-size: 14px; align-items: flex-start; }
 
-/* --- [FIX] Comment Input Area Layout --- */
 .add-comment {
-  display: flex;
-  align-items: flex-start; /* Aligns top of avatar with top of input */
-  gap: 12px;             /* Space between avatar and input area */
-  padding: 16px 24px;
-  border-top: 1px solid var(--border-color);
+    display: flex;
+    align-items: flex-start; /* Aligns top of avatar with top of input area */
+    gap: 12px;               /* Creates space between avatar and input area */
+    padding: 16px 24px;
 }
 
 /* --- Refined CSS for the Comment Input Area --- */
 
 /* This is the main container for the entire comment input section */
 .comment-input-wrapper {
-    position: relative;
+    position: relative; /* This is crucial for positioning buttons inside */
+    flex-grow: 1;       /* This makes the wrapper fill the available width */
     display: flex;
-    /* Main layout is a column to stack the preview and the input area */
-    flex-direction: column;
-    gap: 8px;
-    transition: all 0.2s ease-in-out;
+    flex-direction: column; /* Stacks the image preview on top of the textarea */
 }
 
 /* This new container holds the textarea and its action buttons together */
@@ -330,81 +318,123 @@
 
 #comment-input {
     width: 100%;
-    box-sizing: border-box;
-    border: 1px solid #e0e0e0;
-    border-radius: 6px;
-    padding: 10px;
+    box-sizing: border-box; /* Ensures padding is included in the width */
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px 85px 12px 12px; /* Top, Right (for buttons), Bottom, Left */
     font-family: inherit;
-    resize: vertical;
-    background-color: #fff;
-    min-height: 58px; /* Taller default height for better UX */
+    font-size: 14px;
+    min-height: 60px;
+    resize: vertical; /* Allow user to resize the textarea vertically */
     transition: border-color 0.2s;
-    flex-grow: 1; /* Allows textarea to take up available space */
 }
 
 #comment-input:focus {
-    border-color: #4c9aff;
     outline: none;
+    border-color: var(--accent-color);
 }
 
-/* The image preview container is hidden by default */
+/* --- Styling for Multi-Image Preview Gallery --- */
+
+/* 1. The main container that holds all the preview thumbnails. */
 #pasted-image-preview-container {
-    display: none;
-    /* This is the key: it moves the preview to the top of the column layout */
-    order: -1;
-    width: 100%;
-    border: 1px dashed #ccc;
-    border-radius: 6px;
+    display: flex;       /* Arrange thumbnails in a row. */
+    flex-wrap: wrap;     /* Allow items to wrap to the next line. */
+    gap: 12px;           /* Space between each thumbnail. */
     padding: 8px;
-    box-sizing: border-box;
-    display: grid;
-    grid-template-columns: 100px 1fr auto; /* Layout for preview, title, and cancel button */
-    gap: 8px;
-    align-items: center;
+    border: 1px dashed var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    
+    /* Hide the container entirely if it's empty. */
+    &:empty {
+        display: none;
+    }
 }
 
-/* When JS adds this class, the preview becomes visible */
-.comment-input-wrapper.preview-active #pasted-image-preview-container {
-    display: grid;
-}
-
-#pasted-image-preview {
+/* 2. The wrapper for a SINGLE image thumbnail and its button. */
+.image-preview-item {
+    position: relative; /* This is essential for positioning the button. */
     width: 100px;
     height: 75px;
-    object-fit: cover;
-    border-radius: 4px;
 }
 
-#pasted-image-title {
+/* 3. The thumbnail image itself. */
+.image-preview-item img {
     width: 100%;
-    padding: 8px;
-    border: 1px solid #e0e0e0;
-    border-radius: 4px;
-    background-color: #f9f9f9;
+    height: 100%;
+    object-fit: cover; /* Fill the space without distortion. */
+    border-radius: 6px;
+    border: 1px solid #ddd;
 }
 
-#cancel-image-btn {
-    background: transparent;
-    border: none;
-    color: #888;
-    font-size: 18px;
+/* --- Modern Styling for the 'Remove Preview' Button --- */
+
+/* --- Modern Styling for the 'Remove Preview' Button [REVISED] --- */
+
+.remove-preview-btn {
+    /* 1. Positioning */
+    position: absolute;
+    top: 6px;
+    right: 6px;
+
+    /* 2. Size and Shape */
+    width: 22px;
+    height: 22px;
+    border-radius: 50%; /* Perfect circle */
+
+    /* 3. "Frosted Glass" Effect */
+    background-color: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(3px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+
+    /* 4. Icon Centering (REVISED for more robust centering) */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    /* 5. Interactivity */
     cursor: pointer;
-    padding: 4px;
+    opacity: 0.8;
+    transition: all 0.2s ease-in-out;
+}
+
+/* 6. NEW: Direct styling for the Font Awesome icon inside the button */
+.remove-preview-btn .fa-times {
+    color: white;
+    font-size: 12px;  /* Explicitly set the icon's size */
+    line-height: 1;   /* Prevents line-height from adding extra vertical space */
+    font-weight: normal; /* A normal weight 'X' often looks more balanced than bold */
+}
+
+.remove-preview-btn:hover {
+    opacity: 1;
+    transform: scale(1.15);
+    background-color: rgba(15, 23, 42, 0.8);
+}
+
+/* Fallback for browsers that don't support backdrop-filter */
+@supports not (backdrop-filter: blur(3px)) {
+  .remove-preview-btn {
+    background-color: rgba(15, 23, 42, 0.8);
+  }
 }
 
 /* Buttons are now standard flex items, NOT absolutely positioned */
 .comment-action-btn {
+    position: absolute;
+    bottom: 12px; /* Aligns with the bottom padding of the textarea */
+    width: 36px;
+    height: 36px;
+    border: none;
     background-color: transparent;
-    border: 1px solid #dcdcdc;
-    color: #5f6368;
-    border-radius: 6px;
-    width: 42px;
-    height: 42px;
+    color: var(--text-secondary-color);
     cursor: pointer;
     font-size: 16px;
-    transition: background-color 0.2s, color 0.2s;
-    flex-shrink: 0; /* Prevents buttons from being squished */
-    margin-top: 8px; /* Aligns buttons nicely with the taller textarea */
+    border-radius: 50%;
+    display: grid;
+    place-items: center; /* Perfectly centers the icon */
+    transition: background-color 0.2s;
 }
 
 .comment-action-btn:hover {
@@ -413,28 +443,14 @@
 }
 
 #upload-file-btn {
-    position: absolute;
-    right: 55px;
-    bottom: 8px;
-}
-#send-comment-btn {
-    position: absolute;
-    right: 3px;
-    bottom: 8px;
+    right: 50px; /* Positioned to the left of the send button */
 }
 
-.comment-action-btn {
-    background-color: transparent;
-    border: 1px solid #dcdcdc;
-    color: #5f6368;
-    border-radius: 6px;
-    width: 42px;
-    height: 42px;
-    cursor: pointer;
-    font-size: 16px;
-    transition: background-color 0.2s, color 0.2s;
-    align-self: flex-start;
-    flex-shrink: 0;
+#send-comment-btn {
+    right: 8px;
+    background-color: #0052cc;
+    color: white;
+    border-color: #0052cc;
 }
 
 .comment-action-btn:hover {
@@ -442,11 +458,6 @@
     color: #1e1f21;
 }
 
-#send-comment-btn {
-    background-color: #0052cc;
-    color: white;
-    border-color: #0052cc;
-}
 #send-comment-btn:hover {
     background-color: #004499;
     color: white;
@@ -642,24 +653,32 @@
 /* --- [SCOPE 4 FIX] Dynamic Image Sizing --- */
 /* Default big size for an image with no note */
 .log-attachment .scalable-image {
-  max-height: 400px;
-  transition: max-height 0.3s ease;
+  display: block; /* Removes extra space below the image. */
+
+  /* --- This creates the bounding box for large images --- */
+  max-width: 100%;   /* Image won't be wider than the comment area. */
+  max-height: 450px; /* Constrains the height of very tall images. */
+  /* ----------------------------------------------------- */
+  
+  height: auto;      /* CRITICAL: Maintains the image's aspect ratio. */
+  object-fit: cover; /* Ensures the image fills the space neatly if constrained by max-height. */
+  
+  border-radius: 8px; /* Modern rounded corners. */
+  border: 1px solid var(--border-color);
+  transition: max-height 0.3s ease; /* Smooth transition if a note is added. */
 }
 
-/* Smaller size for an image WHEN it has a note */
+/* This optional rule makes images with accompanying text notes slightly smaller
+  to give more emphasis to the text.
+*/
 .log-attachment.has-note .scalable-image {
-  max-height: 250px;
-}
-
-.sidebar-content-task {
-    padding: 1rem;
-    overflow-y: auto;
-    flex-grow: 1;
-    min-height: 0; /* crucial to allow proper scrolling behavior */
+  max-height: 300px;
+  /* Makes the bottom corners square to blend seamlessly with the note below. */
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 #sidebar-footer-task {
-    flex-shrink: 0;
     border-top: 1px solid var(--border-color);
 }
 
@@ -685,6 +704,11 @@
     border-color: #1e88e5;
 }
 
+.log-attachment {
+  max-width: 100%; /* Ensures the container itself doesn't overflow. */
+  margin-top: 8px; /* Provides space above the attachment. */
+}
+
 .log-attachment .file-icon {
     font-size: 1.5rem;
     color: #5f6368;
@@ -707,16 +731,6 @@
     border: 1px solid #e0e0e0;
 }
 
-/* --- [FIX] Resize Image Preview in Comment Input --- */
-#pasted-image-preview-container #pasted-image-preview {
-  display: block;
-  max-width: 100%; /* Ensures the image is never wider than its container */
-  max-height: 180px; /* Constrains the vertical size of the preview */
-  border-radius: 6px;
-  margin-bottom: 8px; /* Adds space between the preview and the title input */
-  object-fit: contain; /* Ensures the entire image is visible without being cropped */
-}
-
 /* SCOPE 1: NEW STYLES FOR THE TASK FIELDS TABLE
   Replace the old #task-fields-container grid styles with this.
 */
@@ -730,9 +744,6 @@
   font-size: 14px;
 }
 
-.task-fields-table .field-row {
-  border-bottom: 1px solid var(--border-color);
-}
 .task-fields-table .field-row:last-child {
   border-bottom: none;
 }
@@ -743,11 +754,12 @@
 }
 
 
-.task-fields-table .field-value {
-  text-align: left;
-  padding-top: 8px;
-  padding-left: 16px;
-  justify-content: flex-start; 
+task-fields-table .field-value {
+    padding: 8px 16px; /* Provides vertical and horizontal spacing */
+    text-align: center; /* Centers the value content */
+    display: flex;
+    justify-content: center; /* This centers the content's container */
+    vertical-align: middle; /* Vertically centers the value with the label */
 }
 
 .inline-edit-input {
@@ -762,21 +774,21 @@
 }
 
 .task-fields-table .field-label {
-  color: var(--text-secondary-color);
-  width: 130px; /* Fixed width for labels */
+    color: var(--text-secondary-color);
+    width: 130px;
+    text-align: left;
+    vertical-align: middle; /* Keeps label vertically aligned with the value */
+    padding: 8px 16px 8px 0; /* Adds space to the right of the label */
 }
+
 
 /* Ensure controls within the table value cell behave correctly */
 .task-fields-table .field-value.control {
-  cursor: pointer;
-  border-radius: 6px;
-  padding-top: 8px;
-  padding-left: 16px;
+    cursor: pointer;
+    border-radius: 6px;
 }
 
 .task-fields-table .field-value.control:hover {
-    padding-top: 8px;
-    padding-left: 16px;
     background-color: var(--secondary-bg);
 }
 
@@ -796,12 +808,14 @@
 .attachment-note {
     font-size: 14px;
     color: #333;
-    padding: 8px 4px;
+    padding: 10px 12px;
     background-color: #f8f9fa;
-    border-top: 1px solid #e9ecef;
-    margin-top: 8px;
-    border-radius: 0 0 6px 6px;
+    border: 1px solid var(--border-color);
+    border-top: none; /* Avoids a double border. */
+    margin-top: -1px; /* Overlaps borders for a seamless look. */
+    border-radius: 0 0 8px 8px; /* Matches the image's bottom corners. */
     line-height: 1.4;
+    white-space: pre-wrap; /* Displays line breaks entered by the user. */
 }
 
 /* Input for adding a note/title to a new pasted image */
@@ -865,20 +879,6 @@
   object-fit: cover; /* Ensures the image covers the area nicely if constrained */
 }
 
-/* Note displayed under a sent image attachment */
-.attachment-note {
-    font-size: 14px;
-    color: #333;
-    padding: 8px;
-    background-color: #f8f9fa;
-    border: 1px solid var(--border-color);
-    border-top: none;
-    margin-top: -1px; /* Overlap border with image bottom border */
-    border-radius: 0 0 6px 6px;
-    line-height: 1.4;
-    white-space: pre-wrap; /* Respects line breaks in the note */
-}
-
 /* Wrapper for the image preview in the comment input area */
 .pasted-image-wrapper {
     position: relative;
@@ -940,18 +940,6 @@
 .task-fields-table .field-label {
   color: #5f6368; /* --text-secondary-color variable */
   width: 130px;
-}
-
-.task-fields-table .field-value.control {
-  cursor: pointer;
-  border-radius: 6px;
-  padding-top: 8px;
-  padding-left: 8px;
-  transition: background-color 0.2s;
-}
-
-.task-fields-table .field-value.control:hover {
-  background-color: #f5f5f5; /* --secondary-bg variable */
 }
 
 .placeholder-text {
@@ -1039,7 +1027,6 @@
   align-items: center; /* Vertically align label and value */
   padding: 16px 0;
   border-top: 1px solid var(--border-color);
-  border-bottom: 1px solid var(--border-color);
 }
 
 .field-label {

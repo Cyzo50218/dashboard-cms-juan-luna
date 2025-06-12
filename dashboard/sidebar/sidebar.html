@@ -1,4 +1,4 @@
-<aside id="task-sidebar" class="task-sidebar">
+<div id="task-sidebar" class="task-sidebar">
     <div class="sidebar-header-task">
         <button id="task-complete-btn" class="task-complete-btn">
             <i class="fa-regular fa-circle-check"></i>
@@ -10,40 +10,34 @@
             <i id="close-sidebar-btn" class="fa-solid fa-arrow-right-to-bracket"></i>
         </div>
     </div>
-    
+
     <div class="sidebar-content-task">
         <h1 id="task-name" contenteditable="true"></h1>
-        
+
         <div id="task-fields-container" class="task-fields"></div>
-        
+
         <div class="field-label">Description</div>
-        <div id="task-description-text" class="description-text" contenteditable="true" placeholder="What is this task about?"></div>
+        <div id="task-description-text" class="description-text" contenteditable="true"
+            placeholder="What is this task about?"></div>
     </div>
-    
+
     <div id="sidebar-footer-task" class="sidebar-footer-task">
         <div class="comment-section">
             <div id="comment-tabs-container" class="comment-tabs">
-                <button id="sidebar-task-btn-tab"  class="tab-btn active" data-tab="comments">Comments</button>
-                <button id="sidebar-task-btn-tab"  class="tab-btn" data-tab="activity">All activity</button>
+                <button id="sidebar-task-btn-tab" class="tab-btn active" data-tab="comments">Comments</button>
+                <button id="sidebar-task-btn-tab" class="tab-btn" data-tab="activity">All activity</button>
             </div>
             <div id="activity-log-container" class="activity-log"></div>
-            
-            <div id="pasted-image-preview-container" style="display: none;"></div>
-            
+
             <div id="add-comment-form" class="add-comment">
                 <div id="current-user-avatar" class="avatar"></div>
-                <br>
                 <div class="comment-input-wrapper">
-                     <div id="pasted-image-preview-container" style="display: none;">
-                        <img id="pasted-image-preview" src="" alt="Image Preview">
-                        <input type="text" id="pasted-image-title" placeholder="Add an optional title...">
-                        <button id="cancel-image-btn" title="Cancel Image"><i class="fa-solid fa-times"></i></button>
+                    <div id="pasted-image-preview-container">
                     </div>
                     <textarea id="comment-input" placeholder="Add a comment..."></textarea>
                     <button id="upload-file-btn" class="comment-action-btn" title="Attach file">
                         <i class="fa-solid fa-paperclip"></i>
                     </button>
-                    <br>
                     <button id="send-comment-btn" class="comment-action-btn" title="Send comment">
                         <i class="fa-solid fa-paper-plane"></i>
                     </button>
@@ -52,6 +46,4 @@
             </div>
         </div>
     </div>
-</aside>
-
-
+</div>
