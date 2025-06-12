@@ -21,11 +21,11 @@ let activeFilters = {}; // Will hold { visibleSections: [id1, id2] }
 let activeSortState = 'default'; // 'default', 'asc' (oldest), 'desc' (newest)
 
 const allUsers = [
-    { id: 1, name: 'Lorelai Gilmore', avatar: 'https://i.imgur.com/k9qRkiG.png' },
-    { id: 2, name: 'Rory Gilmore', avatar: 'https://i.imgur.com/8mR4H4A.png' },
-    { id: 3, name: 'Luke Danes', avatar: 'https://i.imgur.com/wfz43s9.png' },
-    { id: 4, name: 'Sookie St. James', avatar: 'https://i.imgur.com/L4DD33f.png' },
-    { id: 5, name: 'Paris Geller', avatar: 'https://i.imgur.com/lVceL5s.png' },
+    { id: 1, name: 'Lorelai Gilmore', email: 'lorelai.g@example.com', avatar: 'https://i.imgur.com/k9qRkiG.png' },
+    { id: 2, name: 'Rory Gilmore', email: 'rory.g@example.com', avatar: 'https://i.imgur.com/8mR4H4A.png' },
+    { id: 3, name: 'Luke Danes', email: 'luke.d@example.com', avatar: 'https://i.imgur.com/wfz43s9.png' },
+    { id: 4, name: 'Sookie St. James', email: 'sookie.sj@example.com', avatar: 'https://i.imgur.com/L4DD33f.png' },
+    { id: 5, name: 'Paris Geller', email: 'paris.g@example.com', avatar: 'https://i.imgur.com/lVceL5s.png' },
 ];
 
 let project = {
@@ -176,8 +176,18 @@ function setupEventListeners() {
             case 'status':
                 createDropdown(statusOptions, control, (v) => updateTask(taskId, { status: v }));
                 break;
-            case 'assignee':
-                showAssigneeDropdown(control, taskId);
+            case 'assignee': { // Using block scope for the `task` constant
+                const { task } = findTaskAndSection(taskId);
+                // MODIFICATION: Only open the dropdown if NO user is currently assigned.
+                if (task && task.assignees.length === 0) {
+                    showAssigneeDropdown(control, taskId);
+                }
+                // If a user is already assigned, clicking the cell does nothing.
+                break;
+            }
+            case 'remove-assignee':
+                e.stopPropagation();
+                updateTask(taskId, { assignees: [] });
                 break;
         }
     };
@@ -228,11 +238,11 @@ function setupEventListeners() {
     
     // This is the corrected version:
     windowClickListener = (e) => {
-    // We add #filter-btn AND the dialog's own class to the list of elements that should NOT close the panels.
-    if (!e.target.closest('.datepicker, .context-dropdown, [data-control], .dialog-overlay, .delete-column-btn, #add-column-btn, #filter-btn, .filterlistview-dialog-overlay')) {
-        closeFloatingPanels();
-    }
-};
+        // We add #filter-btn AND the dialog's own class to the list of elements that should NOT close the panels.
+        if (!e.target.closest('.datepicker, .context-dropdown, [data-control], .dialog-overlay, .delete-column-btn, #add-column-btn, #filter-btn, .filterlistview-dialog-overlay')) {
+            closeFloatingPanels();
+        }
+    };
     
     filterBtnListener = () => {
         // DEBUG: Confirm the listener is firing
@@ -321,11 +331,11 @@ function openSectionFilterPanel() {
     
     // MODIFIED: Changed selector to match new class name
     dialogOverlay.addEventListener('click', e => {
-    if (e.target.classList.contains('filterlistview-dialog-overlay')) {
-        closeFloatingPanels();
-    }
-});
-
+        if (e.target.classList.contains('filterlistview-dialog-overlay')) {
+            closeFloatingPanels();
+        }
+    });
+    
 }
 
 function getFilteredProject() {
@@ -364,7 +374,7 @@ function getSortedProject(data) {
 }
 
 function closeFloatingPanels() {
-   document.querySelectorAll('.context-dropdown, .datepicker, .dialog-overlay, .filterlistview-dialog-overlay').forEach(p => p.remove());
+    document.querySelectorAll('.context-dropdown, .datepicker, .dialog-overlay, .filterlistview-dialog-overlay').forEach(p => p.remove());
 }
 
 function findTaskAndSection(taskId) {
@@ -598,7 +608,66 @@ function createDropdown(options, targetEl, callback) {
     mainContainer.appendChild(dropdown);
 }
 
-function showAssigneeDropdown(targetEl, taskId) { /* ... Omitted for brevity ... */ }
+function showAssigneeDropdown(targetEl, taskId) {
+    closeFloatingPanels();
+    
+    const { task } = findTaskAndSection(taskId);
+    if (!task) return;
+    
+    // Clone the dropdown structure from the HTML template
+    const dropdownFragment = assigneeDropdownTemplate.content.cloneNode(true);
+    const dropdown = dropdownFragment.querySelector('.context-dropdown');
+    
+    const searchInput = dropdown.querySelector('.dropdown-search-input');
+    const listContainer = dropdown.querySelector('.dropdown-list');
+    
+    // Position the dropdown panel below the clicked element
+    const wrapperRect = mainContainer.getBoundingClientRect();
+    const targetRect = targetEl.getBoundingClientRect();
+    dropdown.style.top = `${targetRect.bottom - wrapperRect.top}px`;
+    dropdown.style.left = `${targetRect.left - wrapperRect.left}px`;
+    
+    const renderList = (searchTerm = '') => {
+        const lowerCaseSearchTerm = searchTerm.toLowerCase();
+        const filteredUsers = allUsers.filter(user => user.name.toLowerCase().includes(lowerCaseSearchTerm));
+        
+        listContainer.innerHTML = ''; // Clear previous results
+        
+        filteredUsers.forEach(user => {
+            // Since we only allow one assignee, check if the user is the first one in the array
+            const isAssigned = task.assignees[0] === user.id;
+            
+            const item = document.createElement('div');
+            item.className = 'dropdown-item';
+            item.innerHTML = `
+             <div class="user-info">
+                <div class="profile-picture" style="background-image: url(${user.avatar})"></div>
+                    <span>${user.name}</span>
+                </div>
+               ${isAssigned ? '<i class="fas fa-check assigned-check"></i>' : ''}
+            `;
+            
+            item.addEventListener('click', () => {
+                // If the user is already assigned, unassign them. Otherwise, assign them.
+                const newAssignees = isAssigned ? [] : [user.id];
+                updateTask(taskId, { assignees: newAssignees });
+                // The updateTask function will automatically call render(), which closes the dropdown.
+            });
+            listContainer.appendChild(item);
+        });
+    };
+    
+    // Render the initial list of users
+    renderList();
+    
+    // Add an event listener for the search input
+    searchInput.addEventListener('input', () => {
+        renderList(searchInput.value);
+    });
+    
+    mainContainer.appendChild(dropdown);
+    searchInput.focus();
+}
 
 function showDatePicker(targetEl, taskId) {
     closeFloatingPanels();
@@ -632,13 +701,30 @@ function showDatePicker(targetEl, taskId) {
 }
 
 function createAssigneeHTML(assignees) {
-    if (!assignees || assignees.length === 0) return `<div class="profile-picture add-assignee-btn"><i class="fas fa-plus"></i></div>`;
-    let html = '<div class="profile-picture-stack">';
-    assignees.forEach((assigneeId, index) => {
-        const user = allUsers.find(u => u.id === assigneeId);
-        if (user) html += `<div class="profile-picture ${index > 0 ? 'overlap' : ''}" style="background-image: url(${user.avatar})" title="${user.name}"></div>`;
-    });
-    return html + '</div>';
+    // If no one is assigned, show the 'add' button.
+    if (!assignees || assignees.length === 0) {
+        return `<div class="add-assignee-btn" data-control="assignee"><i class="fas fa-plus"></i></div>`;
+    }
+    
+    // Since we only have one assignee, get the first ID.
+    const assigneeId = assignees[0];
+    const user = allUsers.find(u => u.id === assigneeId);
+    
+    if (!user) {
+        // Fallback in case user is not found
+        return `<div class="add-assignee-btn" data-control="assignee"><i class="fas fa-plus"></i></div>`;
+    }
+    
+    return `
+        <div class="assignee-cell-content" data-control="assignee">
+            <img class="profile-picture" src="${user.avatar}" title="${user.name}">
+            <div class="assignee-details">
+                <span class="assignee-name">${user.name}</span>
+                <span class="assignee-email">${user.email}</span>
+            </div>
+            <button class="remove-assignee-btn" data-control="remove-assignee" title="Remove Assignee">&times;</button>
+        </div>
+    `;
 }
 
 function syncScroll(scrollStates = new Map()) {
