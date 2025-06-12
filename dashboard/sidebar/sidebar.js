@@ -4,7 +4,10 @@ window.TaskSidebar = (function() {
         'proj-1': {
             name: 'Website Redesign',
             customColumns: [
-                { id: 1, name: 'Budget', type: 'Costing', currency: '$' }
+                { id: 1, name: 'Budget', type: 'Costing', currency: '$' },
+                // NEW: Added more custom column types for demonstration
+                { id: 2, name: 'Launch Date', type: 'Date' },
+                { id: 3, name: 'Team', type: 'Selector', options: ['Marketing', 'Product', 'Engineering'] }
             ],
             sections: [{
                 id: 'sec-1',
@@ -17,6 +20,7 @@ window.TaskSidebar = (function() {
                     priority: 'High',
                     status: 'On track',
                     assignees: [1, 2],
+                    customFields: { 1: 1500, 2: '2025-08-20', 3: 'Product' },
                     activity: [{
                         id: 1718135000000,
                         type: 'comment',
@@ -168,6 +172,81 @@ window.TaskSidebar = (function() {
         renderActivity();
     }
     
+    function makeFieldEditable(cell, task, key) {
+        const span = cell.querySelector('span');
+        if (!span || cell.querySelector('input')) return; // Already editing
+        
+        const oldValue = span.textContent;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = oldValue;
+        input.className = 'field-edit-input';
+        
+        span.replaceWith(input);
+        input.focus();
+        
+        const saveChanges = () => {
+            const newValue = input.value;
+            // Find the column ID from a key like "custom-1"
+            const columnId = parseInt(key.split('-')[1], 10);
+            
+            if (newValue !== oldValue) {
+                if (!task.customFields) task.customFields = {};
+                task.customFields[columnId] = newValue;
+                logActivity('change', { field: `custom field ${columnId}`, from: oldValue, to: newValue });
+                renderSidebar(task);
+            } else {
+                input.replaceWith(span); // Revert if no change
+            }
+        };
+        
+        input.addEventListener('blur', saveChanges);
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') input.blur();
+            if (e.key === 'Escape') {
+                input.value = oldValue; // Revert on escape
+                input.blur();
+            }
+        });
+    }
+    
+    function submitComment() {
+        const noteText = commentInput.value.trim();
+        const files = [...pastedFiles];
+        
+        // Do nothing if there's no text and no files
+        if (!noteText && files.length === 0) {
+            return;
+        }
+        
+        // Handle file uploads
+        if (files.length > 0) {
+            files.forEach(file => {
+                (async () => {
+                    try {
+                        const { dataURL } = await readFileAsDataURL(file);
+                        logActivity('comment', {
+                            content: "", // Content can be empty if there's an image
+                            imageURL: dataURL,
+                            imageTitle: noteText
+                        });
+                    } catch (error) {
+                        console.error("Error processing file:", error);
+                    }
+                })();
+            });
+            // Handle text-only comments
+        } else if (noteText) {
+            logActivity('comment', {
+                content: noteText
+            });
+        }
+        
+        // Clear everything after sending
+        clearImagePreview();
+        commentInput.value = '';
+    }
+    
     // --- NEW FUNCTION: Handles the logic of moving a task ---
     function moveTaskToProject(newProjectId) {
         if (!currentTask || !currentProjectId || newProjectId === currentProjectId) {
@@ -220,7 +299,6 @@ window.TaskSidebar = (function() {
         alert(`Task "${currentTask.name}" has been moved to the "${newProject.name}" project.`);
         close();
     }
-    
     
     // --- RENDERING FUNCTIONS ---
     function renderSidebar(task) {
@@ -619,7 +697,6 @@ window.TaskSidebar = (function() {
             renderSidebar(currentTask);
         });
         
-        // --- MODIFIED EVENT LISTENER ---
         taskFieldsContainer.addEventListener('click', (e) => {
             if (currentTask.status === 'Completed') return;
             const controlCell = e.target.closest('.control');
@@ -629,6 +706,7 @@ window.TaskSidebar = (function() {
             const key = controlCell.dataset.key;
             const oldValue = currentTask[key];
             
+            // --- Handle Standard Fields ---
             if (controlType === 'project') { // <-- NEW: Handle project changes
                 const projectOptions = Object.keys(projectData).map(projId => ({
                     label: projectData[projId].name,
@@ -663,36 +741,68 @@ window.TaskSidebar = (function() {
                     }
                 });
             }
+            // MODIFIED: Handle Due Date with a date picker
+            else if (controlType === 'date' && key === 'dueDate') {
+                // Create an invisible flatpickr instance to show only the calendar
+                const fp = flatpickr(e.target, {
+                    defaultDate: currentTask.dueDate || 'today',
+                    dateFormat: "Y-m-d",
+                    onClose: function(selectedDates) {
+                        const newDate = selectedDates[0] ? flatpickr.formatDate(selectedDates[0], 'Y-m-d') : null;
+                        if (newDate !== currentTask.dueDate) {
+                            // Use the existing updateTask function for the main due date
+                            updateTask(currentTask.id, { dueDate: newDate });
+                        }
+                        fp.destroy(); // Clean up the instance
+                    }
+                });
+                fp.open();
+            }
+            // --- Handle Custom Fields ---
+            else if (key.startsWith('custom-')) {
+                const columnId = parseInt(key.split('-')[1], 10);
+                const column = currentProject.customColumns.find(c => c.id === columnId);
+                if (!column) return;
+                
+                switch (column.type) {
+                    case 'Text':
+                    case 'Costing':
+                        makeFieldEditable(controlCell, currentTask, key);
+                        break;
+                    case 'Date':
+                        flatpickr(controlCell, {
+                            defaultDate: currentTask.customFields[columnId] || 'today',
+                            onClose: (selectedDates) => {
+                                const newDate = selectedDates[0] ? flatpickr.formatDate(selectedDates[0], 'Y-m-d') : null;
+                                if (newDate !== currentTask.customFields[columnId]) {
+                                    currentTask.customFields[columnId] = newDate;
+                                    renderSidebar(currentTask);
+                                }
+                            }
+                        }).open();
+                        break;
+                    case 'Selector':
+                        createGenericDropdown(controlCell, column.options.map(opt => ({ label: opt, value: opt })), currentTask.customFields[columnId], (newValue) => {
+                            if (newValue !== currentTask.customFields[columnId]) {
+                                currentTask.customFields[columnId] = newValue;
+                                renderSidebar(currentTask);
+                            }
+                        });
+                        break;
+                }
+            }
         });
         
-        sendCommentBtn.addEventListener('click', () => {
-            const noteText = commentInput.value.trim();
-            const files = [...pastedFiles];
-            if (!noteText && files.length === 0) {
-                return;
+        sendCommentBtn.addEventListener('click', submitComment);
+        
+        commentInput.addEventListener('keydown', (e) => {
+            // Check if the 'Enter' key was pressed WITHOUT the 'Shift' key
+            if (e.key === 'Enter' && !e.shiftKey) {
+                // Prevent the default action (which is to add a new line)
+                e.preventDefault();
+                // Trigger the submit logic
+                submitComment();
             }
-            if (files.length > 0) {
-                files.forEach(file => {
-                    (async () => {
-                        try {
-                            const { dataURL } = await readFileAsDataURL(file);
-                            logActivity('comment', {
-                                content: "",
-                                imageURL: dataURL,
-                                imageTitle: noteText
-                            });
-                        } catch (error) {
-                            console.error("Error processing file:", error);
-                        }
-                    })();
-                });
-            } else if (noteText) {
-                logActivity('comment', {
-                    content: noteText
-                });
-            }
-            clearImagePreview();
-            commentInput.value = '';
         });
         
         commentInput.addEventListener('paste', (e) => {

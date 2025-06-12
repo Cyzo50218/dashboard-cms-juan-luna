@@ -14,6 +14,7 @@
     --overdue-color: var(--high-priority-color);
 }
 
+/* --- Task Completion Styles --- */
 .boardtasks-task-checked .boardtasks-task-check {
     color: var(--on-track-color);
 }
@@ -44,16 +45,32 @@
 
 /* --- Containers & Headers --- */
 .boardtasks-board-container {
-    max-width: 1200px;
-    margin: auto;
+    /* MODIFIED: Removed top padding, it will be moved to the header */
+    width: 100%;
+    height: calc(100vh - 100px); /* Adjust 100px based on your actual site header/nav height */
+    margin: 0;
     position: relative;
+    padding: 0 1rem 1rem 1rem; /* No top padding */
+    box-sizing: border-box;
+    overflow: auto; 
 }
+
+/* --- Containers & Headers --- */
 
 .boardtasks-board-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 1rem;
+    
+    /* --- STICKY HEADER MODIFICATIONS --- */
+    position: sticky;
+    top: 0;
+    /* MODIFIED: Increased z-index to be the top-most sticky element */
+    z-index: 20;
+    background-color: #ffffff;
+    
+    border-bottom: 1px solid #e0e0e0;
 }
 
 .boardtasks-board-header button {
@@ -88,7 +105,7 @@
     display: flex;
     gap: 2rem;
     align-items: center;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 #boardtasks-tools-panel.boardtasks-hidden {
@@ -132,10 +149,12 @@
 /* --- Kanban Columns --- */
 .boardtasks-kanban-board {
     display: flex;
+    position: sticky;
     gap: 1.5rem;
-    overflow-x: auto;
-    padding-bottom: 1rem;
     align-items: flex-start;
+    /* MODIFIED: Removed overflow-x, as the parent container now handles scrolling */
+    padding-bottom: 1rem;
+    /* Keeps space at the bottom */
 }
 
 .boardtasks-kanban-column {
@@ -146,7 +165,7 @@
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    max-height: 80vh;
+    /* MODIFIED: Removed max-height to allow columns to grow vertically */
 }
 
 .boardtasks-column-header {
@@ -156,6 +175,11 @@
     padding: 1rem;
     cursor: move;
     border-bottom: 1px solid #EAECEE;
+    position: sticky;
+    top: 0;
+    background-color: #f7f8fa;
+    /* MODIFIED: Lowered z-index to be below the main header but above the cards */
+    z-index: 10;
 }
 
 .boardtasks-column-header h3 {
@@ -174,10 +198,9 @@
 
 .boardtasks-tasks-container {
     padding: 0.5rem;
-    overflow-y: auto;
+    min-height: 10px;
+
 }
-
-
 
 /* --- Task Card General --- */
 .boardtasks-task-card {
@@ -186,14 +209,14 @@
     border-radius: 8px;
     margin: 0.5rem;
     cursor: pointer;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     transition: box-shadow 0.2s;
     display: flex;
     flex-direction: column;
 }
 
 .boardtasks-task-card:hover {
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .boardtasks-task-content {
@@ -203,11 +226,11 @@
 /* --- Task Card Details --- */
 .boardtasks-task-attachment {
     width: 100%;
-    height: auto; /* Allow image to determine its own height */
-    max-height: 600px; /* Prevent excessively tall images */
+    height: auto;
+    max-height: 600px;
     object-fit: cover;
     border-radius: 7px 7px 0 0;
-    display: block; /* Ensures proper rendering */
+    display: block;
 }
 
 .boardtasks-task-header {
@@ -264,21 +287,34 @@
     font-weight: 500;
 }
 
-.boardtasks-priority-High { background-color: var(--high-priority-bg); color: var(--high-priority-color); }
-.boardtasks-priority-Medium { background-color: var(--medium-priority-bg); color: var(--medium-priority-color); }
-.boardtasks-priority-Low { background-color: var(--low-priority-bg); color: var(--low-priority-color); }
+.boardtasks-priority-High {
+    background-color: var(--high-priority-bg);
+    color: var(--high-priority-color);
+}
 
-.boardtasks-status-On\.track { background-color: var(--on-track-bg); color: var(--on-track-color); }
-.boardtasks-status-At\.risk { background-color: var(--at-risk-bg); color: var(--at-risk-color); }
-.boardtasks-status-Completed { background-color: var(--completed-bg); color: var(--completed-color); }
+.boardtasks-priority-Medium {
+    background-color: var(--medium-priority-bg);
+    color: var(--medium-priority-color);
+}
 
-.boardtasks-task-checked .boardtasks-task-check {
+.boardtasks-priority-Low {
+    background-color: var(--low-priority-bg);
+    color: var(--low-priority-color);
+}
+
+.boardtasks-status-On\.track {
+    background-color: var(--on-track-bg);
     color: var(--on-track-color);
 }
 
-.boardtasks-task-checked p {
-    text-decoration: line-through;
-    color: #888;
+.boardtasks-status-At\.risk {
+    background-color: var(--at-risk-bg);
+    color: var(--at-risk-color);
+}
+
+.boardtasks-status-Completed {
+    background-color: var(--completed-bg);
+    color: var(--completed-color);
 }
 
 /* --- Footer & Actions --- */
@@ -291,12 +327,12 @@
 }
 
 .boardtasks-due-date.boardtasks-date-overdue {
-    color: var(--overdue-color); /* Red */
+    color: var(--overdue-color);
     font-weight: 600;
 }
 
 .boardtasks-due-date.boardtasks-date-near {
-    color: var(--medium-priority-color); /* Yellow */
+    color: var(--medium-priority-color);
     font-weight: 600;
 }
 
@@ -317,7 +353,7 @@
 
 .boardtasks-task-actions .fa-heart.liked {
     color: var(--high-priority-color);
-    font-weight: 900; /* Makes it a solid heart */
+    font-weight: 900;
 }
 
 /* --- Add Button & Sidebar --- */
@@ -346,8 +382,8 @@
     width: 350px;
     height: 100%;
     background: #fff;
-    box-shadow: -4px 0 15px rgba(0,0,0,0.1);
-    z-index: 1000;
+    box-shadow: -4px 0 15px rgba(0, 0, 0, 0.1);
+    
     transition: right 0.3s ease-in-out;
     padding: 1.5rem;
 }
@@ -362,7 +398,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.4);
+    background: rgba(0, 0, 0, 0.4);
     z-index: 999;
 }
 
@@ -383,4 +419,3 @@
     border: 1px solid #dcdcdc;
     border-radius: 8px;
 }
-
