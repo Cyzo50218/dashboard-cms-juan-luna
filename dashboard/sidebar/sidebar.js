@@ -375,39 +375,39 @@ window.TaskSidebar = (function() {
     }
     
     function appendFieldToTable(tbody, key, label, valueHTML, controlType, options = []) {
-    const row = tbody.insertRow();
-    row.className = 'sidebarprojectfield-row';
-
-    const labelCell = row.insertCell();
-    labelCell.className = 'sidebarprojectfield-label';
-    labelCell.textContent = label;
-
-    const valueCell = row.insertCell();
-
-    // Assign specific classes based on key
-    if (key === 'project') {
-        valueCell.className = 'sidebarprojectfield-value project-field';
-    } else if (key === 'assignees') {
-    valueCell.className = 'sidebarprojectfield-value assignee-field';
-    }else if (key === 'status' || key === 'priority') {
-        valueCell.className = 'sidebarprojectfield-value project-field';
-    } else {
-        valueCell.className = 'sidebarprojectfield-value other-field';
-    }
-
-    valueCell.innerHTML = `<span>${valueHTML}</span>`;
-
-    if (controlType) {
-        valueCell.classList.add('control');
-        valueCell.dataset.control = controlType;
-        valueCell.dataset.key = key;
-        if (options.length > 0) {
-            valueCell.dataset.options = JSON.stringify(options);
+        const row = tbody.insertRow();
+        row.className = 'sidebarprojectfield-row';
+        
+        const labelCell = row.insertCell();
+        labelCell.className = 'sidebarprojectfield-label';
+        labelCell.textContent = label;
+        
+        const valueCell = row.insertCell();
+        
+        // Assign specific classes based on key
+        if (key === 'project') {
+            valueCell.className = 'sidebarprojectfield-value project-field';
+        } else if (key === 'assignees') {
+            valueCell.className = 'sidebarprojectfield-value assignee-field';
+        } else if (key === 'status' || key === 'priority') {
+            valueCell.className = 'sidebarprojectfield-value project-field';
+        } else {
+            valueCell.className = 'sidebarprojectfield-value other-field';
+        }
+        
+        valueCell.innerHTML = `<span>${valueHTML}</span>`;
+        
+        if (controlType) {
+            valueCell.classList.add('control');
+            valueCell.dataset.control = controlType;
+            valueCell.dataset.key = key;
+            if (options.length > 0) {
+                valueCell.dataset.options = JSON.stringify(options);
+            }
         }
     }
-}
-
-
+    
+    
     function renderActivity() {
         if (!activityLogContainer) return;
         activityLogContainer.innerHTML = '';
@@ -538,11 +538,30 @@ window.TaskSidebar = (function() {
     }
     
     function renderAssigneeValue(assignees) {
-        const avatarsHTML = assignees.map(userId => allUsers.find(u => u.id === userId))
-            .filter(Boolean)
-            .map(user => `<div class="avatar" data-user-id="${user.id}" style="background-image: url(${user.avatar})" title="${user.name}"></div>`)
-            .join('');
-        return `<div class="assignee-list-wrapper">${avatarsHTML}<button class="assignee-add-btn" title="Add assignee"><i class="fa-solid fa-plus"></i></button></div>`;
+        // Check if there is an assignee (we only care about the first one)
+        if (assignees && assignees.length > 0) {
+            const assigneeId = assignees[0];
+            const user = allUsers.find(u => u.id === assigneeId);
+            
+            if (user) {
+                // If a user is assigned, display their avatar and name.
+                // The entire element becomes a button to change the assignee.
+                return `
+                <div class="assignee-list-wrapper single-assignee">
+                    <div class="avatar" data-user-id="${user.id}" style="background-image: url(${user.avatar})" title="${user.name}"></div>
+                    <span class="assignee-name">${user.name}</span>
+                </div>`;
+            }
+        }
+        
+        // If no one is assigned, display a clear button to add an assignee.
+        return `
+        <div class="assignee-list-wrapper">
+            <button class="assignee-add-btn single-assignee-add">
+                <i class="fa-solid fa-plus"></i>
+                <span>Assign</span>
+            </button>
+        </div>`;
     }
     
     function addImagePreview(file, fileDataURL) {
@@ -775,22 +794,41 @@ window.TaskSidebar = (function() {
                 createGenericDropdown(controlCell, projectOptions, currentProjectId, (newProjectId) => {
                     moveTaskToProject(newProjectId);
                 });
+                // In attachEventListeners() -> taskFieldsContainer.addEventListener('click', (e) => { ...
+                
+                // ... (other control types like 'project' and 'dropdown')
+                
+                /* START MODIFICATION */
             } else if (controlType === 'assignee') {
-                const addBtn = e.target.closest('.assignee-add-btn');
-                const avatar = e.target.closest('.avatar[data-user-id]');
-                if (addBtn) {
-                    const unassigned = allUsers.filter(u => !currentTask.assignees.includes(u.id));
-                    createGenericDropdown(addBtn, unassigned.map(u => ({ label: u.name, value: u.id, avatar: u.avatar })), null, (userId) => {
-                        const user = allUsers.find(u => u.id === userId);
-                        if (user) {
-                            currentTask.assignees.push(userId);
-                            logActivity('change', { field: 'Assignee', from: 'none', to: `<strong>${user.name}</strong>` });
-                            renderSidebar(currentTask);
-                        }
-                    });
-                } else if (avatar) {
-                    createAssigneePopover(avatar, avatar.dataset.userId);
-                }
+                // The entire field is now the control. Get the currently assigned user ID.
+                const currentAssigneeId = currentTask.assignees?.[0] || null;
+                
+                // Prepare dropdown options: include all users plus an "Unassigned" option.
+                const assigneeOptions = [
+                    { label: 'Unassigned', value: null }, // This option will clear the assignee.
+                    ...allUsers.map(u => ({ label: u.name, value: u.id, avatar: u.avatar }))
+                ];
+                
+                // Open the dropdown to select or change the assignee.
+                createGenericDropdown(controlCell, assigneeOptions, currentAssigneeId, (newUserId) => {
+                    const oldUser = allUsers.find(u => u.id === currentAssigneeId);
+                    const newUser = allUsers.find(u => u.id === newUserId);
+                    
+                    const fromValue = oldUser ? `<strong>${oldUser.name}</strong>` : 'none';
+                    const toValue = newUser ? `<strong>${newUser.name}</strong>` : 'none';
+                    
+                    // Do nothing if the value hasn't changed.
+                    if (fromValue === toValue) return;
+                    
+                    // Update the task data: newUserId will be null if "Unassigned" was chosen.
+                    currentTask.assignees = newUserId ? [newUserId] : [];
+                    
+                    // Log the change and re-render the sidebar.
+                    logActivity('change', { field: 'Assignee', from: fromValue, to: toValue });
+                    renderSidebar(currentTask);
+                });
+                /* END MODIFICATION */
+                
             } else if (controlType === 'dropdown') {
                 const options = JSON.parse(controlCell.dataset.options);
                 createGenericDropdown(controlCell, options.map(opt => ({ label: opt, value: opt })), oldValue, (newValue) => {
