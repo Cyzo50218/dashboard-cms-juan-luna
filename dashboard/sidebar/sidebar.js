@@ -743,62 +743,55 @@ window.TaskSidebar = (function() {
             }
             // MODIFIED: Handle Due Date with a date picker
             else if (controlType === 'date') {
-                const oldValue = currentTask[key];
-                const fp = flatpickr(e.target, { // Use the clicked element as a position reference
-                    defaultDate: oldValue || 'today',
-                    dateFormat: "Y-m-d",
-                    onClose: function(selectedDates) {
-                        const newDate = selectedDates[0] ? flatpickr.formatDate(selectedDates[0], 'Y-m-d') : null;
-                        if (newDate !== oldValue) {
-                            // Directly update the current task object and re-render
-                            currentTask[key] = newDate;
-                            logActivity('change', { field: 'Due Date', from: renderDateValue(oldValue), to: renderDateValue(newDate) });
-                            renderSidebar(currentTask);
-                        }
-                        fp.destroy();
-                    }
-                });
-                fp.open();
-            }
-            // --- Handle Custom Fields ---
-            else if (key.startsWith('custom-')) {
-                const columnId = parseInt(key.split('-')[1], 10);
-                const column = currentProject.customColumns.find(c => c.id === columnId);
-                if (!column) return;
-                
-                switch (column.type) {
-                    case 'Text':
-                    case 'Costing':
-                        makeFieldEditable(controlCell, currentTask, key);
-                        break;
-                    case 'Date':
-                        const oldCustomDate = currentTask.customFields[columnId];
-                        const fpCustom = flatpickr(e.target, {
-                            defaultDate: oldCustomDate || 'today',
-                            dateFormat: "Y-m-d",
-                            onClose: (selectedDates) => {
-                                const newDate = selectedDates[0] ? flatpickr.formatDate(selectedDates[0], 'Y-m-d') : null;
-                                if (newDate !== oldCustomDate) {
-                                    if (!currentTask.customFields) currentTask.customFields = {};
-                                    currentTask.customFields[columnId] = newDate;
-                                    logActivity('change', { field: column.name, from: renderDateValue(oldCustomDate), to: renderDateValue(newDate) });
-                                    renderSidebar(currentTask);
-                                }
-                                fpCustom.destroy();
-                            }
-                        });
-                        fpCustom.open();
-                        break;
-                    case 'Selector':
-                        createGenericDropdown(controlCell, column.options.map(opt => ({ label: opt, value: opt })), currentTask.customFields[columnId], (newValue) => {
-                            if (newValue !== currentTask.customFields[columnId]) {
-                                currentTask.customFields[columnId] = newValue;
-                                renderSidebar(currentTask);
-                            }
-                        });
-                        break;
+    const isCustom = key.startsWith('custom-');
+    const columnId = isCustom ? parseInt(key.split('-')[1], 10) : null;
+    const column = isCustom ? currentProject.customColumns.find(c => c.id === columnId) : { name: 'Due Date' };
+    
+    const oldValue = isCustom ? currentTask.customFields?.[columnId] : currentTask.dueDate;
+    
+    const fp = flatpickr(e.target, {
+        defaultDate: oldValue || 'today',
+        dateFormat: "Y-m-d",
+        onClose: function(selectedDates) {
+            const newDate = selectedDates[0] ? flatpickr.formatDate(selectedDates[0], 'Y-m-d') : null;
+            
+            if (newDate !== oldValue) {
+                if (isCustom) {
+                    if (!currentTask.customFields) currentTask.customFields = {};
+                    currentTask.customFields[columnId] = newDate;
+                } else {
+                    currentTask.dueDate = newDate;
                 }
+                logActivity('change', { field: column.name, from: renderDateValue(oldValue), to: renderDateValue(newDate) });
+                renderSidebar(currentTask);
             }
+            // It's crucial to destroy the flatpickr instance after use
+            fp.destroy();
+        }
+    });
+    fp.open();
+}
+
+// --- Handle Editable Text/Costing Custom Fields ---
+else if (key.startsWith('custom-')) {
+    const columnId = parseInt(key.split('-')[1], 10);
+    const column = currentProject.customColumns.find(c => c.id === columnId);
+    if (!column) return;
+    
+    if (column.type === 'Text' || column.type === 'Costing') {
+        makeFieldEditable(controlCell, currentTask, key);
+    } else if (column.type === 'Selector') {
+        const oldSelectorValue = currentTask.customFields?.[columnId];
+        createGenericDropdown(controlCell, column.options.map(opt => ({ label: opt, value: opt })), oldSelectorValue, (newValue) => {
+            if (newValue !== oldSelectorValue) {
+                if (!currentTask.customFields) currentTask.customFields = {};
+                currentTask.customFields[columnId] = newValue;
+                logActivity('change', { field: column.name, from: oldSelectorValue, to: newValue });
+                renderSidebar(currentTask);
+            }
+        });
+    }
+}
         });
         
         sendCommentBtn.addEventListener('click', submitComment);
