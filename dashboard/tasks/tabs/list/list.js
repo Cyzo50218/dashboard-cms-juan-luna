@@ -484,28 +484,35 @@ function createSection(sectionData, customColumns) {
     sectionEl.className = 'task-section';
     sectionEl.dataset.sectionId = sectionData.id;
     
-    // --- Section summary logic ---
+    // --- Build the HTML for all task rows as a single string ---
+    let tasksHTML = '';
+    if (sectionData.tasks && !sectionData.isCollapsed) {
+        tasksHTML = sectionData.tasks.map(task => {
+            // createTaskRow returns a DOM element, so we get its HTML content
+            return createTaskRow(task, customColumns).outerHTML;
+        }).join('');
+    }
+    
+    // --- Build the HTML for the section footer ---
     let summaryColsHTML = '';
     let hasAggregatableColumnInSection = false;
-    
-    customColumns.forEach(col => {
-        let displayValue = '';
-        if (col.aggregation === 'Sum') {
-            const sectionTotal = sectionData.tasks.reduce((sum, task) => sum + Number(task.customFields[col.id] || 0), 0);
-            
-            if (sectionTotal > 0) {
-                hasAggregatableColumnInSection = true;
-                const formattedTotal = col.type === 'Costing' ? `${col.currency || ''}${sectionTotal.toLocaleString()}` : sectionTotal.toLocaleString();
-                displayValue = `<strong>Sum:</strong> ${formattedTotal}`;
+    if (!sectionData.isCollapsed) {
+        customColumns.forEach(col => {
+            let displayValue = '';
+            if (col.aggregation === 'Sum') {
+                const sectionTotal = sectionData.tasks.reduce((sum, task) => sum + Number(task.customFields[col.id] || 0), 0);
+                if (sectionTotal > 0) {
+                    hasAggregatableColumnInSection = true;
+                    const formattedTotal = col.type === 'Costing' ? `${col.currency || ''}${sectionTotal.toLocaleString()}` : sectionTotal.toLocaleString();
+                    displayValue = `<strong>Sum:</strong> ${formattedTotal}`;
+                }
             }
-        }
-        summaryColsHTML += `<div class="task-col header-custom">${displayValue}</div>`;
-    });
+            summaryColsHTML += `<div class="task-col header-custom">${displayValue}</div>`;
+        });
+    }
     
-    // --- HTML Generation ---
     let sectionFooterHTML = '';
-    // Create the dedicated footer element ONLY if needed.
-    if (hasAggregatableColumnInSection && !sectionData.isCollapsed) {
+    if (hasAggregatableColumnInSection) {
         sectionFooterHTML = `
         <div class="section-footer">
             <div class="section-summary-row">
@@ -523,23 +530,19 @@ function createSection(sectionData, customColumns) {
         </div>`;
     }
     
-    // Build the final structure for the entire section
+    // --- Assemble the entire section's innerHTML in one single operation ---
     sectionEl.innerHTML = `
         <div class="section-header-list">
             <i class="fas fa-grip-vertical drag-handle"></i>
             <i class="fas fa-chevron-down section-toggle ${sectionData.isCollapsed ? 'collapsed' : ''}"></i>
             <span class="section-title" contenteditable="true">${sectionData.title}</span>
         </div>
-        <div class="tasks-container ${sectionData.isCollapsed ? 'hidden' : ''}"></div>
+        <div class="tasks-container ${sectionData.isCollapsed ? 'hidden' : ''}">
+            ${tasksHTML}
+        </div>
         ${sectionFooterHTML}
         <button class="add-task-in-section-btn"><i class="fas fa-plus"></i> Add task</button>
     `;
-    
-    // Populate the tasks container
-    const tasksContainer = sectionEl.querySelector('.tasks-container');
-    if (sectionData.tasks && tasksContainer) {
-        sectionData.tasks.forEach(task => tasksContainer.appendChild(createTaskRow(task, customColumns)));
-    }
     
     return sectionEl;
 }
