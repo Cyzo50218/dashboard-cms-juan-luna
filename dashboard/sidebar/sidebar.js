@@ -392,7 +392,7 @@ window.TaskSidebar = (function() {
     }else if (key === 'status' || key === 'priority') {
         valueCell.className = 'sidebarprojectfield-value project-field';
     } else {
-        valueCell.className = 'sidebarprojectfield-value project-field';
+        valueCell.className = 'sidebarprojectfield-value other-field';
     }
 
     valueCell.innerHTML = `<span>${valueHTML}</span>`;
