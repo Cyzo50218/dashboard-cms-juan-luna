@@ -176,3 +176,97 @@
   background-color: #3498db;
   flex-shrink: 0;
 }
+
+/* --- Add these new rules to your drawer.css file --- */
+
+/* Make section header a flex container to align items */
+.sidebar .section-header {
+  justify-content: space-between;
+}
+
+/* New wrapper for the section title and chevron */
+.sidebar .section-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Styling for the new 'Add Project' button */
+.sidebar .add-project-btn {
+  background: none;
+  border: none;
+  color: var(--drawer-text-secondary-color);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  opacity: 1;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.sidebar .add-project-btn:hover {
+  background-color: var(--drawer-hover-bg);
+  color: #fff;
+}
+
+/* Hide plus button when sidebar is collapsed */
+.sidebar.close .add-project-btn {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Make the entire project item clickable */
+.sidebar .project-item a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  color: var(--drawer-text-color);
+  text-decoration: none;
+}
+
+/* Style for the currently active project */
+.sidebar .project-item.active {
+  background-color: var(--drawer-active-bg);
+}
+
+.sidebar .project-item.active a {
+  color: #fff;
+  font-weight: 500;
+}
+
+/* Styling for the "Add Project" dropdown menu */
+.drawerprojects-dropdown {
+  position: absolute;
+  background-color: #2d2d2d;
+  border: 1px solid var(--drawer-border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 110;
+  width: 180px;
+  padding: 8px;
+  font-size: 14px;
+}
+
+.drawerprojects-dropdown ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.drawerprojects-dropdown li {
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--drawer-text-color);
+}
+
+.drawerprojects-dropdown li:hover {
+  background-color: var(--drawer-hover-bg);
+}
