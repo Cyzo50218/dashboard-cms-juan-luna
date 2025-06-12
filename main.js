@@ -98,33 +98,27 @@ function updateActiveNav(sectionName) {
  * Loads persistent HTML components like the header or drawer.
  * This function is left unchanged as requested.
  */
+/**
+ * Loads HTML content into a selector and dynamically loads its corresponding CSS and JS.
+ */
 async function loadHTML(selector, url) {
   const container = document.querySelector(selector);
   try {
     const response = await fetch(url);
     container.innerHTML = await response.text();
     
-    let cssFileName = null;
-    let cssId = null;
-    let jsFileName = null;
-    let jsId = null;
+    let cssFileName = null, cssId = null, jsFileName = null, jsId = null;
     
     if (url.includes("header/header.html")) {
-      cssFileName = "header.css";
-      cssId = "header-css";
-      jsFileName = "header.js";
-      jsId = "header-js";
+      cssFileName = "header.css"; cssId = "header-css";
+      jsFileName = "header.js"; jsId = "header-js";
     } else if (url.includes("drawer/drawer.html")) {
-      cssFileName = "drawer.css";
-      cssId = "drawer-css";
-      jsFileName = "drawer.js";
-      jsId = "drawer-js";
+      cssFileName = "drawer.css"; cssId = "drawer-css";
+      jsFileName = "drawer.js"; jsId = "drawer-js";
     } else if (url.includes("sidebar/sidebar.html")) {
-  cssFileName = "sidebar.css";
-  cssId = "sidebar-css";
-  jsFileName = "sidebar.js";
-  jsId = "sidebar-js";
-}
+      cssFileName = "sidebar.css"; cssId = "sidebar-css";
+      jsFileName = "sidebar.js"; jsId = "sidebar-js";
+    }
     
     // Load CSS
     if (cssFileName && cssId && !document.getElementById(cssId)) {
@@ -143,17 +137,16 @@ async function loadHTML(selector, url) {
       script.src = `${folderPath}/${jsFileName}`;
       script.id = jsId;
       script.onload = () => {
-  console.log(`${jsFileName} loaded successfully.`);
-  // If this is the sidebar script, call its init function now.
-  if (jsFileName === 'sidebar.js' && window.TaskSidebar && typeof window.TaskSidebar.init === 'function') {
-    window.TaskSidebar.init();
-  }
-  
-};
+        console.log(`${jsFileName} loaded successfully.`);
+        if (jsFileName === 'sidebar.js' && window.TaskSidebar && typeof window.TaskSidebar.init === 'function') {
+          window.TaskSidebar.init();
+        }
+      };
       script.defer = true;
       document.body.appendChild(script);
     }
     
+    // If the drawer was loaded, call the new, robust logic to make it interactive.
     if (url.includes("drawer/drawer.html")) {
       attachDrawerToggleLogic();
     }
@@ -164,32 +157,121 @@ async function loadHTML(selector, url) {
   }
 }
 
+
 /**
- * Attaches event listeners for the navigation drawer.
- * This function is left unchanged as requested.
+ * REVISED AND CORRECTED: Attaches all event listeners for the navigation drawer
+ * using a robust event delegation pattern to prevent conflicts and timing issues.
  */
 function attachDrawerToggleLogic() {
-  const sectionHeaders = document.querySelectorAll('.section-header');
-  const drawer = document.getElementById("dashboardDrawer");
-  const menuToggle = document.getElementById("menuToggle");
-  
-  if (drawer) drawer.style.transition = "width 0.3s ease";
-  
-  if (menuToggle && drawer) {
-    menuToggle.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const currentWidth = parseInt(getComputedStyle(drawer).width, 10);
-      drawer.style.width = currentWidth > 100 ? "80px" : "260px";
-    });
+  const sidebar = document.getElementById("dashboardDrawer");
+  const header = document.getElementById("top-header");
+
+  if (!sidebar) {
+    console.error("Drawer #dashboardDrawer not found. Cannot attach logic.");
+    return;
   }
   
-  sectionHeaders.forEach(header => {
-    header.addEventListener('click', () => {
-      const section = header.closest('.nav-section');
-      section.classList.toggle('open');
+  // Use a flag to prevent attaching listeners multiple times
+  if (sidebar.dataset.drawerListenersAttached) {
+    return;
+  }
+
+  // --- Main Menu Toggle (Hamburger) ---
+  if (header) {
+    header.addEventListener('click', e => {
+      if (e.target.closest('#menuToggle')) {
+        sidebar.classList.toggle('close');
+      }
     });
+  }
+
+  // --- DELEGATED EVENT LISTENER for all clicks inside the Sidebar ---
+  sidebar.addEventListener('click', (e) => {
+    // Priority 1: Handle "Add Project" button click to open dropdown
+    const addProjectBtn = e.target.closest('.add-project-btn');
+    if (addProjectBtn) {
+      e.stopPropagation(); // Prevent the header from toggling
+      toggleProjectDropdown(addProjectBtn);
+      return;
+    }
+
+    // Priority 2: Handle Section Header click to expand/collapse
+    const sectionHeader = e.target.closest('.section-header');
+    if (sectionHeader) {
+      sectionHeader.closest('.nav-section')?.classList.toggle('open');
+      return;
+    }
+    
+    // Priority 3: Handle Project Item click to change selection
+    const projectItem = e.target.closest('.project-item');
+    if (projectItem) {
+      const projectsList = projectItem.closest('.section-items');
+      if (projectsList && !projectItem.classList.contains('active')) {
+          projectsList.querySelector('.project-item.active')?.classList.remove('active');
+          projectItem.classList.add('active');
+      }
+      return;
+    }
   });
+
+  // Set flag to confirm listeners are attached
+  sidebar.dataset.drawerListenersAttached = 'true';
 }
+
+/**
+ * Helper function to create and manage the 'Add Project' dropdown.
+ */
+function toggleProjectDropdown(buttonElement) {
+  const closeDropdown = () => document.querySelector('.drawerprojects-dropdown')?.remove();
+
+  if (document.querySelector('.drawerprojects-dropdown')) {
+    closeDropdown();
+    return;
+  }
+
+  const dropdown = document.createElement('div');
+  dropdown.className = 'drawerprojects-dropdown';
+  dropdown.innerHTML = `
+    <ul>
+      <li id="add-project-action">
+        <i class="fas fa-plus"></i>
+        <span>Add Project</span>
+      </li>
+    </ul>`;
+  document.body.appendChild(dropdown);
+
+  const rect = buttonElement.getBoundingClientRect();
+  dropdown.style.top = `${rect.bottom + 5}px`;
+  dropdown.style.left = `${rect.right - dropdown.offsetWidth}px`;
+}
+
+/**
+ * A global listener to handle clicks for the dropdown.
+ * Attaches itself to the body only once.
+ */
+(function setupGlobalDrawerListeners() {
+  if (window.globalDrawerListenerAttached) {
+    return;
+  }
+  
+  const closeDropdown = () => document.querySelector('.drawerprojects-dropdown')?.remove();
+
+  document.body.addEventListener('click', e => {
+    // Handle clicking the "Add Project" ACTION inside the dropdown
+    if (e.target.closest('#add-project-action')) {
+      alert('Triggering "Add Project" action...');
+      closeDropdown();
+      return;
+    }
+    
+    // Close dropdown if the click is outside of it and not on the button that opens it
+    if (!e.target.closest('.drawerprojects-dropdown') && !e.target.closest('.add-project-btn')) {
+      closeDropdown();
+    }
+  });
+
+  window.globalDrawerListenerAttached = true;
+})();
 
 function showEmailModal() {
     let modalStyles = document.getElementById("modalStyles");
@@ -1290,131 +1372,43 @@ const setupModalLogic = () => {
 // 
 // --- APPLICATION INITIALIZATION ---
 // This block runs once the initial HTML document has been fully loaded and parsed.
-// This function will contain all the logic to make the sidebar interactive.
-// It should only be called AFTER the drawer HTML has been loaded.
-function initializeSidebar() {
-    const sidebar = document.getElementById("dashboardDrawer");
-    const menuToggle = document.getElementById("menuToggle");
-    
-    // If the sidebar isn't found, log an error and stop.
-    if (!sidebar) {
-        console.error("Sidebar #dashboardDrawer not found. Initialization failed.");
-        return;
-    }
-    
-    // --- Logic for the main hamburger menu toggle ---
-    if (menuToggle) {
-        menuToggle.addEventListener("click", (e) => {
-            e.stopPropagation();
-            sidebar.classList.toggle("close");
-        });
-    }
-    
-    // --- Logic for toggling collapsible sections ---
-    sidebar.querySelectorAll(".section-header").forEach(header => {
-        header.addEventListener("click", (e) => {
-            // Prevent toggling if the plus button itself was clicked
-            if (e.target.closest(".add-project-btn")) {
-                return;
-            }
-            const section = header.closest(".nav-section");
-            if (section) {
-                section.classList.toggle("open");
-            }
-        });
-    });
-    
-    // --- Logic for selecting a project ---
-    const projectsList = sidebar.querySelector("#projects-section .section-items");
-    if (projectsList) {
-        projectsList.addEventListener("click", (e) => {
-            const clickedItem = e.target.closest(".project-item");
-            if (!clickedItem || clickedItem.classList.contains("active")) return;
-            
-            projectsList.querySelector(".project-item.active")?.classList.remove("active");
-            clickedItem.classList.add("active");
-        });
-    }
-    
-    // --- Logic for the 'Add Project' dropdown ---
-    const addProjectBtn = sidebar.querySelector(".add-project-btn");
-    const closeAllDropdowns = () => {
-        document.querySelector(".drawerprojects-dropdown")?.remove();
-    };
-    
-    if (addProjectBtn) {
-        addProjectBtn.addEventListener("click", (e) => {
-            e.stopPropagation(); // Stop the click from toggling the section
-            
-            if (document.querySelector(".drawerprojects-dropdown")) {
-                closeAllDropdowns();
-                return;
-            }
-            
-            const dropdown = document.createElement("div");
-            dropdown.className = "drawerprojects-dropdown";
-            dropdown.innerHTML = `
-        <ul>
-          <li id="add-project-action">
-            <i class="fas fa-plus"></i>
-            <span>Add Project</span>
-          </li>
-        </ul>`;
-            
-            dropdown.querySelector("#add-project-action").addEventListener("click", (event) => {
-                event.stopPropagation();
-                alert("Triggering 'Add Project' action...");
-                closeAllDropdowns();
-            });
-            
-            document.body.appendChild(dropdown);
-            
-            const rect = addProjectBtn.getBoundingClientRect();
-            dropdown.style.top = `${rect.bottom + 5}px`;
-            dropdown.style.left = `${rect.right - dropdown.offsetWidth}px`;
-        });
-    }
-    
-    // Add one global listener to close the dropdown
-    window.addEventListener("click", (e) => {
-        if (!e.target.closest(".drawerprojects-dropdown") && !e.target.closest(".add-project-btn")) {
-            closeAllDropdowns();
-        }
-    });
-}
-
-
-// --- Main Execution Block ---
 document.addEventListener("DOMContentLoaded", async () => {
-    // Load all HTML components first
-    await Promise.all([
-        loadHTML("#top-header", "../dashboard/header/header.html"),
-        loadHTML("#rootdrawer", "../dashboard/drawer/drawer.html"),
-        loadHTML("#right-sidebar", "../dashboard/sidebar/sidebar.html"),
-    ]);
-    
-    setTimeout(initializeSidebar, 0);
-    
-    // --- Global router setup (can run after loading) ---
-    document.querySelectorAll('.nav-item a[href^="#"]').forEach(link => {
-        const section = link.getAttribute('href').substring(1);
-        link.setAttribute('data-section', section);
-    });
-    
-    document.body.addEventListener('click', (e) => {
-        const navLink = e.target.closest('a[data-section]');
-        if (navLink) {
-            e.preventDefault();
-            const section = navLink.getAttribute('data-section');
-            let newUrl = `/${section}`;
-            if (section === 'tasks') {
-                newUrl = `/tasks/22887391981/list/22887391981`;
-            }
-            history.pushState({ path: newUrl }, '', newUrl);
-            router();
-        }
-    });
-    
-    window.addEventListener('popstate', router);
-    router(); // Initial call
+  await Promise.all([
+    loadHTML("#top-header", "../dashboard/header/header.html"),
+    loadHTML("#rootdrawer", "../dashboard/drawer/drawer.html"),
+    loadHTML("#right-sidebar", "../dashboard/sidebar/sidebar.html"),
+  ]);
+  
+  
+
+  document.querySelectorAll('.nav-item a[href^="#"]').forEach(link => {
+    const section = link.getAttribute('href').substring(1);
+    link.setAttribute('data-section', section);
+  });
+  
+
+  document.body.addEventListener('click', (e) => {
+    const navLink = e.target.closest('a[data-section]');
+    if (navLink) {
+      e.preventDefault();
+      const section = navLink.getAttribute('data-section');
+      let newUrl = `/${section}`;
+      
+      if (section === 'tasks') {
+        newUrl = `/tasks/22887391981/list/22887391981`;
+      }
+      
+      history.pushState({ path: newUrl }, '', newUrl);
+      router();
+    }
+  });
+  
+  // Listen for the 'popstate' event (browser back/forward buttons).
+  window.addEventListener('popstate', router);
+  
+
+
+  // Trigger the router on the initial page load.
+  router();
 });
+
