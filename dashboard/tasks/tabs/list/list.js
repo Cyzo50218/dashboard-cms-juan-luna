@@ -29,7 +29,7 @@ const allUsers = [
 ];
 
 let project = {
-    customColumns: [{ id: 1, name: 'Budget', type: 'Costing', currency: '$', aggregation: 'Sum' }],
+    customColumns: [{ id: 1, name: 'Budget', type: 'Costing', currency: '₱', aggregation: 'Sum' }],
     sections: [
     {
         id: 1,
@@ -131,127 +131,112 @@ function setupEventListeners() {
     };
     
     bodyClickListener = (e) => {
-    const clickedSection = e.target.closest('.task-section');
-    if (clickedSection) currentlyFocusedSectionId = Number(clickedSection.dataset.sectionId);
-    
-    if (e.target.closest('.section-toggle')) {
-        const sectionEl = e.target.closest('.task-section');
-        const section = project.sections.find(s => s.id == sectionEl.dataset.sectionId);
-        if (section) {
-            section.isCollapsed = !section.isCollapsed;
-            render();
-        }
-        return;
-    }
-    
-    const addTaskBtn = e.target.closest('.add-task-in-section-btn');
-    if (addTaskBtn) {
-        const sectionEl = addTaskBtn.closest('.task-section');
-        if (sectionEl) {
+        const clickedSection = e.target.closest('.task-section');
+        if (clickedSection) currentlyFocusedSectionId = Number(clickedSection.dataset.sectionId);
+        
+        if (e.target.closest('.section-toggle')) {
+            const sectionEl = e.target.closest('.task-section');
             const section = project.sections.find(s => s.id == sectionEl.dataset.sectionId);
-            if (section) addNewTask(section, 'end');
-        }
-        return;
-    }
-    
-    const taskRow = e.target.closest('.task-row-wrapper');
-    if (!taskRow) return;
-    const taskId = Number(taskRow.dataset.taskId);
-    
-    if (e.target.matches('.task-name')) return displaySideBarTasks(taskId);
-    
-    const control = e.target.closest('[data-control]');
-    if (!control) return;
-    
-    /* START MODIFICATION */
-    // Find the task object once after a control is clicked.
-    // This makes the 'task' variable available to all 'case' blocks below.
-    const { task } = findTaskAndSection(taskId);
-    if (!task) return; // Exit early if no task is found.
-    /* END MODIFICATION */
-    
-    switch (control.dataset.control) {
-        case 'check':
-            e.stopPropagation();
-            handleTaskCompletion(taskId, taskRow);
-            break;
-        case 'due-date':
-            showDatePicker(control, taskId);
-            break;
-        case 'priority':
-            createDropdown(priorityOptions, control, (v) => updateTask(taskId, { priority: v }));
-            break;
-        case 'status':
-            createDropdown(statusOptions, control, (v) => updateTask(taskId, { status: v }));
-            break;
-        case 'custom-select': {
-            const columnId = Number(control.dataset.columnId);
-            const column = project.customColumns.find(c => c.id === columnId);
-            if (column && column.options) {
-                createDropdown(column.options, control, (selectedValue) => {
-                    // This now works because 'task' was defined above the switch statement.
-                    updateTask(taskId, {
-                        customFields: {
-                            ...task.customFields,
-                            [columnId]: selectedValue
-                        }
-                    });
-                });
+            if (section) {
+                section.isCollapsed = !section.isCollapsed;
+                render();
             }
-            break;
-        }
-        case 'assignee': {
-            // The 'task' variable is already defined, so we can use it directly.
-            if (task && task.assignees.length === 0) {
-                showAssigneeDropdown(control, taskId);
-            }
-            break;
-        }
-        case 'remove-assignee':
-            e.stopPropagation();
-            updateTask(taskId, { assignees: [] });
-            break;
-    }
-};
-    
-    bodyFocusOutListener = (e) => {
-    const taskRow = e.target.closest('.task-row-wrapper');
-    if (!taskRow) return;
-    const taskId = Number(taskRow.dataset.taskId);
-    const { task, section } = findTaskAndSection(taskId);
-    if (!task || !section) return;
-    
-    if (e.target.matches('.task-name')) {
-        const newName = e.target.innerText.trim();
-        if (task.isNew && newName === '') {
-            section.tasks = section.tasks.filter(t => t.id !== taskId);
-            render();
             return;
         }
-        if (task.isNew) delete task.isNew;
-        if (task.name !== newName) updateTask(taskId, { name: newName });
-    } else if (e.target.matches('[data-control="custom"]')) {
-        const customFieldCell = e.target;
-        const columnId = Number(customFieldCell.dataset.columnId);
-        const column = project.customColumns.find(c => c.id === columnId);
-        let newValue = customFieldCell.innerText;
         
-        /* START MODIFICATION */
-        // Check if the edited field is a numeric or currency column.
-        if (column && (column.type === 'Costing' || column.type === 'Numbers')) {
-            // Clean the input string by removing currency symbols (like $ or €) and commas.
-            // The native Number() constructor correctly handles leading negative signs.
-            // For example, Number("-$50.50".replace(/[$,€]/g, '')) becomes -50.5.
-            const cleanValue = newValue.replace(/[$,€,]/g, '');
-            newValue = Number(cleanValue) || 0; // Convert to a number, defaulting to 0 if invalid.
+        const addTaskBtn = e.target.closest('.add-task-in-section-btn');
+        if (addTaskBtn) {
+            const sectionEl = addTaskBtn.closest('.task-section');
+            if (sectionEl) {
+                const section = project.sections.find(s => s.id == sectionEl.dataset.sectionId);
+                if (section) addNewTask(section, 'end');
+            }
+            return;
         }
-        /* END MODIFICATION */
         
-        if (task.customFields[columnId] !== newValue) {
-            updateTask(taskId, { customFields: { ...task.customFields, [columnId]: newValue } });
-        }
+        const taskRow = e.target.closest('.task-row-wrapper');
+        if (!taskRow) return;
+        const taskId = Number(taskRow.dataset.taskId);
+        
+        if (e.target.matches('.task-name')) return displaySideBarTasks(taskId);
+        
+        const control = e.target.closest('[data-control]');
+        if (!control) return;
+        
+        switch (control.dataset.control) {
+            case 'check':
+                e.stopPropagation();
+                handleTaskCompletion(taskId, taskRow);
+                break;
+            case 'due-date':
+                showDatePicker(control, taskId);
+                break;
+            case 'priority':
+                createDropdown(priorityOptions, control, (v) => updateTask(taskId, { priority: v }));
+                break;
+            case 'status':
+                createDropdown(statusOptions, control, (v) => updateTask(taskId, { status: v }));
+                break;
+            case 'custom-select': {
+    const columnId = Number(control.dataset.columnId);
+    const column = project.customColumns.find(c => c.id === columnId);
+    if (column && column.options) {
+        // Create a dropdown with the column's specific options ('Invoice', 'Payment').
+        // The callback updates the task's custom field with the selected value.
+        createDropdown(column.options, control, (selectedValue) => {
+            updateTask(taskId, {
+                customFields: {
+                    ...task.customFields,
+                    [columnId]: selectedValue
+                }
+            });
+        });
     }
-};
+    break;
+}    
+            case 'assignee': { // Using block scope for the `task` constant
+                const { task } = findTaskAndSection(taskId);
+                // MODIFICATION: Only open the dropdown if NO user is currently assigned.
+                if (task && task.assignees.length === 0) {
+                    showAssigneeDropdown(control, taskId);
+                }
+                // If a user is already assigned, clicking the cell does nothing.
+                break;
+            }
+            case 'remove-assignee':
+                e.stopPropagation();
+                updateTask(taskId, { assignees: [] });
+                break;
+        }
+    };
+    
+    bodyFocusOutListener = (e) => {
+        const taskRow = e.target.closest('.task-row-wrapper');
+        if (!taskRow) return;
+        const taskId = Number(taskRow.dataset.taskId);
+        const { task, section } = findTaskAndSection(taskId);
+        if (!task || !section) return;
+        
+        if (e.target.matches('.task-name')) {
+            const newName = e.target.innerText.trim();
+            if (task.isNew && newName === '') {
+                section.tasks = section.tasks.filter(t => t.id !== taskId);
+                render();
+                return;
+            }
+            if (task.isNew) delete task.isNew;
+            if (task.name !== newName) updateTask(taskId, { name: newName });
+        } else if (e.target.matches('[data-control="custom"]')) {
+            const customFieldCell = e.target;
+            const columnId = Number(customFieldCell.dataset.columnId);
+            const column = project.customColumns.find(c => c.id === columnId);
+            let newValue = customFieldCell.innerText;
+            if (column && (column.type === 'Costing' || column.type === 'Numbers')) {
+                newValue = Number(newValue.replace(/[^0-9.]/g, '')) || 0;
+            }
+            if (task.customFields[columnId] !== newValue) updateTask(taskId, { customFields: { ...task.customFields, [columnId]: newValue } });
+        }
+    };
     
     addTaskHeaderBtnListener = () => {
         if (!currentlyFocusedSectionId && project.sections.length > 0) {
@@ -509,7 +494,7 @@ function renderFooter(projectToRender) {
         let displayValue = '';
         if (col.aggregation === 'Sum') {
             let total = projectToRender.sections.reduce((sum, section) => sum + section.tasks.reduce((secSum, task) => secSum + Number(task.customFields[col.id] || 0), 0), 0);
-            displayValue = col.type === 'Costing' ? `${col.currency || '$'}${total.toLocaleString()}` : total.toLocaleString();
+            displayValue = col.type === 'Costing' ? `${col.currency || ''}${total.toLocaleString()}` : total.toLocaleString();
         }
         customColsHTML += `<div class="task-col header-custom">${displayValue}</div>`;
     });
@@ -563,7 +548,7 @@ function createTaskRow(task, customColumns) {
             /* END MODIFICATION */
         } else {
             // This is the original logic for other column types.
-            const displayValue = col.type === 'Costing' && value ? `${col.currency || '$'}${value}` : value;
+            const displayValue = col.type === 'Costing' && value ? `${col.currency || ''}${value}` : value;
             customFieldsHTML += `<div class="task-col header-custom" data-control="custom" data-column-id="${col.id}" contenteditable="true">${displayValue}</div>`;
         }
     });
@@ -571,7 +556,6 @@ function createTaskRow(task, customColumns) {
     rowWrapper.innerHTML = `<div class="fixed-column"><i class="fas fa-grip-vertical drag-handle"></i><i class="far fa-check-circle" data-control="check"></i><span class="task-name" contenteditable="true" data-placeholder="Add task name">${displayName}</span></div><div class="scrollable-columns-wrapper"><div class="scrollable-columns"><div class="task-col header-assignee" data-control="assignee">${createAssigneeHTML(task.assignees)}</div><div class="task-col header-due-date" data-control="due-date">${displayDate}</div><div class="task-col header-priority" data-control="priority">${createPriorityTag(task.priority)}</div><div class="task-col header-status" data-control="status">${createStatusTag(task.status)}</div>${customFieldsHTML}</div></div>`;
     return rowWrapper;
 }
-
 function displaySideBarTasks(taskId) {
     console.log(`Task name clicked. Opening sidebar for task ID: ${taskId}`);
     if (window.TaskSidebar) {
