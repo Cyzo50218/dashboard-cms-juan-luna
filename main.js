@@ -154,9 +154,7 @@ async function loadHTML(selector, url) {
       document.body.appendChild(script);
     }
     
-    if (url.includes("drawer/drawer.html")) {
-      attachDrawerToggleLogic();
-    }
+    
     
   } catch (err) {
     container.innerHTML = `<p>Error loading ${url}</p>`;

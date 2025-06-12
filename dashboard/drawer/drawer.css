@@ -233,3 +233,16 @@
   background-color: #3498db;
   flex-shrink: 0;
 }
+
+.drawerprojects-dropdown {
+  position: absolute;
+  background-color: #F0F0F0;
+  border: 1px solid var(--drawer-border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  /* Use a very high z-index to ensure it's on top of all other content */
+  z-index: 9999;
+  width: 180px;
+  padding: 8px;
+  font-size: 14px;
+}

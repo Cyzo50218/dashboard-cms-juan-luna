@@ -247,10 +247,12 @@
 
 .tab-btn.active {
     color: #151b26;
+    background: none;
     border-bottom-color: #f06a6a;
 }
 
 .tab-btn:hover {
+    background: none;
     color: #151b26;
 }
 
