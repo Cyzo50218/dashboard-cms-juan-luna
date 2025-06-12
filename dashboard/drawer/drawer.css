@@ -23,7 +23,7 @@
   border-right: 1px solid var(--drawer-border-color);
   height: 100vh;
   position: fixed;
-  top: 60px; /* Adjust if you have a fixed header */
+  top: 60px;
   left: 0;
   z-index: 100;
   box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
@@ -59,7 +59,6 @@
 .sidebar .nav-item {
   display: flex;
   align-items: center;
-  /* Use space-between to push content to the ends for complex items */
   justify-content: space-between;
   gap: 12px;
   padding: 6px 12px;
@@ -73,14 +72,12 @@
   text-decoration: none;
 }
 
-/* Override for simple items (like projects) to align left */
 .sidebar .project-item {
   justify-content: flex-start;
 }
 
 .sidebar .nav-item:hover {
   background-color: var(--drawer-hover-bg);
-  color: #fff;
 }
 
 .sidebar .nav-item.active {
@@ -89,29 +86,35 @@
   font-weight: 500;
 }
 
-/* === NEW: Wrapper for main icon and text === */
 .nav-item-main-content {
   display: flex;
   align-items: center;
   gap: 12px;
-  /* These prevent the text from wrapping or shrinking oddly */
   flex-shrink: 1;
   overflow: hidden;
 }
 
-/* === Icon Styling === */
-.sidebar .nav-item i {
+/* === START: CORRECTED ICON STYLING === */
+
+/* 1. Create a GLOBAL style for all Font Awesome icons in the nav */
+.sidebar-nav [class*="fa-"] {
   font-size: 16px;
   opacity: var(--drawer-icon-opacity);
   flex-shrink: 0; /* Prevents icons from shrinking */
-  width: 20px;
+  width: 20px;    /* Gives all icons a consistent width for alignment */
   text-align: center;
+  transition: opacity 0.3s ease;
 }
 
+/* 2. Override for the smaller expand chevron */
 .sidebar .expand-icon {
   font-size: 12px;
   opacity: 0.6;
+  width: auto; /* Let this smaller icon size itself */
 }
+
+/* === END: CORRECTED ICON STYLING === */
+
 
 /* === Text and Expand Icon Styling === */
 .sidebar .nav-item span,
@@ -125,23 +128,20 @@
 /* === COLLAPSED SIDEBAR STATE === */
 .sidebar.close .nav-item a,
 .sidebar.close .nav-item {
-  /* Center the remaining content (the primary icon) */
   justify-content: center;
   padding: 6px;
 }
 
-/* CORRECTED: Hide text AND the expand icon when collapsed */
 .sidebar.close .nav-item span,
 .sidebar.close .section-header span,
 .sidebar.close .expand-icon {
   opacity: 0;
   max-width: 0;
   pointer-events: none;
-  /* Add display: none as a fallback to ensure it's hidden */
   display: none;
 }
 
-/* === Section Header & Collapsing Logic (Unchanged) === */
+/* === Section Header & Collapsing Logic === */
 .sidebar .section-header {
   display: flex;
   align-items: center;
@@ -166,6 +166,41 @@
   gap: 8px;
 }
 
+/* === START: CORRECTED ADD PROJECT BUTTON === */
+
+/* 3. Make the button wrapper transparent and size it properly */
+.sidebar .add-project-btn {
+  background-color: transparent; /* Explicitly set background to transparent */
+  border: none;
+  padding: 0; /* Remove default padding */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;   /* Give it a defined size for a better hover area */
+  height: 28px;
+  border-radius: 6px;
+  color: var(--drawer-text-secondary-color);
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.sidebar .add-project-btn:hover {
+  background-color: var(--drawer-hover-bg);
+  color: #fff;
+}
+
+/* 4. Make the plus icon inside the button slightly smaller to fit well */
+.sidebar .add-project-btn .fa-plus {
+  font-size: 14px;
+}
+
+.sidebar.close .add-project-btn {
+  opacity: 0;
+  pointer-events: none;
+}
+/* === END: CORRECTED ADD PROJECT BUTTON === */
+
+
 .sidebar .section-items {
   max-height: 0;
   overflow: hidden;
@@ -173,7 +208,7 @@
 }
 
 .sidebar .nav-section.open .section-items {
-  max-height: 500px; /* Adjust as needed */
+  max-height: 500px;
 }
 
 .sidebar .section-header .fa-chevron-right {
@@ -184,7 +219,7 @@
   transform: rotate(90deg);
 }
 
-/* === Project Item Styling (Unchanged) === */
+/* === Project Item Styling === */
 .sidebar .project-item a {
   justify-content: flex-start;
   gap: 12px;
