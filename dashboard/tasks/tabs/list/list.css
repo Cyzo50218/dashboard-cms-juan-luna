@@ -9,9 +9,12 @@
     --medium-priority: #ffa940;
     --low-priority: #52c41a;
     --fixed-col-width: 35%;
-    --row-height: 0rem; /* Further reduced row height for more compactness */
-    --header-padding-y: 0.5rem; /* New variable for vertical header padding */
-    --column-padding-y: 0.2rem; /* New variable for vertical column padding */
+    --row-height: 0rem;
+    /* Further reduced row height for more compactness */
+    --header-padding-y: 0.5rem;
+    /* New variable for vertical header padding */
+    --column-padding-y: 0.2rem;
+    /* New variable for vertical column padding */
 }
 
 .list-view-container {
@@ -28,8 +31,7 @@
 
 .listview-header {
     display: flex;
-    /* This aligns all items to the start initially */
-    justify-content: flex-start; 
+    justify-content: flex-start;
     align-items: center;
     flex-shrink: 0;
     margin-bottom: 0;
@@ -39,26 +41,24 @@
 
 .header-controls-right {
     display: flex;
-    gap: 0.5rem; /* Increased gap slightly for better visuals */
-    /* This is the key change: an auto left margin will push this
-       element all the way to the right of the flex container. */
-    margin-left: auto; 
+    gap: 0.5rem;
+    margin-left: auto;
 }
+
 button {
     background-color: transparent;
     border: 1px solid var(--text-secondary-color);
     border-radius: 8px;
-    /* Slightly reduced button padding */
     padding: 0.4rem 0.8rem;
     cursor: pointer;
-    font-size: 0.85rem; /* Slightly smaller font size for buttons */
+    font-size: 0.85rem;
     font-weight: 500;
     color: var(--text-color);
     transition: background-color 0.2s, color 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.4rem; /* Reduced gap inside buttons */
+    gap: 0.4rem;
 }
 
 button:hover {
@@ -90,9 +90,10 @@ button:hover {
 .task-list-wrapper::-webkit-scrollbar {
     display: none;
 }
+
 .task-list-wrapper {
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
 
 .task-list-header,
@@ -100,18 +101,41 @@ button:hover {
 .task-list-footer {
     display: flex;
     transition: background-color 0.2s ease-in-out;
-    min-height: var(--row-height); /* Uses the more reduced row height */
+    min-height: var(--row-height);
     flex-shrink: 0;
 }
 
-.task-list-header,
-.task-row-wrapper {
+/*
+ * --- START: CORRECTED BORDER LOGIC ---
+ */
+
+/* The main header gets a standard border */
+.task-list-header {
     border-bottom: 1px solid var(--border-color);
 }
 
+/* Each task row is now a positioning context for its pseudo-element border */
 .task-row-wrapper {
+    position: relative;
     transition: opacity 0.4s ease-in-out;
 }
+
+/* This pseudo-element creates a reliable line that cannot be covered by child elements */
+.task-row-wrapper::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background-color: var(--border-color);
+    pointer-events: none;
+}
+
+/*
+ * --- END: CORRECTED BORDER LOGIC ---
+ */
+
 
 .fixed-column {
     flex-shrink: 0;
@@ -119,8 +143,7 @@ button:hover {
     border-right: 1px solid var(--border-color);
     display: flex;
     align-items: center;
-    /* Reduced padding for fixed column */
-    padding: var(--column-padding-y) 1rem; /* Uses new variable for y-padding */
+    padding: var(--column-padding-y) 1rem;
     box-sizing: border-box;
     gap: 0.75rem;
 }
@@ -141,8 +164,7 @@ button:hover {
 }
 
 .task-col {
-    /* Reduced padding for all task columns */
-    padding: var(--column-padding-y) 1rem; /* Uses new variable for y-padding */
+    padding: var(--column-padding-y) 1rem;
     box-sizing: border-box;
     white-space: nowrap;
     display: flex;
@@ -158,7 +180,7 @@ button:hover {
 .task-list-header {
     background-color: transparent;
     font-weight: 600;
-    font-size: 0.75rem; /* Slightly smaller font size for header text */
+    font-size: 0.75rem;
     text-transform: uppercase;
     color: var(--text-color);
 }
@@ -167,7 +189,7 @@ button:hover {
     opacity: 0;
     color: var(--text-secondary-color);
     transition: opacity 0.2s;
-    font-size: 1rem; /* Slightly smaller drag handle */
+    font-size: 1rem;
     cursor: grab !important;
 }
 
@@ -179,18 +201,21 @@ button:hover {
     width: 150px;
     flex-shrink: 0;
     border-right: 1px solid var(--border-color);
+    /* Good practice to prevent content from covering the border line */
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .add-column-container {
     display: flex;
     align-items: center;
-    padding: 0.4rem; /* Adjusted padding */
+    padding: 0.4rem;
 }
 
 #add-column-btn {
     background: none;
     border: none;
-    font-size: 0.9rem; /* Smaller plus icon */
+    font-size: 0.9rem;
     cursor: pointer;
     color: var(--text-secondary-color);
 }
@@ -205,7 +230,7 @@ button:hover {
     border: none;
     cursor: pointer;
     color: var(--text-secondary-color);
-    padding: 0.2rem; /* Adjusted padding */
+    padding: 0.2rem;
 }
 
 .task-col.header-custom:hover .delete-column-btn {
@@ -223,8 +248,7 @@ button:hover {
     align-items: center;
     font-weight: 600;
     position: relative;
-    /* Reduced padding for section headers */
-    padding: var(--column-padding-y) 1rem; /* Uses new variable for y-padding */
+    padding: var(--column-padding-y) 1rem;
     cursor: grab;
     border-bottom: 1px solid var(--border-color);
     min-height: var(--row-height);
@@ -246,7 +270,7 @@ button:hover {
 }
 
 .section-toggle {
-    padding: 0 0.4rem; /* Adjusted padding */
+    padding: 0 0.4rem;
     transition: transform 0.2s ease-in-out;
 }
 
@@ -306,7 +330,7 @@ button:hover {
 }
 
 .profile-picture {
-    width: 24px; /* Slightly smaller profile picture */
+    width: 24px;
     height: 24px;
     border-radius: 50%;
     background-size: cover;
@@ -317,9 +341,9 @@ button:hover {
 
 .priority-tag,
 .status-tag {
-    padding: 0.2rem 0.6rem; /* Reduced tag padding */
-    border-radius: 10px; /* Slightly smaller border-radius for tags */
-    font-size: 0.75rem; /* Slightly smaller font for tags */
+    padding: 0.2rem 0.6rem;
+    border-radius: 10px;
+    font-size: 0.75rem;
     font-weight: 500;
     display: inline-block;
     border: none;
@@ -363,9 +387,9 @@ button:hover {
 .add-task-in-section-btn,
 .add-section-btn {
     border: none;
-    padding: 0.4rem 1.2rem; /* Adjusted padding */
-    margin-left: 3rem; /* Slightly reduced margin */
-    font-size: 0.85rem; /* Smaller font size */
+    padding: 0.4rem 1.2rem;
+    margin-left: 3rem;
+    font-size: 0.85rem;
 }
 
 .add-task-in-section-btn:hover,
@@ -376,7 +400,7 @@ button:hover {
 
 .add-section-btn {
     align-self: flex-start;
-    margin-top: 0.5rem; /* Reduced top margin */
+    margin-top: 0.5rem;
     margin-left: 0;
 }
 
@@ -436,7 +460,7 @@ button:hover {
 }
 
 .dropdown-item {
-    padding: 0.6rem 1rem; /* Adjusted padding */
+    padding: 0.6rem 1rem;
     cursor: pointer;
     display: flex;
     justify-content: space-between;
@@ -458,7 +482,8 @@ button:hover {
     justify-content: flex-end;
 }
 
-.dialog-overlay {
+.dialog-overlay,
+.filterlistview-dialog-overlay {
     position: fixed;
     top: 0;
     left: 0;
@@ -474,45 +499,45 @@ button:hover {
 .dialog-box {
     background: var(--primary-bg);
     border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
     width: 90%;
     max-width: 450px;
 }
 
 .dialog-header {
-    padding: 0.8rem 1.2rem; /* Adjusted padding */
-    font-size: 1rem; /* Slightly smaller font */
+    padding: 0.8rem 1.2rem;
+    font-size: 1rem;
     font-weight: 600;
     border-bottom: 1px solid var(--border-color);
 }
 
 .dialog-body {
-    padding: 1.2rem; /* Adjusted padding */
+    padding: 1.2rem;
 }
 
 .dialog-footer {
-    padding: 0.8rem 1.2rem; /* Adjusted padding */
+    padding: 0.8rem 1.2rem;
     display: flex;
     justify-content: flex-end;
-    gap: 0.4rem; /* Adjusted gap */
+    gap: 0.4rem;
     border-top: 1px solid var(--border-color);
 }
 
 .dialog-body .form-group {
-    margin-bottom: 1rem; /* Adjusted margin */
+    margin-bottom: 1rem;
 }
 
 .dialog-body label {
     display: block;
-    margin-bottom: 0.4rem; /* Adjusted margin */
+    margin-bottom: 0.4rem;
     font-weight: 500;
-    font-size: 0.85rem; /* Adjusted font size */
+    font-size: 0.85rem;
 }
 
 .dialog-body select,
 .dialog-body input {
     width: 100%;
-    padding: 0.5rem; /* Adjusted padding */
+    padding: 0.5rem;
     border: 1px solid var(--border-color);
     border-radius: 6px;
     box-sizing: border-box;
@@ -520,8 +545,8 @@ button:hover {
 }
 
 .dialog-preview-box {
-    margin-top: 0.8rem; /* Adjusted margin */
-    padding: 0.8rem; /* Adjusted padding */
+    margin-top: 0.8rem;
+    padding: 0.8rem;
     background-color: var(--secondary-bg);
     border: 1px dashed var(--border-color);
     border-radius: 6px;
@@ -529,15 +554,15 @@ button:hover {
 
 .dialog-preview-box p {
     margin: 0;
-    font-size: 0.85rem; /* Adjusted font size */
+    font-size: 0.85rem;
     color: var(--text-secondary-color);
 }
 
 .dialog-preview-box .preview-value {
     font-weight: 600;
     color: var(--text-color);
-    font-size: 0.9rem; /* Adjusted font size */
-    margin-top: 0.4rem; /* Adjusted margin */
+    font-size: 0.9rem;
+    margin-top: 0.4rem;
 }
 
 .context-dropdown.assignee-dropdown {
@@ -545,7 +570,7 @@ button:hover {
 }
 
 .dropdown-search-container {
-    padding: 0.4rem; /* Adjusted padding */
+    padding: 0.4rem;
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -554,58 +579,39 @@ button:hover {
     outline: none;
     width: 100%;
     background: transparent;
-    font-size: 0.85rem; /* Adjusted font size */
-    padding: 0.2rem 0.4rem; /* Adjusted padding */
+    font-size: 0.85rem;
+    padding: 0.2rem 0.4rem;
 }
 
 .dropdown-list {
-    max-height: 180px; /* Slightly reduced max height */
+    max-height: 180px;
     overflow-y: auto;
-    padding: 0.4rem 0; /* Adjusted padding */
+    padding: 0.4rem 0;
 }
 
 .dropdown-item .user-info {
     display: flex;
     align-items: center;
-    gap: 0.6rem; /* Reduced gap */
+    gap: 0.6rem;
 }
 
 .dropdown-item .profile-picture {
-    width: 22px; /* Even smaller profile picture */
+    width: 22px;
     height: 22px;
     font-size: 0.55rem;
 }
 
 .dropdown-item .assigned-check {
     color: var(--accent-color);
-    font-size: 0.8em; /* Adjusted font size */
+    font-size: 0.8em;
 }
 
-/* --- Styles for Filter/Sort Buttons and Dialogs --- */
-
-/* Add a visual indicator to buttons when a filter or sort is active */
-#filter-btn.active, #sort-btn.active {
-    background-color: #e0eaff; /* A light blue to show it's active */
+#filter-btn.active,
+#sort-btn.active {
+    background-color: #e0eaff;
     color: #0052cc;
 }
 
-/* Style for the main dialog overlay */
-.dialog-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-}
-
-/* --- Styles for NEW Enhanced Features --- */
-
-/* Search Bar in Header */
 .listview-search-container {
     display: flex;
     align-items: center;
@@ -615,10 +621,12 @@ button:hover {
     padding: 0 0.5rem;
     margin-left: 1rem;
 }
+
 .listview-search-container .fa-search {
     color: var(--text-secondary-color);
     font-size: 0.8rem;
 }
+
 #task-search-input {
     border: none;
     background: transparent;
@@ -627,7 +635,6 @@ button:hover {
     width: 250px;
 }
 
-/* Container for Active Filter Tags */
 #active-filters-container {
     padding: 0.5rem 1rem;
     display: flex;
@@ -636,11 +643,11 @@ button:hover {
     border-bottom: 1px solid var(--border-color);
     background-color: #fdfdfd;
 }
+
 #active-filters-container:empty {
-    display: none; /* Hide the container when no filters are active */
+    display: none;
 }
 
-/* Individual Filter Tag styling */
 .filter-tag {
     display: flex;
     align-items: center;
@@ -650,9 +657,11 @@ button:hover {
     border-radius: 4px;
     padding: 0.2rem 0.2rem 0.2rem 0.6rem;
 }
+
 .filter-tag strong {
     margin-left: 4px;
 }
+
 .remove-tag-btn {
     background: transparent;
     border: none;
@@ -664,11 +673,11 @@ button:hover {
     color: #4361ee;
     opacity: 0.7;
 }
+
 .remove-tag-btn:hover {
     opacity: 1;
 }
 
-/* "No Results" Message */
 .no-results-message {
     padding: 2rem;
     text-align: center;
@@ -676,106 +685,21 @@ button:hover {
     font-style: italic;
 }
 
-/* --- DIALOG & FILTER PANEL STYLES --- */
-
-/* This creates the dark, full-screen background overlay and centers the dialog */
-.dialog-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.6);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 2000; /* Ensures it's on top of everything else */
-}
-
-/* This is the white dialog box itself */
-.dialog-box {
-    background-color: #ffffff;
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    width: 90%;
-    max-width: 400px; /* You can adjust this width */
-    display: flex;
-    flex-direction: column;
-}
-
-/* Styles for the header area of the dialog */
-.dialog-header {
-    padding: 1rem 1.5rem;
-    font-size: 1.1rem;
-    font-weight: 600;
-    border-bottom: 1px solid #e9e9e9;
-}
-
-/* Styles for the main content area of the dialog */
-.dialog-body {
-    padding: 1rem 1.5rem;
-}
-
-.filter-dialog fieldset {
-    border: none;
-    padding: 0;
-    margin: 0;
-}
-
-.filter-dialog legend {
-    font-weight: 500;
-    margin-bottom: 0.5rem;
-    font-size: 0.9rem;
-    color: #6c757d;
-}
-
-.filter-dialog hr {
-    border: none;
-    border-top: 1px solid #e9e9e9;
-    margin: 0.75rem 0;
-}
-
-/* Styles the list of checkboxes */
-.section-checkbox-list {
-    max-height: 200px;
-    overflow-y: auto;
-}
-
-.filter-dialog label {
-    display: block;
-    padding: 0.5rem 0;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.filter-dialog label:hover {
-    background-color: #f9f9f9;
-}
-
-/* Styles for the footer with the "Apply" button */
-.dialog-footer {
-    padding: 1rem 1.5rem;
-    display: flex;
-    justify-content: flex-end;
-    border-top: 1px solid #e9e9e9;
-    background-color: #f9f9f9;
-}
-/* CSS for the task name placeholder */
 [contenteditable][data-placeholder]:empty::before {
     content: attr(data-placeholder);
-    color: #888; /* Placeholder text color */
+    color: #888;
     pointer-events: none;
     display: inline-block;
 }
 
-/* --- Modern Dialog Design --- */
-
-/* Keyframes for smooth animations */
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+    
+    to {
+        opacity: 1;
+    }
 }
 
 @keyframes popIn {
@@ -783,41 +707,21 @@ button:hover {
         opacity: 0;
         transform: scale(0.95) translateY(10px);
     }
+    
     to {
         opacity: 1;
         transform: scale(1) translateY(0);
     }
 }
 
-/* The full-screen backdrop */
 .filterlistview-dialog-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(10, 20, 30, 0.5); /* A darker, slightly blue overlay */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 2000;
     animation: fadeIn 0.3s ease-out forwards;
 }
 
-/* The main dialog container */
 .filterlistview-dialog-box {
-    background-color: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1), 0 1px 4px rgba(0, 0, 0, 0.05);
-    border: 1px solid #ededed;
-    width: 90%;
-    max-width: 420px;
-    display: flex;
-    flex-direction: column;
     animation: popIn 0.3s ease-out forwards;
 }
 
-/* Dialog Header Styling */
 .filterlistview-dialog-header {
     padding: 1.25rem 1.5rem;
     font-size: 1.1rem;
@@ -826,7 +730,6 @@ button:hover {
     border-bottom: 1px solid #e9e9e9;
 }
 
-/* Dialog Body Styling */
 .filterlistview-dialog-body {
     padding: 1rem 1.5rem;
     font-size: 0.95rem;
@@ -852,15 +755,13 @@ button:hover {
     margin: 0.75rem 0;
 }
 
-/* The container for the list of section checkboxes */
 .filterlistview-section-checkbox-list {
     max-height: 250px;
     overflow-y: auto;
-    margin-right: -1.5rem; /* Hides scrollbar visually on some browsers */
-    padding-right: 1.5rem; /* Adds the space back */
+    margin-right: -1.5rem;
+    padding-right: 1.5rem;
 }
 
-/* Custom Checkbox Styling */
 .filterlistview-filter-dialog label {
     display: flex;
     align-items: center;
@@ -876,12 +777,9 @@ button:hover {
 }
 
 .filterlistview-filter-dialog input[type="checkbox"] {
-    /* Hide the default checkbox */
     appearance: none;
     -webkit-appearance: none;
     margin: 0;
-    
-    /* Custom checkbox styles */
     height: 1.25em;
     width: 1.25em;
     background-color: #f0f0f0;
@@ -899,7 +797,7 @@ button:hover {
     height: 0.65em;
     transform: scale(0);
     transition: 120ms transform ease-in-out;
-    box-shadow: inset 1em 1em #4c6ef5; /* Accent color for the checkmark */
+    box-shadow: inset 1em 1em #4c6ef5;
     transform-origin: bottom left;
     clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
 }
@@ -911,10 +809,9 @@ button:hover {
 
 .filterlistview-filter-dialog input[type="checkbox"]:checked::before {
     transform: scale(1);
-    box-shadow: inset 1em 1em #ffffff; /* White checkmark */
+    box-shadow: inset 1em 1em #ffffff;
 }
 
-/* Dialog Footer Styling */
 .filterlistview-dialog-footer {
     padding: 1rem 1.5rem;
     display: flex;
@@ -925,7 +822,6 @@ button:hover {
     border-bottom-right-radius: 12px;
 }
 
-/* Dialog Button Styling */
 .filterlistview-dialog-button {
     border: none;
     padding: 0.6rem 1.2rem;
@@ -937,7 +833,7 @@ button:hover {
 }
 
 .filterlistview-dialog-button:active {
-    transform: scale(0.97); /* Press-down effect */
+    transform: scale(0.97);
 }
 
 .filterlistview-primary {
@@ -949,10 +845,8 @@ button:hover {
     background-color: #3b5bdb;
 }
 
-/* --- Assignee Selection Dialog Specific Styles --- */
-
 .assignee-dialog .filterlistview-dialog-body {
-    padding: 0; /* Remove body padding to allow for full-width list items */
+    padding: 0;
 }
 
 .assignee-dialog-search {
@@ -1011,7 +905,6 @@ button:hover {
     font-weight: 500;
 }
 
-/* Use the same modern checkbox style from the filter dialog */
 .assignee-checkbox {
     appearance: none;
     -webkit-appearance: none;
@@ -1048,8 +941,6 @@ button:hover {
     box-shadow: inset 1em 1em #ffffff;
 }
 
-/* --- New styles for the assigned user cell --- */
-
 .assignee-cell-content {
     display: flex;
     align-items: center;
@@ -1062,7 +953,7 @@ button:hover {
     display: flex;
     flex-direction: column;
     line-height: 1.2;
-    overflow: hidden; /* Prevents long text from breaking layout */
+    overflow: hidden;
 }
 
 .assignee-name {
@@ -1088,12 +979,11 @@ button:hover {
     font-size: 1.5rem;
     line-height: 1;
     padding: 0 0.5rem;
-    margin-left: auto; /* Pushes the button to the far right */
+    margin-left: auto;
     opacity: 0;
     transition: opacity 0.2s, color 0.2s;
 }
 
-/* Show the remove button on hover */
 .assignee-cell-content:hover .remove-assignee-btn {
     opacity: 1;
 }
@@ -1113,8 +1003,45 @@ button:hover {
     cursor: pointer;
     transition: all 0.2s;
 }
+
 .add-assignee-btn:hover {
     background-color: #f0f0f0;
     color: #333;
     border-style: solid;
 }
+
+/*
+ * --- START: CORRECTED FINAL STYLES ---
+ */
+
+/* This container gets the divider line, ensuring it's always correct */
+.section-footer {
+    border-top: 1px solid var(--border-color);
+    background-color: var(--secondary-bg);
+}
+
+/* This is the inner row holding the 'Sum:' text and values. */
+.section-summary-row {
+    display: flex;
+    font-size: 13px;
+    color: var(--text-color);
+    font-weight: 500;
+}
+
+/* This ensures all columns inside the summary row align correctly. */
+.section-summary-row .task-col,
+.section-summary-row .fixed-column {
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    padding-right: 10px;
+}
+
+/* This adds a bit of spacing for the 'Sum:' value. */
+.section-summary-row .task-col.header-custom {
+    padding-left: 10px;
+}
+
+/*
+ * --- END: CORRECTED FINAL STYLES ---
+ */

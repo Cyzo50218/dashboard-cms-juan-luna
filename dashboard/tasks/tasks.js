@@ -27,49 +27,70 @@ export function init(params) {
      * Dynamically loads the HTML, CSS, and JS for a specific tab.
      * @param {string} targetTabId - The ID of the tab to load (e.g., 'list', 'board').
      */
-    async function loadTabContent(targetTabId) {
-        // 1. Clean up the previously loaded tab's JS module, if it exists.
-        if (typeof currentTabCleanup === 'function') {
-            currentTabCleanup();
-            currentTabCleanup = null;
-        }
+    // --- UPDATED TAB LOADER ---
 
-        const container = document.getElementById('tab-content-container');
-        if (!container) return; // Safety check
-
-        // 2. Clear old content and remove old tab-specific CSS
-        container.innerHTML = "";
-        document.getElementById('tab-specific-css')?.remove();
-
-        try {
-
-            const htmlPath = `/dashboard/tasks/tabs/${targetTabId}/${targetTabId}.html`;
-            const cssPath = `/dashboard/tasks/tabs/${targetTabId}/${targetTabId}.css`;
-            const jsPath = `/dashboard/tasks/tabs/${targetTabId}/${targetTabId}.js?v=${new Date().getTime()}`;
-
-            // 4. Fetch and inject the new content
-            const htmlRes = await fetch(htmlPath);
-            if (!htmlRes.ok) throw new Error(`HTML not found for tab: ${targetTabId}`);
-            container.innerHTML = await htmlRes.text();
-
-            const link = document.createElement("link");
-            link.rel = "stylesheet";
-            link.href = cssPath;
-            link.id = "tab-specific-css"; // Give it a specific ID for easy removal
-            document.head.appendChild(link);
-
-            // 5. Import the tab's own JS module
-            const tabModule = await import(jsPath);
-            if (tabModule.init) {
-                // Pass any necessary info down to the sub-module and store its cleanup function
-                currentTabCleanup = tabModule.init({ accountId, projectId });
-            }
-
-        } catch (err) {
-            container.innerHTML = `<p>Error loading tab content for: <strong>${targetTabId}</strong></p>`;
-            console.error(`Failed to load tab '${targetTabId}':`, err);
-        }
+async function loadTabContent(targetTabId) {
+    // 1. Clean up the previously loaded tab's JS module, if it exists.
+    if (typeof currentTabCleanup === 'function') {
+        currentTabCleanup();
+        currentTabCleanup = null;
     }
+    
+    const container = document.getElementById('tab-content-container');
+    if (!container) return; // Safety check
+    
+    // 2. Clear old content and remove old tab-specific CSS
+    container.innerHTML = "";
+    document.getElementById('tab-specific-css')?.remove();
+    
+    const htmlPath = `/dashboard/tasks/tabs/${targetTabId}/${targetTabId}.html`;
+    const cssPath = `/dashboard/tasks/tabs/${targetTabId}/${targetTabId}.css`;
+    const jsPath = `/dashboard/tasks/tabs/${targetTabId}/${targetTabId}.js?v=${new Date().getTime()}`;
+    
+    try {
+        // 4. Fetch and inject the new content
+        const htmlRes = await fetch(htmlPath);
+        if (!htmlRes.ok) throw new Error(`HTML not found for tab: ${targetTabId}`);
+        container.innerHTML = await htmlRes.text();
+        
+        const link = document.createElement("link");
+        link.rel = "stylesheet";
+        link.href = cssPath;
+        link.id = "tab-specific-css";
+        document.head.appendChild(link);
+        
+        // 5. Import the tab's own JS module
+        const tabModule = await import(jsPath);
+        if (tabModule.init) {
+            // Pass any necessary info down to the sub-module and store its cleanup function
+            currentTabCleanup = tabModule.init({ accountId, projectId });
+        }
+        
+    } catch (err) {
+        // --- START: MORE SPECIFIC ERROR HANDLING ---
+        let userMessage = `<p>An unexpected error occurred while loading the <strong>${targetTabId}</strong> tab.</p>`;
+        let logMessage = `Failed to load tab '${targetTabId}':`;
+        
+        if (err.message.startsWith('HTML not found for tab')) {
+            // Case 1: The fetch for the HTML file failed (e.g., 404).
+            userMessage = `<p>Could not load the necessary HTML file for the <strong>${targetTabId}</strong> tab.</p>`;
+            logMessage = `[HTML Load Error] Failed to fetch ${htmlPath}.`;
+        } else if (err instanceof SyntaxError) {
+            // Case 2: The imported JavaScript file has a syntax error.
+            userMessage = `<p>The <strong>${targetTabId}</strong> tab could not be loaded due to a code error.</p><p>Please check the console for details.</p>`;
+            logMessage = `[JS Syntax Error] A syntax error was found in ${jsPath}.`;
+        } else if (err.message.includes('Failed to fetch dynamically imported module')) {
+            // Case 3: The import for the JS module failed (e.g., 404).
+            userMessage = `<p>Could not load the necessary script file for the <strong>${targetTabId}</strong> tab.</p>`;
+            logMessage = `[JS Load Error] The JavaScript module at ${jsPath} could not be fetched (e.g., 404 Not Found).`;
+        }
+        
+        container.innerHTML = userMessage;
+        // Log the specific, readable message AND the original error object for the full trace.
+        console.error(logMessage, err);
+        // --- END: MORE SPECIFIC ERROR HANDLING ---
+    }
+}
 
     /**
      * Updates the 'active' class on the tab navigation links.

@@ -178,22 +178,22 @@ function setupEventListeners() {
                 createDropdown(statusOptions, control, (v) => updateTask(taskId, { status: v }));
                 break;
             case 'custom-select': {
-    const columnId = Number(control.dataset.columnId);
-    const column = project.customColumns.find(c => c.id === columnId);
-    if (column && column.options) {
-        // Create a dropdown with the column's specific options ('Invoice', 'Payment').
-        // The callback updates the task's custom field with the selected value.
-        createDropdown(column.options, control, (selectedValue) => {
-            updateTask(taskId, {
-                customFields: {
-                    ...task.customFields,
-                    [columnId]: selectedValue
+                const columnId = Number(control.dataset.columnId);
+                const column = project.customColumns.find(c => c.id === columnId);
+                if (column && column.options) {
+                    // Create a dropdown with the column's specific options ('Invoice', 'Payment').
+                    // The callback updates the task's custom field with the selected value.
+                    createDropdown(column.options, control, (selectedValue) => {
+                        updateTask(taskId, {
+                            customFields: {
+                                ...task.customFields,
+                                [columnId]: selectedValue
+                            }
+                        });
+                    });
                 }
-            });
-        });
-    }
-    break;
-}    
+                break;
+            }
             case 'assignee': { // Using block scope for the `task` constant
                 const { task } = findTaskAndSection(taskId);
                 // MODIFICATION: Only open the dropdown if NO user is currently assigned.
@@ -414,7 +414,7 @@ function render() {
     
     renderHeader(projectToRender);
     renderBody(projectToRender);
-    renderFooter(projectToRender);
+    //renderFooter(projectToRender);
     syncScroll(scrollStates);
     
     const isSortActive = activeSortState !== 'default';
@@ -479,39 +479,68 @@ function renderBody(projectToRender) {
     }
 }
 
-function renderFooter(projectToRender) {
-    if (!taskListFooter) return;
-    
-    let hasAggregatableColumn = projectToRender.customColumns.some(c => c.aggregation);
-    if (!hasAggregatableColumn) {
-        taskListFooter.innerHTML = '';
-        taskListFooter.style.display = 'none';
-        return;
-    }
-    let customColsHTML = '';
-    
-    projectToRender.customColumns.forEach(col => {
-        let displayValue = '';
-        if (col.aggregation === 'Sum') {
-            let total = projectToRender.sections.reduce((sum, section) => sum + section.tasks.reduce((secSum, task) => secSum + Number(task.customFields[col.id] || 0), 0), 0);
-            displayValue = col.type === 'Costing' ? `${col.currency || ''}${total.toLocaleString()}` : total.toLocaleString();
-        }
-        customColsHTML += `<div class="task-col header-custom">${displayValue}</div>`;
-    });
-    taskListFooter.innerHTML = `<div class="fixed-column"></div><div class="scrollable-columns-wrapper"><div class="scrollable-columns"><div class="task-col header-assignee"></div><div class="task-col header-due-date"></div><div class="task-col header-priority"></div><div class="task-col header-status"></div>${customColsHTML}</div></div>`;
-    taskListFooter.style.display = 'flex';
-}
-
 function createSection(sectionData, customColumns) {
     const sectionEl = document.createElement('div');
     sectionEl.className = 'task-section';
     sectionEl.dataset.sectionId = sectionData.id;
-    sectionEl.innerHTML = `<div class="section-header-list"><i class="fas fa-grip-vertical drag-handle"></i><i class="fas fa-chevron-down section-toggle ${sectionData.isCollapsed ? 'collapsed' : ''}"></i><span class="section-title" contenteditable="true">${sectionData.title}</span></div><div class="tasks-container ${sectionData.isCollapsed ? 'hidden' : ''}"></div><button class="add-task-in-section-btn"><i class="fas fa-plus"></i> Add task</button>`;
     
+    // --- Section summary logic ---
+    let summaryColsHTML = '';
+    let hasAggregatableColumnInSection = false;
+    
+    customColumns.forEach(col => {
+        let displayValue = '';
+        if (col.aggregation === 'Sum') {
+            const sectionTotal = sectionData.tasks.reduce((sum, task) => sum + Number(task.customFields[col.id] || 0), 0);
+            
+            if (sectionTotal > 0) {
+                hasAggregatableColumnInSection = true;
+                const formattedTotal = col.type === 'Costing' ? `${col.currency || ''}${sectionTotal.toLocaleString()}` : sectionTotal.toLocaleString();
+                displayValue = `<strong>Sum:</strong> ${formattedTotal}`;
+            }
+        }
+        summaryColsHTML += `<div class="task-col header-custom">${displayValue}</div>`;
+    });
+    
+    // --- HTML Generation ---
+    let sectionFooterHTML = '';
+    // Create the dedicated footer element ONLY if needed.
+    if (hasAggregatableColumnInSection && !sectionData.isCollapsed) {
+        sectionFooterHTML = `
+        <div class="section-footer">
+            <div class="section-summary-row">
+                <div class="fixed-column"></div>
+                <div class="scrollable-columns-wrapper">
+                    <div class="scrollable-columns">
+                        <div class="task-col header-assignee"></div>
+                        <div class="task-col header-due-date"></div>
+                        <div class="task-col header-priority"></div>
+                        <div class="task-col header-status"></div>
+                        ${summaryColsHTML}
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    }
+    
+    // Build the final structure for the entire section
+    sectionEl.innerHTML = `
+        <div class="section-header-list">
+            <i class="fas fa-grip-vertical drag-handle"></i>
+            <i class="fas fa-chevron-down section-toggle ${sectionData.isCollapsed ? 'collapsed' : ''}"></i>
+            <span class="section-title" contenteditable="true">${sectionData.title}</span>
+        </div>
+        <div class="tasks-container ${sectionData.isCollapsed ? 'hidden' : ''}"></div>
+        ${sectionFooterHTML}
+        <button class="add-task-in-section-btn"><i class="fas fa-plus"></i> Add task</button>
+    `;
+    
+    // Populate the tasks container
     const tasksContainer = sectionEl.querySelector('.tasks-container');
     if (sectionData.tasks && tasksContainer) {
         sectionData.tasks.forEach(task => tasksContainer.appendChild(createTaskRow(task, customColumns)));
     }
+    
     return sectionEl;
 }
 
@@ -556,6 +585,7 @@ function createTaskRow(task, customColumns) {
     rowWrapper.innerHTML = `<div class="fixed-column"><i class="fas fa-grip-vertical drag-handle"></i><i class="far fa-check-circle" data-control="check"></i><span class="task-name" contenteditable="true" data-placeholder="Add task name">${displayName}</span></div><div class="scrollable-columns-wrapper"><div class="scrollable-columns"><div class="task-col header-assignee" data-control="assignee">${createAssigneeHTML(task.assignees)}</div><div class="task-col header-due-date" data-control="due-date">${displayDate}</div><div class="task-col header-priority" data-control="priority">${createPriorityTag(task.priority)}</div><div class="task-col header-status" data-control="status">${createStatusTag(task.status)}</div>${customFieldsHTML}</div></div>`;
     return rowWrapper;
 }
+
 function displaySideBarTasks(taskId) {
     console.log(`Task name clicked. Opening sidebar for task ID: ${taskId}`);
     if (window.TaskSidebar) {
