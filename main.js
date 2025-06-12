@@ -1304,6 +1304,85 @@ document.addEventListener("DOMContentLoaded", async () => {
     link.setAttribute('data-section', section);
   });
   
+  document.addEventListener('DOMContentLoaded', () => {
+    const sidebar = document.getElementById('dashboardDrawer');
+    if (!sidebar) return;
+    
+    // --- Logic for toggling collapsible sections ---
+    sidebar.querySelectorAll('.section-header').forEach(header => {
+        header.addEventListener('click', (e) => {
+            // Prevent toggling if the plus button itself was clicked
+            if (e.target.closest('.add-project-btn')) {
+                return;
+            }
+            const section = header.closest('.nav-section');
+            if (section) {
+                section.classList.toggle('open');
+            }
+        });
+    });
+    
+    // --- Logic for selecting a project ---
+    const projectsList = sidebar.querySelector('#projects-section .section-items');
+    if (projectsList) {
+        projectsList.addEventListener('click', (e) => {
+            const clickedItem = e.target.closest('.project-item');
+            if (!clickedItem || clickedItem.classList.contains('active')) return;
+            
+            projectsList.querySelector('.project-item.active')?.classList.remove('active');
+            clickedItem.classList.add('active');
+            // You can add logic here to load the selected project's data
+        });
+    }
+    
+    // --- Logic for the 'Add Project' dropdown ---
+    const addProjectBtn = sidebar.querySelector('.add-project-btn');
+    const closeAllDropdowns = () => {
+        document.querySelector('.drawerprojects-dropdown')?.remove();
+    };
+    
+    if (addProjectBtn) {
+        addProjectBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Stop the click from toggling the section
+            
+            // If a dropdown is already open, close it. Otherwise, open a new one.
+            if (document.querySelector('.drawerprojects-dropdown')) {
+                closeAllDropdowns();
+                return;
+            }
+            
+            const dropdown = document.createElement('div');
+            dropdown.className = 'drawerprojects-dropdown';
+            dropdown.innerHTML = `
+        <ul>
+          <li id="add-project-action">
+            <i class="fas fa-plus"></i>
+            <span>Add Project</span>
+          </li>
+        </ul>`;
+            
+            // Handle the click on the "Add Project" option
+            dropdown.querySelector('#add-project-action').addEventListener('click', () => {
+                alert('Triggering "Add Project" action...');
+                closeAllDropdowns();
+            });
+            
+            document.body.appendChild(dropdown);
+            
+            // Position dropdown relative to the button
+            const rect = addProjectBtn.getBoundingClientRect();
+            dropdown.style.top = `${rect.bottom + 5}px`;
+            dropdown.style.left = `${rect.right - dropdown.offsetWidth}px`;
+        });
+    }
+    
+    // Global click listener to close the dropdown when clicking elsewhere
+    window.addEventListener('click', (e) => {
+        if (!e.target.closest('.drawerprojects-dropdown') && !e.target.closest('.add-project-btn')) {
+            closeAllDropdowns();
+        }
+    });
+});
   
 
   document.body.addEventListener('click', (e) => {
