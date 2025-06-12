@@ -256,15 +256,24 @@ window.TaskSidebar = (function () {
             // --- Replace the existing block in your renderActivity function with this one ---
 
             if (activity.type === 'comment') {
-                // --- START: MODIFIED CODE ---
+                // Determine if the current user is the author of the comment
+                const isAuthor = activity.user === currentUser.id;
 
+                // --- 1. Generate Edit/Delete buttons only if user is the author ---
+                if (isAuthor) {
+                    actionsHTML = `
+            <div class="comment-actions">
+                <button class="edit-comment-btn" title="Edit"><i class="fa-solid fa-pencil"></i></button>
+                <button class="delete-comment-btn" title="Delete"><i class="fa-solid fa-trash"></i></button>
+            </div>`;
+                }
+
+                // --- 2. Generate the main content (text and/or image) ---
+                const commentTextHTML = activity.content ? `<div class="comment-text">${activity.content}</div>` : '';
                 let imageHTML = '';
                 if (activity.imageURL) {
-                    // Check if there is a note to add the 'has-note' class for dynamic sizing
-                    const noteClass = (activity.imageTitle || activity.content) ? ' has-note' : '';
+                    const noteClass = activity.imageTitle ? ' has-note' : '';
                     const noteHTML = activity.imageTitle ? `<div class="attachment-note">${activity.imageTitle}</div>` : '';
-
-                    // Add class="scalable-image" to the <img> tag
                     imageHTML = `
             <div class="log-attachment${noteClass}">
                 <img class="scalable-image" src="${activity.imageURL}" alt="${activity.imageTitle || 'User attachment'}">
@@ -272,26 +281,22 @@ window.TaskSidebar = (function () {
             </div>`;
                 }
 
-                // Check if the main comment text exists
-                const commentTextHTML = activity.content ? `<div class="comment-text">${activity.content}</div>` : '';
+                // --- 3. Generate the HIDDEN edit form ---
+                // This form will be shown by CSS when the .is-editing class is added
+                const editText = activity.content || activity.imageTitle || '';
+                const editFormHTML = `
+        <div class="comment-edit-area">
+            <textarea class="comment-edit-input">${editText}</textarea>
+            <div class="comment-edit-actions">
+                <button class="btn-cancel-edit">Cancel</button>
+                <button class="btn-save-edit">Save</button>
+            </div>
+        </div>`;
 
-                // Combine comment text and image HTML
-                contentHTML = `${commentTextHTML}${imageHTML}`;
-
-                // --- END: MODIFIED CODE ---
-
-
-                const reactions = activity.reactions || { heart: [], thumbsUp: [] };
-                const hasLiked = reactions.heart.includes(currentUser.id);
-                const likeCount = reactions.heart.length > 0 ? ` ${reactions.heart.length}` : '';
-                const heartBtnHTML = `<button class="heart-react-btn ${hasLiked ? 'reacted' : ''}" title="Like"><i class="fa-solid fa-heart"></i>${likeCount}</button>`;
-
-                const hasThumbed = reactions.thumbsUp.includes(currentUser.id);
-                const thumbCount = reactions.thumbsUp.length > 0 ? ` ${reactions.thumbsUp.length}` : '';
-                const thumbBtnHTML = `<button class="thumb-react-btn ${hasThumbed ? 'reacted' : ''}" title="Thumbs Up"><i class="fa-solid fa-thumbs-up"></i>${thumbCount}</button>`;
-                actionsHTML = `<div class="comment-actions">${heartBtnHTML}${thumbBtnHTML}</div>`;
+                contentHTML = `${commentTextHTML}${imageHTML}${editFormHTML}`;
 
             } else {
+                // This part for non-comment logs remains the same
                 contentHTML = `<div class="activity-change-log">${activity.details}</div>`;
                 headerMeta = '';
             }
@@ -489,6 +494,52 @@ window.TaskSidebar = (function () {
     function attachEventListeners() {
         closeBtn.addEventListener('click', close);
 
+        // Add this new listener to your attachEventListeners function
+        activityLogContainer.addEventListener('click', (e) => {
+            const target = e.target;
+            const commentItem = target.closest('.comment-item');
+            if (!commentItem) return;
+
+            const activityId = parseInt(commentItem.dataset.activityId, 10);
+            const activityIndex = currentTask.activity.findIndex(a => a.id === activityId);
+            if (activityIndex === -1) return;
+
+            // --- Handle DELETE button click ---
+            if (target.closest('.delete-comment-btn')) {
+                if (confirm('Are you sure you want to delete this comment?')) {
+                    currentTask.activity.splice(activityIndex, 1); // Remove from data
+                    renderActivity(); // Re-render the UI
+                }
+            }
+
+            // --- Handle EDIT button click ---
+            if (target.closest('.edit-comment-btn')) {
+                commentItem.classList.add('is-editing'); // Show the edit form
+            }
+
+            // --- Handle CANCEL EDIT button click ---
+            if (target.closest('.btn-cancel-edit')) {
+                commentItem.classList.remove('is-editing'); // Hide the edit form
+            }
+
+            // --- Handle SAVE EDIT button click ---
+            if (target.closest('.btn-save-edit')) {
+                const editInput = commentItem.querySelector('.comment-edit-input');
+                const newText = editInput.value.trim();
+
+                // Update the correct property based on what existed
+                if (currentTask.activity[activityIndex].hasOwnProperty('content')) {
+                    currentTask.activity[activityIndex].content = newText;
+                }
+                if (currentTask.activity[activityIndex].hasOwnProperty('imageTitle')) {
+                    currentTask.activity[activityIndex].imageTitle = newText;
+                }
+
+                commentItem.classList.remove('is-editing'); // Hide edit form
+                renderActivity(); // Re-render with updated data
+            }
+        });
+
         taskCompleteBtn.addEventListener('click', () => {
             if (!currentTask) return;
             const oldStatus = currentTask.status;
@@ -535,40 +586,43 @@ window.TaskSidebar = (function () {
             }
         });
 
-        sendCommentBtn.addEventListener('click', async () => {
-            // This text will now be the note for all attached images.
-            const imageNoteText = commentInput.value.trim();
-            const filesToProcess = [...pastedFiles];
+        // Replace your sendCommentBtn listener with this simplified and corrected version
+        sendCommentBtn.addEventListener('click', () => {
+            const noteText = commentInput.value.trim();
+            const files = [...pastedFiles]; // Work with a copy
 
-            if (imageNoteText || filesToProcess.length > 0) {
+            if (!noteText && files.length === 0) {
+                return; // Do nothing if there's nothing to send
+            }
 
-                if (filesToProcess.length > 0) {
-                    // --- Case 1: There are images ---
-                    // The text from the comment box will be the note for every image.
-                    for (const file of filesToProcess) {
+            // Case 1: There are images to upload (the noteText is their caption)
+            if (files.length > 0) {
+                files.forEach(file => {
+                    // This self-executing function helps handle each file read independently
+                    (async () => {
                         try {
                             const { dataURL } = await readFileAsDataURL(file);
-
                             logActivity('comment', {
-                                content: "", // The main content is empty now.
+                                content: "", // Main content is empty
                                 imageURL: dataURL,
-                                imageTitle: imageNoteText // The input text becomes the title/note.
+                                imageTitle: noteText // The input text is the note
                             });
                         } catch (error) {
                             console.error("Error processing file:", error);
                         }
-                    }
-                } else {
-                    // --- Case 2: Text only, no images ---
-                    logActivity('comment', {
-                        content: imageNoteText
-                    });
-                }
-
-                // --- Finally, clear the input form ---
-                clearImagePreview();
-                commentInput.value = '';
+                    })();
+                });
             }
+            // Case 2: There is only text to send
+            else if (noteText) {
+                logActivity('comment', {
+                    content: noteText
+                });
+            }
+
+            // Finally, clear the input form
+            clearImagePreview();
+            commentInput.value = '';
         });
 
         commentInput.addEventListener('paste', (e) => {
