@@ -824,10 +824,15 @@ task-fields-table .field-value {
 
 .task-fields-table .field-label {
     color: var(--text-secondary-color);
-    width: 130px;
     text-align: left;
-    vertical-align: middle; /* Keeps label vertically aligned with the value */
-    padding: 8px 16px 8px 0; /* Adds space to the right of the label */
+    vertical-align: middle;
+    padding: 8px 16px 8px 0;
+    
+    /* Prevents the text from breaking into a new line */
+    white-space: nowrap; 
+
+    /* Allows the column to size itself based on the content */
+    width: 1%; /* A common table layout trick to force shrink-to-fit */
 }
 
 
@@ -989,7 +994,6 @@ task-fields-table .field-value {
 
 .task-fields-table .field-label {
   color: #5f6368; /* --text-secondary-color variable */
-  width: 130px;
 }
 
 .placeholder-text {
