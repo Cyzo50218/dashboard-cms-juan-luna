@@ -1357,7 +1357,7 @@ task-fields-table .field-value {
 /* === OTHER FIELDS === */
 .sidebarprojectfield-value.other-field {
     width: 300px;
-    text-align: center;
+    text-align: left;
 }
 
 /* === CONTROL HOVER EFFECT === */
