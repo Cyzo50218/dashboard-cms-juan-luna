@@ -559,8 +559,8 @@ window.TaskSidebar = (function() {
         <div class="assignee-list-wrapper">
             <button class="assignee-add-btn single-assignee-add">
                 <i class="fa-solid fa-plus"></i>
-                <span>Assign</span>
             </button>
+            <span>Assign</span>
         </div>`;
     }
     
