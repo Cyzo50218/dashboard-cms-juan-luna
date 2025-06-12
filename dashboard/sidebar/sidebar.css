@@ -1314,7 +1314,7 @@ task-fields-table .field-value {
 
 /* === COMMON VALUE CELL BASE === */
 .sidebarprojectfield-value {
-    vertical-align: middle;
+    vertical-align: right;
     padding: 8px 0;
     white-space: nowrap;
     overflow: hidden;
