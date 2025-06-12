@@ -1293,44 +1293,42 @@ task-fields-table .field-value {
     outline: none;
 }
 
-/* TABLE LAYOUT: Prevent column shifting across rows */
+/* Ensure column layout doesn't shift */
 .sidebarprojectfield-table {
     width: 100%;
-    table-layout: fixed; /* Ensures column widths are consistent across all rows */
+    table-layout: fixed;
     border-collapse: collapse;
 }
 
-/* TABLE ROW (optional if you want row-specific styling) */
-.sidebarprojectfield-row {
-    /* Add styling here if needed */
-}
+/* Row styling (optional) */
+.sidebarprojectfield-row { }
 
 /* === LABEL CELL === */
 .sidebarprojectfield-label {
-    color: var(--text-secondary-color);
+    width: 120px;
     white-space: nowrap;
     padding: 8px 16px 8px 0;
     vertical-align: middle;
-    width: 120px; /* Fixed width for the label column */
+    color: var(--text-secondary-color);
 }
 
-/* === COMMON VALUE CELL STYLING === */
+/* === COMMON VALUE CELL BASE === */
 .sidebarprojectfield-value {
     vertical-align: middle;
     padding: 8px 0;
-    white-space: nowrap;         /* Prevent text wrapping */
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
 /* === PROJECT FIELD === */
 .sidebarprojectfield-value.project-field {
-    width: 200px;
+    width: 300px;
     text-align: left;
 }
 
 /* === ASSIGNEE FIELD === */
-/* Takes full width only in its own row — won't affect other rows */
+/* It can expand content-wise, but won't affect other rows */
 .sidebarprojectfield-value.assignee-field {
     width: 100%;
     max-width: 100%;
@@ -1339,13 +1337,13 @@ task-fields-table .field-value {
 
 /* === STATUS AND PRIORITY FIELDS === */
 .sidebarprojectfield-value.status-priority-field {
-    width: 300px; /* Fixed width */
+    width: 300px;
     text-align: center;
 }
 
 /* === OTHER FIELDS === */
 .sidebarprojectfield-value.other-field {
-    width: 300px; /* Fixed width */
+    width: 300px;
     text-align: center;
 }
 
@@ -1356,14 +1354,13 @@ task-fields-table .field-value {
     cursor: pointer;
 }
 
-/* === CONTROL SPAN STYLING === */
-/* Ensures the hover background is centered and doesn't shift layout */
+/* === INNER SPAN HOVER ALIGNMENT === */
 .sidebarprojectfield-value.control > span {
     padding: 4px 8px;
-    margin: 0 auto;                 /* Center the hover area */
+    margin: 0 auto;
     display: inline-block;
     box-sizing: border-box;
     text-align: center;
     max-width: 100%;
-    min-width: 80px;                /* Optional: ensure the span doesn't look too small */
+    min-width: 80px;
 }
