@@ -98,27 +98,33 @@ function updateActiveNav(sectionName) {
  * Loads persistent HTML components like the header or drawer.
  * This function is left unchanged as requested.
  */
-/**
- * Loads HTML content into a selector and dynamically loads its corresponding CSS and JS.
- */
 async function loadHTML(selector, url) {
   const container = document.querySelector(selector);
   try {
     const response = await fetch(url);
     container.innerHTML = await response.text();
     
-    let cssFileName = null, cssId = null, jsFileName = null, jsId = null;
+    let cssFileName = null;
+    let cssId = null;
+    let jsFileName = null;
+    let jsId = null;
     
     if (url.includes("header/header.html")) {
-      cssFileName = "header.css"; cssId = "header-css";
-      jsFileName = "header.js"; jsId = "header-js";
+      cssFileName = "header.css";
+      cssId = "header-css";
+      jsFileName = "header.js";
+      jsId = "header-js";
     } else if (url.includes("drawer/drawer.html")) {
-      cssFileName = "drawer.css"; cssId = "drawer-css";
-      jsFileName = "drawer.js"; jsId = "drawer-js";
+      cssFileName = "drawer.css";
+      cssId = "drawer-css";
+      jsFileName = "drawer.js";
+      jsId = "drawer-js";
     } else if (url.includes("sidebar/sidebar.html")) {
-      cssFileName = "sidebar.css"; cssId = "sidebar-css";
-      jsFileName = "sidebar.js"; jsId = "sidebar-js";
-    }
+  cssFileName = "sidebar.css";
+  cssId = "sidebar-css";
+  jsFileName = "sidebar.js";
+  jsId = "sidebar-js";
+}
     
     // Load CSS
     if (cssFileName && cssId && !document.getElementById(cssId)) {
@@ -137,19 +143,17 @@ async function loadHTML(selector, url) {
       script.src = `${folderPath}/${jsFileName}`;
       script.id = jsId;
       script.onload = () => {
-        console.log(`${jsFileName} loaded successfully.`);
-        if (jsFileName === 'sidebar.js' && window.TaskSidebar && typeof window.TaskSidebar.init === 'function') {
-          window.TaskSidebar.init();
-        }
-      };
+  console.log(`${jsFileName} loaded successfully.`);
+  // If this is the sidebar script, call its init function now.
+  if (jsFileName === 'sidebar.js' && window.TaskSidebar && typeof window.TaskSidebar.init === 'function') {
+    window.TaskSidebar.init();
+  }
+  
+};
       script.defer = true;
       document.body.appendChild(script);
     }
     
-    // If the drawer was loaded, call the new, robust logic to make it interactive.
-    if (url.includes("drawer/drawer.html")) {
-      
-    }
     
   } catch (err) {
     container.innerHTML = `<p>Error loading ${url}</p>`;
@@ -157,121 +161,6 @@ async function loadHTML(selector, url) {
   }
 }
 
-
-/**
- * REVISED AND CORRECTED: Attaches all event listeners for the navigation drawer
- * using a robust event delegation pattern to prevent conflicts and timing issues.
- */
-function attachDrawerToggleLogic() {
-  const sidebar = document.getElementById("dashboardDrawer");
-  const header = document.getElementById("top-header");
-
-  if (!sidebar) {
-    console.error("Drawer #dashboardDrawer not found. Cannot attach logic.");
-    return;
-  }
-  
-  // Use a flag to prevent attaching listeners multiple times
-  if (sidebar.dataset.drawerListenersAttached) {
-    return;
-  }
-
-  // --- Main Menu Toggle (Hamburger) ---
-  if (header) {
-    header.addEventListener('click', e => {
-      if (e.target.closest('#menuToggle')) {
-        sidebar.classList.toggle('close');
-      }
-    });
-  }
-
-  // --- DELEGATED EVENT LISTENER for all clicks inside the Sidebar ---
-  sidebar.addEventListener('click', (e) => {
-    // Priority 1: Handle "Add Project" button click to open dropdown
-    const addProjectBtn = e.target.closest('.add-project-btn');
-    if (addProjectBtn) {
-      e.stopPropagation(); // Prevent the header from toggling
-      toggleProjectDropdown(addProjectBtn);
-      return;
-    }
-
-    // Priority 2: Handle Section Header click to expand/collapse
-    const sectionHeader = e.target.closest('.section-header');
-    if (sectionHeader) {
-      sectionHeader.closest('.nav-section')?.classList.toggle('open');
-      return;
-    }
-    
-    // Priority 3: Handle Project Item click to change selection
-    const projectItem = e.target.closest('.project-item');
-    if (projectItem) {
-      const projectsList = projectItem.closest('.section-items');
-      if (projectsList && !projectItem.classList.contains('active')) {
-          projectsList.querySelector('.project-item.active')?.classList.remove('active');
-          projectItem.classList.add('active');
-      }
-      return;
-    }
-  });
-
-  // Set flag to confirm listeners are attached
-  sidebar.dataset.drawerListenersAttached = 'true';
-}
-
-/**
- * Helper function to create and manage the 'Add Project' dropdown.
- */
-function toggleProjectDropdown(buttonElement) {
-  const closeDropdown = () => document.querySelector('.drawerprojects-dropdown')?.remove();
-
-  if (document.querySelector('.drawerprojects-dropdown')) {
-    closeDropdown();
-    return;
-  }
-
-  const dropdown = document.createElement('div');
-  dropdown.className = 'drawerprojects-dropdown';
-  dropdown.innerHTML = `
-    <ul>
-      <li id="add-project-action">
-        <i class="fas fa-plus"></i>
-        <span>Add Project</span>
-      </li>
-    </ul>`;
-  document.body.appendChild(dropdown);
-
-  const rect = buttonElement.getBoundingClientRect();
-  dropdown.style.top = `${rect.bottom + 5}px`;
-  dropdown.style.left = `${rect.right - dropdown.offsetWidth}px`;
-}
-
-/**
- * A global listener to handle clicks for the dropdown.
- * Attaches itself to the body only once.
- */
-(function setupGlobalDrawerListeners() {
-  if (window.globalDrawerListenerAttached) {
-    return;
-  }
-  
-  const closeDropdown = () => document.querySelector('.drawerprojects-dropdown')?.remove();
-
-  document.body.addEventListener('click', e => {
-    // Handle clicking the "Add Project" ACTION inside the dropdown
-    if (e.target.closest('#add-project-action')) {
-      alert('Triggering "Add Project" action...');
-      closeDropdown();
-      return;
-    }
-    
-    // Close dropdown if the click is outside of it and not on the button that opens it
-    if (!e.target.closest('.drawerprojects-dropdown') && !e.target.closest('.add-project-btn')) {
-      closeDropdown();
-    }
-  });
-
-  window.globalDrawerListenerAttached = true;
-})();
 
 function showEmailModal() {
     let modalStyles = document.getElementById("modalStyles");
@@ -1379,8 +1268,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     loadHTML("#right-sidebar", "../dashboard/sidebar/sidebar.html"),
   ]);
   
-  attachDrawerToggleLogic();
+  
 
+  document.querySelectorAll('.nav-item a[href^="#"]').forEach(link => {
+    const section = link.getAttribute('href').substring(1);
+    link.setAttribute('data-section', section);
+  });
   
   
 
