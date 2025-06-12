@@ -4,7 +4,7 @@ window.TaskSidebar = (function() {
         'proj-1': {
             name: 'Website Redesign',
             customColumns: [
-                { id: 1, name: 'Costing', type: 'Costing', currency: '$' },
+                { id: 1, name: 'Costing', type: 'Costing', currency: '' },
                 // NEW: Added more custom column types for demonstration
                 { id: 2, name: 'Launch Date', type: 'Date' },
                 { id: 3, name: 'Team', type: 'Selector', options: ['Marketing', 'Product', 'Engineering'] }
@@ -365,7 +365,7 @@ window.TaskSidebar = (function() {
             const value = task.customFields ? task.customFields[column.id] : null;
             let displayValue = value === null || value === undefined ? 'N/A' : value;
             if (column.type === 'Costing' && value) {
-                displayValue = `${column.currency || '$'}${value}`;
+                displayValue = `${column.currency || ''}${value}`;
             }
             appendFieldToTable(tbody, `custom-${column.id}`, column.name, displayValue, column.type.toLowerCase());
         });
