@@ -829,7 +829,7 @@ task-fields-table .field-value {
     padding: 8px 16px 8px 0;
     
     /* Prevents the text from breaking into a new line */
-    white-space: nowrap; 
+    white-space: 100vh; 
 
     /* Allows the column to size itself based on the content */
     width: 1%; /* A common table layout trick to force shrink-to-fit */

@@ -308,8 +308,6 @@ window.TaskSidebar = (function() {
             to: `<strong>${newProject.name}</strong>`
         });
         
-        // 4. Close the sidebar, as the context has now changed.
-        alert(`Task "${currentTask.name}" has been moved to the "${newProject.name}" project.`);
         close();
     }
     
