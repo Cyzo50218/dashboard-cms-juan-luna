@@ -560,7 +560,6 @@ window.TaskSidebar = (function() {
             <button class="assignee-add-btn single-assignee-add">
                 <i class="fa-solid fa-plus"></i>
             </button>
-            <span>Assign</span>
         </div>`;
     }
     
