@@ -241,6 +241,7 @@
     background: none;
     color: #9ca0a6;
     cursor: pointer;
+    border-radius: 0;
     border-bottom: 2px solid transparent;
     font-size: 14px;
 }
@@ -248,6 +249,7 @@
 .tab-btn.active {
     color: #151b26;
     background: none;
+    border-radius: 0;
     border: none;
     border-bottom-color: #f06a6a;
 }
@@ -255,7 +257,9 @@
 .tab-btn:hover {
     background: none;
     border: none;
+    border-radius: 0;
     color: #151b26;
+    border-bottom-color: #f06a6a;
 }
 
 .task-list {
