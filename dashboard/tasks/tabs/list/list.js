@@ -194,6 +194,28 @@ function setupEventListeners() {
                 }
                 break;
             }
+case 'move-task': {
+    e.stopPropagation();
+    const { section: currentSection } = findTaskAndSection(taskId);
+    if (!currentSection) break;
+    
+    // Get a list of all OTHER sections to move to
+    const otherSections = project.sections.filter(s => s.id !== currentSection.id);
+    const sectionNames = otherSections.map(s => s.title);
+    
+    if (sectionNames.length > 0) {
+        // Create a dropdown menu of the available sections
+        createDropdown(sectionNames, control, (selectedTitle) => {
+            const targetSection = project.sections.find(s => s.title === selectedTitle);
+            if (targetSection) {
+                moveTaskToSection(taskId, targetSection.id);
+            }
+        });
+    } else {
+        alert("There are no other sections to move this task to.");
+    }
+    break;
+}
             case 'assignee': { // Using block scope for the `task` constant
                 const { task } = findTaskAndSection(taskId);
                 // MODIFICATION: Only open the dropdown if NO user is currently assigned.
@@ -231,9 +253,12 @@ function setupEventListeners() {
             const columnId = Number(customFieldCell.dataset.columnId);
             const column = project.customColumns.find(c => c.id === columnId);
             let newValue = customFieldCell.innerText;
-            if (column && (column.type === 'Costing' || column.type === 'Numbers')) {
-                newValue = Number(newValue.replace(/[^0-9.]/g, '')) || 0;
-            }
+            // REPLACE THE 'if' STATEMENT WITH THIS
+if (column && (column.type === 'Costing' || column.type === 'Numbers')) {
+    // This new logic correctly handles negative numbers like '-500'.
+    const rawValue = customFieldCell.innerText.trim().replace(/,/g, ''); // Remove commas
+    newValue = parseFloat(rawValue) || 0;
+}
             if (task.customFields[columnId] !== newValue) updateTask(taskId, { customFields: { ...task.customFields, [columnId]: newValue } });
         }
     };
@@ -580,13 +605,51 @@ function createTaskRow(task, customColumns) {
             /* END MODIFICATION */
         } else {
             // This is the original logic for other column types.
-            const displayValue = col.type === 'Costing' && value ? `${col.currency || '$'}${value}` : value;
-            customFieldsHTML += `<div class="task-col header-custom" data-control="custom" data-column-id="${col.id}" contenteditable="true">${displayValue}</div>`;
+            // REPLACE IT WITH THIS LINE
+const displayValue = col.type === 'Costing' && value ? `<span class="math-inline">\{col\.currency \|\| ''\}</span>{value}` : value;
+customFieldsHTML += `<div class="task-col header-custom" data-control="custom" data-column-id="${col.id}" contenteditable="true">${displayValue}</div>`;
         }
     });
     
-    rowWrapper.innerHTML = `<div class="fixed-column"><i class="fas fa-grip-vertical drag-handle"></i><i class="far fa-check-circle" data-control="check"></i><span class="task-name" contenteditable="true" data-placeholder="Add task name">${displayName}</span></div><div class="scrollable-columns-wrapper"><div class="scrollable-columns"><div class="task-col header-assignee" data-control="assignee">${createAssigneeHTML(task.assignees)}</div><div class="task-col header-due-date" data-control="due-date">${displayDate}</div><div class="task-col header-priority" data-control="priority">${createPriorityTag(task.priority)}</div><div class="task-col header-status" data-control="status">${createStatusTag(task.status)}</div>${customFieldsHTML}</div></div>`;
-    return rowWrapper;
+    // REPLACE the existing rowWrapper.innerHTML assignment with this:
+rowWrapper.innerHTML = `
+    <div class="fixed-column">
+        <i class="fas fa-grip-vertical drag-handle"></i>
+        <i class="far fa-check-circle" data-control="check"></i>
+        <span class="task-name" contenteditable="true" data-placeholder="Add task name">${displayName}</span>
+        
+        <button class="move-task-btn" data-control="move-task" title="Move to section">
+            <i class="fas fa-arrow-right-to-bracket"></i>
+        </button>
+    </div>
+    <div class="scrollable-columns-wrapper">
+        <div class="scrollable-columns">
+            <div class="task-col header-assignee" data-control="assignee">${createAssigneeHTML(task.assignees)}</div>
+            <div class="task-col header-due-date" data-control="due-date">${displayDate}</div>
+            <div class="task-col header-priority" data-control="priority">${createPriorityTag(task.priority)}</div>
+            <div class="task-col header-status" data-control="status">${createStatusTag(task.status)}</div>
+            ${customFieldsHTML}
+        </div>
+    </div>
+`;
+return rowWrapper;
+}
+
+function moveTaskToSection(taskId, targetSectionId) {
+    const { task, section: sourceSection } = findTaskAndSection(taskId);
+    const targetSection = project.sections.find(s => s.id === targetSectionId);
+    
+    if (task && sourceSection && targetSection && sourceSection.id !== targetSection.id) {
+        // Remove task from the old section
+        sourceSection.tasks = sourceSection.tasks.filter(t => t.id !== taskId);
+        // Add task to the top of the new section
+        targetSection.tasks.unshift(task);
+        
+        // In a real app, you would update this change in Firebase as well
+        // updateTaskInFirebase(taskId, { sectionId: targetSectionId });
+        
+        render(); // Re-render the entire view to show the change
+    }
 }
 
 function displaySideBarTasks(taskId) {
