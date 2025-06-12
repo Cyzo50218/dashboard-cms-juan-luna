@@ -381,11 +381,10 @@ window.TaskSidebar = (function () {
     }
 
     function clearImagePreview() {
-        pastedImageURL = null;
-        imageTitleInput.value = '';
+        pastedFiles = [];
         imagePreviewContainer.style.display = 'none';
         commentInputWrapper.classList.remove('preview-active');
-        commentInput.placeholder = 'Add a comment, paste an image, or upload a file...';
+        commentInput.placeholder = 'Add a comment...';
         fileUploadInput.value = "";
     }
 
