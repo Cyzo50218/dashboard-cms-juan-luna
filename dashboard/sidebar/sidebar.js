@@ -255,20 +255,39 @@ window.TaskSidebar = (function () {
 
             // --- Replace the existing block in your renderActivity function with this one ---
 
+            // Replace the entire 'if (activity.type === 'comment')' block with this
             if (activity.type === 'comment') {
-                // Determine if the current user is the author of the comment
-                const isAuthor = activity.user === currentUser.id;
+                // --- 1. Generate Reaction Buttons (for all users) ---
+                const reactions = activity.reactions || { heart: [], thumbsUp: [] };
 
-                // --- 1. Generate Edit/Delete buttons only if user is the author ---
+                const hasLiked = reactions.heart.includes(currentUser.id);
+                const likeCount = reactions.heart.length > 0 ? ` ${reactions.heart.length}` : '';
+                const heartBtnHTML = `<button class="react-btn ${hasLiked ? 'reacted' : ''}" data-reaction="heart" title="Like"><i class="fa-solid fa-heart"></i>${likeCount}</button>`;
+
+                const hasThumbed = reactions.thumbsUp.includes(currentUser.id);
+                const thumbCount = reactions.thumbsUp.length > 0 ? ` ${reactions.thumbsUp.length}` : '';
+                const thumbBtnHTML = `<button class="react-btn ${hasThumbed ? 'reacted' : ''}" data-reaction="thumbsUp" title="Thumbs Up"><i class="fa-solid fa-thumbs-up"></i>${thumbCount}</button>`;
+
+                // --- 2. Generate Edit/Delete Buttons (for author only) ---
+                let authorActionsHTML = '';
+                const isAuthor = activity.user === currentUser.id;
                 if (isAuthor) {
-                    actionsHTML = `
-            <div class="comment-actions">
+                    authorActionsHTML = `
+            <div class="author-actions">
                 <button class="edit-comment-btn" title="Edit"><i class="fa-solid fa-pencil"></i></button>
                 <button class="delete-comment-btn" title="Delete"><i class="fa-solid fa-trash"></i></button>
-            </div>`;
+            </div>
+        `;
                 }
 
-                // --- 2. Generate the main content (text and/or image) ---
+                // --- 3. Combine ALL actions into the main actions container ---
+                actionsHTML = `
+        <div class="comment-actions">
+            <div class="reaction-actions">${heartBtnHTML}${thumbBtnHTML}</div>
+            ${authorActionsHTML}
+        </div>`;
+
+                // --- 4. Generate the rest of the comment body (this is the same as before) ---
                 const commentTextHTML = activity.content ? `<div class="comment-text">${activity.content}</div>` : '';
                 let imageHTML = '';
                 if (activity.imageURL) {
@@ -281,8 +300,6 @@ window.TaskSidebar = (function () {
             </div>`;
                 }
 
-                // --- 3. Generate the HIDDEN edit form ---
-                // This form will be shown by CSS when the .is-editing class is added
                 const editText = activity.content || activity.imageTitle || '';
                 const editFormHTML = `
         <div class="comment-edit-area">
@@ -296,7 +313,6 @@ window.TaskSidebar = (function () {
                 contentHTML = `${commentTextHTML}${imageHTML}${editFormHTML}`;
 
             } else {
-                // This part for non-comment logs remains the same
                 contentHTML = `<div class="activity-change-log">${activity.details}</div>`;
                 headerMeta = '';
             }
@@ -495,6 +511,7 @@ window.TaskSidebar = (function () {
         closeBtn.addEventListener('click', close);
 
         // Add this new listener to your attachEventListeners function
+        // Replace your existing listener with this one that handles all comment actions
         activityLogContainer.addEventListener('click', (e) => {
             const target = e.target;
             const commentItem = target.closest('.comment-item');
@@ -504,22 +521,46 @@ window.TaskSidebar = (function () {
             const activityIndex = currentTask.activity.findIndex(a => a.id === activityId);
             if (activityIndex === -1) return;
 
+            const activity = currentTask.activity[activityIndex];
+
+            // --- [NEW] Handle REACTION button clicks ---
+            const reactionBtn = target.closest('.react-btn');
+            if (reactionBtn) {
+                const reactionType = reactionBtn.dataset.reaction; // 'heart' or 'thumbsUp'
+
+                // Ensure the reactions object and array exist
+                if (!activity.reactions) activity.reactions = { heart: [], thumbsUp: [] };
+                if (!activity.reactions[reactionType]) activity.reactions[reactionType] = [];
+
+                const reactionArray = activity.reactions[reactionType];
+                const userIndex = reactionArray.indexOf(currentUser.id);
+
+                if (userIndex > -1) {
+                    // User has already reacted, so remove the reaction (unlike)
+                    reactionArray.splice(userIndex, 1);
+                } else {
+                    // User has not reacted, so add the reaction (like)
+                    reactionArray.push(currentUser.id);
+                }
+                renderActivity(); // Re-render to show updated counts and styles
+            }
+
             // --- Handle DELETE button click ---
             if (target.closest('.delete-comment-btn')) {
                 if (confirm('Are you sure you want to delete this comment?')) {
-                    currentTask.activity.splice(activityIndex, 1); // Remove from data
-                    renderActivity(); // Re-render the UI
+                    currentTask.activity.splice(activityIndex, 1);
+                    renderActivity();
                 }
             }
 
             // --- Handle EDIT button click ---
             if (target.closest('.edit-comment-btn')) {
-                commentItem.classList.add('is-editing'); // Show the edit form
+                commentItem.classList.add('is-editing');
             }
 
             // --- Handle CANCEL EDIT button click ---
             if (target.closest('.btn-cancel-edit')) {
-                commentItem.classList.remove('is-editing'); // Hide the edit form
+                commentItem.classList.remove('is-editing');
             }
 
             // --- Handle SAVE EDIT button click ---
@@ -527,16 +568,11 @@ window.TaskSidebar = (function () {
                 const editInput = commentItem.querySelector('.comment-edit-input');
                 const newText = editInput.value.trim();
 
-                // Update the correct property based on what existed
-                if (currentTask.activity[activityIndex].hasOwnProperty('content')) {
-                    currentTask.activity[activityIndex].content = newText;
-                }
-                if (currentTask.activity[activityIndex].hasOwnProperty('imageTitle')) {
-                    currentTask.activity[activityIndex].imageTitle = newText;
-                }
+                if (activity.hasOwnProperty('content')) activity.content = newText;
+                if (activity.hasOwnProperty('imageTitle')) activity.imageTitle = newText;
 
-                commentItem.classList.remove('is-editing'); // Hide edit form
-                renderActivity(); // Re-render with updated data
+                commentItem.classList.remove('is-editing');
+                renderActivity();
             }
         });
 

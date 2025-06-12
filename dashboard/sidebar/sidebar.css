@@ -420,98 +420,102 @@
   }
 }
 
-/* Buttons are now standard flex items, NOT absolutely positioned */
-.comment-action-btn {
-    position: absolute;
-    bottom: 12px; /* Aligns with the bottom padding of the textarea */
-    width: 36px;
-    height: 36px;
+/* --- [NEW] CSS for Comment Actions and Edit/Delete --- */
+
+/* Style for Edit/Delete buttons in the comment header */
+.comment-actions {
+    display: flex;
+    gap: 4px;
+    /* Make buttons appear on hover for a cleaner UI */
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+}
+
+.comment-item:hover .comment-actions {
+    opacity: 1;
+}
+
+.comment-actions button {
+    background: none;
     border: none;
-    background-color: transparent;
-    color: var(--text-secondary-color);
     cursor: pointer;
-    font-size: 16px;
+    color: var(--text-secondary-color);
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     display: grid;
-    place-items: center; /* Perfectly centers the icon */
+    place-items: center;
     transition: background-color 0.2s;
 }
 
-.comment-action-btn:hover {
-    background-color: #f1f3f4;
-    border-color: #c5c5c5;
+.comment-actions button:hover {
+    background-color: var(--secondary-bg);
+    color: var(--text-color);
 }
 
-#upload-file-btn {
-    right: 50px; /* Positioned to the left of the send button */
-}
-
-#send-comment-btn {
-    right: 8px;
-    background-color: #0052cc;
-    color: white;
-    border-color: #0052cc;
-}
-
-.comment-action-btn:hover {
-    background-color: #E4E4E4;
-    color: #1e1f21;
-}
-
-#send-comment-btn:hover {
-    background-color: #004499;
-    color: white;
-}
-
-.comment-item { display: flex; gap: 12px; margin-bottom: 16px; align-items: flex-start; }
-.comment-body { flex-grow: 1; }
-.comment-text { font-size: 16px; line-height: 1.4; }
-
-/* --- Comment Edit Area --- */
+/* Edit form area, hidden by default */
 .comment-edit-area {
-    margin-top: 10px; /* Space from the header/timestamp */
-    padding: 10px;
-    background-color: #f9f9f9; /* Light background to distinguish it */
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05); /* Subtle inner shadow */
+    display: none; /* Hidden by default */
+    margin-top: 8px;
 }
 
+/* --- Logic to show/hide content vs. edit form --- */
+.comment-item.is-editing .comment-text,
+.comment-item.is-editing .log-attachment,
+.comment-item.is-editing .comment-actions {
+    display: none; /* Hide original content when editing */
+}
+
+.comment-item.is-editing .comment-edit-area {
+    display: block; /* Show the edit form */
+}
+
+/* Styling for the edit textarea */
 .comment-edit-input {
-    width: 100%; /* Take full width of its parent */
-    min-height: 80px; /* Minimum height for better typing experience */
+    width: 100%;
+    min-height: 80px;
     padding: 8px 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    font-family: inherit; /* Inherit font from body/parent */
-    font-size: 0.95em;
-    resize: vertical; /* Allow vertical resizing only */
-    box-sizing: border-box; /* Include padding and border in the element's total width and height */
-    line-height: 1.5; /* Improve readability of text inside textarea */
-}
-
-.comment-edit-input:focus {
+    border: 1px solid var(--accent-color);
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 14px;
+    resize: vertical;
+    box-sizing: border-box;
     outline: none;
-    border-color: #007bff; /* Highlight border on focus */
-    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25); /* Glow effect on focus */
+    box-shadow: 0 0 0 3px rgba(0, 82, 204, 0.2);
 }
 
+/* Container for Save/Cancel buttons */
 .comment-edit-actions {
-    display: flex; /* Arrange buttons horizontally */
-    justify-content: flex-end; /* Push buttons to the right */
-    gap: 10px; /* Space between buttons */
-    margin-top: 10px; /* Space above the buttons */
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 8px;
 }
 
-/* Base button styles - apply to both cancel and save */
 .comment-edit-actions button {
-    padding: 8px 15px;
+    padding: 6px 12px;
+    border-radius: 6px;
     border: none;
-    border-radius: 5px;
+    font-weight: 600;
     cursor: pointer;
-    font-size: 0.9em;
-    font-weight: 500;
-    transition: background-color 0.2s ease, color 0.2s ease;
+    transition: background-color 0.2s;
+}
+
+.comment-edit-actions .btn-save-edit {
+    background-color: var(--accent-color);
+    color: white;
+}
+.comment-edit-actions .btn-save-edit:hover {
+    background-color: #004099;
+}
+
+.comment-edit-actions .btn-cancel-edit {
+    background-color: var(--secondary-bg);
+    color: var(--text-color);
+}
+.comment-edit-actions .btn-cancel-edit:hover {
+    background-color: #e0e0e0;
 }
 
 .btn-cancel-edit {
