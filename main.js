@@ -1291,68 +1291,72 @@ const setupModalLogic = () => {
 // --- APPLICATION INITIALIZATION ---
 // This block runs once the initial HTML document has been fully loaded and parsed.
 document.addEventListener("DOMContentLoaded", async () => {
-  await Promise.all([
-    loadHTML("#top-header", "../dashboard/header/header.html"),
-    loadHTML("#rootdrawer", "../dashboard/drawer/drawer.html"),
-    loadHTML("#right-sidebar", "../dashboard/sidebar/sidebar.html"),
-  ]);
-  
-  
-
-  document.querySelectorAll('.nav-item a[href^="#"]').forEach(link => {
-    const section = link.getAttribute('href').substring(1);
-    link.setAttribute('data-section', section);
-  });
-  
-  document.addEventListener('DOMContentLoaded', () => {
-    const sidebar = document.getElementById('dashboardDrawer');
+    // 1. Load initial HTML structure
+    await Promise.all([
+        loadHTML("#top-header", "../dashboard/header/header.html"),
+        loadHTML("#rootdrawer", "../dashboard/drawer/drawer.html"),
+        loadHTML("#right-sidebar", "../dashboard/sidebar/sidebar.html"),
+    ]);
+    
+    // --- Main Setup after HTML is loaded ---
+    const sidebar = document.getElementById("dashboardDrawer");
+    const menuToggle = document.getElementById("menuToggle");
+    
     if (!sidebar) return;
     
-    // --- Logic for toggling collapsible sections ---
-    sidebar.querySelectorAll('.section-header').forEach(header => {
-        header.addEventListener('click', (e) => {
-            // Prevent toggling if the plus button itself was clicked
-            if (e.target.closest('.add-project-btn')) {
+    // 2. Setup the main drawer toggle (hamburger menu)
+    if (menuToggle) {
+        menuToggle.addEventListener("click", (e) => {
+            e.stopPropagation();
+            // Toggling a class is more robust and uses the existing CSS
+            sidebar.classList.toggle("close");
+        });
+    }
+    
+    // 3. Setup collapsible sections (Projects, Team, etc.)
+    sidebar.querySelectorAll(".section-header").forEach(header => {
+        header.addEventListener("click", (e) => {
+            // This check is crucial: it prevents the section from
+            // toggling if the 'add project' button itself is clicked.
+            if (e.target.closest(".add-project-btn")) {
                 return;
             }
-            const section = header.closest('.nav-section');
+            const section = header.closest(".nav-section");
             if (section) {
-                section.classList.toggle('open');
+                section.classList.toggle("open");
             }
         });
     });
     
-    // --- Logic for selecting a project ---
-    const projectsList = sidebar.querySelector('#projects-section .section-items');
+    // 4. Setup project selection logic
+    const projectsList = sidebar.querySelector("#projects-section .section-items");
     if (projectsList) {
-        projectsList.addEventListener('click', (e) => {
-            const clickedItem = e.target.closest('.project-item');
-            if (!clickedItem || clickedItem.classList.contains('active')) return;
+        projectsList.addEventListener("click", (e) => {
+            const clickedItem = e.target.closest(".project-item");
+            if (!clickedItem || clickedItem.classList.contains("active")) return;
             
-            projectsList.querySelector('.project-item.active')?.classList.remove('active');
-            clickedItem.classList.add('active');
-            // You can add logic here to load the selected project's data
+            projectsList.querySelector(".project-item.active")?.classList.remove("active");
+            clickedItem.classList.add("active");
         });
     }
     
-    // --- Logic for the 'Add Project' dropdown ---
-    const addProjectBtn = sidebar.querySelector('.add-project-btn');
+    // 5. Setup the 'Add Project' dropdown logic
+    const addProjectBtn = sidebar.querySelector(".add-project-btn");
     const closeAllDropdowns = () => {
-        document.querySelector('.drawerprojects-dropdown')?.remove();
+        document.querySelector(".drawerprojects-dropdown")?.remove();
     };
     
     if (addProjectBtn) {
-        addProjectBtn.addEventListener('click', (e) => {
-            e.stopPropagation(); // Stop the click from toggling the section
+        addProjectBtn.addEventListener("click", (e) => {
+            e.stopPropagation(); // Prevents the click from reaching the section header
             
-            // If a dropdown is already open, close it. Otherwise, open a new one.
-            if (document.querySelector('.drawerprojects-dropdown')) {
+            if (document.querySelector(".drawerprojects-dropdown")) {
                 closeAllDropdowns();
                 return;
             }
             
-            const dropdown = document.createElement('div');
-            dropdown.className = 'drawerprojects-dropdown';
+            const dropdown = document.createElement("div");
+            dropdown.className = "drawerprojects-dropdown";
             dropdown.innerHTML = `
         <ul>
           <li id="add-project-action">
@@ -1361,52 +1365,46 @@ document.addEventListener("DOMContentLoaded", async () => {
           </li>
         </ul>`;
             
-            // Handle the click on the "Add Project" option
-            dropdown.querySelector('#add-project-action').addEventListener('click', () => {
-                alert('Triggering "Add Project" action...');
+            dropdown.querySelector("#add-project-action").addEventListener("click", (event) => {
+                event.stopPropagation(); // Stop this click from closing the dropdown immediately
+                alert("Triggering 'Add Project' action...");
                 closeAllDropdowns();
             });
             
             document.body.appendChild(dropdown);
             
-            // Position dropdown relative to the button
             const rect = addProjectBtn.getBoundingClientRect();
             dropdown.style.top = `${rect.bottom + 5}px`;
             dropdown.style.left = `${rect.right - dropdown.offsetWidth}px`;
         });
     }
     
-    // Global click listener to close the dropdown when clicking elsewhere
-    window.addEventListener('click', (e) => {
-        if (!e.target.closest('.drawerprojects-dropdown') && !e.target.closest('.add-project-btn')) {
+    // 6. Setup global listeners for routing and closing the dropdown
+    window.addEventListener("click", (e) => {
+        if (!e.target.closest(".drawerprojects-dropdown") && !e.target.closest(".add-project-btn")) {
             closeAllDropdowns();
         }
     });
+    
+    document.querySelectorAll('.nav-item a[href^="#"]').forEach(link => {
+        const section = link.getAttribute('href').substring(1);
+        link.setAttribute('data-section', section);
+    });
+    
+    document.body.addEventListener("click", (e) => {
+        const navLink = e.target.closest("a[data-section]");
+        if (navLink) {
+            e.preventDefault();
+            const section = navLink.getAttribute("data-section");
+            let newUrl = `/${section}`;
+            if (section === "tasks") {
+                newUrl = `/tasks/22887391981/list/228873-91981`;
+            }
+            history.pushState({ path: newUrl }, "", newUrl);
+            router();
+        }
+    });
+    
+    window.addEventListener("popstate", router);
+    router(); // Initial call
 });
-  
-
-  document.body.addEventListener('click', (e) => {
-    const navLink = e.target.closest('a[data-section]');
-    if (navLink) {
-      e.preventDefault();
-      const section = navLink.getAttribute('data-section');
-      let newUrl = `/${section}`;
-      
-      if (section === 'tasks') {
-        newUrl = `/tasks/22887391981/list/22887391981`;
-      }
-      
-      history.pushState({ path: newUrl }, '', newUrl);
-      router();
-    }
-  });
-  
-  // Listen for the 'popstate' event (browser back/forward buttons).
-  window.addEventListener('popstate', router);
-  
-
-
-  // Trigger the router on the initial page load.
-  router();
-});
-
