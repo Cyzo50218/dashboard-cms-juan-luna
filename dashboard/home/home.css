@@ -250,16 +250,14 @@
     color: #151b26;
     background: none;
     border-radius: 0;
-    border: none;
     border-bottom-color: #f06a6a;
 }
 
 .tab-btn:hover {
     background: none;
-    border: none;
     border-radius: 0;
-    color: #151b26;
-    border-bottom-color: #f06a6a;
+    color: #E66855;
+    border-bottom-color: #FF3E3E;
 }
 
 .task-list {
