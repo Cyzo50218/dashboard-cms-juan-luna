@@ -1,94 +1,102 @@
+// File: /dashboard/myworkspace/myworkspace.js
+
+/**
+ * Initializes the 'My Workspace' section, encapsulating all its logic.
+ * Returns a cleanup function to be called by the router when navigating away.
+ */
+export function init(params) {
+    console.log("My Workspace section initialized.");
+
+    // [1] Use an AbortController for easy and reliable event listener cleanup.
+    const controller = new AbortController();
+
+    // [2] Get the main container for this section to scope all queries.
+    const workspaceSection = document.querySelector('div[data-section="myworkspace"]');
+    if (!workspaceSection) {
+        console.error('My Workspace section container not found!');
+        return () => {}; // Return an empty cleanup function.
+    }
+    // --- LOGIC FOR FUNCTIONALITY WITHIN THE WORKSPACE ---
 
     // ==================================================
     // EDITABLE TEAM DESCRIPTION LOGIC
     // ==================================================
-    const descriptionContainer = document.getElementById('description-container');
-    const teamDescription = document.getElementById('team-description');
+    const descriptionContainer = workspaceSection.querySelector('#description-container');
+    const teamDescription = workspaceSection.querySelector('#team-description');
+
     if (descriptionContainer && teamDescription) {
         const placeholderText = "Click to add team description...";
-        
-        teamDescription.addEventListener('click', () => {
+        if (!teamDescription.textContent.trim()) {
+            teamDescription.textContent = placeholderText;
+        }
+
+        // Define the handler function separately.
+        const handleEditDescriptionClick = () => {
             const currentText = teamDescription.textContent.trim() === placeholderText ? "" : teamDescription.textContent.trim();
             const editor = document.createElement('textarea');
             editor.id = 'description-editor';
             editor.value = currentText;
             descriptionContainer.replaceChild(editor, teamDescription);
             editor.focus();
-            
+
             const saveChanges = () => {
                 let newText = editor.value.trim();
                 teamDescription.textContent = newText === "" ? placeholderText : newText;
-                descriptionContainer.replaceChild(teamDescription, editor);
+                // Important: Check if the editor is still in the DOM before replacing
+                if (editor.parentNode === descriptionContainer) {
+                    descriptionContainer.replaceChild(teamDescription, editor);
+                }
             };
-            
+
+            // NOTE: Listeners on dynamically created elements that are then removed
+            // from the DOM are automatically garbage collected. No need to add these
+            // to the main AbortController.
             editor.addEventListener('blur', saveChanges);
             editor.addEventListener('keydown', (event) => {
                 if (event.key === 'Enter' && !event.shiftKey) {
                     event.preventDefault();
-                    editor.blur();
+                    editor.blur(); // Triggers the 'blur' event to save.
                 }
             });
-        });
+        };
+
+        // [3] Attach persistent event listeners using the controller's signal.
+        teamDescription.addEventListener('click', handleEditDescriptionClick, { signal: controller.signal });
     }
-    
+
     // ==================================================
     // ADD STAFF MEMBERS LOGIC
     // ==================================================
-    const addStaffBtn = document.getElementById('add-staff-btn');
-    const staffList = document.getElementById('staff-list');
-    const staffCountLink = document.getElementById('staff-count-link');
-    
-    if (addStaffBtn && staffList && staffCountLink) {
-        const maxStaff = 10;
-        let currentStaffCount = 1;
-        
-        // Predefined profiles for new staff members
-        const newStaffProfiles = [
-            { initials: 'JD', bgColor: '#d1e7f7', color: '#3a5f81' },
-            { initials: 'MS', bgColor: '#f7d1e7', color: '#813a5f' },
-            { initials: 'LP', bgColor: '#d1f7e0', color: '#3a8157' }
-        ];
-        addStaffBtn.addEventListener('click', showEmailModal);
-        /*
-        addStaffBtn.addEventListener('click', () => {
-            if (currentStaffCount >= maxStaff) {
-                return; // Do nothing if the limit is reached
-            }
-            
-            // Get the next profile to add
-            const profileToAdd = newStaffProfiles[currentStaffCount - 1];
-            
-            // Create the new avatar element
-            const newAvatar = document.createElement('div');
-            newAvatar.className = 'user-avatar-myworkspace';
-            newAvatar.textContent = profileToAdd.initials;
-            newAvatar.style.backgroundColor = profileToAdd.bgColor;
-            newAvatar.style.color = profileToAdd.color;
-            
-            // Insert the new avatar before the "add" button
-            staffList.insertBefore(newAvatar, addStaffBtn);
-            
-            currentStaffCount++;
-            
-            // Update the count link
-            staffCountLink.textContent = `View all ${currentStaffCount}`;
-            
-            // If limit is reached, disable the button
-            if (currentStaffCount >= maxStaff) {
-                addStaffBtn.classList.add('disabled');
-            }
-        });*/
-        
+    const addStaffBtn = workspaceSection.querySelector('#add-staff-btn');
+    if (addStaffBtn) {
+        addStaffBtn.addEventListener('click', showEmailModal, { signal: controller.signal });
     }
-    
-    // ==================================================
-    // OTHER INTERACTIVITY (Example Handlers)
-    // ==================================================
-    const inviteBtn = document.getElementById('invite-btn');
-    if (inviteBtn) inviteBtn.addEventListener('click', showEmailModal);
 
-    const createWorkBtn = document.getElementById('create-work-btn');
-    if (createWorkBtn) createWorkBtn.addEventListener('click', () => alert('Create work dropdown clicked!'));
-    
-    const createTaskBtn = document.getElementById('create-task-btn');
-    if (createTaskBtn) createTaskBtn.addEventListener('click', () => alert('Add Task button clicked!'));
+    // ==================================================
+    // OTHER INTERACTIVITY HANDLERS
+    // ==================================================
+    const inviteBtn = workspaceSection.querySelector('#invite-btn');
+    if (inviteBtn) {
+        inviteBtn.addEventListener('click', showEmailModal, { signal: controller.signal });
+    }
+
+    const createWorkBtn = workspaceSection.querySelector('#create-work-btn');
+    if (createWorkBtn) {
+        createWorkBtn.addEventListener('click', () => alert('Create work dropdown clicked!'), { signal: controller.signal });
+    }
+
+    const createTaskBtn = workspaceSection.querySelector('#create-task-btn');
+    if (createTaskBtn) {
+        createTaskBtn.addEventListener('click', () => alert('Add Task button clicked!'), { signal: controller.signal });
+    }
+
+
+    // [4] The cleanup function is returned to the router.
+    // It will be called when the user navigates away from this section.
+    return function cleanup() {
+        console.log("Cleaning up 'My Workspace' section listeners...");
+
+        // This single line removes ALL event listeners added with this controller's signal.
+        controller.abort();
+    };
+}

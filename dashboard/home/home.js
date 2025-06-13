@@ -112,24 +112,47 @@ export function init(params) {
         });
     }
     
-    function renderPeople(filter = 'all') {
+     function renderPeople(filter = 'all') {
         const peopleContent = homeSection.querySelector('.people-content');
         if (!peopleContent) return;
-        
+
         const peopleToDisplay = people.filter(p => filter === 'frequent' ? p.frequent : true);
-        
-        peopleContent.innerHTML = ''; // Clear everything including placeholder
-        
+        peopleContent.innerHTML = ''; // Clear previous content
+
         if (peopleToDisplay.length > 0) {
+            const list = document.createElement('div');
+            list.className = 'homepeople-list';
             peopleToDisplay.forEach(person => {
-                const personEl = document.createElement('div');
-                personEl.className = 'person-item'; // You'll need to style this
-                personEl.innerHTML = `<img src="https://i.pravatar.cc/150?u=${person.id}" alt="${person.name}" class="person-avatar"><div><strong>${person.name}</strong><p>${person.role}</p></div>`;
-                peopleContent.appendChild(personEl);
+                const item = document.createElement('div');
+                item.className = 'homepeople-item';
+                
+                let avatarHTML;
+                if (person.avatarUrl) {
+                    avatarHTML = `<div class="homepeople-avatar"><img src="${person.avatarUrl}" alt="${person.name}"></div>`;
+                } else {
+                    const initials = getInitials(person.name);
+                    const bgColor = generateColorForName(person.name);
+                    avatarHTML = `<div class="homepeople-avatar" style="background-color: ${bgColor};">${initials}</div>`;
+                }
+
+                item.innerHTML = `
+                    ${avatarHTML}
+                    <div class="homepeople-info">
+                        <span class="homepeople-name">${person.name}</span>
+                        <span class="homepeople-role">${person.role}</span>
+                    </div>
+                    <i class="fas fa-ellipsis-h homepeople-action" data-tooltip="More options"></i>
+                `;
+                list.appendChild(item);
             });
+            peopleContent.appendChild(list);
         } else {
-             // Re-add placeholder if empty
-            peopleContent.innerHTML = `<div class="people-placeholder"><div class="people-icon"><i class="fas fa-user-plus"></i></div><p>Invite your teammates to collaborate</p><button class="invite-btn">Invite teammates</button></div>`;
+            peopleContent.innerHTML = `
+                <div class="homepeople-placeholder">
+                    <div class="people-icon"><i class="fas fa-user-plus"></i></div>
+                    <p>Invite your teammates to collaborate</p>
+                    <button class="invite-btn">Invite teammates</button>
+                </div>`;
             homeSection.querySelector('.invite-btn').addEventListener('click', () => showNotification('Invite feature coming soon!'), { signal: controller.signal });
         }
     }
