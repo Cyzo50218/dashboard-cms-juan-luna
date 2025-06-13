@@ -20,24 +20,20 @@
   ],
   "routes": [
     {
-      "src": "^/$",
-      "dest": "/index.html"
-    },
-    {
-      "src": "^/style.css$",
+      "src": "/style.css",
       "dest": "/style.css"
     },
     {
-      "src": "^/main.js$",
+      "src": "/main.js",
       "dest": "/main.js"
     },
     {
-      "src": "^/([^/]+)/?$",
-      "dest": "/dashboard/$1/index.html"
+      "src": "/dashboard/(.*)",
+      "dest": "/dashboard/$1"
     },
     {
-      "src": "^/([^/]+)/(.+)$",
-      "dest": "/dashboard/$1/$2"
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
