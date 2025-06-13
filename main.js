@@ -18,58 +18,63 @@ function parseRoute() {
  * @param {object} routeParams - The object of parameters returned by parseRoute().
  */
 async function loadSection(routeParams) {
-  if (!routeParams || !routeParams.section) {
-    console.error("Invalid route parameters received. Defaulting to home.");
-    routeParams = { section: 'home' };
-  }
-  const { section } = routeParams;
-  const content = document.getElementById("content");
-  
-  // Run the cleanup function from the previously loaded section.
-  if (typeof currentSectionCleanup === 'function') {
-    currentSectionCleanup();
-    currentSectionCleanup = null;
-  }
-  
-  // Clear the content area and remove old assets.
-  content.innerHTML = "";
-  document.getElementById("section-css")?.remove();
-  content.dataset.section = section;
-  
-  try {
-    // Using absolute paths from the site root is most reliable for localhost.
-    const htmlPath = `/dashboard/${section}/${section}.html`;
-    const cssPath = `/dashboard/${section}/${section}.css`;
-    const jsPath = `/dashboard/${section}/${section}.js?v=${new Date().getTime()}`;
+    if (!routeParams || !routeParams.section) {
+        console.error("Invalid route parameters received. Defaulting to home.");
+        routeParams = { section: 'home' };
+    }
+    const { section } = routeParams;
+    const content = document.getElementById("content");
     
-    // 1. Load HTML content
-    const htmlRes = await fetch(htmlPath);
-    if (!htmlRes.ok) throw new Error(`HTML file not found at ${htmlPath} (${htmlRes.status})`);
-    content.innerHTML = await htmlRes.text();
-    
-    // 2. Load CSS stylesheet
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = cssPath;
-    link.id = "section-css";
-    document.head.appendChild(link);
-    
-    // 3. Dynamically import the JavaScript module for the section
-    const sectionModule = await import(jsPath);
-    
-    if (sectionModule.init) {
-      currentSectionCleanup = sectionModule.init(routeParams);
-    } else {
-      console.warn(`Section "${section}" loaded, but it has no export function init().`);
+    // Run the cleanup function from the previously loaded section.
+    if (typeof currentSectionCleanup === 'function') {
+        currentSectionCleanup();
+        currentSectionCleanup = null;
     }
     
-  } catch (err) {
-    content.innerHTML = `<p>Error loading section: <strong>${section}</strong></p>`;
-    console.error(`Failed to load section ${section}:`, err);
-    console.dir(err);
-  }
-  
-  updateActiveNav(section);
+    // Clear previous content and display the loading indicator immediately.
+    content.innerHTML = '<div class="section-loader"></div>';
+    document.getElementById("section-css")?.remove();
+    content.dataset.section = section;
+    
+    try {
+        // Using absolute paths from the site root is most reliable for localhost.
+        const htmlPath = `/dashboard/${section}/${section}.html`;
+        const cssPath = `/dashboard/${section}/${section}.css`;
+        const jsPath = `/dashboard/${section}/${section}.js?v=${new Date().getTime()}`;
+        
+        // 1. Fetch HTML content in the background
+        const htmlRes = await fetch(htmlPath);
+        if (!htmlRes.ok) throw new Error(`HTML file not found at ${htmlPath} (${htmlRes.status})`);
+        const sectionHtml = await htmlRes.text(); // Store HTML in a variable instead of directly inserting
+        
+        // 2. Load CSS stylesheet
+        const link = document.createElement("link");
+        link.rel = "stylesheet";
+        link.href = cssPath;
+        link.id = "section-css";
+        document.head.appendChild(link);
+        
+        // 3. Dynamically import the JavaScript module for the section
+        const sectionModule = await import(jsPath);
+        
+        // 4. All assets are loaded, now replace the loader with the actual HTML.
+        content.innerHTML = sectionHtml;
+        
+        // 5. Initialize the new section's script
+        if (sectionModule.init) {
+            currentSectionCleanup = sectionModule.init(routeParams);
+        } else {
+            console.warn(`Section "${section}" loaded, but it has no export function init().`);
+        }
+        
+    } catch (err) {
+        // If an error occurs, replace the loader with an error message.
+        content.innerHTML = `<p>Error loading section: <strong>${section}</strong></p>`;
+        console.error(`Failed to load section ${section}:`, err);
+        console.dir(err);
+    }
+    
+    updateActiveNav(section);
 }
 
 /**
