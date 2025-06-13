@@ -59,3 +59,28 @@ body {
 #right-sidebar {
     width: 0;
 }
+
+/* Add this to your main stylesheet, e.g., style.css */
+.section-loader {
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border-left-color: #09f; /* Or your preferred color */
+  animation: spin 1s ease infinite;
+
+  /* Center it within the content area */
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
