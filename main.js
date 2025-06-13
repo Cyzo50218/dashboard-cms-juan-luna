@@ -1,3 +1,28 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+    getAuth,
+    GoogleAuthProvider,
+    onAuthStateChanged,
+    signInWithPopup,
+    createUserWithEmailAndPassword,
+    updateProfile
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+import {
+    getFirestore,
+    doc,
+    setDoc
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+import {
+    getStorage,
+    ref,
+    uploadString,
+    getDownloadURL
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+
+import { firebaseConfig } from "/services/firebase-config.js";
+
 // Keep track of the current section's cleanup logic to prevent memory leaks.
 let currentSectionCleanup = null;
 
@@ -1320,47 +1345,63 @@ const setupModalLogic = () => {
     logActivity("Share modal initialized.");
 };
 
-
-// 
-// --- APPLICATION INITIALIZATION ---
-// This block runs once the initial HTML document has been fully loaded and parsed.
-document.addEventListener("DOMContentLoaded", async () => {
-  await Promise.all([
-    // Use root-relative paths (starting with '/') for reliability
-    loadHTML("#top-header", "/dashboard/header/header.html"),
-    loadHTML("#rootdrawer", "/dashboard/drawer/drawer.html"),
-    loadHTML("#right-sidebar", "/dashboard/sidebar/sidebar.html"),
-]);
-  
-
-  document.querySelectorAll('.nav-item a[href^="#"]').forEach(link => {
-    const section = link.getAttribute('href').substring(1);
-    link.setAttribute('data-section', section);
-  });
-  
-  
-
-  document.body.addEventListener('click', (e) => {
-    const navLink = e.target.closest('a[data-section]');
-    if (navLink) {
-        e.preventDefault();
-        const section = navLink.getAttribute('data-section');
-        // Hardcoded URL for demonstration purposes
-        const newUrl = (section === 'tasks') ?
-            `/tasks/22887391981/list/22887391981` :
-            `/${section}`;
-        
-        history.pushState({ path: newUrl }, '', newUrl);
-        router();
-    }
-});
-  
-  // Listen for the 'popstate' event (browser back/forward buttons).
-  window.addEventListener('popstate', router);
-  
-
-
-  // Trigger the router on the initial page load.
-  router();
+//
+// --- APPLICATION INITIALIZATION SPA MAIN ROUTER DASHBOARD ---
+//
+document.addEventListener("DOMContentLoaded", () => {
+    // Initialize Firebase
+console.log("Initializing Firebase...");
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app, "juanluna-cms-01");
+const storage = getStorage(app);
+    
+    // This is the authentication gate. Nothing below runs until Firebase confirms the user's status.
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            // --- USER IS LOGGED IN ---
+            // Proceed with building the dashboard because we have an authenticated user.
+            console.log("Authenticated user found:", user.uid, ". Initializing dashboard...");
+            
+            await Promise.all([
+                // Use root-relative paths (starting with '/') for reliability
+                loadHTML("#top-header", "/dashboard/header/header.html"),
+                loadHTML("#rootdrawer", "/dashboard/drawer/drawer.html"),
+                loadHTML("#right-sidebar", "/dashboard/sidebar/sidebar.html"),
+            ]);
+            
+            document.querySelectorAll('.nav-item a[href^="#"]').forEach(link => {
+                const section = link.getAttribute('href').substring(1);
+                link.setAttribute('data-section', section);
+            });
+            
+            document.body.addEventListener('click', (e) => {
+                const navLink = e.target.closest('a[data-section]');
+                if (navLink) {
+                    e.preventDefault();
+                    const section = navLink.getAttribute('data-section');
+                    // Hardcoded URL for demonstration purposes
+                    const newUrl = (section === 'tasks') ?
+                        `/tasks/22887391981/list/22887391981` :
+                        `/${section}`;
+                    
+                    history.pushState({ path: newUrl }, '', newUrl);
+                    router(); // This is your router function defined elsewhere
+                }
+            });
+            
+            // Listen for the 'popstate' event (browser back/forward buttons).
+            window.addEventListener('popstate', router);
+            
+            // Trigger the router on the initial page load.
+            router();
+            
+        } else {
+            // --- USER IS NOT LOGGED IN ---
+            // No authenticated user was found. Redirect to the login page immediately.
+            console.log("No authenticated user. Redirecting to /login/...");
+            window.location.href = '/login/login.html';
+        }
+    });
 });
 
