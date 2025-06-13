@@ -404,8 +404,6 @@ export function init(params) {
 
         // Attach main listeners
         homeSection.querySelector('.task-list').addEventListener('click', handleTaskCheck, { signal: controller.signal });
-        homeSection.querySelector('.projects-card .create-project-btn').addEventListener('click', () => handleCreate('project'), { signal: controller.signal });
-        homeSection.querySelector('.invite-btn').addEventListener('click', () => showNotification('Invite feature coming soon!'), { signal: controller.signal });
 
         homeSection.querySelectorAll('.tab-btn').forEach(button => {
             button.addEventListener('click', (e) => {
