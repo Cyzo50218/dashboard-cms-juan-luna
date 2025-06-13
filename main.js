@@ -1335,11 +1335,11 @@ const setupModalLogic = () => {
 // This block runs once the initial HTML document has been fully loaded and parsed.
 document.addEventListener("DOMContentLoaded", async () => {
   await Promise.all([
-    loadHTML("#top-header", "../dashboard/header/header.html"),
-    loadHTML("#rootdrawer", "../dashboard/drawer/drawer.html"),
-    loadHTML("#right-sidebar", "../dashboard/sidebar/sidebar.html"),
-  ]);
-  
+    // Use root-relative paths (starting with '/') for reliability
+    loadHTML("#top-header", "/dashboard/header/header.html"),
+    loadHTML("#rootdrawer", "/dashboard/drawer/drawer.html"),
+    loadHTML("#right-sidebar", "/dashboard/sidebar/sidebar.html"),
+]);
   
 
   document.querySelectorAll('.nav-item a[href^="#"]').forEach(link => {
@@ -1357,7 +1357,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       let newUrl = `/${section}`;
       
       if (section === 'tasks') {
-        newUrl = `/tasks/list/`;
+        newUrl = `/tasks/22887391981/list/22887391981`;
       }
       
       history.pushState({ path: newUrl }, '', newUrl);
