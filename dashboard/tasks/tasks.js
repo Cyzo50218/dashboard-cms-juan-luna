@@ -47,7 +47,7 @@ async function loadTabContent(targetTabId) {
     const container = document.getElementById('tab-content-container');
     if (!container) return; // Safety check
     
-    // 2. Clear old content and remove old tab-specific CSS
+    // 2. Clear old content and display the loading indicator immediately.
     container.innerHTML = '<div class="section-loader"></div>'; // Use the same loader style
     document.getElementById('tab-specific-css')?.remove();
     
@@ -56,21 +56,28 @@ async function loadTabContent(targetTabId) {
     const jsPath = `/dashboard/tasks/tabs/${targetTabId}/${targetTabId}.js?v=${new Date().getTime()}`;
     
     try {
-        // 4. Fetch and inject the new content
+        // 3. Fetch HTML content and hold it in a variable.
         const htmlRes = await fetch(htmlPath);
         if (!htmlRes.ok) throw new Error(`HTML not found for tab: ${targetTabId}`);
-        container.innerHTML = await htmlRes.text();
+        const tabHtml = await htmlRes.text(); // <-- Store HTML, don't display yet
         
+        // 4. Load the tab-specific CSS.
         const link = document.createElement("link");
         link.rel = "stylesheet";
         link.href = cssPath;
         link.id = "tab-specific-css";
         document.head.appendChild(link);
         
-        // 5. Import the tab's own JS module
+        // 5. Import the tab's own JS module.
         const tabModule = await import(jsPath);
+        
+        // --- THE BIG REVEAL ---
+        // 6. All assets are ready. Now, replace the loader with the final HTML.
+        container.innerHTML = tabHtml;
+        
+        // 7. Initialize the new tab's script.
         if (tabModule.init) {
-            // Pass any necessary info down to the sub-module and store its cleanup function
+            // Pass any necessary info down and store its cleanup function.
             currentTabCleanup = tabModule.init({ accountId, projectId });
         }
         
@@ -80,21 +87,18 @@ async function loadTabContent(targetTabId) {
         let logMessage = `Failed to load tab '${targetTabId}':`;
         
         if (err.message.startsWith('HTML not found for tab')) {
-            // Case 1: The fetch for the HTML file failed (e.g., 404).
             userMessage = `<p>Could not load the necessary HTML file for the <strong>${targetTabId}</strong> tab.</p>`;
             logMessage = `[HTML Load Error] Failed to fetch ${htmlPath}.`;
         } else if (err instanceof SyntaxError) {
-            // Case 2: The imported JavaScript file has a syntax error.
             userMessage = `<p>The <strong>${targetTabId}</strong> tab could not be loaded due to a code error.</p><p>Please check the console for details.</p>`;
             logMessage = `[JS Syntax Error] A syntax error was found in ${jsPath}.`;
         } else if (err.message.includes('Failed to fetch dynamically imported module')) {
-            // Case 3: The import for the JS module failed (e.g., 404).
             userMessage = `<p>Could not load the necessary script file for the <strong>${targetTabId}</strong> tab.</p>`;
             logMessage = `[JS Load Error] The JavaScript module at ${jsPath} could not be fetched (e.g., 404 Not Found).`;
         }
         
+        // IMPORTANT: Replace the loader with the error message.
         container.innerHTML = userMessage;
-        // Log the specific, readable message AND the original error object for the full trace.
         console.error(logMessage, err);
         // --- END: MORE SPECIFIC ERROR HANDLING ---
     }
