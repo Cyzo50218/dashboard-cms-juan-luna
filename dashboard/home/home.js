@@ -352,7 +352,7 @@ list.appendChild(item);
         homeSection.querySelector('.create-task-btn').addEventListener('click', handleCreateTask, { signal: controller.signal });
         homeSection.querySelector('.projects-card .create-project-btn').addEventListener('click', handleCreateProject, { signal: controller.signal });
         homeSection.querySelector('.invite-btn').addEventListener('click', () => showNotification('Invite feature coming soon!'), { signal: controller.signal });
-        homeSection.querySelector('.customize-btn').addEventListener('click', () => showNotification('Customization feature coming soon!'), { signal: controller.signal });
+
 
         // Initial render of all components
         updateDateTime();
