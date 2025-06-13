@@ -1352,18 +1352,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.body.addEventListener('click', (e) => {
     const navLink = e.target.closest('a[data-section]');
     if (navLink) {
-      e.preventDefault();
-      const section = navLink.getAttribute('data-section');
-      let newUrl = `/${section}`;
-      
-      if (section === 'tasks') {
-        newUrl = `/tasks/22887391981/list/22887391981`;
-      }
-      
-      history.pushState({ path: newUrl }, '', newUrl);
-      router();
+        e.preventDefault();
+        const section = navLink.getAttribute('data-section');
+        // Hardcoded URL for demonstration purposes
+        const newUrl = (section === 'tasks') ?
+            `/tasks/22887391981/list/22887391981` :
+            `/${section}`;
+        
+        history.pushState({ path: newUrl }, '', newUrl);
+        router();
     }
-  });
+});
   
   // Listen for the 'popstate' event (browser back/forward buttons).
   window.addEventListener('popstate', router);

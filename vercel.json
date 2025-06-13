@@ -1,27 +1,12 @@
 {
   "version": 2,
-  "builds": [
+  "routes": [
     {
-      "src": "dashboard/**/*",
-      "use": "@vercel/static"
+      "handle": "filesystem"
     },
     {
-      "src": "*.html",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "*.js",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "*.css",
-      "use": "@vercel/static"
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/((?!api/|.*\\.).*)",
-      "destination": "/index.html"
+      "src": "/.*",
+      "dest": "/index.html"
     }
   ]
 }
