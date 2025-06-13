@@ -1,333 +1,349 @@
      /* --- UPDATED STYLES --- */
 
-/* 1. The Outer Header: This is now full-width and sticky */
-.header-myworkspace {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    background-color: white;
-    border-bottom: 1px solid #e8e8e8;
-    padding: 0 32px; /* Adds padding on the far left/right of the screen */
-}
+     /* 1. The Outer Header: This is now full-width and sticky */
+     .header-myworkspace {
+         position: sticky;
+         top: 0;
+         z-index: 100;
+         background-color: white;
+         border-bottom: 1px solid #e8e8e8;
+         padding: 0 32px;
+         /* Adds padding on the far left/right of the screen */
+     }
 
-/* 2. The New Inner Wrapper: This constrains and centers the content */
-.header-content-wrapper {
-    display: flex;
-    align-items: center;
-    justify-content: space-between; /* Pushes left and right sides apart */
-    max-width: 1200px;
-    margin: 0 auto; /* Centers the content */
-    padding: 16px 0; /* Vertical padding from your old header */
-}
+     /* 2. The New Inner Wrapper: This constrains and centers the content */
+     .header-content-wrapper {
+         display: flex;
+         align-items: center;
+         justify-content: space-between;
+         /* Pushes left and right sides apart */
+         max-width: 1200px;
+         margin: 0 auto;
+         /* Centers the content */
+         padding: 16px 0;
+         /* Vertical padding from your old header */
+     }
 
-/* 3. The Main Content Container: Adjusted for the new layout */
-.workspace-container {
-    /* margin-top: 60px; /* This might no longer be needed if you don't have a global nav above */
-    max-width: 1200px;
-    margin-left: auto;  /* Use margin auto to center it */
-    margin-right: auto;
-    padding: 0 32px;   /* The padding now goes here */
-}
-
-        .header-myworkspace-left {
-            display: flex;
-            align-items: center;
-            flex-grow: 1;
-        }
-
-        .workspace-icon {
-            height: 32px;
-            width: 32px;
-            background-color: #7b6f8f;
-            border-radius: 5px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 20px;
-            font-weight: bold;
-            margin-right: 12px;
-        }
-
-        .workspace-title {
-            font-size: 20px;
-            font-weight: 600;
-            margin-right: 8px;
-        }
-
-        .star-icon {
-            color: #6d6e70;
-            cursor: pointer;
-        }
-
-        .nav-tabs-myworkspace {
-            display: flex;
-            align-items: center;
-            margin-left: 24px;
-        }
-
-        .nav-tab-myworkspace {
-            padding: 8px 12px;
-            margin-right: 8px;
-            font-size: 14px;
-            color: #6d6e70;
-            cursor: pointer;
-            border-radius: 6px;
-        }
-
-        .nav-tab-myworkspace.active {
-            font-weight: 500;
-            background-color: #edebe9;
-            color: #1e1f21;
-        }
-        
-        .nav-tab-myworkspace-add {
-            border-left: 1px solid #e8e8e8;
-            margin-left: 8px;
-            padding-left: 16px;
-            color: #6d6e70;
-            cursor: pointer;
-        }
+     /* 3. The Main Content Container: Adjusted for the new layout */
+     .workspace-container {
+         margin-top: 60px;
+         max-width: 1200px;
+         margin-left: auto;
+         /* Use margin auto to center it */
+         margin-right: auto;
+         padding: 0 32px;
+         /* The padding now goes here */
+     }
 
 
-        .header-myworkspace-right {
-            display: flex;
-            align-items: center;
-        }
 
-        .btn-myworkspace {
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            border: 1px solid transparent;
-        }
+     .header-myworkspace-left {
+         display: flex;
+         align-items: center;
+         flex-grow: 1;
+     }
 
-        .btn-myworkspace-primary {
-            background-color: #3F7EEB;
-            color: white;
-        }
-        
-        .btn-myworkspace-secondary {
-            background-color: white;
-            color: #1e1f21;
-            border: 1px solid #c7c7c7;
-        }
+     .workspace-icon {
+         height: 32px;
+         width: 32px;
+         background-color: #7b6f8f;
+         border-radius: 5px;
+         display: flex;
+         align-items: center;
+         justify-content: center;
+         color: white;
+         font-size: 20px;
+         font-weight: bold;
+         margin-right: 12px;
+     }
 
-        .btn-myworkspace-secondary-subtle {
-            background-color: transparent;
-            color: #6d6e70;
-            padding: 6px 12px;
-        }
+     .workspace-title {
+         font-size: 20px;
+         font-weight: 600;
+         margin-right: 8px;
+     }
 
-        .btn-myworkspace-secondary-subtle:hover {
-            background-color: #edebe9;
-        }
+     .star-icon {
+         color: #6d6e70;
+         cursor: pointer;
+     }
+
+     .nav-tabs-myworkspace {
+         display: flex;
+         align-items: center;
+         margin-left: 24px;
+     }
+
+     .nav-tab-myworkspace {
+         padding: 8px 12px;
+         margin-right: 8px;
+         font-size: 14px;
+         color: #6d6e70;
+         cursor: pointer;
+         border-radius: 6px;
+     }
+
+     .nav-tab-myworkspace.active {
+         font-weight: 500;
+         background-color: #edebe9;
+         color: #1e1f21;
+     }
+
+     .nav-tab-myworkspace-add {
+         border-left: 1px solid #e8e8e8;
+         margin-left: 8px;
+         padding-left: 16px;
+         color: #6d6e70;
+         cursor: pointer;
+     }
 
 
-        /* Main Content Grid */
-        .main-content {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 24px;
-            padding: 24px 0;
-        }
+     .header-myworkspace-right {
+         display: flex;
+         align-items: center;
+     }
 
-        .main-column h1 {
-            font-size: 28px;
-            margin: 0;
-        }
-        
-        .workspace-description {
-            color: #6d6e70;
-            margin: 4px 0 24px 0;
-            cursor: pointer;
-            min-height: 20px;
-        }
+     .btn-myworkspace {
+         padding: 8px 16px;
+         border-radius: 8px;
+         font-size: 14px;
+         font-weight: 500;
+         cursor: pointer;
+         border: 1px solid transparent;
+     }
 
-        #description-editor {
-            width: 95%;
-            padding: 8px;
-            font-family: inherit;
-            font-size: 14px;
-            border: 1px solid #c7c7c7;
-            border-radius: 6px;
-            resize: vertical;
-            margin: 4px 0 24px 0;
-        }
-        
-        .main-header-myworkspace {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 24px;
-        }
+     .btn-myworkspace-primary {
+         background-color: #3F7EEB;
+         color: white;
+     }
 
-        .card {
-            background-color: white;
-            border: 1px solid #e8e8e8;
-            border-radius: 8px;
-            padding: 24px;
-            margin-bottom: 24px;
-        }
+     .btn-myworkspace-secondary {
+         background-color: white;
+         color: #1e1f21;
+         border: 1px solid #c7c7c7;
+     }
 
-        .card-header-myworkspace {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-        }
-        
-        .card-header-myworkspace h2 {
-            font-size: 16px;
-            font-weight: 600;
-            margin: 0;
-        }
+     .btn-myworkspace-secondary-subtle {
+         background-color: transparent;
+         color: #6d6e70;
+         padding: 6px 12px;
+     }
 
-        .card-header-myworkspace a {
-            font-size: 14px;
-            color: #6d6e70;
-            text-decoration: none;
-        }
+     .btn-myworkspace-secondary-subtle:hover {
+         background-color: #edebe9;
+     }
 
-        /* Curated Work Section */
-        .curated-work-item {
-            display: flex;
-            align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid #e8e8e8;
-        }
 
-        .curated-work-item:last-child {
-            border-bottom: none;
-        }
-        
-        .work-item-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 4px;
-            margin-right: 16px;
-        }
+     /* Main Content Grid */
+     .main-content {
+         display: grid;
+         grid-template-columns: 2fr 1fr;
+         gap: 24px;
+         padding: 24px 0;
+     }
 
-        .work-item-icon.blue { background-color: #e9f3ff; }
-        .work-item-icon.green { background-color: #e7f5e8; }
-        .work-item-icon.purple { background-color: #f4eefc; }
+     .main-column h1 {
+         font-size: 28px;
+         margin: 0;
+     }
 
-        .work-item-details .line-1 {
-            background-color: #e0e0e0;
-            height: 10px;
-            width: 150px;
-            border-radius: 4px;
-            margin-bottom: 8px;
-        }
+     .workspace-description {
+         color: #6d6e70;
+         margin: 4px 0 24px 0;
+         cursor: pointer;
+         min-height: 20px;
+     }
 
-        .work-item-details .line-2 {
-            background-color: #f0f0f0;
-            height: 8px;
-            width: 100px;
-            border-radius: 4px;
-        }
-        
-        .add-work-prompt {
-            text-align: center;
-            padding: 32px 16px;
-        }
-        
-        .add-work-prompt p {
-            color: #6d6e70;
-            font-size: 14px;
-            max-width: 400px;
-            margin: 0 auto 16px;
-            line-height: 1.5;
-        }
+     #description-editor {
+         width: 95%;
+         padding: 8px;
+         font-family: inherit;
+         font-size: 14px;
+         border: 1px solid #c7c7c7;
+         border-radius: 6px;
+         resize: vertical;
+         margin: 4px 0 24px 0;
+     }
 
-        .send-feedback {
-            font-size: 12px;
-            color: #6d6e70;
-            text-decoration: underline;
-            cursor: pointer;
-        }
+     .main-header-myworkspace {
+         display: flex;
+         justify-content: space-between;
+         align-items: flex-start;
+         margin-bottom: 24px;
+     }
 
-        /* Sidebar Column */
-        .sidebar-column .card {
-            padding: 16px;
-        }
-        
-        /* NEW/MODIFIED STYLES FOR STAFF LIST */
-        .staff-list {
-            display: flex;
-            align-items: center;
-        }
-        
-        .user-avatar-myworkspace {
-            height: 28px;
-            width: 28px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            font-weight: bold;
-            cursor: pointer;
-            border: 2px solid white; /* Creates separation for stacked look */
-            transition: margin 0.3s ease; /* Smooth transition */
-        }
+     .card {
+         background-color: white;
+         border: 1px solid #e8e8e8;
+         border-radius: 8px;
+         padding: 24px;
+         margin-bottom: 24px;
+     }
 
-        /* This applies the stacking to every avatar except the first one */
-        .user-avatar-myworkspace:not(:first-child) {
-            margin-left: -10px;
-        }
+     .card-header-myworkspace {
+         display: flex;
+         justify-content: space-between;
+         align-items: center;
+         margin-bottom: 16px;
+     }
 
-        .add-staff-icon {
-            height: 28px;
-            width: 28px;
-            border: 1px dashed #c7c7c7;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #6d6e70;
-            font-size: 16px;
-            cursor: pointer;
-            margin-left: 8px;
-            background-color: #f9f8f7;
-            transition: opacity 0.3s ease;
-        }
+     .card-header-myworkspace h2 {
+         font-size: 16px;
+         font-weight: 600;
+         margin: 0;
+     }
 
-        .add-staff-icon.disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
-        .goals-prompt p {
-            font-size: 14px;
-            color: #6d6e70;
-            line-height: 1.5;
-            margin-top: 0;
-        }
+     .card-header-myworkspace a {
+         font-size: 14px;
+         color: #6d6e70;
+         text-decoration: none;
+     }
 
-        .progress-bar-container {
-            margin-top: 16px;
-        }
+     /* Curated Work Section */
+     .curated-work-item {
+         display: flex;
+         align-items: center;
+         padding: 12px 0;
+         border-bottom: 1px solid #e8e8e8;
+     }
 
-        .progress-bar-label {
-            font-size: 12px;
-            color: #6d6e70;
-            margin-bottom: 8px;
-        }
+     .curated-work-item:last-child {
+         border-bottom: none;
+     }
 
-        .progress-bar {
-            width: 100%;
-            height: 6px;
-            background-color: #edebe9;
-            border-radius: 3px;
-        }
+     .work-item-icon {
+         width: 32px;
+         height: 32px;
+         border-radius: 4px;
+         margin-right: 16px;
+     }
 
-        .progress {
-            width: 0%;
-            height: 100%;
-            background-color: #b0b0b0;
-        }
-        
-            
+     .work-item-icon.blue {
+         background-color: #e9f3ff;
+     }
+
+     .work-item-icon.green {
+         background-color: #e7f5e8;
+     }
+
+     .work-item-icon.purple {
+         background-color: #f4eefc;
+     }
+
+     .work-item-details .line-1 {
+         background-color: #e0e0e0;
+         height: 10px;
+         width: 150px;
+         border-radius: 4px;
+         margin-bottom: 8px;
+     }
+
+     .work-item-details .line-2 {
+         background-color: #f0f0f0;
+         height: 8px;
+         width: 100px;
+         border-radius: 4px;
+     }
+
+     .add-work-prompt {
+         text-align: center;
+         padding: 32px 16px;
+     }
+
+     .add-work-prompt p {
+         color: #6d6e70;
+         font-size: 14px;
+         max-width: 400px;
+         margin: 0 auto 16px;
+         line-height: 1.5;
+     }
+
+     .send-feedback {
+         font-size: 12px;
+         color: #6d6e70;
+         text-decoration: underline;
+         cursor: pointer;
+     }
+
+     /* Sidebar Column */
+     .sidebar-column .card {
+         padding: 16px;
+     }
+
+     /* NEW/MODIFIED STYLES FOR STAFF LIST */
+     .staff-list {
+         display: flex;
+         align-items: center;
+     }
+
+     .user-avatar-myworkspace {
+         height: 28px;
+         width: 28px;
+         border-radius: 50%;
+         display: flex;
+         align-items: center;
+         justify-content: center;
+         font-size: 12px;
+         font-weight: bold;
+         cursor: pointer;
+         border: 2px solid white;
+         /* Creates separation for stacked look */
+         transition: margin 0.3s ease;
+         /* Smooth transition */
+     }
+
+     /* This applies the stacking to every avatar except the first one */
+     .user-avatar-myworkspace:not(:first-child) {
+         margin-left: -10px;
+     }
+
+     .add-staff-icon {
+         height: 28px;
+         width: 28px;
+         border: 1px dashed #c7c7c7;
+         border-radius: 50%;
+         display: flex;
+         align-items: center;
+         justify-content: center;
+         color: #6d6e70;
+         font-size: 16px;
+         cursor: pointer;
+         margin-left: 8px;
+         background-color: #f9f8f7;
+         transition: opacity 0.3s ease;
+     }
+
+     .add-staff-icon.disabled {
+         opacity: 0.5;
+         cursor: not-allowed;
+     }
+
+     .goals-prompt p {
+         font-size: 14px;
+         color: #6d6e70;
+         line-height: 1.5;
+         margin-top: 0;
+     }
+
+     .progress-bar-container {
+         margin-top: 16px;
+     }
+
+     .progress-bar-label {
+         font-size: 12px;
+         color: #6d6e70;
+         margin-bottom: 8px;
+     }
+
+     .progress-bar {
+         width: 100%;
+         height: 6px;
+         background-color: #edebe9;
+         border-radius: 3px;
+     }
+
+     .progress {
+         width: 0%;
+         height: 100%;
+         background-color: #b0b0b0;
+     }

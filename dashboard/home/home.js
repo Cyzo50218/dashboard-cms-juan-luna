@@ -278,7 +278,7 @@ export function init(params) {
 
     function initializeAll() {
         injectPeopleCardStyles();
-        
+
         // Dropdown Logic
         homeSection.querySelectorAll('.dropdown').forEach(dropdown => {
             const trigger = dropdown;
@@ -312,7 +312,7 @@ export function init(params) {
                     renderTasks(filterFunc);
                 } else if (dropdownId === 'project-recents') {
                     renderProjects(value);
-                }
+                } else if (dropdownId === 'collaborators') { renderPeople(value); }
                 
                 menu.classList.remove('show');
             }, { signal: controller.signal });
