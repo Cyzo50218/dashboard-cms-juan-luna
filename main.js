@@ -5,13 +5,7 @@ let currentSectionCleanup = null;
  * Parses the browser's URL path into a structured object.
  * This version correctly handles the root path ('/') and ignores 'index.html'.
  */
-function parseRoute() {
-  const pathParts = window.location.pathname.split('/').filter(p => {
-    return p && p !== 'index.html';
-  });
-  const [section = 'home', accountId = null, tabId = null, projectId = null] = pathParts;
-  return { section, accountId, tabId, projectId };
-}
+
 
 /**
  * Dynamically loads a section's HTML, CSS, and JS module into the main content area.
@@ -80,9 +74,38 @@ async function loadSection(routeParams) {
 /**
  * The main router function that orchestrates page loads.
  */
+ function parseRoute() {
+    const pathParts = window.location.pathname.split('/').filter(p => {
+        return p && p !== 'index.html';
+    });
+    
+    // If the path is empty (root URL), default to home.
+    if (pathParts.length === 0) {
+        return { section: 'home', accountId: null, tabId: null, projectId: null };
+    }
+    
+    // Check if this is the special 'tasks' route
+    if (pathParts[0] === 'tasks' && pathParts.length > 1) {
+        // It's the tasks route, parse it with its specific structure.
+        return {
+            section: 'tasks',
+            accountId: pathParts[1] || null,
+            // The tabId here is the specific word "list" or another tab name
+            tabId: pathParts[2] || 'list', // default to 'list' if not present
+            projectId: pathParts[3] || null
+        };
+    } else {
+        // For all other routes (e.g., /home, /settings), use the simple positional logic.
+        const [section, accountId = null, tabId = null, projectId = null] = pathParts;
+        return { section, accountId, tabId, projectId };
+    }
+}
+
+// Your router function remains the same and is perfectly fine.
 function router() {
-  const routeParams = parseRoute();
-  loadSection(routeParams);
+    const routeParams = parseRoute();
+    console.log("Routing with params:", routeParams); // Good for debugging
+    loadSection(routeParams);
 }
 
 /**
