@@ -17,6 +17,17 @@ export function init(params) {
         return () => {}; // Return an empty cleanup function if the main element doesn't exist.
     }
 
+    // --- [NEW] INJECT MODERN CSS FOR THE PEOPLE CARD ---
+    function injectPeopleCardStyles() {
+        if (document.getElementById('homepeople-styles')) return; // Prevent duplicate styles
+        const style = document.createElement('style');
+        style.id = 'homepeople-styles';
+        style.textContent = `
+            .homepeople-list{display:flex;flex-direction:column;gap:8px}.homepeople-item{display:flex;align-items:center;padding:8px;border-radius:8px;transition:background-color .2s ease;cursor:pointer}.homepeople-item:hover{background-color:#f4f4f4}.homepeople-avatar{width:36px;height:36px;border-radius:50%;margin-right:12px;display:flex;align-items:center;justify-content:center;font-weight:500;color:#fff;overflow:hidden}.homepeople-avatar img{width:100%;height:100%;object-fit:cover}.homepeople-info{flex-grow:1;display:flex;flex-direction:column}.homepeople-name{font-weight:500;color:#111;font-size:14px}.homepeople-role{font-size:13px;color:#666}.homepeople-action{color:#888;padding:4px;border-radius:50%}.homepeople-action:hover{background-color:#e0e0e0;color:#111}.homepeople-placeholder{text-align:center;padding:24px}.homepeople-placeholder .people-icon{font-size:24px;color:#999;background-color:#f0f0f0;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px auto}.homepeople-placeholder p{font-size:14px;color:#666;margin-bottom:16px}
+        `;
+        document.head.appendChild(style);
+    }
+
     // --- DATA ---
     // Mock data to simulate a real application.
     let projects = [
@@ -39,9 +50,10 @@ export function init(params) {
     ];
     
     let people = [
-        { id: 'p-1', name: 'Alice', role: 'Designer', frequent: true },
-        { id: 'p-2', name: 'Bob', role: 'Engineer', frequent: true },
-        { id: 'p-3', name: 'Charlie', role: 'Product Manager', frequent: false },
+        { id: 'p-1', name: 'Alice Johnson', role: 'Designer', frequent: true, avatarUrl: 'https://i.pravatar.cc/150?img=1' },
+        { id: 'p-2', name: 'Bob Williams', role: 'Engineer', frequent: true, avatarUrl: 'https://i.pravatar.cc/150?img=2' },
+        { id: 'p-3', name: 'Charlie Brown', role: 'Product Manager', frequent: false, avatarUrl: null }, // No avatar to show fallback
+        { id: 'p-4', name: 'Diana Prince', role: 'Marketing', frequent: true, avatarUrl: 'https://i.pravatar.cc/150?img=4' },
     ];
 
     const getInitials = (name) => {
@@ -50,6 +62,15 @@ export function init(params) {
             return names[0][0] + names[names.length - 1][0];
         }
         return name[0];
+    };
+
+    const generateColorForName = (name) => {
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) {
+            hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const h = hash % 360;
+        return `hsl(${h}, 70%, 45%)`;
     };
 
     // --- RENDER FUNCTIONS ---
@@ -256,6 +277,8 @@ export function init(params) {
     // --- INITIALIZATION ---
 
     function initializeAll() {
+        injectPeopleCardStyles();
+        
         // Dropdown Logic
         homeSection.querySelectorAll('.dropdown').forEach(dropdown => {
             const trigger = dropdown;
