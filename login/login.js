@@ -38,7 +38,7 @@ let userEmail = ''; // Store the user's email between the two steps
 onAuthStateChanged(auth, (user) => {
     if (user) {
         console.log("User is already signed in:", user.uid);
-        window.location.href = '/dashboard/';
+        window.location.href = '/';
     } else {
         console.log("No user signed in. Ready for login.");
     }
