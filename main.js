@@ -74,37 +74,54 @@ async function loadSection(routeParams) {
 /**
  * The main router function that orchestrates page loads.
  */
- function parseRoute() {
-    const pathParts = window.location.pathname.split('/').filter(p => {
-        return p && p !== 'index.html';
-    });
+function parseRoute() {
+    const pathParts = window.location.pathname.split('/').filter(p => p);
     
-    // If the path is empty (root URL), default to home.
     if (pathParts.length === 0) {
-        return { section: 'home', accountId: null, tabId: null, projectId: null };
+        return { section: 'home' }; // Default route
     }
     
-    // Check if this is the special 'tasks' route
-    if (pathParts[0] === 'tasks' && pathParts.length > 1) {
-        // It's the tasks route, parse it with its specific structure.
-        return {
-            section: 'tasks',
-            accountId: pathParts[1] || null,
-            // The tabId here is the specific word "list" or another tab name
-            tabId: pathParts[2] || 'list', // default to 'list' if not present
-            projectId: pathParts[3] || null
-        };
-    } else {
-        // For all other routes (e.g., /home, /settings), use the simple positional logic.
-        const [section, accountId = null, tabId = null, projectId = null] = pathParts;
-        return { section, accountId, tabId, projectId };
+    // The first part of the URL determines the main section or "resource".
+    const resourceType = pathParts[0];
+    
+    // Use a switch to handle different kinds of sections, just like Asana
+    // handles /project/ or /portfolio/ differently.
+    switch (resourceType) {
+        case 'tasks':
+            // This block handles all URLs that start with /tasks/
+            return {
+                section: 'tasks',
+                    accountId: pathParts[1] || null,
+                    // The tabId is the keyword like 'list', 'board', 'calendar'
+                    tabId: pathParts[2] || 'list',
+                    projectId: pathParts[3] || null
+                // Asana would have another one here for the selected task ID
+                // selectedTaskId: pathParts[4] || null 
+            };
+            
+        case 'reports':
+            // Example for a future "reports" section
+            return {
+                section: 'reports',
+                    reportId: pathParts[1] || 'overview',
+                    viewMode: pathParts[2] || 'charts'
+            };
+            
+        case 'home':
+        case 'settings':
+            // Simple routes with no extra parameters
+            return { section: resourceType };
+            
+        default:
+            // Fallback for unknown URLs
+            return { section: 'home' };
     }
 }
 
-// Your router function remains the same and is perfectly fine.
+// Your router function still works perfectly with this new parser.
 function router() {
     const routeParams = parseRoute();
-    console.log("Routing with params:", routeParams); // Good for debugging
+    console.log("Routing with keyword-aware parser:", routeParams);
     loadSection(routeParams);
 }
 
