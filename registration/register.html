@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Register</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/registration/register.css">
+</head>
+<body>
+  <div class="main-container">
+    <div class="card">
+      <img src="/assets/logo.png" alt="Logo" class="logo" />
+<h2>Welcome to Juan Luna<br> Contact Management System</h2>
+<p class="subtitle">Create your account to get started managing your tasks and projects efficiently.</p>
+<br>
+      <button id="google-signin-btn" class="google-btn">
+        <i class="fab fa-google"></i>
+        Continue with Google
+      </button>
+
+      <p class="or" id="orText">or</p>
+      <a href="#" id="continue-email-link" class="email-link">Continue with Email</a>
+
+      <form id="registration-form" style="display: none;">
+        <div class="input-group">
+          <i class="fa fa-envelope icon"></i>
+<input type="email" id="email" placeholder="Email" autocomplete="email" required>
+
+        </div>
+        <div class="input-group">
+          <i class="fa fa-user icon"></i>
+          <input type="text" id="full-name" placeholder="Full Name" required>
+        </div>
+        <div class="input-group password-group">
+          <i class="fa fa-lock icon"></i>
+          <input type="password" id="password" placeholder="Password" required>
+          <i class="fa fa-eye toggle-password" id="toggle-password"></i>
+        </div>
+        <p class="terms">By clicking Register, you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.</p>
+        <button type="submit" class="register-btn">Register</button>
+        <div class="divider">
+  <span>or</span>
+</div>
+
+<button id="google-signin-btn-form" class="google-btn">
+  <i class="fab fa-google"></i>
+  Continue with Google
+</button>
+
+      </form>
+
+      <div id="acceptance-view" style="display: none;">
+        <p class="welcome-message" id="welcome-message">Welcome!</p>
+<div id="user-profile">
+<img id="user-photo" src="" alt="User Photo" referrerpolicy="no-referrer" width="96" height="96" />
+</div>
+        <button id="accept-invitation-btn" class="accept-btn">Accept Invitation</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/registration/register.js"></script>
+</body>
+</html>

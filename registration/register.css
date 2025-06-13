@@ -1,0 +1,237 @@
+/* Base reset and fonts */
+body,
+html {
+  margin: 0;
+  padding: 0;
+  font-family: 'Roboto', sans-serif;
+  background-color: white;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Main container centered */
+.main-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  width: 100%;
+}
+
+/* Card box */
+.card {
+  background: #ffffff;
+  padding: 30px 25px;
+  border-radius: 12px;
+  width: 100%;
+  min-height: 300px;
+  max-width: 400px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  box-sizing: border-box;
+  text-align: center;
+}
+
+/* Logo */
+.logo {
+  width: 200px;
+  margin-bottom: 10px;
+}
+
+/* Heading */
+.card h2 {
+  font-size: 24px;
+  font-weight: 450;
+  margin-bottom: 10px;
+  text-align: center;
+  color: #333;
+}
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: #999;
+  margin: 20px 0;
+  font-size: 14px;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid #ccc;
+  margin: 0 10px;
+}
+
+
+.cms-name {
+  color: #2b6cb0;
+  /* or any brand color */
+  font-weight: 700;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: #666;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+/* Google button */
+.google-btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  background-color: #4285f4;
+  color: white;
+  font-size: 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  transition: background 0.3s;
+}
+
+.google-btn:hover {
+  background-color: #3367d6;
+}
+
+/* "Or" text */
+.or {
+  margin: 16px 0 8px;
+  color: #999;
+  font-size: 14px;
+}
+
+/* Email link */
+.email-link {
+  color: #007bff;
+  text-decoration: underline;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* Form */
+form {
+  margin-top: 20px;
+  text-align: left;
+}
+
+/* Input group */
+.input-group {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.input-group .icon {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+  color: #999;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 12px 12px 12px 40px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+/* Password toggle */
+.password-group {
+  position: relative;
+}
+
+.toggle-password {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: #999;
+}
+
+/* Terms */
+.terms {
+  font-size: 12px;
+  color: #777;
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.terms a {
+  color: #007bff;
+  text-decoration: none;
+}
+
+/* Register button */
+.register-btn {
+  width: 100%;
+  padding: 12px;
+  background-color: #111827;
+  color: white;
+  font-size: 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.register-btn:hover {
+  background-color: #1f2937;
+}
+
+/* Acceptance view */
+#welcome-message {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 12px 0;
+}
+
+#user-profile {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+#user-profile img {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 0.5rem;
+}
+
+#user-name {
+  display: block;
+  font-weight: bold;
+  margin-top: 0.5rem;
+}
+
+#user-email,
+#user-photo-url {
+  display: block;
+  font-size: 1rem;
+  color: #555;
+  word-break: break-all;
+}
+
+
+.accept-btn {
+  background-color: #1E62E3;
+  color: white;
+  width: 100%;
+  padding: 10px 16px;
+  font-size: 14px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.accept-btn:hover {
+  background-color: #059669;
+}

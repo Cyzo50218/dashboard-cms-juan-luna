@@ -42,7 +42,7 @@ onAuthStateChanged(auth, (user) => {
     if (user) {
         console.log("User is already signed in:", user.uid);
         // Redirect to the root/dashboard page
-        window.location.href = '/dashboard/';
+        window.location.href = '/';
     } else {
         console.log("No user signed in. Ready for login.");
     }

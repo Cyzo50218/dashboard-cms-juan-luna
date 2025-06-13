@@ -11,7 +11,12 @@
       "handle": "filesystem"
     },
     {
-      "src": "/.*",
+      "src": "^/$",
+      "status": 307,
+      "headers": { "Location": "/login/" }
+    },
+    {
+      "src": "/(.*)",
       "dest": "/index.html"
     }
   ]
