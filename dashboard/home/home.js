@@ -1,25 +1,34 @@
-// File: /dashboard/home/home.js
 
-/**
- * Initializes the 'Home' section, encapsulating all its logic and event listeners.
- * Returns a cleanup function to be called by the router when navigating away.
- */
 export function init(params) {
-    console.log("Home section successfully initialized.");
+    console.log("Home section initialized with final data model and dynamic tabs.");
 
-    // Use an AbortController for easy and reliable event listener cleanup.
     const controller = new AbortController();
-
-    // Get the main container div to scope all DOM queries.
     const homeSection = document.querySelector('.home');
     if (!homeSection) {
         console.error('Home section container (.home) not found!');
-        return () => { }; // Return an empty cleanup function.
+        return () => {};
     }
 
-    // --- [1] DATA & CONFIGURATION ---
+    // ===================================================================
+    // [1] STYLES, DATA, AND CONFIGURATION
+    // ===================================================================
 
-    // Centralized configuration for all dropdowns on this page.
+    function injectComponentStyles() {
+        if (document.getElementById('home-component-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'home-component-styles';
+        style.textContent = `
+            .project-item.active { background-color: #eef2ff; }
+            .task-text.completed { text-decoration: line-through; color: #888; }
+            .empty-state { padding: 20px; text-align: center; color: #888; }
+            .notification { position: fixed; top: 20px; right: 20px; background: #2196f3; color: white; padding: 12px 20px; border-radius: 6px; z-index: 1051; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: opacity 0.3s ease; }
+            .notification.success { background-color: #4caf50; }
+            .homepeople-list{display:flex;flex-direction:column;gap:8px}.homepeople-item{display:flex;align-items:center;padding:8px;border-radius:8px;transition:background-color .2s ease;cursor:pointer}.homepeople-item:hover{background-color:#f4f4f4}.homepeople-avatar{width:36px;height:36px;border-radius:50%;margin-right:12px;display:flex;align-items:center;justify-content:center;font-weight:500;color:#fff;overflow:hidden}.homepeople-avatar img{width:100%;height:100%;object-fit:cover}.homepeople-info{flex-grow:1;display:flex;flex-direction:column}.homepeople-name{font-weight:500;color:#111;font-size:14px}.homepeople-role{font-size:13px;color:#666}.homepeople-action{color:#888;padding:4px;border-radius:50%}.homepeople-action:hover{background-color:#e0e0e0;color:#111}.homepeople-item--inactive{opacity:.5;filter:grayscale(80%)}.homepeople-item--inactive:hover{opacity:1;filter:grayscale(0%)}.homepeople-invite-item{display:flex;align-items:center;padding:12px 8px;border-radius:8px;color:#555;font-weight:500;cursor:pointer;transition:background-color .2s ease;border:1px dashed transparent}.homepeople-invite-item:hover{background-color:#f4f4f4;border-color:#ddd}.homepeople-invite-item i{margin-right:12px;font-size:16px}
+            .dropdown-menu-dynamic{position:absolute;z-index:1050;display:block;min-width:220px;padding:8px 0;margin-top:4px;background-color:#fff;border:1px solid #e8e8e8;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.1);animation:fadeIn .15s ease-out}.dropdown-menu-dynamic a{display:block;padding:10px 16px;font-size:14px;font-weight:500;color:#333;text-decoration:none;white-space:nowrap;transition:background-color .2s ease}.dropdown-menu-dynamic a:hover{background-color:#f4f4f4;color:#111}@keyframes fadeIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
+        `;
+        document.head.appendChild(style);
+    }
+
     const dropdownConfig = {
         'my-week': {
             label: 'My week',
@@ -44,151 +53,127 @@ export function init(params) {
             ]
         }
     };
+    
+    let activeProjectId = null;
+    let activeSectionId = null;
 
-    function injectPeopleCardStyles() {
-        if (document.getElementById('homepeople-styles')) return; // Prevent duplicate styles
-        const style = document.createElement('style');
-        style.id = 'homepeople-styles';
-        style.textContent = `
-         .homepeople-item--inactive {
-            opacity: 0.5;
-            filter: grayscale(80%);
-        }
-        .homepeople-item--inactive:hover {
-            opacity: 1;
-            filter: grayscale(0%);
-        }
-            .homepeople-invite-item {
-            display: flex;
-            align-items: center;
-            padding: 12px 8px; /* More vertical padding to feel like a button */
-            border-radius: 8px;
-            color: #555;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-            border: 1px dashed transparent; /* For a subtle border effect on hover */
-        }
-        .homepeople-invite-item:hover {
-            background-color: #f4f4f4;
-            border-color: #ddd;
-        }
-        .homepeople-invite-item i {
-            margin-right: 12px;
-            font-size: 16px;
-        }
-            .homepeople-list{display:flex;flex-direction:column;gap:8px}.homepeople-item{display:flex;align-items:center;padding:8px;border-radius:8px;transition:background-color .2s ease;cursor:pointer}.homepeople-item:hover{background-color:#f4f4f4}.homepeople-avatar{width:36px;height:36px;border-radius:50%;margin-right:12px;display:flex;align-items:center;justify-content:center;font-weight:500;color:#fff;overflow:hidden}.homepeople-avatar img{width:100%;height:100%;object-fit:cover}.homepeople-info{flex-grow:1;display:flex;flex-direction:column}.homepeople-name{font-weight:500;color:#111;font-size:14px}.homepeople-role{font-size:13px;color:#666}.homepeople-action{color:#888;padding:4px;border-radius:50%}.homepeople-action:hover{background-color:#e0e0e0;color:#111}.homepeople-placeholder{text-align:center;padding:24px}.homepeople-placeholder .people-icon{font-size:24px;color:#999;background-color:#f0f0f0;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px auto}.homepeople-placeholder p{font-size:14px;color:#666;margin-bottom:16px}
-        `;
-        document.head.appendChild(style);
-    }
-    // Mock data to simulate a real application.
+    let allUsers = {
+        1: { name: 'Alice', avatarUrl: 'https://i.pravatar.cc/150?img=1' },
+        2: { name: 'Rory', avatarUrl: 'https://i.pravatar.cc/150?img=7' },
+        3: { name: 'Bob', avatarUrl: 'https://i.pravatar.cc/150?img=2' },
+        4: { name: 'Charlie', avatarUrl: 'https://i.pravatar.cc/150?img=3' },
+        5: { name: 'David', avatarUrl: 'https://i.pravatar.cc/150?img=4' },
+    };
+
+    let projectsData = [
+        { id: 'proj-1', title: 'Website Redesign', color: '#4c9aff', starred: true, sections: [
+            { id: 1, title: 'Discovery & Design', tasks: [
+                { id: 101, name: 'Finalize new logo concepts', dueDate: '2025-06-13', assignees: [1, 2] },
+                { id: 102, name: 'Present mockups to stakeholders', dueDate: '2025-06-16', assignees: [1] },
+            ]},
+            { id: 2, title: 'Development', tasks: [
+                { id: 201, name: 'Initial setup for React app', dueDate: '2025-06-18', assignees: [3] },
+            ]},
+        ]},
+        { id: 'proj-2', title: 'Q3 Marketing Campaign', color: '#4caf50', starred: false, sections: [
+            { id: 3, title: 'Planning', tasks: [
+                { id: 301, name: 'Review ad copy for social media', dueDate: '2025-06-12', assignees: [4, 5] }, // Overdue
+                { id: 302, name: 'Plan influencer outreach', dueDate: '2025-06-20', assignees: [4] },
+            ]},
+        ]},
+    ];
+    
     let projects = [
         { id: 'proj-1', name: 'Website Redesign', color: '#4c9aff', starred: true },
         { id: 'proj-2', name: 'Q3 Marketing Campaign', color: '#4caf50', starred: false },
         { id: 'proj-3', name: 'Mobile App Launch', color: '#9c27b0', starred: true },
     ];
 
-    let tasks = [
-        { id: 'task-1', name: 'Finalize new logo concepts', sectionId: 'proj-1', startDate: new Date(), endDate: new Date(), color: '#4c9aff', assigneeName: 'Alice', assigneeIconUrl: 'https://i.pravatar.cc/150?img=1', completed: false },
-        { id: 'task-2', name: 'Review ad copy for social media', sectionId: 'proj-2', startDate: new Date('2025-06-10T09:00:00'), endDate: new Date('2025-06-12T17:00:00'), color: '#ffc107', assigneeName: 'Bob', assigneeIconUrl: 'https://i.pravatar.cc/150?img=2', completed: false }, // Overdue
-        { id: 'task-3', name: 'Present mockups to stakeholders', sectionId: 'proj-1', startDate: new Date(new Date().setDate(new Date().getDate() + 2)), endDate: new Date(new Date().setDate(new Date().getDate() + 4)), color: '#4c9aff', assigneeName: 'Charlie', assigneeIconUrl: 'https://i.pravatar.cc/150?img=3', completed: false }, // This week
-        { id: 'task-4', name: 'Plan influencer outreach', sectionId: 'proj-2', startDate: new Date(new Date().setDate(new Date().getDate() + 7)), endDate: new Date(new Date().setDate(new Date().getDate() + 10)), color: '#4caf50', assigneeName: 'David', assigneeIconUrl: 'https://i.pravatar.cc/150?img=4', completed: false }, // Next Week
-        { id: 'task-5', name: 'Submit app to Apple App Store', sectionId: 'proj-3', startDate: new Date('2025-06-02T09:00:00'), endDate: new Date('2025-06-06T18:00:00'), color: '#e91e63', assigneeName: 'Eve', assigneeIconUrl: 'https://i.pravatar.cc/150?img=5', completed: true },
-    ];
-
-    let people = [
-        { id: 'p-1', name: 'Alice Johnson', role: 'Designer', frequent: true, avatarUrl: 'https://i.pravatar.cc/150?img=1', isActive: true },
-        { id: 'p-2', name: 'Bob Williams', role: 'Engineer', frequent: true, avatarUrl: 'https://i.pravatar.cc/150?img=2', isActive: false },
-        { id: 'p-3', name: 'Charlie Brown', role: 'Product Manager', frequent: false, avatarUrl: null, isActive: true },
-        { id: 'p-4', name: 'Diana Prince', role: 'Marketing', frequent: true, avatarUrl: 'https://i.pravatar.cc/150?img=4', isActive: true },
-    ];
-
-
-    // --- [2] RENDER FUNCTIONS ---
-
+    // ===================================================================
+    // [2] RENDER FUNCTIONS (THE "VIEW")
+    // ===================================================================
+    
     function renderProjects(filter = 'all') {
         const projectList = homeSection.querySelector('.projects-card .project-list');
         if (!projectList) return;
 
-        // 1. Clear the list completely to start fresh.
         projectList.innerHTML = '';
-
-        // 2. Create and add the "Create Project" button FIRST.
         const createBtn = document.createElement('button');
         createBtn.className = 'create-project-btn';
         createBtn.innerHTML = `<i class="fas fa-plus"></i> Create project`;
+        createBtn.addEventListener('click', () => handleCreate('project'), { signal: controller.signal });
         projectList.appendChild(createBtn);
-        // Note: The event listener for this button is attached in the initializeAll function.
 
-        // 3. Filter and get the projects to display.
-        const projectsToDisplay = projects.filter(p => filter === 'starred' ? p.starred : true);
-
-        // 4. Create and add each project item AFTER the button.
+        const projectsToDisplay = projectsData.filter(p => filter === 'starred' ? p.starred : true);
         projectsToDisplay.forEach(project => {
             const item = document.createElement('div');
-            item.className = 'project-item';
+            item.className = `project-item ${project.id === activeProjectId ? 'active' : ''}`;
             item.dataset.projectId = project.id;
             item.innerHTML = `
-            <div class="project-icon" style="color: ${project.color};"><i class="fas fa-list"></i></div>
-            <div class="project-info">
-                <span class="project-name">${project.name}</span>
-                <span class="project-meta" data-task-count></span>
-            </div>
-        `;
-            // Use appendChild to add each project to the end of the list.
+                <div class="project-icon" style="color: ${project.color};"><i class="fas fa-list"></i></div>
+                <div class="project-info">
+                    <span class="project-name">${project.title}</span>
+                    <span class="project-meta" data-task-count></span>
+                </div>`;
             projectList.appendChild(item);
         });
-
-        // 5. Finally, update the task counts for the rendered projects.
-        updateTaskCount();
+        updateProjectTaskCounts();
     }
+    
+    function renderMyTasksCard() {
+        const myTasksCard = homeSection.querySelector('.my-tasks-card');
+        if (!myTasksCard) return;
 
-    function renderTasks(filterFunc) {
-        const taskList = homeSection.querySelector('.task-list');
-        if (!taskList) return;
+        const tabsContainer = myTasksCard.querySelector('.task-tabs');
+        const taskListContainer = myTasksCard.querySelector('.task-list');
+        
+        if (!activeProjectId) {
+            tabsContainer.innerHTML = '';
+            taskListContainer.innerHTML = '<p class="empty-state">Select a project to see its tasks.</p>';
+            return;
+        }
 
-        // 1. Clear the list to ensure a clean slate.
-        taskList.innerHTML = '';
+        const project = projectsData.find(p => p.id === activeProjectId);
+        if (!project) return;
 
-        // 2. Create and add the "Create Task" button FIRST.
+        tabsContainer.innerHTML = '';
+        project.sections.forEach(section => {
+            const tab = document.createElement('button');
+            tab.className = `tab-btn ${section.id === activeSectionId ? 'active' : ''}`;
+            tab.textContent = section.title;
+            tab.dataset.sectionId = section.id;
+            tabsContainer.appendChild(tab);
+        });
+
         const createBtn = document.createElement('button');
         createBtn.className = 'create-task-btn';
         createBtn.innerHTML = `<i class="fas fa-plus"></i> Create task`;
-        taskList.appendChild(createBtn);
+        createBtn.addEventListener('click', () => handleCreate('task'), { signal: controller.signal });
+        
+        taskListContainer.innerHTML = '';
+        taskListContainer.appendChild(createBtn);
 
-        // 3. Filter and sort the tasks to be displayed.
-        const tasksToDisplay = tasks.filter(filterFunc).sort((a, b) => a.endDate - b.endDate);
-
-        // 4. Handle the empty state if no tasks match the filter.
-        if (tasksToDisplay.length === 0) {
-            taskList.insertAdjacentHTML('beforeend', `<p class="empty-state">No tasks here. Enjoy the quiet!</p>`);
+        const activeSection = project.sections.find(s => s.id === activeSectionId);
+        if (!activeSection || activeSection.tasks.length === 0) {
+            taskListContainer.insertAdjacentHTML('beforeend', `<p class="empty-state">No tasks in this section.</p>`);
+            return;
         }
 
-        // 5. Create and add each task item AFTER the button.
-        tasksToDisplay.forEach(task => {
+        activeSection.tasks.sort((a,b) => new Date(a.dueDate) - new Date(b.dueDate)).forEach(task => {
             const item = document.createElement('div');
             item.className = 'task-item';
-            item.dataset.taskId = task.id;
-            item.style.borderLeft = `4px solid ${task.color}`;
-
-            const dateDisplay = dayjs(task.endDate).format('MMM D');
-
             item.innerHTML = `
-            <input type="checkbox" class="task-checkbox" data-task-id="${task.id}" ${task.completed ? 'checked' : ''} />
-            <div class="task-content">
-                <span class="task-text ${task.completed ? 'completed' : ''}">${task.name}</span>
-                <span class="task-dates">${dateDisplay}</span>
-            </div>
-            <div class="task-assignee" title="${task.assigneeName}">
-                <img src="${task.assigneeIconUrl}" alt="${task.assigneeName}" />
-            </div>`;
-            taskList.appendChild(item);
+                <input type="checkbox" class="task-checkbox" data-task-id="${task.id}" />
+                <div class="task-content">
+                    <span class="task-text">${task.name}</span>
+                    <span class="task-dates">${dayjs(task.dueDate).format('MMM D')}</span>
+                </div>
+                <div class="task-assignee">
+                    ${task.assignees.map(id => `<img src="${allUsers[id].avatarUrl}" title="${allUsers[id].name}">`).join('')}
+                </div>`;
+            taskListContainer.appendChild(item);
         });
     }
-
-    // In /dashboard/home/home.js
-
-    // In /dashboard/home/home.js
 
     function renderPeople(filter = 'all') {
         const peopleContent = homeSection.querySelector('.people-content');
@@ -250,9 +235,46 @@ export function init(params) {
         peopleContent.appendChild(list);
     }
 
+    // ===================================================================
+    // [3] LOGIC, HANDLERS, AND HELPERS
+    // ===================================================================
 
-    // --- [3] HELPER & UTILITY FUNCTIONS ---
+    function selectProject(projectId) {
+        activeProjectId = projectId;
+        const project = projectsData.find(p => p.id === projectId);
+        activeSectionId = project?.sections[0]?.id || null;
+        renderProjects();
+        renderMyTasksCard();
+    }
+    
+    function selectSection(sectionId) {
+        activeSectionId = sectionId;
+        renderMyTasksCard();
+    }
+    
+    function handleCreate(type) {
+        const name = prompt(`Enter new ${type} name:`);
+        if (!name || !name.trim()) return;
 
+        if (type === 'task') {
+            tasks.unshift({ id: `task-${Date.now()}`, name, sectionId: 'proj-1', startDate: new Date(), endDate: new Date(), color: '#4c9aff', assigneeName: 'You', assigneeIconUrl: 'https://i.pravatar.cc/150?u=current_user', completed: false });
+            renderTasks(getActiveTaskFilter());
+        } else if (type === 'project') {
+            projects.push({ id: `proj-${Date.now()}`, name, color: generateColorForName(name), starred: false });
+            renderProjects();
+        }
+        updateTaskCount();
+        showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} created!`, 'success');
+    }
+    
+    function updateProjectTaskCounts() {
+        projectsData.forEach(project => {
+            const count = project.sections.reduce((sum, section) => sum + section.tasks.length, 0);
+            const projectItem = homeSection.querySelector(`.project-item[data-project-id="${project.id}"] .project-meta`);
+            if (projectItem) projectItem.textContent = `${count} task${count !== 1 ? 's' : ''}`;
+        });
+    }
+    
     function updateTaskCount() {
         const completedCount = tasks.filter(t => t.completed).length;
         homeSection.querySelector('.stats-item i.fa-check').nextElementSibling.textContent = `${completedCount} tasks completed`;
@@ -289,40 +311,6 @@ export function init(params) {
 
     const getInitials = (name) => name.split(' ').map(n => n[0]).join('').toUpperCase();
     const generateColorForName = (name) => `hsl(${name.split("").reduce((a, b) => (a = ((a << 5) - a) + b.charCodeAt(0), a & a), 0) % 360}, 70%, 45%)`;
-
-
-    // --- [4] EVENT HANDLERS ---
-
-    function handleTaskCheck(e) {
-        if (!e.target.matches('.task-checkbox')) return;
-        const taskId = e.target.dataset.taskId;
-        const task = tasks.find(t => t.id === taskId);
-        if (task) {
-            task.completed = e.target.checked;
-            const textEl = e.target.closest('.task-item').querySelector('.task-text');
-            textEl.classList.toggle('completed', task.completed);
-            showNotification(`Task "${task.name}" marked as ${task.completed ? 'complete' : 'incomplete'}.`, 'success');
-            setTimeout(() => {
-                renderTasks(getActiveTaskFilter());
-                updateTaskCount();
-            }, 300);
-        }
-    }
-
-    function handleCreate(type) {
-        const name = prompt(`Enter new ${type} name:`);
-        if (!name || !name.trim()) return;
-
-        if (type === 'task') {
-            tasks.unshift({ id: `task-${Date.now()}`, name, sectionId: 'proj-1', startDate: new Date(), endDate: new Date(), color: '#4c9aff', assigneeName: 'You', assigneeIconUrl: 'https://i.pravatar.cc/150?u=current_user', completed: false });
-            renderTasks(getActiveTaskFilter());
-        } else if (type === 'project') {
-            projects.push({ id: `proj-${Date.now()}`, name, color: generateColorForName(name), starred: false });
-            renderProjects();
-        }
-        updateTaskCount();
-        showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} created!`, 'success');
-    }
 
     function getActiveTaskFilter() {
         const activeTab = homeSection.querySelector('.tab-btn.active').dataset.tab;
@@ -394,27 +382,27 @@ export function init(params) {
             renderPeople(value);
         }
     }
-
-
-    // --- [5] INITIALIZATION & CLEANUP ---
+    
+    // ===================================================================
+    // [4] INITIALIZATION & CLEANUP
+    // ===================================================================
 
     function initializeAll() {
-        injectPeopleCardStyles();
+        injectComponentStyles();
         initializeDropdowns();
 
-        // Attach main listeners
-        homeSection.querySelector('.task-list').addEventListener('click', handleTaskCheck, { signal: controller.signal });
+        // Attach delegated event listeners to the cards for efficiency
+        homeSection.querySelector('.projects-card .project-list').addEventListener('click', e => {
+            const projectItem = e.target.closest('.project-item');
+            if (projectItem) selectProject(projectItem.dataset.projectId);
+        }, { signal: controller.signal });
 
-        homeSection.querySelectorAll('.tab-btn').forEach(button => {
-            button.addEventListener('click', (e) => {
-                homeSection.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-                e.currentTarget.classList.add('active');
-                renderTasks(getActiveTaskFilter());
-            }, { signal: controller.signal });
-        });
-
-        // This handles clicks on person items for navigation
-        homeSection.querySelector('.people-content').addEventListener('click', e => {
+        homeSection.querySelector('.my-tasks-card .task-tabs').addEventListener('click', e => {
+            const tabItem = e.target.closest('.tab-btn');
+            if (tabItem) selectSection(parseInt(tabItem.dataset.sectionId));
+        }, { signal: controller.signal });
+        
+         homeSection.querySelector('.people-content').addEventListener('click', e => {
             const link = e.target.closest('a.homepeople-action');
             if (link) {
                 e.preventDefault();
@@ -428,8 +416,14 @@ export function init(params) {
         const timerId = setInterval(updateDateTime, 60000);
         controller.signal.addEventListener('abort', () => clearInterval(timerId)); // Clean up interval
 
-        renderProjects();
-        renderTasks(getActiveTaskFilter());
+        // Initial render
+        updateDateTime();
+        if (projectsData.length > 0) {
+            selectProject(projectsData[0].id);
+        } else {
+            renderProjects();
+            renderMyTasksCard();
+        }
         renderPeople();
     }
 
