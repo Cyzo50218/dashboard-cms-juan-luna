@@ -16,6 +16,10 @@
       "headers": { "Location": "/login/" }
     },
     {
+      "src": "/register/invitation/(.*)",
+      "dest": "/registration/$1"
+    },
+    {
       "src": "/(.*)",
       "dest": "/index.html"
     }
