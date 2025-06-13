@@ -3,8 +3,8 @@ import {
     getAuth,
     GoogleAuthProvider,
     signInWithPopup,
-    fetchSignInMethodsForEmail,
     signInWithEmailAndPassword,
+    sendPasswordResetEmail,
     onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -28,95 +28,62 @@ const passwordForm = document.getElementById('passwordForm');
 const backArrow = document.getElementById('backArrow');
 const togglePassword = document.getElementById("togglePassword");
 const googleSignInBtn = document.querySelector('.google-signin-btn');
+const forgotPasswordLinks = document.querySelectorAll('.forgot-password-link'); // Selects both links
 
 // --- 3. GLOBAL STATE ---
 let userEmail = ''; // Store the user's email between the two steps
 
 // --- 4. CORE AUTHENTICATION LOGIC ---
 
-/**
- * Checks the user's authentication state on page load.
- * If the user is already logged in, they are redirected to the dashboard.
- */
 onAuthStateChanged(auth, (user) => {
     if (user) {
         console.log("User is already signed in:", user.uid);
-        // Redirect to the root/dashboard page
-        window.location.href = '/';
+        window.location.href = '/dashboard/';
     } else {
         console.log("No user signed in. Ready for login.");
     }
 });
 
-/**
- * Handles the first step: email submission.
- * Checks if the email exists in Firebase Authentication.
- */
-emailForm.addEventListener('submit', async (e) => {
+emailForm.addEventListener('submit', (e) => {
     e.preventDefault();
     userEmail = emailInput.value.trim();
     const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userEmail);
-
-    if (!userEmail || !isValidEmail) {
-        showError(!userEmail ? 'Email is required.' : 'Invalid email address.');
+    if (!isValidEmail) {
+        showError('Please enter a valid email address.');
         return;
     }
-
-    try {
-        const methods = await fetchSignInMethodsForEmail(auth, userEmail);
-        if (methods.length === 0) {
-            // This email is not registered.
-            showError('Account not found. Please register or try another email.');
-        } else {
-            // Email exists, proceed to the password step.
-            hideMessages();
-            slideContainer.classList.add('slide');
-        }
-    } catch (error) {
-        console.error("Error checking email:", error);
-        showError("An error occurred. Please try again.");
-    }
+    hideMessages();
+    slideContainer.classList.add('slide');
 });
 
-/**
- * Handles the second step: password submission.
- * Attempts to sign the user in with their email and password.
- */
 passwordForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const password = passwordInput.value.trim();
-
     if (!password) {
         showError('Password is required.');
         return;
     }
-
     try {
         showSuccess('Signing in...');
         await signInWithEmailAndPassword(auth, userEmail, password);
-        // Successful sign-in is handled by the onAuthStateChanged observer, which will redirect.
     } catch (error) {
         console.error("Sign in error:", error.code);
         hideMessages();
-        if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-            showError('Incorrect password. Please try again.');
+        if (error.code === 'auth/invalid-credential') {
+            showError('Invalid credentials. Please check email or password.');
+            passwordInput.value = '';
+            slideContainer.classList.remove('slide');
         } else {
-            showError('Failed to sign in. Please try again later.');
+            showError('An error occurred. Please try again later.');
         }
     }
 });
 
-/**
- * Handles the "Continue with Google" button click.
- * Uses a popup to sign the user in and saves their data to Firestore.
- */
 googleSignInBtn.addEventListener('click', async () => {
     const provider = new GoogleAuthProvider();
     try {
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
-
-        // Save or update user data in Firestore.
         const userRef = doc(db, "users", user.uid);
         await setDoc(userRef, {
             uid: user.uid,
@@ -125,29 +92,45 @@ googleSignInBtn.addEventListener('click', async () => {
             provider: "google",
             avatar: user.photoURL,
             createdAt: new Date().toISOString()
-        }, { merge: true }); // Use merge to avoid overwriting existing data.
-
-        console.log("Google user data saved to Firestore.");
-        // Successful sign-in will be handled by onAuthStateChanged.
+        }, { merge: true });
         showSuccess('Sign-in successful! Redirecting...');
-
     } catch (error) {
         if (error.code !== 'auth/popup-closed-by-user') {
-            console.error("Google Sign-in error:", error);
             showError('Failed to sign in with Google.');
         }
     }
 });
 
+// --- NEW: FORGOT PASSWORD LOGIC ---
+forgotPasswordLinks.forEach(link => {
+    link.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const emailForReset = emailInput.value.trim();
+        if (!emailForReset) {
+            showError("Please enter your email address above before clicking 'Forgot Password'.");
+            return;
+        }
+
+        try {
+            await sendPasswordResetEmail(auth, emailForReset);
+            // For security, always show a generic success message.
+            // Do not confirm if the email exists or not.
+            showSuccess("If an account with that email exists, a password reset link has been sent.");
+        } catch (error) {
+            console.error("Password reset error:", error);
+            // Also show a generic message on failure.
+            showSuccess("If an account with that email exists, a password reset link has been sent.");
+        }
+    });
+});
+
 
 // --- 5. UI HELPER FUNCTIONS & LISTENERS ---
 
-// Listener for the back arrow to return to the email form.
 backArrow.addEventListener('click', () => {
     slideContainer.classList.remove('slide');
 });
 
-// Listener to toggle password visibility.
 togglePassword.addEventListener("click", function() {
     const icon = this.querySelector("i");
     if (passwordInput.type === "password") {
@@ -161,7 +144,6 @@ togglePassword.addEventListener("click", function() {
     }
 });
 
-// Shows an error message in the snackbar.
 function showError(message) {
     hideMessages();
     errorMessageEl.textContent = message;
@@ -169,7 +151,6 @@ function showError(message) {
     setTimeout(() => errorMessageEl.classList.remove('show'), 3000);
 }
 
-// Shows a success message in the snackbar.
 function showSuccess(message) {
     hideMessages();
     successMessageEl.textContent = message;
@@ -177,7 +158,6 @@ function showSuccess(message) {
     setTimeout(() => successMessageEl.classList.remove('show'), 3000);
 }
 
-// Hides any visible snackbar messages.
 function hideMessages() {
     errorMessageEl.classList.remove('show');
     successMessageEl.classList.remove('show');

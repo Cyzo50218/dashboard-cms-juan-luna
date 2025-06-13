@@ -519,3 +519,38 @@ footer {
 }
 
 */
+
+/*
+--- STYLES FOR FORGOT PASSWORD LINK ---
+*/
+
+.options-container {
+    display: flex;
+    justify-content: flex-start; /* Aligns link to the right */
+    width: 100%;
+    margin-left: 5px;
+    max-width: 600px;
+    padding: 8px 0; /* Adds some space */
+    margin-bottom: 8px; /* Space before the continue button */
+}
+
+.forgot-password-link {
+    font-size: 0.9em;
+    color: #007bff;
+    text-decoration: none;
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+.forgot-password-link:hover {
+    text-decoration: underline;
+}
+
+/* Adjust media query for the options container */
+@media (max-width: 768px) {
+    .options-container {
+        width: 90%;
+        max-width: 400px;
+    }
+}
