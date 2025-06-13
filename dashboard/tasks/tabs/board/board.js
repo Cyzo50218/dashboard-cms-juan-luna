@@ -36,15 +36,13 @@ let project = {
     }, ],
 };
 
-let currentlyFocusedSectionId = project.sections.length > 0 ? project.sections[0].id : null;
 
-// --- DOM Elements ---
-const kanbanBoard = document.getElementById('boardtasks-kanbanBoard');
-const addSectionBtn = document.getElementById('boardtasks-add-section-btn');
-const addTaskMainBtn = document.querySelector('.boardtasks-add-task-btn-main');
-const toolsBtn = document.getElementById('boardtasks-tools-btn');
-const toolsPanel = document.getElementById('boardtasks-tools-panel');
-const filterInput = document.getElementById('boardtasks-filter-input');
+let currentlyFocusedSectionId = project.sections.length > 0 ? project.sections[0].id : null;
+let sortableInstances = []; // To keep track of Sortable instances for cleanup
+
+// --- DOM Element References ---
+let kanbanBoard, addSectionBtn, addTaskMainBtn, toolsBtn, toolsPanel, filterInput;
+let sortSectionsAz, sortSectionsZa, sortTasksAz, sortTasksZa;
 
 // --- RENDER FUNCTIONS ---
 
@@ -122,6 +120,7 @@ const renderColumn = (section) => {
 };
 
 const renderBoard = () => {
+    if (!kanbanBoard) return;
     const scrollLeft = kanbanBoard.scrollLeft;
     kanbanBoard.innerHTML = '';
     project.sections.forEach(renderColumn);
@@ -130,6 +129,7 @@ const renderBoard = () => {
     updateTaskCounts();
     kanbanBoard.scrollLeft = scrollLeft;
 };
+
 
 // --- DATA & STATE MANAGEMENT ---
 
@@ -180,8 +180,8 @@ const addNewTask = (sectionId) => {
     if (newTaskEl) {
         const p = newTaskEl.querySelector('p');
         p.focus();
-        document.execCommand('selectAll', false, null); // Selects the text
-        newTaskEl.classList.add('boardtasks-task-is-new'); // Flag as new
+        document.execCommand('selectAll', false, null);
+        newTaskEl.classList.add('boardtasks-task-is-new');
     }
 };
 
@@ -219,16 +219,16 @@ const checkDueDates = () => {
 
 // --- TOOLS: FILTER & SORT ---
 
-toolsBtn.addEventListener('click', () => toolsPanel.classList.toggle('boardtasks-hidden'));
+const handleToolsClick = () => toolsPanel.classList.toggle('boardtasks-hidden');
 
-filterInput.addEventListener('input', (e) => {
+const handleFilterInput = (e) => {
     const searchTerm = e.target.value.toLowerCase();
     document.querySelectorAll('.boardtasks-task-card').forEach(card => {
         const taskText = card.querySelector('.boardtasks-task-name-editable').textContent.toLowerCase();
         card.style.display = taskText.includes(searchTerm) ? '' : 'none';
     });
     updateTaskCounts();
-});
+};
 
 const sortColumns = (asc) => {
     project.sections.sort((a, b) => asc ? a.title.localeCompare(b.title) : b.title.localeCompare(a.title));
@@ -244,8 +244,6 @@ const sortTasksInAllColumns = (asc) => {
 
 function displaySideBarTasks(taskId) {
     console.log(`Task name clicked. Opening sidebar for task ID: ${taskId}`);
-    
-    
     if (window.TaskSidebar) {
         window.TaskSidebar.open(taskId);
     } else {
@@ -253,16 +251,10 @@ function displaySideBarTasks(taskId) {
     }
 }
 
-document.getElementById('boardtasks-sort-sections-az').addEventListener('click', () => sortColumns(true));
-document.getElementById('boardtasks-sort-sections-za').addEventListener('click', () => sortColumns(false));
-document.getElementById('boardtasks-sort-tasks-az').addEventListener('click', () => sortTasksInAllColumns(true));
-document.getElementById('boardtasks-sort-tasks-za').addEventListener('click', () => sortTasksInAllColumns(false));
 
-// --- EVENT LISTENERS ---
+// --- EVENT HANDLERS (to be attached in init) ---
 
-addSectionBtn.addEventListener('click', addNewSection);
-
-addTaskMainBtn.addEventListener('click', () => {
+const handleAddTaskMainClick = () => {
     if (currentlyFocusedSectionId) {
         addNewTask(currentlyFocusedSectionId);
     } else if (project.sections.length > 0) {
@@ -270,16 +262,16 @@ addTaskMainBtn.addEventListener('click', () => {
     } else {
         alert("Please add a section first!");
     }
-});
+};
 
-kanbanBoard.addEventListener('keydown', (e) => {
+const handleKanbanKeydown = (e) => {
     if (e.key === 'Enter' && e.target.isContentEditable) {
         e.preventDefault();
         e.target.blur();
     }
-});
+};
 
-kanbanBoard.addEventListener('blur', (e) => {
+const handleKanbanBlur = (e) => {
     const target = e.target;
     if (target.isContentEditable) {
         const newName = target.textContent.trim();
@@ -287,7 +279,6 @@ kanbanBoard.addEventListener('blur', (e) => {
         const section = findSection(sectionId);
         
         if (target.classList.contains('boardtasks-section-title-editable')) {
-            
             if (section && section.title !== newName) {
                 section.title = newName;
             }
@@ -297,13 +288,12 @@ kanbanBoard.addEventListener('blur', (e) => {
             const { task } = findTask(taskId);
             
             if (taskCard.classList.contains('boardtasks-task-is-new') && (newName === 'New Task' || newName === '')) {
-                // Find the task in the data model and remove it
                 const taskIndex = section.tasks.findIndex(t => t.id === taskId);
                 if (taskIndex > -1) {
                     section.tasks.splice(taskIndex, 1);
                 }
-                renderBoard(); // Re-render the board to reflect the deletion
-                return; // Stop further execution
+                renderBoard();
+                return;
             }
             
             if (task && task.name !== newName) {
@@ -312,9 +302,9 @@ kanbanBoard.addEventListener('blur', (e) => {
             taskCard.classList.remove('boardtasks-task-is-new');
         }
     }
-}, true);
+};
 
-kanbanBoard.addEventListener('click', (e) => {
+const handleKanbanClick = (e) => {
     const target = e.target;
     
     const column = target.closest('.boardtasks-kanban-column');
@@ -352,25 +342,33 @@ kanbanBoard.addEventListener('click', (e) => {
     
     if (target.closest('.boardtasks-task-actions') || target.isContentEditable) return;
     displaySideBarTasks(taskId);
-});
+};
+
 
 // --- SORTABLE JS ---
 const initSortable = () => {
+    // Destroy any existing instances to prevent duplicates
+    sortableInstances.forEach(s => s.destroy());
+    sortableInstances = [];
+    
     // Sort columns
-    new Sortable(kanbanBoard, {
-        group: 'columns',
-        animation: 150,
-        handle: '.boardtasks-column-header',
-        ghostClass: 'boardtasks-column-ghost',
-        onEnd: function(evt) {
-            const movedSection = project.sections.splice(evt.oldIndex, 1)[0];
-            project.sections.splice(evt.newIndex, 0, movedSection);
-        }
-    });
+    if (kanbanBoard) {
+        const columnSortable = new Sortable(kanbanBoard, {
+            group: 'columns',
+            animation: 150,
+            handle: '.boardtasks-column-header',
+            ghostClass: 'boardtasks-column-ghost',
+            onEnd: function(evt) {
+                const movedSection = project.sections.splice(evt.oldIndex, 1)[0];
+                project.sections.splice(evt.newIndex, 0, movedSection);
+            }
+        });
+        sortableInstances.push(columnSortable);
+    }
     
     // Sort tasks
     document.querySelectorAll('.boardtasks-tasks-container').forEach(container => {
-        new Sortable(container, {
+        const taskSortable = new Sortable(container, {
             group: 'tasks',
             animation: 150,
             ghostClass: 'boardtasks-task-ghost',
@@ -393,8 +391,79 @@ const initSortable = () => {
                 updateTaskCounts();
             }
         });
+        sortableInstances.push(taskSortable);
     });
 };
 
-// --- INITIALIZATION ---
-renderBoard();
+// --- INITIALIZATION and CLEANUP ---
+
+const init = () => {
+    // Get DOM element references
+    kanbanBoard = document.getElementById('boardtasks-kanbanBoard');
+    addSectionBtn = document.getElementById('boardtasks-add-section-btn');
+    addTaskMainBtn = document.querySelector('.boardtasks-add-task-btn-main');
+    toolsBtn = document.getElementById('boardtasks-tools-btn');
+    toolsPanel = document.getElementById('boardtasks-tools-panel');
+    filterInput = document.getElementById('boardtasks-filter-input');
+    sortSectionsAz = document.getElementById('boardtasks-sort-sections-az');
+    sortSectionsZa = document.getElementById('boardtasks-sort-sections-za');
+    sortTasksAz = document.getElementById('boardtasks-sort-tasks-az');
+    sortTasksZa = document.getElementById('boardtasks-sort-tasks-za');
+    
+    // Attach event listeners
+    addSectionBtn.addEventListener('click', addNewSection);
+    addTaskMainBtn.addEventListener('click', handleAddTaskMainClick);
+    toolsBtn.addEventListener('click', handleToolsClick);
+    filterInput.addEventListener('input', handleFilterInput);
+    
+    sortSectionsAz.addEventListener('click', () => sortColumns(true));
+    sortSectionsZa.addEventListener('click', () => sortColumns(false));
+    sortTasksAz.addEventListener('click', () => sortTasksInAllColumns(true));
+    sortTasksZa.addEventListener('click', () => sortTasksInAllColumns(false));
+    
+    kanbanBoard.addEventListener('keydown', handleKanbanKeydown);
+    kanbanBoard.addEventListener('blur', handleKanbanBlur, true); // Use capture phase
+    kanbanBoard.addEventListener('click', handleKanbanClick);
+    
+    // Initial render
+    renderBoard();
+    
+    // Return the cleanup function
+    return cleanup;
+}
+
+const cleanup = () => {
+    console.log("Cleaning up board tasks listeners and timers...");
+    
+    // Destroy sortable instances
+    sortableInstances.forEach(s => s.destroy());
+    sortableInstances = [];
+    
+    // Remove event listeners
+    addSectionBtn.removeEventListener('click', addNewSection);
+    addTaskMainBtn.removeEventListener('click', handleAddTaskMainClick);
+    toolsBtn.removeEventListener('click', handleToolsClick);
+    filterInput.removeEventListener('input', handleFilterInput);
+    
+    sortSectionsAz.removeEventListener('click', () => sortColumns(true));
+    sortSectionsZa.removeEventListener('click', () => sortColumns(false));
+    sortTasksAz.removeEventListener('click', () => sortTasksInAllColumns(true));
+    sortTasksZa.removeEventListener('click', () => sortTasksInAllColumns(false));
+    
+    if (kanbanBoard) {
+        kanbanBoard.removeEventListener('keydown', handleKanbanKeydown);
+        kanbanBoard.removeEventListener('blur', handleKanbanBlur, true);
+        kanbanBoard.removeEventListener('click', handleKanbanClick);
+        kanbanBoard.innerHTML = ''; // Clear the board
+    }
+    
+    // Nullify DOM references to be safe
+    kanbanBoard = null;
+    addSectionBtn = null;
+    addTaskMainBtn = null;
+    toolsBtn = null;
+    toolsPanel = null;
+    filterInput = null;
+}
+
+export { init };
