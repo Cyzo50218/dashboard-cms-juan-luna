@@ -14,7 +14,7 @@ export function init(params) {
     const homeSection = document.querySelector('.home');
     if (!homeSection) {
         console.error('Home section container (#home) not found!');
-        return () => {}; // Return an empty cleanup function if the main element doesn't exist.
+        return () => { }; // Return an empty cleanup function if the main element doesn't exist.
     }
 
     // --- [NEW] INJECT MODERN CSS FOR THE PEOPLE CARD ---
@@ -48,7 +48,7 @@ export function init(params) {
         // Completed
         { id: 'task-5', name: 'UI/UX Design Mockups', sectionId: 'proj-3', startDate: new Date('2025-06-02T09:00:00'), endDate: new Date('2025-06-06T18:00:00'), color: '#e91e63', assigneeName: 'Eve', assigneeIconUrl: 'https://i.pravatar.cc/150?img=5', completed: true },
     ];
-    
+
     let people = [
         { id: 'p-1', name: 'Alice Johnson', role: 'Designer', frequent: true, avatarUrl: 'https://i.pravatar.cc/150?img=1' },
         { id: 'p-2', name: 'Bob Williams', role: 'Engineer', frequent: true, avatarUrl: 'https://i.pravatar.cc/150?img=2' },
@@ -74,7 +74,7 @@ export function init(params) {
     };
 
     // --- RENDER FUNCTIONS ---
-    
+
     function renderProjects(filter = 'all') {
         const projectList = homeSection.querySelector('.projects-card .project-list');
         if (!projectList) return;
@@ -82,7 +82,7 @@ export function init(params) {
         const createBtn = projectList.querySelector('.create-project-btn');
         projectList.innerHTML = ''; // Clear list
         if (createBtn) projectList.appendChild(createBtn); // Re-add button
-        
+
         const projectsToDisplay = projects.filter(p => {
             if (filter === 'starred') return p.starred;
             return true; // for 'all' and 'recent'
@@ -140,8 +140,8 @@ export function init(params) {
             taskList.appendChild(item);
         });
     }
-    
-     function renderPeople(filter = 'all') {
+
+    function renderPeople(filter = 'all') {
         const peopleContent = homeSection.querySelector('.people-content');
         if (!peopleContent) return;
 
@@ -154,7 +154,7 @@ export function init(params) {
             peopleToDisplay.forEach(person => {
                 const item = document.createElement('div');
                 item.className = 'homepeople-item';
-                
+
                 let avatarHTML;
                 if (person.avatarUrl) {
                     avatarHTML = `<div class="homepeople-avatar"><img src="${person.avatarUrl}" alt="${person.name}"></div>`;
@@ -164,15 +164,30 @@ export function init(params) {
                     avatarHTML = `<div class="homepeople-avatar" style="background-color: ${bgColor};">${initials}</div>`;
                 }
 
-                item.innerHTML = `
-                    ${avatarHTML}
-                    <div class="homepeople-info">
-                        <span class="homepeople-name">${person.name}</span>
-                        <span class="homepeople-role">${person.role}</span>
-                    </div>
-                    <i class="fas fa-ellipsis-h homepeople-action" data-tooltip="More options"></i>
-                `;
-                list.appendChild(item);
+                // AFTER
+item.innerHTML = `
+    ${avatarHTML}
+    <div class="homepeople-info">
+        <span class="homepeople-name">${person.name}</span>
+        <span class="homepeople-role">${person.role}</span>
+    </div>
+    <a href="/admin-console/${person.id}/members" class="homepeople-action" title="Admin Console">
+        <i class="fas fa-ellipsis-h"></i>
+    </a>
+`;
+
+const adminLink = item.querySelector('a.homepeople-action');
+if (adminLink) {
+    adminLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        const url = adminLink.getAttribute('href');
+        history.pushState({ path: url }, '', url);
+        router();
+    }, { signal: controller.signal });
+}
+
+list.appendChild(item);
+
             });
             peopleContent.appendChild(list);
         } else {
@@ -208,7 +223,7 @@ export function init(params) {
         document.body.appendChild(notification);
         setTimeout(() => notification.remove(), 3000);
     }
-    
+
     function updateDateTime() {
         const now = dayjs();
         const dateElement = homeSection.querySelector('.date');
@@ -216,7 +231,7 @@ export function init(params) {
         if (!dateElement || !greetingElement) return;
 
         dateElement.textContent = now.format('dddd, MMMM D');
-        
+
         const hour = now.hour();
         let greeting = 'Good evening, Chat';
         if (hour < 12) greeting = 'Good morning, Chat';
@@ -225,7 +240,7 @@ export function init(params) {
     }
 
     // --- EVENT HANDLERS ---
-    
+
     function handleTaskCheck(e) {
         if (!e.target.matches('.task-checkbox')) return;
         const taskId = e.target.dataset.taskId;
@@ -243,7 +258,7 @@ export function init(params) {
             }, 300);
         }
     }
-    
+
     function handleCreateTask() {
         const name = prompt("Enter new task name:");
         if (!name || !name.trim()) return;
@@ -257,7 +272,7 @@ export function init(params) {
     function handleCreateProject() {
         const name = prompt("Enter new project name:");
         if (!name || !name.trim()) return;
-        const newProject = { id: `proj-${Date.now()}`, name, color: '#' + Math.floor(Math.random()*16777215).toString(16), starred: false };
+        const newProject = { id: `proj-${Date.now()}`, name, color: '#' + Math.floor(Math.random() * 16777215).toString(16), starred: false };
         projects.push(newProject);
         renderProjects();
         showNotification('Project created!', 'success');
@@ -294,7 +309,7 @@ export function init(params) {
                 e.preventDefault();
                 const target = e.target.closest('a');
                 if (!target) return;
-                
+
                 const value = target.dataset.value;
                 const dropdownId = dropdown.dataset.dropdownId;
 
@@ -313,16 +328,16 @@ export function init(params) {
                 } else if (dropdownId === 'project-recents') {
                     renderProjects(value);
                 } else if (dropdownId === 'collaborators') { renderPeople(value); }
-                
+
                 menu.classList.remove('show');
             }, { signal: controller.signal });
         });
-        
+
         // General click outside to close dropdowns
         document.addEventListener('click', () => {
-             homeSection.querySelectorAll('.dropdown-menu-weeks.show').forEach(menu => menu.classList.remove('show'));
+            homeSection.querySelectorAll('.dropdown-menu-weeks.show').forEach(menu => menu.classList.remove('show'));
         }, { signal: controller.signal });
-        
+
         // Task Tabs
         homeSection.querySelectorAll('.tab-btn').forEach(button => {
             button.addEventListener('click', (e) => {

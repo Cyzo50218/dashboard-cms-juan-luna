@@ -4,6 +4,7 @@
      .header-myworkspace {
          position: sticky;
          top: 0;
+         margin-top: 60px;
          z-index: 100;
          background-color: white;
          border-bottom: 1px solid #e8e8e8;
@@ -26,7 +27,7 @@
 
      /* 3. The Main Content Container: Adjusted for the new layout */
      .workspace-container {
-         margin-top: 60px;
+         
          max-width: 1200px;
          margin-left: auto;
          /* Use margin auto to center it */
