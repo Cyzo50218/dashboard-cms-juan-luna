@@ -113,10 +113,11 @@ window.TaskSidebar = (function() {
         fileUploadInput = document.getElementById('file-upload-input');
         commentInputWrapper = document.querySelector('.comment-input-wrapper');
         
-        taskNameEl.setAttribute('contenteditable', 'true');
+        
         
         attachEventListeners();
         isInitialized = true;
+        taskNameEl.setAttribute('contenteditable', 'true');
     }
     
     function open(taskId, projectId = 'proj-1') {
