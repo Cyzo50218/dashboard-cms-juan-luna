@@ -66,7 +66,7 @@ body {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  border-left-color: #09f; /* Or your preferred color */
+  border-left-color: #2B2B2B; /* Or your preferred color */
   animation: spin 1s ease infinite;
 
   /* Center it within the content area */

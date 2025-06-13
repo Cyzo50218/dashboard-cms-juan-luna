@@ -160,7 +160,7 @@ button:hover {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  border-left-color: #09f; /* Or your preferred brand color */
+  border-left-color: #2B2B2B; /* Or your preferred brand color */
   animation: spin 1s ease infinite;
 
   /* This helps center it nicely within the tab container */
