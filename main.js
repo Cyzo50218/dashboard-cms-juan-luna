@@ -76,44 +76,35 @@ async function loadSection(routeParams) {
  */
 function parseRoute() {
     const pathParts = window.location.pathname.split('/').filter(p => p);
-    
+
     if (pathParts.length === 0) {
-        return { section: 'home' }; // Default route
+        return { section: 'home' }; // Default route for "/"
     }
-    
-    // The first part of the URL determines the main section or "resource".
+
     const resourceType = pathParts[0];
-    
-    // Use a switch to handle different kinds of sections, just like Asana
-    // handles /project/ or /portfolio/ differently.
+
     switch (resourceType) {
         case 'tasks':
-            // This block handles all URLs that start with /tasks/
+            // This case handles the complex /tasks URL structure and is working correctly.
             return {
                 section: 'tasks',
-                    accountId: pathParts[1] || null,
-                    // The tabId is the keyword like 'list', 'board', 'calendar'
-                    tabId: pathParts[2] || 'list',
-                    projectId: pathParts[3] || null
-                // Asana would have another one here for the selected task ID
-                // selectedTaskId: pathParts[4] || null 
+                accountId: pathParts[1] || null,
+                tabId: pathParts[2] || 'list',
+                projectId: pathParts[3] || null
             };
-            
-        case 'reports':
-            // Example for a future "reports" section
-            return {
-                section: 'reports',
-                    reportId: pathParts[1] || 'overview',
-                    viewMode: pathParts[2] || 'charts'
-            };
-            
+
+        // [THE FIX] Add all of your other simple sections here.
         case 'home':
+        case 'myworkspace':
+        case 'inbox':
+        case 'reports':
+        case 'goals':
         case 'settings':
-            // Simple routes with no extra parameters
+            // This now handles all simple routes that just need the section name.
             return { section: resourceType };
             
         default:
-            // Fallback for unknown URLs
+            // If the URL is something unknown, fall back to the home page.
             return { section: 'home' };
     }
 }
