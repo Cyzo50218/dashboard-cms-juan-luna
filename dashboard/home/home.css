@@ -750,3 +750,58 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* ============================================= */
+/* Styles for Dynamically Generated Dropdowns   */
+/* ============================================= */
+
+/* The main dropdown menu container */
+.dropdown-menu-dynamic {
+    position: absolute; /* Crucial for positioning next to the trigger */
+    z-index: 1050; /* Ensures it appears above other content */
+    display: block; /* The JS will add/remove this element to show/hide it */
+    
+    min-width: 220px; /* Ensures the menu has a decent width */
+    padding: 8px 0; /* Vertical padding inside the menu */
+    margin-top: 4px; /* A small gap between the trigger and the menu */
+    
+    background-color: white;
+    border: 1px solid #e8e8e8;
+    border-radius: 8px; /* Rounded corners */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Soft shadow for depth */
+
+    /* A simple fade-in animation */
+    animation: fadeIn 0.15s ease-out;
+}
+
+/* The individual clickable items inside the menu */
+.dropdown-menu-dynamic a {
+    display: block; /* Makes the entire area clickable */
+    padding: 10px 16px;
+    
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+    text-decoration: none;
+    white-space: nowrap;
+    
+    transition: background-color 0.2s ease;
+}
+
+/* The hover state for menu items */
+.dropdown-menu-dynamic a:hover {
+    background-color: #f4f4f4; /* Highlight on hover */
+    color: #111;
+}
+
+/* The animation keyframes */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
