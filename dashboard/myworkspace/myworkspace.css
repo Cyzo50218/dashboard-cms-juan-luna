@@ -1,17 +1,33 @@
-        /* Main Container */
-        .workspace-container {
-            padding: 0 32px;
-            margin-top: 60px;
-            max-width: 1200px;
-        }
+     /* --- UPDATED STYLES --- */
 
-        /* Header Styles */
-        .header-myworkspace {
-            display: flex;
-            align-items: center;
-            padding: 16px 0;
-            border-bottom: 1px solid #e8e8e8;
-        }
+/* 1. The Outer Header: This is now full-width and sticky */
+.header-myworkspace {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background-color: white;
+    border-bottom: 1px solid #e8e8e8;
+    padding: 0 32px; /* Adds padding on the far left/right of the screen */
+}
+
+/* 2. The New Inner Wrapper: This constrains and centers the content */
+.header-content-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* Pushes left and right sides apart */
+    max-width: 1200px;
+    margin: 0 auto; /* Centers the content */
+    padding: 16px 0; /* Vertical padding from your old header */
+}
+
+/* 3. The Main Content Container: Adjusted for the new layout */
+.workspace-container {
+    /* margin-top: 60px; /* This might no longer be needed if you don't have a global nav above */
+    max-width: 1200px;
+    margin-left: auto;  /* Use margin auto to center it */
+    margin-right: auto;
+    padding: 0 32px;   /* The padding now goes here */
+}
 
         .header-myworkspace-left {
             display: flex;

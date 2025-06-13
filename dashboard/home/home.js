@@ -44,6 +44,14 @@ export function init(params) {
         { id: 'p-3', name: 'Charlie', role: 'Product Manager', frequent: false },
     ];
 
+    const getInitials = (name) => {
+        const names = name.split(' ');
+        if (names.length > 1) {
+            return names[0][0] + names[names.length - 1][0];
+        }
+        return name[0];
+    };
+
     // --- RENDER FUNCTIONS ---
     
     function renderProjects(filter = 'all') {
