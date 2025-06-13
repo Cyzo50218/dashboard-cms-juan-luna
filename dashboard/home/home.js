@@ -45,6 +45,23 @@ export function init(params) {
         }
     };
 
+    function injectPeopleCardStyles() {
+        if (document.getElementById('homepeople-styles')) return; // Prevent duplicate styles
+        const style = document.createElement('style');
+        style.id = 'homepeople-styles';
+        style.textContent = `
+         .homepeople-item--inactive {
+            opacity: 0.5;
+            filter: grayscale(80%);
+        }
+        .homepeople-item--inactive:hover {
+            opacity: 1;
+            filter: grayscale(0%);
+        }
+            .homepeople-list{display:flex;flex-direction:column;gap:8px}.homepeople-item{display:flex;align-items:center;padding:8px;border-radius:8px;transition:background-color .2s ease;cursor:pointer}.homepeople-item:hover{background-color:#f4f4f4}.homepeople-avatar{width:36px;height:36px;border-radius:50%;margin-right:12px;display:flex;align-items:center;justify-content:center;font-weight:500;color:#fff;overflow:hidden}.homepeople-avatar img{width:100%;height:100%;object-fit:cover}.homepeople-info{flex-grow:1;display:flex;flex-direction:column}.homepeople-name{font-weight:500;color:#111;font-size:14px}.homepeople-role{font-size:13px;color:#666}.homepeople-action{color:#888;padding:4px;border-radius:50%}.homepeople-action:hover{background-color:#e0e0e0;color:#111}.homepeople-placeholder{text-align:center;padding:24px}.homepeople-placeholder .people-icon{font-size:24px;color:#999;background-color:#f0f0f0;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px auto}.homepeople-placeholder p{font-size:14px;color:#666;margin-bottom:16px}
+        `;
+        document.head.appendChild(style);
+    }
     // Mock data to simulate a real application.
     let projects = [
         { id: 'proj-1', name: 'Website Redesign', color: '#4c9aff', starred: true },
