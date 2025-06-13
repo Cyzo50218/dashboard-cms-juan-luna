@@ -57,7 +57,7 @@ export function init(params) {
     let activeProjectId = null;
     let activeSectionId = null;
 
-    let people = {
+    let allUsers = {
         1: { name: 'Alice', avatarUrl: 'https://i.pravatar.cc/150?img=1' },
         2: { name: 'Rory', avatarUrl: 'https://i.pravatar.cc/150?img=7' },
         3: { name: 'Bob', avatarUrl: 'https://i.pravatar.cc/150?img=2' },
@@ -65,6 +65,13 @@ export function init(params) {
         5: { name: 'David', avatarUrl: 'https://i.pravatar.cc/150?img=4' },
     };
 
+    let people = [
+        { id: 'p-1', name: 'Alice Johnson', role: 'Designer', frequent: true, avatarUrl: 'https://i.pravatar.cc/150?img=1', isActive: true },
+        { id: 'p-2', name: 'Bob Williams', role: 'Engineer', frequent: true, avatarUrl: 'https://i.pravatar.cc/150?img=2', isActive: false },
+        { id: 'p-3', name: 'Charlie Brown', role: 'Product Manager', frequent: false, avatarUrl: null, isActive: true },
+        { id: 'p-4', name: 'Diana Prince', role: 'Marketing', frequent: true, avatarUrl: 'https://i.pravatar.cc/150?img=4', isActive: true },
+    ];
+    
     let projectsData = [
         { id: 'proj-1', title: 'Website Redesign', color: '#4c9aff', starred: true, sections: [
             { id: 1, title: 'Discovery & Design', tasks: [
