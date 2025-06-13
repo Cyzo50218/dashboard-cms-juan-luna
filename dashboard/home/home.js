@@ -57,7 +57,7 @@ export function init(params) {
     let activeProjectId = null;
     let activeSectionId = null;
 
-    let allUsers = {
+    let people = {
         1: { name: 'Alice', avatarUrl: 'https://i.pravatar.cc/150?img=1' },
         2: { name: 'Rory', avatarUrl: 'https://i.pravatar.cc/150?img=7' },
         3: { name: 'Bob', avatarUrl: 'https://i.pravatar.cc/150?img=2' },
