@@ -2,42 +2,17 @@
   "version": 2,
   "builds": [
     {
-      "src": "index.html",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "style.css",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "main.js",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "dashboard/**/*",
+      "src": "./**/*",
       "use": "@vercel/static"
     }
   ],
   "routes": [
     {
-      "src": "^/$",
+      "handle": "filesystem"
+    },
+    {
+      "src": "/.*",
       "dest": "/index.html"
-    },
-    {
-      "src": "^/style.css$",
-      "dest": "/style.css"
-    },
-    {
-      "src": "^/main.js$",
-      "dest": "/main.js"
-    },
-    {
-      "src": "^/([^/]+)/?$",
-      "dest": "/dashboard/$1/index.html"
-    },
-    {
-      "src": "^/([^/]+)/(.+)$",
-      "dest": "/dashboard/$1/$2"
     }
   ]
 }
