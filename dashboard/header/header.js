@@ -70,27 +70,59 @@ async function handleLogout() {
   }
 }
 
-/**
- * Prompts for a workspace name and creates a new document in Firestore.
- */
 async function handleNewWorkspace() {
-  const currentUser = auth.currentUser;
-  if (!currentUser) return;
-  
-  const workspaceName = prompt("Enter a name for your new workspace:");
-  if (!workspaceName || workspaceName.trim() === '') return;
-  
-  try {
-    const workspacesColRef = collection(db, 'users', currentUser.uid, 'workspaces');
-    await addDoc(workspacesColRef, {
-      name: workspaceName.trim(),
-      created_at: serverTimestamp()
-    });
-    alert(`Workspace "${workspaceName.trim()}" created!`);
-  } catch (error) {
-    console.error("Error creating new workspace:", error);
-    alert("Failed to create workspace.");
-  }
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+        alert("You must be logged in to create a workspace.");
+        return;
+    }
+
+    const newWorkspaceName = prompt("Enter a name for your new workspace:");
+    if (!newWorkspaceName || newWorkspaceName.trim() === '') {
+        return;
+    }
+
+    const workspacesColRef = collection(db, `users/${currentUser.uid}/myworkspace`);
+
+    try {
+        await runTransaction(db, async (transaction) => {
+            const selectedWorkspaceQuery = query(workspacesColRef, where("isSelected", "==", true));
+            const selectedWorkspacesSnapshot = await transaction.get(selectedWorkspaceQuery);
+
+            if (!selectedWorkspacesSnapshot.empty) {
+                const oldSelectedDoc = selectedWorkspacesSnapshot.docs[0];
+                const oldWorkspaceRef = doc(db, `users/${currentUser.uid}/myworkspace`, oldSelectedDoc.id);
+
+                const allWorkspacesSnapshot = await transaction.get(query(workspacesColRef));
+                const workspaceCount = allWorkspacesSnapshot.size;
+                
+                const numberToWord = ["First", "Second", "Third", "Fourth", "Fifth"];
+                const newName = `My ${numberToWord[workspaceCount] || (workspaceCount + 1) + 'th'} Workspace`;
+
+                const updateData = { isSelected: false };
+                if (oldSelectedDoc.data().name.startsWith("My First Workspace")) {
+                    updateData.name = newName;
+                }
+                
+                transaction.update(oldWorkspaceRef, updateData);
+            }
+
+            const newWorkspaceRef = doc(workspacesColRef);
+            transaction.set(newWorkspaceRef, {
+                name: newWorkspaceName.trim(),
+                isSelected: true,
+                createdAt: serverTimestamp(),
+                members: [currentUser.uid]
+            });
+        });
+
+        alert(`Workspace "${newWorkspaceName.trim()}" created successfully!`);
+        window.location.replace('/'); 
+
+    } catch (error) {
+        console.error("Error creating new workspace in transaction:", error);
+        alert("Failed to create the new workspace. Please try again.");
+    }
 }
 
 

@@ -351,7 +351,7 @@
   padding: 12px;
   background: rgba(45, 45, 45, 0.85); 
   backdrop-filter: blur(6px); 
-  -webkit-backdrop-filter: blur(12px); /
+  -webkit-backdrop-filter: blur(12px); 
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
   flex-direction: column;
   align-items: center;
@@ -1192,3 +1192,69 @@ margin-left: 6px;
   align-items: center;
 }
 
+/*
+ * 1. Container Styles
+ * Applies to both the main and expanded profile circles.
+ */
+.account-circle,
+.account-expand-circle {
+  /* Sizing and Shape */
+  width: 36px; /* Adjust size as needed */
+  height: 36px;
+  border-radius: 50%; /* This is crucial for making it a circle */
+  overflow: hidden; /* Hides any part of the image that goes outside the circle */
+  
+  /* Centering Content (for both image and initials) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* Optional: Add a fallback background and cursor */
+  background-color: #007bff; /* Fallback for initials */
+  cursor: pointer;
+  
+  /* Prevents the container from shrinking */
+  flex-shrink: 0;
+}
+
+/* For the larger expanded circle, you can just override the size */
+.account-expand-circle {
+    width: 64px;
+    height: 64px;
+}
+
+
+/*
+ * 2. Profile Picture Styles
+ * This applies to the <img> tag itself when it's added by your JavaScript.
+ */
+.profile-picture {
+  width: 100%;
+  height: 100%;
+  
+  /*
+   * This is the most important property. It scales the image to fill the
+   * container while cropping (not stretching) it to maintain aspect ratio.
+   */
+  object-fit: cover; 
+}
+
+
+/*
+ * 3. Initials Styles (Unchanged but good for context)
+ * Ensures the letters are also centered and styled nicely.
+ */
+.account-shortname,
+.account-shortname-expand {
+    color: white;
+    font-weight: bold;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.account-shortname {
+    font-size: 14px;
+}
+
+.account-shortname-expand {
+    font-size: 24px;
+}
