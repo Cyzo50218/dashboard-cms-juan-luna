@@ -41,6 +41,22 @@ let sortableSections;
 const sortableTasks = [];
 
 // --- Data ---
+
+// --- Real-time Listener Management ---
+// This object will hold the unsubscribe functions for our active listeners.
+let activeListeners = {
+    workspace: null,
+    project: null,
+    sections: null,
+    tasks: null,
+};
+
+// --- Data ---
+let project = {
+    customColumns: [],
+    sections: [],
+};
+
 let activeFilters = {}; // Will hold { visibleSections: [id1, id2] }
 let activeSortState = 'default'; // 'default', 'asc' (oldest), 'desc' (newest)
 
@@ -59,20 +75,6 @@ const columnTypeOptions = ['Text', 'Numbers', 'Costing', 'Type', 'Custom'];
 const typeColumnOptions = ['Invoice', 'Payment'];
 const baseColumnTypes = ['Text', 'Numbers', 'Costing', 'Type'];
 
-// --- Real-time Listener Management ---
-// This object will hold the unsubscribe functions for our active listeners.
-let activeListeners = {
-    workspace: null,
-    project: null,
-    sections: null,
-    tasks: null,
-};
-
-// --- Data ---
-let project = {
-    customColumns: [],
-    sections: [],
-};
 
 // --- New Real-time Data Loading Functions ---
 
