@@ -1,21 +1,56 @@
+/**
+ * home.js
+ * * Manages the main dashboard interface for the application. This script handles all
+ * real-time data synchronization with Firestore for projects, sections, tasks, and people.
+ * Key features include a seamless project creation workflow, inline task creation,
+ * a custom-styled Flatpickr for due dates, and automatic task relocation upon completion.
+ *
+ * @version 4.0.0
+ * @date 2025-06-14
+ */
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+    getAuth,
+    onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+    getFirestore,
+    doc,
+    collection,
+    addDoc,
+    updateDoc,
+    onSnapshot,
+    query,
+    orderBy,
+    writeBatch
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+    firebaseConfig
+} from "/services/firebase-config.js";
+
+// Initialize Firebase
+console.log("Initializing Firebase...");
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app, "juanluna-cms-01");
+console.log("Initialized Firebase on Dashboard.");
 
 export function init(params) {
-    // Explicitly load the isBetween plugin to ensure it's available.
     dayjs.extend(window.dayjs_plugin_isBetween);
-
-    console.log("Home section initialized with stable section and filtering logic.");
-
+    console.log("Home section initialized with task movement and Flatpickr.");
+    
     const controller = new AbortController();
     const homeSection = document.querySelector('.home');
     if (!homeSection) {
         console.error('Home section container (.home) not found!');
         return () => {};
     }
-
+    
     // ===================================================================
     // [1] STYLES, DATA, AND CONFIGURATION
     // ===================================================================
-
+    
     function injectComponentStyles() {
         if (document.getElementById('home-component-styles')) return;
         const style = document.createElement('style');
@@ -25,425 +60,436 @@ export function init(params) {
             .empty-state { padding: 20px; text-align: center; color: #888; }
             .notification { position: fixed; top: 20px; right: 20px; background: #2196f3; color: white; padding: 12px 20px; border-radius: 6px; z-index: 1051; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: opacity 0.3s ease; }
             .notification.success { background-color: #4caf50; }
-            .task-item { display: flex; align-items: center; gap: 8px; }
+            .notification.error { background-color: #f44336; }
+            .task-item, .inline-task-creator { display: flex; align-items: center; gap: 8px; padding: 4px; border-radius: 4px; margin-bottom: 4px; }
             .task-content { flex-grow: 1; display: flex; flex-direction: column; }
             .task-text.completed { text-decoration: line-through; color: #888; }
+            .task-dates { font-size: 0.8rem; }
             .task-dates.completed { color: #888 !important; }
-            .task-actions { display: flex; align-items: center; }
-            .task-reaction-btn { cursor: pointer; color: #aaa; padding: 4px; border-radius: 50%; }
-            .task-reaction-btn:hover { background-color: #f0f0f0; color: #e91e63; }
-            .homepeople-list{display:flex;flex-direction:column;gap:8px}.homepeople-item{display:flex;align-items:center;padding:8px;border-radius:8px;transition:background-color .2s ease;cursor:pointer}.homepeople-item:hover{background-color:#f4f4f4}.homepeople-avatar{width:36px;height:36px;border-radius:50%;margin-right:12px;display:flex;align-items:center;justify-content:center;font-weight:500;color:#fff;overflow:hidden}.homepeople-avatar img{width:100%;height:100%;object-fit:cover}.homepeople-info{flex-grow:1;display:flex;flex-direction:column}.homepeople-name{font-weight:500;color:#111;font-size:14px}.homepeople-role{font-size:13px;color:#666}.homepeople-action{color:#888;padding:4px;border-radius:50%}.homepeople-action:hover{background-color:#e0e0e0;color:#111}.homepeople-item--inactive{opacity:.5;filter:grayscale(80%)}.homepeople-item--inactive:hover{opacity:1;filter:grayscale(0%)}.homepeople-invite-item{display:flex;align-items:center;padding:12px 8px;border-radius:8px;color:#555;font-weight:500;cursor:pointer;transition:background-color .2s ease;border:1px dashed transparent}.homepeople-invite-item:hover{background-color:#f4f4f4;border-color:#ddd}.homepeople-invite-item i{margin-right:12px;font-size:16px}
-            .dropdown-menu-dynamic{position:absolute;z-index:1050;display:block;min-width:220px;padding:8px 0;margin-top:4px;background-color:#fff;border:1px solid #e8e8e8;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.1);animation:fadeIn .15s ease-out}.dropdown-menu-dynamic a{display:block;padding:10px 16px;font-size:14px;font-weight:500;color:#333;text-decoration:none;white-space:nowrap;transition:background-color .2s ease}.dropdown-menu-dynamic a:hover{background-color:#f4f4f4;color:#111}@keyframes fadeIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
+            .task-actions { display: flex; align-items: center; gap: 8px; }
+            .task-action-btn { cursor: pointer; color: #aaa; padding: 4px; border-radius: 50%; }
+            .task-action-btn:hover { background-color: #f0f0f0; color: #333; }
+            .inline-task-creator { border: 1px solid #2196f3; background-color: #f4f8ff; }
+            .inline-task-creator input { flex-grow: 1; border: none; outline: none; background: transparent; font-size: 1rem; padding: 4px 0; }
+            
+            /* Styles for the custom date picker */
+            .homedatepicker-container {
+                z-index: 1052; /* Ensures it appears above notifications (1051) */
+            }
         `;
         document.head.appendChild(style);
     }
-
-    const dropdownConfig = {
-        'my-week': { // Reverted to 'my-week' to ensure it matches your HTML
-            label: 'Today',
-            items: [
-                { text: 'All Tasks', value: 'all' }, // To clear filters
-                { text: 'Today', value: 'today' },
-                { text: 'This Week', value: 'this-week' },
-                { text: 'Next Week', value: 'next-week' }
-            ]
-        },
-        'project-recents': {
-    label: 'Recents',
-    items: [
-        { text: 'All Projects', value: 'all' },
-        { text: 'Starred Projects', value: 'starred' }
-    ]
-},
-'collaborators': {
-    label: 'Frequent collaborators',
-    items: [
-        { text: 'All Collaborators', value: 'all' },
-        { text: 'Frequent & Active', value: 'frequent' }
-    ]
-}
-};
-
+    
+    // State variables
+    let currentUser = null;
     let activeProjectId = null;
     let activeSectionId = null;
-    let activeTaskFilter = 'today';
-
-    let allUsers = { 1: { name: 'Alice', avatarUrl: 'https://i.pravatar.cc/150?img=1' }, 2: { name: 'Rory', avatarUrl: 'https://i.pravatar.cc/150?img=7' }, 3: { name: 'Bob', avatarUrl: 'https://i.pravatar.cc/150?img=2' }, 4: { name: 'Charlie', avatarUrl: 'https://i.pravatar.cc/150?img=3' }, 5: { name: 'David', avatarUrl: 'https://i.pravatar.cc/150?img=4' }, };
-    let people = [ { id: 'p-1', name: 'Alice Johnson', role: 'Designer', frequent: true, avatarUrl: 'https://i.pravatar.cc/150?img=1', isActive: true }, { id: 'p-2', name: 'Bob Williams', role: 'Engineer', frequent: true, avatarUrl: 'https://i.pravatar.cc/150?img=2', isActive: false }, { id: 'p-3', name: 'Charlie Brown', role: 'Product Manager', frequent: false, avatarUrl: null, isActive: true }, { id: 'p-4', name: 'Diana Prince', role: 'Marketing', frequent: true, avatarUrl: 'https://i.pravatar.cc/150?img=4', isActive: true }, ];
-    let projectsData = [ { id: 'proj-1', title: 'Website Redesign', color: '#4c9aff', starred: true, sections: [ { id: 1, title: 'Discovery & Design', tasks: [ { id: 101, name: 'Finalize new logo concepts', dueDate: '2025-06-13', assignees: [1, 2], completed: false }, { id: 102, name: 'Present mockups to stakeholders', dueDate: '2025-06-14', assignees: [1], completed: true }, ] }, { id: 2, title: 'Development', tasks: [ { id: 201, name: 'Initial setup for React app', dueDate: '2025-06-13', assignees: [3], completed: false }, ] }, ] }, { id: 'proj-2', title: 'Q3 Marketing Campaign', color: '#4caf50', starred: false, sections: [ { id: 3, title: 'Planning', tasks: [ { id: 301, name: 'Review ad copy for social media', dueDate: '2025-06-12', assignees: [4, 5], completed: false }, { id: 302, name: 'Plan influencer outreach', dueDate: '2025-06-20', assignees: [4], completed: false }, ] }, ] }, ];
-
+    let projectsData = [];
+    let peopleData = [];
+    const listeners = { projects: null, sections: null, people: null, tasks: {} };
+    
     // ===================================================================
     // [2] RENDER FUNCTIONS (THE "VIEW")
     // ===================================================================
-    function renderProjects(filter = 'all') {
-        const projectList = homeSection.querySelector('.projects-card .project-list');
-        if (!projectList) return;
-        
-        projectList.innerHTML = '';
-        const createBtn = document.createElement('button');
-        createBtn.className = 'create-project-btn';
-        createBtn.innerHTML = `<i class="fas fa-plus"></i> Create project`;
-        createBtn.addEventListener('click', () => handleCreate('project'), { signal: controller.signal });
-        projectList.appendChild(createBtn);
-        
-        const projectsToDisplay = projectsData.filter(p => filter === 'starred' ? p.starred : true);
-        projectsToDisplay.forEach(project => {
-            const item = document.createElement('div');
-            item.className = `project-item ${project.id === activeProjectId ? 'active' : ''}`;
-            item.dataset.projectId = project.id;
-            item.innerHTML = `
-                <div class="project-icon" style="color: ${project.color};"><i class="fas fa-list"></i></div>
-                <div class="project-info">
-                    <span class="project-name">${project.title}</span>
-                    <span class="project-meta" data-task-count></span>
-                </div>`;
-            projectList.appendChild(item);
-        });
-        updateProjectTaskCounts();
+    
+    function renderProjects() {
+    const projectList = homeSection.querySelector('.projects-card .project-list');
+    if (!projectList) return;
+    
+    projectList.innerHTML = '';
+    
+    // BUGFIX: The line below caused the error. 'filter' is not defined.
+    // const projectsToDisplay = projectsData.filter(p => filter === 'starred' ? p.starred : true);
+    
+    // CORRECT: Simply use the projectsData array directly, as the filtering feature was removed.
+    const projectsToDisplay = projectsData;
+    
+    if (projectsToDisplay.length === 0 && currentUser) {
+        projectList.innerHTML = `<div class="empty-state">Create a project to get started.</div>`;
     }
     
-
+    const createBtn = document.createElement('button');
+    createBtn.className = 'create-project-btn';
+    createBtn.innerHTML = `<i class="fas fa-plus"></i> Create project`;
+    createBtn.addEventListener('click', handleProjectCreate);
+    
+    projectsToDisplay.forEach(project => {
+        const item = document.createElement('div');
+        item.className = `project-item ${project.id === activeProjectId ? 'active' : ''}`;
+        item.dataset.projectId = project.id;
+        item.innerHTML = `
+            <div class="project-icon" style="color: ${project.color};"><i class="fas fa-list"></i></div>
+            <div class="project-info">
+                <span class="project-name">${project.title}</span>
+                <span class="project-meta" data-task-count></span>
+            </div>`;
+        projectList.appendChild(item);
+    });
+    
+    projectList.appendChild(createBtn);
+    updateProjectTaskCounts();
+}
+    
     function renderMyTasksCard() {
         const myTasksCard = homeSection.querySelector('.my-tasks-card');
         if (!myTasksCard) return;
-
         const tabsContainer = myTasksCard.querySelector('.task-tabs');
         const taskListContainer = myTasksCard.querySelector('.task-list');
-        
-        // Always clear previous state
         tabsContainer.innerHTML = '';
         taskListContainer.innerHTML = '';
-        tabsContainer.style.display = 'none'; // Hide by default
-
+        tabsContainer.style.display = 'none';
         if (!activeProjectId) {
             taskListContainer.innerHTML = '<p class="empty-state">Select a project to see its tasks.</p>';
             return;
         }
-
         const project = projectsData.find(p => p.id === activeProjectId);
-        if (!project) return;
-        
-        // ALWAYS render section tabs and ensure they are visible
+        if (!project || !project.sections) {
+            taskListContainer.innerHTML = '<p class="empty-state">Loading project tasks...</p>';
+            return;
+        }
         tabsContainer.style.display = 'flex';
         project.sections.forEach(section => {
-            if (section.title === 'Completed' && section.tasks.length === 0) return;
             const tab = document.createElement('button');
             tab.className = `tab-btn ${section.id === activeSectionId ? 'active' : ''}`;
             tab.textContent = section.title;
             tab.dataset.sectionId = section.id;
             tabsContainer.appendChild(tab);
         });
-
-        // Get the tasks from the currently active section
         const activeSection = project.sections.find(s => s.id === activeSectionId);
         if (!activeSection) {
-            taskListContainer.innerHTML = '<p class="empty-state">No section selected.</p>';
+            taskListContainer.innerHTML = '<p class="empty-state">This project has no sections.</p>';
             return;
         }
-
-        let tasksToDisplay = [...activeSection.tasks];
-
-        // If the filter is not "all", apply the date filter
-        if (activeTaskFilter !== 'all') {
-            const now = dayjs();
-            let filterFunc;
-
-            if (activeTaskFilter === 'today') {
-                filterFunc = t => dayjs(t.dueDate).isSame(now, 'day');
-            } else if (activeTaskFilter === 'this-week') {
-                filterFunc = t => dayjs(t.dueDate).isBetween(now.startOf('week'), now.endOf('week'), 'day', '[]');
-            } else if (activeTaskFilter === 'next-week') {
-                const nextWeekStart = now.add(1, 'week').startOf('week');
-                const nextWeekEnd = now.add(1, 'week').endOf('week');
-                filterFunc = t => dayjs(t.dueDate).isBetween(nextWeekStart, nextWeekEnd, 'day', '[]');
-            }
-            tasksToDisplay = tasksToDisplay.filter(filterFunc || (() => false));
-        }
-
-        // Render the final list of tasks
-        const createBtn = document.createElement('button');
-        createBtn.className = 'create-task-btn';
-        createBtn.innerHTML = `<i class="fas fa-plus"></i> Create task`;
-        taskListContainer.appendChild(createBtn);
-
-        if (tasksToDisplay.length === 0) {
-            const filterText = activeTaskFilter === 'all' ? 'tasks in this section' : `tasks for "${activeTaskFilter.replace('-', ' ')}" in this section`;
-            taskListContainer.insertAdjacentHTML('beforeend', `<p class="empty-state">No ${filterText}.</p>`);
-            return;
-        }
-
-        tasksToDisplay.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate)).forEach(task => {
+        (activeSection.tasks || []).sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate)).forEach(task => {
             taskListContainer.appendChild(createTaskElement(task));
         });
+        if (activeSection.title !== 'Completed') {
+            const createBtn = document.createElement('button');
+            createBtn.className = 'create-task-btn';
+            createBtn.innerHTML = `<i class="fas fa-plus"></i> Create task`;
+            createBtn.addEventListener('click', () => showInlineTaskCreator(taskListContainer));
+            taskListContainer.appendChild(createBtn);
+        }
     }
-
-    function createTaskElement(task, showProjectName = false) {
-    const item = document.createElement('div');
-    item.className = 'task-item';
-    item.dataset.taskId = task.id;
     
-    const { text, color } = getDueDateInfo(task.dueDate);
-    
-    item.innerHTML = `
+    function createTaskElement(task) {
+        const item = document.createElement('div');
+        item.className = 'task-item';
+        item.dataset.taskId = task.id;
+        const { text, color } = getDueDateInfo(task.dueDate);
+        item.innerHTML = `
             <input type="checkbox" class="task-checkbox" data-task-id="${task.id}" ${task.completed ? 'checked' : ''}/>
             <div class="task-content">
                 <span class="task-text ${task.completed ? 'completed' : ''}">${task.name}</span>
                 <span class="task-dates ${task.completed ? 'completed' : ''}" style="color: ${task.completed ? '#888' : color};">${text}</span>
             </div>
-            <div class="task-assignee">
-                ${task.assignees.map(id => `<img src="${allUsers[id].avatarUrl}" title="${allUsers[id].name}">`).join('')}
-            </div>
             <div class="task-actions">
-                <i class="far fa-heart task-reaction-btn" title="React" data-task-id="${task.id}"></i>
+                <i class="far fa-calendar task-action-btn task-due-date-picker" title="Set due date" data-task-id="${task.id}"></i>
             </div>`;
-    return item;
-}
-
-
-function renderPeople(filter = 'all') {
-    const peopleContent = homeSection.querySelector('.people-content');
-    if (!peopleContent) return;
-    const peopleToDisplay = people.filter(p => filter === 'frequent' ? (p.frequent && p.isActive) : true);
-    peopleContent.innerHTML = '';
-    const list = document.createElement('div');
-    list.className = 'homepeople-list';
-    peopleToDisplay.forEach(person => {
-        const item = document.createElement('div');
-        item.className = 'homepeople-item';
-        if (!person.isActive) item.classList.add('homepeople-item--inactive');
-        const avatarHTML = person.avatarUrl ?
-            `<div class="homepeople-avatar"><img src="${person.avatarUrl}" alt="${person.name}"></div>` :
-            `<div class="homepeople-avatar" style="background-color: ${generateColorForName(person.name)};">${getInitials(person.name)}</div>`;
-        item.innerHTML = `${avatarHTML}<div class="homepeople-info"><span class="homepeople-name">${person.name}</span><span class="homepeople-role">${person.role}</span></div><a href="/admin-console/${person.id}/members" class="homepeople-action" title="Admin Console"><i class="fas fa-ellipsis-h"></i></a>`;
-        list.appendChild(item);
-    });
-    const inviteItem = document.createElement('div');
-    inviteItem.className = 'homepeople-invite-item';
-    inviteItem.innerHTML = `<i class="fas fa-user-plus"></i> Invite teammates`;
-    inviteItem.addEventListener('click', () => alert('Invite modal would show here.'), { signal: controller.signal });
-    list.appendChild(inviteItem);
-    peopleContent.appendChild(list);
-}
-
-// ===================================================================
-// [3] LOGIC, HANDLERS, AND HELPERS
-// ===================================================================
-
-function openSidebarTasks(taskId) {
-    console.log("Request to open sidebar for task ID:", taskId);
-    showNotification(`Opening sidebar for task ${taskId}`, 'info');
-}
-
-function getDueDateInfo(dueDate) {
-    const now = dayjs();
-    const date = dayjs(dueDate);
+        return item;
+    }
     
-    if (date.isSame(now, 'day')) {
-        return { text: 'Today', color: 'red' };
-    }
-    if (date.isSame(now.subtract(1, 'day'), 'day')) {
-        return { text: 'Yesterday', color: 'red' };
-    }
-    if (date.isBefore(now.subtract(1, 'day'), 'day')) {
-        return { text: date.format('MMM D'), color: 'red' };
-    }
-    if (date.isSame(now.add(1, 'day'), 'day')) {
-        return { text: 'Tomorrow', color: 'orange' };
-    }
-    return { text: date.format('MMM D'), color: '#666' };
-}
-
-function handleTaskCompletion(taskId, isCompleted) {
-    let project, task, sourceSection, taskIndex;
-    
-    for (const p of projectsData) {
-        for (const s of p.sections) {
-            taskIndex = s.tasks.findIndex(t => t.id === taskId);
-            if (taskIndex > -1) {
-                task = s.tasks[taskIndex];
-                sourceSection = s;
-                project = p;
-                break;
+    function renderGlobalStats() {
+        const completedEl = document.getElementById('tasks-completed');
+        const membersEl = document.getElementById('total-members');
+        if (completedEl) {
+            let completedCount = 0;
+            const project = projectsData.find(p => p.id === activeProjectId);
+            if (project && project.sections) {
+                completedCount = project.sections.reduce((sum, section) => sum + (section.tasks?.filter(t => t.completed).length || 0), 0);
             }
+            completedEl.textContent = `${completedCount} task${completedCount !== 1 ? 's' : ''} completed`;
         }
-        if (task) break;
+        if (membersEl) {
+            const memberCount = peopleData.length;
+            membersEl.textContent = `${memberCount} staff member${memberCount !== 1 ? 's' : ''}`;
+        }
     }
     
-    if (!task || !project) return;
+    // ===================================================================
+    // [3] LOGIC & HANDLERS
+    // ===================================================================
     
-    task.completed = isCompleted;
-    if (isCompleted && sourceSection.title !== 'Completed') {
-        let completedSection = project.sections.find(s => s.title === 'Completed');
-        if (!completedSection) {
-            completedSection = { id: Date.now(), title: 'Completed', tasks: [] };
-            project.sections.push(completedSection);
-        }
-        sourceSection.tasks.splice(taskIndex, 1);
-        completedSection.tasks.push(task);
-        activeSectionId = completedSection.id;
-    }
-    
-    renderMyTasksCard();
-    updateProjectTaskCounts();
-    showNotification(isCompleted ? 'Task marked as complete!' : 'Task restored!', 'success');
-}
-
     function selectProject(projectId) {
+        if (!projectId || activeProjectId === projectId) return;
         activeProjectId = projectId;
-        activeTaskFilter = 'today'; // Default filter for any selected project
-        
+        detachSectionAndTaskListeners();
         const project = projectsData.find(p => p.id === projectId);
-        activeSectionId = project?.sections[0]?.id || null;
-
-        const taskFilterTrigger = homeSection.querySelector('.dropdown[data-dropdown-id="my-week"]');
-        if(taskFilterTrigger) {
-             const label = taskFilterTrigger.querySelector('.stats-label, .recents-btn, .frequent-btn');
-             if(label) label.childNodes[0].nodeValue = 'Today ';
-        }
-        
+        activeSectionId = project?.sections?.[0]?.id || null;
+        attachSectionAndTaskListeners(projectId);
         renderProjects();
         renderMyTasksCard();
+        renderGlobalStats();
     }
-
+    
     function selectSection(sectionId) {
         activeSectionId = sectionId;
-        renderMyTasksCard(); // Re-render tasks for the new section, honoring the current filter
+        renderMyTasksCard();
     }
     
-    function handleDropdownSelection(id, value, trigger) {
-        const selectedItem = dropdownConfig[id]?.items.find(item => item.value === value);
-        if (trigger && selectedItem) {
-            const label = trigger.querySelector('.stats-label, .recents-btn, .frequent-btn');
-            if (label) {
-                label.childNodes[0].nodeValue = selectedItem.text + ' ';
+    function showInlineTaskCreator(container) {
+        if (container.querySelector('.inline-task-creator')) return;
+        const creatorEl = document.createElement('div');
+        creatorEl.className = 'inline-task-creator';
+        creatorEl.innerHTML = `<input type="text" placeholder="Write a task name...">`;
+        container.insertBefore(creatorEl, container.lastChild);
+        const inputEl = creatorEl.querySelector('input');
+        inputEl.focus();
+        const commit = async () => {
+            const taskName = inputEl.value.trim();
+            if (taskName) {
+                const tasksColRef = collection(db, `users/${currentUser.uid}/projects/${activeProjectId}/sections/${activeSectionId}/tasks`);
+                try {
+                    await addDoc(tasksColRef, { name: taskName, dueDate: null, assignees: [], completed: false, createdAt: new Date() });
+                } catch (error) {
+                    console.error("Error creating task: ", error);
+                }
             }
-        }
-
-        if (id === 'my-week') {
-            activeTaskFilter = value;
-            renderMyTasksCard();
-        } else if (id === 'project-recents') {
-            renderProjects(value);
-        } else if (id === 'collaborators') {
-            renderPeople(value);
-        }
-    }
-
-    function handleCreate(type) {
-    const name = prompt(`Enter new ${type} name:`);
-    if (!name || !name.trim()) return;
-    
-    if (type === 'task' && activeProjectId && activeSectionId) {
-        const project = projectsData.find(p => p.id === activeProjectId);
-        const section = project.sections.find(s => s.id === activeSectionId);
-        if (section) {
-            const newTask = { id: Date.now(), name, dueDate: dayjs().format('YYYY-MM-DD'), assignees: [], completed: false };
-            section.tasks.unshift(newTask);
-            renderMyTasksCard();
-            updateProjectTaskCounts();
-            showNotification('Task created!', 'success');
-        }
-    } else if (type === 'project') {
-        const newProject = { id: `proj-${Date.now()}`, title: name, color: generateColorForName(name), starred: false, sections: [{ id: Date.now(), title: 'General', tasks: [] }] };
-        projectsData.push(newProject);
-        renderProjects();
-        selectProject(newProject.id);
-        showNotification('Project created!', 'success');
-    }
-}
-    function updateProjectTaskCounts() {
-    projectsData.forEach(project => {
-        const count = project.sections.reduce((sum, section) => sum + section.tasks.filter(t => !t.completed).length, 0);
-        const projectItem = homeSection.querySelector(`.project-item[data-project-id="${project.id}"] .project-meta`);
-        if (projectItem) projectItem.textContent = `${count} task${count !== 1 ? 's' : ''}`;
-    });
-}
-    function updateDateTime() {
-    const dateElement = homeSection.querySelector('.date');
-    const greetingElement = homeSection.querySelector('.greetings');
-    if (!dateElement || !greetingElement) return;
-    const now = dayjs();
-    dateElement.textContent = now.format('dddd, MMMM D');
-    const hour = now.hour();
-    let greeting = 'Good evening, Chat';
-    if (hour < 12) greeting = 'Good morning, Chat';
-    else if (hour < 18) greeting = 'Good afternoon, Chat';
-    greetingElement.textContent = greeting;
-}
-    function showNotification(message, type = 'info') {
-        const notification = document.createElement('div');
-        notification.className = `notification ${type}`;
-        notification.textContent = message;
-        document.body.appendChild(notification);
-        setTimeout(() => notification.style.opacity = '0', 2500);
-        setTimeout(() => notification.remove(), 3000);
-    }
-    
-    const getInitials = (name) => name.split(' ').map(n => n[0]).join('').toUpperCase();
-    const generateColorForName = (name) => `hsl(${name.split("").reduce((a, b) => (a = ((a << 5) - a) + b.charCodeAt(0), a & a), 0) % 360}, 70%, 45%)`;
-    function initializeDropdowns() {
-        document.addEventListener('click', () => {
-            document.querySelectorAll('.dropdown-menu-dynamic').forEach(menu => menu.remove());
-        }, { signal: controller.signal });
-
-        homeSection.querySelectorAll('.dropdown').forEach(trigger => {
-            trigger.addEventListener('click', (e) => {
-                e.stopPropagation();
-                document.querySelectorAll('.dropdown-menu-dynamic').forEach(menu => menu.remove());
-                const dropdownId = trigger.dataset.dropdownId;
-                const config = dropdownConfig[dropdownId];
-                if (!config) return;
-                const menu = document.createElement('div');
-                menu.className = 'dropdown-menu-dynamic';
-                config.items.forEach(item => { menu.innerHTML += `<a href="#" data-value="${item.value}">${item.text}</a>`; });
-                menu.addEventListener('click', (ev) => {
-                    const target = ev.target.closest('a');
-                    if (target) {
-                        ev.preventDefault();
-                        handleDropdownSelection(dropdownId, target.dataset.value, trigger);
-                        menu.remove();
-                    }
-                });
-                document.body.appendChild(menu);
-                const rect = trigger.getBoundingClientRect();
-                menu.style.position = 'absolute';
-                menu.style.top = `${rect.bottom + 5}px`;
-                menu.style.left = `${rect.left}px`;
-            }, { signal: controller.signal });
+            creatorEl.remove();
+        };
+        inputEl.addEventListener('blur', commit);
+        inputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') commit();
+            if (e.key === 'Escape') creatorEl.remove();
         });
     }
     
+    async function handleProjectCreate() {
+        if (!currentUser) return;
+        const name = prompt("Enter new project name:");
+        if (!name || !name.trim()) return;
+        const projectsColRef = collection(db, `users/${currentUser.uid}/projects`);
+        try {
+            const docRef = await addDoc(projectsColRef, { title: name.trim(), color: generateColorForName(name.trim()), starred: false, createdAt: new Date() });
+            const sectionsColRef = collection(db, `users/${currentUser.uid}/projects/${docRef.id}/sections`);
+            await addDoc(sectionsColRef, { title: 'General', createdAt: new Date() });
+            showNotification('Project created!', 'success');
+            selectProject(docRef.id);
+        } catch (error) {
+            console.error("Error creating project: ", error);
+        }
+    }
+    
+    async function handleTaskCompletion(taskId, isCompleted) {
+        if (!currentUser || !activeProjectId) return;
+        const project = projectsData.find(p => p.id === activeProjectId);
+        if (!project) return;
+        let sourceSection, taskData;
+        for (const section of project.sections) {
+            const task = section.tasks?.find(t => t.id === taskId);
+            if (task) {
+                sourceSection = section;
+                taskData = task;
+                break;
+            }
+        }
+        if (!sourceSection || !taskData) return;
+        let targetSection;
+        if (isCompleted) {
+            targetSection = project.sections.find(s => s.title === 'Completed');
+            if (!targetSection) {
+                try {
+                    const sectionsColRef = collection(db, `users/${currentUser.uid}/projects/${activeProjectId}/sections`);
+                    const newSectionDoc = await addDoc(sectionsColRef, { title: 'Completed', createdAt: new Date() });
+                    targetSection = { id: newSectionDoc.id, title: 'Completed' };
+                } catch (error) { return; }
+            }
+        } else {
+            targetSection = project.sections.find(s => s.title !== 'Completed');
+            if (!targetSection) return;
+        }
+        if (sourceSection.id === targetSection.id) return;
+        try {
+            const batch = writeBatch(db);
+            const oldTaskRef = doc(db, `users/${currentUser.uid}/projects/${activeProjectId}/sections/${sourceSection.id}/tasks`, taskId);
+            const newTaskRef = doc(db, `users/${currentUser.uid}/projects/${activeProjectId}/sections/${targetSection.id}/tasks`, taskId);
+            const updatedTaskData = { ...taskData, completed: isCompleted };
+            batch.set(newTaskRef, updatedTaskData);
+            batch.delete(oldTaskRef);
+            await batch.commit();
+        } catch (error) {
+            console.error("Error moving task:", error);
+        }
+    }
+    
+    async function updateTaskDueDate(taskId, newDueDate) {
+        if (!currentUser || !activeProjectId) return;
+        const project = projectsData.find(p => p.id === activeProjectId);
+        let sourceSection;
+        for (const section of (project?.sections || [])) {
+            if (section.tasks?.find(t => t.id === taskId)) {
+                sourceSection = section;
+                break;
+            }
+        }
+        if (!sourceSection) return;
+        const taskRef = doc(db, `users/${currentUser.uid}/projects/${activeProjectId}/sections/${sourceSection.id}/tasks`, taskId);
+        try {
+            await updateDoc(taskRef, { dueDate: newDueDate });
+            showNotification("Due date updated!", "success");
+        } catch (error) {
+            console.error("Error updating due date:", error);
+        }
+    }
+    
     // ===================================================================
-    // [4] INITIALIZATION & CLEANUP
+    // [4] REAL-TIME LISTENER MANAGEMENT
     // ===================================================================
+    
+    function attachProjectListener(userId) {
+        const projectsQuery = query(collection(db, `users/${userId}/projects`), orderBy("createdAt", "desc"));
+        listeners.projects = onSnapshot(projectsQuery, (snapshot) => {
+            projectsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            if (!activeProjectId && projectsData.length > 0) {
+                selectProject(projectsData[0].id);
+            } else if (activeProjectId && !projectsData.some(p => p.id === activeProjectId)) {
+                selectProject(projectsData[0]?.id || null);
+            }
+            renderProjects();
+            updateProjectTaskCounts();
+        });
+    }
+    
+    function attachPeopleListener(userId) {
+        const peopleQuery = query(collection(db, `users/${userId}/people`));
+        listeners.people = onSnapshot(peopleQuery, (snapshot) => {
+            peopleData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderGlobalStats();
+        });
+    }
+    
+    function attachSectionAndTaskListeners(projectId) {
+        if (!currentUser || !projectId) return;
+        const sectionsQuery = query(collection(db, `users/${currentUser.uid}/projects/${projectId}/sections`), orderBy("createdAt"));
+        listeners.sections = onSnapshot(sectionsQuery, (sectionsSnapshot) => {
+            const project = projectsData.find(p => p.id === projectId);
+            if (!project) return;
+            const currentSections = sectionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const newSectionIds = new Set(currentSections.map(s => s.id));
+            const oldSectionIds = new Set(project.sections?.map(s => s.id) || []);
+            project.sections = currentSections;
+            
+            if (!activeSectionId || !newSectionIds.has(activeSectionId)) {
+                activeSectionId = project.sections[0]?.id || null;
+            }
+            
+            project.sections.forEach(section => {
+                if (!listeners.tasks[section.id]) {
+                    const tasksQuery = query(collection(db, `users/${currentUser.uid}/projects/${projectId}/sections/${section.id}/tasks`), orderBy("createdAt"));
+                    listeners.tasks[section.id] = onSnapshot(tasksQuery, (tasksSnapshot) => {
+                        const proj = projectsData.find(p => p.id === projectId);
+                        const sect = proj?.sections.find(s => s.id === section.id);
+                        if (sect) {
+                            sect.tasks = tasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                            if (activeProjectId === projectId) {
+                                renderMyTasksCard();
+                                updateProjectTaskCounts();
+                                renderGlobalStats();
+                            }
+                        }
+                    });
+                }
+            });
+            
+            oldSectionIds.forEach(id => {
+                if (!newSectionIds.has(id) && listeners.tasks[id]) {
+                    listeners.tasks[id]();
+                    delete listeners.tasks[id];
+                }
+            });
+            renderMyTasksCard();
+        });
+    }
+    
+    function detachSectionAndTaskListeners() {
+        if (listeners.sections) listeners.sections();
+        Object.values(listeners.tasks).forEach(unsub => unsub());
+        listeners.sections = null;
+        listeners.tasks = {};
+    }
+    
+    function detachAllListeners() {
+        if (listeners.projects) listeners.projects();
+        if (listeners.people) listeners.people();
+        detachSectionAndTaskListeners();
+        console.log("All Firestore listeners detached.");
+    }
+    
+    // ===================================================================
+    // [5] INITIALIZATION & CLEANUP
+    // ===================================================================
+    
     function initializeAll() {
         injectComponentStyles();
-        initializeDropdowns();
-
-        homeSection.querySelector('.projects-card .project-list').addEventListener('click', e => { const projectItem = e.target.closest('.project-item'); if (projectItem) selectProject(projectItem.dataset.projectId); }, { signal: controller.signal });
-        homeSection.querySelector('.my-tasks-card .task-tabs').addEventListener('click', e => { const tabItem = e.target.closest('.tab-btn'); if (tabItem) selectSection(parseInt(tabItem.dataset.sectionId)); }, { signal: controller.signal });
-        homeSection.querySelector('.my-tasks-card .task-list').addEventListener('change', e => { const checkbox = e.target.closest('.task-checkbox'); if (checkbox) { handleTaskCompletion(parseInt(checkbox.dataset.taskId), checkbox.checked); } }, { signal: controller.signal});
-        homeSection.querySelector('.my-tasks-card .task-list').addEventListener('click', e => { const reactionBtn = e.target.closest('.task-reaction-btn'); if (reactionBtn) { openSidebarTasks(parseInt(reactionBtn.dataset.taskId)); } }, { signal: controller.signal});
-        homeSection.querySelector('.people-content').addEventListener('click', e => { const link = e.target.closest('a.homepeople-action'); if (link) { e.preventDefault(); if (typeof router === 'function') { history.pushState({ path: link.getAttribute('href') }, '', link.getAttribute('href')); router(); } else { console.warn('Global router() function not found.'); } } }, { signal: controller.signal });
-
+        homeSection.querySelector('.projects-card .project-list').addEventListener('click', e => { const item = e.target.closest('.project-item'); if (item) selectProject(item.dataset.projectId); });
+        homeSection.querySelector('.my-tasks-card .task-tabs').addEventListener('click', e => { const item = e.target.closest('.tab-btn'); if (item) selectSection(item.dataset.sectionId); });
+        const taskListContainer = homeSection.querySelector('.my-tasks-card .task-list');
+        if (taskListContainer) {
+            taskListContainer.addEventListener('change', e => { if (e.target.matches('.task-checkbox')) handleTaskCompletion(e.target.dataset.taskId, e.target.checked); });
+            taskListContainer.addEventListener('click', e => {
+                const datePickerIcon = e.target.closest('.task-due-date-picker');
+                if (datePickerIcon) {
+                    flatpickr(datePickerIcon, {
+                        dateFormat: "Y-m-d",
+                        className: "homedatepicker-container",
+                        onChange: (selectedDates, dateStr, instance) => updateTaskDueDate(instance.element.dataset.taskId, dateStr),
+                        onReady: (_, __, instance) => instance.open()
+                    });
+                }
+            });
+        }
         updateDateTime();
         const timerId = setInterval(updateDateTime, 60000);
         controller.signal.addEventListener('abort', () => clearInterval(timerId));
-
-        if (projectsData.length > 0) {
-            selectProject(projectsData[0].id);
-        } else {
+        onAuthStateChanged(auth, (user) => {
+            detachAllListeners();
+            projectsData = [];
+            peopleData = [];
+            activeProjectId = null;
+            activeSectionId = null;
+            if (user) {
+                currentUser = user;
+                attachProjectListener(user.uid);
+                attachPeopleListener(user.uid);
+            }
+            currentUser = user;
+            updateDateTime();
             renderProjects();
             renderMyTasksCard();
-        }
-        renderPeople();
+            renderGlobalStats();
+        });
     }
-
+    
+    // UTILITY & HELPER FUNCTIONS
+    const getInitials = (name) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : '';
+    const generateColorForName = (name) => `hsl(${(name || '').split("").reduce((a, b) => (a = ((a << 5) - a) + b.charCodeAt(0), a & a), 0) % 360}, 70%, 45%)`;
+    const getDueDateInfo = (dueDate) => {
+        if (!dueDate) return { text: '', color: '#aaa' };
+        const now = dayjs();
+        const date = dayjs(dueDate);
+        if (date.isSame(now, 'day')) return { text: `Today`, color: 'red' };
+        if (date.isSame(now.add(1, 'day'), 'day')) return { text: 'Tomorrow', color: 'orange' };
+        if (date.isBefore(now, 'day')) return { text: date.format('MMM D'), color: 'red' };
+        return { text: date.format('MMM D'), color: '#666' };
+    };
+    const updateProjectTaskCounts = () => projectsData.forEach(p => { const count = p.sections?.reduce((sum, s) => sum + (s.tasks?.filter(t => !t.completed).length || 0), 0) || 0; const el = homeSection.querySelector(`.project-item[data-project-id="${p.id}"] .project-meta`); if (el) el.textContent = `${count} task${count !== 1 ? 's' : ''}`; });
+    const updateDateTime = () => { const dateEl = homeSection.querySelector('.date'); const greetEl = homeSection.querySelector('.greetings'); if (!dateEl || !greetEl) return; const now = dayjs();
+        dateEl.textContent = now.format('dddd, MMMM D'); const hour = now.hour(); let greeting = 'Good evening'; if (hour < 12) greeting = 'Good morning';
+        else if (hour < 18) greeting = 'Good afternoon'; const userName = auth.currentUser?.displayName || 'there';
+        greetEl.textContent = `${greeting}, ${userName}!`; };
+    const showNotification = (message, type = 'info') => { const el = document.createElement('div');
+        el.className = `notification ${type}`;
+        el.textContent = message;
+        document.body.appendChild(el);
+        setTimeout(() => el.style.opacity = '0', 2500);
+        setTimeout(() => el.remove(), 3000); };
+    
     initializeAll();
-
+    
     return function cleanup() {
-        console.log("Cleaning up home section.");
+        console.log("Cleaning up home section and detaching listeners.");
         controller.abort();
-        document.querySelectorAll('.dropdown-menu-dynamic, .notification').forEach(el => el.remove());
+        detachAllListeners();
+        document.querySelectorAll('.dropdown-menu-dynamic, .notification, .flatpickr-calendar').forEach(el => el.remove());
     };
 }
