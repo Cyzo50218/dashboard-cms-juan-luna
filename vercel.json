@@ -17,7 +17,7 @@
     },
     {
       "src": "/register/invitation/(.*)",
-      "dest": "/registration/index.html"
+      "dest": "/registration/$1"
     },
     {
       "src": "/(.*)",
