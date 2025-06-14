@@ -2,19 +2,37 @@
  * emailModal.js
  *
  * This module exports a single function, showInviteModal, which displays a rich
- * modal for inviting people to projects. It fetches project data from Firestore
- * and returns the user's selections as a Promise.
+ * modal for inviting people to projects. It is self-contained, handles its own
+ * Firebase initialization, fetches project data from Firestore, and returns
+ * the user's selections as a Promise.
  */
 
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { firebaseConfig } from "/services/firebase-config.js";
 
+/**
+ * Safely initializes Firebase and returns the auth and db services.
+ * This prevents the "app already exists" error when called from multiple modules.
+ * @returns {{app: object, auth: object, db: object}}
+ */
+function getFirebaseServices() {
+    const apps = getApps();
+    const app = apps.length ? apps[0] : initializeApp(firebaseConfig);
+    const db = getFirestore(app, "juanluna-cms-01");
+    const auth = getAuth(app);
+    return { app, auth, db };
+}
+
+/**
+ * Injects the necessary CSS for the modal into the document's head if it doesn't already exist.
+ */
 function injectModalStyles() {
-    if (document.getElementById("modalStyles")) return;
+    if (document.getElementById("inviteModalStyles")) return;
     const style = document.createElement("style");
-    style.id = "modalStyles";
+    style.id = "inviteModalStyles";
     style.textContent = `
-        /* --- All the CSS you provided --- */
         .modalContainer {
             background: rgba(45, 45, 45, 0.6);
             backdrop-filter: blur(20px) saturate(150%);
@@ -27,56 +45,53 @@ function injectModalStyles() {
             color: #f1f1f1;
             font-family: "Inter", "Segoe UI", sans-serif;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-            overflow: hidden;
-            transition: all 0.3s ease;
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            z-index: 1000;
+            z-index: 2000;
             display: flex;
             flex-direction: column;
-            align-items: stretch;
             font-size: 14px;
         }
-        /* ... all other styles from your example ... */
-        .headerSection { justify-content: space-between; align-items: center; margin-bottom: 20px; display: flex; }
-        .closeButton { cursor: pointer; font-size: 22px; color: #aaa; transition: color 0.2s ease; }
-        .closeButton:hover { color: #fff; }
-        .inputGroup { margin-bottom: 18px; }
-        .inputGroup label { display: block; margin-bottom: 6px; color: #ccc; font-weight: 500; }
-        .tagInputContainer { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; align-items: flex-start; }
-        .emailTagInputContainer { min-height: 80px; }
-        .projectTagInputContainer { min-height: 40px; height: auto; overflow-y: auto; }
-        .tag { display: flex; align-items: center; padding: 6px 12px; background: rgba(255, 255, 255, 0.15); border-radius: 20px; color: #e0e0e0; font-size: 14px; }
-        .tag .removeTag { margin-left: 6px; cursor: pointer; font-size: 16px; color: #ccc; }
-        .tag .removeTag:hover { color: #fff; }
-        .inputField { flex-grow: 1; background: transparent; border: none; color: #fff; font-size: 15px; outline: none; min-width: 50px; resize: none; padding: 4px; }
-        .projectDropdown { position: fixed; background: rgba(45, 45, 45, 0.95); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; max-height: 200px; overflow-y: auto; z-index: 1001; display: none; }
-        .projectDropdown-item { display: flex; align-items: center; padding: 10px 15px; cursor: pointer; transition: background 0.2s ease; }
+        .modalContainer .headerSection { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modalContainer .closeButton { cursor: pointer; font-size: 22px; color: #aaa; transition: color 0.2s ease; }
+        .modalContainer .closeButton:hover { color: #fff; }
+        .modalContainer .inputGroup { margin-bottom: 18px; }
+        .modalContainer .inputGroup label { display: block; margin-bottom: 6px; color: #ccc; font-weight: 500; }
+        .modalContainer .tagInputContainer { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; align-items: flex-start; }
+        .modalContainer .emailTagInputContainer { min-height: 80px; }
+        .modalContainer .projectTagInputContainer { min-height: 40px; }
+        .modalContainer .tag { display: flex; align-items: center; padding: 6px 12px; background: rgba(255, 255, 255, 0.15); border-radius: 20px; color: #e0e0e0; font-size: 14px; }
+        .modalContainer .tag .removeTag { margin-left: 8px; cursor: pointer; font-size: 16px; color: #ccc; }
+        .modalContainer .tag .removeTag:hover { color: #fff; }
+        .modalContainer .inputField { flex-grow: 1; background: transparent; border: none; color: #fff; font-size: 15px; outline: none; min-width: 150px; resize: none; padding: 4px; }
+        .modalContainer .sendButton { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); padding: 12px 24px; color: #fff; border-radius: 16px; cursor: pointer; font-weight: 600; float: right; transition: background 0.3s ease; margin-top: 20px; }
+        .modalContainer .sendButton:hover { background: rgba(255, 255, 255, 0.2); }
+        .projectDropdown { position: fixed; background: rgba(45, 45, 45, 0.95); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; max-height: 200px; overflow-y: auto; z-index: 2001; display: none; }
+        .projectDropdown-item { display: flex; align-items: center; padding: 10px 15px; cursor: pointer; transition: background 0.2s ease; color: #f1f1f1;}
         .projectDropdown-item:hover { background: rgba(255, 255, 255, 0.1); }
         .projectDropdown-item .bx { margin-right: 10px; font-size: 18px; }
-        .sendButton { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); padding: 12px 24px; color: #fff; border-radius: 16px; cursor: pointer; font-weight: 600; float: right; transition: background 0.3s ease; margin-top: 20px; }
-        .sendButton:hover { background: rgba(255, 255, 255, 0.2); }
     `;
     document.head.appendChild(style);
 }
 
+
 /**
  * Opens a modal for inviting users and adding them to projects.
- * Fetches project data from Firestore.
- * @param {object} firebaseApp - The initialized Firebase app instance.
  * @returns {Promise<object|null>} A Promise that resolves with { emails, projects } or null if closed.
  */
-export async function openEmailSelector(firebaseApp) {
-    const db = getFirestore(firebaseApp, "juanluna-cms-01");
-    const auth = getAuth(firebaseApp);
+export async function showInviteModal() {
+    const { auth, db } = getFirebaseServices();
     const currentUser = auth.currentUser;
     
     if (!currentUser) {
-        alert("Authentication required.");
+        alert("Authentication required to invite people.");
         return null;
     }
+    
+    // Prevent multiple modals from opening
+    if (document.querySelector('.modalContainer')) return null;
     
     // --- Fetch Project Data From Firestore ---
     let projectDataModel = [];
@@ -85,7 +100,7 @@ export async function openEmailSelector(firebaseApp) {
         const snapshot = await getDocs(projectsQuery);
         projectDataModel = snapshot.docs.map(doc => ({
             id: doc.id,
-            title: doc.data().title, // Using 'title' for consistency
+            title: doc.data().title || "Untitled Project", // Use 'title' for consistency
             icon: "bx-folder-open" // Default icon
         }));
     } catch (error) {
@@ -95,25 +110,24 @@ export async function openEmailSelector(firebaseApp) {
     // --- Main Promise ---
     return new Promise((resolve) => {
         injectModalStyles();
-        if (document.querySelector('.modalContainer')) return resolve(null); // Prevent multiple modals
         
         const modal = document.createElement('div');
         modal.className = 'modalContainer';
         modal.innerHTML = `
             <div class="headerSection">
                 <h2>Invite people to My workspace</h2>
-                <span class="closeButton">×</span>
+                <span class="closeButton" title="Close">×</span>
             </div>
             <div class="inputGroup">
                 <label>Email addresses <i class='bx bx-info-circle'></i></label>
-                <div class="tagInputContainer emailTagInputContainer" id="emailTagInputContainer">
-                    <textarea id="emailInputField" class="inputField" placeholder="name@gmail.com, name@gmail.com, ..."></textarea>
+                <div class="tagInputContainer emailTagInputContainer">
+                    <textarea id="emailInputField" class="inputField" placeholder="name@gmail.com, name@example.com, ..."></textarea>
                 </div>
             </div>
             <div class="inputGroup">
                 <label>Add to projects <i class='bx bx-info-circle'></i></label>
-                <div class="tagInputContainer projectTagInputContainer" id="projectTagInputContainer">
-                    <textarea id="projectInputField" class="inputField" placeholder="Start typing to add projects"></textarea>
+                <div class="tagInputContainer projectTagInputContainer">
+                    <textarea id="projectInputField" class="inputField" placeholder="Start typing to add projects..."></textarea>
                 </div>
             </div>
             <button class="sendButton">Send</button>
@@ -125,21 +139,49 @@ export async function openEmailSelector(firebaseApp) {
         document.body.appendChild(projectDropdown);
         
         const emailInputField = modal.querySelector('#emailInputField');
-        const emailTagInputContainer = modal.querySelector('#emailTagInputContainer');
+        const emailTagInputContainer = modal.querySelector('.emailTagInputContainer');
         const projectInputField = modal.querySelector('#projectInputField');
-        const projectTagInputContainer = modal.querySelector('#projectTagInputContainer');
+        const projectTagInputContainer = modal.querySelector('.projectTagInputContainer');
         
-        const cleanup = () => {
-            modal.remove();
-            projectDropdown.remove();
-            window.removeEventListener('resize', positionProjectDropdown);
-            window.removeEventListener('scroll', positionProjectDropdown, true);
+        const addTag = (container, text, iconClass) => {
+            const tag = document.createElement('span');
+            tag.className = 'tag';
+            tag.dataset.value = text;
+            tag.innerHTML = `<i class='bx ${iconClass}'></i> ${text} <span class="removeTag" title="Remove">×</span>`;
+            container.insertBefore(tag, container.querySelector('.inputField'));
+            tag.querySelector('.removeTag').addEventListener('click', () => tag.remove());
         };
         
-        const addTag = (container, text, iconClass) => { /* Logic from your function */ };
-        const positionProjectDropdown = () => { /* Logic from your function */ };
+        const positionProjectDropdown = () => {
+            if (projectDropdown.style.display === 'block') {
+                const rect = projectTagInputContainer.getBoundingClientRect();
+                projectDropdown.style.top = `${rect.bottom + 5}px`;
+                projectDropdown.style.left = `${rect.left}px`;
+                projectDropdown.style.width = `${rect.width}px`;
+            }
+        };
         
-        // --- Event Listeners from your function ---
+        const cleanupAndResolve = (value) => {
+            window.removeEventListener('resize', positionProjectDropdown);
+            window.removeEventListener('scroll', positionProjectDropdown, true);
+            projectDropdown.remove();
+            modal.remove();
+            resolve(value);
+        }
+        
+        // --- Event Listeners ---
+        
+        emailInputField.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ',' || e.key === ' ') {
+                e.preventDefault();
+                const email = emailInputField.value.trim();
+                if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                    addTag(emailTagInputContainer, email, 'bx-user-circle');
+                    emailInputField.value = '';
+                }
+            }
+        });
+        
         projectInputField.addEventListener('input', () => {
             const query = projectInputField.value.trim().toLowerCase();
             projectDropdown.innerHTML = '';
@@ -171,24 +213,25 @@ export async function openEmailSelector(firebaseApp) {
             }
         });
         
-        modal.querySelector('.closeButton').addEventListener('click', () => {
-            cleanup();
-            resolve(null); // Resolve with null when closed
+        document.addEventListener('click', (event) => {
+            if (!projectInputField.contains(event.target) && !projectDropdown.contains(event.target)) {
+                projectDropdown.style.display = 'none';
+            }
         });
+        
+        modal.querySelector('.closeButton').addEventListener('click', () => cleanupAndResolve(null));
         
         modal.querySelector('.sendButton').addEventListener('click', () => {
             const emails = Array.from(emailTagInputContainer.querySelectorAll('.tag')).map(tag => tag.dataset.value);
             const projects = Array.from(projectTagInputContainer.querySelectorAll('.tag')).map(tag => tag.dataset.value);
             
-            if (emails.length === 0 && projects.length === 0) {
-                return alert('Please enter at least one email or project.');
+            if (emails.length === 0) {
+                return alert('Please enter at least one email address to invite.');
             }
             
-            cleanup();
-            resolve({ emails, projects }); // Resolve with the collected data
+            cleanupAndResolve({ emails, projects });
         });
         
-        // Add other listeners from your function (focus, resize, scroll, etc.)
         window.addEventListener('resize', positionProjectDropdown);
         window.addEventListener('scroll', positionProjectDropdown, true);
     });
