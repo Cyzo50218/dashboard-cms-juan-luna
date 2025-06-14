@@ -3,11 +3,35 @@
  * @description Controls the List View tab with refined section filtering and date sorting.
  */
 
-// --- Firebase Integration Example ---
-const PROJECT_ID = 'project_123';
+/*
+ * @file list.js
+ * @description Controls the List View tab with real-time data using Firestore snapshots.
+ */
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+    getAuth,
+    onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+    getFirestore,
+    doc,
+    collection,
+    query,
+    where,
+    onSnapshot, // Import onSnapshot for real-time listeners
+    orderBy
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { firebaseConfig } from "/services/firebase-config.js";
+
+// Initialize Firebase
+console.log("Initializing Firebase...");
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app, "juanluna-cms-01");
+console.log("Initialized Firebase on Dashboard.");
 
 // --- Module-Scoped Variables ---
-
 // DOM Element Holders
 let taskListHeaderEl, taskListBody, taskListFooter, addSectionBtn, addTaskHeaderBtn, mainContainer, assigneeDropdownTemplate, filterBtn, sortBtn;
 
@@ -28,36 +52,6 @@ const allUsers = [
     { id: 5, name: 'Paris Geller', email: 'paris.g@example.com', avatar: 'https://i.imgur.com/lVceL5s.png' },
 ];
 
-let project = {
-    customColumns: [{ id: 1, name: 'Budget', type: 'Costing', currency: '', aggregation: 'Sum' }],
-    sections: [
-    {
-        id: 1,
-        title: 'Design',
-        tasks: [
-            { id: 101, name: 'Create final mockups', dueDate: '2025-06-12', priority: 'High', status: 'On track', assignees: [1, 2], customFields: { 1: 1500 } },
-            { id: 102, name: 'Review branding guidelines', dueDate: '2025-06-15', priority: 'Medium', status: 'On track', assignees: [3], customFields: { 1: 850 } },
-        ],
-        isCollapsed: false
-    },
-    {
-        id: 2,
-        title: 'Development',
-        tasks: [
-            { id: 201, name: 'Initial setup', dueDate: '2025-06-18', priority: 'Low', status: 'At risk', assignees: [], customFields: { 1: 3000 } },
-        ],
-        isCollapsed: false
-    },
-    {
-        id: 3,
-        title: 'Completed',
-        tasks: [
-            { id: 301, name: 'Kick-off meeting', dueDate: '2025-05-30', priority: 'Medium', status: 'Completed', assignees: [4, 5], customFields: { 1: 500 } },
-        ],
-        isCollapsed: false
-    }, ],
-};
-
 let currentlyFocusedSectionId = project.sections.length > 0 ? project.sections[0].id : null;
 const priorityOptions = ['High', 'Medium', 'Low'];
 const statusOptions = ['On track', 'At risk', 'Off track', 'Completed'];
@@ -65,11 +59,120 @@ const columnTypeOptions = ['Text', 'Numbers', 'Costing', 'Type', 'Custom'];
 const typeColumnOptions = ['Invoice', 'Payment'];
 const baseColumnTypes = ['Text', 'Numbers', 'Costing', 'Type'];
 
+// --- Real-time Listener Management ---
+// This object will hold the unsubscribe functions for our active listeners.
+let activeListeners = {
+    workspace: null,
+    project: null,
+    sections: null,
+    tasks: null,
+};
+
+// --- Data ---
+let project = {
+    customColumns: [],
+    sections: [],
+};
+
+// --- New Real-time Data Loading Functions ---
+
+/**
+ * Detaches all active Firestore listeners to prevent memory leaks.
+ */
+function detachAllListeners() {
+    console.log("Detaching all Firestore listeners...");
+    Object.values(activeListeners).forEach(unsubscribe => {
+        if (unsubscribe) {
+            unsubscribe();
+        }
+    });
+    // Clear the tracking object
+    Object.keys(activeListeners).forEach(key => activeListeners[key] = null);
+}
+
+/**
+ * Attaches real-time listeners to the user's selected project and its data.
+ * @param {string} userId The ID of the currently authenticated user.
+ */
+function attachRealtimeListeners(userId) {
+    // First, ensure any old listeners are detached before creating new ones.
+    detachAllListeners();
+    
+    // 1. Listen for the user's selected workspace
+    const workspaceQuery = query(collection(db, `users/${userId}/myworkspace`), where("isSelected", "==", true));
+    activeListeners.workspace = onSnapshot(workspaceQuery, (workspaceSnapshot) => {
+        if (workspaceSnapshot.empty) {
+            console.warn("No selected workspace found for this user.");
+            project = { customColumns: [], sections: [] }; // Reset project data
+            render(); // Render the empty state
+            return;
+        }
+        const workspaceId = workspaceSnapshot.docs[0].id;
+        console.log(`Workspace changed or detected. Listening to workspace: ${workspaceId}`);
+        
+        // 2. Listen for the selected project in that workspace
+        const projectQuery = query(collection(db, "projects"), where("workspaceId", "==", workspaceId), where("isSelected", "==", true));
+        
+        // Detach previous project listener if it exists
+        if (activeListeners.project) activeListeners.project();
+        
+        activeListeners.project = onSnapshot(projectQuery, (projectSnapshot) => {
+            if (projectSnapshot.empty) {
+                console.warn("No selected project found for this workspace.");
+                project = { customColumns: [], sections: [] }; // Reset project data
+                render();
+                return;
+            }
+            const projectDoc = projectSnapshot.docs[0];
+            const projectId = projectDoc.id;
+            const projectData = projectDoc.data();
+            console.log(`Project changed or detected. Listening to project: ${projectId}`);
+            
+            // Update the base project data (like custom columns)
+            project = { ...project, ...projectData, id: projectId };
+            
+            // 3. Listen to the project's sections
+            const sectionsQuery = query(collection(db, `projects/${projectId}/sections`), orderBy("order"));
+            if (activeListeners.sections) activeListeners.sections();
+            activeListeners.sections = onSnapshot(sectionsQuery, (sectionsSnapshot) => {
+                project.sections = sectionsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, tasks: [] }));
+                console.log("Sections updated in real-time.");
+                
+                // At this point, sections are updated, but tasks might not be loaded yet.
+                // We need to re-render, but task data will be populated by its own listener.
+                render();
+            });
+            
+            // 4. Listen to all tasks for the project
+            const tasksQuery = query(collection(db, "tasks"), where("projectId", "==", projectId));
+            if (activeListeners.tasks) activeListeners.tasks();
+            activeListeners.tasks = onSnapshot(tasksQuery, (tasksSnapshot) => {
+                const allTasks = tasksSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+                console.log("Tasks updated in real-time.");
+                
+                // Clear existing tasks from all sections before re-distributing
+                project.sections.forEach(section => section.tasks = []);
+                
+                // Distribute the updated tasks into their respective sections
+                for (const task of allTasks) {
+                    const section = project.sections.find(s => s.id === task.sectionId);
+                    if (section) {
+                        section.tasks.push(task);
+                    }
+                }
+                // Re-render the entire view with the new data
+                render();
+            });
+        });
+    }, (error) => {
+        console.error("Error on workspace listener:", error);
+    });
+}
+
+
 // --- Main Initialization and Cleanup ---
 
-export function init(params) {
-    console.log("Initializing List View Module...", params);
-    
+function initializeListView(params) {
     taskListHeaderEl = document.getElementById('task-list-header');
     taskListBody = document.getElementById('task-list-body');
     taskListFooter = document.getElementById('task-list-footer');
@@ -86,23 +189,49 @@ export function init(params) {
     }
     
     setupEventListeners();
-    render();
+}
+
+export function init(params) {
+    console.log("Initializing List View Module...", params);
     
+    // Listen for authentication state changes
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            // User is signed in, attach real-time listeners.
+            console.log(`User ${user.uid} signed in. Attaching listeners.`);
+            attachRealtimeListeners(user.uid);
+        } else {
+            // User is signed out, detach all listeners and clear data.
+            console.log("User signed out. Detaching listeners.");
+            detachAllListeners();
+            project = { customColumns: [], sections: [] };
+            render(); // Render the empty/logged-out state
+        }
+    });
+    
+    // The initial render will be triggered by the listeners.
+    initializeListView(params);
+    
+    // Return a modified cleanup function.
     return function cleanup() {
         console.log("Cleaning up List View Module...");
-        if (headerClickListener) taskListHeaderEl.removeEventListener('click', headerClickListener);
-        if (bodyClickListener) taskListBody.removeEventListener('click', bodyClickListener);
-        if (bodyFocusOutListener) taskListBody.removeEventListener('focusout', bodyFocusOutListener);
-        if (addTaskHeaderBtnListener) addTaskHeaderBtn.removeEventListener('click', addTaskHeaderBtnListener);
-        if (addSectionBtnListener) addSectionBtn.removeEventListener('click', addSectionBtnListener);
-        if (windowClickListener) window.removeEventListener('click', windowClickListener);
-        if (filterBtnListener) filterBtn.removeEventListener('click', filterBtnListener);
-        if (sortBtnListener) sortBtn.removeEventListener('click', sortBtnListener);
-        
-        if (sortableSections) sortableSections.destroy();
-        sortableTasks.forEach(st => st.destroy());
-        sortableTasks.length = 0;
+        detachAllListeners(); // Ensure all listeners are gone when the module is destroyed.
+        console.log("Cleaning up List View Module...");
+if (headerClickListener) taskListHeaderEl.removeEventListener('click', headerClickListener);
+if (bodyClickListener) taskListBody.removeEventListener('click', bodyClickListener);
+if (bodyFocusOutListener) taskListBody.removeEventListener('focusout', bodyFocusOutListener);
+if (addTaskHeaderBtnListener) addTaskHeaderBtn.removeEventListener('click', addTaskHeaderBtnListener);
+if (addSectionBtnListener) addSectionBtn.removeEventListener('click', addSectionBtnListener);
+if (windowClickListener) window.removeEventListener('click', windowClickListener);
+if (filterBtnListener) filterBtn.removeEventListener('click', filterBtnListener);
+if (sortBtnListener) sortBtn.removeEventListener('click', sortBtnListener);
+
+if (sortableSections) sortableSections.destroy();
+sortableTasks.forEach(st => st.destroy());
+sortableTasks.length = 0;
     };
+    
+    
 }
 
 // --- Event Listener Setup ---
