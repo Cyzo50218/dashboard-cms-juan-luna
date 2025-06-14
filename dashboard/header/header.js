@@ -1,5 +1,128 @@
 import { showInviteModal } from '/dashboard/components/showEmailModel.js';
 
+/**
+ * header.js
+ *
+ * This script manages all interactive elements within the main application header.
+ * It handles user authentication state to display profile information,
+ * provides logout and new workspace functionality, and manages the search/filter UI.
+ */
+
+// --- 1. FIREBASE IMPORTS ---
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { firebaseConfig } from "/services/firebase-config.js";
+import { showInviteModal } from '/dashboard/components/showEmailModel.js';
+
+
+// --- 2. FIREBASE INITIALIZATION ---
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app, "juanluna-cms-01");
+
+function getInitials(user) {
+  if (user.displayName) {
+    const names = user.displayName.split(' ');
+    return names.map(name => name[0]).join('').toUpperCase();
+  }
+  if (user.email) {
+    return user.email[0].toUpperCase();
+  }
+  return '?';
+}
+
+function updateProfileDisplay(user) {
+  if (!user) return;
+  
+  const mainProfileCircle = document.getElementById("profileToggle");
+  const expandProfileCircle = document.querySelector(".account-expand-circle");
+  const expandEmail = document.getElementById("account-email");
+  const shortnameSpan = mainProfileCircle?.querySelector(".account-shortname");
+  const expandShortnameSpan = expandProfileCircle?.querySelector(".account-shortname-expand");
+  
+  if (expandEmail) {
+    expandEmail.textContent = user.email;
+  }
+  
+  // If user has a profile picture
+  if (user.photoURL) {
+    const imgHTML = `<img src="${user.photoURL}" alt="Profile" class="profile-picture">`;
+    if (mainProfileCircle) mainProfileCircle.innerHTML = imgHTML;
+    if (expandProfileCircle) expandProfileCircle.innerHTML = imgHTML;
+  } else {
+    // Fallback to initials
+    const initials = getInitials(user);
+    if (shortnameSpan) shortnameSpan.textContent = initials;
+    if (expandShortnameSpan) expandShortnameSpan.textContent = initials;
+  }
+}
+
+/**
+ * Signs the current user out and redirects to the login page.
+ */
+async function handleLogout() {
+  try {
+    await signOut(auth);
+    console.log("User signed out successfully.");
+    window.location.href = '/login/login.html';
+  } catch (error) {
+    console.error("Error signing out:", error);
+  }
+}
+
+/**
+ * Prompts for a workspace name and creates a new document in Firestore.
+ */
+async function handleNewWorkspace() {
+  const currentUser = auth.currentUser;
+  if (!currentUser) return;
+  
+  const workspaceName = prompt("Enter a name for your new workspace:");
+  if (!workspaceName || workspaceName.trim() === '') return;
+  
+  try {
+    const workspacesColRef = collection(db, 'users', currentUser.uid, 'workspaces');
+    await addDoc(workspacesColRef, {
+      name: workspaceName.trim(),
+      created_at: serverTimestamp()
+    });
+    alert(`Workspace "${workspaceName.trim()}" created!`);
+  } catch (error) {
+    console.error("Error creating new workspace:", error);
+    alert("Failed to create workspace.");
+  }
+}
+
+
+// --- 4. MAIN SCRIPT LOGIC ---
+
+// This function runs once Firebase confirms the user's authentication state.
+onAuthStateChanged(auth, (user) => {
+  if (!user) {
+    window.location.href = '/login/login.html';
+    return;
+  }
+  
+  // --- USER IS LOGGED IN, PROCEED WITH INITIALIZATION ---
+  console.log("Header script running for user:", user.uid);
+  
+  // Update the profile display with the user's info
+  updateProfileDisplay(user);
+  
+  document.addEventListener("click", (e) => {
+    // --- NEW: Handle Logout and New Workspace clicks ---
+    if (e.target.closest('#logout-btn')) {
+      handleLogout();
+      return;
+    }
+    if (e.target.closest('#add-workspace-btn')) {
+      handleNewWorkspace();
+      return;
+    }
+    
+  });
+
 const menuToggle = document.getElementById("menuToggle");
 const rootdrawer = document.getElementById("rootdrawer");
 const filterToggleMenu = document.getElementById("filter-icon"); 
@@ -866,3 +989,5 @@ if (inviteBtnGeneric) {
     }
   });
 }
+
+});
