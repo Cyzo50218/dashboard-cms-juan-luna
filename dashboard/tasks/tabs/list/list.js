@@ -15,20 +15,21 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
     getFirestore,
-doc,
-collection,
-query,
-where,
-onSnapshot,
-orderBy,
-addDoc,
-updateDoc,
-deleteDoc,
-writeBatch,
-serverTimestamp,
-deleteField, 
-arrayUnion,
-getDocs 
+    doc,
+    collection,
+    query,
+    where,
+    onSnapshot,
+    collectionGroup,
+    orderBy,
+    addDoc,
+    updateDoc,
+    deleteDoc,
+    writeBatch,
+    serverTimestamp,
+    deleteField,
+    arrayUnion,
+    getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "/services/firebase-config.js";
 
@@ -60,6 +61,8 @@ let activeListeners = {
     tasks: null,
 };
 
+let currentUserId = null;
+let currentWorkspaceId = null;
 let currentProjectId = null;
 
 let activeFilters = {}; // Will hold { visibleSections: [id1, id2] }
@@ -98,83 +101,67 @@ function detachAllListeners() {
     Object.keys(activeListeners).forEach(key => activeListeners[key] = null);
 }
 
-/**
- * Attaches real-time listeners to the user's selected project and its data.
- * @param {string} userId The ID of the currently authenticated user.
- */
 function attachRealtimeListeners(userId) {
-    // First, ensure any old listeners are detached before creating new ones.
     detachAllListeners();
+    currentUserId = userId;
+    console.log(`[DEBUG] Attaching listeners for user: ${userId}`);
     
-    // 1. Listen for the user's selected workspace
     const workspaceQuery = query(collection(db, `users/${userId}/myworkspace`), where("isSelected", "==", true));
     activeListeners.workspace = onSnapshot(workspaceQuery, (workspaceSnapshot) => {
-        if (workspaceSnapshot.empty) {
-            console.warn("No selected workspace found for this user.");
-            project = { customColumns: [], sections: [] }; // Reset project data
-            render(); // Render the empty state
-            return;
-        }
-        const workspaceId = workspaceSnapshot.docs[0].id;
-        console.log(`Workspace changed or detected. Listening to workspace: ${workspaceId}`);
+        if (workspaceSnapshot.empty) return console.warn("No selected workspace.");
         
-        // 2. Listen for the selected project in that workspace
-        const projectQuery = query(collection(db, "projects"), where("workspaceId", "==", workspaceId), where("isSelected", "==", true));
+        currentWorkspaceId = workspaceSnapshot.docs[0].id;
+        console.log(`[DEBUG] Found workspaceId: ${currentWorkspaceId}`);
         
-        // Detach previous project listener if it exists
+        const projectsPath = `users/${userId}/myworkspace/${currentWorkspaceId}/projects`;
+        const projectQuery = query(collection(db, projectsPath), where("isSelected", "==", true));
+        
         if (activeListeners.project) activeListeners.project();
-        
         activeListeners.project = onSnapshot(projectQuery, (projectSnapshot) => {
-            if (projectSnapshot.empty) {
-                console.warn("No selected project found for this workspace.");
-                project = { customColumns: [], sections: [] }; // Reset project data
-                render();
-                return;
-            }
+            if (projectSnapshot.empty) return console.warn("No selected project.");
+            
             const projectDoc = projectSnapshot.docs[0];
-            const projectId = projectDoc.id;
-            currentProjectId = projectId;
-            const projectData = projectDoc.data();
-            console.log(`Project changed or detected. Listening to project: ${projectId}`);
+            currentProjectId = projectDoc.id;
+            console.log(`[DEBUG] Found projectId: ${currentProjectId}`);
             
-            // Update the base project data (like custom columns)
-            project = { ...project, ...projectData, id: projectId };
+            project = { ...project, ...projectDoc.data(), id: currentProjectId };
             
-            // 3. Listen to the project's sections
-            const sectionsQuery = query(collection(db, `projects/${projectId}/sections`), orderBy("order"));
+            // 3. Listen to the SECTIONS subcollection
+            const sectionsPath = `${projectsPath}/${currentProjectId}/sections`;
+            const sectionsQuery = query(collection(db, sectionsPath), orderBy("order"));
+            
             if (activeListeners.sections) activeListeners.sections();
             activeListeners.sections = onSnapshot(sectionsQuery, (sectionsSnapshot) => {
+                console.log(`[DEBUG] Sections snapshot fired. Found ${sectionsSnapshot.size} sections.`);
                 project.sections = sectionsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, tasks: [] }));
-                console.log("Sections updated in real-time.");
                 
-                // At this point, sections are updated, but tasks might not be loaded yet.
-                // We need to re-render, but task data will be populated by its own listener.
-                render();
+                // Distribute the tasks we already have into the newly updated sections
+                distributeTasksToSections(allTasksFromSnapshot);
+                
+                // Re-render the UI with the updated sections and their tasks
+                render(); // <-- ADD RENDER CALL HERE
             });
             
-            // 4. Listen to all tasks for the project
-            const tasksQuery = query(
-    collection(db, "tasks"),
-    where("projectId", "==", projectId),
-    orderBy("createdAt", "desc") // <-- CHANGE THIS
-);
+            // 4. Use a COLLECTION GROUP query to get all tasks
+            const tasksGroupQuery = query(
+                collectionGroup(db, 'tasks'),
+                where('projectId', '==', currentProjectId),
+                orderBy('createdAt', 'desc')
+            );
+            
             if (activeListeners.tasks) activeListeners.tasks();
-            activeListeners.tasks = onSnapshot(tasksQuery, (tasksSnapshot) => {
-                const allTasks = tasksSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-                console.log("Tasks updated in real-time.");
+            activeListeners.tasks = onSnapshot(tasksGroupQuery, (tasksSnapshot) => {
+                console.log(`[DEBUG] Tasks CollectionGroup snapshot fired. Found ${tasksSnapshot.size} tasks.`);
+                allTasksFromSnapshot = tasksSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+                console.log(`[DEBUG] Tasks CollectionGroup snapshot ${allTasksFromSnapshot}.`);
+                // Distribute the new tasks into the sections we already have
+                distributeTasksToSections(allTasksFromSnapshot);
                 
-                // Clear existing tasks from all sections before re-distributing
-                project.sections.forEach(section => section.tasks = []);
-                
-distributeTasksToSections(allTasksFromSnapshot);
-
-                // Re-render the entire view with the new data
-                //render();
+                // Re-render the UI with the tasks distributed into their sections
+                render(); // <-- RENDER CALL STAYS HERE
             });
         });
-    }, (error) => {
-        console.error("Error on workspace listener:", error);
-    });
+    }, (error) => console.error("[DEBUG] FATAL ERROR in listeners:", error));
 }
 
 
@@ -199,15 +186,42 @@ function initializeListView(params) {
     setupEventListeners();
 }
 
+/**
+ * "Debug Mode" version to diagnose task distribution issues.
+ * It logs every step of the process to the console.
+ */
 function distributeTasksToSections(tasks) {
-    if (!project.sections) return;
+    console.log("--- Running Task Distribution ---");
+    
+    if (!project.sections || project.sections.length === 0) {
+        console.warn("Distribution skipped: `project.sections` is empty or not yet loaded.");
+        return;
+    }
+    
+    // Log the available section IDs that the client knows about
+    const availableSectionIds = project.sections.map(s => s.id);
+    console.log("Available section IDs on client:", availableSectionIds);
+    
+    // Reset tasks on all sections
     project.sections.forEach(section => section.tasks = []);
+    
+    let unmatchedTasks = 0;
     for (const task of tasks) {
+        // For each task, log what it is and what section it's looking for
+        console.log(`Processing Task "${task.name || 'New Task'}" (ID: ${task.id}). Looking for sectionId: "${task.sectionId}"`);
+        
         const section = project.sections.find(s => s.id === task.sectionId);
+        
         if (section) {
+            console.log(`   ✅ SUCCESS: Matched with section "${section.title}" (ID: "${section.id}")`);
             section.tasks.push(task);
+        } else {
+            // This is the critical error message
+            console.error(`   ❌ FAILED: No section found with ID "${task.sectionId}"`);
+            unmatchedTasks++;
         }
     }
+    console.log(`--- Distribution Complete. ${unmatchedTasks} tasks could not be matched. ---`);
 }
 
 export function init(params) {
@@ -396,9 +410,9 @@ function setupEventListeners() {
             }
             if (task.isNew) delete task.isNew;
             if (task.name !== newName) {
-                 // CALL FIREBASE UPDATE
-                 updateTaskInFirebase(taskId, { name: newName });
-                }
+                // CALL FIREBASE UPDATE
+                updateTaskInFirebase(taskId, { name: newName });
+            }
         } else if (e.target.matches('[data-control="custom"]')) {
             const customFieldCell = e.target;
             const columnId = Number(customFieldCell.dataset.columnId);
@@ -411,20 +425,21 @@ function setupEventListeners() {
                 newValue = parseFloat(rawValue) || 0;
             }
             if (task.customFields[columnId] !== newValue) {
-            updateTaskInFirebase(taskId, { [`customFields.${columnId}`]: newValue });
+                updateTaskInFirebase(taskId, {
+                    [`customFields.${columnId}`]: newValue });
+            }
+        } else if (e.target.matches('.section-title')) {
+            // NEW: Handle section renaming
+            const sectionEl = e.target.closest('.task-section');
+            if (sectionEl) {
+                const sectionId = sectionEl.dataset.sectionId;
+                const newTitle = e.target.innerText.trim();
+                const section = project.sections.find(s => s.id === sectionId);
+                if (section && section.title !== newTitle) {
+                    updateSectionInFirebase(sectionId, { title: newTitle });
+                }
+            }
         }
-        }else if (e.target.matches('.section-title')) {
-    // NEW: Handle section renaming
-    const sectionEl = e.target.closest('.task-section');
-    if (sectionEl) {
-        const sectionId = sectionEl.dataset.sectionId;
-        const newTitle = e.target.innerText.trim();
-        const section = project.sections.find(s => s.id === sectionId);
-        if (section && section.title !== newTitle) {
-            updateSectionInFirebase(sectionId, { title: newTitle });
-        }
-    }
-}
     };
     
     addTaskHeaderBtnListener = () => {
@@ -849,17 +864,18 @@ async function updateTaskInFirebase(taskId, propertiesToUpdate) {
  * @param {object} taskData The core data for the new task.
  */
 async function addTaskToFirebase(sectionId, taskData) {
-    if (!currentProjectId) return console.error("No project selected.");
+    if (!currentUserId || !currentWorkspaceId || !currentProjectId) return console.error("Missing IDs.");
+    const tasksPath = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${sectionId}/tasks`;
     try {
-        await addDoc(collection(db, "tasks"), {
+        await addDoc(collection(db, tasksPath), {
             ...taskData,
             projectId: currentProjectId,
+            userId: currentUserId,
             sectionId: sectionId,
             createdAt: serverTimestamp()
         });
     } catch (error) {
         console.error("Error adding task:", error);
-        alert("Error: Could not add the new task.");
     }
 }
 
@@ -867,13 +883,18 @@ async function addTaskToFirebase(sectionId, taskData) {
  * Creates a new section document in a project's subcollection.
  * @param {object} sectionData The data for the new section (e.g., {title, order}).
  */
-async function addSectionToFirebase(sectionData) {
-    if (!currentProjectId) return console.error("No project selected.");
+async function addSectionToFirebase() {
+    if (!currentUserId || !currentWorkspaceId || !currentProjectId) return console.error("Missing IDs.");
+    const sectionsPath = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections`;
+    const newOrder = project.sections ? project.sections.length : 0;
     try {
-        await addDoc(collection(db, `projects/${currentProjectId}/sections`), sectionData);
+        await addDoc(collection(db, sectionsPath), {
+            title: 'New Section',
+            isCollapsed: false,
+            order: newOrder
+        });
     } catch (error) {
         console.error("Error adding section:", error);
-        alert("Error: Could not add the new section.");
     }
 }
 
@@ -883,10 +904,10 @@ async function addSectionToFirebase(sectionData) {
  * @param {object} propertiesToUpdate An object with the fields to update.
  */
 async function updateSectionInFirebase(sectionId, propertiesToUpdate) {
-    if (!currentProjectId) return console.error("No project selected.");
-    const sectionRef = doc(db, `projects/${currentProjectId}/sections`, sectionId);
+    if (!currentUserId || !currentWorkspaceId || !currentProjectId) return console.error("Missing IDs.");
+    const sectionPath = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${sectionId}`;
     try {
-        await updateDoc(sectionRef, propertiesToUpdate);
+        await updateDoc(doc(db, sectionPath), propertiesToUpdate);
     } catch (error) {
         console.error(`Error updating section ${sectionId}:`, error);
     }
@@ -916,29 +937,30 @@ async function deleteColumnInFirebase(columnId) {
     if (!window.confirm('Are you sure you want to delete this column and all its data? This action cannot be undone.')) {
         return;
     }
-
+    
     const batch = writeBatch(db);
-
+    
     // 1. Update the project document to remove the column from the array
     const newColumnsArray = project.customColumns.filter(col => col.id !== columnId);
     const projectRef = doc(db, "projects", currentProjectId);
     batch.update(projectRef, { customColumns: newColumnsArray });
-
+    
     // 2. Find all tasks in the project to remove the custom field key
     // In deleteColumnInFirebase:
-const tasksQuery = query(
-    collection(db, "tasks"),
-    where("projectId", "==", currentProjectId), // ✅ Corrected
-    orderBy("createdAt", "desc")
-);
+    const tasksQuery = query(
+        collection(db, "tasks"),
+        where("projectId", "==", currentProjectId), // ✅ Corrected
+        orderBy("createdAt", "desc")
+    );
     try {
         const tasksSnapshot = await getDocs(tasksQuery);
         tasksSnapshot.forEach(taskDoc => {
             const taskRef = doc(db, "tasks", taskDoc.id);
             // Use deleteField() to remove the key from the map
-            batch.update(taskRef, { [`customFields.${columnId}`]: deleteField() });
+            batch.update(taskRef, {
+                [`customFields.${columnId}`]: deleteField() });
         });
-
+        
         // 3. Commit the batch
         await batch.commit();
     } catch (error) {
