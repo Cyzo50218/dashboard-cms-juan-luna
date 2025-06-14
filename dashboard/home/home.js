@@ -381,53 +381,60 @@ function renderActiveTaskFilterLabel() {
 }
 
     async function handleProjectCreate() {
-    if (!currentUser || !activeWorkspaceId) return;
+    if (!currentUser || !activeWorkspaceId) {
+        alert("Cannot create project. User or workspace not identified.");
+        return;
+    }
     const name = prompt("Enter new project name:");
     if (!name || !name.trim()) return;
 
+    // Define the collection reference outside the transaction
     const projectsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects`);
 
     try {
-        // Use a transaction to safely update and create documents.
         const newProjectRef = await runTransaction(db, async (transaction) => {
-            // 1. Find any project that is currently selected.
+            // 1. Define the query for currently selected projects
             const selectedProjectQuery = query(projectsColRef, where("isSelected", "==", true));
+            
+            // 2. Execute the GET operation. This is where the original error likely occurred.
             const selectedProjectsSnapshot = await transaction.get(selectedProjectQuery);
 
-            // 2. Deselect the old project(s).
+            // 3. Deselect the old project(s).
             selectedProjectsSnapshot.forEach(projectDoc => {
-                transaction.update(projectDoc.ref, { isSelected: false });
+                // IMPORTANT: Don't use projectDoc.ref directly.
+                // Create a fresh, explicit reference. This is the key to avoiding the bug.
+                const projectRef = doc(projectsColRef, projectDoc.id);
+                transaction.update(projectRef, { isSelected: false });
             });
 
-            // 3. Create the new project document with isSelected: true.
+            // 4. Create the new project document.
             const newDocRef = doc(projectsColRef); // Create a reference for the new project
             transaction.set(newDocRef, {
                 title: name.trim(),
                 color: generateColorForName(name.trim()),
                 starred: false,
-                isSelected: true, // Make the new project the selected one.
-                createdAt: serverTimestamp() // Use a reliable server timestamp.
+                isSelected: true,
+                createdAt: serverTimestamp()
             });
 
-            // 4. Also create the default "General" section for the new project.
-            const sectionsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects/${newDocRef.id}/sections`);
+            // 5. Create the default "General" section.
+            const sectionsColRef = collection(newDocRef, "sections");
             const generalSectionRef = doc(sectionsColRef);
             transaction.set(generalSectionRef, {
                 title: 'General',
                 createdAt: serverTimestamp()
             });
 
-            return newDocRef; // Return the new document's reference
+            return newDocRef;
         });
 
         showNotification('Project created!', 'success');
-
-        // The UI will now focus on the newly created project.
         selectProject(newProjectRef.id);
 
     } catch (error) {
-        console.error("Error creating project in transaction:", error);
-        showNotification("Failed to create project.", "error");
+        // Log the full error to see the original cause if it persists
+        console.error("Full error object in handleProjectCreate:", error);
+        showNotification("Failed to create project due to a database error.", "error");
     }
 }
 
