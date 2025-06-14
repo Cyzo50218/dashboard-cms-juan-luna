@@ -59,12 +59,7 @@ let activeListeners = {
     sections: null,
     tasks: null,
 };
-let allTasksFromSnapshot = [];
-// --- Data ---
-let project = {
-    customColumns: [],
-    sections: [],
-};
+
 let currentProjectId = null;
 
 let activeFilters = {}; // Will hold { visibleSections: [id1, id2] }
@@ -78,7 +73,8 @@ const allUsers = [
     { id: 5, name: 'Paris Geller', email: 'paris.g@example.com', avatar: 'https://i.imgur.com/lVceL5s.png' },
 ];
 
-let currentlyFocusedSectionId = project.sections.length > 0 ? project.sections[0].id : null;
+// Initialize safely
+let currentlyFocusedSectionId = null;
 const priorityOptions = ['High', 'Medium', 'Low'];
 const statusOptions = ['On track', 'At risk', 'Off track', 'Completed'];
 const columnTypeOptions = ['Text', 'Numbers', 'Costing', 'Type', 'Custom'];
@@ -170,15 +166,10 @@ function attachRealtimeListeners(userId) {
                 // Clear existing tasks from all sections before re-distributing
                 project.sections.forEach(section => section.tasks = []);
                 
-                // Distribute the updated tasks into their respective sections
-                for (const task of allTasks) {
-                    const section = project.sections.find(s => s.id === task.sectionId);
-                    if (section) {
-                        section.tasks.push(task);
-                    }
-                }
+distributeTasksToSections(allTasksFromSnapshot);
+
                 // Re-render the entire view with the new data
-                render();
+                //render();
             });
         });
     }, (error) => {
@@ -206,6 +197,17 @@ function initializeListView(params) {
     }
     
     setupEventListeners();
+}
+
+function distributeTasksToSections(tasks) {
+    if (!project.sections) return;
+    project.sections.forEach(section => section.tasks = []);
+    for (const task of tasks) {
+        const section = project.sections.find(s => s.id === task.sectionId);
+        if (section) {
+            section.tasks.push(task);
+        }
+    }
 }
 
 export function init(params) {
@@ -435,7 +437,7 @@ function setupEventListeners() {
     };
     
     addSectionBtnListener = () => {
-        addSectionBtnListener();
+        handleAddSectionClick();
     };
     
     // This is the corrected version:
@@ -476,7 +478,7 @@ function setupEventListeners() {
 
 // --- Core Logic & UI Functions ---
 
-function addSectionBtnListener() {
+function handleAddSectionClick() {
     const newOrder = project.sections ? project.sections.length : 0;
     addSectionToFirebase({
         title: 'New Section',
@@ -923,10 +925,11 @@ async function deleteColumnInFirebase(columnId) {
     batch.update(projectRef, { customColumns: newColumnsArray });
 
     // 2. Find all tasks in the project to remove the custom field key
-    const tasksQuery = query(
+    // In deleteColumnInFirebase:
+const tasksQuery = query(
     collection(db, "tasks"),
-    where("projectId", "==", projectId),
-    orderBy("createdAt", "desc") // <-- CHANGE THIS
+    where("projectId", "==", currentProjectId), // ✅ Corrected
+    orderBy("createdAt", "desc")
 );
     try {
         const tasksSnapshot = await getDocs(tasksQuery);
@@ -945,22 +948,24 @@ async function deleteColumnInFirebase(columnId) {
 }
 
 function handleTaskCompletion(taskId, taskRowEl) {
-    const { task, section: sourceSection } = findTaskAndSection(taskId);
-    if (!task || !sourceSection) return;
+    if (!taskRowEl) return;
     taskRowEl.classList.add('is-completed');
+    
     setTimeout(() => {
         let completedSection = project.sections.find(s => s.title.toLowerCase() === 'completed');
-        if (!completedSection) {
-            completedSection = { id: Date.now(), title: 'Completed', tasks: [], isCollapsed: false };
-            project.sections.push(completedSection);
+        
+        if (completedSection) {
+            // If 'Completed' section exists, just move the task there.
+            updateTaskInFirebase(taskId, { status: 'Completed', sectionId: completedSection.id });
+        } else {
+            // If it doesn't exist, we can't create it here directly without
+            // causing conflicts. The best practice is to ensure a 'Completed'
+            // section is part of the default project template.
+            // For now, just update the status.
+            updateTaskInFirebase(taskId, { status: 'Completed' });
+            alert("Task marked as completed. Consider creating a 'Completed' section.");
         }
-        task.status = 'Completed';
-        if (sourceSection.id !== completedSection.id) {
-            sourceSection.tasks = sourceSection.tasks.filter(t => t.id !== taskId);
-            completedSection.tasks.unshift(task);
-        }
-        updateTaskInFirebase(taskId, { status: 'Completed', sectionId: completedSection.id });
-        render();
+        // No need to call render() or manipulate local arrays here.
     }, 400);
 }
 
