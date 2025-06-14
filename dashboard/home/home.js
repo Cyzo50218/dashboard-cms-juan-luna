@@ -705,22 +705,36 @@ export function init(params) {
     }
 
     function attachProjectListener(userId, workspaceId) {
-        const projectsQuery = query(collection(db, `users/${userId}/myworkspace/${workspaceId}/projects`), orderBy("createdAt", "desc"));
-        listeners.projects = onSnapshot(projectsQuery, (snapshot) => {
-            projectsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), sections: [] })); // Initialize sections
-            if (!activeProjectId && projectsData.length > 0) {
-                selectProject(projectsData[0].id);
-            } else if (activeProjectId && !projectsData.some(p => p.id === activeProjectId)) {
-                selectProject(projectsData[0]?.id || null);
-            } else if (projectsData.length === 0) {
-                activeProjectId = null;
-                activeSectionId = null;
-                renderMyTasksCard();
-            }
-            renderProjects();
-            updateProjectTaskCounts();
+    const projectsQuery = query(collection(db, `users/${userId}/myworkspace/${workspaceId}/projects`), orderBy("createdAt", "desc"));
+    listeners.projects = onSnapshot(projectsQuery, (snapshot) => {
+
+        // --- CORRECTED LOGIC ---
+        // Instead of replacing the whole array, intelligently update it.
+        const newProjects = snapshot.docs.map(doc => {
+            const data = { id: doc.id, ...doc.data() };
+            // Find if we already have data for this project in our local state
+            const existingProject = projectsData.find(p => p.id === doc.id);
+            // If we do, preserve its sections and tasks. Otherwise, initialize with an empty array.
+            data.sections = existingProject ? existingProject.sections : [];
+            return data;
         });
-    }
+
+        projectsData = newProjects;
+        // --- END OF FIX ---
+
+        if (!activeProjectId && projectsData.length > 0) {
+            selectProject(projectsData[0].id);
+        } else if (activeProjectId && !projectsData.some(p => p.id === activeProjectId)) {
+            selectProject(projectsData[0]?.id || null);
+        } else if (projectsData.length === 0) {
+            activeProjectId = null;
+            activeSectionId = null;
+            renderMyTasksCard();
+        }
+        renderProjects();
+        updateProjectTaskCounts();
+    });
+}
 
     function attachPeopleListener(userId, workspaceId) {
         const peopleQuery = query(collection(db, `users/${userId}/myworkspace/${workspaceId}/people`));
