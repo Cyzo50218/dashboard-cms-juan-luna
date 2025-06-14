@@ -85,11 +85,29 @@ export function init(params) {
     let currentUser = null, activeWorkspaceId = null, activeProjectId = null, activeSectionId = null;
     let activeTaskFilter = 'all';
     let projectsData = [], peopleData = [];
-    const listeners = { workspace: null, projects: null, sections: null, people: null, tasks: {} };
+    const listeners = { workspace: null, projects: null, sections: null, people: null,memberListeners: {}, tasks: {} };
 
     // ===================================================================
     // [2] RENDER FUNCTIONS (THE "VIEW")
     // ===================================================================
+
+    function detachPeopleListeners() {
+    // Detach the listener on the workspace document
+    if (listeners.people) listeners.people();
+    listeners.people = null;
+
+    // Detach all individual member profile listeners
+    Object.values(listeners.memberListeners).forEach(unsubscribe => unsubscribe());
+    listeners.memberListeners = {};
+}
+
+// In your main detachAllListeners function, make sure you call this new function
+function detachAllDataListeners() {
+    if (listeners.projects) listeners.projects();
+    detachPeopleListeners(); // <-- Use the new detach function
+    detachSectionAndTaskListeners();
+    listeners.projects = null;
+}
 
     function renderProjects(filter = 'all') {
         const projectList = homeSection.querySelector('.projects-card .project-list');
@@ -204,291 +222,6 @@ function renderActiveTaskFilterLabel() {
              taskListContainer.insertAdjacentHTML('afterbegin', `<p class="empty-state">No completed tasks.</p>`);
         }
     }
-    
-    function showEmailModal() {
-     let modalStyles = document.getElementById("modalStyles");
-     if (!modalStyles) {
-         const style = document.createElement("style");
-         style.id = "modalStyles";
-         style.textContent = `
-         .modalContainer {
-             background: rgba(45, 45, 45, 0.6);
-             backdrop-filter: blur(20px) saturate(150%);
-             -webkit-backdrop-filter: blur(20px) saturate(150%);
-             border: 1px solid rgba(255, 255, 255, 0.1);
-             padding: 24px;
-             border-radius: 20px;
-             width: 650px; /* Modal width */
-             max-width: 95%;
-             color: #f1f1f1;
-             font-family: "Inter", "Segoe UI", sans-serif;
-             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-             overflow: hidden;
-             transition: all 0.3s ease;
-             position: fixed;
-             top: 50%;
-             left: 50%;
-             transform: translate(-50%, -50%);
-             z-index: 1000;
-             display: flex;
-             flex-direction: column;
-             align-items: stretch;
-             font-size: 14px;
-         }
-         .headerSection {
-             display: flex;
-             justify-content: space-between;
-             align-items: center;
-             margin-bottom: 20px;
-         }
-
-         .closeButton {
-             cursor: pointer;
-             font-size: 22px;
-             color: #aaa;
-             transition: color 0.2s ease;
-         }
-         .closeButton:hover {
-             color: #fff;
-         }
-         .inputGroup {
-             margin-bottom: 18px;
-         }
-         .inputGroup label {
-             display: block;
-             margin-bottom: 6px;
-             color: #ccc;
-             font-weight: 500;
-         }
-         .tagInputContainer {
-             display: flex;
-             flex-wrap: wrap;
-             gap: 8px;
-             padding: 10px;
-             background: rgba(255, 255, 255, 0.05);
-             border: 1px solid rgba(255, 255, 255, 0.08);
-             border-radius: 16px;
-             align-items: flex-start;
-         }
-         .emailTagInputContainer {
-             min-height: 80px;
-         }
-         .projectTagInputContainer {
-             min-height: 40px;
-             height: auto;
-             overflow-y: auto;
-         }
-         .projectTagInputContainer .inputField {
-             height: 24px;
-             min-height: 24px;
-             overflow: hidden;
-         }
-
-
-         .tag {
-             display: flex;
-             align-items: center;
-             padding: 6px 12px;
-             background: rgba(255, 255, 255, 0.15);
-             border-radius: 20px;
-             color: #e0e0e0;
-             font-size: 14px;
-             font-weight: normal;
-         }
-         .tag .tagIcon {
-             margin-right: 6px;
-         }
-         .tag .removeTag {
-             margin-left: 6px;
-             cursor: pointer;
-             font-size: 16px;
-             color: #ccc;
-         }
-         .tag .removeTag:hover {
-             color: #fff;
-         }
-
-         .inputField {
-             flex-grow: 1;
-             background: transparent;
-             border: none;
-             color: #fff;
-             font-size: 15px;
-             outline: none;
-             min-width: 50px;
-             resize: none;
-             overflow-y: auto;
-             padding: 4px;
-         }
-         .inputField::placeholder {
-             color: #fff;
-             opacity: 0.7;
-         }
-
-
-         .suggestionBox {
-             display: none;
-             align-items: center;
-             padding: 8px 12px;
-             background: rgba(255, 255, 255, 0.06);
-             border-radius: 14px;
-             margin-top: 8px;
-             cursor: pointer;
-             transition: background 0.2s ease;
-         }
-         .suggestionBox:hover {
-             background: rgba(255, 255, 255, 0.12);
-         }
-         .suggestionBox span {
-             color: #1e90ff;
-             margin-left: 8px;
-             font-weight: 500;
-             white-space: nowrap;
-             overflow: hidden;
-             text-overflow: ellipsis;
-         }
-
-         /* Project Dropdown Specific Styles */
-         .projectDropdown {
-             position: fixed;
-             background: rgba(45, 45, 45, 0.95);
-             border: 1px solid rgba(255, 255, 255, 0.1);
-             border-radius: 10px;
-             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
-             max-height: 300px;
-             overflow-y: auto;
-             z-index: 99999;
-             display: none;
-         }
-         .projectDropdown-item {
-             display: flex;
-             align-items: center;
-             padding: 10px 15px;
-             cursor: pointer;
-             transition: background 0.2s ease;
-         }
-         .projectDropdown-item:hover {
-             background: rgba(255, 255, 255, 0.1);
-         }
-         .projectDropdown-item .bx {
-             margin-right: 10px;
-             font-size: 18px;
-         }
-         .projectDropdown-item span {
-             color: #f1f1f1;
-         }
-
-
-         .sendButton {
-             background: rgba(255, 255, 255, 0.1);
-             border: 1px solid rgba(255, 255, 255, 0.2);
-             padding: 12px 24px;
-             color: #fff;
-             border-radius: 16px;
-             cursor: pointer;
-             font-weight: 600;
-             float: right;
-             transition: background 0.3s ease, border 0.3s ease;
-             margin-top: 20px;
-         }
-         .sendButton:hover {
-             background: rgba(255, 255, 255, 0.2);
-             border: 1px solid rgba(255, 255, 255, 0.3);
-         }
-     `;
-         document.head.appendChild(style);
-     }
-
-     if (document.querySelector('.modalContainer')) return;
-
-     const modal = document.createElement('div');
-     modal.className = 'modalContainer';
-     modal.innerHTML = `
-     <div class="headerSection">
-         <h2>Invite people to My workspace</h2>
-         <span class="closeButton">×</span>
-     </div>
-     <div class="inputGroup">
-         <label>Email addresses <i class='bx bx-info-circle'></i></label>
-         <div class="inputWrapper">
-             <div class="tagInputContainer emailTagInputContainer" id="emailTagInputContainer">
-                 <textarea id="emailInputField" class="inputField" placeholder="name@gmail.com, name@gmail.com, ..."></textarea>
-             </div>
-             <div class="suggestionBox" id="emailSuggestionBox">
-                 <i class='bx bx-envelope'></i><span id="emailSuggestionText">Invite: h@gmail.com</span>
-             </div>
-         </div>
-     </div>
-     <div class="inputGroup">
-         <label>Add to projects <i class='bx bx-info-circle'></i></label>
-         <div class="inputWrapper">
-             <div class="tagInputContainer projectTagInputContainer" id="projectTagInputContainer">
-                 <textarea id="projectInputField" class="inputField" placeholder="Start typing to add projects"></textarea>
-             </div>
-         </div>
-     </div>
-     <button class="sendButton">Send</button>
- `;
-
-     document.body.appendChild(modal);
-
-     const projectDropdown = document.createElement('div');
-     projectDropdown.className = 'projectDropdown';
-     projectDropdown.id = 'projectDropdown';
-     document.body.appendChild(projectDropdown);
-
-     function addTag(container, text, iconClass) {
-         const tag = document.createElement('span');
-         tag.className = 'tag';
-         tag.setAttribute('data-value', text);
-         tag.innerHTML = `<i class='bx ${iconClass}'></i> ${text} <span class="removeTag">×</span>`;
-         container.appendChild(tag);
-
-         tag.querySelector('.removeTag').addEventListener('click', () => {
-             tag.remove();
-         });
-     }
-
-     function getRandomVibrantColor() {
-         const hue = Math.floor(Math.random() * 360);
-         const saturation = 90 + Math.floor(Math.random() * 10);
-         const lightness = 60 + Math.floor(Math.random() * 10);
-         return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-     }
-
-     const emailInputField = modal.querySelector('#emailInputField');
-     const emailSuggestionBox = modal.querySelector('#emailSuggestionBox');
-     const emailSuggestionText = modal.querySelector('#emailSuggestionText');
-     const emailTagInputContainer = modal.querySelector('#emailTagInputContainer');
-     const projectInputField = modal.querySelector('#projectInputField');
-     const projectTagInputContainer = modal.querySelector('#projectTagInputContainer');
-
-     const projectDataModel = [
-         { name: "My First Project", icon: "bx-folder-open" },
-         { name: "Work Tasks", icon: "bx-briefcase" },
-         { name: "Personal Ideas", icon: "bx-bulb" },
-     ];
-
-     function positionProjectDropdown() {
-         if (projectDropdown.style.display === 'block') {
-             const rect = projectInputField.getBoundingClientRect();
-             projectDropdown.style.top = `${rect.bottom}px`;
-             projectDropdown.style.left = `${rect.left}px`;
-             projectDropdown.style.width = `${rect.width}px`;
-         }
-     }
-
-     emailInputField.addEventListener('input', () => { /* ... unchanged ... */ });
-     emailSuggestionBox.addEventListener('click', () => { /* ... unchanged ... */ });
-     projectInputField.addEventListener('input', () => { /* ... unchanged ... */ });
-     projectInputField.addEventListener('focus', () => { /* ... unchanged ... */ });
-     document.addEventListener('click', (event) => { /* ... unchanged ... */ });
-     window.addEventListener('resize', positionProjectDropdown);
-     window.addEventListener('scroll', positionProjectDropdown);
-     modal.querySelector('.closeButton').addEventListener('click', () => { /* ... unchanged ... */ });
-     modal.querySelector('.sendButton').addEventListener('click', () => { /* ... unchanged ... */ });
-    }
-
 
     function renderPeople(filter = 'all') {
         const peopleContent = homeSection.querySelector('.people-content');
@@ -593,41 +326,109 @@ function renderActiveTaskFilterLabel() {
     }
 
     function showInlineTaskCreator(container) {
-        if (container.querySelector('.inline-task-creator') || !activeWorkspaceId) return;
-        const creatorEl = document.createElement('div');
-        creatorEl.className = 'inline-task-creator';
-        creatorEl.innerHTML = `<input type="text" placeholder="Write a task name...">`;
-        container.insertBefore(creatorEl, container.lastChild);
-        const inputEl = creatorEl.querySelector('input');
-        inputEl.focus();
-        const commit = async () => {
-            const taskName = inputEl.value.trim();
-            if (taskName) {
-                const tasksColRef = collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects/${activeProjectId}/sections/${activeSectionId}/tasks`);
-                try { await addDoc(tasksColRef, { name: taskName, dueDate: null, completed: false, createdAt: new Date() }); } catch (error) { console.error("Error creating task: ", error); }
+    if (container.querySelector('.inline-task-creator') || !activeWorkspaceId) return;
+
+    // This flag is the key to fixing the bug.
+    let hasCommitted = false;
+
+    const creatorEl = document.createElement('div');
+    creatorEl.className = 'inline-task-creator';
+    creatorEl.innerHTML = `<input type="text" placeholder="Write a task name...">`;
+    container.insertBefore(creatorEl, container.lastChild);
+    const inputEl = creatorEl.querySelector('input');
+    inputEl.focus();
+
+    const commit = async () => {
+        // If a commit is already in progress, stop immediately.
+        if (hasCommitted) {
+            return; 
+        }
+        // Block any future attempts to commit.
+        hasCommitted = true;
+
+        const taskName = inputEl.value.trim();
+        if (taskName) {
+            const tasksColRef = collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects/${activeProjectId}/sections/${activeSectionId}/tasks`);
+            try {
+                await addDoc(tasksColRef, {
+                    name: taskName,
+                    dueDate: null,
+                    completed: false,
+                    createdAt: serverTimestamp()
+                });
+            } catch (error) {
+                console.error("Error creating task: ", error);
+                hasCommitted = false; // Allow user to try again on error
             }
+        }
+        creatorEl.remove();
+    };
+
+    // This listener handles clicking outside the input box.
+    inputEl.addEventListener('blur', commit);
+
+    inputEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            commit(); // This will run first.
+        }
+        if (e.key === 'Escape') {
+            hasCommitted = true; // Prevent the blur event from saving.
             creatorEl.remove();
-        };
-        inputEl.addEventListener('blur', commit);
-        inputEl.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') commit();
-            if (e.key === 'Escape') creatorEl.remove();
-        });
-    }
+        }
+    });
+}
 
     async function handleProjectCreate() {
-        if (!currentUser || !activeWorkspaceId) return;
-        const name = prompt("Enter new project name:");
-        if (!name || !name.trim()) return;
-        const projectsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects`);
-        try {
-            const docRef = await addDoc(projectsColRef, { title: name.trim(), color: generateColorForName(name.trim()), starred: false, createdAt: new Date() });
-            const sectionsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects/${docRef.id}/sections`);
-            await addDoc(sectionsColRef, { title: 'General', createdAt: new Date() });
-            showNotification('Project created!', 'success');
-            selectProject(docRef.id);
-        } catch (error) { console.error("Error creating project: ", error); showNotification("Failed to create project.", "error"); }
+    if (!currentUser || !activeWorkspaceId) return;
+    const name = prompt("Enter new project name:");
+    if (!name || !name.trim()) return;
+
+    const projectsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects`);
+
+    try {
+        // Use a transaction to safely update and create documents.
+        const newProjectRef = await runTransaction(db, async (transaction) => {
+            // 1. Find any project that is currently selected.
+            const selectedProjectQuery = query(projectsColRef, where("isSelected", "==", true));
+            const selectedProjectsSnapshot = await transaction.get(selectedProjectQuery);
+
+            // 2. Deselect the old project(s).
+            selectedProjectsSnapshot.forEach(projectDoc => {
+                transaction.update(projectDoc.ref, { isSelected: false });
+            });
+
+            // 3. Create the new project document with isSelected: true.
+            const newDocRef = doc(projectsColRef); // Create a reference for the new project
+            transaction.set(newDocRef, {
+                title: name.trim(),
+                color: generateColorForName(name.trim()),
+                starred: false,
+                isSelected: true, // Make the new project the selected one.
+                createdAt: serverTimestamp() // Use a reliable server timestamp.
+            });
+
+            // 4. Also create the default "General" section for the new project.
+            const sectionsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects/${newDocRef.id}/sections`);
+            const generalSectionRef = doc(sectionsColRef);
+            transaction.set(generalSectionRef, {
+                title: 'General',
+                createdAt: serverTimestamp()
+            });
+
+            return newDocRef; // Return the new document's reference
+        });
+
+        showNotification('Project created!', 'success');
+
+        // The UI will now focus on the newly created project.
+        selectProject(newProjectRef.id);
+
+    } catch (error) {
+        console.error("Error creating project in transaction:", error);
+        showNotification("Failed to create project.", "error");
     }
+}
 
     async function handleTaskCompletion(taskId, isCompleted) {
         if (!currentUser || !activeWorkspaceId || !activeProjectId) return;
@@ -723,42 +524,105 @@ function renderActiveTaskFilterLabel() {
     const projectsQuery = query(collection(db, `users/${userId}/myworkspace/${workspaceId}/projects`), orderBy("createdAt", "desc"));
     listeners.projects = onSnapshot(projectsQuery, (snapshot) => {
 
-        // --- CORRECTED LOGIC ---
-        // Instead of replacing the whole array, intelligently update it.
+        // --- Keep this intelligent update logic from before ---
         const newProjects = snapshot.docs.map(doc => {
             const data = { id: doc.id, ...doc.data() };
-            // Find if we already have data for this project in our local state
             const existingProject = projectsData.find(p => p.id === doc.id);
-            // If we do, preserve its sections and tasks. Otherwise, initialize with an empty array.
             data.sections = existingProject ? existingProject.sections : [];
             return data;
         });
-
         projectsData = newProjects;
-        // --- END OF FIX ---
+        // --- End of existing logic ---
 
-        if (!activeProjectId && projectsData.length > 0) {
-            selectProject(projectsData[0].id);
-        } else if (activeProjectId && !projectsData.some(p => p.id === activeProjectId)) {
-            selectProject(projectsData[0]?.id || null);
-        } else if (projectsData.length === 0) {
-            activeProjectId = null;
-            activeSectionId = null;
-            renderMyTasksCard();
+
+        // --- NEW, SMARTER SELECTION LOGIC ---
+
+        // 1. Find the project that is marked as selected in the database.
+        const dbSelectedProject = projectsData.find(p => p.isSelected === true);
+
+        // 2. Determine which project ID should be active.
+        //    Priority is: the project from the DB -> the first project -> null.
+        const targetId = dbSelectedProject ? dbSelectedProject.id : (projectsData[0]?.id || null);
+
+        // 3. Only change the selected project in the UI if the target is different
+        //    from what's already active. This prevents unnecessary re-renders.
+        //    This single condition handles initial load, selection changes, and deletions.
+        if (targetId !== activeProjectId) {
+            selectProject(targetId);
         }
+
+        // Always re-render the projects list itself to reflect changes
+        // in project names, colors, etc.
         renderProjects();
         updateProjectTaskCounts();
     });
 }
 
     function attachPeopleListener(userId, workspaceId) {
-        const peopleQuery = query(collection(db, `users/${userId}/myworkspace/${workspaceId}/people`));
-        listeners.people = onSnapshot(peopleQuery, (snapshot) => {
-            peopleData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // Start by detaching any and all previous people-related listeners
+    detachPeopleListeners();
+
+    // 1. Listen to the main workspace document to get the 'members' array
+    const workspaceDocRef = doc(db, `users/${userId}/myworkspace/${workspaceId}`);
+
+    listeners.people = onSnapshot(workspaceDocRef, (workspaceDoc) => {
+        if (!workspaceDoc.exists()) {
+            peopleData = [];
             renderPeople();
             renderGlobalStats();
+            return;
+        }
+
+        const memberUIDs = workspaceDoc.data().members || [];
+        const existingUIDs = Object.keys(listeners.memberListeners);
+
+        // Sync listeners: Remove listeners for users who left the workspace
+        const removedUIDs = existingUIDs.filter(uid => !memberUIDs.includes(uid));
+        removedUIDs.forEach(uid => {
+            listeners.memberListeners[uid](); // Unsubscribe
+            delete listeners.memberListeners[uid];
         });
-    }
+
+        // Remove the corresponding users from our local data array
+        peopleData = peopleData.filter(p => !removedUIDs.includes(p.id));
+
+        // Sync listeners: Add listeners for new users who joined the workspace
+        const addedUIDs = memberUIDs.filter(uid => !existingUIDs.includes(uid));
+        addedUIDs.forEach(uid => {
+            const userProfileRef = doc(db, 'users', uid);
+
+            // 2. For each member UID, create a listener for their profile document
+            listeners.memberListeners[uid] = onSnapshot(userProfileRef, (userDoc) => {
+                if (userDoc.exists()) {
+                    const userData = userDoc.data();
+                    const personProfile = {
+                        id: userDoc.id,
+                        name: userData.name,
+                        avatarUrl: userData.avatar, // Assumes avatar URL is stored here
+                        role: userData.role || 'Member', // Example of getting other data
+                        isActive: true // Example status
+                    };
+
+                    // Update or add the person's data in our local array
+                    const index = peopleData.findIndex(p => p.id === userDoc.id);
+                    if (index > -1) {
+                        peopleData[index] = personProfile; // Update if exists
+                    } else {
+                        peopleData.push(personProfile); // Add if new
+                    }
+
+                    // 3. Re-render the people list with the new/updated profile info
+                    renderPeople();
+                    renderGlobalStats();
+                }
+            });
+        });
+
+        // Trigger an initial render after syncing listeners
+        renderPeople();
+        renderGlobalStats();
+    });
+}
 
     function attachSectionAndTaskListeners(projectId) {
         if (!currentUser || !activeWorkspaceId || !projectId) return;
