@@ -389,28 +389,29 @@ function renderActiveTaskFilterLabel() {
     const name = prompt("Enter new project name:");
     if (!name || !name.trim()) return;
 
-    // Define the collection reference outside the transaction
     const projectsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects`);
 
+    // Create the reference for the new project BEFORE the transaction,
+    // so we have its ID available after the transaction succeeds.
+    const newProjectRef = doc(projectsColRef);
+
     try {
-        const newProjectRef = await runTransaction(db, async (transaction) => {
-            // 1. Define the query for currently selected projects
-            const selectedProjectQuery = query(projectsColRef, where("isSelected", "==", true));
-            
-            // 2. Execute the GET operation. This is where the original error likely occurred.
-            const selectedProjectsSnapshot = await transaction.get(selectedProjectQuery);
+        // This transaction will now only perform writes, avoiding the buggy 'get' operation.
+        await runTransaction(db, async (transaction) => {
+            // --- THE FIX ---
+            // 1. Find the currently selected project using the up-to-date local data
+            //    instead of using transaction.get().
+            const currentlySelectedProject = projectsData.find(p => p.isSelected === true);
 
-            // 3. Deselect the old project(s).
-            selectedProjectsSnapshot.forEach(projectDoc => {
-                // IMPORTANT: Don't use projectDoc.ref directly.
-                // Create a fresh, explicit reference. This is the key to avoiding the bug.
-                const projectRef = doc(projectsColRef, projectDoc.id);
-                transaction.update(projectRef, { isSelected: false });
-            });
+            // 2. If a selected project exists in our local data, deselect it.
+            if (currentlySelectedProject) {
+                const oldSelectedRef = doc(projectsColRef, currentlySelectedProject.id);
+                transaction.update(oldSelectedRef, { isSelected: false });
+            }
+            // --- END OF FIX ---
 
-            // 4. Create the new project document.
-            const newDocRef = doc(projectsColRef); // Create a reference for the new project
-            transaction.set(newDocRef, {
+            // 3. Set the data for the new project using the pre-made reference.
+            transaction.set(newProjectRef, {
                 title: name.trim(),
                 color: generateColorForName(name.trim()),
                 starred: false,
@@ -418,22 +419,20 @@ function renderActiveTaskFilterLabel() {
                 createdAt: serverTimestamp()
             });
 
-            // 5. Create the default "General" section.
-            const sectionsColRef = collection(newDocRef, "sections");
+            // 4. Create the default "General" section.
+            const sectionsColRef = collection(newProjectRef, "sections");
             const generalSectionRef = doc(sectionsColRef);
             transaction.set(generalSectionRef, {
                 title: 'General',
                 createdAt: serverTimestamp()
             });
-
-            return newDocRef;
         });
 
         showNotification('Project created!', 'success');
+        // Use the ID from the reference we created before the transaction.
         selectProject(newProjectRef.id);
 
     } catch (error) {
-        // Log the full error to see the original cause if it persists
         console.error("Full error object in handleProjectCreate:", error);
         showNotification("Failed to create project due to a database error.", "error");
     }
