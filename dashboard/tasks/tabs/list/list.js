@@ -327,7 +327,6 @@ function setupEventListeners() {
         const control = e.target.closest('[data-control]');
         if (!control) return;
         
-        const taskId = taskRow.dataset.taskId;
         const sectionEl = taskRow.closest('.task-section');
         const sectionId = sectionEl ? sectionEl.dataset.sectionId : null;
         
