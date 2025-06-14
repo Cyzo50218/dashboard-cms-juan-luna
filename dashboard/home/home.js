@@ -245,7 +245,7 @@ function renderActiveTaskFilterLabel() {
         const inviteItem = document.createElement('div');
         inviteItem.className = 'homepeople-invite-item';
         inviteItem.innerHTML = `<i class="fas fa-user-plus"></i> Invite teammates`;
-        inviteItem.addEventListener('click', showEmailModal);
+        //inviteItem.addEventListener('click', showEmailModal);
         list.appendChild(inviteItem);
         peopleContent.appendChild(list);
     }
