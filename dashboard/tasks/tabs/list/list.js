@@ -15,12 +15,20 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
     getFirestore,
-    doc,
-    collection,
-    query,
-    where,
-    onSnapshot, // Import onSnapshot for real-time listeners
-    orderBy
+doc,
+collection,
+query,
+where,
+onSnapshot,
+orderBy,
+addDoc,
+updateDoc,
+deleteDoc,
+writeBatch,
+serverTimestamp,
+deleteField, 
+arrayUnion,
+getDocs 
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "/services/firebase-config.js";
 
@@ -50,12 +58,13 @@ let activeListeners = {
     sections: null,
     tasks: null,
 };
-
+let allTasksFromSnapshot = [];
 // --- Data ---
 let project = {
     customColumns: [],
     sections: [],
 };
+let currentProjectId = null;
 
 let activeFilters = {}; // Will hold { visibleSections: [id1, id2] }
 let activeSortState = 'default'; // 'default', 'asc' (oldest), 'desc' (newest)
@@ -127,6 +136,7 @@ function attachRealtimeListeners(userId) {
             }
             const projectDoc = projectSnapshot.docs[0];
             const projectId = projectDoc.id;
+            currentProjectId = projectId;
             const projectData = projectDoc.data();
             console.log(`Project changed or detected. Listening to project: ${projectId}`);
             
@@ -146,7 +156,11 @@ function attachRealtimeListeners(userId) {
             });
             
             // 4. Listen to all tasks for the project
-            const tasksQuery = query(collection(db, "tasks"), where("projectId", "==", projectId));
+            const tasksQuery = query(
+    collection(db, "tasks"),
+    where("projectId", "==", projectId),
+    orderBy("createdAt", "desc") // <-- CHANGE THIS
+);
             if (activeListeners.tasks) activeListeners.tasks();
             activeListeners.tasks = onSnapshot(tasksQuery, (tasksSnapshot) => {
                 const allTasks = tasksSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
@@ -219,18 +233,18 @@ export function init(params) {
         console.log("Cleaning up List View Module...");
         detachAllListeners(); // Ensure all listeners are gone when the module is destroyed.
         console.log("Cleaning up List View Module...");
-if (headerClickListener) taskListHeaderEl.removeEventListener('click', headerClickListener);
-if (bodyClickListener) taskListBody.removeEventListener('click', bodyClickListener);
-if (bodyFocusOutListener) taskListBody.removeEventListener('focusout', bodyFocusOutListener);
-if (addTaskHeaderBtnListener) addTaskHeaderBtn.removeEventListener('click', addTaskHeaderBtnListener);
-if (addSectionBtnListener) addSectionBtn.removeEventListener('click', addSectionBtnListener);
-if (windowClickListener) window.removeEventListener('click', windowClickListener);
-if (filterBtnListener) filterBtn.removeEventListener('click', filterBtnListener);
-if (sortBtnListener) sortBtn.removeEventListener('click', sortBtnListener);
-
-if (sortableSections) sortableSections.destroy();
-sortableTasks.forEach(st => st.destroy());
-sortableTasks.length = 0;
+        if (headerClickListener) taskListHeaderEl.removeEventListener('click', headerClickListener);
+        if (bodyClickListener) taskListBody.removeEventListener('click', bodyClickListener);
+        if (bodyFocusOutListener) taskListBody.removeEventListener('focusout', bodyFocusOutListener);
+        if (addTaskHeaderBtnListener) addTaskHeaderBtn.removeEventListener('click', addTaskHeaderBtnListener);
+        if (addSectionBtnListener) addSectionBtn.removeEventListener('click', addSectionBtnListener);
+        if (windowClickListener) window.removeEventListener('click', windowClickListener);
+        if (filterBtnListener) filterBtn.removeEventListener('click', filterBtnListener);
+        if (sortBtnListener) sortBtn.removeEventListener('click', sortBtnListener);
+        
+        if (sortableSections) sortableSections.destroy();
+        sortableTasks.forEach(st => st.destroy());
+        sortableTasks.length = 0;
     };
     
     
@@ -378,7 +392,10 @@ function setupEventListeners() {
                 return;
             }
             if (task.isNew) delete task.isNew;
-            if (task.name !== newName) updateTask(taskId, { name: newName });
+            if (task.name !== newName) {
+                 // CALL FIREBASE UPDATE
+                 updateTaskInFirebase(taskId, { name: newName });
+                }
         } else if (e.target.matches('[data-control="custom"]')) {
             const customFieldCell = e.target;
             const columnId = Number(customFieldCell.dataset.columnId);
@@ -387,11 +404,24 @@ function setupEventListeners() {
             // REPLACE THE 'if' STATEMENT WITH THIS
             if (column && (column.type === 'Costing' || column.type === 'Numbers')) {
                 // This new logic correctly handles negative numbers like '-500'.
-                const rawValue = customFieldCell.innerText.trim().replace(/,/g, ''); // Remove commas
+                const rawValue = customFieldCell.innerText.trim().replace(/,/g, '');
                 newValue = parseFloat(rawValue) || 0;
             }
-            if (task.customFields[columnId] !== newValue) updateTask(taskId, { customFields: { ...task.customFields, [columnId]: newValue } });
+            if (task.customFields[columnId] !== newValue) {
+            updateTaskInFirebase(taskId, { [`customFields.${columnId}`]: newValue });
         }
+        }else if (e.target.matches('.section-title')) {
+    // NEW: Handle section renaming
+    const sectionEl = e.target.closest('.task-section');
+    if (sectionEl) {
+        const sectionId = sectionEl.dataset.sectionId;
+        const newTitle = e.target.innerText.trim();
+        const section = project.sections.find(s => s.id === sectionId);
+        if (section && section.title !== newTitle) {
+            updateSectionInFirebase(sectionId, { title: newTitle });
+        }
+    }
+}
     };
     
     addTaskHeaderBtnListener = () => {
@@ -399,15 +429,12 @@ function setupEventListeners() {
             currentlyFocusedSectionId = project.sections[0].id;
         }
         const focusedSection = project.sections.find(s => s.id === currentlyFocusedSectionId);
-        if (focusedSection) addNewTask(focusedSection, 'start');
+        if (focusedSection) addNewTask(focusedSection);
         else alert('Please create a section before adding a task.');
     };
     
     addSectionBtnListener = () => {
-        const newSectionId = Date.now();
-        project.sections.push({ id: newSectionId, title: 'New Section', tasks: [], isCollapsed: false });
-        currentlyFocusedSectionId = newSectionId;
-        render();
+        addSectionBtnListener();
     };
     
     // This is the corrected version:
@@ -447,6 +474,16 @@ function setupEventListeners() {
 }
 
 // --- Core Logic & UI Functions ---
+
+function addSectionBtnListener() {
+    const newOrder = project.sections ? project.sections.length : 0;
+    addSectionToFirebase({
+        title: 'New Section',
+        isCollapsed: false,
+        order: newOrder
+    });
+};
+
 
 function openSectionFilterPanel() {
     closeFloatingPanels();
@@ -768,20 +805,8 @@ function createTaskRow(task, customColumns) {
 }
 
 function moveTaskToSection(taskId, targetSectionId) {
-    const { task, section: sourceSection } = findTaskAndSection(taskId);
-    const targetSection = project.sections.find(s => s.id === targetSectionId);
-    
-    if (task && sourceSection && targetSection && sourceSection.id !== targetSection.id) {
-        // Remove task from the old section
-        sourceSection.tasks = sourceSection.tasks.filter(t => t.id !== taskId);
-        // Add task to the top of the new section
-        targetSection.tasks.unshift(task);
-        
-        // In a real app, you would update this change in Firebase as well
-        // updateTaskInFirebase(taskId, { sectionId: targetSectionId });
-        
-        render(); // Re-render the entire view to show the change
-    }
+    // Simply update the task's sectionId. onSnapshot will handle the rerender.
+    updateTaskInFirebase(taskId, { sectionId: targetSectionId });
 }
 
 function displaySideBarTasks(taskId) {
@@ -794,20 +819,128 @@ function displaySideBarTasks(taskId) {
 }
 
 function updateTask(taskId, newProperties) {
-    const { task } = findTaskAndSection(taskId);
-    if (task) {
-        Object.assign(task, newProperties);
-        updateTaskInFirebase(taskId, newProperties);
-        render();
+    // This function now exclusively calls the Firebase update function.
+    // No local state manipulation is needed.
+    updateTaskInFirebase(taskId, newProperties);
+}
+
+/**
+ * Updates specific properties of a task document in Firestore.
+ * @param {string} taskId The ID of the task to update.
+ * @param {object} propertiesToUpdate An object with the fields to update.
+ */
+async function updateTaskInFirebase(taskId, propertiesToUpdate) {
+    const taskRef = doc(db, "tasks", taskId);
+    try {
+        await updateDoc(taskRef, propertiesToUpdate);
+    } catch (error) {
+        console.error(`Error updating task ${taskId}:`, error);
+        alert("Error: Could not save task changes.");
     }
 }
 
-async function updateTaskInFirebase(taskId, propertiesToUpdate) {
-    console.log(`Updating task ${taskId} in Firebase with:`, propertiesToUpdate);
+/**
+ * Creates a new task document in Firestore.
+ * onSnapshot will handle the UI update.
+ * @param {string} sectionId The ID of the section to add the task to.
+ * @param {object} taskData The core data for the new task.
+ */
+async function addTaskToFirebase(sectionId, taskData) {
+    if (!currentProjectId) return console.error("No project selected.");
+    try {
+        await addDoc(collection(db, "tasks"), {
+            ...taskData,
+            projectId: currentProjectId,
+            sectionId: sectionId,
+            createdAt: serverTimestamp()
+        });
+    } catch (error) {
+        console.error("Error adding task:", error);
+        alert("Error: Could not add the new task.");
+    }
 }
 
-async function addTaskToFirebase(sectionId, taskData) {
-    console.log(`Adding new task to section ${sectionId} in Firebase:`, taskData);
+/**
+ * Creates a new section document in a project's subcollection.
+ * @param {object} sectionData The data for the new section (e.g., {title, order}).
+ */
+async function addSectionToFirebase(sectionData) {
+    if (!currentProjectId) return console.error("No project selected.");
+    try {
+        await addDoc(collection(db, `projects/${currentProjectId}/sections`), sectionData);
+    } catch (error) {
+        console.error("Error adding section:", error);
+        alert("Error: Could not add the new section.");
+    }
+}
+
+/**
+ * Updates a section document in Firestore.
+ * @param {string} sectionId The ID of the section to update.
+ * @param {object} propertiesToUpdate An object with the fields to update.
+ */
+async function updateSectionInFirebase(sectionId, propertiesToUpdate) {
+    if (!currentProjectId) return console.error("No project selected.");
+    const sectionRef = doc(db, `projects/${currentProjectId}/sections`, sectionId);
+    try {
+        await updateDoc(sectionRef, propertiesToUpdate);
+    } catch (error) {
+        console.error(`Error updating section ${sectionId}:`, error);
+    }
+}
+
+/**
+ * Updates the project document, typically for managing custom columns.
+ * @param {object} propertiesToUpdate An object with fields to update on the project.
+ */
+async function updateProjectInFirebase(propertiesToUpdate) {
+    if (!currentProjectId) return console.error("No project selected.");
+    const projectRef = doc(db, "projects", currentProjectId);
+    try {
+        await updateDoc(projectRef, propertiesToUpdate);
+    } catch (error) {
+        console.error("Error updating project properties:", error);
+        alert("Error: Could not update project settings.");
+    }
+}
+
+/**
+ * Deletes a custom column and all its corresponding data across all tasks in the project.
+ * @param {string} columnId The ID of the column to delete.
+ */
+async function deleteColumnInFirebase(columnId) {
+    if (!currentProjectId) return console.error("No project selected.");
+    if (!window.confirm('Are you sure you want to delete this column and all its data? This action cannot be undone.')) {
+        return;
+    }
+
+    const batch = writeBatch(db);
+
+    // 1. Update the project document to remove the column from the array
+    const newColumnsArray = project.customColumns.filter(col => col.id !== columnId);
+    const projectRef = doc(db, "projects", currentProjectId);
+    batch.update(projectRef, { customColumns: newColumnsArray });
+
+    // 2. Find all tasks in the project to remove the custom field key
+    const tasksQuery = query(
+    collection(db, "tasks"),
+    where("projectId", "==", projectId),
+    orderBy("createdAt", "desc") // <-- CHANGE THIS
+);
+    try {
+        const tasksSnapshot = await getDocs(tasksQuery);
+        tasksSnapshot.forEach(taskDoc => {
+            const taskRef = doc(db, "tasks", taskDoc.id);
+            // Use deleteField() to remove the key from the map
+            batch.update(taskRef, { [`customFields.${columnId}`]: deleteField() });
+        });
+
+        // 3. Commit the batch
+        await batch.commit();
+    } catch (error) {
+        console.error("Error deleting column and its data:", error);
+        alert("Error: Could not completely delete the column.");
+    }
 }
 
 function handleTaskCompletion(taskId, taskRowEl) {
@@ -830,24 +963,24 @@ function handleTaskCompletion(taskId, taskRowEl) {
     }, 400);
 }
 
-function addNewTask(section, position = 'end') {
-    const newTask = { id: Date.now(), name: '', dueDate: '', priority: 'Low', status: 'On track', assignees: [], customFields: {}, isNew: true };
+function addNewTask(section) {
+    const newTaskData = {
+        name: '',
+        dueDate: '',
+        priority: 'Low',
+        status: 'On track',
+        assignees: [],
+        customFields: {},
+        isNew: true // This is a client-side flag, won't be saved in Firebase
+    };
+    // The 'isNew' property will be handled client-side on focus out.
+    // Call the firebase function
+    addTaskToFirebase(section.id, newTaskData);
     
-    if (position === 'start') {
-        section.tasks.unshift(newTask);
-    } else {
-        section.tasks.push(newTask);
-    }
-    
-    addTaskToFirebase(section.id, newTask);
-    
-    if (section.isCollapsed) section.isCollapsed = false;
-    
-    render();
-    
-    const newTaskEl = taskListBody.querySelector(`.task-row-wrapper[data-task-id="${newTask.id}"] .task-name`);
-    if (newTaskEl) {
-        newTaskEl.focus();
+    // No need to manipulate local state here, onSnapshot will do it.
+    if (section.isCollapsed) {
+        // We can, however, provide a better UX by expanding the section
+        updateSectionInFirebase(section.id, { isCollapsed: false });
     }
 }
 
@@ -1018,33 +1151,23 @@ function syncScroll(scrollStates = new Map()) {
 
 function addNewColumn(config) {
     const newColumn = {
-        id: Date.now(),
+        id: Date.now(), // Using timestamp for simplicity, UUIDs are better in production
         name: config.name,
         type: config.type,
         currency: config.currency || null,
         aggregation: (config.type === 'Costing' || config.type === 'Numbers') ? 'Sum' : null,
+        options: config.type === 'Type' ? typeColumnOptions : null
     };
     
-    if (config.type === 'Type') {
-        newColumn.options = typeColumnOptions;
-    }
-    
-    project.customColumns.push(newColumn);
-    render();
+    // Use Firestore's arrayUnion to safely add the new column object
+    updateProjectInFirebase({
+        customColumns: arrayUnion(newColumn)
+    });
 }
 
 function deleteColumn(columnId) {
-    if (window.confirm('Are you sure you want to delete this column and all its data? This action cannot be undone.')) {
-        project.customColumns = project.customColumns.filter(col => col.id !== columnId);
-        project.sections.forEach(section => {
-            section.tasks.forEach(task => {
-                if (task.customFields && task.customFields[columnId]) {
-                    delete task.customFields[columnId];
-                }
-            });
-        });
-        render();
-    }
+    // The confirmation dialog is now inside the Firebase function
+    deleteColumnInFirebase(columnId);
 }
 
 function openAddColumnDialog(columnType) {
