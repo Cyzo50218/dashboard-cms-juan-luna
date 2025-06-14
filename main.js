@@ -159,68 +159,87 @@ function updateActiveNav(sectionName) {
  * Loads persistent HTML components like the header or drawer.
  * This function is left unchanged as requested.
  */
+/**
+ * Asynchronously loads HTML content into a specified container, and then
+ * dynamically loads the associated CSS and JavaScript files.
+ * This version is updated to load JavaScript files as modules,
+ * allowing them to use import/export syntax.
+ *
+ * @param {string} selector A CSS selector for the container element.
+ * @param {string} url The URL of the HTML fragment to load.
+ */
 async function loadHTML(selector, url) {
-  const container = document.querySelector(selector);
-  try {
-    const response = await fetch(url);
-    container.innerHTML = await response.text();
-    
-    let cssFileName = null;
-    let cssId = null;
-    let jsFileName = null;
-    let jsId = null;
-    
-    if (url.includes("header/header.html")) {
-      cssFileName = "header.css";
-      cssId = "header-css";
-      jsFileName = "header.js";
-      jsId = "header-js";
-    } else if (url.includes("drawer/drawer.html")) {
-      cssFileName = "drawer.css";
-      cssId = "drawer-css";
-      jsFileName = "drawer.js";
-      jsId = "drawer-js";
-    } else if (url.includes("sidebar/sidebar.html")) {
-  cssFileName = "sidebar.css";
-  cssId = "sidebar-css";
-  jsFileName = "sidebar.js";
-  jsId = "sidebar-js";
-}
-    
-    // Load CSS
-    if (cssFileName && cssId && !document.getElementById(cssId)) {
-      const link = document.createElement("link");
-      link.rel = "stylesheet";
-      const folderPath = url.substring(0, url.lastIndexOf('/'));
-      link.href = `${folderPath}/${cssFileName}`;
-      link.id = cssId;
-      document.head.appendChild(link);
+    const container = document.querySelector(selector);
+    if (!container) {
+        console.error(`Container with selector "${selector}" not found.`);
+        return;
     }
     
-    // Load JS
-    if (jsFileName && jsId && !document.getElementById(jsId)) {
-      const script = document.createElement("script");
-      const folderPath = url.substring(0, url.lastIndexOf('/'));
-      script.src = `${folderPath}/${jsFileName}`;
-      script.id = jsId;
-      script.onload = () => {
-  console.log(`${jsFileName} loaded successfully.`);
-  // If this is the sidebar script, call its init function now.
-  if (jsFileName === 'sidebar.js' && window.TaskSidebar && typeof window.TaskSidebar.init === 'function') {
-    window.TaskSidebar.init();
-  }
-  
-};
-      script.defer = true;
-      document.body.appendChild(script);
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
+        }
+        container.innerHTML = await response.text();
+        
+        let cssFileName = null;
+        let cssId = null;
+        let jsFileName = null;
+        let jsId = null;
+        
+        const folderPath = url.substring(0, url.lastIndexOf('/'));
+        
+        if (url.includes("header/header.html")) {
+            cssFileName = "header.css";
+            cssId = "header-css";
+            jsFileName = "header.js";
+            jsId = "header-js";
+        } else if (url.includes("drawer/drawer.html")) {
+            cssFileName = "drawer.css";
+            cssId = "drawer-css";
+            jsFileName = "drawer.js";
+            jsId = "drawer-js";
+        } else if (url.includes("sidebar/sidebar.html")) {
+            cssFileName = "sidebar.css";
+            cssId = "sidebar-css";
+            jsFileName = "sidebar.js";
+            jsId = "sidebar-js";
+        }
+        
+        // Load CSS
+        if (cssFileName && cssId && !document.getElementById(cssId)) {
+            const link = document.createElement("link");
+            link.rel = "stylesheet";
+            link.href = `${folderPath}/${cssFileName}`;
+            link.id = cssId;
+            document.head.appendChild(link);
+        }
+        
+        // Load JS
+        if (jsFileName && jsId && !document.getElementById(jsId)) {
+            const script = document.createElement("script");
+            
+            // --- THE FIX ---
+            // Set the script type to "module" to support import/export syntax.
+            script.type = "module";
+            
+            script.src = `${folderPath}/${jsFileName}`;
+            script.id = jsId;
+            script.onload = () => {
+                console.log(`${jsFileName} loaded successfully as a module.`);
+                // If this is the sidebar script, call its init function now.
+                if (jsFileName === 'sidebar.js' && window.TaskSidebar && typeof window.TaskSidebar.init === 'function') {
+                    window.TaskSidebar.init();
+                }
+            };
+            // Note: `defer` is the default behavior for modules, so explicitly setting it is not required.
+            document.body.appendChild(script);
+        }
+        
+    } catch (err) {
+        container.innerHTML = `<p>Error loading content from ${url}</p>`;
+        console.error("Failed to load component:", err);
     }
-    
-    
-    
-  } catch (err) {
-    container.innerHTML = `<p>Error loading ${url}</p>`;
-    console.error("Failed to load HTML:", err);
-  }
 }
 
 /**
