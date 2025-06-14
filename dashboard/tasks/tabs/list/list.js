@@ -493,7 +493,7 @@ break;
     };
     
     // This is the corrected version:
-    windowClickListener = (e) q => {
+    windowClickListener = (e) => {
         // We add #filter-btn AND the dialog's own class to the list of elements that should NOT close the panels.
         if (!e.target.closest('.datepicker, .context-dropdown, [data-control], .dialog-overlay, .delete-column-btn, #add-column-btn, #filter-btn, .filterlistview-dialog-overlay')) {
             closeFloatingPanels();
