@@ -49,7 +49,8 @@ let sortableSections;
 const sortableTasks = [];
 
 // --- Data ---
-
+let project = { customColumns: [], sections: [] };
+let allTasksFromSnapshot = [];
 // --- Real-time Listener Management ---
 // This object will hold the unsubscribe functions for our active listeners.
 let activeListeners = {
