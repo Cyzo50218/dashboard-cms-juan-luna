@@ -27,7 +27,25 @@
         { id: 'project-3', name: 'Marketing Campaign', color: '#2ecc71' }
     ];
     let activeProjectId = 'project-1'; // The ID of the currently selected project.
-    
+    document.querySelectorAll('.nav-item a[href^="#"]').forEach(link => {
+    const section = link.getAttribute('href').substring(1);
+    link.setAttribute('data-section', section);
+});
+
+document.body.addEventListener('click', (e) => {
+    const navLink = e.target.closest('a[data-section]');
+    if (navLink) {
+        e.preventDefault();
+        const section = navLink.getAttribute('data-section');
+        // Hardcoded URL for demonstration purposes
+        const newUrl = (section === 'tasks') ?
+            `/tasks/22887391981/list/22887391981` :
+            `/${section}`;
+        
+        history.pushState({ path: newUrl }, '', newUrl);
+        router(); // This is your router function defined elsewhere
+    }
+});
     
     // --- 2. RENDER FUNCTION ---
     /**
