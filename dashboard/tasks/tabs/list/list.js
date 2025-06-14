@@ -29,7 +29,8 @@ import {
     serverTimestamp,
     deleteField,
     arrayUnion,
-    getDocs
+    getDocs,
+    getDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "/services/firebase-config.js";
 
@@ -75,6 +76,7 @@ const allUsers = [
     { id: 4, name: 'Sookie St. James', email: 'sookie.sj@example.com', avatar: 'https://i.imgur.com/L4DD33f.png' },
     { id: 5, name: 'Paris Geller', email: 'paris.g@example.com', avatar: 'https://i.imgur.com/lVceL5s.png' },
 ];
+let taskIdToFocus = null;
 
 // Initialize safely
 let currentlyFocusedSectionId = null;
@@ -325,20 +327,26 @@ function setupEventListeners() {
         const control = e.target.closest('[data-control]');
         if (!control) return;
         
+        const taskId = taskRow.dataset.taskId;
+        const sectionEl = taskRow.closest('.task-section');
+        const sectionId = sectionEl ? sectionEl.dataset.sectionId : null;
+        
+        if (!sectionId) return; // Cannot perform updates without a sectionId
+        
         switch (control.dataset.control) {
             case 'check':
                 e.stopPropagation();
                 handleTaskCompletion(taskId, taskRow);
                 break;
             case 'due-date':
-                showDatePicker(control, taskId);
+                showDatePicker(control, taskId, sectionId);
                 break;
             case 'priority':
-                createDropdown(priorityOptions, control, (v) => updateTask(taskId, { priority: v }));
-                break;
-            case 'status':
-                createDropdown(statusOptions, control, (v) => updateTask(taskId, { status: v }));
-                break;
+createDropdown(priorityOptions, control, (v) => updateTask(taskId, sectionId, { priority: v }));
+break;
+case 'status':
+createDropdown(statusOptions, control, (v) => updateTask(taskId, sectionId, { status: v }));
+break;
             case 'custom-select': {
                 const columnId = Number(control.dataset.columnId);
                 const column = project.customColumns.find(c => c.id === columnId);
@@ -346,11 +354,9 @@ function setupEventListeners() {
                     // Create a dropdown with the column's specific options ('Invoice', 'Payment').
                     // The callback updates the task's custom field with the selected value.
                     createDropdown(column.options, control, (selectedValue) => {
-                        updateTask(taskId, {
-                            customFields: {
-                                ...task.customFields,
-                                [columnId]: selectedValue
-                            }
+                        const { task } = findTaskAndSection(taskId); // findTask is still ok here just for reading current state
+                        updateTask(taskId, sectionId, {
+                            customFields: { ...task.customFields, [columnId]: selectedValue }
                         });
                     });
                 }
@@ -388,59 +394,90 @@ function setupEventListeners() {
                 break;
             }
             case 'remove-assignee':
-                e.stopPropagation();
-                updateTask(taskId, { assignees: [] });
-                break;
+e.stopPropagation();
+updateTask(taskId, sectionId, { assignees: [] }); 
+break;
         }
     };
     
     bodyFocusOutListener = (e) => {
-        const taskRow = e.target.closest('.task-row-wrapper');
-        if (!taskRow) return;
-        const taskId = Number(taskRow.dataset.taskId);
-        const { task, section } = findTaskAndSection(taskId);
-        if (!task || !section) return;
-        
-        if (e.target.matches('.task-name')) {
-            const newName = e.target.innerText.trim();
-            if (task.isNew && newName === '') {
-                section.tasks = section.tasks.filter(t => t.id !== taskId);
-                render();
-                return;
-            }
-            if (task.isNew) delete task.isNew;
-            if (task.name !== newName) {
-                // CALL FIREBASE UPDATE
-                updateTaskInFirebase(taskId, { name: newName });
-            }
-        } else if (e.target.matches('[data-control="custom"]')) {
-            const customFieldCell = e.target;
-            const columnId = Number(customFieldCell.dataset.columnId);
-            const column = project.customColumns.find(c => c.id === columnId);
-            let newValue = customFieldCell.innerText;
-            // REPLACE THE 'if' STATEMENT WITH THIS
-            if (column && (column.type === 'Costing' || column.type === 'Numbers')) {
-                // This new logic correctly handles negative numbers like '-500'.
-                const rawValue = customFieldCell.innerText.trim().replace(/,/g, '');
-                newValue = parseFloat(rawValue) || 0;
-            }
-            if (task.customFields[columnId] !== newValue) {
-                updateTaskInFirebase(taskId, {
-                    [`customFields.${columnId}`]: newValue });
-            }
-        } else if (e.target.matches('.section-title')) {
-            // NEW: Handle section renaming
-            const sectionEl = e.target.closest('.task-section');
-            if (sectionEl) {
-                const sectionId = sectionEl.dataset.sectionId;
-                const newTitle = e.target.innerText.trim();
-                const section = project.sections.find(s => s.id === sectionId);
-                if (section && section.title !== newTitle) {
-                    updateSectionInFirebase(sectionId, { title: newTitle });
-                }
+    // Case 1: Renaming a section title
+    if (e.target.matches('.section-title')) {
+        const sectionEl = e.target.closest('.task-section');
+        if (sectionEl) {
+            const sectionId = sectionEl.dataset.sectionId;
+            const newTitle = e.target.innerText.trim();
+            const section = project.sections.find(s => s.id === sectionId);
+            
+            // Only update if the title has actually changed
+            if (section && section.title !== newTitle) {
+                updateSectionInFirebase(sectionId, { title: newTitle });
             }
         }
-    };
+        return; // End execution here
+    }
+
+    const taskRow = e.target.closest('.task-row-wrapper');
+    if (!taskRow) return; // Exit if the event wasn't inside a task row
+
+    const taskId = taskRow.dataset.taskId; // This could be a real ID or a temporary one
+    const { task, section } = findTaskAndSection(taskId);
+
+    // If for some reason the task or section can't be found, do nothing.
+    if (!task || !section) {
+        return;
+    }
+
+    // Case 2: Editing a task name
+    if (e.target.matches('.task-name')) {
+        const newName = e.target.innerText.trim();
+
+        // If it was a new, temporary task...
+        if (task.isNew) {
+            // ... and the user entered a name, save it permanently to Firestore.
+            if (newName) {
+                // First, remove the local temporary task from the array.
+                section.tasks = section.tasks.filter(t => t.id !== taskId);
+                
+                // Then, create a new task in Firestore with the entered name.
+                // Destructure the temp task to get its data, but exclude local-only flags.
+                const { isNew, id, ...taskData } = task; 
+                addTaskToFirebase(section.id, { ...taskData, name: newName });
+                // The onSnapshot listener will automatically add the new, permanent task to the UI.
+
+            } else {
+                // ... but the name is empty, just remove the temporary task and re-render.
+                section.tasks = section.tasks.filter(t => t.id !== taskId);
+                render();
+            }
+        }
+        // If it's an existing task and the name has changed, update it.
+        else if (task.name !== newName) {
+            updateTask(taskId, section.id, { name: newName });
+        }
+    } 
+    // Case 3: Editing a custom field cell
+    else if (e.target.matches('[data-control="custom"]')) {
+        const customFieldCell = e.target;
+        const columnId = customFieldCell.dataset.columnId;
+        const column = project.customColumns.find(c => c.id == columnId);
+        if (!column) return;
+
+        let newValue = customFieldCell.innerText.trim();
+
+        // For Costing or Numbers types, parse the value as a number.
+        if (column.type === 'Costing' || column.type === 'Numbers') {
+            const rawValue = newValue.replace(/,/g, ''); // Remove commas for parsing
+            newValue = parseFloat(rawValue) || 0;
+        }
+
+        // Only update if the value has actually changed.
+        if (task.customFields[columnId] !== newValue) {
+            // Use dot notation for updating a specific key in a map field.
+            updateTask(taskId, section.id, { [`customFields.${columnId}`]: newValue });
+        }
+    }
+};
     
     addTaskHeaderBtnListener = () => {
         if (!currentlyFocusedSectionId && project.sections.length > 0) {
@@ -456,7 +493,7 @@ function setupEventListeners() {
     };
     
     // This is the corrected version:
-    windowClickListener = (e) => {
+    windowClickListener = (e) q => {
         // We add #filter-btn AND the dialog's own class to the list of elements that should NOT close the panels.
         if (!e.target.closest('.datepicker, .context-dropdown, [data-control], .dialog-overlay, .delete-column-btn, #add-column-btn, #filter-btn, .filterlistview-dialog-overlay')) {
             closeFloatingPanels();
@@ -628,6 +665,13 @@ function render() {
     //renderFooter(projectToRender);
     syncScroll(scrollStates);
     
+    if (taskIdToFocus) {
+        const newEl = taskListBody.querySelector(`[data-task-id="${taskIdToFocus}"] .task-name`);
+    if (newEl) {
+        newEl.focus();
+     }
+        taskIdToFocus = null;
+    }
     const isSortActive = activeSortState !== 'default';
     
     if (activeSortState === 'asc') {
@@ -822,9 +866,33 @@ function createTaskRow(task, customColumns) {
     return rowWrapper;
 }
 
-function moveTaskToSection(taskId, targetSectionId) {
-    // Simply update the task's sectionId. onSnapshot will handle the rerender.
-    updateTaskInFirebase(taskId, { sectionId: targetSectionId });
+async function moveTaskToSection(taskId, targetSectionId) {
+    const { task: taskToMove, section: sourceSection } = findTaskAndSection(taskId);
+    
+    if (!taskToMove || !sourceSection || sourceSection.id === targetSectionId) {
+        console.error("Cannot move task. Source or target section is invalid.");
+        return;
+    }
+    
+    // 1. Prepare the new task data, ensuring sectionId is updated.
+    const newTaskData = { ...taskToMove, sectionId: targetSectionId };
+    delete newTaskData.id; // Firestore will generate a new ID.
+    
+    // 2. Define document references for the batch operation.
+    const sourceTaskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${sourceSection.id}/tasks/${taskId}`);
+    const targetTasksColRef = collection(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${targetSectionId}/tasks`);
+    
+    try {
+        // 3. Use a batch to perform the delete and add atomically.
+        const batch = writeBatch(db);
+        batch.delete(sourceTaskRef);
+        batch.set(doc(targetTasksColRef), newTaskData); // Create new task in the target
+        
+        await batch.commit();
+        console.log(`Task ${taskId} moved successfully to section ${targetSectionId}`);
+    } catch (error) {
+        console.error("Error moving task:", error);
+    }
 }
 
 function displaySideBarTasks(taskId) {
@@ -836,10 +904,8 @@ function displaySideBarTasks(taskId) {
     }
 }
 
-function updateTask(taskId, newProperties) {
-    // This function now exclusively calls the Firebase update function.
-    // No local state manipulation is needed.
-    updateTaskInFirebase(taskId, newProperties);
+function updateTask(taskId, sectionId, newProperties) {
+    updateTaskInFirebase(taskId, sectionId, newProperties);
 }
 
 /**
@@ -847,13 +913,16 @@ function updateTask(taskId, newProperties) {
  * @param {string} taskId The ID of the task to update.
  * @param {object} propertiesToUpdate An object with the fields to update.
  */
-async function updateTaskInFirebase(taskId, propertiesToUpdate) {
-    const taskRef = doc(db, "tasks", taskId);
+async function updateTaskInFirebase(taskId, sectionId, propertiesToUpdate) {
+    if (!currentUserId || !currentWorkspaceId || !currentProjectId || !sectionId) {
+        return console.error("Missing IDs, cannot build path to update task.", { taskId, sectionId });
+    }
+    const taskPath = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${sectionId}/tasks/${taskId}`;
     try {
-        await updateDoc(taskRef, propertiesToUpdate);
+        await updateDoc(doc(db, taskPath), propertiesToUpdate);
+        console.log(`Task ${taskId} in section ${sectionId} updated successfully.`);
     } catch (error) {
         console.error(`Error updating task ${taskId}:`, error);
-        alert("Error: Could not save task changes.");
     }
 }
 
@@ -958,7 +1027,8 @@ async function deleteColumnInFirebase(columnId) {
             const taskRef = doc(db, "tasks", taskDoc.id);
             // Use deleteField() to remove the key from the map
             batch.update(taskRef, {
-                [`customFields.${columnId}`]: deleteField() });
+                [`customFields.${columnId}`]: deleteField()
+            });
         });
         
         // 3. Commit the batch
@@ -992,24 +1062,31 @@ function handleTaskCompletion(taskId, taskRowEl) {
 }
 
 function addNewTask(section) {
-    const newTaskData = {
+    // Create a temporary, client-side only task
+    const tempId = `temp_${Date.now()}`;
+    const newTask = {
+        id: tempId,
         name: '',
+        isNew: true, // Flag to identify this as a new, unsaved task
+        // Set default values so the row renders correctly
         dueDate: '',
         priority: 'Low',
         status: 'On track',
         assignees: [],
-        customFields: {},
-        isNew: true // This is a client-side flag, won't be saved in Firebase
+        customFields: {}
     };
-    // The 'isNew' property will be handled client-side on focus out.
-    // Call the firebase function
-    addTaskToFirebase(section.id, newTaskData);
     
-    // No need to manipulate local state here, onSnapshot will do it.
+    // Add it to the local data structure
+    section.tasks.push(newTask);
+    
+    // Set the ID to focus after the re-render
+    taskIdToFocus = tempId;
+    
+    // Expand section if collapsed and re-render the UI
     if (section.isCollapsed) {
-        // We can, however, provide a better UX by expanding the section
-        updateSectionInFirebase(section.id, { isCollapsed: false });
+        section.isCollapsed = false;
     }
+    render();
 }
 
 function createTag(text, type, pClass) { return `<div class="${type}-tag ${pClass}">${text}</div>`; }
@@ -1085,7 +1162,6 @@ function showAssigneeDropdown(targetEl, taskId) {
             listContainer.appendChild(item);
         });
     };
-    
     // Render the initial list of users
     renderList();
     
@@ -1093,6 +1169,7 @@ function showAssigneeDropdown(targetEl, taskId) {
     searchInput.addEventListener('input', () => {
         renderList(searchInput.value);
     });
+    updateTask(taskId, sectionId, { assignees: newAssignees }); // Pass sectionId here
     
     mainContainer.appendChild(dropdown);
     searchInput.focus();
@@ -1124,7 +1201,9 @@ function showDatePicker(targetEl, taskId) {
     
     datepickerContainer.addEventListener('changeDate', (e) => {
         const formattedDate = Datepicker.formatDate(e.detail.date, 'yyyy-mm-dd');
-        updateTask(taskId, { dueDate: formattedDate });
+        updateTask(taskId, sectionId, { dueDate: formattedDate }); // Pass sectionId here
+        
+        
         closeFloatingPanels();
     }, { once: true });
 }
