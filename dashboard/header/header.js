@@ -103,25 +103,6 @@ onAuthStateChanged(auth, (user) => {
     window.location.href = '/login/login.html';
     return;
   }
-  
-  // --- USER IS LOGGED IN, PROCEED WITH INITIALIZATION ---
-  console.log("Header script running for user:", user.uid);
-  
-  // Update the profile display with the user's info
-  updateProfileDisplay(user);
-  
-  document.addEventListener("click", (e) => {
-    // --- NEW: Handle Logout and New Workspace clicks ---
-    if (e.target.closest('#logout-btn')) {
-      handleLogout();
-      return;
-    }
-    if (e.target.closest('#add-workspace-btn')) {
-      handleNewWorkspace();
-      return;
-    }
-    
-  });
 
 const menuToggle = document.getElementById("menuToggle");
 const rootdrawer = document.getElementById("rootdrawer");
@@ -989,5 +970,24 @@ if (inviteBtnGeneric) {
     }
   });
 }
+
+  // --- USER IS LOGGED IN, PROCEED WITH INITIALIZATION ---
+  console.log("Header script running for user:", user.uid);
+  
+  // Update the profile display with the user's info
+  updateProfileDisplay(user);
+  
+  document.addEventListener("click", (e) => {
+    // --- NEW: Handle Logout and New Workspace clicks ---
+    if (e.target.closest('#logout-btn')) {
+      handleLogout();
+      return;
+    }
+    if (e.target.closest('#add-workspace-btn')) {
+      handleNewWorkspace();
+      return;
+    }
+    
+  });
 
 });
