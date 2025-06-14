@@ -642,7 +642,7 @@ export function init(params) {
         }
 
         if (sourceSection.id === targetSection.id && taskData.completed === isCompleted) {
-             const taskRef = doc(db, `users/${currentUser.uid}/profile/myworkspace/${activeWorkspaceId}/projects/${activeProjectId}/sections/${sourceSection.id}/tasks`, taskId);
+             const taskRef = doc(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects/${activeProjectId}/sections/${sourceSection.id}/tasks`, taskId);
              await updateDoc(taskRef, { completed: isCompleted });
              return;
         }
@@ -651,8 +651,8 @@ export function init(params) {
 
         try {
             const batch = writeBatch(db);
-            const oldTaskRef = doc(db, `users/${currentUser.uid}/profile/myworkspace/${activeWorkspaceId}/projects/${activeProjectId}/sections/${sourceSection.id}/tasks`, taskId);
-            const newTaskRef = doc(db, `users/${currentUser.uid}/profile/myworkspace/${activeWorkspaceId}/projects/${activeProjectId}/sections/${targetSection.id}/tasks`, taskId);
+            const oldTaskRef = doc(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects/${activeProjectId}/sections/${sourceSection.id}/tasks`, taskId);
+            const newTaskRef = doc(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects/${activeProjectId}/sections/${targetSection.id}/tasks`, taskId);
             batch.set(newTaskRef, { ...taskData, completed: isCompleted, completedAt: isCompleted ? new Date() : null });
             batch.delete(oldTaskRef);
             await batch.commit();
@@ -667,7 +667,7 @@ export function init(params) {
             if (section.tasks?.find(t => t.id === taskId)) { sourceSection = section; break; }
         }
         if (!sourceSection) return;
-        const taskRef = doc(db, `users/${currentUser.uid}/profile/myworkspace/${activeWorkspaceId}/projects/${activeProjectId}/sections/${sourceSection.id}/tasks`, taskId);
+        const taskRef = doc(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects/${activeProjectId}/sections/${sourceSection.id}/tasks`, taskId);
         try {
             await updateDoc(taskRef, { dueDate: newDueDate });
             showNotification("Due date updated!", "success");
