@@ -577,7 +577,7 @@ function renderActiveTaskFilterLabel() {
     function selectProject(projectId) {
         if (!projectId || activeProjectId === projectId) return;
         activeProjectId = projectId;
-        activeTaskFilter = 'today';
+        activeTaskFilter = 'all';
         detachSectionAndTaskListeners();
         const project = projectsData.find(p => p.id === activeProjectId);
         activeSectionId = project?.sections?.[0]?.id || null;
