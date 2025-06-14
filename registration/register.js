@@ -114,11 +114,24 @@ form.addEventListener("submit", async (e) => {
       console.log("Preparing to save user data:", userData);
 
       try {
-        await setDoc(userRef, userData);
-        console.log("✅ User saved in Firestore successfully.");
-      } catch (error) {
-        console.error("❌ Error saving user in Firestore:", error);
-      }
+
+  await setDoc(userRef, userData, { merge: true }); 
+  console.log("✅ Google user saved in Firestore successfully.");
+
+  const workspaceRef = collection(db, `users/${user.uid}/myworkspace`);
+  const newWorkspace = {
+    name: "My First Workspace", 
+    isSelected: true,
+    createdAt: serverTimestamp(), 
+    members: [user.uid] 
+  };
+
+  await addDoc(workspaceRef, newWorkspace);
+  console.log("✅ Default workspace created successfully.");
+
+} catch (error) {
+  console.error("❌ Error saving Google user or creating workspace:", error);
+}
     } else {
       console.warn("⚠️ User not authenticated. Cannot write to Firestore.");
     }
@@ -148,22 +161,35 @@ document.querySelectorAll("#google-signin-btn, #google-signin-btn-form").forEach
         // --- FIX IS HERE ---
         // Use the properties from the Google 'user' object
         const userData = {
-          id: user.uid,
-          name: user.displayName, // Use user.displayName from Google
-          email: user.email,       // Use user.email from Google
-          provider: "google",
-          avatar: user.photoURL,   // Use user.photoURL from Google
-          createdAt: new Date().toISOString()
-        };
+  id: user.uid,
+  name: user.displayName, // Use user.displayName from Google
+  email: user.email,      // Use user.email from Google
+  provider: "google",
+  avatar: user.photoURL,  // Use user.photoURL from Google
+  createdAt: new Date().toISOString()
+};
 
-        console.log("Preparing to save Google user data:", userData);
+console.log("Preparing to save Google user data:", userData);
 
-        try {
-          await setDoc(userRef, userData, { merge: true }); // Use merge:true to avoid overwriting existing data
-          console.log("✅ Google user saved in Firestore successfully.");
-        } catch (error) {
-          console.error("❌ Error saving Google user in Firestore:", error);
-        }
+try {
+
+  await setDoc(userRef, userData, { merge: true }); 
+  console.log("✅ Google user saved in Firestore successfully.");
+
+  const workspaceRef = collection(db, `users/${user.uid}/myworkspace`);
+  const newWorkspace = {
+    name: "My First Workspace", 
+    isSelected: true,
+    createdAt: serverTimestamp(), 
+    members: [user.uid] 
+  };
+
+  await addDoc(workspaceRef, newWorkspace);
+  console.log("✅ Default workspace created successfully.");
+
+} catch (error) {
+  console.error("❌ Error saving Google user or creating workspace:", error);
+}
       } else {
         console.warn("⚠️ Google user not authenticated. Cannot write to Firestore.");
       }

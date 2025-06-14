@@ -13,6 +13,7 @@ import {
 import {
     getFirestore,
     collection,
+    where,
     addDoc,
     onSnapshot,
     query,
@@ -33,6 +34,8 @@ import { firebaseConfig } from "/services/firebase-config.js";
     let projectsData = [];
     let currentUser = null;
     let unsubscribeProjects = null;
+    let activeWorkspaceId = null; 
+    let unsubscribeWorkspace = null;
     
     function stringToNumericString(str) {
         if (!str) return '';
@@ -87,54 +90,94 @@ import { firebaseConfig } from "/services/firebase-config.js";
             }
         }
     }
-    
-    async function handleAddProject() {
-        if (!currentUser) return alert("Please log in to add a project.");
-        const newProjectName = prompt("Enter the name for the new project:");
-        if (newProjectName && newProjectName.trim() !== '') {
-            const randomColor = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
-            const projectsColRef = collection(db, `users/${currentUser.uid}/projects`);
-            try {
-                await addDoc(projectsColRef, { title: newProjectName.trim(), color: randomColor, createdAt: new Date() });
-            } catch (error) { console.error("Error adding project: ", error); }
+
+// --- Function to Add a Project (Corrected Path) ---
+async function handleAddProject() {
+    if (!currentUser) return alert("Please log in to add a project.");
+    // New check: Ensure a workspace is selected before adding a project
+    if (!activeWorkspaceId) {
+        return alert("Cannot add project: No workspace is selected.");
+    }
+    const newProjectName = prompt("Enter the name for the new project:");
+    if (newProjectName && newProjectName.trim() !== '') {
+        const randomColor = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+        // Corrected Path: Now points to the subcollection within the active workspace
+        const projectsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects`);
+        try {
+            await addDoc(projectsColRef, {
+                title: newProjectName.trim(),
+                color: randomColor,
+                createdAt: new Date()
+            });
+        } catch (error) {
+            console.error("Error adding project: ", error);
         }
     }
-    
-    // This listener is now only for UI elements specific to the drawer itself
-    sidebar.addEventListener('click', (e) => {
-        const sectionHeader = e.target.closest('.section-header');
-        if (sectionHeader) {
-            sectionHeader.closest('.nav-section')?.classList.toggle('open');
-        }
-    });
-    
-    document.body.addEventListener('click', e => {
-        if (e.target.closest('#add-project-action')) {
-            handleAddProject();
-            document.querySelector('.drawerprojects-dropdown')?.remove();
-        }
-    });
-    
-    onAuthStateChanged(auth, (user) => {
-        if (unsubscribeProjects) unsubscribeProjects();
-        
-        if (user) {
-            currentUser = user;
-            const projectsQuery = query(collection(db, `users/${user.uid}/projects`), orderBy("createdAt", "desc"));
-            unsubscribeProjects = onSnapshot(projectsQuery, (snapshot) => {
-                projectsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderProjectsList();
-            }, (error) => {
-                console.error("Error fetching projects:", error);
+}
+
+// This listener is now only for UI elements specific to the drawer itself
+sidebar.addEventListener('click', (e) => {
+    const sectionHeader = e.target.closest('.section-header');
+    if (sectionHeader) {
+        sectionHeader.closest('.nav-section')?.classList.toggle('open');
+    }
+});
+
+document.body.addEventListener('click', e => {
+    if (e.target.closest('#add-project-action')) {
+        handleAddProject();
+        document.querySelector('.drawerprojects-dropdown')?.remove();
+    }
+});
+
+// --- Auth State Change Listener (Corrected Logic) ---
+onAuthStateChanged(auth, (user) => {
+    // Detach all previous listeners on auth change
+    if (unsubscribeWorkspace) unsubscribeWorkspace();
+    if (unsubscribeProjects) unsubscribeProjects();
+
+    if (user) {
+        currentUser = user;
+        // 1. First, find the selected workspace
+        const workspaceQuery = query(collection(db, `users/${user.uid}/myworkspace`), where("isSelected", "==", true));
+
+        unsubscribeWorkspace = onSnapshot(workspaceQuery, (workspaceSnapshot) => {
+            // When workspace changes, detach the old projects listener
+            if (unsubscribeProjects) unsubscribeProjects();
+
+            if (!workspaceSnapshot.empty) {
+                // Get the single selected workspace document
+                const workspaceDoc = workspaceSnapshot.docs[0];
+                activeWorkspaceId = workspaceDoc.id; // <-- Store the active workspace ID
+
+                // 2. Then, get projects from *that* workspace's subcollection
+                const projectsQuery = query(collection(db, `users/${user.uid}/myworkspace/${activeWorkspaceId}/projects`), orderBy("createdAt", "desc"));
+
+                unsubscribeProjects = onSnapshot(projectsQuery, (snapshot) => {
+                    projectsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    renderProjectsList(); // Assumes this function updates your UI
+                }, (error) => {
+                    console.error("Error fetching projects:", error);
+                    projectsData = [];
+                    renderProjectsList();
+                });
+
+            } else {
+                // Handle case where no workspace is selected
+                console.warn("No workspace selected for this user.");
+                activeWorkspaceId = null;
                 projectsData = [];
                 renderProjectsList();
-            });
-        } else {
-            currentUser = null;
-            projectsData = [];
-            renderProjectsList();
-        }
-    });
+            }
+        });
+    } else {
+        // User is logged out, clear all state
+        currentUser = null;
+        activeWorkspaceId = null;
+        projectsData = [];
+        renderProjectsList();
+    }
+});
     
     // Listen for main router popstate changes to re-render the active highlight
     window.addEventListener('popstate', renderProjectsList);

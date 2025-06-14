@@ -279,3 +279,11 @@
   text-align: center;
   color: #495057; /* A slightly softer icon color */
 }
+
+.nav-item-empty {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  color: #6c757d; /* A muted, modern gray */
+  padding-left: 1.25rem; /* Adjust as needed */
+  list-style-type: none; /* Removes the bullet point */
+}

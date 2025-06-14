@@ -1,4 +1,3 @@
-import { showInviteModal } from '/dashboard/components/showEmailModel.js';
 
 /**
  * header.js
