@@ -50,6 +50,8 @@ function router() {
     loadSection(routeParams);
 }
 
+window.router = router;
+
 /**
  * Dynamically loads a section's HTML, CSS, and JS module into the main content area.
  * @param {object} routeParams - The object of parameters returned by parseRoute().
