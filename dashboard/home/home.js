@@ -649,7 +649,6 @@ function renderActiveTaskFilterLabel() {
                     const sectionsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects/${activeProjectId}/sections`);
                     const newSectionDoc = await addDoc(sectionsColRef, { title: 'Completed', createdAt: new Date() });
                     targetSection = { id: newSectionDoc.id, title: 'Completed', tasks: [] };
-                    project.sections.push(targetSection);
                 } catch (error) { console.error("Error creating Completed section:", error); return; }
             }
         } else {
