@@ -78,7 +78,7 @@ import { firebaseConfig } from "/services/firebase-config.js";
             if (targetProjectId) {
                 const numericUserId = stringToNumericString(currentUser?.uid);
                 const numericProjectId = stringToNumericString(targetProjectId);
-                myTasksLink.href = `/tasks/${numericUserId}/list/${numericProjectId}`;
+                myTasksLink.href = `/tasks/${currentUser?.uid}/list/${targetProjectId}`;
                 myTasksLink.setAttribute('data-link', '');
             } else {
                 myTasksLink.href = '#';
