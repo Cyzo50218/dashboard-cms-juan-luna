@@ -83,7 +83,7 @@ export function init(params) {
     };
 
     let currentUser = null, activeWorkspaceId = null, activeProjectId = null, activeSectionId = null;
-    let activeTaskFilter = 'today';
+    let activeTaskFilter = 'all';
     let projectsData = [], peopleData = [];
     const listeners = { workspace: null, projects: null, sections: null, people: null, tasks: {} };
 
@@ -117,6 +117,21 @@ export function init(params) {
         projectList.appendChild(createBtn);
         updateProjectTaskCounts();
     }
+
+function renderActiveTaskFilterLabel() {
+    // Find the label in the DOM
+    const statsLabel = homeSection.querySelector('.stats-label');
+    if (!statsLabel) return;
+
+    // Find the corresponding text for the active filter value
+    const config = dropdownConfig['my-week'];
+    const selectedItem = config.items.find(item => item.value === activeTaskFilter);
+
+    // Update the text content if an item is found
+    if (selectedItem) {
+        statsLabel.textContent = selectedItem.text;
+    }
+}
 
     function renderMyTasksCard() {
         const myTasksCard = homeSection.querySelector('.my-tasks-card');
@@ -551,6 +566,7 @@ export function init(params) {
         if (id === 'my-week') {
             activeTaskFilter = value;
             renderMyTasksCard();
+            renderActiveTaskFilterLabel();
         } else if (id === 'project-recents') {
             renderProjects(value);
         } else if (id === 'collaborators') {
@@ -868,8 +884,10 @@ export function init(params) {
             if (user) {
                 // *** NEW ENTRY POINT FOR DATA LOADING ***
                 attachWorkspaceListener(user.uid);
+                renderActiveTaskFilterLabel();
             } else {
                 // Clear UI on logout
+                renderActiveTaskFilterLabel();
                 updateDateTime();
                 renderProjects();
                 renderMyTasksCard();
