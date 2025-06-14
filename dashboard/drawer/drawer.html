@@ -3,83 +3,57 @@
     <div class="nav-section">
       <ul>
         <li class="nav-item">
-          <a class="item-drawer-text" href="#home">
+          <a class="item-drawer-text" href="/home" data-link>
             <i class="fas fa-home"></i>
             <span>Home</span>
           </a>
         </li>
         <li class="nav-item">
-          <a href="#tasks">
+          <a href="/tasks" id="my-tasks-link" data-link>
             <i class="fas fa-check-square"></i>
             <span>My tasks</span>
           </a>
         </li>
         <li class="nav-item">
-          <a href="#inbox">
+          <a href="/inbox" data-link>
             <i class="fas fa-inbox"></i>
             <span>Inbox</span>
           </a>
         </li>
       </ul>
     </div>
-<!--
+    
+    <div class="nav-section open" id="projects-section">
+      <div class="section-header">
+        <div class="section-header-title">
+          <i class="fas fa-chevron-right"></i>
+          <span>Projects</span>
+        </div>
+        <button class="add-project-btn" title="Add Project">
+          <i class="fas fa-plus"></i>
+        </button>
+      </div>
+      <ul class="section-items">
+      </ul>
+    </div>
+    
     <div class="nav-section">
       <div class="section-header">
-        <i class="fas fa-chevron-right"></i>
-        <span>Insights</span>
+        <div class="section-header-title">
+          <i class="fas fa-chevron-right"></i>
+          <span>Team</span>
+        </div>
       </div>
       <ul class="section-items">
         <li class="nav-item">
-          <a href="#reporting">
-            <i class="fas fa-chart-line"></i>
-            <span>Reporting</span>
+          <a href="/myworkspace" data-link>
+            <div class="nav-item-main-content">
+              <i class="fas fa-users"></i>
+              <span>My workspace</span>
+            </div>
+            <i class="fas fa-chevron-right expand-icon"></i>
           </a>
         </li>
-        <li class="nav-item">
-          <a href="#portfolios">
-            <i class="fas fa-briefcase"></i>
-            <span>Portfolios</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a href="#goals">
-            <i class="fas fa-bullseye"></i>
-            <span>Goals</span>
-          </a>
-        </li>
-      </ul>
-    </div>
--->
-<div class="nav-section open" id="projects-section"> <div class="section-header">
-    <div class="section-header-title">
-      <i class="fas fa-chevron-right"></i>
-      <span>Projects</span>
-    </div>
-    <button class="add-project-btn" title="Add Project">
-      <i class="fas fa-plus"></i>
-    </button>
-  </div>
-  <ul class="section-items">
-  </ul>
-</div>
-
-    <div class="nav-section">
-<div class="section-header">
-  <div class="section-header-title">
-    <i class="fas fa-chevron-right"></i>
-    <span>Team</span>
-  </div>
-</div>
-      <ul class="section-items">
-<li class="nav-item">
-  <a href="#myworkspace">
-    <div class="nav-item-main-content">
-      <i class="fas fa-users"></i>
-      <span>My workspace</span>
-    </div>
-    <i class="fas fa-chevron-right expand-icon"></i>
-  </a>
-</li>
       </ul>
     </div>
   </nav>
