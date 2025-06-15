@@ -69,7 +69,9 @@ continueEmailLink.addEventListener("click", (e) => {
 acceptInvitationBtn?.addEventListener("click", () => {
   console.log("Invitation accepted.");
   alert("Invitation accepted. Redirecting...");
+  window.location.href = "./";
 });
+
 
 // Email registration submit
 form.addEventListener("submit", async (e) => {
