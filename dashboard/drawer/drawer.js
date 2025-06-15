@@ -158,8 +158,6 @@ import { firebaseConfig } from "/services/firebase-config.js";
                 
                 await batch.commit();
                 
-                // Navigate only after the update is successful
-                window.location.href = projectLink.href;
             } catch (error) {
                 console.error("Error selecting project:", error);
             }
