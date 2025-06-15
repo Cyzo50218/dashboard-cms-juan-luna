@@ -20,7 +20,7 @@ function parseRoute() {
     // The visual content for tasks is in home.html/js
     if (pathParts[0] === 'tasks' && pathParts.length > 3) {
         return {
-            section: 'home', // <-- Route to 'home' to load the correct files
+            section: 'tasks',
             accountId: pathParts[1] || null,
             tabId: pathParts[2] || 'list',
             projectId: pathParts[3] || null
