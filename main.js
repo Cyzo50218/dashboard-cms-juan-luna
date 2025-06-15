@@ -56,58 +56,80 @@ window.router = router;
  * Dynamically loads a section's HTML, CSS, and JS module into the main content area.
  * @param {object} routeParams - The object of parameters returned by parseRoute().
  */
+let lastSectionName = null;
+let lastRouteParams = null;
+
 async function loadSection(routeParams) {
     if (!routeParams || !routeParams.section) {
         console.error("Invalid route. Defaulting to home.");
         routeParams = { section: 'home' };
     }
+
     const { section } = routeParams;
     const content = document.getElementById("content");
-    
-    // Run the cleanup function from the previously loaded section.
+
+    // 🔁 Skip reloading if section is the same (but allow param updates)
+    if (lastSectionName === section && typeof currentSectionCleanup === 'function') {
+        console.log(`[Router] Same section "${section}", skipping reload. Running param-aware init...`);
+        currentSectionCleanup(); // optional: clean up before re-initializing
+        currentSectionCleanup = null;
+
+        // Dynamically re-import the module to re-call init with new params
+        const jsPath = `/dashboard/${section}/${section}.js?v=${new Date().getTime()}`;
+        const sectionModule = await import(jsPath);
+        if (sectionModule.init) {
+            currentSectionCleanup = sectionModule.init(routeParams);
+        }
+        lastRouteParams = routeParams;
+        return;
+    }
+
+    // Full reload since section changed
+    lastSectionName = section;
+    lastRouteParams = routeParams;
+
     if (typeof currentSectionCleanup === 'function') {
         currentSectionCleanup();
         currentSectionCleanup = null;
     }
-    
+
     content.innerHTML = '<div class="section-loader"></div>';
     document.getElementById("section-css")?.remove();
     content.dataset.section = section;
-    
+
     try {
         const htmlPath = `/dashboard/${section}/${section}.html`;
         const cssPath = `/dashboard/${section}/${section}.css`;
         const jsPath = `/dashboard/${section}/${section}.js?v=${new Date().getTime()}`;
-        
+
         const htmlRes = await fetch(htmlPath);
         if (!htmlRes.ok) throw new Error(`HTML not found at ${htmlPath}`);
         const sectionHtml = await htmlRes.text();
-        
+
         const link = document.createElement("link");
         link.rel = "stylesheet";
         link.href = cssPath;
         link.id = "section-css";
         document.head.appendChild(link);
-        
+
         const sectionModule = await import(jsPath);
-        
+
         content.innerHTML = sectionHtml;
-        
-        // Initialize the new section's script, passing the route parameters to it.
-        // This is how the section (e.g., home.js) knows which project is active.
+
         if (sectionModule.init) {
             currentSectionCleanup = sectionModule.init(routeParams);
         } else {
             console.warn(`Section "${section}" has no export function init().`);
         }
-        
+
     } catch (err) {
         content.innerHTML = `<p>Error loading section: <strong>${section}</strong></p>`;
         console.error(`Failed to load section ${section}:`, err);
     }
-    
+
     updateActiveNav(section);
 }
+
 
 /**
  * Updates the visual 'active' state of the main navigation links in the drawer.
