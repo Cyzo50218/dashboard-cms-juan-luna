@@ -56,8 +56,7 @@ window.router = router;
  * Dynamically loads a section's HTML, CSS, and JS module into the main content area.
  * @param {object} routeParams - The object of parameters returned by parseRoute().
  */
-let lastSectionName = null;
-let lastRouteParams = null;
+let lastLoadedSection = null;
 
 async function loadSection(routeParams) {
     if (!routeParams || !routeParams.section) {
@@ -68,31 +67,24 @@ async function loadSection(routeParams) {
     const { section } = routeParams;
     const content = document.getElementById("content");
 
-    // 🔁 Skip reloading if section is the same (but allow param updates)
-    if (lastSectionName === section && typeof currentSectionCleanup === 'function') {
-        console.log(`[Router] Same section "${section}", skipping reload. Running param-aware init...`);
-        currentSectionCleanup(); // optional: clean up before re-initializing
-        currentSectionCleanup = null;
+    // ✅ Skip full reload if same section
+    if (section === lastLoadedSection) {
+        console.log(`[Router] Same section "${section}", skipping full reload. Running param-aware init...`);
 
-        // Dynamically re-import the module to re-call init with new params
-        const jsPath = `/dashboard/${section}/${section}.js?v=${new Date().getTime()}`;
-        const sectionModule = await import(jsPath);
+        const sectionModule = await import(`/dashboard/${section}/${section}.js?v=${new Date().getTime()}`);
         if (sectionModule.init) {
-            currentSectionCleanup = sectionModule.init(routeParams);
+            sectionModule.init(routeParams);  // No cleanup
         }
-        lastRouteParams = routeParams;
         return;
     }
 
-    // Full reload since section changed
-    lastSectionName = section;
-    lastRouteParams = routeParams;
-
+    // 🧹 Run cleanup if different section
     if (typeof currentSectionCleanup === 'function') {
         currentSectionCleanup();
         currentSectionCleanup = null;
     }
 
+    // Begin loading
     content.innerHTML = '<div class="section-loader"></div>';
     document.getElementById("section-css")?.remove();
     content.dataset.section = section;
@@ -118,9 +110,9 @@ async function loadSection(routeParams) {
 
         if (sectionModule.init) {
             currentSectionCleanup = sectionModule.init(routeParams);
-        } else {
-            console.warn(`Section "${section}" has no export function init().`);
         }
+
+        lastLoadedSection = section;
 
     } catch (err) {
         content.innerHTML = `<p>Error loading section: <strong>${section}</strong></p>`;
