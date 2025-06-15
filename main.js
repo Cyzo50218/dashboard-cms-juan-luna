@@ -178,7 +178,8 @@ document.addEventListener("DOMContentLoaded", () => {
             // Load persistent layout components.
             await Promise.all([
                 loadHTML("#top-header", "/dashboard/header/header.html"),
-                loadHTML("#rootdrawer", "/dashboard/drawer/drawer.html")
+                loadHTML("#rootdrawer", "/dashboard/drawer/drawer.html"),
+                loadHTML("#right-sidebar", "/dashboard/sidebar/sidebar.html"),
             ]);
             
             // --- GLOBAL NAVIGATION HANDLER ---
@@ -191,6 +192,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     router();
                 }
             });
+
+            window.TaskSidebar?.init();
             
             window.addEventListener('popstate', router); // Handle back/forward buttons
             router(); // Initial route call for the first page load
