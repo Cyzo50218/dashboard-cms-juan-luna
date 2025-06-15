@@ -24,11 +24,9 @@ const db = getFirestore(app, "juanluna-cms-01");
 async function updateProfileDisplay(user) {
   if (!user) return;
 
-  const mainProfileCircle = document.getElementById("profileToggle");
-  const expandProfileCircle = document.querySelector(".account-expand-circle");
+  const mainProfileImg = document.getElementById("profileToggle"); // assuming <img id="profileToggle" />
+  const expandProfileImg = document.querySelector(".profile-picture-expand"); // class, so use querySelector
   const expandEmail = document.getElementById("account-email");
-  const shortnameSpan = mainProfileCircle?.querySelector(".account-shortname");
-  const expandShortnameSpan = expandProfileCircle?.querySelector(".account-shortname-expand");
 
   if (expandEmail) {
     expandEmail.textContent = user.email;
@@ -50,12 +48,16 @@ async function updateProfileDisplay(user) {
     console.error("Error fetching user avatar from Firestore:", error);
   }
 
-  if (avatarUrl) {
-    const imgHTML = `<img src="${avatarUrl}" alt="Profile" class="profile-picture">`;
-   mainProfileCircle.innerHTML = imgHTML;
-   expandProfileCircle.innerHTML = imgHTML;
-  } 
+  // ✅ Update avatar image sources
+  if (mainProfileImg && avatarUrl) {
+    mainProfileImg.src = avatarUrl;
+  }
+
+  if (expandProfileImg && avatarUrl) {
+    expandProfileImg.src = avatarUrl;
+  }
 }
+
 
 /**
  * Signs the current user out and redirects to the login page.
