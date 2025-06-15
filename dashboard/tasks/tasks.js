@@ -747,9 +747,9 @@ export function init(params) {
         container.innerHTML = '<div class="section-loader"></div>';
         document.getElementById('tab-specific-css')?.remove();
         
-        const htmlPath = `/dashboard/tasks/tabs/${targetTabId}/${targetTabId}.html`;
-        const cssPath = `/dashboard/tasks/tabs/${targetTabId}/${targetTabId}.css`;
-        const jsPath = `/dashboard/tasks/tabs/${targetTabId}/${targetTabId}.js?v=${new Date().getTime()}`;
+        const htmlPath = `/tabs/${targetTabId}/${targetTabId}.html`;
+        const cssPath = `/tabs/${targetTabId}/${targetTabId}.css`;
+        const jsPath = `/tabs/${targetTabId}/${targetTabId}.js?v=${new Date().getTime()}`;
         
         try {
             const htmlRes = await fetch(htmlPath);
