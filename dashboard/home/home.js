@@ -40,18 +40,18 @@ console.log("Initialized Firebase on Dashboard.");
 export function init(params) {
     dayjs.extend(window.dayjs_plugin_isBetween);
     console.log("Home section initialized with workspace loading logic.");
-
+    
     const controller = new AbortController();
     const homeSection = document.querySelector('.home');
     if (!homeSection) {
         console.error('Home section container (.home) not found!');
-        return () => { };
+        return () => {};
     }
-
+    
     // ===================================================================
     // [1] STYLES, DATA, AND CONFIGURATION
     // ===================================================================
-
+    
     function injectComponentStyles() {
         if (document.getElementById('home-component-styles')) return;
         const style = document.createElement('style');
@@ -77,47 +77,51 @@ export function init(params) {
         `;
         document.head.appendChild(style);
     }
-
+    
     const dropdownConfig = {
         'my-week': { items: [{ text: 'All Tasks', value: 'all' }, { text: 'Today', value: 'today' }, { text: 'This Week', value: 'this-week' }, { text: 'Next Week', value: 'next-week' }] },
         'project-recents': { items: [{ text: 'All Projects', value: 'all' }, { text: 'Starred Projects', value: 'starred' }] },
         'collaborators': { items: [{ text: 'All Members', value: 'all' }, { text: 'Frequent & Active', value: 'frequent' }] }
     };
-
-    let currentUser = null, activeWorkspaceId = null, activeProjectId = null, activeSectionId = null;
+    
+    let currentUser = null,
+        activeWorkspaceId = null,
+        activeProjectId = null,
+        activeSectionId = null;
     let activeTaskFilter = 'all';
-    let projectsData = [], peopleData = [];
-    const listeners = { workspace: null, projects: null, sections: null, people: null,memberListeners: {}, tasks: {} };
-
+    let projectsData = [],
+        peopleData = [];
+    const listeners = { workspace: null, projects: null, sections: null, people: null, memberListeners: {}, tasks: {} };
+    
     // ===================================================================
     // [2] RENDER FUNCTIONS (THE "VIEW")
     // ===================================================================
-
+    
     function detachPeopleListeners() {
-    // Detach the listener on the workspace document
-    if (listeners.people) listeners.people();
-    listeners.people = null;
-
-    // Detach all individual member profile listeners
-    Object.values(listeners.memberListeners).forEach(unsubscribe => unsubscribe());
-    listeners.memberListeners = {};
-}
-
-// In your main detachAllListeners function, make sure you call this new function
-function detachAllDataListeners() {
-    if (listeners.projects) listeners.projects();
-    detachPeopleListeners(); // <-- Use the new detach function
-    detachSectionAndTaskListeners();
-    listeners.projects = null;
-}
-
+        // Detach the listener on the workspace document
+        if (listeners.people) listeners.people();
+        listeners.people = null;
+        
+        // Detach all individual member profile listeners
+        Object.values(listeners.memberListeners).forEach(unsubscribe => unsubscribe());
+        listeners.memberListeners = {};
+    }
+    
+    // In your main detachAllListeners function, make sure you call this new function
+    function detachAllDataListeners() {
+        if (listeners.projects) listeners.projects();
+        detachPeopleListeners(); // <-- Use the new detach function
+        detachSectionAndTaskListeners();
+        listeners.projects = null;
+    }
+    
     function renderProjects(filter = 'all') {
         const projectList = homeSection.querySelector('.projects-card .project-list');
         if (!projectList) return;
         projectList.innerHTML = '';
         if (!activeWorkspaceId) {
-             projectList.innerHTML = `<div class="empty-state">No workspace selected.</div>`;
-             return;
+            projectList.innerHTML = `<div class="empty-state">No workspace selected.</div>`;
+            return;
         }
         const projectsToDisplay = projectsData.filter(p => filter === 'starred' ? p.starred : true);
         if (projectsToDisplay.length === 0 && currentUser) {
@@ -137,22 +141,22 @@ function detachAllDataListeners() {
         projectList.appendChild(createBtn);
         updateProjectTaskCounts();
     }
-
-function renderActiveTaskFilterLabel() {
-    // Find the label in the DOM
-    const statsLabel = homeSection.querySelector('.stats-label');
-    if (!statsLabel) return;
-
-    // Find the corresponding text for the active filter value
-    const config = dropdownConfig['my-week'];
-    const selectedItem = config.items.find(item => item.value === activeTaskFilter);
-
-    // Update the text content if an item is found
-    if (selectedItem) {
-        statsLabel.textContent = selectedItem.text;
+    
+    function renderActiveTaskFilterLabel() {
+        // Find the label in the DOM
+        const statsLabel = homeSection.querySelector('.stats-label');
+        if (!statsLabel) return;
+        
+        // Find the corresponding text for the active filter value
+        const config = dropdownConfig['my-week'];
+        const selectedItem = config.items.find(item => item.value === activeTaskFilter);
+        
+        // Update the text content if an item is found
+        if (selectedItem) {
+            statsLabel.textContent = selectedItem.text;
+        }
     }
-}
-
+    
     function renderMyTasksCard() {
         const myTasksCard = homeSection.querySelector('.my-tasks-card');
         if (!myTasksCard) return;
@@ -161,7 +165,7 @@ function renderActiveTaskFilterLabel() {
         tabsContainer.innerHTML = '';
         taskListContainer.innerHTML = '';
         tabsContainer.style.display = 'none';
-
+        
         if (!activeWorkspaceId) {
             taskListContainer.innerHTML = '<p class="empty-state">Please select a workspace to continue.</p>';
             return;
@@ -170,13 +174,13 @@ function renderActiveTaskFilterLabel() {
             taskListContainer.innerHTML = '<p class="empty-state">Select a project to see its tasks.</p>';
             return;
         }
-
+        
         const project = projectsData.find(p => p.id === activeProjectId);
         if (!project || !project.sections) {
             taskListContainer.innerHTML = '<p class="empty-state">Loading project tasks...</p>';
             return;
         }
-
+        
         tabsContainer.style.display = 'flex';
         project.sections.forEach(section => {
             const tab = document.createElement('button');
@@ -185,13 +189,13 @@ function renderActiveTaskFilterLabel() {
             tab.dataset.sectionId = section.id;
             tabsContainer.appendChild(tab);
         });
-
+        
         const activeSection = project.sections.find(s => s.id === activeSectionId);
         if (!activeSection) {
             taskListContainer.innerHTML = '<p class="empty-state">Select a section to see tasks.</p>';
             return;
         }
-
+        
         let tasksToDisplay = [...(activeSection.tasks || [])];
         if (activeSection.title !== 'Completed' && activeTaskFilter !== 'all') {
             const now = dayjs();
@@ -199,16 +203,17 @@ function renderActiveTaskFilterLabel() {
             if (activeTaskFilter === 'today') filterFunc = t => t.dueDate && dayjs(t.dueDate).isSame(now, 'day');
             else if (activeTaskFilter === 'this-week') filterFunc = t => t.dueDate && dayjs(t.dueDate).isBetween(now.startOf('week'), now.endOf('week'), 'day', '[]');
             else if (activeTaskFilter === 'next-week') {
-                const start = now.add(1, 'week').startOf('week'), end = now.add(1, 'week').endOf('week');
+                const start = now.add(1, 'week').startOf('week'),
+                    end = now.add(1, 'week').endOf('week');
                 filterFunc = t => t.dueDate && dayjs(t.dueDate).isBetween(start, end, 'day', '[]');
             }
             tasksToDisplay = tasksToDisplay.filter(filterFunc || (() => true));
         }
-
+        
         tasksToDisplay.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate)).forEach(task => {
             taskListContainer.appendChild(createTaskElement(task));
         });
-
+        
         if (activeSection.title !== 'Completed') {
             const createBtn = document.createElement('button');
             createBtn.className = 'create-task-btn';
@@ -216,15 +221,15 @@ function renderActiveTaskFilterLabel() {
             createBtn.addEventListener('click', () => showInlineTaskCreator(taskListContainer));
             taskListContainer.appendChild(createBtn);
         }
-
+        
         if (tasksToDisplay.length === 0 && activeSection.title !== 'Completed') {
             const filterText = activeTaskFilter === 'all' ? '' : ` for ${activeTaskFilter.replace('-', ' ')}`;
             taskListContainer.insertAdjacentHTML('afterbegin', `<p class="empty-state">No tasks${filterText}.</p>`);
         } else if (tasksToDisplay.length === 0 && activeSection.title === 'Completed') {
-             taskListContainer.insertAdjacentHTML('afterbegin', `<p class="empty-state">No completed tasks.</p>`);
+            taskListContainer.insertAdjacentHTML('afterbegin', `<p class="empty-state">No completed tasks.</p>`);
         }
     }
-
+    
     function renderPeople(filter = 'all') {
         const peopleContent = homeSection.querySelector('.people-content');
         if (!peopleContent) return;
@@ -250,7 +255,7 @@ function renderActiveTaskFilterLabel() {
         list.appendChild(inviteItem);
         peopleContent.appendChild(list);
     }
-
+    
     function createTaskElement(task) {
         const item = document.createElement('div');
         item.className = 'task-item';
@@ -259,7 +264,7 @@ function renderActiveTaskFilterLabel() {
         item.innerHTML = `<input type="checkbox" class="task-checkbox" data-task-id="${task.id}" ${task.completed ? 'checked' : ''}/><div class="task-content"><span class="task-text ${task.completed ? 'completed' : ''}">${task.name}</span><span class="task-dates ${task.completed ? 'completed' : ''}" style="color: ${task.completed ? '#888' : color};">${text}</span></div><div class="task-actions"><i class="far fa-calendar task-action-btn task-due-date-picker" title="Set due date" data-task-id="${task.id}"></i></div>`;
         return item;
     }
-
+    
     function renderGlobalStats() {
         const completedEl = document.getElementById('tasks-completed');
         const membersEl = document.getElementById('total-members');
@@ -279,16 +284,16 @@ function renderActiveTaskFilterLabel() {
             membersEl.textContent = `${memberCount} staff member${memberCount !== 1 ? 's' : ''}`;
         }
     }
-
+    
     // ===================================================================
     // [3] LOGIC & HANDLERS
     // ===================================================================
-
+    
     function handleDropdownSelection(id, value, trigger) {
         // This function remains unchanged
         const selectedItem = dropdownConfig[id]?.items.find(item => item.value === value);
         if (!selectedItem) return;
-    
+        
         if (id === 'project-recents' || id === 'collaborators') {
             trigger.innerHTML = `${selectedItem.text} <i class="fas fa-chevron-down"></i>`;
         } else if (id === 'my-week') {
@@ -297,7 +302,7 @@ function renderActiveTaskFilterLabel() {
                 label.childNodes[0].nodeValue = selectedItem.text + ' ';
             }
         }
-    
+        
         if (id === 'my-week') {
             activeTaskFilter = value;
             renderMyTasksCard();
@@ -308,7 +313,7 @@ function renderActiveTaskFilterLabel() {
             renderPeople(value);
         }
     }
-
+    
     function selectProject(projectId) {
         if (!projectId || activeProjectId === projectId) return;
         activeProjectId = projectId;
@@ -321,135 +326,149 @@ function renderActiveTaskFilterLabel() {
         renderMyTasksCard();
         renderGlobalStats();
     }
-
+    
     function selectSection(sectionId) {
         activeSectionId = sectionId;
         renderMyTasksCard();
     }
-
+    
     function showInlineTaskCreator(container) {
-    if (container.querySelector('.inline-task-creator') || !activeWorkspaceId) return;
-
-    // This flag is the key to fixing the bug.
-    let hasCommitted = false;
-
-    const creatorEl = document.createElement('div');
-    creatorEl.className = 'inline-task-creator';
-    creatorEl.innerHTML = `<input type="text" placeholder="Write a task name...">`;
-    container.insertBefore(creatorEl, container.lastChild);
-    const inputEl = creatorEl.querySelector('input');
-    inputEl.focus();
-
-    const commit = async () => {
-        // If a commit is already in progress, stop immediately.
-        if (hasCommitted) {
-            return; 
-        }
-        // Block any future attempts to commit.
-        hasCommitted = true;
-
-        const taskName = inputEl.value.trim();
-        if (taskName) {
-            const tasksColRef = collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects/${activeProjectId}/sections/${activeSectionId}/tasks`);
-            try {
-                await addDoc(tasksColRef, {
-                    name: taskName,
-                    dueDate: null,
-                    completed: false,
-                    createdAt: serverTimestamp()
-                });
-            } catch (error) {
-                console.error("Error creating task: ", error);
-                hasCommitted = false; // Allow user to try again on error
+        if (container.querySelector('.inline-task-creator') || !activeWorkspaceId) return;
+        
+        // This flag is the key to fixing the bug.
+        let hasCommitted = false;
+        
+        const creatorEl = document.createElement('div');
+        creatorEl.className = 'inline-task-creator';
+        creatorEl.innerHTML = `<input type="text" placeholder="Write a task name...">`;
+        container.insertBefore(creatorEl, container.lastChild);
+        const inputEl = creatorEl.querySelector('input');
+        inputEl.focus();
+        
+        const commit = async () => {
+            // If a commit is already in progress, stop immediately.
+            if (hasCommitted) {
+                return;
             }
-        }
-        creatorEl.remove();
-    };
-
-    // This listener handles clicking outside the input box.
-    inputEl.addEventListener('blur', commit);
-
-    inputEl.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            commit(); // This will run first.
-        }
-        if (e.key === 'Escape') {
-            hasCommitted = true; // Prevent the blur event from saving.
+            // Block any future attempts to commit.
+            hasCommitted = true;
+            
+            const taskName = inputEl.value.trim();
+            if (taskName) {
+                const tasksColRef = collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects/${activeProjectId}/sections/${activeSectionId}/tasks`);
+                try {
+                    await addDoc(tasksColRef, {
+                        name: taskName,
+                        dueDate: null,
+                        completed: false,
+                        createdAt: serverTimestamp()
+                    });
+                } catch (error) {
+                    console.error("Error creating task: ", error);
+                    hasCommitted = false; // Allow user to try again on error
+                }
+            }
             creatorEl.remove();
-        }
-    });
-}
-
-    async function handleProjectCreate() {
-    if (!currentUser || !activeWorkspaceId) {
-        alert("Cannot create project. User or workspace not identified.");
-        return;
-    }
-    const name = prompt("Enter new project name:");
-    if (!name || !name.trim()) return;
-
-    const projectsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects`);
-
-    // Create the reference for the new project BEFORE the transaction,
-    // so we have its ID available after the transaction succeeds.
-    const newProjectRef = doc(projectsColRef);
-
-    try {
-        // This transaction will now only perform writes, avoiding the buggy 'get' operation.
-        await runTransaction(db, async (transaction) => {
-            // --- THE FIX ---
-            // 1. Find the currently selected project using the up-to-date local data
-            //    instead of using transaction.get().
-            const currentlySelectedProject = projectsData.find(p => p.isSelected === true);
-
-            // 2. If a selected project exists in our local data, deselect it.
-            if (currentlySelectedProject) {
-                const oldSelectedRef = doc(projectsColRef, currentlySelectedProject.id);
-                transaction.update(oldSelectedRef, { isSelected: false });
+        };
+        
+        // This listener handles clicking outside the input box.
+        inputEl.addEventListener('blur', commit);
+        
+        inputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                commit(); // This will run first.
             }
-            // --- END OF FIX ---
-
-            // 3. Set the data for the new project using the pre-made reference.
-            transaction.set(newProjectRef, {
+            if (e.key === 'Escape') {
+                hasCommitted = true; // Prevent the blur event from saving.
+                creatorEl.remove();
+            }
+        });
+    }
+    
+    async function handleProjectCreate() {
+        if (!currentUser || !activeWorkspaceId) {
+            alert("Cannot create project. User or workspace not identified.");
+            return;
+        }
+        const name = prompt("Enter new project name:");
+        if (!name || !name.trim()) return;
+        
+        const projectsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects`);
+        
+        // Create the reference for the new project BEFORE the transaction,
+        // so we have its ID available after the transaction succeeds.
+        const newProjectRef = doc(projectsColRef);
+        
+        try {
+            // This transaction will now only perform writes, avoiding the buggy 'get' operation.
+            await runTransaction(db, async (transaction) => {
+                // --- THE FIX ---
+                // 1. Find the currently selected project using the up-to-date local data
+                //    instead of using transaction.get().
+                const currentlySelectedProject = projectsData.find(p => p.isSelected === true);
+                
+                // 2. If a selected project exists in our local data, deselect it.
+                if (currentlySelectedProject) {
+                    const oldSelectedRef = doc(projectsColRef, currentlySelectedProject.id);
+                    transaction.update(oldSelectedRef, { isSelected: false });
+                }
+                // --- END OF FIX ---
+                
+                // 3. Set the data for the new project using the pre-made reference.
+                transaction.set(newProjectRef, {
                 title: name.trim(),
                 color: generateColorForName(name.trim()),
                 starred: false,
                 isSelected: true,
-                createdAt: serverTimestamp()
+                createdAt: serverTimestamp(),
+
+                // New fields:
+                accessLevel: "workspace",
+                workspaceRole: "Viewer",
+                project_super_admin_uid: currentUser.uid,
+                project_admin_user: currentUser.uid,
+                members: [
+                    {
+                        uid: currentUser.uid,
+                        role: "Project admin"
+                    }
+                ],
+                pendingInvites: []
             });
-
-            // 4. Create the default "General" section.
-            const sectionsColRef = collection(newProjectRef, "sections");
-            const generalSectionRef = doc(sectionsColRef);
-            transaction.set(generalSectionRef, {
-                title: 'General',
-                createdAt: serverTimestamp()
+                
+                // 4. Create the default "General" section.
+                const sectionsColRef = collection(newProjectRef, "sections");
+                const generalSectionRef = doc(sectionsColRef);
+                transaction.set(generalSectionRef, {
+                    title: 'General',
+                    createdAt: serverTimestamp()
+                });
             });
-        });
-
-        showNotification('Project created!', 'success');
-        // Use the ID from the reference we created before the transaction.
-        selectProject(newProjectRef.id);
-
-    } catch (error) {
-        console.error("Full error object in handleProjectCreate:", error);
-        showNotification("Failed to create project due to a database error.", "error");
+            
+            showNotification('Project created!', 'success');
+            // Use the ID from the reference we created before the transaction.
+            selectProject(newProjectRef.id);
+            
+        } catch (error) {
+            console.error("Full error object in handleProjectCreate:", error);
+            showNotification("Failed to create project due to a database error.", "error");
+        }
     }
-}
-
+    
     async function handleTaskCompletion(taskId, isCompleted) {
         if (!currentUser || !activeWorkspaceId || !activeProjectId) return;
         const project = projectsData.find(p => p.id === activeProjectId);
         if (!project) return;
-
+        
         let sourceSection, taskData;
         for (const section of project.sections) {
             const task = section.tasks?.find(t => t.id === taskId);
-            if (task) { sourceSection = section; taskData = task; break; }
+            if (task) { sourceSection = section;
+                taskData = task; break; }
         }
         if (!sourceSection || !taskData) return;
-
+        
         let targetSection;
         if (isCompleted) {
             targetSection = project.sections.find(s => s.title === 'Completed');
@@ -464,15 +483,15 @@ function renderActiveTaskFilterLabel() {
             targetSection = project.sections.find(s => s.title !== 'Completed') || project.sections[0];
             if (!targetSection) return;
         }
-
+        
         if (sourceSection.id === targetSection.id && taskData.completed === isCompleted) {
-             const taskRef = doc(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects/${activeProjectId}/sections/${sourceSection.id}/tasks`, taskId);
-             await updateDoc(taskRef, { completed: isCompleted });
-             return;
+            const taskRef = doc(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects/${activeProjectId}/sections/${sourceSection.id}/tasks`, taskId);
+            await updateDoc(taskRef, { completed: isCompleted });
+            return;
         }
-
-        if(sourceSection.id === targetSection.id) return;
-
+        
+        if (sourceSection.id === targetSection.id) return;
+        
         try {
             const batch = writeBatch(db);
             const oldTaskRef = doc(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects/${activeProjectId}/sections/${sourceSection.id}/tasks`, taskId);
@@ -482,7 +501,7 @@ function renderActiveTaskFilterLabel() {
             await batch.commit();
         } catch (error) { console.error("Error moving task:", error); }
     }
-
+    
     async function updateTaskDueDate(taskId, newDueDate) {
         if (!currentUser || !activeWorkspaceId || !activeProjectId) return;
         const project = projectsData.find(p => p.id === activeProjectId);
@@ -497,11 +516,11 @@ function renderActiveTaskFilterLabel() {
             showNotification("Due date updated!", "success");
         } catch (error) { console.error("Error updating due date:", error); }
     }
-
+    
     // ===================================================================
     // [4] REAL-TIME LISTENER MANAGEMENT (RESTRUCTURED)
     // ===================================================================
-
+    
     function attachWorkspaceListener(userId) {
         if (listeners.workspace) listeners.workspace();
         const workspaceQuery = query(collection(db, `users/${userId}/myworkspace`), where("isSelected", "==", true));
@@ -527,125 +546,125 @@ function renderActiveTaskFilterLabel() {
             console.error("Error listening to workspace:", error);
         });
     }
-
+    
     function attachProjectListener(userId, workspaceId) {
-    const projectsQuery = query(collection(db, `users/${userId}/myworkspace/${workspaceId}/projects`), orderBy("createdAt", "desc"));
-    listeners.projects = onSnapshot(projectsQuery, (snapshot) => {
-
-        // --- Keep this intelligent update logic from before ---
-        const newProjects = snapshot.docs.map(doc => {
-            const data = { id: doc.id, ...doc.data() };
-            const existingProject = projectsData.find(p => p.id === doc.id);
-            data.sections = existingProject ? existingProject.sections : [];
-            return data;
+        const projectsQuery = query(collection(db, `users/${userId}/myworkspace/${workspaceId}/projects`), orderBy("createdAt", "desc"));
+        listeners.projects = onSnapshot(projectsQuery, (snapshot) => {
+            
+            // --- Keep this intelligent update logic from before ---
+            const newProjects = snapshot.docs.map(doc => {
+                const data = { id: doc.id, ...doc.data() };
+                const existingProject = projectsData.find(p => p.id === doc.id);
+                data.sections = existingProject ? existingProject.sections : [];
+                return data;
+            });
+            projectsData = newProjects;
+            // --- End of existing logic ---
+            
+            
+            // --- NEW, SMARTER SELECTION LOGIC ---
+            
+            // 1. Find the project that is marked as selected in the database.
+            const dbSelectedProject = projectsData.find(p => p.isSelected === true);
+            
+            // 2. Determine which project ID should be active.
+            //    Priority is: the project from the DB -> the first project -> null.
+            const targetId = dbSelectedProject ? dbSelectedProject.id : (projectsData[0]?.id || null);
+            
+            // 3. Only change the selected project in the UI if the target is different
+            //    from what's already active. This prevents unnecessary re-renders.
+            //    This single condition handles initial load, selection changes, and deletions.
+            if (targetId !== activeProjectId) {
+                selectProject(targetId);
+            }
+            
+            // Always re-render the projects list itself to reflect changes
+            // in project names, colors, etc.
+            renderProjects();
+            updateProjectTaskCounts();
         });
-        projectsData = newProjects;
-        // --- End of existing logic ---
-
-
-        // --- NEW, SMARTER SELECTION LOGIC ---
-
-        // 1. Find the project that is marked as selected in the database.
-        const dbSelectedProject = projectsData.find(p => p.isSelected === true);
-
-        // 2. Determine which project ID should be active.
-        //    Priority is: the project from the DB -> the first project -> null.
-        const targetId = dbSelectedProject ? dbSelectedProject.id : (projectsData[0]?.id || null);
-
-        // 3. Only change the selected project in the UI if the target is different
-        //    from what's already active. This prevents unnecessary re-renders.
-        //    This single condition handles initial load, selection changes, and deletions.
-        if (targetId !== activeProjectId) {
-            selectProject(targetId);
-        }
-
-        // Always re-render the projects list itself to reflect changes
-        // in project names, colors, etc.
-        renderProjects();
-        updateProjectTaskCounts();
-    });
-}
-
+    }
+    
     function attachPeopleListener(userId, workspaceId) {
-    // Start by detaching any and all previous people-related listeners
-    detachPeopleListeners();
-
-    // 1. Listen to the main workspace document to get the 'members' array
-    const workspaceDocRef = doc(db, `users/${userId}/myworkspace/${workspaceId}`);
-
-    listeners.people = onSnapshot(workspaceDocRef, (workspaceDoc) => {
-        if (!workspaceDoc.exists()) {
-            peopleData = [];
+        // Start by detaching any and all previous people-related listeners
+        detachPeopleListeners();
+        
+        // 1. Listen to the main workspace document to get the 'members' array
+        const workspaceDocRef = doc(db, `users/${userId}/myworkspace/${workspaceId}`);
+        
+        listeners.people = onSnapshot(workspaceDocRef, (workspaceDoc) => {
+            if (!workspaceDoc.exists()) {
+                peopleData = [];
+                renderPeople();
+                renderGlobalStats();
+                return;
+            }
+            
+            const memberUIDs = workspaceDoc.data().members || [];
+            const existingUIDs = Object.keys(listeners.memberListeners);
+            
+            // Sync listeners: Remove listeners for users who left the workspace
+            const removedUIDs = existingUIDs.filter(uid => !memberUIDs.includes(uid));
+            removedUIDs.forEach(uid => {
+                listeners.memberListeners[uid](); // Unsubscribe
+                delete listeners.memberListeners[uid];
+            });
+            
+            // Remove the corresponding users from our local data array
+            peopleData = peopleData.filter(p => !removedUIDs.includes(p.id));
+            
+            // Sync listeners: Add listeners for new users who joined the workspace
+            const addedUIDs = memberUIDs.filter(uid => !existingUIDs.includes(uid));
+            addedUIDs.forEach(uid => {
+                const userProfileRef = doc(db, 'users', uid);
+                
+                // 2. For each member UID, create a listener for their profile document
+                listeners.memberListeners[uid] = onSnapshot(userProfileRef, (userDoc) => {
+                    if (userDoc.exists()) {
+                        const userData = userDoc.data();
+                        const personProfile = {
+                            id: userDoc.id,
+                            name: userData.name,
+                            avatarUrl: userData.avatar, // Assumes avatar URL is stored here
+                            role: userData.role || 'Member', // Example of getting other data
+                            isActive: true // Example status
+                        };
+                        
+                        // Update or add the person's data in our local array
+                        const index = peopleData.findIndex(p => p.id === userDoc.id);
+                        if (index > -1) {
+                            peopleData[index] = personProfile; // Update if exists
+                        } else {
+                            peopleData.push(personProfile); // Add if new
+                        }
+                        
+                        // 3. Re-render the people list with the new/updated profile info
+                        renderPeople();
+                        renderGlobalStats();
+                    }
+                });
+            });
+            
+            // Trigger an initial render after syncing listeners
             renderPeople();
             renderGlobalStats();
-            return;
-        }
-
-        const memberUIDs = workspaceDoc.data().members || [];
-        const existingUIDs = Object.keys(listeners.memberListeners);
-
-        // Sync listeners: Remove listeners for users who left the workspace
-        const removedUIDs = existingUIDs.filter(uid => !memberUIDs.includes(uid));
-        removedUIDs.forEach(uid => {
-            listeners.memberListeners[uid](); // Unsubscribe
-            delete listeners.memberListeners[uid];
         });
-
-        // Remove the corresponding users from our local data array
-        peopleData = peopleData.filter(p => !removedUIDs.includes(p.id));
-
-        // Sync listeners: Add listeners for new users who joined the workspace
-        const addedUIDs = memberUIDs.filter(uid => !existingUIDs.includes(uid));
-        addedUIDs.forEach(uid => {
-            const userProfileRef = doc(db, 'users', uid);
-
-            // 2. For each member UID, create a listener for their profile document
-            listeners.memberListeners[uid] = onSnapshot(userProfileRef, (userDoc) => {
-                if (userDoc.exists()) {
-                    const userData = userDoc.data();
-                    const personProfile = {
-                        id: userDoc.id,
-                        name: userData.name,
-                        avatarUrl: userData.avatar, // Assumes avatar URL is stored here
-                        role: userData.role || 'Member', // Example of getting other data
-                        isActive: true // Example status
-                    };
-
-                    // Update or add the person's data in our local array
-                    const index = peopleData.findIndex(p => p.id === userDoc.id);
-                    if (index > -1) {
-                        peopleData[index] = personProfile; // Update if exists
-                    } else {
-                        peopleData.push(personProfile); // Add if new
-                    }
-
-                    // 3. Re-render the people list with the new/updated profile info
-                    renderPeople();
-                    renderGlobalStats();
-                }
-            });
-        });
-
-        // Trigger an initial render after syncing listeners
-        renderPeople();
-        renderGlobalStats();
-    });
-}
-
+    }
+    
     function attachSectionAndTaskListeners(projectId) {
         if (!currentUser || !activeWorkspaceId || !projectId) return;
         const sectionsQuery = query(collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects/${projectId}/sections`), orderBy("createdAt"));
         listeners.sections = onSnapshot(sectionsQuery, (sectionsSnapshot) => {
             const project = projectsData.find(p => p.id === projectId);
             if (!project) return;
-
+            
             const currentSections = sectionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             project.sections = currentSections.map(s => ({ ...s, tasks: project.sections?.find(ps => ps.id === s.id)?.tasks || [] }));
-
+            
             if (!activeSectionId || !project.sections.some(s => s.id === activeSectionId)) {
                 activeSectionId = project.sections[0]?.id || null;
             }
-
+            
             project.sections.forEach(section => {
                 if (!listeners.tasks[section.id]) {
                     const tasksQuery = query(collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects/${projectId}/sections/${section.id}/tasks`), orderBy("createdAt"));
@@ -666,7 +685,7 @@ function renderActiveTaskFilterLabel() {
             renderMyTasksCard();
         });
     }
-
+    
     function detachSectionAndTaskListeners() {
         if (listeners.sections) listeners.sections();
         Object.values(listeners.tasks).forEach(unsub => unsub());
@@ -675,25 +694,25 @@ function renderActiveTaskFilterLabel() {
     }
     
     function detachAllDataListeners() {
-        if(listeners.projects) listeners.projects();
-        if(listeners.people) listeners.people();
+        if (listeners.projects) listeners.projects();
+        if (listeners.people) listeners.people();
         detachSectionAndTaskListeners();
         listeners.projects = null;
         listeners.people = null;
     }
-
+    
     function detachAllListeners() {
         if (listeners.workspace) listeners.workspace();
         detachAllDataListeners();
         listeners.workspace = null;
         console.log("All Firestore listeners detached.");
     }
-
-
+    
+    
     // ===================================================================
     // [5] INITIALIZATION & CLEANUP
     // ===================================================================
-
+    
     function initializeDropdowns() {
         // This function remains unchanged
         document.addEventListener('click', (e) => { if (!e.target.closest('.dropdown')) { document.querySelectorAll('.dropdown-menu-dynamic').forEach(menu => menu.remove()); } }, { signal: controller.signal });
@@ -709,7 +728,9 @@ function renderActiveTaskFilterLabel() {
                 config.items.forEach(item => { menu.innerHTML += `<a href="#" data-value="${item.value}">${item.text}</a>`; });
                 menu.addEventListener('click', (ev) => {
                     const target = ev.target.closest('a');
-                    if (target) { ev.preventDefault(); handleDropdownSelection(dropdownId, target.dataset.value, trigger); menu.remove(); }
+                    if (target) { ev.preventDefault();
+                        handleDropdownSelection(dropdownId, target.dataset.value, trigger);
+                        menu.remove(); }
                 });
                 document.body.appendChild(menu);
                 const rect = trigger.getBoundingClientRect();
@@ -719,7 +740,7 @@ function renderActiveTaskFilterLabel() {
             }, { signal: controller.signal });
         });
     }
-
+    
     function initializeAll() {
         injectComponentStyles();
         initializeDropdowns();
@@ -743,7 +764,7 @@ function renderActiveTaskFilterLabel() {
         updateDateTime();
         const timerId = setInterval(updateDateTime, 60000);
         controller.signal.addEventListener('abort', () => clearInterval(timerId));
-
+        
         onAuthStateChanged(auth, (user) => {
             detachAllListeners();
             projectsData = [];
@@ -767,17 +788,37 @@ function renderActiveTaskFilterLabel() {
             }
         });
     }
-
+    
     // UTILITY & HELPER FUNCTIONS (Unchanged)
     const getInitials = (name) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : '';
-    const generateColorForName = (name) => `hsl(${(name || '').split("").reduce((a, b) => (a = ((a << 5) - a) + b.charCodeAt(0), a & a), 0) % 360}, 70%, 45%)`;
-    const getDueDateInfo = (dueDate) => { if (!dueDate) return { text: '', color: '#aaa' }; const now = dayjs(); const date = dayjs(dueDate); if (date.isSame(now, 'day')) return { text: `Today`, color: 'red' }; if (date.isSame(now.add(1, 'day'), 'day')) return { text: 'Tomorrow', color: 'orange' }; if (date.isBefore(now, 'day')) return { text: date.format('MMM D'), color: 'red' }; return { text: date.format('MMM D'), color: '#666' }; };
+    const generateColorForName = (name) => {
+    const hash = (name || '').split("").reduce((a, b) => {
+        a = ((a << 5) - a) + b.charCodeAt(0);
+        return a & a;
+    }, 0);
+
+    // Limit hue to a cooler range (e.g., 180–300: green-blue-purple)
+    const hue = 180 + (hash % 120); // values between 180 and 300
+    const saturation = 50; // softer saturation
+    const lightness = 60; // brighter but not glaring
+
+    return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+};
+const getDueDateInfo = (dueDate) => { if (!dueDate) return { text: '', color: '#aaa' }; const now = dayjs(); const date = dayjs(dueDate); if (date.isSame(now, 'day')) return { text: `Today`, color: 'red' }; if (date.isSame(now.add(1, 'day'), 'day')) return { text: 'Tomorrow', color: 'orange' }; if (date.isBefore(now, 'day')) return { text: date.format('MMM D'), color: 'red' }; return { text: date.format('MMM D'), color: '#666' }; };
     const updateProjectTaskCounts = () => projectsData.forEach(p => { const count = p.sections?.reduce((sum, s) => sum + (s.tasks?.filter(t => !t.completed).length || 0), 0) || 0; const el = homeSection.querySelector(`.project-item[data-project-id="${p.id}"] .project-meta`); if (el) el.textContent = `${count} task${count !== 1 ? 's' : ''}`; });
-    const updateDateTime = () => { const dateEl = homeSection.querySelector('.date'); const greetEl = homeSection.querySelector('.greetings'); if (!dateEl || !greetEl) return; const now = dayjs(); dateEl.textContent = now.format('dddd, MMMM D, YYYY'); const hour = now.hour(); let greeting = 'Good evening'; if (hour < 12) greeting = 'Good morning'; else if (hour < 18) greeting = 'Good afternoon'; const userName = auth.currentUser?.displayName || 'there'; greetEl.textContent = `${greeting}, ${userName}!`; };
-    const showNotification = (message, type = 'info') => { const el = document.createElement('div'); el.className = `notification ${type}`; el.textContent = message; document.body.appendChild(el); setTimeout(() => el.style.opacity = '0', 2500); setTimeout(() => el.remove(), 3000); };
-
+    const updateDateTime = () => { const dateEl = homeSection.querySelector('.date'); const greetEl = homeSection.querySelector('.greetings'); if (!dateEl || !greetEl) return; const now = dayjs();
+        dateEl.textContent = now.format('dddd, MMMM D, YYYY'); const hour = now.hour(); let greeting = 'Good evening'; if (hour < 12) greeting = 'Good morning';
+        else if (hour < 18) greeting = 'Good afternoon'; const userName = auth.currentUser?.displayName || 'there';
+        greetEl.textContent = `${greeting}, ${userName}!`; };
+    const showNotification = (message, type = 'info') => { const el = document.createElement('div');
+        el.className = `notification ${type}`;
+        el.textContent = message;
+        document.body.appendChild(el);
+        setTimeout(() => el.style.opacity = '0', 2500);
+        setTimeout(() => el.remove(), 3000); };
+    
     initializeAll();
-
+    
     return function cleanup() {
         console.log("Cleaning up home section and detaching listeners.");
         controller.abort();
