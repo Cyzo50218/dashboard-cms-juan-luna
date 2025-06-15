@@ -152,34 +152,52 @@ function updateActiveNav(sectionName) {
 async function loadHTML(selector, url) {
     const container = document.querySelector(selector);
     if (!container) return;
-    
+
+    // 🛑 Prevent re-loading if already loaded (check by custom attribute)
+    if (container.getAttribute("data-loaded-url") === url) {
+        console.log(`[loadHTML] Skipping reload of ${url} (already loaded)`);
+        return;
+    }
+
     try {
         const response = await fetch(url);
         if (!response.ok) throw new Error(`Failed to fetch ${url}`);
-        container.innerHTML = await response.text();
-        
+        const htmlContent = await response.text();
+
         const folderPath = url.substring(0, url.lastIndexOf('/'));
         const componentName = folderPath.split('/').pop();
-        
+
         const cssPath = `${folderPath}/${componentName}.css`;
         const jsPath = `${folderPath}/${componentName}.js`;
-        
-        if (!document.querySelector(`link[href="${cssPath}"]`)) {
+
+        // ✅ Remove previous CSS for this component before adding new
+        const existingLink = document.querySelector(`link[href="${cssPath}"]`);
+        if (!existingLink) {
             const link = document.createElement("link");
             link.rel = "stylesheet";
             link.href = cssPath;
+            link.setAttribute("data-component-style", componentName);
             document.head.appendChild(link);
         }
-        
-        // Dynamically import the JS module for the component
-        // This allows drawer.js and header.js to be self-contained modules.
-        await import(jsPath);
-        
+
+        container.innerHTML = htmlContent;
+
+        // ✅ Mark this container as having this component
+        container.setAttribute("data-loaded-url", url);
+
+        // ✅ Import JS module only once by checking window._loadedComponents
+        window._loadedComponents = window._loadedComponents || {};
+        if (!window._loadedComponents[jsPath]) {
+            await import(jsPath);
+            window._loadedComponents[jsPath] = true;
+        }
+
     } catch (err) {
         container.innerHTML = `<p>Error loading component from ${url}</p>`;
         console.error("Failed to load component:", err);
     }
 }
+
 
 // --- APPLICATION INITIALIZATION ---
 document.addEventListener("DOMContentLoaded", () => {
