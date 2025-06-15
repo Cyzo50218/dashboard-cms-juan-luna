@@ -25,7 +25,7 @@ async function updateProfileDisplay(user) {
   if (!user) return;
 
   const mainProfileImg = document.getElementById("profileToggle"); // assuming <img id="profileToggle" />
-  const expandProfileImg = document.getElementById(".profile-picture-expand"); // class, so use querySelector
+  const expandProfileImg = document.getElementById("profile-picture-expand"); // class, so use querySelector
   const expandEmail = document.getElementById("account-email");
 
   if (expandEmail) {

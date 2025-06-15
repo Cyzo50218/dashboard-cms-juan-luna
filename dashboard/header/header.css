@@ -1251,7 +1251,7 @@ margin-left: 6px;
 }
 
 /* For the expanded profile image in a modal or dropdown */
-.profile-picture-expand {
+#profile-picture-expand {
   width: 64px;
   height: 64px;
   border-radius: 50%;
