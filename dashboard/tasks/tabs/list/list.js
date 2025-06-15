@@ -194,37 +194,36 @@ function initializeListView(params) {
  */
 function distributeTasksToSections(tasks) {
     console.log("--- Running Task Distribution ---");
-    
-    if (!project.sections || project.sections.length === 0) {
-        console.warn("Distribution skipped: `project.sections` is empty or not yet loaded.");
-        return;
-    }
-    
-    // Log the available section IDs that the client knows about
+
     const availableSectionIds = project.sections.map(s => s.id);
     console.log("Available section IDs on client:", availableSectionIds);
-    
+
     // Reset tasks on all sections
     project.sections.forEach(section => section.tasks = []);
-    
+
     let unmatchedTasks = 0;
     for (const task of tasks) {
-        // For each task, log what it is and what section it's looking for
         console.log(`Processing Task "${task.name || 'New Task'}" (ID: ${task.id}). Looking for sectionId: "${task.sectionId}"`);
-        
+
         const section = project.sections.find(s => s.id === task.sectionId);
-        
+
         if (section) {
             console.log(`   ✅ SUCCESS: Matched with section "${section.title}" (ID: "${section.id}")`);
             section.tasks.push(task);
         } else {
-            // This is the critical error message
             console.error(`   ❌ FAILED: No section found with ID "${task.sectionId}"`);
             unmatchedTasks++;
         }
     }
+
+    // ✅ NOW sort the tasks inside each section by their `order`
+    project.sections.forEach(section => {
+        section.tasks.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    });
+
     console.log(`--- Distribution Complete. ${unmatchedTasks} tasks could not be matched. ---`);
 }
+
 
 export function init(params) {
     console.log("Initializing List View Module...", params);
@@ -626,25 +625,40 @@ function getFilteredProject() {
     return projectCopy;
 }
 
-function getSortedProject(data) {
-    if (activeSortState === 'default') return data;
-    
-    const direction = activeSortState === 'asc' ? 1 : -1;
-    
-    data.sections.forEach(section => {
-        section.tasks.sort((a, b) => {
-            const valA = a.dueDate ? new Date(a.dueDate) : 0;
-            const valB = b.dueDate ? new Date(b.dueDate) : 0;
-            
-            if (!valA && !valB) return 0;
-            if (!valA) return 1 * direction;
-            if (!valB) return -1 * direction;
-            
-            return (valA - valB) * direction;
-        });
+function getSortedProject(project) {
+    return {
+        ...project,
+        sections: [...project.sections].sort((a, b) => a.order - b.order)
+    };
+}
+
+async function handleSectionReorder(evt) {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const workspaceSnapshot = await getDocs(
+        query(collection(db, `users/${user.uid}/myworkspace`), where("isSelected", "==", true))
+    );
+    if (workspaceSnapshot.empty) return;
+    const workspaceId = workspaceSnapshot.docs[0].id;
+
+    const projectSnapshot = await getDocs(
+        query(collection(db, `users/${user.uid}/myworkspace/${workspaceId}/projects`), where("isSelected", "==", true))
+    );
+    if (projectSnapshot.empty) return;
+    const projectId = projectSnapshot.docs[0].id;
+
+    const sectionEls = [...taskListBody.querySelectorAll('.section')]; // Assuming each section DOM element has class .section and data-section-id
+
+    const batch = writeBatch(db);
+    sectionEls.forEach((el, index) => {
+        const sectionId = el.dataset.sectionId;
+        const sectionRef = doc(db, `users/${user.uid}/myworkspace/${workspaceId}/projects/${projectId}/sections/${sectionId}`);
+        batch.update(sectionRef, { order: index });
     });
-    
-    return data;
+
+    await batch.commit();
+    console.log("Sections reordered and saved to Firestore.");
 }
 
 function closeFloatingPanels() {
@@ -657,6 +671,61 @@ function findTaskAndSection(taskId) {
         if (task) return { task, section };
     }
     return { task: null, section: null };
+}
+
+async function handleTaskMoved(evt) {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const taskEl = evt.item;
+    const taskId = taskEl.dataset.taskId;
+
+    const newSectionEl = evt.to.closest(".section");
+    const newSectionId = newSectionEl?.dataset.sectionId;
+
+    const oldSectionEl = evt.from.closest(".section");
+    const oldSectionId = oldSectionEl?.dataset.sectionId;
+
+    
+
+    const workspaceSnap = await getDocs(query(collection(db, `users/${user.uid}/myworkspace`), where("isSelected", "==", true)));
+    if (workspaceSnap.empty) return;
+    const workspaceId = workspaceSnap.docs[0].id;
+
+    const projectSnap = await getDocs(query(collection(db, `users/${user.uid}/myworkspace/${workspaceId}/projects`), where("isSelected", "==", true)));
+    if (projectSnap.empty) return;
+    const projectId = projectSnap.docs[0].id;
+
+    const basePath = `users/${user.uid}/myworkspace/${workspaceId}/projects/${projectId}`;
+    const taskRef = doc(db, `${basePath}/tasks/${taskId}`);
+
+    try {
+        // If moved to another section, update sectionId
+        if (newSectionId !== oldSectionId) {
+            await updateDoc(taskRef, { sectionId: newSectionId });
+            console.log(`✅ Moved task "${taskId}" to section "${newSectionId}"`);
+        }
+
+        // Reorder tasks inside the target container
+        const reorderedTaskEls = Array.from(evt.to.querySelectorAll(".task"));
+        const batch = writeBatch(db);
+
+        reorderedTaskEls.forEach((el, index) => {
+            const reorderId = el.dataset.taskId;
+            if (!reorderId) return;
+
+            const reorderRef = doc(db, `${basePath}/tasks/${reorderId}`);
+            batch.update(reorderRef, {
+                order: index,
+                sectionId: newSectionId, // ensure correct sectionId if needed
+            });
+        });
+
+        await batch.commit();
+        console.log("✅ Reordered tasks successfully.");
+    } catch (err) {
+        console.error("❌ Failed to reorder tasks:", err);
+    }
 }
 
 function render() {
@@ -691,13 +760,20 @@ function render() {
     }
     
     if (sortableSections) sortableSections.destroy();
-    sortableSections = new Sortable(taskListBody, { handle: '.section-header-list .drag-handle', animation: 150, disabled: isSortActive });
+    sortableSections = new Sortable(taskListBody, { handle: '.section-header-list .drag-handle', animation: 150, disabled: isSortActive, onEnd: handleSectionReorder});
     
     sortableTasks.forEach(st => st.destroy());
     sortableTasks.length = 0;
     document.querySelectorAll('.tasks-container').forEach(container => {
-        sortableTasks.push(new Sortable(container, { group: 'tasks', handle: '.fixed-column .drag-handle', animation: 150, disabled: isSortActive }));
-    });
+    sortableTasks.push(new Sortable(container, {
+        group: 'tasks',
+        handle: '.fixed-column .drag-handle',
+        animation: 150,
+        disabled: isSortActive,
+        onEnd: handleTaskMoved
+    }));
+});
+
     
     filterBtn?.classList.toggle('active', !!activeFilters.visibleSections);
     sortBtn?.classList.toggle('active', isSortActive);
