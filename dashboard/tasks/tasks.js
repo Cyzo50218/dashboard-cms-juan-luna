@@ -12,6 +12,26 @@ const buttonListeners = [];
 let currentTabCleanup = null;
 
 /**
+ * Main initialization function for the entire tasks section.
+ * @param {object} params - Route parameters from the main router.
+ * @returns {function} The main cleanup function for the tasks section.
+ */
+// File: /dashboard/tasks/tasks.js
+
+export function init(params) {
+    // [FIX 1] Declare variables at the top of the function's scope.
+    // This is crucial for currentTabCleanup to be accessible by all inner functions.
+    let currentTabCleanup = null;
+    let tabClickListener = null;
+    
+    // --- 1. Get Parameters and DOM Elements ---
+    const { tabId = 'list', accountId, projectId } = params;
+    
+    const tabs = document.querySelectorAll('.tab-link');
+    const shareButton = document.querySelector('.share-btn');
+    const customizeButton = document.querySelector('.customize-btn');
+    
+    /**
  * Creates and injects the Share Modal into the DOM.
  * This function handles the creation of the modal's CSS and HTML structure.
  *
@@ -241,12 +261,6 @@ const createShareModal = (e) => {
     // After adding the modal to the DOM, set up its logic
     setupModalLogic();
 };
-
-
-/**
- * Sets up all the interactive logic for the Share Modal.
- * This includes data handling, rendering, and event listeners.
- */
 const setupModalLogic = () => {
     // --- Mock Data, DOM Elements, and initial state variables ---
     const currentUserId = 3;
@@ -700,27 +714,6 @@ const setupModalLogic = () => {
     renderRoleOptions();
     logActivity("Share modal initialized.");
 };
-
-/**
- * Main initialization function for the entire tasks section.
- * @param {object} params - Route parameters from the main router.
- * @returns {function} The main cleanup function for the tasks section.
- */
-// File: /dashboard/tasks/tasks.js
-
-export function init(params) {
-    // [FIX 1] Declare variables at the top of the function's scope.
-    // This is crucial for currentTabCleanup to be accessible by all inner functions.
-    let currentTabCleanup = null;
-    let tabClickListener = null;
-    
-    // --- 1. Get Parameters and DOM Elements ---
-    const { tabId = 'list', accountId, projectId } = params;
-    
-    const tabs = document.querySelectorAll('.tab-link');
-    const shareButton = document.querySelector('.share-btn');
-    const customizeButton = document.querySelector('.customize-btn');
-    
     document.getElementById('share-project-btn').addEventListener('click', () => {
         if (document.getElementById('modalBackdrop')) {
             return;
