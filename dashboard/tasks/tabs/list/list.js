@@ -320,7 +320,16 @@ function setupEventListeners() {
         
         const taskRow = e.target.closest('.task-row-wrapper');
         if (!taskRow) return;
-        const taskId = Number(taskRow.dataset.taskId);
+        const taskId = taskRow.dataset.taskId;
+
+// --- FIX 2: Check for temporary tasks by looking for the 'temp_' prefix. ---
+if (taskId.startsWith('temp_')) {
+    const nameEl = taskRow.querySelector('.task-name');
+    if (nameEl) {
+        nameEl.focus(); // Guide the user to name the task first.
+    }
+    return; // Stop execution for temporary tasks.
+}
         
         if (e.target.matches('.task-name')) return displaySideBarTasks(taskId);
         
@@ -338,7 +347,7 @@ function setupEventListeners() {
                 handleTaskCompletion(taskId, taskRow);
                 break;
             case 'due-date':
-                showDatePicker(control, taskId, sectionId);
+                showDatePicker(control, sectionId, taskId);
                 break;
             case 'priority':
 createDropdown(priorityOptions, control, (v) => updateTask(taskId, sectionId, { priority: v }));
@@ -986,8 +995,14 @@ async function updateSectionInFirebase(sectionId, propertiesToUpdate) {
  * @param {object} propertiesToUpdate An object with fields to update on the project.
  */
 async function updateProjectInFirebase(propertiesToUpdate) {
-    if (!currentProjectId) return console.error("No project selected.");
-    const projectRef = doc(db, "projects", currentProjectId);
+    if (!currentUserId || !currentWorkspaceId || !currentProjectId) {
+        return console.error("Cannot update project: Missing IDs.");
+    }
+    
+    // FIX: Build the full, nested path to the project document.
+    const projectPath = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}`;
+    const projectRef = doc(db, projectPath);
+    
     try {
         await updateDoc(projectRef, propertiesToUpdate);
     } catch (error) {
@@ -1001,36 +1016,38 @@ async function updateProjectInFirebase(propertiesToUpdate) {
  * @param {string} columnId The ID of the column to delete.
  */
 async function deleteColumnInFirebase(columnId) {
-    if (!currentProjectId) return console.error("No project selected.");
+    if (!currentUserId || !currentWorkspaceId || !currentProjectId) {
+        return console.error("Cannot delete column: Missing IDs.");
+    }
     if (!window.confirm('Are you sure you want to delete this column and all its data? This action cannot be undone.')) {
         return;
     }
     
     const batch = writeBatch(db);
     
-    // 1. Update the project document to remove the column from the array
-    const newColumnsArray = project.customColumns.filter(col => col.id !== columnId);
-    const projectRef = doc(db, "projects", currentProjectId);
+    // FIX: Build the full, nested path to the project document to update its columns array.
+    const projectPath = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}`;
+    const projectRef = doc(db, projectPath);
+    
+    const newColumnsArray = project.customColumns.filter(col => col.id != columnId);
     batch.update(projectRef, { customColumns: newColumnsArray });
     
-    // 2. Find all tasks in the project to remove the custom field key
-    // In deleteColumnInFirebase:
+    // The rest of this function is likely fine, but it assumes a top-level 'tasks' collection.
+    // This might be your next error if 'tasks' are also nested.
+    // Based on your listeners, the 'collectionGroup' query will work regardless.
     const tasksQuery = query(
-        collection(db, "tasks"),
-        where("projectId", "==", currentProjectId), // ✅ Corrected
-        orderBy("createdAt", "desc")
+        collectionGroup(db, "tasks"),
+        where("projectId", "==", currentProjectId)
     );
     try {
         const tasksSnapshot = await getDocs(tasksQuery);
         tasksSnapshot.forEach(taskDoc => {
-            const taskRef = doc(db, "tasks", taskDoc.id);
             // Use deleteField() to remove the key from the map
-            batch.update(taskRef, {
+            batch.update(taskDoc.ref, {
                 [`customFields.${columnId}`]: deleteField()
             });
         });
         
-        // 3. Commit the batch
         await batch.commit();
     } catch (error) {
         console.error("Error deleting column and its data:", error);
@@ -1116,8 +1133,9 @@ function createDropdown(options, targetEl, callback) {
 function showAssigneeDropdown(targetEl, taskId) {
     closeFloatingPanels();
     
-    const { task } = findTaskAndSection(taskId);
-    if (!task) return;
+    // We need the section context for updating.
+    const { task, section } = findTaskAndSection(taskId);
+    if (!task || !section) return; // Exit if task or section not found.
     
     // Clone the dropdown structure from the HTML template
     const dropdownFragment = assigneeDropdownTemplate.content.cloneNode(true);
@@ -1139,28 +1157,28 @@ function showAssigneeDropdown(targetEl, taskId) {
         listContainer.innerHTML = ''; // Clear previous results
         
         filteredUsers.forEach(user => {
-            // Since we only allow one assignee, check if the user is the first one in the array
             const isAssigned = task.assignees[0] === user.id;
             
             const item = document.createElement('div');
             item.className = 'dropdown-item';
             item.innerHTML = `
-             <div class="user-info">
-                <div class="profile-picture" style="background-image: url(${user.avatar})"></div>
-                    <span>${user.name}</span>
-                </div>
-               ${isAssigned ? '<i class="fas fa-check assigned-check"></i>' : ''}
-            `;
+              <div class="user-info">
+                  <div class="profile-picture" style="background-image: url(${user.avatar})"></div>
+                      <span>${user.name}</span>
+                  </div>
+                  ${isAssigned ? '<i class="fas fa-check assigned-check"></i>' : ''}
+              `;
             
             item.addEventListener('click', () => {
-                // If the user is already assigned, unassign them. Otherwise, assign them.
                 const newAssignees = isAssigned ? [] : [user.id];
-                updateTask(taskId, { assignees: newAssignees });
-                // The updateTask function will automatically call render(), which closes the dropdown.
+                // FIX: Pass the correct section.id to the update function.
+                updateTask(taskId, section.id, { assignees: newAssignees });
+                // The onSnapshot listener will handle the re-render which closes the panel.
             });
             listContainer.appendChild(item);
         });
     };
+    
     // Render the initial list of users
     renderList();
     
@@ -1168,13 +1186,14 @@ function showAssigneeDropdown(targetEl, taskId) {
     searchInput.addEventListener('input', () => {
         renderList(searchInput.value);
     });
-    updateTask(taskId, sectionId, { assignees: newAssignees }); // Pass sectionId here
+    
+    // FIX: The stray, incorrect updateTask() call has been removed from here.
     
     mainContainer.appendChild(dropdown);
     searchInput.focus();
 }
 
-function showDatePicker(targetEl, taskId) {
+function showDatePicker(targetEl,sectionId, taskId) {
     closeFloatingPanels();
     const wrapperRect = mainContainer.getBoundingClientRect();
     const targetRect = targetEl.getBoundingClientRect();
