@@ -6,7 +6,15 @@
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+  getFirestore,
+  collection,
+  query,
+  where,
+  getDocs,
+  doc,
+  runTransaction,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "/services/firebase-config.js";
 
 import { openShareModal } from '/dashboard/components/shareProjectModel.js';
@@ -54,44 +62,97 @@ const tabs = document.querySelectorAll('.tab-link');
 async function fetchCurrentProjectData() {
     const user = auth.currentUser;
     if (!user) throw new Error("User not authenticated.");
-    
+
     // 1. Find the user's selected workspace
-    const workspaceQuery = query(collection(db, `users/${user.uid}/myworkspace`), where("isSelected", "==", true));
+    const workspaceQuery = query(
+        collection(db, `users/${user.uid}/myworkspace`),
+        where("isSelected", "==", true)
+    );
     const workspaceSnapshot = await getDocs(workspaceQuery);
     if (workspaceSnapshot.empty) {
         throw new Error("No selected workspace found.");
     }
     const workspaceId = workspaceSnapshot.docs[0].id;
-    
+
     // 2. Find the selected project within that workspace
     const projectPath = `users/${user.uid}/myworkspace/${workspaceId}/projects`;
-    const projectQuery = query(collection(db, projectPath), where("isSelected", "==", true));
+    const projectQuery = query(
+        collection(db, projectPath),
+        where("isSelected", "==", true)
+    );
     const projectSnapshot = await getDocs(projectQuery);
     if (projectSnapshot.empty) {
         throw new Error("No selected project found in the current workspace.");
     }
+
     const projectDoc = projectSnapshot.docs[0];
-    
-    // 3. Return the project's data (name, color, etc.)
-    return projectDoc.data();
+
+    return {
+        data: projectDoc.data(),
+        projectId: projectDoc.id,
+        workspaceId,
+    };
 }
 
 fetchCurrentProjectData()
-    .then(data => {
-        // Check if the data and elements exist before updating
+    .then(({ data, projectId, workspaceId }) => {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        // Editable h1
+        const projectName = document.getElementById("project-name"); // <h1 id="project-name"></h1>
+        const projectIconColor = document.getElementById("project-icon-color");
+
         if (projectName && data.title) {
             projectName.textContent = data.title;
+            projectName.contentEditable = true;
+            projectName.style.cursor = "text";
+            projectName.title = "Click to edit project name";
+
+            // Event listener to save on blur or Enter key
+            const saveTitle = async () => {
+                const newTitle = projectName.textContent.trim();
+                if (!newTitle || newTitle === data.title) return; // Don't update if unchanged
+
+                try {
+                    const projectDocRef = doc(
+                        db,
+                        `users/${user.uid}/myworkspace/${workspaceId}/projects`,
+                        projectId
+                    );
+                    await runTransaction(db, async (transaction) => {
+                        transaction.update(projectDocRef, {
+                            title: newTitle,
+                        });
+                    });
+                    console.log("Project title updated successfully.");
+                } catch (err) {
+                    console.error("Failed to update project title:", err);
+                }
+            };
+
+            // Save on blur
+            projectName.addEventListener("blur", saveTitle);
+
+            // Save on Enter key (and prevent new line)
+            projectName.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") {
+                    e.preventDefault(); // Prevent newline
+                    projectName.blur(); // Triggers blur and saves
+                }
+            });
         }
+
         if (projectIconColor && data.color) {
-            // Assuming your project data has a 'color' field (e.g., '#FF5733')
             projectIconColor.style.backgroundColor = data.color;
         }
     })
-    .catch(err => {
+    .catch((err) => {
         console.error("Failed to load project header data:", err);
+        const projectName = document.getElementById("project-name");
         if (projectName) {
-            projectName.textContent = 'Error Loading Project';
-            projectName.style.color = 'red';
+            projectName.textContent = "Error Loading Project";
+            projectName.style.color = "red";
         }
     });
 
