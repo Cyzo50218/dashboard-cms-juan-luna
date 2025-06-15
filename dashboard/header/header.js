@@ -21,41 +21,40 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app, "juanluna-cms-01");
 
-function getInitials(user) {
-  if (user.displayName) {
-    const names = user.displayName.split(' ');
-    return names.map(name => name[0]).join('').toUpperCase();
-  }
-  if (user.email) {
-    return user.email[0].toUpperCase();
-  }
-  return '?';
-}
-
-function updateProfileDisplay(user) {
+async function updateProfileDisplay(user) {
   if (!user) return;
-  
+
   const mainProfileCircle = document.getElementById("profileToggle");
   const expandProfileCircle = document.querySelector(".account-expand-circle");
   const expandEmail = document.getElementById("account-email");
   const shortnameSpan = mainProfileCircle?.querySelector(".account-shortname");
   const expandShortnameSpan = expandProfileCircle?.querySelector(".account-shortname-expand");
-  
+
   if (expandEmail) {
     expandEmail.textContent = user.email;
   }
-  
-  // If user has a profile picture
-  if (user.photoURL) {
-    const imgHTML = `<img src="${user.photoURL}" alt="Profile" class="profile-picture">`;
+
+  let avatarUrl = user.photoURL;
+
+  try {
+    const userDocRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userDocRef);
+
+    if (userSnap.exists()) {
+      const userData = userSnap.data();
+      if (userData.avatar) {
+        avatarUrl = userData.avatar;
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching user avatar from Firestore:", error);
+  }
+
+  if (avatarUrl) {
+    const imgHTML = `<img src="${avatarUrl}" alt="Profile" class="profile-picture">`;
     if (mainProfileCircle) mainProfileCircle.innerHTML = imgHTML;
     if (expandProfileCircle) expandProfileCircle.innerHTML = imgHTML;
-  } else {
-    // Fallback to initials
-    const initials = getInitials(user);
-    if (shortnameSpan) shortnameSpan.textContent = initials;
-    if (expandShortnameSpan) expandShortnameSpan.textContent = initials;
-  }
+  } 
 }
 
 /**

@@ -1210,7 +1210,7 @@ margin-left: 6px;
   justify-content: center;
 
   /* Optional: Add a fallback background and cursor */
-  background-color: #007bff; /* Fallback for initials */
+  background-color: transparent; /* Fallback for initials */
   cursor: pointer;
   
   /* Prevents the container from shrinking */
