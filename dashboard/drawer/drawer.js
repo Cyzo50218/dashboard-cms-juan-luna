@@ -78,7 +78,7 @@ import { firebaseConfig } from "/services/firebase-config.js";
             if (targetProjectId) {
                 const numericUserId = stringToNumericString(currentUser?.uid);
                 const numericProjectId = stringToNumericString(targetProjectId);
-                myTasksLink.href = `/tasks/${numericUserId}/list/${numericProjectId}`;
+                myTasksLink.href = `/tasks/${currentUser?.uid}/list/${targetProjectId}`;
                 myTasksLink.setAttribute('data-link', '');
             } else {
                 myTasksLink.href = '#';
@@ -135,32 +135,40 @@ import { firebaseConfig } from "/services/firebase-config.js";
         // Handle selecting a project
         const projectLink = e.target.closest('.project-item a');
         if (projectLink) {
-            e.preventDefault(); // Stop navigation until DB is updated
-            const projectItem = projectLink.closest('.project-item');
-            const projectId = projectItem.dataset.projectId;
+          e.preventDefault(); // Stop native navigation
 
-            if (!projectId || projectItem.classList.contains('active')) return;
+const projectItem = projectLink.closest('.project-item');
+const projectId = projectItem.dataset.projectId;
 
-            try {
-                const batch = writeBatch(db);
-                const projectsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects`);
+if (!projectId || projectItem.classList.contains('active')) return;
 
-                // Deselect the currently active project
-                const currentlySelected = projectsData.find(p => p.isSelected === true);
-                if (currentlySelected) {
-                    const oldProjectRef = doc(projectsColRef, currentlySelected.id);
-                    batch.update(oldProjectRef, { isSelected: false });
-                }
+try {
+    const batch = writeBatch(db);
+    const projectsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects`);
 
-                // Select the clicked project
-                const newProjectRef = doc(projectsColRef, projectId);
-                batch.update(newProjectRef, { isSelected: true });
-                
-                await batch.commit();
-                
-            } catch (error) {
-                console.error("Error selecting project:", error);
-            }
+    const currentlySelected = projectsData.find(p => p.isSelected === true);
+    if (currentlySelected) {
+        const oldProjectRef = doc(projectsColRef, currentlySelected.id);
+        batch.update(oldProjectRef, { isSelected: false });
+    }
+
+    const newProjectRef = doc(projectsColRef, projectId);
+    batch.update(newProjectRef, { isSelected: true });
+
+    await batch.commit();
+
+    // 🔁 Push new route and re-run router manually
+    const numericUserId = stringToNumericString(currentUser?.uid);
+    const numericProjectId = stringToNumericString(projectId);
+    const newRoute = `/tasks/${numericUserId}/list/${numericProjectId}`;
+    history.pushState(null, '', newRoute);
+    window.router();
+
+
+} catch (error) {
+    console.error("Error selecting project:", error);
+}
+
         }
     });
 
