@@ -6,9 +6,11 @@
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, collection, query, where, getDocs, doc, updateDoc, arrayUnion, arrayRemove, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-const auth = getAuth();
-const db = getFirestore();
+import { firebaseConfig } from "/services/firebase-config.js";
 
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app, "juanluna-cms-01");
 let isModalOpen = false;
 
 /**
