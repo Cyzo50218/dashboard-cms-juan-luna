@@ -1223,23 +1223,6 @@ margin-left: 6px;
     height: 64px;
 }
 
-
-/*
- * 2. Profile Picture Styles
- * This applies to the <img> tag itself when it's added by your JavaScript.
- */
-.profile-picture {
-  width: 100%;
-  height: 100%;
-  
-  /*
-   * This is the most important property. It scales the image to fill the
-   * container while cropping (not stretching) it to maintain aspect ratio.
-   */
-  object-fit: cover; 
-}
-
-
 /*
  * 3. Initials Styles (Unchanged but good for context)
  * Ensures the letters are also centered and styled nicely.
@@ -1257,4 +1240,20 @@ margin-left: 6px;
 
 .account-shortname-expand {
     font-size: 24px;
+}
+
+/* For the small profile image in the navbar or header */
+#profileToggle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* For the expanded profile image in a modal or dropdown */
+.profile-picture-expand {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
 }
