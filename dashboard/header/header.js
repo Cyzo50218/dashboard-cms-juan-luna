@@ -11,7 +11,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, collection, addDoc, serverTimestamp, runTransaction,
-    doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    doc, getDocs, getDoc} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "/services/firebase-config.js";
 import { showInviteModal } from '/dashboard/components/showEmailModel.js';
 
@@ -32,7 +32,7 @@ async function updateProfileDisplay(user) {
     expandEmail.textContent = user.email;
   }
 
-  let avatarUrl = user.photoURL;
+  let avatarUrl = user.avatar;
 
   try {
     const userDocRef = doc(db, "users", user.uid);

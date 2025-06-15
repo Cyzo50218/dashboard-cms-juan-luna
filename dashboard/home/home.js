@@ -427,7 +427,7 @@ export function init(params) {
                 accessLevel: "workspace",
                 workspaceRole: "Viewer",
                 project_super_admin_uid: currentUser.uid,
-                project_admin_user: currentUser.uid,
+                project_admin_user: '',
                 members: [
                     {
                         uid: currentUser.uid,
