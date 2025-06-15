@@ -71,9 +71,9 @@ export function init(params) {
         try {
             const userSnap = await getDoc(doc(db, `users/${memberUID}`));
             if (userSnap.exists()) {
-                const { avatarImageLink } = userSnap.data();
+                const { avatar } = userSnap.data();
                 const img = document.createElement("img");
-                img.src = avatarImageLink;
+                img.src = avatar;
                 img.className = "user-avatar-myworkspace";
                 staffListContainer.appendChild(img);
             }
