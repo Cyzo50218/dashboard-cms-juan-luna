@@ -10,39 +10,34 @@ import { firebaseConfig } from "/services/firebase-config.js";
 let currentSectionCleanup = null;
 
 /**
- * Parses the browser's URL path into a structured object for the router.
+ * Parses the browser's URL path.
+ * -- NO CHANGES NEEDED HERE --
  */
 function parseRoute() {
     const pathParts = window.location.pathname.split('/').filter(p => p);
     
-    if (pathParts.length === 0) {
-        return { section: 'home' }; // Default route for "/"
-    }
-    
-    const resourceType = pathParts[0];
-    
-    // This handles complex routes like /tasks/123/list/456
-    if (resourceType === 'tasks' && pathParts.length > 3) {
+    // --- FIX: The "tasks" section should load the "home" module ---
+    // The visual content for tasks is in home.html/js
+    if (pathParts[0] === 'tasks' && pathParts.length > 3) {
         return {
-            section: 'tasks',
+            section: 'home', // <-- Route to 'home' to load the correct files
             accountId: pathParts[1] || null,
             tabId: pathParts[2] || 'list',
             projectId: pathParts[3] || null
         };
     }
     
-    // This handles all simple, single-keyword routes
     const simpleRoutes = ['home', 'myworkspace', 'inbox', 'reports', 'goals', 'settings'];
-    if (simpleRoutes.includes(resourceType)) {
-        return { section: resourceType };
+    if (pathParts.length === 0 || simpleRoutes.includes(pathParts[0])) {
+        return { section: pathParts[0] || 'home' };
     }
     
-    // Fallback for any unknown URL
-    return { section: 'home' };
+    return { section: 'home' }; // Fallback
 }
 
 /**
- * The main router function. It determines the current route and loads the appropriate section.
+ * The main router function.
+ * -- NO CHANGES NEEDED HERE --
  */
 function router() {
     const routeParams = parseRoute();
@@ -51,8 +46,8 @@ function router() {
 }
 
 /**
- * Dynamically loads a section's HTML, CSS, and JS module into the main content area.
- * @param {object} routeParams - The object of parameters returned by parseRoute().
+ * Dynamically loads a section's HTML, CSS, and JS module.
+ * -- NO CHANGES NEEDED HERE --
  */
 async function loadSection(routeParams) {
     if (!routeParams || !routeParams.section) {
@@ -62,7 +57,6 @@ async function loadSection(routeParams) {
     const { section } = routeParams;
     const content = document.getElementById("content");
     
-    // Run the cleanup function from the previously loaded section.
     if (typeof currentSectionCleanup === 'function') {
         currentSectionCleanup();
         currentSectionCleanup = null;
@@ -91,8 +85,6 @@ async function loadSection(routeParams) {
         
         content.innerHTML = sectionHtml;
         
-        // Initialize the new section's script, passing the route parameters to it.
-        // This is how the section (e.g., home.js) knows which project is active.
         if (sectionModule.init) {
             currentSectionCleanup = sectionModule.init(routeParams);
         } else {
@@ -108,30 +100,41 @@ async function loadSection(routeParams) {
 }
 
 /**
- * Updates the visual 'active' state of the main navigation links in the drawer.
- * @param {string} sectionName - The name of the currently active section.
+ * Updates the visual 'active' state of the main navigation links.
+ * -- NO CHANGES NEEDED HERE --
  */
 function updateActiveNav(sectionName) {
-    // This function will be called by the router after a section loads.
-    // It assumes the drawer's HTML is already loaded.
     const drawer = document.getElementById("dashboardDrawer");
     if (!drawer) return;
     
     drawer.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
     
-    // The 'tasks' section should highlight the 'Home' link in the drawer.
-    const navKey = sectionName === 'tasks' ? 'home' : sectionName;
+    // --- FIX: Highlight the correct parent nav item ---
+    // The page for /tasks/... is 'home', but the nav item is 'my-tasks-link'.
+    // A better approach is to not rely on href at all.
+    let activeEl;
+    if (sectionName === 'home') {
+        // If we are on a project page, highlight that project in the drawer
+        const routeParams = parseRoute();
+        const drawerProjectItem = drawer.querySelector(`.project-item[data-numeric-id="${routeParams.projectId}"]`);
+        if (drawerProjectItem) {
+            activeEl = drawerProjectItem;
+        } else {
+            // Fallback to highlighting the main "My Tasks" link
+             activeEl = drawer.querySelector('#my-tasks-link')?.closest('.nav-item');
+        }
+    } else {
+         activeEl = drawer.querySelector(`.nav-item a[href="/${sectionName}"]`)?.closest('.nav-item');
+    }
     
-    const activeLink = drawer.querySelector(`.nav-item a[href="/${navKey}"]`);
-    if (activeLink) {
-        activeLink.closest('.nav-item').classList.add('active');
+    if(activeEl) {
+        activeEl.classList.add('active');
     }
 }
 
-
 /**
- * Asynchronously loads persistent HTML components like the header and drawer.
- * Also dynamically loads their associated CSS and JS modules.
+ * Asynchronously loads a component and its resources.
+ * -- NO CHANGES NEEDED HERE --
  */
 async function loadHTML(selector, url) {
     const container = document.querySelector(selector);
@@ -155,8 +158,6 @@ async function loadHTML(selector, url) {
             document.head.appendChild(link);
         }
         
-        // Dynamically import the JS module for the component
-        // This allows drawer.js and header.js to be self-contained modules.
         await import(jsPath);
         
     } catch (err) {
@@ -165,40 +166,52 @@ async function loadHTML(selector, url) {
     }
 }
 
-// --- APPLICATION INITIALIZATION ---
+// --- APPLICATION INITIALIZATION (RESTRUCTURED) ---
 document.addEventListener("DOMContentLoaded", () => {
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     
     onAuthStateChanged(auth, async (user) => {
         if (user) {
-            // --- USER IS LOGGED IN ---
             console.log("Authenticated user found. Initializing dashboard...");
             
-            // Load persistent layout components.
-            await Promise.all([
-                loadHTML("#top-header", "/dashboard/header/header.html"),
-                loadHTML("#rootdrawer", "/dashboard/drawer/drawer.html")
-            ]);
+            // --- FIX: Await the loading of essential components ---
+            // We ensure the drawer and header are fully loaded and their JS has run
+            // BEFORE we set up the router.
+            await loadHTML("#top-header", "/dashboard/header/header.html");
+            await loadHTML("#rootdrawer", "/dashboard/drawer/drawer.html");
             
-            // --- GLOBAL NAVIGATION HANDLER ---
-            // This single listener handles all SPA routing clicks.
-            document.body.addEventListener('click', e => {
-                const link = e.target.closest('a[data-link]');
-                if (link) {
-                    e.preventDefault();
-                    history.pushState(null, '', link.href);
-                    router();
-                }
-            });
-            
-            window.addEventListener('popstate', router); // Handle back/forward buttons
-            router(); // Initial route call for the first page load
+            // Now that the drawer logic is guaranteed to be running, we can
+            // safely initialize the router.
+            initializeRouter();
             
         } else {
-            // --- USER IS NOT LOGGED IN ---
             console.log("No authenticated user. Redirecting to /login/...");
-            window.location.href = '/login/login.html';
+            if (!window.location.pathname.includes('/login/')) {
+                 window.location.href = '/login/login.html';
+            }
         }
     });
 });
+
+/**
+ * Sets up the global click handler and initial route call.
+ * This is now its own function to ensure it only runs after prerequisites are met.
+ */
+function initializeRouter() {
+    // This single listener handles all SPA routing clicks.
+    document.body.addEventListener('click', e => {
+        const link = e.target.closest('a[data-link]');
+        if (link) {
+            e.preventDefault();
+            // Only push state if the URL is different to avoid duplicate history entries
+            if (link.href !== window.location.href) {
+                history.pushState(null, '', link.href);
+                router();
+            }
+        }
+    });
+    
+    window.addEventListener('popstate', router); // Handle back/forward buttons
+    router(); // Initial route call for the first page load
+}
