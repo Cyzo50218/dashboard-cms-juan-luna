@@ -52,8 +52,8 @@ async function updateProfileDisplay(user) {
 
   if (avatarUrl) {
     const imgHTML = `<img src="${avatarUrl}" alt="Profile" class="profile-picture">`;
-    if (mainProfileCircle) mainProfileCircle.innerHTML = imgHTML;
-    if (expandProfileCircle) expandProfileCircle.innerHTML = imgHTML;
+   mainProfileCircle.innerHTML = imgHTML;
+   expandProfileCircle.innerHTML = imgHTML;
   } 
 }
 
