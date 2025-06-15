@@ -25,7 +25,7 @@ async function updateProfileDisplay(user) {
   if (!user) return;
 
   const mainProfileImg = document.getElementById("profileToggle"); // assuming <img id="profileToggle" />
-  const expandProfileImg = document.querySelector(".profile-picture-expand"); // class, so use querySelector
+  const expandProfileImg = document.getElementById(".profile-picture-expand"); // class, so use querySelector
   const expandEmail = document.getElementById("account-email");
 
   if (expandEmail) {
@@ -47,15 +47,8 @@ async function updateProfileDisplay(user) {
   } catch (error) {
     console.error("Error fetching user avatar from Firestore:", error);
   }
-
-  // ✅ Update avatar image sources
-  if (mainProfileImg && avatarUrl) {
     mainProfileImg.src = avatarUrl;
-  }
-
-  if (expandProfileImg && avatarUrl) {
     expandProfileImg.src = avatarUrl;
-  }
 }
 
 
