@@ -633,33 +633,76 @@ function getSortedProject(project) {
 }
 
 async function handleSectionReorder(evt) {
+    console.log("🔄 Section reorder triggered:", evt);
+
     const user = auth.currentUser;
-    if (!user) return;
+    if (!user) {
+        console.error("❌ No authenticated user.");
+        return;
+    }
 
-    const workspaceSnapshot = await getDocs(
-        query(collection(db, `users/${user.uid}/myworkspace`), where("isSelected", "==", true))
-    );
-    if (workspaceSnapshot.empty) return;
+    console.log("👤 User ID:", user.uid);
+
+    let workspaceSnapshot;
+    try {
+        workspaceSnapshot = await getDocs(
+            query(collection(db, `users/${user.uid}/myworkspace`), where("isSelected", "==", true))
+        );
+    } catch (err) {
+        console.error("❌ Failed to fetch selected workspace:", err);
+        return;
+    }
+
+    if (workspaceSnapshot.empty) {
+        console.warn("⚠️ No selected workspace found.");
+        return;
+    }
+
     const workspaceId = workspaceSnapshot.docs[0].id;
+    console.log("📁 Selected workspace ID:", workspaceId);
 
-    const projectSnapshot = await getDocs(
-        query(collection(db, `users/${user.uid}/myworkspace/${workspaceId}/projects`), where("isSelected", "==", true))
-    );
-    if (projectSnapshot.empty) return;
+    let projectSnapshot;
+    try {
+        projectSnapshot = await getDocs(
+            query(collection(db, `users/${user.uid}/myworkspace/${workspaceId}/projects`), where("isSelected", "==", true))
+        );
+    } catch (err) {
+        console.error("❌ Failed to fetch selected project:", err);
+        return;
+    }
+
+    if (projectSnapshot.empty) {
+        console.warn("⚠️ No selected project found.");
+        return;
+    }
+
     const projectId = projectSnapshot.docs[0].id;
+    console.log("📂 Selected project ID:", projectId);
 
-    const sectionEls = [...taskListBody.querySelectorAll('.section')]; // Assuming each section DOM element has class .section and data-section-id
+    const sectionEls = [...taskListBody.querySelectorAll('.task-section')]; // adjusted selector to match DOM
+    console.log(`🧱 Found ${sectionEls.length} section elements to reorder.`);
 
     const batch = writeBatch(db);
     sectionEls.forEach((el, index) => {
         const sectionId = el.dataset.sectionId;
+        if (!sectionId) {
+            console.warn(`⚠️ Section element missing data-section-id at index ${index}`);
+            return;
+        }
+
         const sectionRef = doc(db, `users/${user.uid}/myworkspace/${workspaceId}/projects/${projectId}/sections/${sectionId}`);
         batch.update(sectionRef, { order: index });
+        console.log(`🔢 Set order ${index} for section ${sectionId}`);
     });
 
-    await batch.commit();
-    console.log("Sections reordered and saved to Firestore.");
+    try {
+        await batch.commit();
+        console.log("✅ Sections reordered and saved to Firestore.");
+    } catch (err) {
+        console.error("❌ Error committing section reordering batch:", err);
+    }
 }
+
 
 function closeFloatingPanels() {
     document.querySelectorAll('.context-dropdown, .datepicker, .dialog-overlay, .filterlistview-dialog-overlay').forEach(p => p.remove());
