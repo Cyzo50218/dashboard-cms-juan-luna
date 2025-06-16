@@ -682,11 +682,12 @@ async function handleTaskMoved(evt) {
     const taskEl = evt.item;
     const taskId = taskEl.dataset.taskId;
 
-    const newSectionEl = evt.to.closest(".section");
-    const newSectionId = newSectionEl?.dataset.sectionId;
+    const newSectionEl = evt.to.closest(".task-section");
+const newSectionId = newSectionEl?.dataset.sectionId;
 
-    const oldSectionEl = evt.from.closest(".section");
-    const oldSectionId = oldSectionEl?.dataset.sectionId;
+const oldSectionEl = evt.from.closest(".task-section");
+const oldSectionId = oldSectionEl?.dataset.sectionId;
+
 
     if (!taskId || !newSectionId || !oldSectionId) {
     if (!taskId) {
