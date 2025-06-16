@@ -219,8 +219,12 @@ function distributeTasksToSections(tasks) {
 
     // ✅ NOW sort the tasks inside each section by their `order`
     project.sections.forEach(section => {
-        section.tasks.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    section.tasks.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    section.tasks.forEach((task, index) => {
+        task.order = index; // Fix any gaps or duplicate orders on render
     });
+});
+
 
     console.log(`--- Distribution Complete. ${unmatchedTasks} tasks could not be matched. ---`);
 }
@@ -718,8 +722,6 @@ function findTaskAndSection(taskId) {
 }
 
 async function handleTaskMoved(evt) {
-    console.log("🧪 Drag Event Details:", evt);
-
     const user = auth.currentUser;
     if (!user) return;
 
@@ -732,12 +734,10 @@ async function handleTaskMoved(evt) {
     const oldSectionEl = evt.from.closest(".task-section");
     const oldSectionId = oldSectionEl?.dataset.sectionId;
 
-    if (!taskId || !newSectionId || !oldSectionId) {
-        console.error("Missing IDs during drag.");
-        return;
-    }
+    if (!taskId || !newSectionId || !oldSectionId) return console.error("Missing data-taskId or sectionId");
 
     try {
+        // Fetch selected workspace & project
         const workspaceSnap = await getDocs(query(
             collection(db, `users/${user.uid}/myworkspace`),
             where("isSelected", "==", true)
@@ -755,13 +755,13 @@ async function handleTaskMoved(evt) {
         const basePath = `users/${user.uid}/myworkspace/${workspaceId}/projects/${projectId}`;
         const batch = writeBatch(db);
 
-        // 🧩 A. Handle move across sections
+        // A. Move task to another section (if needed)
         if (newSectionId !== oldSectionId) {
             const sourceRef = doc(db, `${basePath}/sections/${oldSectionId}/tasks/${taskId}`);
             const sourceSnap = await getDoc(sourceRef);
 
             if (!sourceSnap.exists()) {
-                console.error("❌ Task not found in source section.");
+                console.error("❌ Source task not found");
                 return;
             }
 
@@ -769,18 +769,16 @@ async function handleTaskMoved(evt) {
             delete taskData.id;
             taskData.sectionId = newSectionId;
 
-            const targetTasksColRef = collection(db, `${basePath}/sections/${newSectionId}/tasks`);
-            const newTaskDocRef = doc(targetTasksColRef); // auto ID
+            const newTaskDocRef = doc(collection(db, `${basePath}/sections/${newSectionId}/tasks`));
+            taskEl.dataset.taskId = newTaskDocRef.id;
 
-            taskEl.dataset.taskId = newTaskDocRef.id; // update DOM
             batch.delete(sourceRef);
             batch.set(newTaskDocRef, taskData);
-
-            console.log(`✅ Task moved to new section "${newSectionId}"`);
         }
 
-        // 🧩 B. Clean Reorder all tasks in the target section (ALWAYS)
+        // B. Reorder ALL tasks in target section accurately
         const reorderedTaskEls = Array.from(evt.to.querySelectorAll(".task"));
+
         reorderedTaskEls.forEach((el, index) => {
             const reorderId = el.dataset.taskId;
             if (!reorderId) return;
@@ -788,14 +786,14 @@ async function handleTaskMoved(evt) {
             const reorderRef = doc(db, `${basePath}/sections/${newSectionId}/tasks/${reorderId}`);
             batch.update(reorderRef, {
                 order: index,
-                sectionId: newSectionId
+                sectionId: newSectionId // Always override to ensure no drift
             });
         });
 
         await batch.commit();
-        console.log("✅ Clean reorder complete.");
+        console.log("✅ Task move and full reorder complete.");
     } catch (err) {
-        console.error("❌ Error in task move/reorder:", err);
+        console.error("❌ Error moving/reordering tasks:", err);
     }
 }
 
