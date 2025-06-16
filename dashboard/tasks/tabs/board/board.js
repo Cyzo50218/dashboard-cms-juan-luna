@@ -1,214 +1,139 @@
-// --- Data ---
-const allUsers = [
-    { id: 1, name: 'Lorelai Gilmore', email: 'lorelai.g@example.com', avatar: 'https://i.imgur.com/k9qRkiG.png' },
-    { id: 2, name: 'Rory Gilmore', email: 'rory.g@example.com', avatar: 'https://i.imgur.com/8mR4H4A.png' },
-    { id: 3, name: 'Luke Danes', email: 'luke.d@example.com', avatar: 'https://i.imgur.com/wfz43s9.png' },
-    { id: 4, name: 'Sookie St. James', email: 'sookie.sj@example.com', avatar: 'https://i.imgur.com/L4DD33f.png' },
-    { id: 5, name: 'Paris Geller', email: 'paris.g@example.com', avatar: 'https://i.imgur.com/lVceL5s.png' },
-];
+/**
+ * ===================================================================================
+ * board.js - The Complete Real-Time Kanban Board (Corrected Order)
+ * ===================================================================================
+ * This script powers a real-time, collaborative Kanban board using Firebase Firestore.
+ * This version corrects the function order to resolve the 'not defined' error.
+ * ===================================================================================
+ */
 
-let project = {
-    sections: [
-    {
-        id: 1,
-        title: 'Design',
-        tasks: [
-            { id: 101, name: 'Create final mockups', dueDate: '2025-06-12', priority: 'High', status: 'On track', assignees: [1, 2], isLiked: false, imageUrl: 'data:image/jpeg;base64,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' },
-            { id: 102, name: 'Review branding guidelines', dueDate: '2025-06-13', priority: 'Medium', status: 'On track', assignees: [3], isLiked: true, imageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSCBN_3HpX84rT_2zUN2PH8I8VJ1pXMoV7sL_RmGTeTs-s4wy5czMtu5OY&s=10' },
-        ],
-        isCollapsed: false
-    },
-    {
-        id: 2,
-        title: 'Development',
-        tasks: [
-            { id: 201, name: 'Initial setup', dueDate: '2025-06-18', priority: 'Low', status: 'At risk', assignees: [], isLiked: false },
-        ],
-        isCollapsed: false
-    },
-    {
-        id: 3,
-        title: 'Completed',
-        tasks: [
-            { id: 301, name: 'Kick-off meeting', dueDate: '2025-05-30', priority: 'Completed', assignees: [4, 5], isLiked: false },
-        ],
-        isCollapsed: false
-    }, ],
-};
+// --- 1. FIREBASE IMPORTS ---
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+    getFirestore,
+    doc,
+    collection,
+    query,
+    where,
+    onSnapshot,
+    collectionGroup,
+    orderBy,
+    addDoc,
+    updateDoc,
+    deleteDoc,
+    writeBatch,
+    serverTimestamp,
+    getDoc,
+    getDocs,
+    limit,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+import { firebaseConfig } from "/services/firebase-config.js";
+
+// Initialize Firebase
+console.log("Initializing Firebase...");
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app, "juanluna-cms-01");
+console.log("Initialized Firebase on Dashboard.");
 
 
-let currentlyFocusedSectionId = project.sections.length > 0 ? project.sections[0].id : null;
-let sortableInstances = []; // To keep track of Sortable instances for cleanup
-
-// --- DOM Element References ---
+// --- 4. MODULE-SCOPED STATE & DOM REFERENCES ---
 let kanbanBoard, addSectionBtn, addTaskMainBtn, toolsBtn, toolsPanel, filterInput;
 let sortSectionsAz, sortSectionsZa, sortTasksAz, sortTasksZa;
 
-// --- RENDER FUNCTIONS ---
+let sortableInstances = [];
+let activeListeners = { sections: null, tasks: null, messages: null };
+
+let project = { id: null, sections: [] };
+let allUsers = [];
+let allTasksFromSnapshot = [];
+let taskImageMap = {};
+
+let currentUserId = null;
+let currentWorkspaceId = null;
+let currentProjectId = null;
+let taskIdToFocus = null;
+let isMovingTask = false;
+
+// --- 5. HELPER & UTILITY FUNCTIONS (Defined Before Use) ---
+
+async function fetchActiveIds(userId) {
+    const workspaceQuery = query(collection(db, `users/${userId}/myworkspace`), where("isSelected", "==", true), limit(1));
+    const workspaceSnapshot = await getDocs(workspaceQuery);
+    if (workspaceSnapshot.empty) {
+        console.warn("No selected workspace found for this user.");
+        return { workspaceId: null, projectId: null };
+    }
+    const workspaceId = workspaceSnapshot.docs[0].id;
+    
+    const projectQuery = query(collection(db, `users/${userId}/myworkspace/${workspaceId}/projects`), where("isSelected", "==", true), limit(1));
+    const projectSnapshot = await getDocs(projectQuery);
+    if (projectSnapshot.empty) {
+        console.warn("No selected project found for this workspace.");
+        return { workspaceId, projectId: null };
+    }
+    const projectId = projectSnapshot.docs[0].id;
+    return { workspaceId, projectId };
+}
+
+async function fetchProjectMembers(userId, workspaceId, projectId) {
+    if (!userId || !workspaceId || !projectId) return [];
+    try {
+        const projectRef = doc(db, `users/${userId}/myworkspace/${workspaceId}/projects/${projectId}`);
+        const projectSnap = await getDoc(projectRef);
+        if (!projectSnap.exists()) return [];
+        
+        const projectData = projectSnap.data();
+        let memberUids = (projectData.workspaceRole === 'workspace') ?
+            (await getDoc(doc(db, `users/${userId}/myworkspace/${workspaceId}`))).data()?.members || [] :
+            projectData.members?.map(m => m.uid) || [];
+        
+        if (memberUids.length === 0) return [];
+        const userPromises = memberUids.map(uid => getDoc(doc(db, `users/${uid}`)));
+        const userDocs = await Promise.all(userPromises);
+        return userDocs.filter(d => d.exists()).map(d => ({ uid: d.id, ...d.data() }));
+    } catch (error) {
+        console.error("Error fetching project members:", error);
+        return [];
+    }
+}
+
+const findSection = (sectionId) => project.sections.find(s => s.id === sectionId);
+const findTaskAndSection = (taskId) => {
+    for (const section of project.sections) {
+        const task = (section.tasks || []).find(t => t.id === taskId);
+        if (task) return { task, section };
+    }
+    return { task: null, section: null };
+};
 
 const formatDueDate = (dueDateString) => {
-    const today = new Date('2025-06-12T00:00:00');
+    if (!dueDateString) return '';
+    const today = new Date('2025-06-12T00:00:00'); // Static date for consistent demo
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
     const dueDate = new Date(dueDateString + 'T00:00:00');
-    
     today.setHours(0, 0, 0, 0);
     tomorrow.setHours(0, 0, 0, 0);
     dueDate.setHours(0, 0, 0, 0);
-    
     if (dueDate.getTime() === today.getTime()) return 'Today';
     if (dueDate.getTime() === tomorrow.getTime()) return 'Tomorrow';
     return dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
-const renderTask = (task) => {
-    const assigneesHTML = task.assignees.map(assigneeId => {
-        const user = allUsers.find(u => u.id === assigneeId);
-        return user ? `<img src="${user.avatar}" alt="${user.name}" class="boardtasks-assignee-avatar" title="${user.name}">` : '';
-    }).join('');
-    
-    const isCompleted = task.status === 'Completed';
-    const checkIconClass = isCompleted ? 'fa-solid fa-circle-check' : 'fa-regular fa-circle';
-    const cardCompletedClass = isCompleted ? 'boardtasks-task-checked' : '';
-    const likedClass = task.isLiked ? 'liked' : '';
-    const imageHTML = task.imageUrl ? `<img src="${task.imageUrl}" class="boardtasks-task-attachment">` : '';
-    const statusClass = (task.status || '').replace(/\s+/g, '.');
-    const statusText = task.status || 'No Status';
-    const formattedDueDate = formatDueDate(task.dueDate);
-    
-    return `
-            <div class="boardtasks-task-card ${cardCompletedClass}" id="task-${task.id}" draggable="true">
-                ${imageHTML}
-                <div class="boardtasks-task-content">
-                    <div class="boardtasks-task-header">
-                        <span class="boardtasks-task-check"><i class="${checkIconClass}"></i></span>
-                        <div class="boardtasks-task-assignees">${assigneesHTML}</div>
-                        <p contenteditable="true" class="boardtasks-task-name-editable">${task.name}</p>
-                    </div>
-                    <div class="boardtasks-task-tags">
-                        <span class="boardtasks-tag boardtasks-priority-${task.priority}">${task.priority}</span>
-                        <span class="boardtasks-tag boardtasks-status-${statusClass}">${statusText}</span>
-                    </div>
-                    <div class="boardtasks-task-footer">
-                        <span class="boardtasks-due-date" data-due-date="${task.dueDate}">${formattedDueDate}</span>
-                        <div class="boardtasks-task-actions">
-                            <i class="fa-regular fa-heart ${likedClass}"></i>
-                            <i class="fa-regular fa-comment"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-};
-
-const renderColumn = (section) => {
-    const columnEl = document.createElement('div');
-    columnEl.className = 'boardtasks-kanban-column';
-    columnEl.dataset.sectionId = section.id;
-    const tasksHTML = section.tasks.map(renderTask).join('');
-    columnEl.innerHTML = `
-            <div class="boardtasks-column-header">
-                <h3 contenteditable="true" class="boardtasks-section-title-editable">${section.title}</h3>
-                <span class="boardtasks-task-count">${section.tasks.length}</span>
-            </div>
-            <div class="boardtasks-tasks-container">
-                ${tasksHTML}
-            </div>
-            <button class="boardtasks-add-task-btn"><i class="fas fa-plus"></i> Add task</button>
-        `;
-    kanbanBoard.appendChild(columnEl);
-};
-
-const renderBoard = () => {
-    if (!kanbanBoard) return;
-    const scrollLeft = kanbanBoard.scrollLeft;
-    kanbanBoard.innerHTML = '';
-    project.sections.forEach(renderColumn);
-    checkDueDates();
-    initSortable();
-    updateTaskCounts();
-    kanbanBoard.scrollLeft = scrollLeft;
-};
-
-
-// --- DATA & STATE MANAGEMENT ---
-
-const findTask = (taskId) => {
-    for (const section of project.sections) {
-        const task = section.tasks.find(t => t.id === taskId);
-        if (task) return { task, section };
-    }
-    return null;
-};
-
-const findSection = (sectionId) => {
-    return project.sections.find(s => s.id === sectionId);
-};
-
-const addNewSection = () => {
-    const newSection = {
-        id: Date.now(),
-        title: 'New Section',
-        tasks: [],
-        isCollapsed: false
-    };
-    project.sections.push(newSection);
-    renderBoard();
-};
-
-const addNewTask = (sectionId) => {
-    const section = findSection(sectionId);
-    if (!section) return;
-    
-    const futureDate = new Date();
-    futureDate.setDate(futureDate.getDate() + 7);
-    
-    const newTask = {
-        id: Date.now(),
-        name: 'New Task',
-        dueDate: futureDate.toISOString().split('T')[0],
-        priority: 'Medium',
-        status: 'On track',
-        assignees: [],
-        isLiked: false
-    };
-    section.tasks.push(newTask);
-    renderBoard();
-    
-    // Focus the new task for editing
-    const newTaskEl = document.getElementById(`task-${newTask.id}`);
-    if (newTaskEl) {
-        const p = newTaskEl.querySelector('p');
-        p.focus();
-        document.execCommand('selectAll', false, null);
-        newTaskEl.classList.add('boardtasks-task-is-new');
-    }
-};
-
-const updateTaskCounts = () => {
-    document.querySelectorAll('.boardtasks-kanban-column').forEach(column => {
-        const taskCountEl = column.querySelector('.boardtasks-task-count');
-        const visibleTasks = column.querySelectorAll('.boardtasks-task-card:not([style*="display: none"])').length;
-        if (taskCountEl) taskCountEl.textContent = visibleTasks;
-    });
-};
-
-// --- HELPERS ---
-
 const checkDueDates = () => {
     const today = new Date('2025-06-12T00:00:00');
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
-    
     today.setHours(0, 0, 0, 0);
     tomorrow.setHours(0, 0, 0, 0);
-    
     document.querySelectorAll('.boardtasks-due-date').forEach(el => {
+        if (!el.dataset.dueDate) return;
         const dueDate = new Date(el.dataset.dueDate + 'T00:00:00');
         dueDate.setHours(0, 0, 0, 0);
-        
         el.classList.remove('boardtasks-date-overdue', 'boardtasks-date-near');
-        
         if (dueDate < today) {
             el.classList.add('boardtasks-date-overdue');
         } else if (dueDate.getTime() === tomorrow.getTime()) {
@@ -217,186 +142,7 @@ const checkDueDates = () => {
     });
 };
 
-// --- TOOLS: FILTER & SORT ---
-
-const handleToolsClick = () => toolsPanel.classList.toggle('boardtasks-hidden');
-
-const handleFilterInput = (e) => {
-    const searchTerm = e.target.value.toLowerCase();
-    document.querySelectorAll('.boardtasks-task-card').forEach(card => {
-        const taskText = card.querySelector('.boardtasks-task-name-editable').textContent.toLowerCase();
-        card.style.display = taskText.includes(searchTerm) ? '' : 'none';
-    });
-    updateTaskCounts();
-};
-
-const sortColumns = (asc) => {
-    project.sections.sort((a, b) => asc ? a.title.localeCompare(b.title) : b.title.localeCompare(a.title));
-    renderBoard();
-};
-
-const sortTasksInAllColumns = (asc) => {
-    project.sections.forEach(section => {
-        section.tasks.sort((a, b) => asc ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name));
-    });
-    renderBoard();
-};
-
-function displaySideBarTasks(taskId) {
-    console.log(`Task name clicked. Opening sidebar for task ID: ${taskId}`);
-    if (window.TaskSidebar) {
-        window.TaskSidebar.open(taskId);
-    } else {
-        console.error("TaskSidebar module is not available.");
-    }
-}
-
-
-// --- EVENT HANDLERS (to be attached in init) ---
-
-const handleAddTaskMainClick = () => {
-    if (currentlyFocusedSectionId) {
-        addNewTask(currentlyFocusedSectionId);
-    } else if (project.sections.length > 0) {
-        addNewTask(project.sections[project.sections.length - 1].id);
-    } else {
-        alert("Please add a section first!");
-    }
-};
-
-const handleKanbanKeydown = (e) => {
-    if (e.key === 'Enter' && e.target.isContentEditable) {
-        e.preventDefault();
-        e.target.blur();
-    }
-};
-
-const handleKanbanBlur = (e) => {
-    const target = e.target;
-    if (target.isContentEditable) {
-        const newName = target.textContent.trim();
-        const sectionId = parseInt(target.closest('.boardtasks-kanban-column').dataset.sectionId);
-        const section = findSection(sectionId);
-        
-        if (target.classList.contains('boardtasks-section-title-editable')) {
-            if (section && section.title !== newName) {
-                section.title = newName;
-            }
-        } else if (target.classList.contains('boardtasks-task-name-editable')) {
-            const taskCard = target.closest('.boardtasks-task-card');
-            const taskId = parseInt(taskCard.id.replace('task-', ''));
-            const { task } = findTask(taskId);
-            
-            if (taskCard.classList.contains('boardtasks-task-is-new') && (newName === 'New Task' || newName === '')) {
-                const taskIndex = section.tasks.findIndex(t => t.id === taskId);
-                if (taskIndex > -1) {
-                    section.tasks.splice(taskIndex, 1);
-                }
-                renderBoard();
-                return;
-            }
-            
-            if (task && task.name !== newName) {
-                task.name = newName;
-            }
-            taskCard.classList.remove('boardtasks-task-is-new');
-        }
-    }
-};
-
-const handleKanbanClick = (e) => {
-    const target = e.target;
-    
-    const column = target.closest('.boardtasks-kanban-column');
-    if (column) {
-        currentlyFocusedSectionId = parseInt(column.dataset.sectionId);
-    }
-    
-    if (target.closest('.boardtasks-add-task-btn')) {
-        addNewTask(currentlyFocusedSectionId);
-        return;
-    }
-    
-    const taskCard = target.closest('.boardtasks-task-card');
-    if (!taskCard) return;
-    
-    const taskId = parseInt(taskCard.id.replace('task-', ''));
-    const { task } = findTask(taskId);
-    
-    if (target.classList.contains('fa-heart')) {
-        task.isLiked = !task.isLiked;
-        target.classList.toggle('liked');
-        return;
-    }
-    
-    if (target.closest('.boardtasks-task-check')) {
-        const taskName = task.name.trim();
-        if (task.status !== 'Completed' && (taskName === 'New Task' || taskName === '')) {
-            alert('Please enter a task name before marking it as complete.');
-            return;
-        }
-        task.status = task.status === 'Completed' ? 'On track' : 'Completed';
-        renderBoard();
-        return;
-    }
-    
-    if (target.closest('.boardtasks-task-actions') || target.isContentEditable) return;
-    displaySideBarTasks(taskId);
-};
-
-
-// --- SORTABLE JS ---
-const initSortable = () => {
-    // Destroy any existing instances to prevent duplicates
-    sortableInstances.forEach(s => s.destroy());
-    sortableInstances = [];
-    
-    // Sort columns
-    if (kanbanBoard) {
-        const columnSortable = new Sortable(kanbanBoard, {
-            group: 'columns',
-            animation: 150,
-            handle: '.boardtasks-column-header',
-            ghostClass: 'boardtasks-column-ghost',
-            onEnd: function(evt) {
-                const movedSection = project.sections.splice(evt.oldIndex, 1)[0];
-                project.sections.splice(evt.newIndex, 0, movedSection);
-            }
-        });
-        sortableInstances.push(columnSortable);
-    }
-    
-    // Sort tasks
-    document.querySelectorAll('.boardtasks-tasks-container').forEach(container => {
-        const taskSortable = new Sortable(container, {
-            group: 'tasks',
-            animation: 150,
-            ghostClass: 'boardtasks-task-ghost',
-            onEnd: function(evt) {
-                const oldColumnEl = evt.from.closest('.boardtasks-kanban-column');
-                const newColumnEl = evt.to.closest('.boardtasks-kanban-column');
-                const taskId = parseInt(evt.item.id.replace('task-', ''));
-                
-                const oldSectionId = parseInt(oldColumnEl.dataset.sectionId);
-                const newSectionId = parseInt(newColumnEl.dataset.sectionId);
-                
-                const { task, section: oldSection } = findTask(taskId);
-                const newSection = findSection(newSectionId);
-                
-                const taskIndex = oldSection.tasks.findIndex(t => t.id === taskId);
-                oldSection.tasks.splice(taskIndex, 1);
-                
-                newSection.tasks.splice(evt.newIndex, 0, task);
-                
-                updateTaskCounts();
-            }
-        });
-        sortableInstances.push(taskSortable);
-    });
-};
-
-// --- INITIALIZATION and CLEANUP ---
-
+// --- 6. CORE INITIALIZATION & CLEANUP ---
 const init = () => {
     // Get DOM element references
     kanbanBoard = document.getElementById('boardtasks-kanbanBoard');
@@ -411,59 +157,357 @@ const init = () => {
     sortTasksZa = document.getElementById('boardtasks-sort-tasks-za');
     
     // Attach event listeners
-    addSectionBtn.addEventListener('click', addNewSection);
+    addSectionBtn.addEventListener('click', addSectionToFirebase);
     addTaskMainBtn.addEventListener('click', handleAddTaskMainClick);
-    toolsBtn.addEventListener('click', handleToolsClick);
+    toolsBtn.addEventListener('click', () => toolsPanel.classList.toggle('boardtasks-hidden'));
     filterInput.addEventListener('input', handleFilterInput);
-    
-    sortSectionsAz.addEventListener('click', () => sortColumns(true));
-    sortSectionsZa.addEventListener('click', () => sortColumns(false));
-    sortTasksAz.addEventListener('click', () => sortTasksInAllColumns(true));
-    sortTasksZa.addEventListener('click', () => sortTasksInAllColumns(false));
-    
+    sortSectionsAz.addEventListener('click', () => sortSections(true));
+    sortSectionsZa.addEventListener('click', () => sortSections(false));
+    sortTasksAz.addEventListener('click', () => sortAllTasks(true));
+    sortTasksZa.addEventListener('click', () => sortAllTasks(false));
     kanbanBoard.addEventListener('keydown', handleKanbanKeydown);
-    kanbanBoard.addEventListener('blur', handleKanbanBlur, true); // Use capture phase
+    kanbanBoard.addEventListener('blur', handleBlur, true);
     kanbanBoard.addEventListener('click', handleKanbanClick);
     
-    // Initial render
-    renderBoard();
+    // Authentication state observer
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            currentUserId = user.uid;
+            // This call is now safe because fetchActiveIds is defined above
+            const ids = await fetchActiveIds(user.uid);
+            if (ids.projectId) {
+                currentWorkspaceId = ids.workspaceId;
+                currentProjectId = ids.projectId;
+                allUsers = await fetchProjectMembers(currentUserId, currentWorkspaceId, currentProjectId);
+                attachRealtimeListeners();
+            } else {
+                kanbanBoard.innerHTML = '<h2>No active project found for this user.</h2>';
+            }
+        } else {
+            cleanup();
+            signInAnonymously(auth).catch(err => console.error("Anonymous sign-in failed:", err));
+        }
+    });
     
-    // Return the cleanup function
     return cleanup;
-}
+};
 
 const cleanup = () => {
-    console.log("Cleaning up board tasks listeners and timers...");
-    
-    // Destroy sortable instances
+    detachAllListeners();
     sortableInstances.forEach(s => s.destroy());
     sortableInstances = [];
-    
-    // Remove event listeners
-    addSectionBtn.removeEventListener('click', addNewSection);
-    addTaskMainBtn.removeEventListener('click', handleAddTaskMainClick);
-    toolsBtn.removeEventListener('click', handleToolsClick);
-    filterInput.removeEventListener('input', handleFilterInput);
-    
-    sortSectionsAz.removeEventListener('click', () => sortColumns(true));
-    sortSectionsZa.removeEventListener('click', () => sortColumns(false));
-    sortTasksAz.removeEventListener('click', () => sortTasksInAllColumns(true));
-    sortTasksZa.removeEventListener('click', () => sortTasksInAllColumns(false));
-    
-    if (kanbanBoard) {
-        kanbanBoard.removeEventListener('keydown', handleKanbanKeydown);
-        kanbanBoard.removeEventListener('blur', handleKanbanBlur, true);
-        kanbanBoard.removeEventListener('click', handleKanbanClick);
-        kanbanBoard.innerHTML = ''; // Clear the board
-    }
-    
-    // Nullify DOM references to be safe
-    kanbanBoard = null;
-    addSectionBtn = null;
-    addTaskMainBtn = null;
-    toolsBtn = null;
-    toolsPanel = null;
-    filterInput = null;
+    allUsers = [];
+    project = { id: null, sections: [] };
+    taskImageMap = {};
+    if (kanbanBoard) kanbanBoard.innerHTML = '<div class="loading-placeholder">Please log in to view the board.</div>';
+};
+
+// --- 7. REAL-TIME DATA & STATE MANAGEMENT ---
+function detachAllListeners() {
+    Object.values(activeListeners).forEach(unsubscribe => unsubscribe && unsubscribe());
 }
 
+// --- 7. REAL-TIME DATA & STATE MANAGEMENT ---
+function attachRealtimeListeners() {
+    if (!currentUserId || !currentProjectId) return;
+    detachAllListeners();
+    project.id = currentProjectId;
+    const projectPath = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}`;
+    
+    const sectionsQuery = query(collection(db, `${projectPath}/sections`), orderBy("order"));
+    activeListeners.sections = onSnapshot(sectionsQuery, (snapshot) => {
+        project.sections = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, tasks: [] }));
+        distributeTasksToSections(allTasksFromSnapshot);
+        renderBoard();
+    }, err => console.error("Section listener error:", err));
+    
+    // --- FIX START ---
+    // The collectionGroup ID must be the simple name of the subcollection, e.g., 'tasks'.
+    // It cannot be a dynamic path with variables and slashes.
+    const tasksQuery = query(collectionGroup(db, 'tasks'), where('projectId', '==', currentProjectId));
+    // --- FIX END ---
+    
+    activeListeners.tasks = onSnapshot(tasksQuery, (snapshot) => {
+        allTasksFromSnapshot = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+        distributeTasksToSections(allTasksFromSnapshot);
+        if (!isMovingTask) renderBoard();
+    }, err => console.error("Task listener error:", err));
+    
+    const messagesQuery = query(collectionGroup(db, 'Messages'), where('projectId', '==', currentProjectId), where('imageUrl', '!=', null));
+    activeListeners.messages = onSnapshot(messagesQuery, (snapshot) => {
+        const newImageMap = {};
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.chatuuid && data.imageUrl && data.imageTimestampSent) {
+                const existing = newImageMap[data.chatuuid];
+                if (!existing || data.imageTimestampSent.toMillis() < existing.timestamp.toMillis()) {
+                    newImageMap[data.chatuuid] = { imageUrl: data.imageUrl, timestamp: data.imageTimestampSent };
+                }
+            }
+        });
+        taskImageMap = Object.entries(newImageMap).reduce((acc, [key, value]) => ({ ...acc, [key]: value.imageUrl }), {});
+        renderBoard();
+    }, err => console.error("Message listener error:", err));
+}
+
+function distributeTasksToSections(tasks) {
+    const tempTasks = project.sections.flatMap(s => (s.tasks || []).filter(t => t.isNew));
+    project.sections.forEach(s => s.tasks = []);
+    tasks.forEach(task => findSection(task.sectionId)?.tasks.push(task));
+    tempTasks.forEach(tempTask => findSection(tempTask.sectionId)?.tasks.push(tempTask));
+    project.sections.forEach(s => s.tasks.sort((a, b) => (a.order || 0) - (b.order || 0)));
+}
+
+// --- 8. RENDERING ---
+const renderBoard = () => {
+    if (!kanbanBoard) return;
+    const { scrollLeft, scrollTop } = kanbanBoard;
+    kanbanBoard.innerHTML = '';
+    project.sections.forEach(renderColumn);
+    checkDueDates();
+    initSortable();
+    kanbanBoard.scrollLeft = scrollLeft;
+    kanbanBoard.scrollTop = scrollTop;
+    if (taskIdToFocus) {
+        const taskInput = document.querySelector(`#task-${taskIdToFocus} .boardtasks-task-name-editable`);
+        if (taskInput) {
+            taskInput.focus();
+            document.execCommand('selectAll', false, null);
+        }
+        taskIdToFocus = null;
+    }
+};
+
+const renderColumn = (section) => {
+    const columnEl = document.createElement('div');
+    columnEl.className = 'boardtasks-kanban-column';
+    columnEl.dataset.sectionId = section.id;
+    columnEl.innerHTML = `
+        <div class="boardtasks-column-header">
+            <h3 contenteditable="true" class="boardtasks-section-title-editable">${section.title}</h3>
+            <span class="boardtasks-task-count">${section.tasks.filter(t => !t.isNew).length}</span>
+        </div>
+        <div class="boardtasks-tasks-container">${section.tasks.map(renderTask).join('')}</div>
+        <button class="boardtasks-add-task-btn"><i class="fas fa-plus"></i> Add task</button>`;
+    kanbanBoard.appendChild(columnEl);
+};
+
+const renderTask = (task) => {
+    if (task.isNew) {
+        return `
+            <div class="boardtasks-task-card is-new" id="task-${task.id}" data-task-id="${task.id}">
+                <div class="boardtasks-task-content">
+                    <div class="boardtasks-task-header">
+                        <span class="boardtasks-task-check"><i class="fa-regular fa-circle"></i></span>
+                        <p contenteditable="true" class="boardtasks-task-name-editable"></p>
+                    </div>
+                </div>
+            </div>`;
+    }
+    
+    const assigneesHTML = (task.assignees || []).map(uid => {
+        const user = allUsers.find(u => u.uid === uid);
+        return user ? `<img src="${user.avatar || 'https://via.placeholder.com/24'}" alt="${user.name}" class="boardtasks-assignee-avatar" title="${user.name}">` : '';
+    }).join('');
+    const oldestImageUrl = task.chatuuid ? taskImageMap[task.chatuuid] : null;
+    const isCompleted = task.status === 'Completed';
+    const cardCompletedClass = isCompleted ? 'boardtasks-task-checked' : '';
+    const statusClass = (task.status || '').replace(/\s+/g, '.');
+    
+    return `
+        <div class="boardtasks-task-card ${cardCompletedClass}" id="task-${task.id}" data-task-id="${task.id}" draggable="true">
+            ${oldestImageUrl ? `<img src="${oldestImageUrl}" class="boardtasks-task-attachment">` : ''}
+            <div class="boardtasks-task-content">
+                <div class="boardtasks-task-header">
+                    <span class="boardtasks-task-check"><i class="${isCompleted ? 'fa-solid fa-circle-check' : 'fa-regular fa-circle'}"></i></span>
+                    <div class="boardtasks-task-assignees">${assigneesHTML}</div>
+                    <p contenteditable="true" class="boardtasks-task-name-editable">${task.name}</p>
+                </div>
+                <div class="boardtasks-task-tags">
+                    <span class="boardtasks-tag boardtasks-priority-${task.priority}">${task.priority}</span>
+                    <span class="boardtasks-tag boardtasks-status-${statusClass}">${task.status || 'No Status'}</span>
+                </div>
+                <div class="boardtasks-task-footer">
+                    <span class="boardtasks-due-date" data-due-date="${task.dueDate}">${formatDueDate(task.dueDate)}</span>
+                    <div class="boardtasks-task-actions">
+                        <i class="fa-regular fa-heart ${task.isLiked ? 'liked' : ''}" title="Like"></i>
+                        <i class="fa-regular fa-comment" title="Comment"></i>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+};
+
+// --- 9. DATA MODIFICATION & EVENT HANDLERS ---
+function createTemporaryTask(section) {
+    const tempId = `temp_${Date.now()}`;
+    section.tasks.push({ id: tempId, name: '', isNew: true, sectionId: section.id, order: section.tasks.length });
+    taskIdToFocus = tempId;
+    renderBoard();
+}
+
+async function addSectionToFirebase() {
+    if (!currentUserId || !currentProjectId) return;
+    const path = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections`;
+    try {
+        await addDoc(collection(db, path), { title: 'New Section', order: project.sections.length, createdAt: serverTimestamp() });
+    } catch (error) { console.error("Error adding section:", error); }
+}
+
+const handleBlur = async (e) => {
+    if (!e.target.isContentEditable) return;
+    const newName = e.target.textContent.trim();
+    const taskCard = e.target.closest('.boardtasks-task-card.is-new');
+    
+    if (taskCard) {
+        const tempId = taskCard.dataset.taskId;
+        const section = findSection(e.target.closest('.boardtasks-kanban-column').dataset.sectionId);
+        const taskIndex = section.tasks.findIndex(t => t.id === tempId);
+        if (taskIndex === -1) return;
+        
+        if (newName) {
+            const taskData = section.tasks.splice(taskIndex, 1)[0];
+            const defaults = { dueDate: '', priority: 'Low', status: 'On track', assignees: [], isLiked: false, chatuuid: `chat_${Date.now()}` };
+            delete taskData.isNew;
+            delete taskData.id;
+            const path = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${section.id}/tasks`;
+            try {
+                await addDoc(collection(db, path), { ...defaults, ...taskData, name: newName, projectId: currentProjectId, createdAt: serverTimestamp() });
+            } catch (error) {
+                console.error("Error adding task:", error);
+                renderBoard();
+            }
+        } else {
+            section.tasks.splice(taskIndex, 1);
+            renderBoard();
+        }
+    } else {
+        const { task, section } = findTaskAndSection(e.target.closest('.boardtasks-task-card')?.dataset.taskId);
+        if (!task) return;
+        
+        if (e.target.classList.contains('boardtasks-section-title-editable')) {
+            const parentSection = findSection(e.target.closest('.boardtasks-kanban-column').dataset.sectionId);
+            if (parentSection && parentSection.title !== newName) updateDoc(doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${parentSection.id}`), { title: newName });
+        } else if (e.target.classList.contains('boardtasks-task-name-editable')) {
+            if (task.name !== newName) updateDoc(doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${section.id}/tasks/${task.id}`), { name: newName });
+        }
+    }
+};
+
+const handleKanbanClick = (e) => {
+    if (e.target.closest('.boardtasks-add-task-btn')) {
+        createTemporaryTask(findSection(e.target.closest('.boardtasks-kanban-column').dataset.sectionId));
+        return;
+    }
+    const taskCard = e.target.closest('.boardtasks-task-card:not(.is-new)');
+    if (!taskCard) return;
+    const { task, section } = findTaskAndSection(taskCard.dataset.taskId);
+    if (!task) return;
+    const path = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${section.id}/tasks/${task.id}`;
+    
+    if (e.target.closest('.boardtasks-task-check')) {
+        e.preventDefault();
+        updateDoc(doc(db, path), { status: task.status === 'Completed' ? 'On track' : 'Completed' });
+    } else if (e.target.matches('.fa-heart')) {
+        updateDoc(doc(db, path), { isLiked: !task.isLiked });
+    } else if (e.target.matches('.fa-comment')) {
+        console.log(`(Placeholder) Open comment panel for task ID: ${task.id}`);
+    }
+};
+
+const handleFilterInput = (e) => {
+    const searchTerm = e.target.value.toLowerCase();
+    document.querySelectorAll('.boardtasks-task-card').forEach(card => {
+        const taskText = card.querySelector('.boardtasks-task-name-editable').textContent.toLowerCase();
+        card.style.display = taskText.includes(searchTerm) ? '' : 'none';
+    });
+};
+const handleAddTaskMainClick = () => project.sections.length > 0 ? createTemporaryTask(project.sections[0]) : alert("Please add a section first!");
+const handleKanbanKeydown = (e) => {
+    if (e.key === 'Enter' && e.target.isContentEditable) {
+        e.preventDefault();
+        e.target.blur();
+    }
+};
+
+// --- 10. DRAG & DROP & SORTING ---
+const initSortable = () => {
+    sortableInstances.forEach(s => s.destroy());
+    sortableInstances = [];
+    if (kanbanBoard) sortableInstances.push(new Sortable(kanbanBoard, { group: 'columns', animation: 150, filter: '.boardtasks-task-check, .boardtasks-task-name-editable, .boardtasks-task-actions, .boardtasks-task-tags', handle: '.boardtasks-column-header', onEnd: handleSectionReorder }));
+    document.querySelectorAll('.boardtasks-tasks-container').forEach(c => {
+        sortableInstances.push(new Sortable(c, { group: 'tasks', animation: 150, onStart: () => isMovingTask = true, onEnd: handleTaskMoved }));
+    });
+};
+
+async function sortSections(isAsc) {
+    const sortedSections = [...project.sections].sort((a, b) => isAsc ? a.title.localeCompare(b.title) : b.title.localeCompare(a.title));
+    const batch = writeBatch(db);
+    sortedSections.forEach((s, index) => {
+        const path = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${s.id}`;
+        batch.update(doc(db, path), { order: index });
+    });
+    try { await batch.commit(); } catch (e) { console.error("Error sorting sections:", e); }
+}
+
+async function sortAllTasks(isAsc) {
+    const batch = writeBatch(db);
+    project.sections.forEach(section => {
+        [...section.tasks].sort((a, b) => isAsc ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name))
+            .forEach((task, index) => {
+                if (task.isNew) return;
+                const path = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${section.id}/tasks/${task.id}`;
+                batch.update(doc(db, path), { order: index });
+            });
+    });
+    try { await batch.commit(); } catch (e) { console.error("Error sorting tasks:", e); }
+}
+
+async function handleSectionReorder(evt) {
+    isMovingTask = true;
+    const batch = writeBatch(db);
+    document.querySelectorAll('.boardtasks-kanban-column').forEach((el, index) => {
+        const path = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${el.dataset.sectionId}`;
+        batch.update(doc(db, path), { order: index });
+    });
+    try { await batch.commit(); } catch (e) { console.error("Failed to reorder sections:", e); }
+    isMovingTask = false;
+}
+
+async function handleTaskMoved(evt) {
+    const { item, from, to } = evt;
+    const taskId = item.dataset.taskId;
+    if (taskId.startsWith('temp_')) {
+        renderBoard();
+        isMovingTask = false;
+        return;
+    }
+    
+    const oldSectionId = from.closest('.boardtasks-kanban-column').dataset.sectionId;
+    const newSectionId = to.closest('.boardtasks-kanban-column').dataset.sectionId;
+    const batch = writeBatch(db);
+    const basePath = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections`;
+    
+    try {
+        if (oldSectionId === newSectionId) {
+            to.querySelectorAll('.boardtasks-task-card').forEach((taskEl, index) => {
+                batch.update(doc(db, `${basePath}/${newSectionId}/tasks/${taskEl.dataset.taskId}`), { order: index });
+            });
+        } else {
+            const taskSnap = await getDoc(doc(db, `${basePath}/${oldSectionId}/tasks/${taskId}`));
+            if (!taskSnap.exists()) throw new Error("Source task not found!");
+            batch.set(doc(db, `${basePath}/${newSectionId}/tasks/${taskId}`), { ...taskSnap.data(), sectionId: newSectionId });
+            batch.delete(doc(db, `${basePath}/${oldSectionId}/tasks/${taskId}`));
+            to.querySelectorAll('.boardtasks-task-card').forEach((el, i) => batch.update(doc(db, `${basePath}/${newSectionId}/tasks/${el.dataset.taskId}`), { order: i }));
+            from.querySelectorAll('.boardtasks-task-card').forEach((el, i) => batch.update(doc(db, `${basePath}/${oldSectionId}/tasks/${el.dataset.taskId}`), { order: i }));
+        }
+        await batch.commit();
+    } catch (e) {
+        console.error("Error moving task:", e);
+        renderBoard();
+    }
+    isMovingTask = false;
+}
+
+// --- 11. EXPORT ---
 export { init };

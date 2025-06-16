@@ -285,7 +285,7 @@ button:hover {
 .task-row-wrapper.is-completed .task-name,
 .task-row-wrapper.is-completed .task-col {
     color: var(--text-secondary-color);
-    text-decoration: line-through;
+    text-decoration: none;
     text-decoration-color: var(--text-secondary-color);
 }
 
@@ -313,51 +313,6 @@ button:hover {
     background-position: center;
     border: 2px solid white;
     background-color: #d8d8d8;
-}
-
-.priority-tag,
-.status-tag {
-    padding: 0.2rem 0.6rem; /* Reduced tag padding */
-    border-radius: 10px; /* Slightly smaller border-radius for tags */
-    font-size: 0.75rem; /* Slightly smaller font for tags */
-    font-weight: 500;
-    display: inline-block;
-    border: none;
-}
-
-.priority-High {
-    background-color: #ffccc7;
-    color: var(--high-priority);
-}
-
-.priority-Medium {
-    background-color: #ffe7ba;
-    color: var(--medium-priority);
-}
-
-.priority-Low {
-    background-color: #d9f7be;
-    color: var(--low-priority);
-}
-
-.status-On-track {
-    background-color: #b7eb8f;
-    color: #389e0d;
-}
-
-.status-At-risk {
-    background-color: #fff1b8;
-    color: #d48806;
-}
-
-.status-Off-track {
-    background-color: #ffccc7;
-    color: #cf1322;
-}
-
-.status-Completed {
-    background-color: #d9d9d9;
-    color: var(--text-secondary-color);
 }
 
 .add-task-in-section-btn,
@@ -424,6 +379,7 @@ button:hover {
     color: var(--low-priority) !important;
 }
 
+/* Your existing style for the dropdown container */
 .context-dropdown {
     position: absolute;
     z-index: 110;
@@ -435,16 +391,124 @@ button:hover {
     min-width: 150px;
 }
 
-.dropdown-item {
-    padding: 0.6rem 1rem; /* Adjusted padding */
-    cursor: pointer;
+/* New/Updated styles for the items INSIDE the dropdown for alignment */
+.context-dropdown .dropdown-item {
     display: flex;
-    justify-content: space-between;
+    align-items: center;   /* Vertically aligns the swatch/icon with the text */
+    gap: 6px;              /* Creates space between the swatch/icon and text */
+    position: relative;    /* Required for positioning the edit button */
+    padding: 0.4rem 0.8rem; /* Add padding to the items themselves */
+    cursor: pointer;
+}
+
+/* Style for the color swatch */
+.dropdown-color-swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    flex-shrink: 0; /* Prevents the swatch from shrinking */
+}
+
+/* A placeholder to maintain alignment for items without a color or icon */
+.dropdown-color-swatch-placeholder {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    display: flex;
     align-items: center;
+    justify-content: center;
+}
+
+/* Style for the new edit button that appears on hover */
+.dropdown-item-edit-btn {
+    background: #e0e0e0;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    padding: 2px 5px;
+    margin-left: auto;   /* Pushes the button to the far right */
+    display: none;       /* Hidden by default */
 }
 
 .dropdown-item:hover {
-    background-color: var(--secondary-bg);
+    background-color: var(--hover-bg-color, #f0f0f0); /* Use a hover variable or a default */
+}
+
+.dropdown-item:hover .dropdown-item-edit-btn {
+    display: inline-block; /* Show the edit button on hover */
+}
+
+.dropdown-item-edit-btn:hover {
+    background: #c7c7c7;
+}
+
+/* Style for the separator line */
+.context-dropdown hr.dropdown-separator {
+    margin: 0.5rem 0;
+    border: none;
+    border-top: 1px solid var(--border-color);
+}
+
+/* NEW: Styles for the color swatch inside the dropdown */
+.dropdown-color-swatch {
+    width: 4px;
+    height: 14px;
+    border-radius: 4px; /* A squircle looks nice with your tags */
+    flex-shrink: 0; /* Prevents the swatch from shrinking */
+    border: 1px solid rgba(0, 0, 0, 0.1); /* A faint border for light colors */
+}
+
+/* NEW: Placeholder for options without a color to keep text perfectly aligned */
+.dropdown-color-swatch-placeholder {
+    width: 4px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+/* --- Tag Styles (Priority & Status) --- */
+.priority-tag,
+.status-tag {
+    padding: 0.2rem 0.6rem; /* Your reduced tag padding */
+    border-radius: 10px; /* Your smaller border-radius for tags */
+    font-size: 0.75rem; /* Your smaller font for tags */
+    font-weight: 500;
+    display: inline-block;
+    border: none;
+}
+
+.priority-High {
+    background-color: #ffccc7;
+    color: var(--high-priority);
+}
+
+.priority-Medium {
+    background-color: #ffe7ba;
+    color: var(--medium-priority);
+}
+
+.priority-Low {
+    background-color: #d9f7be;
+    color: var(--low-priority);
+}
+
+.status-On-track {
+    background-color: #b7eb8f;
+    color: #389e0d;
+}
+
+.status-At-risk {
+    background-color: #fff1b8;
+    color: #d48806;
+}
+
+.status-Off-track {
+    background-color: #ffccc7;
+    color: #cf1322;
+}
+
+.status-Completed {
+    background-color: #d9d9d9;
+    color: var(--text-secondary-color);
 }
 
 .task-list-footer {

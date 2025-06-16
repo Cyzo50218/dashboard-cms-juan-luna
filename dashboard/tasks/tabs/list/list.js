@@ -84,9 +84,24 @@ let currentlyFocusedSectionId = null;
 const priorityOptions = ['High', 'Medium', 'Low'];
 const statusOptions = ['On track', 'At risk', 'Off track', 'Completed'];
 const columnTypeOptions = ['Text', 'Numbers', 'Costing', 'Type', 'Custom'];
-const typeColumnOptions = ['Invoice', 'Payment'];
+const typeColumnOptions = [
+    { name: 'Invoice', color: '#ffc107' }, // Amber
+    { name: 'Payment', color: '#4caf50' } // Green
+];
 const baseColumnTypes = ['Text', 'Numbers', 'Costing', 'Type'];
 
+const defaultPriorityColors = {
+    'High': '#ffccc7',
+    'Medium': '#ffe7ba',
+    'Low': '#d9f7be'
+};
+
+const defaultStatusColors = {
+    'On track': '#b7eb8f',
+    'At risk': '#fff1b8',
+    'Off track': '#ffccc7',
+    'Completed': '#d9d9d9'
+};
 
 // --- New Real-time Data Loading Functions ---
 
@@ -271,6 +286,8 @@ export function init(params) {
 
 // --- Event Listener Setup ---
 
+
+
 function setupEventListeners() {
     headerClickListener = (e) => {
         const deleteButton = e.target.closest('.delete-column-btn');
@@ -279,7 +296,8 @@ function setupEventListeners() {
             const columnEl = deleteButton.closest('[data-column-id]');
             if (columnEl) {
                 const columnId = Number(columnEl.dataset.columnId);
-                createDropdown(['Delete column'], deleteButton, () => deleteColumn(columnId));
+                // FIX: Pass an array of objects to createDropdown
+                createDropdown([{ name: 'Delete column' }], deleteButton, () => deleteColumn(columnId));
             }
             return;
         }
@@ -290,13 +308,22 @@ function setupEventListeners() {
             const existingTypes = new Set(project.customColumns.map(col => col.type));
             const availableTypes = columnTypeOptions.filter(type => !existingTypes.has(type) || type === 'Custom');
             if (availableTypes.length === 0) return alert("All available column types have been added.");
-            createDropdown(availableTypes, addColumnButton, openAddColumnDialog);
+            
+            // FIX: Map strings to objects and update the callback to use the object's 'name' property
+            createDropdown(
+                availableTypes.map(type => ({ name: type })),
+                addColumnButton,
+                (selected) => openAddColumnDialog(selected.name)
+            );
         }
     };
     
     bodyClickListener = (e) => {
+        // --- Section Focus and Toggling ---
         const clickedSection = e.target.closest('.task-section');
-        if (clickedSection) currentlyFocusedSectionId = Number(clickedSection.dataset.sectionId);
+        if (clickedSection) {
+            currentlyFocusedSectionId = Number(clickedSection.dataset.sectionId);
+        }
         
         if (e.target.closest('.section-toggle')) {
             const sectionEl = e.target.closest('.task-section');
@@ -308,30 +335,42 @@ function setupEventListeners() {
             return;
         }
         
+        // --- Add Task Button in Section ---
         const addTaskBtn = e.target.closest('.add-task-in-section-btn');
         if (addTaskBtn) {
             const sectionEl = addTaskBtn.closest('.task-section');
             if (sectionEl) {
                 const section = project.sections.find(s => s.id == sectionEl.dataset.sectionId);
-                if (section) addNewTask(section, 'end');
+                if (section) {
+                    addNewTask(section, 'end');
+                }
             }
             return;
         }
         
+        // --- Task Row Interactions ---
         const taskRow = e.target.closest('.task-row-wrapper');
         if (!taskRow) return;
         const taskId = taskRow.dataset.taskId;
         
-        // --- FIX 2: Check for temporary tasks by looking for the 'temp_' prefix. ---
+        // --- THE FIX: Specific focus logic for new tasks ---
+        // If a new task row is clicked, only trigger auto-focus if the click was directly on the name field.
         if (taskId.startsWith('temp_')) {
-            const nameEl = taskRow.querySelector('.task-name');
-            if (nameEl) {
-                nameEl.focus(); // Guide the user to name the task first.
+            if (e.target.matches('.task-name')) {
+                const nameEl = taskRow.querySelector('.task-name');
+                if (nameEl) {
+                    nameEl.focus();
+                }
             }
-            return; // Stop execution for temporary tasks.
+            // IMPORTANT: We do not `return` here unless it's a name click, allowing other controls to work on new rows.
+            if (e.target.matches('.task-name')) return;
         }
+        // --- END OF FIX ---
         
-        if (e.target.matches('.task-name')) return displaySideBarTasks(taskId);
+        // --- Sidebar and Control Handling ---
+        if (e.target.matches('.task-name')) {
+            return displaySideBarTasks(taskId);
+        }
         
         const control = e.target.closest('[data-control]');
         if (!control) return;
@@ -339,74 +378,93 @@ function setupEventListeners() {
         const sectionEl = taskRow.closest('.task-section');
         const sectionId = sectionEl ? sectionEl.dataset.sectionId : null;
         
-        if (!sectionId) return; // Cannot perform updates without a sectionId
+        if (!sectionId) return;
         
         switch (control.dataset.control) {
             case 'check':
                 e.stopPropagation();
                 handleTaskCompletion(taskId, taskRow);
                 break;
+                
             case 'due-date':
                 showDatePicker(control, sectionId, taskId);
                 break;
-            case 'priority':
-                createDropdown(priorityOptions, control, (v) => updateTask(taskId, sectionId, { priority: v }));
+                
+            case 'priority': {
+                let allPriorityOptions = priorityOptions.map(p => ({
+                    name: p,
+                    color: defaultPriorityColors[p] || null
+                }));
+                if (project.customPriorities) {
+                    allPriorityOptions = allPriorityOptions.concat(project.customPriorities);
+                }
+                createDropdown(allPriorityOptions, control, (selectedValue) => updateTask(taskId, sectionId, { priority: selectedValue.name }), 'Priority');
                 break;
-            case 'status':
-                createDropdown(statusOptions, control, (v) => updateTask(taskId, sectionId, { status: v }));
+            }
+            
+            case 'status': {
+                let allStatusOptions = statusOptions.map(s => ({
+                    name: s,
+                    color: defaultStatusColors[s] || null
+                }));
+                if (project.customStatuses) {
+                    allStatusOptions = allStatusOptions.concat(project.customStatuses);
+                }
+                createDropdown(allStatusOptions, control, (selectedValue) => updateTask(taskId, sectionId, { status: selectedValue.name }), 'Status');
                 break;
+            }
+            
             case 'custom-select': {
                 const columnId = Number(control.dataset.columnId);
                 const column = project.customColumns.find(c => c.id === columnId);
                 if (column && column.options) {
-                    // Create a dropdown with the column's specific options ('Invoice', 'Payment').
-                    // The callback updates the task's custom field with the selected value.
                     createDropdown(column.options, control, (selectedValue) => {
-                        const { task } = findTaskAndSection(taskId); // findTask is still ok here just for reading current state
                         updateTask(taskId, sectionId, {
-                            customFields: { ...task.customFields, [columnId]: selectedValue }
+                            [`customFields.${columnId}`]: selectedValue.name
                         });
-                    });
+                    }, 'CustomColumn', columnId);
                 }
                 break;
             }
+            
             case 'move-task': {
                 e.stopPropagation();
                 const { section: currentSection } = findTaskAndSection(taskId);
                 if (!currentSection) break;
                 
-                // Get a list of all OTHER sections to move to
                 const otherSections = project.sections.filter(s => s.id !== currentSection.id);
                 const sectionNames = otherSections.map(s => s.title);
                 
                 if (sectionNames.length > 0) {
-                    // Create a dropdown menu of the available sections
-                    createDropdown(sectionNames, control, (selectedTitle) => {
-                        const targetSection = project.sections.find(s => s.title === selectedTitle);
-                        if (targetSection) {
-                            moveTaskToSection(taskId, targetSection.id);
+                    createDropdown(
+                        sectionNames.map(name => ({ name: name })), // Convert string[] to {name: string}[]
+                        control,
+                        (selected) => { // 'selected' is now an object
+                            const targetSection = project.sections.find(s => s.title === selected.name);
+                            if (targetSection) {
+                                moveTaskToSection(taskId, targetSection.id);
+                            }
                         }
-                    });
+                    );
                 } else {
                     alert("There are no other sections to move this task to.");
                 }
                 break;
             }
-            case 'assignee': { // Using block scope for the `task` constant
-                const { task } = findTaskAndSection(taskId);
-                // MODIFICATION: Only open the dropdown if NO user is currently assigned.
-                if (task && task.assignees.length === 0) {
-                    showAssigneeDropdown(control, taskId);
-                }
-                // If a user is already assigned, clicking the cell does nothing.
+            
+            case 'assignee': {
+                // This logic allows clicking an existing assignee to open the dropdown again
+                showAssigneeDropdown(control, taskId);
                 break;
             }
+            
             case 'remove-assignee':
                 e.stopPropagation();
                 updateTask(taskId, sectionId, { assignees: [] });
                 break;
         }
     };
+    
     
     bodyFocusOutListener = (e) => {
         // Case 1: Renaming a section title
@@ -483,7 +541,8 @@ function setupEventListeners() {
             if (task.customFields[columnId] !== newValue) {
                 // Use dot notation for updating a specific key in a map field.
                 updateTask(taskId, section.id, {
-                    [`customFields.${columnId}`]: newValue });
+                    [`customFields.${columnId}`]: newValue
+                });
             }
         }
     };
@@ -634,6 +693,10 @@ function getSortedProject(project) {
     };
 }
 
+function closeFloatingPanels() {
+    document.querySelectorAll('.context-dropdown, .datepicker, .dialog-overlay, .filterlistview-dialog-overlay').forEach(p => p.remove());
+}
+
 async function handleSectionReorder(evt) {
     console.log("🔄 Section reorder triggered:", evt);
     
@@ -703,11 +766,6 @@ async function handleSectionReorder(evt) {
     } catch (err) {
         console.error("❌ Error committing section reordering batch:", err);
     }
-}
-
-
-function closeFloatingPanels() {
-    document.querySelectorAll('.context-dropdown, .datepicker, .dialog-overlay, .filterlistview-dialog-overlay').forEach(p => p.remove());
 }
 
 function findTaskAndSection(taskId) {
@@ -870,6 +928,8 @@ function render() {
     let projectToRender = getFilteredProject();
     projectToRender = getSortedProject(projectToRender);
     
+    generateCustomTagStyles(projectToRender);
+    
     renderHeader(projectToRender);
     renderBody(projectToRender);
     //renderFooter(projectToRender);
@@ -1031,41 +1091,32 @@ function createTaskRow(task, customColumns) {
     customColumns.forEach(col => {
         const value = task.customFields[col.id] || '';
         
-        if (col.type === 'Type' && col.options) {
-            /* START MODIFICATION */
-            let displayValue = '<span class="add-value">+ Select</span>'; // Default text if no value is set
+        // This block handles ANY column with an 'options' array
+        if (col.options && Array.isArray(col.options)) {
+            let displayValue = '<span class="add-value">+ Select</span>';
             
-            if (value) {
-                // Check the value and apply the desired priority class for styling.
-                if (value === 'Invoice') {
-                    // Style 'Invoice' like a 'High' priority tag.
-                    displayValue = createTag(value, 'priority', 'priority-High');
-                } else if (value === 'Payment') {
-                    // Style 'Payment' like a 'Medium' priority tag.
-                    displayValue = createTag(value, 'priority', 'priority-Medium');
-                } else {
-                    // Fallback for any other potential value, using status styling.
-                    displayValue = createStatusTag(value);
-                }
+            const selectedOption = col.options.find(opt => opt.name === value);
+            
+            if (selectedOption) {
+                // Generate a unique class name for styling
+                const prefix = `custom-col-${col.id}`;
+                const sanitizedName = selectedOption.name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+                const className = `${prefix}-${sanitizedName}`;
+                displayValue = `<div class="status-tag ${className}">${selectedOption.name}</div>`;
             }
             customFieldsHTML += `<div class="task-col header-custom" data-control="custom-select" data-column-id="${col.id}">${displayValue}</div>`;
-            /* END MODIFICATION */
         } else {
-            // This is the original logic for other column types.
-            // REPLACE IT WITH THIS LINE
+            // Logic for other column types (Text, Costing, etc.)
             const displayValue = col.type === 'Costing' && value ? `${col.currency || ''}${value.toLocaleString()}` : value;
             customFieldsHTML += `<div class="task-col header-custom" data-control="custom" data-column-id="${col.id}" contenteditable="true">${displayValue}</div>`;
-            
         }
     });
     
-    // REPLACE the existing rowWrapper.innerHTML assignment with this:
     rowWrapper.innerHTML = `
     <div class="fixed-column">
         <i class="fas fa-grip-vertical drag-handle"></i>
         <i class="far fa-check-circle" data-control="check"></i>
         <span class="task-name" contenteditable="true" data-placeholder="Add task name">${displayName}</span>
-        
         <button class="move-task-btn" data-control="move-task" title="Move to section">
             <i class="fas fa-arrow-right-to-bracket"></i>
         </button>
@@ -1221,68 +1272,130 @@ async function updateProjectInFirebase(propertiesToUpdate) {
 }
 
 /**
+ * Displays a non-blocking confirmation modal and returns a promise that resolves
+ * to true if "Confirm" is clicked, and false otherwise.
+ * @param {string} message The message to display in the dialog.
+ * @returns {Promise<boolean>}
+ */
+function showConfirmationModal(message) {
+    // Ensure no other dialogs are open
+    closeFloatingPanels();
+    return new Promise((resolve) => {
+        const dialogOverlay = document.createElement('div');
+        dialogOverlay.className = 'dialog-overlay'; // Use existing class for styling
+        
+        dialogOverlay.innerHTML = `
+        <div class="dialog-box" style="width: 400px;">
+            <div class="dialog-body" style="padding: 2rem; font-size: 1.1rem; text-align: center;">
+                ${message}
+            </div>
+            <div class="dialog-footer">
+                <button class="dialog-button" id="modal-cancel-btn">Cancel</button>
+                <button class="dialog-button primary" id="modal-confirm-btn">Confirm</button>
+            </div>
+        </div>`;
+        
+        document.body.appendChild(dialogOverlay);
+        
+        const confirmBtn = document.getElementById('modal-confirm-btn');
+        const cancelBtn = document.getElementById('modal-cancel-btn');
+        
+        const close = (result) => {
+            dialogOverlay.remove();
+            resolve(result);
+        };
+        
+        confirmBtn.addEventListener('click', () => close(true));
+        cancelBtn.addEventListener('click', () => close(false));
+        dialogOverlay.addEventListener('click', (e) => {
+            if (e.target === dialogOverlay) {
+                close(false);
+            }
+        });
+    });
+}
+
+/**
  * Deletes a custom column and all its corresponding data across all tasks in the project.
+ * Uses a more specific query to ensure user has permission to delete.
  * @param {string} columnId The ID of the column to delete.
  */
 async function deleteColumnInFirebase(columnId) {
     if (!currentUserId || !currentWorkspaceId || !currentProjectId) {
         return console.error("Cannot delete column: Missing IDs.");
     }
-    if (!window.confirm('Are you sure you want to delete this column and all its data? This action cannot be undone.')) {
+    
+    // Use the new, non-blocking confirmation modal
+    const confirmed = await showConfirmationModal(
+        'Are you sure you want to delete this column and all its data? This action cannot be undone.'
+    );
+    if (!confirmed) {
         return;
     }
     
     const batch = writeBatch(db);
     
-    // FIX: Build the full, nested path to the project document to update its columns array.
+    // 1. Update the project document to remove the column from the array
     const projectPath = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}`;
     const projectRef = doc(db, projectPath);
-    
     const newColumnsArray = project.customColumns.filter(col => col.id != columnId);
     batch.update(projectRef, { customColumns: newColumnsArray });
     
-    // The rest of this function is likely fine, but it assumes a top-level 'tasks' collection.
-    // This might be your next error if 'tasks' are also nested.
-    // Based on your listeners, the 'collectionGroup' query will work regardless.
+    // 2. Query for ONLY the tasks the current user owns within the project
     const tasksQuery = query(
         collectionGroup(db, "tasks"),
-        where("projectId", "==", currentProjectId)
+        where("projectId", "==", currentProjectId),
+        where("userId", "==", currentUserId) // <-- THE CRUCIAL FIX
     );
+    
     try {
         const tasksSnapshot = await getDocs(tasksQuery);
+        
         tasksSnapshot.forEach(taskDoc => {
-            // Use deleteField() to remove the key from the map
+            // 3. Queue an update for each task to remove the custom field
             batch.update(taskDoc.ref, {
                 [`customFields.${columnId}`]: deleteField()
             });
         });
         
+        // 4. Commit all the changes at once
         await batch.commit();
+        console.log("Column and its data were deleted successfully.");
+        
     } catch (error) {
         console.error("Error deleting column and its data:", error);
-        alert("Error: Could not completely delete the column.");
+        alert("Error: Could not completely delete the column. Check console for details.");
     }
 }
 
-function handleTaskCompletion(taskId, taskRowEl) {
+async function handleTaskCompletion(taskId, taskRowEl) {
     if (!taskRowEl) return;
+    
+    // Find the task's original section to pass the correct ID to the update function
+    const { section: sourceSection } = findTaskAndSection(taskId);
+    if (!sourceSection) {
+        console.error("Could not find source section for task completion.");
+        return;
+    }
+    
     taskRowEl.classList.add('is-completed');
     
-    setTimeout(() => {
-        let completedSection = project.sections.find(s => s.title.toLowerCase() === 'completed');
+    setTimeout(async () => {
+        // Find the "Completed" section in the project
+        const completedSection = project.sections.find(s => s.title.toLowerCase() === 'completed');
         
-        if (completedSection) {
-            // If 'Completed' section exists, just move the task there.
-            updateTaskInFirebase(taskId, { status: 'Completed', sectionId: completedSection.id });
+        if (completedSection && completedSection.id !== sourceSection.id) {
+            // If 'Completed' section exists and it's different, move the task there.
+            // This is now a move operation, not just an update.
+            await moveTaskToSection(taskId, completedSection.id);
+            // Additionally update the status property on the moved task.
+            await updateTaskInFirebase(taskId, completedSection.id, { status: 'Completed' });
         } else {
-            // If it doesn't exist, we can't create it here directly without
-            // causing conflicts. The best practice is to ensure a 'Completed'
-            // section is part of the default project template.
-            // For now, just update the status.
-            updateTaskInFirebase(taskId, { status: 'Completed' });
-            alert("Task marked as completed. Consider creating a 'Completed' section.");
+            // If no 'Completed' section, just update the status in its current section.
+            // FIX: Pass all three required arguments correctly.
+            updateTaskInFirebase(taskId, sourceSection.id, { status: 'Completed' });
         }
-        // No need to call render() or manipulate local arrays here.
+        // The real-time listener will handle the UI update.
     }, 400);
 }
 
@@ -1311,28 +1424,123 @@ function addNewTask(section) {
 }
 
 
-function createTag(text, type, pClass) { return `<div class="${type}-tag ${pClass}">${text}</div>`; }
+function createTag(text, type, pClass) {
+    return `<div class="${type}-tag ${pClass}">${text}</div>`;
+}
 
-function createPriorityTag(p) { return createTag(p, 'priority', `priority-${p}`); }
+function createPriorityTag(p) {
+    if (priorityOptions.includes(p)) {
+        return createTag(p, 'priority', `priority-${p}`);
+    }
+    if (project.customPriorities) {
+        const customPriority = project.customPriorities.find(cp => cp.name === p);
+        if (customPriority) {
+            const sanitizedName = p.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+            const className = `priority-${sanitizedName}`;
+            return createTag(p, 'priority', className);
+        }
+    }
+    return '';
+}
 
-function createStatusTag(s) { return createTag(s, 'status', `status-${s.replace(/\s+/g, '-')}`); }
+function createStatusTag(s) {
+    // If the status is not a string, return nothing.
+    if (typeof s !== 'string' || !s) {
+        return '';
+    }
+    
+    // Sanitize the string once to create a valid CSS class name.
+    // This replaces spaces with dashes and removes any non-alphanumeric characters (except dashes).
+    const sanitizedName = s.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+    const className = `status-${sanitizedName}`;
+    
+    // Check if it's a known default or custom status, then create the tag.
+    if (statusOptions.includes(s)) {
+        return createTag(s, 'status', className);
+    }
+    
+    if (project.customStatuses) {
+        const customStatus = project.customStatuses.find(cs => cs.name === s);
+        if (customStatus) {
+            return createTag(s, 'status', className);
+        }
+    }
+    
+    // If the status is not found, return an empty string.
+    return '';
+}
 
-function createDropdown(options, targetEl, callback) {
+/**
+ * Creates dropdowns, updated to display color swatches and an edit button for editable options.
+ */
+function createDropdown(options, targetEl, callback, optionType = null, columnId = null) {
     if (!targetEl) return console.error("createDropdown was called with a null target element.");
     closeFloatingPanels();
+    
     const wrapperRect = mainContainer.getBoundingClientRect();
     const targetRect = targetEl.getBoundingClientRect();
     const dropdown = document.createElement('div');
     dropdown.className = 'context-dropdown';
     dropdown.style.top = `${targetRect.bottom - wrapperRect.top}px`;
     dropdown.style.left = `${targetRect.left - wrapperRect.left}px`;
+    
+    const isEditable = optionType === 'Priority' || optionType === 'Status' || optionType === 'CustomColumn';
+    
     options.forEach(option => {
         const item = document.createElement('div');
         item.className = 'dropdown-item';
-        item.textContent = option;
-        item.addEventListener('click', () => callback(option));
+        
+        let itemHTML = '';
+        if (option.color) {
+            itemHTML += `<span class="dropdown-color-swatch" style="background-color: ${option.color};"></span>`;
+        } else {
+            // Use a placeholder for items without color (like 'Delete column') to maintain alignment
+            itemHTML += `<span class="dropdown-color-swatch-placeholder"></span>`;
+        }
+        itemHTML += `<span class="dropdown-item-name">${option.name}</span>`;
+        item.innerHTML = itemHTML;
+        
+        item.addEventListener('click', (e) => {
+            // Prevent the dropdown from closing if the edit button was clicked
+            if (e.target.closest('.dropdown-item-edit-btn')) return;
+            callback(option);
+        });
+        
+        // Add an EDIT button if the option type is editable (Priority, Status, etc.)
+        if (isEditable && option.name) { // Ensure we don't add edit to "Delete Column" etc.
+            const editBtn = document.createElement('button');
+            editBtn.className = 'dropdown-item-edit-btn';
+            editBtn.innerHTML = `<i class="fas fa-pencil-alt fa-xs"></i>`;
+            editBtn.title = 'Edit Option';
+            editBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openEditOptionDialog(optionType, option, columnId);
+            });
+            item.appendChild(editBtn);
+        }
+        
         dropdown.appendChild(item);
     });
+    
+    // --- "Add New..." and Separator Logic (remains the same) ---
+    if (optionType) {
+        const separator = document.createElement('hr');
+        separator.className = 'dropdown-separator';
+        dropdown.appendChild(separator);
+        
+        const addNewItem = document.createElement('div');
+        addNewItem.className = 'dropdown-item';
+        // The new CSS flex rules will automatically align this correctly
+        addNewItem.innerHTML = `<span class="dropdown-color-swatch-placeholder"><i class="fas fa-plus"></i></span><span>Add New...</span>`;
+        
+        if (optionType === 'CustomColumn') {
+            addNewItem.addEventListener('click', () => openCustomColumnOptionDialog(columnId));
+        } else if (optionType === 'Priority' || optionType === 'Status') {
+            addNewItem.addEventListener('click', () => openCustomOptionDialog(optionType));
+        }
+        dropdown.appendChild(addNewItem);
+    }
+    
     mainContainer.appendChild(dropdown);
 }
 
@@ -1482,15 +1690,16 @@ function syncScroll(scrollStates = new Map()) {
 
 function addNewColumn(config) {
     const newColumn = {
-        id: Date.now(), // Using timestamp for simplicity, UUIDs are better in production
+        id: Date.now(),
         name: config.name,
         type: config.type,
         currency: config.currency || null,
         aggregation: (config.type === 'Costing' || config.type === 'Numbers') ? 'Sum' : null,
-        options: config.type === 'Type' ? typeColumnOptions : null
+        // FIX: The options are now correctly assigned as an array of objects.
+        // When type is 'Type', assign the array. For all other types that need options, start with an empty array.
+        options: (config.type === 'Type' || config.type === 'Custom') ? (config.type === 'Type' ? typeColumnOptions : []) : null
     };
     
-    // Use Firestore's arrayUnion to safely add the new column object
     updateProjectInFirebase({
         customColumns: arrayUnion(newColumn)
     });
@@ -1522,7 +1731,7 @@ function openAddColumnDialog(columnType) {
     
     let typeSpecificFields = '';
     if (columnType === 'Costing') {
-        typeSpecificFields = `<div class="form-group"><label>Currency</label><select id="column-currency"><option value="$">USD ($)</option><option value="€">EUR (€)</option></select></div>`;
+        typeSpecificFields = `<div class="form-group"><label>Currency</label><select id="column-currency"><option value="$">USD ($)</option><option value="₱">PHP (©)</option><option value="$">AUD ($)</option></select></div>`;
     }
     
     dialogOverlay.innerHTML = `
@@ -1609,4 +1818,312 @@ function openCustomColumnCreatorDialog() {
     });
     
     dialogOverlay.addEventListener('click', e => { if (e.target === e.currentTarget) closeFloatingPanels(); });
+}
+
+/**
+ * Opens a dialog for creating a new custom dropdown option (Priority or Status).
+ * This function handles the UI part.
+ */
+function openCustomOptionDialog(optionType) {
+    closeFloatingPanels();
+    const dialogOverlay = document.createElement('div');
+    dialogOverlay.className = 'dialog-overlay';
+    
+    dialogOverlay.innerHTML = `
+<div class="dialog-box">
+    <div class="dialog-header">Add Custom ${optionType}</div>
+    <div class="dialog-body">
+        <div class="form-group">
+            <label for="custom-option-name">Option Name</label>
+            <input type="text" id="custom-option-name" placeholder="e.g., Blocked">
+        </div>
+        <div class="form-group">
+            <label for="custom-option-color">Color</label>
+            <input type="color" id="custom-option-color" value="#4a90e2">
+        </div>
+    </div>
+    <div class="dialog-footer">
+        <button class="dialog-button" id="cancel-add-option">Cancel</button>
+        <button class="dialog-button primary" id="confirm-add-option">Add Option</button>
+    </div>
+</div>`;
+    
+    document.body.appendChild(dialogOverlay);
+    document.getElementById('custom-option-name').focus();
+    
+    document.getElementById('confirm-add-option').addEventListener('click', () => {
+        const name = document.getElementById('custom-option-name').value.trim();
+        const color = document.getElementById('custom-option-color').value;
+        if (name) {
+            addNewCustomOption(optionType, { name, color });
+            closeFloatingPanels();
+        } else {
+            alert('Please enter a name for the option.');
+        }
+    });
+    
+    dialogOverlay.addEventListener('click', e => {
+        if (e.target === e.currentTarget || e.target.id === 'cancel-add-option') {
+            closeFloatingPanels();
+        }
+    });
+}
+
+/**
+ * Writes the new custom Priority or Status option to Firebase.
+ * @param {string} optionType - 'Priority' or 'Status'.
+ * @param {object} newOption - The new option object { name, color }.
+ */
+function addNewCustomOption(optionType, newOption) {
+    const fieldToUpdate = optionType === 'Priority' ? 'customPriorities' : 'customStatuses';
+    updateProjectInFirebase({
+        [fieldToUpdate]: arrayUnion(newOption)
+    });
+}
+
+/**
+ * Opens a dialog to add a new option to a specific custom column.
+ * This function handles the UI part.
+ */
+function openCustomColumnOptionDialog(columnId) {
+    if (!columnId) return;
+    closeFloatingPanels();
+    const dialogOverlay = document.createElement('div');
+    dialogOverlay.className = 'dialog-overlay';
+    
+    dialogOverlay.innerHTML = `
+<div class="dialog-box">
+    <div class="dialog-header">Add New Option</div>
+    <div class="dialog-body">
+        <div class="form-group">
+            <label for="custom-option-name">Option Name</label>
+            <input type="text" id="custom-option-name" placeholder="e.g., Pending Review">
+        </div>
+        <div class="form-group">
+            <label for="custom-option-color">Color</label>
+            <input type="color" id="custom-option-color" value="#87ceeb">
+        </div>
+    </div>
+    <div class="dialog-footer">
+        <button class="dialog-button" id="cancel-add-option">Cancel</button>
+        <button class="dialog-button primary" id="confirm-add-option">Add Option</button>
+    </div>
+</div>`;
+    
+    document.body.appendChild(dialogOverlay);
+    document.getElementById('custom-option-name').focus();
+    
+    document.getElementById('confirm-add-option').addEventListener('click', () => {
+        const name = document.getElementById('custom-option-name').value.trim();
+        const color = document.getElementById('custom-option-color').value;
+        if (name) {
+            addNewCustomColumnOption(columnId, { name, color });
+            closeFloatingPanels();
+        } else {
+            alert('Please enter a name for the option.');
+        }
+    });
+    
+    dialogOverlay.addEventListener('click', e => {
+        if (e.target === e.currentTarget || e.target.id === 'cancel-add-option') {
+            closeFloatingPanels();
+        }
+    });
+}
+
+/**
+ * Writes a new option to a specific custom column's 'options' array in Firebase.
+ * @param {number} columnId - The ID of the column being updated.
+ * @param {object} newOption - The new option object { name, color }.
+ */
+async function addNewCustomColumnOption(columnId, newOption) {
+    const newColumns = project.customColumns.map(col => {
+        if (col.id === columnId) {
+            const updatedOptions = col.options ? [...col.options, newOption] : [newOption];
+            return { ...col, options: updatedOptions };
+        }
+        return col;
+    });
+    updateProjectInFirebase({
+        customColumns: newColumns
+    });
+}
+
+/**
+ * Creates a <style> tag in the head to hold dynamic CSS rules for all custom tags.
+ */
+/**
+ * Creates a <style> tag in the head to hold dynamic CSS rules for all custom tags.
+ */
+function generateCustomTagStyles(projectData) {
+    const styleId = 'custom-tag-styles';
+    let styleElement = document.getElementById(styleId);
+    
+    if (!styleElement) {
+        styleElement = document.createElement('style');
+        styleElement.id = styleId;
+        document.head.appendChild(styleElement);
+    }
+    
+    let cssRules = '';
+    
+    const generateRules = (items, prefix) => {
+        if (!items) return;
+        
+        // This loop is where the error occurs
+        items.forEach(item => {
+            // --- FIX STARTS HERE ---
+            // Add a check to ensure the 'item' is an object and has a 'name' property
+            if (item && typeof item.name === 'string') {
+                const sanitizedName = item.name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+                const className = `${prefix}-${sanitizedName}`;
+                // Use a default color if item.color is missing
+                const bgColor = item.color || '#e0e0e0';
+                const color = getContrastYIQ(bgColor);
+                cssRules += `.${className} { background-color: ${bgColor}; color: ${color}; }\n`;
+            }
+            // --- FIX ENDS HERE ---
+        });
+    };
+    
+    generateRules(projectData.customPriorities, 'priority');
+    generateRules(projectData.customStatuses, 'status');
+    
+    if (projectData.customColumns) {
+        projectData.customColumns.forEach(col => {
+            if (col.options && Array.isArray(col.options)) {
+                const prefix = `custom-col-${col.id}`;
+                generateRules(col.options, prefix);
+            }
+        });
+    }
+    styleElement.innerHTML = cssRules;
+}
+
+/**
+ * Determines if text on a colored background should be black or white for readability.
+ */
+function getContrastYIQ(hexcolor) {
+    hexcolor = hexcolor.replace("#", "");
+    const r = parseInt(hexcolor.substr(0, 2), 16);
+    const g = parseInt(hexcolor.substr(2, 2), 16);
+    const b = parseInt(hexcolor.substr(4, 2), 16);
+    const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+    return (yiq >= 128) ? '#000000' : '#ffffff';
+}
+
+/**
+ * Opens a dialog to edit an existing custom option (Priority, Status, or Custom Column option).
+ * @param {string} optionType - 'Priority', 'Status', or 'CustomColumn'.
+ * @param {object} originalOption - The option object being edited { name, color }.
+ * @param {number|null} columnId - The ID of the column if editing a column option.
+ */
+function openEditOptionDialog(optionType, originalOption, columnId = null) {
+    closeFloatingPanels();
+    const dialogOverlay = document.createElement('div');
+    dialogOverlay.className = 'dialog-overlay';
+    
+    // --- FIX STARTS HERE ---
+    // Determine the correct dialog title based on the option type.
+    let dialogTitle = `Edit ${optionType} Option`; // Default title
+    
+    if (optionType === 'CustomColumn' && columnId) {
+        // Find the custom column by its ID in our project data
+        const column = project.customColumns.find(c => c.id === columnId);
+        if (column) {
+            // If found, use its specific name for the dialog title
+            dialogTitle = `Edit ${column.name} Option`;
+        }
+    }
+    // --- FIX ENDS HERE ---
+    
+    dialogOverlay.innerHTML = `
+    <div class="dialog-box">
+        <div class="dialog-header">${dialogTitle}</div>
+        <div class="dialog-body">
+            <div class="form-group">
+                <label for="edit-option-name">Option Name</label>
+                <input type="text" id="edit-option-name" value="${originalOption.name}">
+            </div>
+            <div class="form-group">
+                <label for="edit-option-color">Color</label>
+                <input type="color" id="edit-option-color" value="${originalOption.color}">
+            </div>
+        </div>
+        <div class="dialog-footer">
+            <button class="dialog-button" id="cancel-edit-option">Cancel</button>
+            <button class="dialog-button primary" id="confirm-edit-option">Save Changes</button>
+        </div>
+    </div>`;
+    
+    document.body.appendChild(dialogOverlay);
+    const nameInput = document.getElementById('edit-option-name');
+    nameInput.focus();
+    
+    document.getElementById('confirm-edit-option').addEventListener('click', () => {
+        const newOption = {
+            name: document.getElementById('edit-option-name').value.trim(),
+            color: document.getElementById('edit-option-color').value
+        };
+        if (newOption.name) {
+            updateCustomOptionInFirebase(optionType, originalOption, newOption, columnId);
+            closeFloatingPanels();
+        } else {
+            // Replaced alert with our custom modal for consistency
+            showConfirmationModal('Please enter a name for the option.');
+        }
+    });
+    
+    dialogOverlay.addEventListener('click', e => {
+        if (e.target === e.currentTarget || e.target.id === 'cancel-edit-option') {
+            closeFloatingPanels();
+        }
+    });
+}
+
+/**
+ * Updates a specific option within a project's array field (e.g., customPriorities) in Firestore.
+ * @param {string} optionType - 'Priority', 'Status', or 'CustomColumn'.
+ * @param {object} originalOption - The original option object to find and replace.
+ * @param {object} newOption - The new option object to insert.
+ * @param {number|null} columnId - The ID of the column if updating a column option.
+ */
+async function updateCustomOptionInFirebase(optionType, originalOption, newOption, columnId = null) {
+    // Create a deep copy of the custom fields to safely modify them
+    const projectCopy = JSON.parse(JSON.stringify(project));
+    let fieldToUpdate = null;
+    let newArray = [];
+    
+    if (optionType === 'Priority') {
+        fieldToUpdate = 'customPriorities';
+        newArray = projectCopy.customPriorities || [];
+    } else if (optionType === 'Status') {
+        fieldToUpdate = 'customStatuses';
+        newArray = projectCopy.customStatuses || [];
+    } else if (optionType === 'CustomColumn' && columnId) {
+        fieldToUpdate = 'customColumns';
+        const column = projectCopy.customColumns.find(c => c.id === columnId);
+        if (column && column.options) {
+            const optionIndex = column.options.findIndex(opt => opt.name === originalOption.name && opt.color === originalOption.color);
+            if (optionIndex > -1) {
+                column.options[optionIndex] = newOption;
+            }
+        }
+        newArray = projectCopy.customColumns;
+    }
+    
+    // For non-column options, find and replace the option in the array
+    if (optionType === 'Priority' || optionType === 'Status') {
+        const optionIndex = newArray.findIndex(opt => opt.name === originalOption.name && opt.color === originalOption.color);
+        if (optionIndex > -1) {
+            newArray[optionIndex] = newOption;
+        }
+    }
+    
+    if (fieldToUpdate) {
+        // Update the entire array in Firestore
+        await updateProjectInFirebase({
+            [fieldToUpdate]: newArray
+        });
+    }
 }
