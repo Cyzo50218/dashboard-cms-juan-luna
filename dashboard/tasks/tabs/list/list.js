@@ -732,9 +732,15 @@ async function handleTaskMoved(evt) {
     const oldSectionId = oldSectionEl?.dataset.sectionId;
 
     if (!taskId || !newSectionId || !oldSectionId) {
-        if (!taskId) console.error("❌ Missing taskId.");
-        if (!newSectionId) console.error("❌ Missing newSectionId.");
-        if (!oldSectionId) console.error("❌ Missing oldSectionId.");
+        if (!taskId) {
+            console.error("❌ Missing taskId. Could not identify which task was moved.");
+        }
+        if (!newSectionId) {
+            console.error("❌ Missing newSectionId. Could not determine target section.");
+        }
+        if (!oldSectionId) {
+            console.error("❌ Missing oldSectionId. Could not determine source section.");
+        }
         return;
     }
 
@@ -750,9 +756,10 @@ async function handleTaskMoved(evt) {
 
     try {
         const batch = writeBatch(db);
+        let movedTaskNewId = taskId; // default to existing
 
-        // --- If moved to a different section ---
         if (newSectionId !== oldSectionId) {
+            // Moving to a different section
             const sourceRef = doc(db, `${basePath}/sections/${oldSectionId}/tasks/${taskId}`);
             const sourceSnap = await getDoc(sourceRef);
 
@@ -766,16 +773,21 @@ async function handleTaskMoved(evt) {
             delete taskData.id;
 
             const targetTasksColRef = collection(db, `${basePath}/sections/${newSectionId}/tasks`);
-            const newTaskDocRef = doc(targetTasksColRef); // generate new ID
+            const newTaskDocRef = doc(targetTasksColRef); // Firestore will use this ID
+
+            movedTaskNewId = newTaskDocRef.id;
 
             batch.delete(sourceRef);
             batch.set(newTaskDocRef, taskData);
 
-            console.log(`✅ Task "${taskId}" moved to section "${newSectionId}"`);
+            // Update the DOM with the new ID
+            taskEl.dataset.taskId = movedTaskNewId;
+
+            console.log(`✅ Moved task "${taskId}" to section "${newSectionId}" as "${movedTaskNewId}"`);
         }
 
-        // --- Always reorder tasks in the target section ---
-        const reorderedTaskEls = Array.from(evt.to.querySelectorAll(".task-row-wrapper")); // or ".task" if that's your class
+        // Reorder all tasks in the destination section
+        const reorderedTaskEls = Array.from(evt.to.querySelectorAll(".task"));
         reorderedTaskEls.forEach((el, index) => {
             const reorderId = el.dataset.taskId;
             if (!reorderId) return;
@@ -788,9 +800,9 @@ async function handleTaskMoved(evt) {
         });
 
         await batch.commit();
-        console.log("✅ Task reordering complete.");
+        console.log("✅ Reordering complete.");
     } catch (err) {
-        console.error("❌ Error during task move or reorder:", err);
+        console.error("❌ Error handling task move:", err);
     }
 }
 
