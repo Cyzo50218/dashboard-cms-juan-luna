@@ -80,8 +80,6 @@ let taskIdToFocus = null;
 
 // Initialize safely
 let currentlyFocusedSectionId = null;
-let reorderingInProgress = false;
-
 const priorityOptions = ['High', 'Medium', 'Low'];
 const statusOptions = ['On track', 'At risk', 'Off track', 'Completed'];
 const columnTypeOptions = ['Text', 'Numbers', 'Costing', 'Type', 'Custom'];
@@ -724,7 +722,7 @@ async function handleTaskMoved(evt) {
     const user = auth.currentUser;
     if (!user) return;
 
-    reorderingInProgress = true; // ✅ Set flag before any changes
+    reorderingInProgress = true;
 
     const taskEl = evt.item;
     const taskId = taskEl?.dataset.taskId;
@@ -736,9 +734,7 @@ async function handleTaskMoved(evt) {
     const oldSectionId = oldSectionEl?.dataset.sectionId;
 
     if (!taskId || !newSectionId || !oldSectionId) {
-        if (!taskId) console.error("❌ Missing taskId. Could not identify which task was moved.");
-        if (!newSectionId) console.error("❌ Missing newSectionId. Could not determine target section.");
-        if (!oldSectionId) console.error("❌ Missing oldSectionId. Could not determine source section.");
+        console.error("Missing necessary IDs for drag operation.");
         reorderingInProgress = false;
         return;
     }
@@ -761,7 +757,7 @@ async function handleTaskMoved(evt) {
         const basePath = `users/${user.uid}/myworkspace/${workspaceId}/projects/${projectId}`;
         const batch = writeBatch(db);
 
-        // ✅ If moved between sections
+        // 🧩 A. Task moved to a different section
         if (newSectionId !== oldSectionId) {
             const sourceRef = doc(db, `${basePath}/sections/${oldSectionId}/tasks/${taskId}`);
             const sourceSnap = await getDoc(sourceRef);
@@ -779,7 +775,7 @@ async function handleTaskMoved(evt) {
             const targetTasksColRef = collection(db, `${basePath}/sections/${newSectionId}/tasks`);
             const newTaskDocRef = doc(targetTasksColRef);
 
-            // Replace DOM ID for upcoming reorder batch
+            // ⚠️ Set the new taskId to the DOM so reorder below uses the correct doc ID
             taskEl.dataset.taskId = newTaskDocRef.id;
 
             batch.delete(sourceRef);
@@ -788,7 +784,7 @@ async function handleTaskMoved(evt) {
             console.log(`✅ Moved task "${taskId}" to section "${newSectionId}"`);
         }
 
-        // ✅ Reorder tasks in the DOM order
+        // 🧩 B. Reorder tasks in the target section (whether same or different)
         const reorderedTaskEls = Array.from(evt.to.querySelectorAll(".task"));
         reorderedTaskEls.forEach((el, index) => {
             const reorderId = el.dataset.taskId;
@@ -797,21 +793,19 @@ async function handleTaskMoved(evt) {
             const reorderRef = doc(db, `${basePath}/sections/${newSectionId}/tasks/${reorderId}`);
             batch.update(reorderRef, {
                 order: index,
-                sectionId: newSectionId
+                sectionId: newSectionId // Always ensure sectionId is set
             });
         });
 
         await batch.commit();
-        console.log("✅ Reordering committed.");
-
+        console.log("✅ Batch committed: move + reorder complete.");
     } catch (err) {
-        console.error("❌ Error handling task move:", err);
+        console.error("❌ Error in handleTaskMoved:", err);
     } finally {
-        // ✅ Allow UI to catch up before enabling render
         setTimeout(() => {
             reorderingInProgress = false;
-            render(); // Optional: force final sync if needed
-        }, 300);
+            render(); // Optional manual sync
+        }, 200);
     }
 }
 
