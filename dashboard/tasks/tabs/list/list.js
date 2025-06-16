@@ -77,6 +77,7 @@ const allUsers = [
     { id: 5, name: 'Paris Geller', email: 'paris.g@example.com', avatar: 'https://i.imgur.com/lVceL5s.png' },
 ];
 let taskIdToFocus = null;
+let reorderingInProgress = false;
 
 // Initialize safely
 let currentlyFocusedSectionId = null;
