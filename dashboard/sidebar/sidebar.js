@@ -117,70 +117,58 @@ window.TaskSidebar = (function() {
         isInitialized = true;
     }
 
+
 /**
- * Finds and opens a task using only its ID by querying all 'tasks' collections.
- * This function relies on each task document having a field named 'id' that stores its own document ID.
- * @param {string} taskId - The unique ID of the task to open.
- */
-async function open(taskId) {
-    if (!isInitialized) init();
-    if (!taskId) {
-        console.error("TaskSidebar: `open` called without a taskId.");
-        return;
-    }
-    
-    detachAllListeners();
-    sidebar.classList.add('is-loading');
-
-    try {
-        // --- FIX START ---
-        // The query now searches for a document where the 'id' FIELD matches the taskId variable.
-        // This is the correct way to query a collection group for a specific document ID.
-        const tasksQuery = query(collectionGroup(db, 'tasks'), where('id', '==', taskId), limit(1));
-        // --- FIX END ---
-
-        const querySnapshot = await getDocs(tasksQuery);
-
-        if (querySnapshot.empty) {
-            console.error(`TaskSidebar: Task with ID ${taskId} could not be found. Ensure the task exists and has an 'id' field matching its document ID.`);
-            close();
+     * Opens the sidebar for a specific task using a direct path.
+     * @param {object} context - An object containing all necessary IDs.
+     * @param {string} context.taskId
+     * @param {string} context.sectionId
+     * @param {string} context.projectId
+     * @param {string} context.workspaceId
+     */
+    async function open(context) {
+        if (!isInitialized) init();
+        if (!context || !context.taskId || !context.projectId || !context.sectionId || !context.workspaceId || !currentUser) {
+            console.error("TaskSidebar: open() called with incomplete context.", context);
             return;
         }
+        
+        detachAllListeners();
+        sidebar.classList.add('is-loading');
 
-        // Get the full reference (path) to the found document
-        currentTaskRef = querySnapshot.docs[0].ref;
+        // Set the workspace context for this session
+        currentWorkspaceId = context.workspaceId;
 
-        // Now, attach the real-time listener using the correct, full path
-        taskListenerUnsubscribe = onSnapshot(currentTaskRef, async (taskDoc) => {
-            if (taskDoc.exists()) {
-                currentTask = { ...taskDoc.data(), id: taskDoc.id };
+        try {
+            // Build the direct, full path to the task document
+            const taskPath = `users/${currentUser.id}/myworkspace/${context.workspaceId}/projects/${context.projectId}/sections/${context.sectionId}/tasks/${context.taskId}`;
+            currentTaskRef = doc(db, taskPath);
 
-                // Fetch the project context if it's not already loaded
-                if (!currentWorkspaceId) await fetchActiveWorkspace(currentUser.id);
-                if (!currentProject || currentProject.id !== currentTask.projectId) {
+            taskListenerUnsubscribe = onSnapshot(currentTaskRef, async (taskDoc) => {
+                if (taskDoc.exists()) {
+                    currentTask = { ...taskDoc.data(), id: taskDoc.id };
+                    
+                    // Load all projects from the workspace for the switcher UI
                     await loadWorkspaceData(currentTask.projectId);
-                }
 
-                sidebar.classList.remove('is-loading');
-                sidebar.classList.add('is-visible');
-                renderSidebar(currentTask);
-                
-                // Attach listeners for sub-collections
-                listenToActivity();
-                if (currentTask.chatuuid) {
-                    listenToMessages();
-                }
+                    sidebar.classList.remove('is-loading');
+                    sidebar.classList.add('is-visible');
+                    renderSidebar(currentTask);
+                    
+                    listenToActivity();
+                    if (currentTask.chatuuid) listenToMessages();
 
-            } else {
-                console.log(`TaskSidebar: Task ${taskId} was deleted.`);
-                close();
-            }
-        });
-    } catch (error) {
-        console.error("TaskSidebar: Error finding task. Have you created the required Firestore index? See the console for a link.", error);
-        close();
+                } else {
+                    console.error(`TaskSidebar: Task at path ${taskPath} not found.`);
+                    close();
+                }
+            });
+        } catch (error) {
+            console.error("TaskSidebar: Error opening task with direct path.", error);
+            close();
+        }
     }
-}
+    
 
     function close() {
         if(sidebar) sidebar.classList.remove('is-visible', 'is-loading');
@@ -563,3 +551,4 @@ document.addEventListener('DOMContentLoaded', () => {
         window.TaskSidebar.init();
     }
 });
+
