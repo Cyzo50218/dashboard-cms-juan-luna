@@ -217,36 +217,79 @@ window.TaskSidebar = (function() {
         console.log("TaskSidebar: Module initialized.");
     }
     
-    function open(taskId) {
-        if (!isInitialized) init();
-        if (!taskId) return;
+    // MODIFIED open function using the iteration strategy
+async function open(taskId) {
+    if (!isInitialized) init();
+    if (!taskId) return;
+
+    // This strategy requires the currentProject to be loaded first.
+    if (!currentProject || !currentProject.id) {
+        console.error("TaskSidebar: Cannot search for task, currentProject is not loaded.");
+        // You might want to trigger a project load here or show an error.
+        return;
+    }
+    
+    detachAllListeners();
+
+    let foundTaskRef = null;
+
+    try {
+        // 1. Get all 'sections' from the currently loaded project.
+        const sectionsCollectionRef = collection(db, "projects", currentProject.id, "sections");
+        const sectionsSnapshot = await getDocs(sectionsCollectionRef);
         
-        detachAllListeners();
+        if (sectionsSnapshot.empty) {
+            console.warn("TaskSidebar: The current project has no sections to search in.");
+            return;
+        }
 
-        const taskRef = doc(db, "tasks", taskId);
-        taskListenerUnsubscribe = onSnapshot(taskRef, async (taskDoc) => {
-            if (taskDoc.exists()) {
-                currentTask = { ...taskDoc.data(), id: taskDoc.id };
+        // 2. Loop through each section to check if the task exists within it.
+        for (const sectionDoc of sectionsSnapshot.docs) {
+            const sectionId = sectionDoc.id;
+            const potentialTaskRef = doc(db, "projects", currentProject.id, "sections", sectionId, "tasks", taskId);
+            
+            // 3. Try to get the document directly. This is a single, fast read per section.
+            const taskDocSnapshot = await getDoc(potentialTaskRef);
 
-                if (!currentProject || currentProject.id !== currentTask.projectId) {
-                    await fetchProjectAndUsers(currentTask.projectId);
-                }
+            if (taskDocSnapshot.exists()) {
+                // 4. If it exists, we found our task! Store its reference and stop looping.
+                console.log(`TaskSidebar: Found task ${taskId} in section ${sectionId}`);
+                foundTaskRef = potentialTaskRef;
+                break; // Exit the loop
+            }
+        }
 
-                renderSidebar(currentTask);
-                sidebar.classList.add('is-visible');
+    } catch (error) {
+        console.error("TaskSidebar: Error occurred while searching for task in project sections.", error);
+        close();
+        return;
+    }
 
-                listenToActivity(currentTask.id);
-                if (currentTask.chatuuid) {
-                    listenToMessages(currentTask.chatuuid);
-                } else {
-                    renderActiveTab(); // Render empty state
-                }
+
+    // 5. If we found the task, attach the real-time listener to its reference.
+    if (foundTaskRef) {
+        taskListenerUnsubscribe = onSnapshot(foundTaskRef, async (taskDoc) => {
+            // The rest of the logic from here is the same as before.
+            // We already know the doc exists, but the listener provides it again.
+            currentTask = { ...taskDoc.data(), id: taskDoc.id };
+
+            // We can skip the project fetch since we used it for the search
+            renderSidebar(currentTask);
+            sidebar.classList.add('is-visible');
+
+            listenToActivity(currentTask.id);
+            if (currentTask.chatuuid) {
+                listenToMessages(currentTask.chatuuid);
             } else {
-                console.error(`TaskSidebar: Task with ID ${taskId} not found.`);
-                close();
+                renderActiveTab();
             }
         });
+    } else {
+        // If the loop finishes and we haven't found the task.
+        console.error(`TaskSidebar: Task with ID ${taskId} could not be found in any section of project ${currentProject.title}.`);
+        close();
     }
+}
 
     async function fetchProjectAndUsers(projectId) {
         // ... (function remains the same as previous version)
