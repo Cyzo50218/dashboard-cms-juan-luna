@@ -768,19 +768,30 @@ async function handleTaskMoved(evt) {
         // --- 4. Handle the move based on whether the section changed ---
 
         if (newSectionId === oldSectionId) {
-            // --- Case A: Reordering within the SAME section ---
-            console.log(`Reordering task "${taskId}" in section "${newSectionId}"`);
+    console.log(`Reordering task "${taskId}" in section "${newSectionId}"`);
 
-            const tasksInSection = Array.from(newSectionEl.querySelectorAll(".task"));
-            tasksInSection.forEach((el, index) => {
-                const currentTaskId = el.dataset.taskId;
-                if (!currentTaskId) return;
+    // FIX: Use the correct class name from your logs.
+    const tasksToUpdate = Array.from(newSectionEl.querySelectorAll(".task-row-wrapper"));
 
-                const taskRef = doc(db, `${basePath}/sections/${newSectionId}/tasks/${currentTaskId}`);
-                batch.update(taskRef, { order: index });
-            });
+    if (tasksToUpdate.length === 0) {
+        console.error("❌ CRITICAL: Found 0 tasks to reorder. Check the selector '.task-row-wrapper'.");
+        return;
+    }
 
-        } else {
+    console.log(`Preparing to update ${tasksToUpdate.length} tasks in the batch:`);
+
+    tasksToUpdate.forEach((el, index) => {
+        const currentTaskId = el.dataset.taskId;
+        if (!currentTaskId) return;
+
+        // NEW LOGGING: Show what is being added to the batch.
+        console.log(`  -> Queuing update for Task ID: ${currentTaskId}, New Order: ${index}`);
+
+        const taskRef = doc(db, `${basePath}/sections/${newSectionId}/tasks/${currentTaskId}`);
+        batch.update(taskRef, { order: index });
+    });
+
+} else {
             // --- Case B: Moving to a DIFFERENT section ---
             console.log(`Moving task "${taskId}" from section "${oldSectionId}" to "${newSectionId}"`);
 
