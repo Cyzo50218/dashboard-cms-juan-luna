@@ -752,37 +752,49 @@ async function handleTaskMoved(evt) {
         const basePath = `users/${user.uid}/myworkspace/${workspaceId}/projects/${projectId}`;
         const batch = writeBatch(db);
 
-        // --- 1. Move task to new section (preserve ID) ---
+        // --- Handle Task Move (if sections are different) ---
         if (newSectionId !== oldSectionId) {
             const sourceRef = doc(db, `${basePath}/sections/${oldSectionId}/tasks/${taskId}`);
             const sourceSnap = await getDoc(sourceRef);
-            if (!sourceSnap.exists()) return console.error("Task not found in old section.");
+            if (!sourceSnap.exists()) {
+                console.error("Task not found in old section.");
+                return; // Or handle this error more gracefully
+            }
 
             const taskData = sourceSnap.data();
-            taskData.sectionId = newSectionId;
+            taskData.sectionId = newSectionId; // Update sectionId in the task data
 
             const targetRef = doc(db, `${basePath}/sections/${newSectionId}/tasks/${taskId}`);
-            batch.set(targetRef, taskData);  // use same ID
-            batch.delete(sourceRef);
+            batch.set(targetRef, taskData); // Use same ID
+            batch.delete(sourceRef); // Delete from old section
+
+            // --- Reorder tasks in the OLD section after removal ---
+            const oldSectionTasks = Array.from(evt.from.querySelectorAll(".task"));
+            oldSectionTasks.forEach((el, index) => {
+                const reorderId = el.dataset.taskId;
+                if (!reorderId) return; // Should not happen if data-task-id is consistent
+
+                const reorderRef = doc(db, `${basePath}/sections/${oldSectionId}/tasks/${reorderId}`);
+                batch.update(reorderRef, { order: index }); // Only update order
+            });
         }
 
-        // --- 2. Reorder all tasks in target section ---
-        const reorderedTaskEls = Array.from(evt.to.querySelectorAll(".task"));
+        // --- Reorder all tasks in the NEW (or same) section ---
+        // This will correctly set the order for the moved task and other tasks
+        const newSectionTasks = Array.from(evt.to.querySelectorAll(".task"));
 
-        reorderedTaskEls.forEach((el, index) => {
+        newSectionTasks.forEach((el, index) => {
             const reorderId = el.dataset.taskId;
             if (!reorderId) return;
 
             const reorderRef = doc(db, `${basePath}/sections/${newSectionId}/tasks/${reorderId}`);
-            batch.update(reorderRef, {
-                order: index,
-                sectionId: newSectionId
-            });
+            // No need to update sectionId here if it's already handled by the move
+            batch.update(reorderRef, { order: index });
         });
 
         await batch.commit();
+        render(); // Re-render the UI to reflect changes
         console.log("✅ Task move and reorder finalized.");
-        render();
     } catch (err) {
         console.error("❌ Failed to reorder tasks:", err);
     }
