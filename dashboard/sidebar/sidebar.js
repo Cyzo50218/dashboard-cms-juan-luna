@@ -697,16 +697,46 @@ window.TaskSidebar = (function() {
                             fp.open();
                             break;
                         }
-                        case 'priority': {
-                            const allOptions = [...priorityOptions.map(p => ({ name: p, color: defaultPriorityColors[p] })), ...(currentProject.customPriorities || [])];
-                            createGenericDropdown(control, allOptions, (opt) => updateTaskField('priority', opt.name), 'Priority');
-                            break;
-                        }
-                        case 'status': {
-                            const allOptions = [...statusOptions.map(s => ({ name: s, color: defaultStatusColors[s] })), ...(currentProject.customStatuses || [])];
-                            createGenericDropdown(control, allOptions, (opt) => updateTaskField('status', opt.name), 'Status');
-                            break;
-                        }
+    case 'priority': {
+        // 1. Start with the default, hardcoded priority options.
+        // We map them into the {name, color} format the dropdown function expects.
+        let allPriorityOptions = priorityOptions.map(p => ({
+            name: p,
+            color: defaultPriorityColors[p]
+        }));
+        
+        // 2. Check if custom priorities exist on the project document.
+        if (currentProject.customPriorities && currentProject.customPriorities.length > 0) {
+            // 3. If they exist, combine the default and custom options into one list.
+            allPriorityOptions = [...allPriorityOptions, ...currentProject.customPriorities];
+        }
+        
+        // 4. Create the dropdown with the complete, merged list.
+        createGenericDropdown(control, allPriorityOptions, (selectedOption) => {
+            updateTaskField('priority', selectedOption.name);
+        }, 'Priority');
+        break;
+    }
+    
+    case 'status': {
+        // 1. Start with the default status options.
+        let allStatusOptions = statusOptions.map(s => ({
+            name: s,
+            color: defaultStatusColors[s]
+        }));
+        
+        // 2. Check for custom statuses from the project document.
+        if (currentProject.customStatuses && currentProject.customStatuses.length > 0) {
+            // 3. Combine the default and custom statuses.
+            allStatusOptions = [...allStatusOptions, ...currentProject.customStatuses];
+        }
+        
+        // 4. Create the dropdown with the complete, merged list.
+        createGenericDropdown(control, allStatusOptions, (selectedOption) => {
+            updateTaskField('status', selectedOption.name);
+        }, 'Status');
+        break;
+    }
                         case 'Type': {
                             const columnId = key.split('-')[1];
                             const column = currentProject.customColumns.find(c => c.id == columnId);
@@ -769,7 +799,7 @@ window.TaskSidebar = (function() {
  * @param {string|null} optionType - The type of option, used for adding "Add New..." buttons. e.g., 'Priority', 'CustomColumn'.
  * @param {number|null} columnId - The ID of the custom column if applicable.
  */
-function createGenericDropdown(targetEl, options, onSelect, optionType = null, columnId = null) {
+            function createGenericDropdown(targetEl, options, onSelect, optionType = null, columnId = null) {
     // 1. Clean up any existing popovers to prevent duplicates.
     closePopovers();
 
@@ -825,8 +855,6 @@ function createGenericDropdown(targetEl, options, onSelect, optionType = null, c
     dropdown.style.minWidth = `${rect.width}px`;
 }
 
-                
-                
                 function makeTextFieldEditable(control, columnId, column) {
                     const originalContent = control.innerHTML;
                     const oldValue = currentTask.customFields ? (currentTask.customFields[columnId] || '') : '';
