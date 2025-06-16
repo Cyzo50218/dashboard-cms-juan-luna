@@ -27,6 +27,8 @@ import {
     getDoc,
     getDocs,
     limit,
+    increment,    
+    deleteField ,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 import { firebaseConfig } from "/services/firebase-config.js";
@@ -314,6 +316,8 @@ const renderTask = (task) => {
     const cardCompletedClass = isCompleted ? 'boardtasks-task-checked' : '';
     const statusClass = (task.status || '').replace(/\s+/g, '.');
     
+    const hasLiked = task.likedBy && task.likedBy[currentUserId];
+
     return `
         <div class="boardtasks-task-card ${cardCompletedClass}" id="task-${task.id}" data-task-id="${task.id}" draggable="true">
             ${oldestImageUrl ? `<img src="${oldestImageUrl}" class="boardtasks-task-attachment">` : ''}
@@ -330,7 +334,8 @@ const renderTask = (task) => {
                 <div class="boardtasks-task-footer">
                     <span class="boardtasks-due-date" data-due-date="${task.dueDate}">${formatDueDate(task.dueDate)}</span>
                     <div class="boardtasks-task-actions">
-                        <i class="fa-regular fa-heart ${task.isLiked ? 'liked' : ''}" title="Like"></i>
+                        
+                        <i class="fa-regular fa-heart ${hasLiked ? 'liked' : ''}" title="Like"></i>
                         <i class="fa-regular fa-comment" title="Comment"></i>
                     </div>
                 </div>
@@ -367,7 +372,20 @@ const handleBlur = async (e) => {
         
         if (newName) {
             const taskData = section.tasks.splice(taskIndex, 1)[0];
-            const defaults = { dueDate: '', priority: 'Low', status: 'On track', assignees: [], isLiked: false, chatuuid: `chat_${Date.now()}` };
+            
+            // --- FIX STARTS HERE: Updated default values for a new task ---
+            const defaults = { 
+                dueDate: '', 
+                priority: 'Low', 
+                status: 'On track', 
+                assignees: [], 
+                chatuuid: `chat_${Date.now()}`,
+                customFields: {},      // Added new empty map
+                likedAmount: 0,        // Replaces isLiked
+                likedBy: {}            // Replaces isLiked, stores user UIDs
+            };
+            // --- FIX ENDS HERE ---
+
             delete taskData.isNew;
             delete taskData.id;
             const path = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${section.id}/tasks`;
@@ -404,12 +422,31 @@ const handleKanbanClick = (e) => {
     const { task, section } = findTaskAndSection(taskCard.dataset.taskId);
     if (!task) return;
     const path = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${section.id}/tasks/${task.id}`;
-    
+    const taskRef = doc(db, path);
+
     if (e.target.closest('.boardtasks-task-check')) {
-        e.preventDefault();
-        updateDoc(doc(db, path), { status: task.status === 'Completed' ? 'On track' : 'Completed' });
+        e.preventDefault(); 
+        updateDoc(taskRef, { status: task.status === 'Completed' ? 'On track' : 'Completed' });
+
+    // --- FIX STARTS HERE: New logic for liking/unliking a task ---
     } else if (e.target.matches('.fa-heart')) {
-        updateDoc(doc(db, path), { isLiked: !task.isLiked });
+        const userHasLiked = task.likedBy && task.likedBy[currentUserId];
+        
+        if (userHasLiked) {
+            // User is "unliking" the task
+            updateDoc(taskRef, {
+                likedAmount: increment(-1),
+                [`likedBy.${currentUserId}`]: deleteField() // Removes the user's UID from the map
+            });
+        } else {
+            // User is "liking" the task
+            updateDoc(taskRef, {
+                likedAmount: increment(1),
+                [`likedBy.${currentUserId}`]: true // Adds the user's UID to the map
+            });
+        }
+    // --- FIX ENDS HERE ---
+
     } else if (e.target.matches('.fa-comment')) {
         console.log(`(Placeholder) Open comment panel for task ID: ${task.id}`);
     }

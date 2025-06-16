@@ -2,12 +2,6 @@
  * @file list.js
  * @description Controls the List View tab with refined section filtering and date sorting.
  */
-
-/*
- * @file list.js
- * @description Controls the List View tab with real-time data using Firestore snapshots.
- */
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
     getAuth,
