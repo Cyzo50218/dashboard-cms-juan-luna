@@ -108,50 +108,50 @@ function attachRealtimeListeners(userId) {
     detachAllListeners();
     currentUserId = userId;
     console.log(`[DEBUG] Attaching listeners for user: ${userId}`);
-    
+
     const workspaceQuery = query(collection(db, `users/${userId}/myworkspace`), where("isSelected", "==", true));
     activeListeners.workspace = onSnapshot(workspaceQuery, (workspaceSnapshot) => {
         if (workspaceSnapshot.empty) return console.warn("No selected workspace.");
-        
+
         currentWorkspaceId = workspaceSnapshot.docs[0].id;
         console.log(`[DEBUG] Found workspaceId: ${currentWorkspaceId}`);
-        
+
         const projectsPath = `users/${userId}/myworkspace/${currentWorkspaceId}/projects`;
         const projectQuery = query(collection(db, projectsPath), where("isSelected", "==", true));
-        
+
         if (activeListeners.project) activeListeners.project();
         activeListeners.project = onSnapshot(projectQuery, (projectSnapshot) => {
             if (projectSnapshot.empty) return console.warn("No selected project.");
-            
+
             const projectDoc = projectSnapshot.docs[0];
             currentProjectId = projectDoc.id;
             console.log(`[DEBUG] Found projectId: ${currentProjectId}`);
-            
+
             project = { ...project, ...projectDoc.data(), id: currentProjectId };
-            
+
             // 3. Listen to the SECTIONS subcollection
             const sectionsPath = `${projectsPath}/${currentProjectId}/sections`;
             const sectionsQuery = query(collection(db, sectionsPath), orderBy("order"));
-            
+
             if (activeListeners.sections) activeListeners.sections();
             activeListeners.sections = onSnapshot(sectionsQuery, (sectionsSnapshot) => {
                 console.log(`[DEBUG] Sections snapshot fired. Found ${sectionsSnapshot.size} sections.`);
                 project.sections = sectionsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, tasks: [] }));
-                
+
                 // Distribute the tasks we already have into the newly updated sections
                 distributeTasksToSections(allTasksFromSnapshot);
-                
+
                 // Re-render the UI with the updated sections and their tasks
                 render(); // <-- ADD RENDER CALL HERE
             });
-            
+
             // 4. Use a COLLECTION GROUP query to get all tasks
             const tasksGroupQuery = query(
                 collectionGroup(db, 'tasks'),
                 where('projectId', '==', currentProjectId),
                 orderBy('createdAt', 'desc')
             );
-            
+
             if (activeListeners.tasks) activeListeners.tasks();
             activeListeners.tasks = onSnapshot(tasksGroupQuery, (tasksSnapshot) => {
                 console.log(`[DEBUG] Tasks CollectionGroup snapshot fired. Found ${tasksSnapshot.size} tasks.`);
@@ -159,7 +159,7 @@ function attachRealtimeListeners(userId) {
                 console.log(`[DEBUG] Tasks CollectionGroup snapshot ${allTasksFromSnapshot}.`);
                 // Distribute the new tasks into the sections we already have
                 distributeTasksToSections(allTasksFromSnapshot);
-                
+
                 // Re-render the UI with the tasks distributed into their sections
                 render(); // <-- RENDER CALL STAYS HERE
             });
@@ -180,12 +180,12 @@ function initializeListView(params) {
     assigneeDropdownTemplate = document.getElementById('assignee-dropdown-template');
     filterBtn = document.getElementById('filter-btn');
     sortBtn = document.getElementById('sort-btn');
-    
+
     if (!mainContainer || !taskListBody) {
         console.error("List view could not initialize: Essential containers not found.");
-        return () => {};
+        return () => { };
     }
-    
+
     setupEventListeners();
 }
 
@@ -228,7 +228,7 @@ function distributeTasksToSections(tasks) {
 
 export function init(params) {
     console.log("Initializing List View Module...", params);
-    
+
     // Listen for authentication state changes
     onAuthStateChanged(auth, (user) => {
         if (user) {
@@ -243,10 +243,10 @@ export function init(params) {
             render(); // Render the empty/logged-out state
         }
     });
-    
+
     // The initial render will be triggered by the listeners.
     initializeListView(params);
-    
+
     // Return a modified cleanup function.
     return function cleanup() {
         console.log("Cleaning up List View Module...");
@@ -260,13 +260,13 @@ export function init(params) {
         if (windowClickListener) window.removeEventListener('click', windowClickListener);
         if (filterBtnListener) filterBtn.removeEventListener('click', filterBtnListener);
         if (sortBtnListener) sortBtn.removeEventListener('click', sortBtnListener);
-        
+
         if (sortableSections) sortableSections.destroy();
         sortableTasks.forEach(st => st.destroy());
         sortableTasks.length = 0;
     };
-    
-    
+
+
 }
 
 // --- Event Listener Setup ---
@@ -283,7 +283,7 @@ function setupEventListeners() {
             }
             return;
         }
-        
+
         const addColumnButton = e.target.closest('#add-column-btn');
         if (addColumnButton) {
             e.stopPropagation();
@@ -293,11 +293,11 @@ function setupEventListeners() {
             createDropdown(availableTypes, addColumnButton, openAddColumnDialog);
         }
     };
-    
+
     bodyClickListener = (e) => {
         const clickedSection = e.target.closest('.task-section');
         if (clickedSection) currentlyFocusedSectionId = Number(clickedSection.dataset.sectionId);
-        
+
         if (e.target.closest('.section-toggle')) {
             const sectionEl = e.target.closest('.task-section');
             const section = project.sections.find(s => s.id == sectionEl.dataset.sectionId);
@@ -307,7 +307,7 @@ function setupEventListeners() {
             }
             return;
         }
-        
+
         const addTaskBtn = e.target.closest('.add-task-in-section-btn');
         if (addTaskBtn) {
             const sectionEl = addTaskBtn.closest('.task-section');
@@ -317,30 +317,30 @@ function setupEventListeners() {
             }
             return;
         }
-        
+
         const taskRow = e.target.closest('.task-row-wrapper');
         if (!taskRow) return;
         const taskId = taskRow.dataset.taskId;
 
-// --- FIX 2: Check for temporary tasks by looking for the 'temp_' prefix. ---
-if (taskId.startsWith('temp_')) {
-    const nameEl = taskRow.querySelector('.task-name');
-    if (nameEl) {
-        nameEl.focus(); // Guide the user to name the task first.
-    }
-    return; // Stop execution for temporary tasks.
-}
-        
+        // --- FIX 2: Check for temporary tasks by looking for the 'temp_' prefix. ---
+        if (taskId.startsWith('temp_')) {
+            const nameEl = taskRow.querySelector('.task-name');
+            if (nameEl) {
+                nameEl.focus(); // Guide the user to name the task first.
+            }
+            return; // Stop execution for temporary tasks.
+        }
+
         if (e.target.matches('.task-name')) return displaySideBarTasks(taskId);
-        
+
         const control = e.target.closest('[data-control]');
         if (!control) return;
-        
+
         const sectionEl = taskRow.closest('.task-section');
         const sectionId = sectionEl ? sectionEl.dataset.sectionId : null;
-        
+
         if (!sectionId) return; // Cannot perform updates without a sectionId
-        
+
         switch (control.dataset.control) {
             case 'check':
                 e.stopPropagation();
@@ -350,11 +350,11 @@ if (taskId.startsWith('temp_')) {
                 showDatePicker(control, sectionId, taskId);
                 break;
             case 'priority':
-createDropdown(priorityOptions, control, (v) => updateTask(taskId, sectionId, { priority: v }));
-break;
-case 'status':
-createDropdown(statusOptions, control, (v) => updateTask(taskId, sectionId, { status: v }));
-break;
+                createDropdown(priorityOptions, control, (v) => updateTask(taskId, sectionId, { priority: v }));
+                break;
+            case 'status':
+                createDropdown(statusOptions, control, (v) => updateTask(taskId, sectionId, { status: v }));
+                break;
             case 'custom-select': {
                 const columnId = Number(control.dataset.columnId);
                 const column = project.customColumns.find(c => c.id === columnId);
@@ -374,11 +374,11 @@ break;
                 e.stopPropagation();
                 const { section: currentSection } = findTaskAndSection(taskId);
                 if (!currentSection) break;
-                
+
                 // Get a list of all OTHER sections to move to
                 const otherSections = project.sections.filter(s => s.id !== currentSection.id);
                 const sectionNames = otherSections.map(s => s.title);
-                
+
                 if (sectionNames.length > 0) {
                     // Create a dropdown menu of the available sections
                     createDropdown(sectionNames, control, (selectedTitle) => {
@@ -402,91 +402,91 @@ break;
                 break;
             }
             case 'remove-assignee':
-e.stopPropagation();
-updateTask(taskId, sectionId, { assignees: [] }); 
-break;
+                e.stopPropagation();
+                updateTask(taskId, sectionId, { assignees: [] });
+                break;
         }
     };
-    
+
     bodyFocusOutListener = (e) => {
-    // Case 1: Renaming a section title
-    if (e.target.matches('.section-title')) {
-        const sectionEl = e.target.closest('.task-section');
-        if (sectionEl) {
-            const sectionId = sectionEl.dataset.sectionId;
-            const newTitle = e.target.innerText.trim();
-            const section = project.sections.find(s => s.id === sectionId);
-            
-            // Only update if the title has actually changed
-            if (section && section.title !== newTitle) {
-                updateSectionInFirebase(sectionId, { title: newTitle });
+        // Case 1: Renaming a section title
+        if (e.target.matches('.section-title')) {
+            const sectionEl = e.target.closest('.task-section');
+            if (sectionEl) {
+                const sectionId = sectionEl.dataset.sectionId;
+                const newTitle = e.target.innerText.trim();
+                const section = project.sections.find(s => s.id === sectionId);
+
+                // Only update if the title has actually changed
+                if (section && section.title !== newTitle) {
+                    updateSectionInFirebase(sectionId, { title: newTitle });
+                }
+            }
+            return; // End execution here
+        }
+
+        const taskRow = e.target.closest('.task-row-wrapper');
+        if (!taskRow) return; // Exit if the event wasn't inside a task row
+
+        const taskId = taskRow.dataset.taskId; // This could be a real ID or a temporary one
+        const { task, section } = findTaskAndSection(taskId);
+
+        // If for some reason the task or section can't be found, do nothing.
+        if (!task || !section) {
+            return;
+        }
+
+        // Case 2: Editing a task name
+        if (e.target.matches('.task-name')) {
+            const newName = e.target.innerText.trim();
+
+            // If it was a new, temporary task...
+            if (task.isNew) {
+                // ... and the user entered a name, save it permanently to Firestore.
+                if (newName) {
+                    // First, remove the local temporary task from the array.
+                    section.tasks = section.tasks.filter(t => t.id !== taskId);
+
+                    // Then, create a new task in Firestore with the entered name.
+                    // Destructure the temp task to get its data, but exclude local-only flags.
+                    const { isNew, id, ...taskData } = task;
+                    addTaskToFirebase(section.id, { ...taskData, name: newName });
+                    // The onSnapshot listener will automatically add the new, permanent task to the UI.
+
+                } else {
+                    // ... but the name is empty, just remove the temporary task and re-render.
+                    section.tasks = section.tasks.filter(t => t.id !== taskId);
+                    render();
+                }
+            }
+            // If it's an existing task and the name has changed, update it.
+            else if (task.name !== newName) {
+                updateTask(taskId, section.id, { name: newName });
             }
         }
-        return; // End execution here
-    }
+        // Case 3: Editing a custom field cell
+        else if (e.target.matches('[data-control="custom"]')) {
+            const customFieldCell = e.target;
+            const columnId = customFieldCell.dataset.columnId;
+            const column = project.customColumns.find(c => c.id == columnId);
+            if (!column) return;
 
-    const taskRow = e.target.closest('.task-row-wrapper');
-    if (!taskRow) return; // Exit if the event wasn't inside a task row
+            let newValue = customFieldCell.innerText.trim();
 
-    const taskId = taskRow.dataset.taskId; // This could be a real ID or a temporary one
-    const { task, section } = findTaskAndSection(taskId);
+            // For Costing or Numbers types, parse the value as a number.
+            if (column.type === 'Costing' || column.type === 'Numbers') {
+                const rawValue = newValue.replace(/,/g, ''); // Remove commas for parsing
+                newValue = parseFloat(rawValue) || 0;
+            }
 
-    // If for some reason the task or section can't be found, do nothing.
-    if (!task || !section) {
-        return;
-    }
-
-    // Case 2: Editing a task name
-    if (e.target.matches('.task-name')) {
-        const newName = e.target.innerText.trim();
-
-        // If it was a new, temporary task...
-        if (task.isNew) {
-            // ... and the user entered a name, save it permanently to Firestore.
-            if (newName) {
-                // First, remove the local temporary task from the array.
-                section.tasks = section.tasks.filter(t => t.id !== taskId);
-                
-                // Then, create a new task in Firestore with the entered name.
-                // Destructure the temp task to get its data, but exclude local-only flags.
-                const { isNew, id, ...taskData } = task; 
-                addTaskToFirebase(section.id, { ...taskData, name: newName });
-                // The onSnapshot listener will automatically add the new, permanent task to the UI.
-
-            } else {
-                // ... but the name is empty, just remove the temporary task and re-render.
-                section.tasks = section.tasks.filter(t => t.id !== taskId);
-                render();
+            // Only update if the value has actually changed.
+            if (task.customFields[columnId] !== newValue) {
+                // Use dot notation for updating a specific key in a map field.
+                updateTask(taskId, section.id, { [`customFields.${columnId}`]: newValue });
             }
         }
-        // If it's an existing task and the name has changed, update it.
-        else if (task.name !== newName) {
-            updateTask(taskId, section.id, { name: newName });
-        }
-    } 
-    // Case 3: Editing a custom field cell
-    else if (e.target.matches('[data-control="custom"]')) {
-        const customFieldCell = e.target;
-        const columnId = customFieldCell.dataset.columnId;
-        const column = project.customColumns.find(c => c.id == columnId);
-        if (!column) return;
+    };
 
-        let newValue = customFieldCell.innerText.trim();
-
-        // For Costing or Numbers types, parse the value as a number.
-        if (column.type === 'Costing' || column.type === 'Numbers') {
-            const rawValue = newValue.replace(/,/g, ''); // Remove commas for parsing
-            newValue = parseFloat(rawValue) || 0;
-        }
-
-        // Only update if the value has actually changed.
-        if (task.customFields[columnId] !== newValue) {
-            // Use dot notation for updating a specific key in a map field.
-            updateTask(taskId, section.id, { [`customFields.${columnId}`]: newValue });
-        }
-    }
-};
-    
     addTaskHeaderBtnListener = () => {
         if (!currentlyFocusedSectionId && project.sections.length > 0) {
             currentlyFocusedSectionId = project.sections[0].id;
@@ -495,11 +495,11 @@ break;
         if (focusedSection) addNewTask(focusedSection);
         else alert('Please create a section before adding a task.');
     };
-    
+
     addSectionBtnListener = () => {
         handleAddSectionClick();
     };
-    
+
     // This is the corrected version:
     windowClickListener = (e) => {
         // We add #filter-btn AND the dialog's own class to the list of elements that should NOT close the panels.
@@ -507,13 +507,13 @@ break;
             closeFloatingPanels();
         }
     };
-    
+
     filterBtnListener = () => {
         // DEBUG: Confirm the listener is firing
         console.log("Filter button clicked. Opening section filter panel...");
         openSectionFilterPanel();
     }
-    
+
     sortBtnListener = () => {
         if (activeSortState === 'default') {
             activeSortState = 'asc'; // asc = Oldest first
@@ -524,7 +524,7 @@ break;
         }
         render();
     };
-    
+
     // Attach all listeners
     taskListHeaderEl.addEventListener('click', headerClickListener);
     taskListBody.addEventListener('click', bodyClickListener);
@@ -553,15 +553,15 @@ function openSectionFilterPanel() {
     const dialogOverlay = document.createElement('div');
     // MODIFIED: Changed class name
     dialogOverlay.className = 'filterlistview-dialog-overlay';
-    
+
     const sectionOptionsHTML = project.sections.map(s => {
         const isChecked = !activeFilters.visibleSections || activeFilters.visibleSections.includes(s.id);
         // MODIFIED: Changed class name for checkboxes
         return `<div><label><input type="checkbox" class="filterlistview-section-checkbox" name="section" value="${s.id}" ${isChecked ? 'checked' : ''}> ${s.title}</label></div>`;
     }).join('');
-    
+
     const allChecked = !activeFilters.visibleSections;
-    
+
     // MODIFIED: Changed all class names within the HTML string
     dialogOverlay.innerHTML = `
     <div class="filterlistview-dialog-box filterlistview-filter-dialog">
@@ -578,51 +578,51 @@ function openSectionFilterPanel() {
                 <button class="filterlistview-dialog-button filterlistview-primary" id="apply-filters-btn">Apply</button>
             </div>
         </div>`;
-    
+
     document.body.appendChild(dialogOverlay);
-    
+
     const applyBtn = dialogOverlay.querySelector('#apply-filters-btn');
     const selectAllBox = dialogOverlay.querySelector('#select-all-sections');
     // MODIFIED: Changed selector to match new class name
     const allSectionBoxes = dialogOverlay.querySelectorAll('.filterlistview-section-checkbox');
-    
+
     selectAllBox.addEventListener('change', (e) => {
         allSectionBoxes.forEach(box => box.checked = e.target.checked);
     });
-    
+
     applyBtn.addEventListener('click', () => {
         const checkedBoxes = Array.from(allSectionBoxes).filter(box => box.checked);
-        
+
         if (checkedBoxes.length === allSectionBoxes.length) {
             delete activeFilters.visibleSections;
         } else {
             activeFilters.visibleSections = checkedBoxes.map(box => Number(box.value));
         }
-        
+
         closeFloatingPanels();
         render();
     });
-    
+
     // MODIFIED: Changed selector to match new class name
     dialogOverlay.addEventListener('click', e => {
         if (e.target.classList.contains('filterlistview-dialog-overlay')) {
             closeFloatingPanels();
         }
     });
-    
+
 }
 
 function getFilteredProject() {
     // DEBUG: See what filters are being applied at the start of the render cycle
     // console.log("getFilteredProject called with state:", JSON.stringify(activeFilters));
     const projectCopy = JSON.parse(JSON.stringify(project));
-    
+
     if (activeFilters.visibleSections && activeFilters.visibleSections.length < project.sections.length) {
         projectCopy.sections = projectCopy.sections.filter(section =>
             activeFilters.visibleSections.includes(section.id)
         );
     }
-    
+
     return projectCopy;
 }
 
@@ -768,30 +768,30 @@ async function handleTaskMoved(evt) {
         // --- 4. Handle the move based on whether the section changed ---
 
         if (newSectionId === oldSectionId) {
-    console.log(`Reordering task "${taskId}" in section "${newSectionId}"`);
+            console.log(`Reordering task "${taskId}" in section "${newSectionId}"`);
 
-    // FIX: Use the correct class name from your logs.
-    const tasksToUpdate = Array.from(newSectionEl.querySelectorAll(".task-row-wrapper"));
+            // FIX: Use the correct class name from your logs.
+            const tasksToUpdate = Array.from(newSectionEl.querySelectorAll(".task-row-wrapper"));
 
-    if (tasksToUpdate.length === 0) {
-        console.error("❌ CRITICAL: Found 0 tasks to reorder. Check the selector '.task-row-wrapper'.");
-        return;
-    }
+            if (tasksToUpdate.length === 0) {
+                console.error("❌ CRITICAL: Found 0 tasks to reorder. Check the selector '.task-row-wrapper'.");
+                return;
+            }
 
-    console.log(`Preparing to update ${tasksToUpdate.length} tasks in the batch:`);
+            console.log(`Preparing to update ${tasksToUpdate.length} tasks in the batch:`);
 
-    tasksToUpdate.forEach((el, index) => {
-        const currentTaskId = el.dataset.taskId;
-        if (!currentTaskId) return;
+            tasksToUpdate.forEach((el, index) => {
+                const currentTaskId = el.dataset.taskId;
+                if (!currentTaskId) return;
 
-        // NEW LOGGING: Show what is being added to the batch.
-        console.log(`  -> Queuing update for Task ID: ${currentTaskId}, New Order: ${index}`);
+                // NEW LOGGING: Show what is being added to the batch.
+                console.log(`  -> Queuing update for Task ID: ${currentTaskId}, New Order: ${index}`);
 
-        const taskRef = doc(db, `${basePath}/sections/${newSectionId}/tasks/${currentTaskId}`);
-        batch.update(taskRef, { order: index });
-    });
+                const taskRef = doc(db, `${basePath}/sections/${newSectionId}/tasks/${currentTaskId}`);
+                batch.update(taskRef, { order: index });
+            });
 
-} else {
+        } else {
             // --- Case B: Moving to a DIFFERENT section ---
             console.log(`Moving task "${taskId}" from section "${oldSectionId}" to "${newSectionId}"`);
 
@@ -819,21 +819,29 @@ async function handleTaskMoved(evt) {
             taskEl.dataset.taskId = newDocRef.id;
 
             // 4b. Reorder all tasks in the NEW section
-            const newSectionTasks = Array.from(newSectionEl.querySelectorAll(".task"));
+            // FIX: Use the correct class name for the selector.
+            const newSectionTasks = Array.from(newSectionEl.querySelectorAll(".task-row-wrapper"));
+            console.log(`Preparing to reorder ${newSectionTasks.length} tasks in the NEW section (${newSectionId}):`);
             newSectionTasks.forEach((el, index) => {
                 const currentTaskId = el.dataset.taskId;
                 if (!currentTaskId) return;
 
+                // NEW LOGGING:
+                console.log(`  -> Queuing update for Task ID: ${currentTaskId}, New Order: ${index}`);
                 const taskRef = doc(db, `${basePath}/sections/${newSectionId}/tasks/${currentTaskId}`);
                 batch.update(taskRef, { order: index, sectionId: newSectionId });
             });
 
-            // 4c. Reorder all remaining tasks in the OLD section (This was the missing step)
-            const oldSectionTasks = Array.from(oldSectionEl.querySelectorAll(".task"));
+            // 4c. Reorder all remaining tasks in the OLD section
+            // FIX: Use the correct class name for the selector.
+            const oldSectionTasks = Array.from(oldSectionEl.querySelectorAll(".task-row-wrapper"));
+            console.log(`Preparing to reorder ${oldSectionTasks.length} tasks in the OLD section (${oldSectionId}):`);
             oldSectionTasks.forEach((el, index) => {
                 const currentTaskId = el.dataset.taskId;
                 if (!currentTaskId) return;
-                
+
+                // NEW LOGGING:
+                console.log(`  -> Queuing update for Task ID: ${currentTaskId}, New Order: ${index}`);
                 const taskRef = doc(db, `${basePath}/sections/${oldSectionId}/tasks/${currentTaskId}`);
                 batch.update(taskRef, { order: index });
             });
@@ -855,26 +863,26 @@ async function handleTaskMoved(evt) {
 function render() {
     const scrollStates = new Map();
     document.querySelectorAll('.scrollable-columns-wrapper').forEach((el, i) => scrollStates.set(i, el.scrollLeft));
-    
+
     closeFloatingPanels();
-    
+
     let projectToRender = getFilteredProject();
     projectToRender = getSortedProject(projectToRender);
-    
+
     renderHeader(projectToRender);
     renderBody(projectToRender);
     //renderFooter(projectToRender);
     syncScroll(scrollStates);
-    
+
     if (taskIdToFocus) {
         const newEl = taskListBody.querySelector(`[data-task-id="${taskIdToFocus}"] .task-name`);
-    if (newEl) {
-        newEl.focus();
-     }
+        if (newEl) {
+            newEl.focus();
+        }
         taskIdToFocus = null;
     }
     const isSortActive = activeSortState !== 'default';
-    
+
     if (activeSortState === 'asc') {
         sortBtn.innerHTML = `<i class="fas fa-sort-amount-up-alt"></i> Oldest`;
     } else if (activeSortState === 'desc') {
@@ -882,23 +890,23 @@ function render() {
     } else {
         sortBtn.innerHTML = `<i class="fas fa-sort"></i> Sort`;
     }
-    
+
     if (sortableSections) sortableSections.destroy();
-    sortableSections = new Sortable(taskListBody, { handle: '.section-header-list .drag-handle', animation: 150, disabled: isSortActive, onEnd: handleSectionReorder});
-    
+    sortableSections = new Sortable(taskListBody, { handle: '.section-header-list .drag-handle', animation: 150, disabled: isSortActive, onEnd: handleSectionReorder });
+
     sortableTasks.forEach(st => st.destroy());
     sortableTasks.length = 0;
     document.querySelectorAll('.tasks-container').forEach(container => {
-    sortableTasks.push(new Sortable(container, {
-        group: 'tasks',
-        handle: '.fixed-column .drag-handle',
-        animation: 150,
-        disabled: isSortActive,
-        onEnd: handleTaskMoved
-    }));
-});
+        sortableTasks.push(new Sortable(container, {
+            group: 'tasks',
+            handle: '.fixed-column .drag-handle',
+            animation: 150,
+            disabled: isSortActive,
+            onEnd: handleTaskMoved
+        }));
+    });
 
-    
+
     filterBtn?.classList.toggle('active', !!activeFilters.visibleSections);
     sortBtn?.classList.toggle('active', isSortActive);
 }
@@ -907,10 +915,10 @@ function renderHeader(projectToRender) {
     if (!taskListHeaderEl) return;
     const container = taskListHeaderEl.querySelector('#header-scroll-cols');
     if (!container) return;
-    
+
     container.querySelectorAll('.header-custom').forEach(el => el.remove());
     const addColBtnContainer = container.querySelector('.add-column-container');
-    
+
     projectToRender.customColumns.forEach(col => {
         const colEl = document.createElement('div');
         colEl.className = 'task-col header-custom';
@@ -928,12 +936,12 @@ function renderHeader(projectToRender) {
 function renderBody(projectToRender) {
     if (!taskListBody) return;
     taskListBody.innerHTML = '';
-    
+
     projectToRender.sections.forEach(section => {
         const sectionElement = createSection(section, projectToRender.customColumns);
         if (sectionElement) taskListBody.appendChild(sectionElement);
     });
-    
+
     if (projectToRender.sections.length === 0) {
         const noResultsEl = document.createElement('div');
         noResultsEl.className = 'no-results-message';
@@ -946,7 +954,7 @@ function createSection(sectionData, customColumns) {
     const sectionEl = document.createElement('div');
     sectionEl.className = 'task-section';
     sectionEl.dataset.sectionId = sectionData.id;
-    
+
     // --- Build the HTML for all task rows as a single string ---
     let tasksHTML = '';
     if (sectionData.tasks && !sectionData.isCollapsed) {
@@ -955,7 +963,7 @@ function createSection(sectionData, customColumns) {
             return createTaskRow(task, customColumns).outerHTML;
         }).join('');
     }
-    
+
     // --- Build the HTML for the section footer ---
     let summaryColsHTML = '';
     let hasAggregatableColumnInSection = false;
@@ -973,7 +981,7 @@ function createSection(sectionData, customColumns) {
             summaryColsHTML += `<div class="task-col header-custom">${displayValue}</div>`;
         });
     }
-    
+
     let sectionFooterHTML = '';
     if (hasAggregatableColumnInSection) {
         sectionFooterHTML = `
@@ -992,7 +1000,7 @@ function createSection(sectionData, customColumns) {
             </div>
         </div>`;
     }
-    
+
     // --- Assemble the entire section's innerHTML in one single operation ---
     sectionEl.innerHTML = `
         <div class="section-header-list">
@@ -1006,7 +1014,7 @@ function createSection(sectionData, customColumns) {
         ${sectionFooterHTML}
         <button class="add-task-in-section-btn"><i class="fas fa-plus"></i> Add task</button>
     `;
-    
+
     return sectionEl;
 }
 
@@ -1014,18 +1022,18 @@ function createTaskRow(task, customColumns) {
     const rowWrapper = document.createElement('div');
     rowWrapper.className = `task-row-wrapper ${task.status === 'Completed' ? 'is-completed' : ''}`;
     rowWrapper.dataset.taskId = task.id;
-    
+
     const displayName = task.name;
     const displayDate = task.dueDate ? new Date(task.dueDate.replace(/-/g, '/')).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '<span class="add-due-date">+ Add date</span>';
-    
+
     let customFieldsHTML = '';
     customColumns.forEach(col => {
         const value = task.customFields[col.id] || '';
-        
+
         if (col.type === 'Type' && col.options) {
             /* START MODIFICATION */
             let displayValue = '<span class="add-value">+ Select</span>'; // Default text if no value is set
-            
+
             if (value) {
                 // Check the value and apply the desired priority class for styling.
                 if (value === 'Invoice') {
@@ -1046,10 +1054,10 @@ function createTaskRow(task, customColumns) {
             // REPLACE IT WITH THIS LINE
             const displayValue = col.type === 'Costing' && value ? `${col.currency || ''}${value.toLocaleString()}` : value;
             customFieldsHTML += `<div class="task-col header-custom" data-control="custom" data-column-id="${col.id}" contenteditable="true">${displayValue}</div>`;
-            
+
         }
     });
-    
+
     // REPLACE the existing rowWrapper.innerHTML assignment with this:
     rowWrapper.innerHTML = `
     <div class="fixed-column">
@@ -1076,26 +1084,26 @@ function createTaskRow(task, customColumns) {
 
 async function moveTaskToSection(taskId, targetSectionId) {
     const { task: taskToMove, section: sourceSection } = findTaskAndSection(taskId);
-    
+
     if (!taskToMove || !sourceSection || sourceSection.id === targetSectionId) {
         console.error("Cannot move task. Source or target section is invalid.");
         return;
     }
-    
+
     // 1. Prepare the new task data, ensuring sectionId is updated.
     const newTaskData = { ...taskToMove, sectionId: targetSectionId };
     delete newTaskData.id; // Firestore will generate a new ID.
-    
+
     // 2. Define document references for the batch operation.
     const sourceTaskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${sourceSection.id}/tasks/${taskId}`);
     const targetTasksColRef = collection(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${targetSectionId}/tasks`);
-    
+
     try {
         // 3. Use a batch to perform the delete and add atomically.
         const batch = writeBatch(db);
         batch.delete(sourceTaskRef);
         batch.set(doc(targetTasksColRef), newTaskData); // Create new task in the target
-        
+
         await batch.commit();
         console.log(`Task ${taskId} moved successfully to section ${targetSectionId}`);
     } catch (error) {
@@ -1198,11 +1206,11 @@ async function updateProjectInFirebase(propertiesToUpdate) {
     if (!currentUserId || !currentWorkspaceId || !currentProjectId) {
         return console.error("Cannot update project: Missing IDs.");
     }
-    
+
     // FIX: Build the full, nested path to the project document.
     const projectPath = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}`;
     const projectRef = doc(db, projectPath);
-    
+
     try {
         await updateDoc(projectRef, propertiesToUpdate);
     } catch (error) {
@@ -1222,16 +1230,16 @@ async function deleteColumnInFirebase(columnId) {
     if (!window.confirm('Are you sure you want to delete this column and all its data? This action cannot be undone.')) {
         return;
     }
-    
+
     const batch = writeBatch(db);
-    
+
     // FIX: Build the full, nested path to the project document to update its columns array.
     const projectPath = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}`;
     const projectRef = doc(db, projectPath);
-    
+
     const newColumnsArray = project.customColumns.filter(col => col.id != columnId);
     batch.update(projectRef, { customColumns: newColumnsArray });
-    
+
     // The rest of this function is likely fine, but it assumes a top-level 'tasks' collection.
     // This might be your next error if 'tasks' are also nested.
     // Based on your listeners, the 'collectionGroup' query will work regardless.
@@ -1247,7 +1255,7 @@ async function deleteColumnInFirebase(columnId) {
                 [`customFields.${columnId}`]: deleteField()
             });
         });
-        
+
         await batch.commit();
     } catch (error) {
         console.error("Error deleting column and its data:", error);
@@ -1258,10 +1266,10 @@ async function deleteColumnInFirebase(columnId) {
 function handleTaskCompletion(taskId, taskRowEl) {
     if (!taskRowEl) return;
     taskRowEl.classList.add('is-completed');
-    
+
     setTimeout(() => {
         let completedSection = project.sections.find(s => s.title.toLowerCase() === 'completed');
-        
+
         if (completedSection) {
             // If 'Completed' section exists, just move the task there.
             updateTaskInFirebase(taskId, { status: 'Completed', sectionId: completedSection.id });
@@ -1288,7 +1296,7 @@ function addNewTask(section) {
         status: 'On track',
         assignees: [],
         customFields: {},
-        order: section.tasks.length 
+        order: section.tasks.length
     };
 
     section.tasks.push(newTask);
@@ -1329,33 +1337,33 @@ function createDropdown(options, targetEl, callback) {
 
 function showAssigneeDropdown(targetEl, taskId) {
     closeFloatingPanels();
-    
+
     // We need the section context for updating.
     const { task, section } = findTaskAndSection(taskId);
     if (!task || !section) return; // Exit if task or section not found.
-    
+
     // Clone the dropdown structure from the HTML template
     const dropdownFragment = assigneeDropdownTemplate.content.cloneNode(true);
     const dropdown = dropdownFragment.querySelector('.context-dropdown');
-    
+
     const searchInput = dropdown.querySelector('.dropdown-search-input');
     const listContainer = dropdown.querySelector('.dropdown-list');
-    
+
     // Position the dropdown panel below the clicked element
     const wrapperRect = mainContainer.getBoundingClientRect();
     const targetRect = targetEl.getBoundingClientRect();
     dropdown.style.top = `${targetRect.bottom - wrapperRect.top}px`;
     dropdown.style.left = `${targetRect.left - wrapperRect.left}px`;
-    
+
     const renderList = (searchTerm = '') => {
         const lowerCaseSearchTerm = searchTerm.toLowerCase();
         const filteredUsers = allUsers.filter(user => user.name.toLowerCase().includes(lowerCaseSearchTerm));
-        
+
         listContainer.innerHTML = ''; // Clear previous results
-        
+
         filteredUsers.forEach(user => {
             const isAssigned = task.assignees[0] === user.id;
-            
+
             const item = document.createElement('div');
             item.className = 'dropdown-item';
             item.innerHTML = `
@@ -1365,7 +1373,7 @@ function showAssigneeDropdown(targetEl, taskId) {
                   </div>
                   ${isAssigned ? '<i class="fas fa-check assigned-check"></i>' : ''}
               `;
-            
+
             item.addEventListener('click', () => {
                 const newAssignees = isAssigned ? [] : [user.id];
                 // FIX: Pass the correct section.id to the update function.
@@ -1375,22 +1383,22 @@ function showAssigneeDropdown(targetEl, taskId) {
             listContainer.appendChild(item);
         });
     };
-    
+
     // Render the initial list of users
     renderList();
-    
+
     // Add an event listener for the search input
     searchInput.addEventListener('input', () => {
         renderList(searchInput.value);
     });
-    
+
     // FIX: The stray, incorrect updateTask() call has been removed from here.
-    
+
     mainContainer.appendChild(dropdown);
     searchInput.focus();
 }
 
-function showDatePicker(targetEl,sectionId, taskId) {
+function showDatePicker(targetEl, sectionId, taskId) {
     closeFloatingPanels();
     const wrapperRect = mainContainer.getBoundingClientRect();
     const targetRect = targetEl.getBoundingClientRect();
@@ -1402,23 +1410,23 @@ function showDatePicker(targetEl,sectionId, taskId) {
     const datepickerContainer = document.createElement('div');
     dropdownPanel.appendChild(datepickerContainer);
     mainContainer.appendChild(dropdownPanel);
-    
+
     const datepicker = new Datepicker(datepickerContainer, {
         autohide: true,
         format: 'yyyy-mm-dd',
         todayHighlight: true,
     });
-    
+
     const { task } = findTaskAndSection(taskId);
     if (task && task.dueDate) {
         datepicker.setDate(task.dueDate);
     }
-    
+
     datepickerContainer.addEventListener('changeDate', (e) => {
         const formattedDate = Datepicker.formatDate(e.detail.date, 'yyyy-mm-dd');
         updateTask(taskId, sectionId, { dueDate: formattedDate }); // Pass sectionId here
-        
-        
+
+
         closeFloatingPanels();
     }, { once: true });
 }
@@ -1428,16 +1436,16 @@ function createAssigneeHTML(assignees) {
     if (!assignees || assignees.length === 0) {
         return `<div class="add-assignee-btn" data-control="assignee"><i class="fas fa-plus"></i></div>`;
     }
-    
+
     // Since we only have one assignee, get the first ID.
     const assigneeId = assignees[0];
     const user = allUsers.find(u => u.id === assigneeId);
-    
+
     if (!user) {
         // Fallback in case user is not found
         return `<div class="add-assignee-btn" data-control="assignee"><i class="fas fa-plus"></i></div>`;
     }
-    
+
     return `
         <div class="assignee-cell-content" data-control="assignee">
             <img class="profile-picture" src="${user.avatar}" title="${user.name}">
@@ -1480,7 +1488,7 @@ function addNewColumn(config) {
         aggregation: (config.type === 'Costing' || config.type === 'Numbers') ? 'Sum' : null,
         options: config.type === 'Type' ? typeColumnOptions : null
     };
-    
+
     // Use Firestore's arrayUnion to safely add the new column object
     updateProjectInFirebase({
         customColumns: arrayUnion(newColumn)
@@ -1497,11 +1505,11 @@ function openAddColumnDialog(columnType) {
         openCustomColumnCreatorDialog();
         return;
     }
-    
+
     closeFloatingPanels();
     const dialogOverlay = document.createElement('div');
     dialogOverlay.className = 'dialog-overlay';
-    
+
     let previewHTML = '';
     if (columnType === 'Costing') {
         previewHTML = `<div class="preview-value">$1,234.56</div><p>Formatted as currency. The sum will be shown in the footer.</p>`;
@@ -1510,12 +1518,12 @@ function openAddColumnDialog(columnType) {
     } else {
         previewHTML = `<div class="preview-value">Any text value</div><p>For notes or labels.</p>`;
     }
-    
+
     let typeSpecificFields = '';
     if (columnType === 'Costing') {
         typeSpecificFields = `<div class="form-group"><label>Currency</label><select id="column-currency"><option value="$">USD ($)</option><option value="€">EUR (€)</option></select></div>`;
     }
-    
+
     dialogOverlay.innerHTML = `
 <div class="dialog-box">
 <div class="dialog-header">Add "${columnType}" Column</div>
@@ -1529,10 +1537,10 @@ ${typeSpecificFields}
 <button class="dialog-button primary" id="confirm-add-column">Add Column</button>
 </div>
 </div>`;
-    
+
     document.body.appendChild(dialogOverlay);
     document.getElementById('column-name').focus();
-    
+
     document.getElementById('confirm-add-column').addEventListener('click', () => {
         const config = {
             name: document.getElementById('column-name').value,
@@ -1550,9 +1558,9 @@ function openCustomColumnCreatorDialog() {
     closeFloatingPanels();
     const dialogOverlay = document.createElement('div');
     dialogOverlay.className = 'dialog-overlay';
-    
+
     const baseTypeOptionsHTML = baseColumnTypes.map(type => `<option value="${type}">${type}</option>`).join('');
-    
+
     dialogOverlay.innerHTML = `
 <div class="dialog-box">
 <div class="dialog-header">Create Custom Column</div>
@@ -1572,11 +1580,11 @@ function openCustomColumnCreatorDialog() {
 <button class="dialog-button primary" id="confirm-add-column">Add Column</button>
 </div>
 </div>`;
-    
+
     document.body.appendChild(dialogOverlay);
     const baseTypeSelect = document.getElementById('base-column-type');
     const specificOptionsContainer = document.getElementById('type-specific-options-custom');
-    
+
     const renderTypeSpecificOptions = (selectedType) => {
         let extraFields = '';
         if (selectedType === 'Costing') {
@@ -1584,10 +1592,10 @@ function openCustomColumnCreatorDialog() {
         }
         specificOptionsContainer.innerHTML = extraFields;
     };
-    
+
     baseTypeSelect.addEventListener('change', () => renderTypeSpecificOptions(baseTypeSelect.value));
     renderTypeSpecificOptions(baseTypeSelect.value);
-    
+
     document.getElementById('confirm-add-column').addEventListener('click', () => {
         const config = {
             name: document.getElementById('column-name').value,
@@ -1598,6 +1606,6 @@ function openCustomColumnCreatorDialog() {
         addNewColumn(config);
         closeFloatingPanels();
     });
-    
+
     dialogOverlay.addEventListener('click', e => { if (e.target === e.currentTarget) closeFloatingPanels(); });
 }
