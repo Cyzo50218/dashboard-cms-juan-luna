@@ -132,7 +132,7 @@ window.TaskSidebar = (function() {
             console.error("TaskSidebar: open() called with incomplete context.", context);
             return;
         }
-        
+        sidebar.classList.add('is-visible');
         detachAllListeners();
         sidebar.classList.add('is-loading');
 
@@ -152,7 +152,7 @@ window.TaskSidebar = (function() {
                     await loadWorkspaceData(currentTask.projectId);
 
                     sidebar.classList.remove('is-loading');
-                    sidebar.classList.add('is-visible');
+                    
                     renderSidebar(currentTask);
                     
                     listenToActivity();
@@ -168,7 +168,7 @@ window.TaskSidebar = (function() {
             close();
         }
     }
-    
+
 
     function close() {
         if(sidebar) sidebar.classList.remove('is-visible', 'is-loading');
