@@ -787,7 +787,7 @@ window.TaskSidebar = (function() {
                     // The sidebar should only close if it's currently visible.
                     if (sidebar.classList.contains('is-visible')) {
                         // Define all elements that should NOT trigger a close.
-                        const safeSelectors = '#task-sidebar, .tasks-name, .flatpickr-calendar';
+                        const safeSelectors = '#task-sidebar, .task-name, .flatpickr-calendar, .task-reactions';
                         
                         // If the clicked element is NOT inside any of the safe areas, close the sidebar.
                         if (!e.target.closest(safeSelectors)) {

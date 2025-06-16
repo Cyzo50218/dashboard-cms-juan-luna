@@ -388,7 +388,6 @@ function setupEventListeners() {
             case 'open-sidebar':
                 displaySideBarTasks(taskId);
                 break;
-                
             case 'check':
                 e.stopPropagation();
                 handleTaskCompletion(taskId, taskRow);
@@ -445,11 +444,9 @@ function setupEventListeners() {
     break;
 }
 
-            case 'comment': {
-    // Opens the same sidebar as clicking the task name
-displaySideBarTasks(taskId);
-break;
-}
+            case 'comment':     // Opens the same sidebar as clicking the task name
+    displaySideBarTasks(taskId);
+    break;
             
             case 'custom-select': {
                 const columnId = Number(controlElement.dataset.columnId);

@@ -8,7 +8,7 @@
     --high-priority: #ff4d4f;
     --medium-priority: #ffa940;
     --low-priority: #52c41a;
-    --fixed-col-width: 55%;
+    --fixed-col-width: 80%;
     --row-height: 0rem; /* Further reduced row height for more compactness */
     --header-padding-y: 0.5rem; /* New variable for vertical header padding */
     --column-padding-y: 0.2rem; /* New variable for vertical column padding */
@@ -1226,4 +1226,33 @@ button:hover {
     opacity: 0.10;
     background: transparent;
     color: var(--accent-color);
+}
+
+/*
+ * Style for the reaction icons in the task list.
+ */
+
+/* Targets the heart icon <i> element specifically when it has the 'liked' class */
+.reaction-item i.liked {
+  color: #ff0000; /* This is pure red */
+  font-weight: 900; /* Makes the Font Awesome solid icon appear correctly */
+}
+
+/* Optional: Add a smooth color transition for a nicer user experience */
+.reaction-item i {
+  transition: color 0.2s ease-in-out;
+}
+
+/* Optional: Make the icons slightly larger and more clickable */
+.reaction-item {
+  cursor: pointer;
+  padding: 0 4px; /* Adds a little space around the icons */
+}
+
+.reaction-item:hover i {
+  color: #e74c3c; /* A slightly softer red on hover for non-liked hearts */
+}
+
+.reaction-item:hover i.liked {
+  color: #cc0000; /* A slightly darker red on hover for already liked hearts */
 }
