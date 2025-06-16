@@ -874,10 +874,10 @@ async function handleTaskMoved(evt) {
             const newDocRef = doc(collection(db, `${basePath}/sections/${newSectionId}/tasks`));
             
             const taskData = sourceSnap.data();
-            taskData.id = newDocRef.id;
+            
             taskData.sectionId = newSectionId; // Update the sectionId in the task's data
             delete taskData.id; // Clean up data before creating the new document
-            
+            taskData.id = newDocRef.id;
        
             batch.delete(sourceRef); // Delete the original task
             batch.set(newDocRef, taskData); // Create the new task
