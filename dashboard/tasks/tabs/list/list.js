@@ -25,7 +25,8 @@ import {
     deleteField,
     arrayUnion,
     getDocs,
-    getDoc
+    getDoc,
+    increment
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "/services/firebase-config.js";
 
@@ -287,20 +288,20 @@ function setupEventListeners() {
             const columnEl = deleteButton.closest('[data-column-id]');
             if (columnEl) {
                 const columnId = Number(columnEl.dataset.columnId);
-
-    const dropdownOptions = [
-    { name: 'Rename column' },
-    { name: 'Delete column' }
-];
-
-createDropdown(dropdownOptions, deleteButton, (selected) => {
-    if (selected.name === 'Delete column') {
-        deleteColumn(columnId);
-    } else if (selected.name === 'Rename column') {
-        // Pass the entire column header element to the rename function
-        enableColumnRename(columnEl);
-    }
-});
+                
+                const dropdownOptions = [
+                    { name: 'Rename column' },
+                    { name: 'Delete column' }
+                ];
+                
+                createDropdown(dropdownOptions, deleteButton, (selected) => {
+                    if (selected.name === 'Delete column') {
+                        deleteColumn(columnId);
+                    } else if (selected.name === 'Rename column') {
+                        // Pass the entire column header element to the rename function
+                        enableColumnRename(columnEl);
+                    }
+                });
             }
             return;
         }
@@ -421,6 +422,35 @@ createDropdown(dropdownOptions, deleteButton, (selected) => {
                 break;
             }
             
+            case 'like': {
+    const { task, section } = findTaskAndSection(taskId);
+    if (!task || !section || !currentUserId) break;
+    
+    const taskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${section.id}/tasks/${taskId}`);
+    const userHasLiked = task.likedBy && task.likedBy[currentUserId];
+    
+    if (userHasLiked) {
+        // User is "unliking" the task
+        updateDoc(taskRef, {
+            likedAmount: increment(-1),
+            [`likedBy.${currentUserId}`]: deleteField()
+        });
+    } else {
+        // User is "liking" the task
+        updateDoc(taskRef, {
+            likedAmount: increment(1),
+            [`likedBy.${currentUserId}`]: true
+        });
+    }
+    break;
+}
+
+            case 'comment': {
+    // Opens the same sidebar as clicking the task name
+displaySideBarTasks(taskId);
+break;
+}
+            
             case 'custom-select': {
                 const columnId = Number(controlElement.dataset.columnId);
                 const column = project.customColumns.find(c => c.id === columnId);
@@ -472,6 +502,8 @@ createDropdown(dropdownOptions, deleteButton, (selected) => {
                 break;
         }
     };
+    
+    
     
     bodyFocusOutListener = (e) => {
         // Case 1: Renaming a section title
@@ -878,7 +910,7 @@ async function handleTaskMoved(evt) {
             taskData.sectionId = newSectionId; // Update the sectionId in the task's data
             delete taskData.id; // Clean up data before creating the new document
             taskData.id = newDocRef.id;
-       
+            
             batch.delete(sourceRef); // Delete the original task
             batch.set(newDocRef, taskData); // Create the new task
             
@@ -1155,36 +1187,59 @@ function createTaskRow(task, customColumns) {
     const displayName = task.name;
     const displayDate = task.dueDate ? new Date(task.dueDate.replace(/-/g, '/')).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '<span class="add-due-date">+ Add date</span>';
     
+    // --- MODIFICATION FOR REACTIONS START ---
+    const userHasLiked = currentUserId && task.likedBy && task.likedBy[currentUserId];
+    const heartIconClass = userHasLiked ? 'fas fa-heart liked' : 'far fa-heart'; // Add 'liked' class for styling
+    const likeCountDisplay = task.likedAmount > 0 ? task.likedAmount : '';
+    
+    const reactionsHTML = `
+        <div class="task-reactions">
+            <span class="reaction-item" data-control="like" title="Like task">
+                <i class="${heartIconClass}"></i>
+                <span class="like-count">${likeCountDisplay}</span>
+            </span>
+            <span class="reaction-item" data-control="comment" title="View comments">
+                <i class="far fa-comment"></i>
+            </span>
+        </div>
+    `;
+    // --- MODIFICATION FOR REACTIONS END ---
+    
     let customFieldsHTML = '';
     customColumns.forEach(col => {
-        const value = task.customFields[col.id] || '';
+    const value = task.customFields[col.id] || '';
+    
+    // This block handles ANY column with an 'options' array
+    if (col.options && Array.isArray(col.options)) {
+        let displayValue = '<span class="add-value">+ Select</span>';
         
-        // This block handles ANY column with an 'options' array
-        if (col.options && Array.isArray(col.options)) {
-            let displayValue = '<span class="add-value">+ Select</span>';
-            
-            const selectedOption = col.options.find(opt => opt.name === value);
-            
-            if (selectedOption) {
-                // Generate a unique class name for styling
-                const prefix = `custom-col-${col.id}`;
-                const sanitizedName = selectedOption.name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
-                const className = `${prefix}-${sanitizedName}`;
-                displayValue = `<div class="status-tag ${className}">${selectedOption.name}</div>`;
-            }
-            customFieldsHTML += `<div class="task-col header-custom" data-control="custom-select" data-column-id="${col.id}">${displayValue}</div>`;
-        } else {
-            // Logic for other column types (Text, Costing, etc.)
-            const displayValue = col.type === 'Costing' && value ? `${col.currency || ''}${value.toLocaleString()}` : value;
-            customFieldsHTML += `<div class="task-col header-custom" data-control="custom" data-column-id="${col.id}" contenteditable="true">${displayValue}</div>`;
+        const selectedOption = col.options.find(opt => opt.name === value);
+        
+        if (selectedOption) {
+            // Generate a unique class name for styling
+            const prefix = `custom-col-${col.id}`;
+            const sanitizedName = selectedOption.name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+            const className = `${prefix}-${sanitizedName}`;
+            displayValue = `<div class="status-tag ${className}">${selectedOption.name}</div>`;
         }
-    });
+        customFieldsHTML += `<div class="task-col header-custom" data-control="custom-select" data-column-id="${col.id}">${displayValue}</div>`;
+    } else {
+        // Logic for other column types (Text, Costing, etc.)
+        const displayValue = col.type === 'Costing' && value ? `${col.currency || ''}${value.toLocaleString()}` : value;
+        customFieldsHTML += `<div class="task-col header-custom" data-control="custom" data-column-id="${col.id}" contenteditable="true">${displayValue}</div>`;
+    }
+});
+    
+    // NOTE TO DEVELOPER: To make the task name column wider,
+    // adjust the flex-basis or min-width of the `.fixed-column` class in your CSS file.
+    // e.g., .fixed-column { flex-basis: 400px; }
     
     rowWrapper.innerHTML = `
     <div class="fixed-column">
         <i class="fas fa-grip-vertical drag-handle"></i>
         <i class="far fa-check-circle" data-control="check"></i>
         <span class="task-name" contenteditable="true" data-placeholder="Add task name">${displayName}</span>
+        ${reactionsHTML} 
         <button class="move-task-btn" data-control="move-task" title="Move to section">
             <i class="fas fa-arrow-right-to-bracket"></i>
         </button>
@@ -1462,32 +1517,44 @@ async function deleteColumnInFirebase(columnId) {
 async function handleTaskCompletion(taskId, taskRowEl) {
     if (!taskRowEl) return;
     
-    // Find the task's original section to pass the correct ID to the update function
-    const { section: sourceSection } = findTaskAndSection(taskId);
-    if (!sourceSection) {
-        console.error("Could not find source section for task completion.");
+    const { task, section: sourceSection } = findTaskAndSection(taskId);
+    
+    // Exit if the task or its section can't be found in the local data
+    if (!task || !sourceSection) {
+        console.error("Could not find task or section to update completion status.");
         return;
     }
     
-    taskRowEl.classList.add('is-completed');
-    
-    setTimeout(async () => {
-        // Find the "Completed" section in the project
-        const completedSection = project.sections.find(s => s.title.toLowerCase() === 'completed');
+    // --- MODIFICATION STARTS HERE ---
+    // Check the current status of the task to determine whether to check or uncheck it.
+    if (task.status === 'Completed') {
+        // --- HANDLE UNCHECKING ---
+        // If the task is already completed, revert its status and appearance.
+        taskRowEl.classList.remove('is-completed');
+        // Update status in Firebase back to a default state like 'On track'.
+        // The task will remain in its current section.
+        updateTaskInFirebase(taskId, sourceSection.id, { status: 'On track' });
         
-        if (completedSection && completedSection.id !== sourceSection.id) {
-            // If 'Completed' section exists and it's different, move the task there.
-            // This is now a move operation, not just an update.
-            await moveTaskToSection(taskId, completedSection.id);
-            // Additionally update the status property on the moved task.
-            await updateTaskInFirebase(taskId, completedSection.id, { status: 'Completed' });
-        } else {
-            // If no 'Completed' section, just update the status in its current section.
-            // FIX: Pass all three required arguments correctly.
-            updateTaskInFirebase(taskId, sourceSection.id, { status: 'Completed' });
-        }
-        // The real-time listener will handle the UI update.
-    }, 400);
+    } else {
+        // --- HANDLE CHECKING (Original Logic) ---
+        // If the task is not completed, proceed with marking it as complete.
+        taskRowEl.classList.add('is-completed');
+        
+        setTimeout(async () => {
+            const completedSection = project.sections.find(s => s.title.toLowerCase() === 'completed');
+            
+            // Check if a dedicated 'Completed' section exists and if the task is not already in it.
+            if (completedSection && completedSection.id !== sourceSection.id) {
+                // First, update the status to 'Completed'.
+                await updateTaskInFirebase(taskId, sourceSection.id, { status: 'Completed' });
+                // Then, move the task to the 'Completed' section.
+                await moveTaskToSection(taskId, completedSection.id);
+            } else {
+                // If no 'Completed' section exists (or the task is already in it), just update the status.
+                updateTaskInFirebase(taskId, sourceSection.id, { status: 'Completed' });
+            }
+        }, 400);
+    }
 }
 
 function addNewTask(section) {
