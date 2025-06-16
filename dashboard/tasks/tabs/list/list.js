@@ -80,6 +80,8 @@ let taskIdToFocus = null;
 
 // Initialize safely
 let currentlyFocusedSectionId = null;
+let reorderingInProgress = false;
+
 const priorityOptions = ['High', 'Medium', 'Low'];
 const statusOptions = ['On track', 'At risk', 'Off track', 'Completed'];
 const columnTypeOptions = ['Text', 'Numbers', 'Costing', 'Type', 'Custom'];
