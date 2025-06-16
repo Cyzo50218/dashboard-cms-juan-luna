@@ -726,25 +726,17 @@ async function handleTaskMoved(evt) {
     const taskId = taskEl.dataset.taskId;
 
     const newSectionEl = evt.to.closest(".task-section");
-const newSectionId = newSectionEl?.dataset.sectionId;
+    const newSectionId = newSectionEl?.dataset.sectionId;
 
-const oldSectionEl = evt.from.closest(".task-section");
-const oldSectionId = oldSectionEl?.dataset.sectionId;
-
+    const oldSectionEl = evt.from.closest(".task-section");
+    const oldSectionId = oldSectionEl?.dataset.sectionId;
 
     if (!taskId || !newSectionId || !oldSectionId) {
-    if (!taskId) {
-        console.error("❌ Missing taskId. Could not identify which task was moved.");
+        if (!taskId) console.error("❌ Missing taskId.");
+        if (!newSectionId) console.error("❌ Missing newSectionId.");
+        if (!oldSectionId) console.error("❌ Missing oldSectionId.");
+        return;
     }
-    if (!newSectionId) {
-        console.error("❌ Missing newSectionId. Could not determine target section.");
-    }
-    if (!oldSectionId) {
-        console.error("❌ Missing oldSectionId. Could not determine source section.");
-    }
-    return;
-}
-
 
     const workspaceSnap = await getDocs(query(collection(db, `users/${user.uid}/myworkspace`), where("isSelected", "==", true)));
     if (workspaceSnap.empty) return;
@@ -759,8 +751,8 @@ const oldSectionId = oldSectionEl?.dataset.sectionId;
     try {
         const batch = writeBatch(db);
 
+        // --- If moved to a different section ---
         if (newSectionId !== oldSectionId) {
-            // Moving to a different section
             const sourceRef = doc(db, `${basePath}/sections/${oldSectionId}/tasks/${taskId}`);
             const sourceSnap = await getDoc(sourceRef);
 
@@ -774,16 +766,16 @@ const oldSectionId = oldSectionEl?.dataset.sectionId;
             delete taskData.id;
 
             const targetTasksColRef = collection(db, `${basePath}/sections/${newSectionId}/tasks`);
-            const newTaskDocRef = doc(targetTasksColRef); // New ID generated
+            const newTaskDocRef = doc(targetTasksColRef); // generate new ID
 
             batch.delete(sourceRef);
             batch.set(newTaskDocRef, taskData);
 
-            console.log(`✅ Moved task "${taskId}" to section "${newSectionId}"`);
+            console.log(`✅ Task "${taskId}" moved to section "${newSectionId}"`);
         }
 
-        // Reorder tasks in the new section
-        const reorderedTaskEls = Array.from(evt.to.querySelectorAll(".task"));
+        // --- Always reorder tasks in the target section ---
+        const reorderedTaskEls = Array.from(evt.to.querySelectorAll(".task-row-wrapper")); // or ".task" if that's your class
         reorderedTaskEls.forEach((el, index) => {
             const reorderId = el.dataset.taskId;
             if (!reorderId) return;
@@ -791,16 +783,17 @@ const oldSectionId = oldSectionEl?.dataset.sectionId;
             const reorderRef = doc(db, `${basePath}/sections/${newSectionId}/tasks/${reorderId}`);
             batch.update(reorderRef, {
                 order: index,
-                sectionId: newSectionId,
+                sectionId: newSectionId
             });
         });
 
         await batch.commit();
-        console.log("✅ Reordering complete.");
+        console.log("✅ Task reordering complete.");
     } catch (err) {
-        console.error("❌ Error handling task move:", err);
+        console.error("❌ Error during task move or reorder:", err);
     }
 }
+
 
 
 function render() {
@@ -1229,32 +1222,29 @@ function handleTaskCompletion(taskId, taskRowEl) {
 }
 
 function addNewTask(section) {
-    // Create a temporary, client-side only task
     const tempId = `temp_${Date.now()}`;
     const newTask = {
         id: tempId,
         name: '',
-        isNew: true, // Flag to identify this as a new, unsaved task
-        // Set default values so the row renders correctly
+        isNew: true,
         dueDate: '',
         priority: 'Low',
         status: 'On track',
         assignees: [],
-        customFields: {}
+        customFields: {},
+        order: section.tasks.length 
     };
-    
-    // Add it to the local data structure
+
     section.tasks.push(newTask);
-    
-    // Set the ID to focus after the re-render
     taskIdToFocus = tempId;
-    
-    // Expand section if collapsed and re-render the UI
+
     if (section.isCollapsed) {
         section.isCollapsed = false;
     }
+
     render();
 }
+
 
 function createTag(text, type, pClass) { return `<div class="${type}-tag ${pClass}">${text}</div>`; }
 
