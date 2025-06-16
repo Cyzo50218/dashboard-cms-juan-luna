@@ -725,7 +725,7 @@ async function handleTaskMoved(evt) {
     if (!user) return;
 
     const taskEl = evt.item;
-    const taskId = taskEl?.dataset.taskId;
+    const taskId = taskEl.dataset.taskId;
 
     const newSectionEl = evt.to.closest(".task-section");
     const newSectionId = newSectionEl?.dataset.sectionId;
@@ -734,32 +734,34 @@ async function handleTaskMoved(evt) {
     const oldSectionId = oldSectionEl?.dataset.sectionId;
 
     if (!taskId || !newSectionId || !oldSectionId) {
-        if (!taskId) console.error("❌ Missing taskId. Could not identify which task was moved.");
-        if (!newSectionId) console.error("❌ Missing newSectionId. Could not determine target section.");
-        if (!oldSectionId) console.error("❌ Missing oldSectionId. Could not determine source section.");
+        if (!taskId) {
+            console.error("❌ Missing taskId. Could not identify which task was moved.");
+        }
+        if (!newSectionId) {
+            console.error("❌ Missing newSectionId. Could not determine target section.");
+        }
+        if (!oldSectionId) {
+            console.error("❌ Missing oldSectionId. Could not determine source section.");
+        }
         return;
     }
 
+    const workspaceSnap = await getDocs(query(collection(db, `users/${user.uid}/myworkspace`), where("isSelected", "==", true)));
+    if (workspaceSnap.empty) return;
+    const workspaceId = workspaceSnap.docs[0].id;
+
+    const projectSnap = await getDocs(query(collection(db, `users/${user.uid}/myworkspace/${workspaceId}/projects`), where("isSelected", "==", true)));
+    if (projectSnap.empty) return;
+    const projectId = projectSnap.docs[0].id;
+
+    const basePath = `users/${user.uid}/myworkspace/${workspaceId}/projects/${projectId}`;
+
     try {
-        const workspaceSnap = await getDocs(query(
-            collection(db, `users/${user.uid}/myworkspace`),
-            where("isSelected", "==", true)
-        ));
-        if (workspaceSnap.empty) return;
-        const workspaceId = workspaceSnap.docs[0].id;
-
-        const projectSnap = await getDocs(query(
-            collection(db, `users/${user.uid}/myworkspace/${workspaceId}/projects`),
-            where("isSelected", "==", true)
-        ));
-        if (projectSnap.empty) return;
-        const projectId = projectSnap.docs[0].id;
-
-        const basePath = `users/${user.uid}/myworkspace/${workspaceId}/projects/${projectId}`;
         const batch = writeBatch(db);
+        let movedTaskNewId = taskId; // default to existing
 
-        // 🧩 1. If moving to a different section
         if (newSectionId !== oldSectionId) {
+            // Moving to a different section
             const sourceRef = doc(db, `${basePath}/sections/${oldSectionId}/tasks/${taskId}`);
             const sourceSnap = await getDoc(sourceRef);
 
@@ -769,24 +771,25 @@ async function handleTaskMoved(evt) {
             }
 
             const taskData = sourceSnap.data();
-            delete taskData.id; // Remove ID field if it exists
             taskData.sectionId = newSectionId;
+            delete taskData.id;
 
             const targetTasksColRef = collection(db, `${basePath}/sections/${newSectionId}/tasks`);
-            const newTaskDocRef = doc(targetTasksColRef); // Generate a new doc ID
+            const newTaskDocRef = doc(targetTasksColRef); // Firestore will use this ID
 
-            // Temporarily store new docId in DOM to help with reordering
-            taskEl.dataset.taskId = newTaskDocRef.id;
+            movedTaskNewId = newTaskDocRef.id;
 
-            batch.delete(sourceRef); // Delete from old
-            batch.set(newTaskDocRef, taskData); // Create in new
+            batch.delete(sourceRef);
+            batch.set(newTaskDocRef, taskData);
 
-            console.log(`✅ Moved task "${taskId}" to section "${newSectionId}"`);
+            // Update the DOM with the new ID
+            taskEl.dataset.taskId = movedTaskNewId;
+
+            console.log(`✅ Moved task "${taskId}" to section "${newSectionId}" as "${movedTaskNewId}"`);
         }
 
-        // 🧩 2. Reorder all tasks in the target section based on DOM
+        // Reorder all tasks in the destination section
         const reorderedTaskEls = Array.from(evt.to.querySelectorAll(".task"));
-
         reorderedTaskEls.forEach((el, index) => {
             const reorderId = el.dataset.taskId;
             if (!reorderId) return;
@@ -805,7 +808,6 @@ async function handleTaskMoved(evt) {
         console.error("❌ Error handling task move:", err);
     }
 }
-
 
 function render() {
     const scrollStates = new Map();
