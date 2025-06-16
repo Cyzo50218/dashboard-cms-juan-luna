@@ -419,3 +419,51 @@
     border: 1px solid #dcdcdc;
     border-radius: 8px;
 }
+
+/* Add this CSS to your project's stylesheet */
+
+.sidebarprojectfield-row {
+    display: flex;
+    justify-content: space-between; /* This pushes the label and value to opposite ends */
+    align-items: center;
+    padding: 8px 0; /* Example vertical spacing */
+    border-bottom: 1px solid #f0f0f0; /* Faint separator line */
+}
+
+.sidebarprojectfield-label {
+    color: #5e6c84; /* Standard label color */
+}
+
+.sidebarprojectfield-value {
+    display: flex;
+    justify-content: flex-end; /* Aligns the entire value block to the right */
+    align-items: center;
+    min-width: 150px; /* Give the value column a consistent width */
+}
+
+/* This targets the clickable control inside the value cell */
+.sidebarprojectfield-value .field-control {
+    display: flex;
+    justify-content: center; /* This centers the text/tag/avatar inside the control */
+    width: 100%;
+}
+
+/* Specific styling for the add assignee button */
+.assignee-add-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background-color: #f0f0f0;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    color: #5e6c84;
+    transition: background-color 0.2s;
+}
+
+.assignee-add-btn:hover {
+    background-color: #e0e0e0;
+}

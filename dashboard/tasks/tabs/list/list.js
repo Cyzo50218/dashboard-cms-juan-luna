@@ -18,6 +18,7 @@ import {
     orderBy,
     addDoc,
     updateDoc,
+    setDoc,
     deleteDoc,
     writeBatch,
     serverTimestamp,
@@ -1205,11 +1206,11 @@ async function addTaskToFirebase(sectionId, taskData) {
     
     try {
         // --- MODIFICATION START ---
-
+        
         // 2. Instead of addDoc, first create a reference to a new, empty document.
         // This generates the unique ID for us *before* we save any data.
         const newTaskRef = doc(collection(db, tasksPath));
-
+        
         // 3. Prepare the complete data object, including the new ID.
         const fullTaskData = {
             ...taskData,
@@ -1220,14 +1221,14 @@ async function addTaskToFirebase(sectionId, taskData) {
             createdAt: serverTimestamp()
             // Add any other default fields here (e.g., status: 'To Do', assignees: [])
         };
-
+        
         // 4. Use setDoc() to save the document with the complete data to the exact reference we created.
         await setDoc(newTaskRef, fullTaskData);
         
         console.log("Successfully added task with ID: ", newTaskRef.id);
-
+        
         // --- MODIFICATION END ---
-
+        
     } catch (error) {
         console.error("Error adding task:", error);
     }

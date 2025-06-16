@@ -20,6 +20,7 @@ import {
     collectionGroup,
     orderBy,
     addDoc,
+    setDoc,
     updateDoc,
     deleteDoc,
     writeBatch,

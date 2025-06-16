@@ -254,7 +254,7 @@
     padding: 16px 24px 0 24px;
 }
 
-#sidebar-task-btn-tab {
+.sidebar-task-btn-tab {
     background: none;
     border: none;
     padding: 8px 4px;
@@ -263,17 +263,23 @@
     cursor: pointer;
     font-size: 14px;
     color: #5f6368;
+    font-weight: 300; 
     border-bottom: 2px solid transparent;
     transition: color 0.2s; /* Add a smooth transition */
 }
 
 /* --- FIX: Add a proper hover state to prevent the default black color --- */
-#sidebar-task-btn-tab:hover {
-    color: #1e1f21; /* Change to the main text color on hover */
+.sidebar-task-btn-tab:hover {
+    background: none;
+    border-radius: 0px;
+    font-weight: 600; 
+    border-bottom-color: #0052cc; 
+    color: #0052cc; /* Change to the main text color on hover */
 }
 
-#sidebar-task-btn-tab.active { 
+.sidebar-task-btn-tab.active { 
     color: #0052cc; 
+    border-radius: 0px;
     border-bottom-color: #0052cc; 
     font-weight: 600; 
 }
@@ -593,12 +599,19 @@
 }
 
 /* Tags (Priority, Status) */
+
 .tag {
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
+    display: inline-flex;      /* Use flexbox for easy centering */
+    align-items: center;       /* Vertically center the text */
+    justify-content: center;   /* Horizontally center the text */
+    padding: 6px 10px;         /* Adds some nice padding around the text */
+    border-radius: 12px;       /* Gives the tag a modern, pill-shaped look */
+    font-size: 13px;           /* A good, readable font size */
+    font-weight: 500;
+    line-height: 1;            /* Ensures text is vertically aligned cleanly */
+    white-space: nowrap;       /* Prevents the tag text from wrapping to a new line */
+    min-width: 70px;           /* Ensures even small tags have a consistent width */
+    text-align: center;        /* Fallback for horizontal alignment */
 }
 .priority-high { background-color: #ffebe6; color: #bf2600; }
 .priority-medium { background-color: #fffae6; color: #ff8b00; }
@@ -666,13 +679,13 @@
 
 /* --- NEW: Styles for Completed Task State --- */
 .task-sidebar.task-is-completed #task-name {
-    text-decoration: line-through;
+    text-decoration: none;
     color: #8c8c8c;
 }
 
 /* Apply strikethrough and muted color to all field values when task is complete */
 .task-sidebar.task-is-completed .field-value {
-    text-decoration: line-through;
+    text-decoration: none;
     color: #8c8c8c;
 }
 
@@ -695,7 +708,7 @@
 }
 
 .task-sidebar.task-is-completed #task-description-text {
-    text-decoration: line-through;
+    text-decoration: none;
     color: #8c8c8c;
 }
 
@@ -1378,3 +1391,4 @@ task-fields-table .field-value {
     max-width: 100%;
     min-width: 80px;
 }
+
