@@ -782,6 +782,7 @@ async function handleTaskMoved(evt) {
 
         await batch.commit();
         console.log("✅ Task move and reorder finalized.");
+        render();
     } catch (err) {
         console.error("❌ Failed to reorder tasks:", err);
     }
