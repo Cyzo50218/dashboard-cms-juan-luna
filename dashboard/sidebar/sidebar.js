@@ -117,43 +117,70 @@ window.TaskSidebar = (function() {
         isInitialized = true;
     }
 
-    async function open(taskId) {
-        if (!isInitialized) init();
-        if (!taskId || !currentUser) return;
-        
-        detachAllListeners();
-        sidebar.classList.add('is-loading');
-
-        try {
-            const tasksQuery = query(collectionGroup(db, 'tasks'), where('__name__', '==', taskId), limit(1));
-            const querySnapshot = await getDocs(tasksQuery);
-            if (querySnapshot.empty) throw new Error(`Task with ID ${taskId} not found.`);
-
-            currentTaskRef = querySnapshot.docs[0].ref;
-
-            taskListenerUnsubscribe = onSnapshot(currentTaskRef, async (taskDoc) => {
-                if (taskDoc.exists()) {
-                    currentTask = { ...taskDoc.data(), id: taskDoc.id };
-                    
-                    if (!currentWorkspaceId) await fetchActiveWorkspace(currentUser.id);
-                    await loadWorkspaceData(currentTask.projectId);
-
-                    sidebar.classList.remove('is-loading');
-                    sidebar.classList.add('is-visible');
-                    renderSidebar(currentTask);
-                    
-                    listenToActivity();
-                    if (currentTask.chatuuid) listenToMessages();
-
-                } else {
-                    close();
-                }
-            });
-        } catch (error) {
-            console.error("TaskSidebar: Error opening task.", error);
-            close();
-        }
+/**
+ * Finds and opens a task using only its ID by querying all 'tasks' collections.
+ * This function relies on each task document having a field named 'id' that stores its own document ID.
+ * @param {string} taskId - The unique ID of the task to open.
+ */
+async function open(taskId) {
+    if (!isInitialized) init();
+    if (!taskId) {
+        console.error("TaskSidebar: `open` called without a taskId.");
+        return;
     }
+    
+    detachAllListeners();
+    sidebar.classList.add('is-loading');
+
+    try {
+        // --- FIX START ---
+        // The query now searches for a document where the 'id' FIELD matches the taskId variable.
+        // This is the correct way to query a collection group for a specific document ID.
+        const tasksQuery = query(collectionGroup(db, 'tasks'), where('id', '==', taskId), limit(1));
+        // --- FIX END ---
+
+        const querySnapshot = await getDocs(tasksQuery);
+
+        if (querySnapshot.empty) {
+            console.error(`TaskSidebar: Task with ID ${taskId} could not be found. Ensure the task exists and has an 'id' field matching its document ID.`);
+            close();
+            return;
+        }
+
+        // Get the full reference (path) to the found document
+        currentTaskRef = querySnapshot.docs[0].ref;
+
+        // Now, attach the real-time listener using the correct, full path
+        taskListenerUnsubscribe = onSnapshot(currentTaskRef, async (taskDoc) => {
+            if (taskDoc.exists()) {
+                currentTask = { ...taskDoc.data(), id: taskDoc.id };
+
+                // Fetch the project context if it's not already loaded
+                if (!currentWorkspaceId) await fetchActiveWorkspace(currentUser.id);
+                if (!currentProject || currentProject.id !== currentTask.projectId) {
+                    await loadWorkspaceData(currentTask.projectId);
+                }
+
+                sidebar.classList.remove('is-loading');
+                sidebar.classList.add('is-visible');
+                renderSidebar(currentTask);
+                
+                // Attach listeners for sub-collections
+                listenToActivity();
+                if (currentTask.chatuuid) {
+                    listenToMessages();
+                }
+
+            } else {
+                console.log(`TaskSidebar: Task ${taskId} was deleted.`);
+                close();
+            }
+        });
+    } catch (error) {
+        console.error("TaskSidebar: Error finding task. Have you created the required Firestore index? See the console for a link.", error);
+        close();
+    }
+}
 
     function close() {
         if(sidebar) sidebar.classList.remove('is-visible', 'is-loading');
