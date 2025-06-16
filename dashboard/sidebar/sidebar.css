@@ -1315,7 +1315,9 @@ task-fields-table .field-value {
 }
 
 /* Row styling (optional) */
-.sidebarprojectfield-row { }
+.sidebarprojectfield-row { 
+    gap: 12px;
+}
 
 /* === LABEL CELL === */
 .sidebarprojectfield-label {

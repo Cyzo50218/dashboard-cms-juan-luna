@@ -376,9 +376,9 @@ window.TaskSidebar = (function() {
         } catch (error) { console.error("Failed to send message:", error); }
     }
     
-// ========================================================================
-// --- 7. UI RENDERING (Final Version for Polished Table Layout) ---
-// ========================================================================
+// =================================================================================
+// --- 7. UI RENDERING (Final Polished Version) ---
+// =================================================================================
 
 /**
  * Renders the entire sidebar with the latest task data.
@@ -393,24 +393,21 @@ function renderSidebar(task) {
 }
 
 /**
- * Renders all fields into a two-column table, precisely matching the provided CSS.
+ * Renders all fields into a two-column table with custom controls.
  */
 function renderTaskFields(task) {
     taskFieldsContainer.innerHTML = '';
     if (!currentProject) return;
 
-    // Use a table with a fixed layout, as defined in your CSS.
     const table = document.createElement('table');
-    table.className = 'sidebarprojectfield-table';
+    table.className = 'task-fields-table';
     const tbody = document.createElement('tbody');
 
     // --- Render Standard Fields ---
     const currentProjectTitle = workspaceProjects.find(p => p.id === task.projectId)?.title || '...';
-    
-    // Pass a unique key for each field to apply the correct styles.
     appendFieldToTable(tbody, 'project', 'Project', `<span>${currentProjectTitle}</span>`, 'project');
     appendFieldToTable(tbody, 'assignees', 'Assignee', renderAssigneeValue(task.assignees), 'assignee');
-    appendFieldToTable(tbody, 'dueDate', 'Due Date', renderDateValue(task.dueDate), 'date');
+    appendFieldToTable(tbody, 'dueDate', 'Due Date', renderDateValue(task.dueDate), 'date'); // Uses custom date renderer now
     appendFieldToTable(tbody, 'priority', 'Priority', createTag(task.priority, defaultPriorityColors[task.priority]), 'priority');
     appendFieldToTable(tbody, 'status', 'Status', createTag(task.status, defaultStatusColors[task.status]), 'status');
 
@@ -426,8 +423,8 @@ function renderTaskFields(task) {
                 displayHTML = `<span>${value}</span>`;
             }
         }
-        // Use the 'other-field' key for all custom fields to apply default alignment.
-        appendFieldToTable(tbody, 'other', col.name, displayHTML, col.type, col.id);
+        // Add a specific class for right-alignment styling
+        appendFieldToTable(tbody, `custom-${col.id}`, col.name, displayHTML, col.type, 'custom-field-value');
     });
 
     table.appendChild(tbody);
@@ -435,54 +432,30 @@ function renderTaskFields(task) {
 }
 
 /**
- * Creates and appends a styled table row (<tr>) with intelligent cell styling.
- * This function now applies the specific classes from your CSS.
+ * Creates and appends a styled table row.
  */
-function appendFieldToTable(tbody, key, label, controlHTML, controlType, columnId = null) {
+function appendFieldToTable(tbody, key, label, controlHTML, controlType, customClass = '') {
     const row = tbody.insertRow();
     row.className = 'sidebarprojectfield-row';
 
-    // === LABEL CELL ===
     const labelCell = row.insertCell();
     labelCell.className = 'sidebarprojectfield-label';
     labelCell.textContent = label;
 
-    // === VALUE CELL ===
     const valueCell = row.insertCell();
-    valueCell.className = 'sidebarprojectfield-value';
+    valueCell.className = `sidebarprojectfield-value ${customClass}`;
     
-    // This switch statement is the key fix. It adds the correct class to the <td>
-    // based on the field's key, allowing your CSS to target it.
-    switch (key) {
-        case 'project':
-            valueCell.classList.add('project-field');
-            break;
-        case 'assignees':
-            valueCell.classList.add('assignee-field');
-            break;
-        case 'status':
-        case 'priority':
-            valueCell.classList.add('status-priority-field');
-            break;
-        case 'other': // For all custom fields
-        default:
-            valueCell.classList.add('other-field');
-            break;
-    }
-
-    // Wrap the content in a span, which the CSS uses for hover effects.
-    // The control div for event handling is now inside the span.
-    const span = document.createElement('span');
+    // The control div wrapper is essential for event handling and styling
     const controlDiv = document.createElement('div');
     controlDiv.className = 'field-control';
-    controlDiv.dataset.key = key === 'other' ? `custom-${columnId}` : key;
+    controlDiv.dataset.key = key;
     controlDiv.dataset.control = controlType;
     controlDiv.innerHTML = controlHTML;
-    
-    span.appendChild(controlDiv);
-    valueCell.appendChild(span);
+
+    valueCell.appendChild(controlDiv);
 }
 
+// --- ADD THIS NEW HELPER FUNCTION TO YOUR SCRIPT ---
 
 /**
  * Formats a date string (YYYY-MM-DD) into the desired "Month/Day/Year" format.
@@ -831,3 +804,4 @@ document.addEventListener('DOMContentLoaded', () => {
         window.TaskSidebar.init();
     }
 });
+
