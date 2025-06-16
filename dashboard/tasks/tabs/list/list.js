@@ -723,7 +723,7 @@ async function handleTaskMoved(evt) {
     if (!user) return;
 
     const taskEl = evt.item;
-    const taskId = taskEl?.dataset.taskId;
+    let taskId = taskEl?.dataset.taskId;
 
     const newSectionEl = evt.to.closest(".task-section");
     const newSectionId = newSectionEl?.dataset.sectionId;
@@ -754,35 +754,38 @@ async function handleTaskMoved(evt) {
         const projectId = projectSnap.docs[0].id;
 
         const basePath = `users/${user.uid}/myworkspace/${workspaceId}/projects/${projectId}`;
-        const batch = writeBatch(db);
+        let newTaskId = taskId;
 
-        // 🧩 1. If moving to a different section
+        // --- STEP 1: Move task to new section if needed ---
         if (newSectionId !== oldSectionId) {
             const sourceRef = doc(db, `${basePath}/sections/${oldSectionId}/tasks/${taskId}`);
             const sourceSnap = await getDoc(sourceRef);
-
             if (!sourceSnap.exists()) {
                 console.error("❌ Task not found in source section.");
                 return;
             }
 
             const taskData = sourceSnap.data();
-            delete taskData.id; // Remove ID field if it exists
+            delete taskData.id;
             taskData.sectionId = newSectionId;
 
-            const targetTasksColRef = collection(db, `${basePath}/sections/${newSectionId}/tasks`);
-            const newTaskDocRef = doc(targetTasksColRef); // Generate a new doc ID
+            const newDocRef = doc(collection(db, `${basePath}/sections/${newSectionId}/tasks`));
+            newTaskId = newDocRef.id;
 
-            // Temporarily store new docId in DOM to help with reordering
-            taskEl.dataset.taskId = newTaskDocRef.id;
+            // Temporarily update DOM to reflect new task ID
+            taskEl.dataset.taskId = newTaskId;
 
-            batch.delete(sourceRef); // Delete from old
-            batch.set(newTaskDocRef, taskData); // Create in new
+            // First: move the task (delete + set)
+            await writeBatch(db)
+                .delete(sourceRef)
+                .set(newDocRef, taskData)
+                .commit();
 
             console.log(`✅ Moved task "${taskId}" to section "${newSectionId}"`);
         }
 
-        // 🧩 2. Reorder all tasks in the target section based on DOM
+        // --- STEP 2: Reorder tasks in the new section ---
+        const reorderBatch = writeBatch(db);
         const reorderedTaskEls = Array.from(evt.to.querySelectorAll(".task"));
 
         reorderedTaskEls.forEach((el, index) => {
@@ -790,18 +793,19 @@ async function handleTaskMoved(evt) {
             if (!reorderId) return;
 
             const reorderRef = doc(db, `${basePath}/sections/${newSectionId}/tasks/${reorderId}`);
-            batch.update(reorderRef, {
+            reorderBatch.update(reorderRef, {
                 order: index,
                 sectionId: newSectionId
             });
         });
 
-        await batch.commit();
+        await reorderBatch.commit();
         console.log("✅ Reordering complete.");
     } catch (err) {
         console.error("❌ Error handling task move:", err);
     }
 }
+
 
 
 
