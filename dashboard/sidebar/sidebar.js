@@ -426,65 +426,62 @@ window.TaskSidebar = (function() {
             /**
              * Renders all fields into a two-column table with custom controls.
              */
-            function renderTaskFields(task) {
-                taskFieldsContainer.innerHTML = '';
-                if (!currentProject) return;
-                
-                const table = document.createElement('table');
-                table.className = 'task-fields-table';
-                const tbody = document.createElement('tbody');
-                
-                // --- Render Standard Fields ---
-                const currentProjectTitle = workspaceProjects.find(p => p.id === task.projectId)?.title || '...';
-                appendFieldToTable(tbody, 'project', 'Project', `<span>${currentProjectTitle}</span>`, 'project');
-                appendFieldToTable(tbody, 'assignees', 'Assignee', renderAssigneeValue(task.assignees), 'assignee');
-                appendFieldToTable(tbody, 'dueDate', 'Due Date', renderDateValue(task.dueDate), 'date'); // Uses custom date renderer now
-                
-                    // --- PRIORITY FIELD LOGIC ---
-    const priorityValue = task.priority;
-    // 1. First, try to find a matching option in the project's custom priorities.
-    let priorityColor = currentProject.customPriorities?.find(p => p.name === priorityValue)?.color;
-    // 2. If no custom priority is found, fall back to the default colors.
-    if (!priorityColor) {
-        priorityColor = defaultPriorityColors[priorityValue];
-    }
-    // 3. Render the tag with the correct color.
-    appendFieldToTable(tbody, 'priority', 'Priority', createTag(priorityValue, priorityColor), 'priority');
+            /**
+ * Renders all fields, now correctly handling empty values for ALL field types
+ * to ensure they always display "Not set" and remain clickable.
+ */
+function renderTaskFields(task) {
+    taskFieldsContainer.innerHTML = '';
+    if (!currentProject) return;
     
+    const table = document.createElement('table');
+    table.className = 'task-fields-table';
+    const tbody = document.createElement('tbody');
+    
+    // --- Render Standard Fields ---
+    const currentProjectTitle = workspaceProjects.find(p => p.id === task.projectId)?.title || '...';
+    appendFieldToTable(tbody, 'project', 'Project', `<span>${currentProjectTitle}</span>`, 'project');
+    appendFieldToTable(tbody, 'assignees', 'Assignee', renderAssigneeValue(task.assignees), 'assignee');
+    appendFieldToTable(tbody, 'dueDate', 'Due Date', renderDateValue(task.dueDate), 'date');
+    
+    // --- PRIORITY FIELD LOGIC ---
+    const priorityValue = task.priority;
+    let priorityHTML = '<span>Not set</span>'; // Default to "Not set"
+    if (priorityValue) {
+        let priorityColor = currentProject.customPriorities?.find(p => p.name === priorityValue)?.color || defaultPriorityColors[priorityValue];
+        priorityHTML = createTag(priorityValue, priorityColor);
+    }
+    appendFieldToTable(tbody, 'priority', 'Priority', priorityHTML, 'priority');
     
     // --- STATUS FIELD LOGIC ---
     const statusValue = task.status;
-    // 1. First, try to find a matching option in the project's custom statuses.
-    let statusColor = currentProject.customStatuses?.find(s => s.name === statusValue)?.color;
-    // 2. If no custom status is found, fall back to the default colors.
-    if (!statusColor) {
-        statusColor = defaultStatusColors[statusValue];
+    let statusHTML = '<span>Not set</span>'; // Default to "Not set"
+    if (statusValue) {
+        let statusColor = currentProject.customStatuses?.find(s => s.name === statusValue)?.color || defaultStatusColors[statusValue];
+        statusHTML = createTag(statusValue, statusColor);
     }
-    // 3. Render the tag with the correct color.
-    appendFieldToTable(tbody, 'status', 'Status', createTag(statusValue, statusColor), 'status');
+    appendFieldToTable(tbody, 'status', 'Status', statusHTML, 'status');
     
-    
-                // --- Render Custom Fields ---
-                currentProject.customColumns?.forEach(col => {
-                    const value = task.customFields ? task.customFields[col.id] : null;
-                    let displayHTML = `<span>Not set</span>`;
-                    if (value != null) {
-                        if (col.type === 'Type') {
-                            const option = col.options?.find(opt => opt.name === value);
-                            displayHTML = createTag(value, option ? option.color : '#ccc');
-                        } else if (col.type === 'Costing') {
-                            displayHTML = `<span>${col.currency || '$'}${value}</span>`;
-                        } else {
-                            displayHTML = `<span>${value}</span>`;
-                        }
-                    }
-                    appendFieldToTable(tbody, `custom-${col.id}`, col.name, displayHTML, col.type);
-                });
-                
-                
-                table.appendChild(tbody);
-                taskFieldsContainer.appendChild(table);
+    // --- Render Custom Fields ---
+    currentProject.customColumns?.forEach(col => {
+        const value = task.customFields ? task.customFields[col.id] : null;
+        let displayHTML = '<span>Not set</span>'; // Default to "Not set"
+        if (value != null && value !== '') { // Explicitly check for non-empty string
+            if (col.type === 'Type' && col.options) {
+                const option = col.options.find(opt => opt.name === value);
+                displayHTML = createTag(value, option ? option.color : '#ccc');
+            } else if (col.type === 'Costing') {
+                displayHTML = `<span>${col.currency || '$'}${value}</span>`;
+            } else {
+                displayHTML = `<span>${value}</span>`;
             }
+        }
+        appendFieldToTable(tbody, `custom-${col.id}`, col.name, displayHTML, col.type, 'custom-field-value');
+    });
+    
+    table.appendChild(tbody);
+    taskFieldsContainer.appendChild(table);
+}
             
             /**
              * Creates and appends a styled table row.
@@ -770,6 +767,7 @@ window.TaskSidebar = (function() {
                             if (column) makeTextFieldEditable(control, columnId, column);
                             break;
                         }
+                        
                     }
                 });
                 
@@ -859,33 +857,40 @@ function createGenericDropdown(targetEl, options, onSelect, optionType = null, c
     dropdown.style.left = `${rect.left}px`;
     dropdown.style.minWidth = `${rect.width}px`;
 }
-                function makeTextFieldEditable(control, columnId, column) {
-                    const originalContent = control.innerHTML;
-                    const oldValue = currentTask.customFields ? (currentTask.customFields[columnId] || '') : '';
-                    const input = document.createElement('input');
-                    input.type = (column.type === 'Costing') ? 'number' : 'text';
-                    input.value = oldValue;
-                    input.className = 'field-edit-input';
-                    control.innerHTML = '';
-                    control.appendChild(input);
-                    input.focus();
-                    
-                    const save = () => {
-                        const newValue = input.value;
-                        control.innerHTML = originalContent; // Revert visually before update
-                        updateCustomField(columnId, newValue, column);
-                    };
-                    
-                    input.addEventListener('blur', save);
-                    input.addEventListener('keydown', e => {
-                        if (e.key === 'Enter') input.blur();
-                        if (e.key === 'Escape') {
-                            input.value = oldValue; // Revert changes
-                            input.blur();
-                        }
-                    });
-                }
-                
+                /**
+ * Makes a text-based custom field editable and handles saving null when cleared.
+ */
+function makeTextFieldEditable(control, columnId, column) {
+    const originalContent = control.innerHTML;
+    const oldValue = currentTask.customFields ? (currentTask.customFields[columnId] || '') : '';
+    const input = document.createElement('input');
+    input.type = (column.type === 'Costing') ? 'number' : 'text';
+    input.value = oldValue;
+    input.className = 'field-edit-input';
+    control.innerHTML = '';
+    control.appendChild(input);
+    input.focus();
+    
+    const save = () => {
+        // --- THIS IS THE KEY FIX ---
+        // If the input is cleared, set the value to null. Otherwise, use the input's value.
+        const newValue = input.value.trim() === '' ? null : input.value;
+        
+        // We call the update function, which will handle the Firestore update.
+        // The real-time listener will then automatically re-render the field correctly.
+        updateCustomField(columnId, newValue, column);
+    };
+    
+    input.addEventListener('blur', save);
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') input.blur();
+        if (e.key === 'Escape') {
+            input.value = oldValue;
+            input.blur();
+        }
+    });
+}
+
                 function makeDateFieldEditable(control, fieldKey) {
                     const oldValue = currentTask[fieldKey] || '';
                     control.innerHTML = `<input type="date" class="field-edit-input" value="${oldValue}">`;
