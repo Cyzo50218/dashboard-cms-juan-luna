@@ -698,20 +698,17 @@ window.TaskSidebar = (function() {
                             break;
                         }
     case 'priority': {
-        // 1. Start with the default, hardcoded priority options.
-        // We map them into the {name, color} format the dropdown function expects.
         let allPriorityOptions = priorityOptions.map(p => ({
             name: p,
             color: defaultPriorityColors[p]
         }));
         
-        // 2. Check if custom priorities exist on the project document.
         if (currentProject.customPriorities && currentProject.customPriorities.length > 0) {
-            // 3. If they exist, combine the default and custom options into one list.
             allPriorityOptions = [...allPriorityOptions, ...currentProject.customPriorities];
         }
         
-        // 4. Create the dropdown with the complete, merged list.
+        console.log("Final options for Priority dropdown:", allPriorityOptions);
+        
         createGenericDropdown(control, allPriorityOptions, (selectedOption) => {
             updateTaskField('priority', selectedOption.name);
         }, 'Priority');
@@ -719,19 +716,17 @@ window.TaskSidebar = (function() {
     }
     
     case 'status': {
-        // 1. Start with the default status options.
         let allStatusOptions = statusOptions.map(s => ({
             name: s,
             color: defaultStatusColors[s]
         }));
         
-        // 2. Check for custom statuses from the project document.
         if (currentProject.customStatuses && currentProject.customStatuses.length > 0) {
-            // 3. Combine the default and custom statuses.
             allStatusOptions = [...allStatusOptions, ...currentProject.customStatuses];
         }
         
-        // 4. Create the dropdown with the complete, merged list.
+        console.log("Final options for Status dropdown:", allStatusOptions);
+        
         createGenericDropdown(control, allStatusOptions, (selectedOption) => {
             updateTaskField('status', selectedOption.name);
         }, 'Status');
@@ -799,62 +794,49 @@ window.TaskSidebar = (function() {
  * @param {string|null} optionType - The type of option, used for adding "Add New..." buttons. e.g., 'Priority', 'CustomColumn'.
  * @param {number|null} columnId - The ID of the custom column if applicable.
  */
-            function createGenericDropdown(targetEl, options, onSelect, optionType = null, columnId = null) {
-    // 1. Clean up any existing popovers to prevent duplicates.
+            /**
+ * Creates a generic dropdown with color swatches.
+ */
+function createGenericDropdown(targetEl, options, onSelect, optionType = null, columnId = null) {
     closePopovers();
-
     const dropdown = document.createElement('div');
     dropdown.className = 'context-dropdown';
-
-    // 2. Loop through each option to create a dropdown item.
+    
     options.forEach(option => {
         const item = document.createElement('div');
         item.className = 'dropdown-item';
         
         let itemHTML = '';
-
+        
         // Add a colored swatch if the option has a color property.
         if (option.color) {
-            itemHTML += `<span class="dropdown-color-swatch" style="background-color: ${option.color};"></span>`;
+            // --- FIX: Added !important to force this color to override any other styles ---
+            itemHTML += `<span class="dropdown-color-swatch" style="background-color: ${option.color} !important;"></span>`;
         }
         
-        // Add an avatar if the option has one (for assignees).
+        // Add an avatar if the option has one.
         if (option.avatar) {
             itemHTML += `<div class="avatar" style="background-image: url(${option.avatar})"></div>`;
         }
-
-        // Add the name/label. It checks for 'label' first, then 'name'.
-        itemHTML += `<span class="dropdown-item-name">${option.label || option.name}</span>`;
         
+        itemHTML += `<span class="dropdown-item-name">${option.label || option.name}</span>`;
         item.innerHTML = itemHTML;
         
-        // Attach the click listener for this specific item.
         item.addEventListener('click', (e) => {
-            e.stopPropagation(); // Prevent the body click listener from firing immediately.
-            
-            // The onSelect callback receives the 'value' if it exists, otherwise the whole option object.
-            // This makes it flexible for both assignees (value=userId) and statuses (value=the object itself).
+            e.stopPropagation();
             onSelect(option.value !== undefined ? option.value : option);
-            
             closePopovers();
         });
-
+        
         dropdown.appendChild(item);
-    }); // <-- This correctly closes the forEach loop.
-
-    // --- Logic for "Add New..." buttons can be added here if needed ---
-    // if (optionType === 'Priority') { ... add a button that calls openCustomOptionDialog() ... }
+    });
     
-    // 3. Add the fully constructed dropdown to the page.
     document.body.appendChild(dropdown);
-
-    // 4. Position the dropdown correctly below the element that was clicked.
     const rect = targetEl.getBoundingClientRect();
     dropdown.style.top = `${rect.bottom + 4}px`;
     dropdown.style.left = `${rect.left}px`;
     dropdown.style.minWidth = `${rect.width}px`;
 }
-
                 function makeTextFieldEditable(control, columnId, column) {
                     const originalContent = control.innerHTML;
                     const oldValue = currentTask.customFields ? (currentTask.customFields[columnId] || '') : '';
