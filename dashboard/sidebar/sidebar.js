@@ -689,12 +689,27 @@ function renderActivityLogs() {
     });
     
     
-    // Global listener to close popovers when clicking outside
-    document.body.addEventListener('click', (e) => {
-        if (!e.target.closest('.context-dropdown, .field-control ')) {
+document.body.addEventListener('click', (e) => {
+    // First, if any popovers are open, just close them and do nothing else.
+    if (document.querySelector('.context-dropdown')) {
+        if (!e.target.closest('.context-dropdown, .field-control')) {
             closePopovers();
         }
-    });
+        return;
+    }
+    
+    // If no popovers were open, then check if we should close the sidebar.
+    // The sidebar should only close if it's currently visible.
+    if (sidebar.classList.contains('is-visible')) {
+        // Define all elements that should NOT trigger a close.
+        const safeSelectors = '#task-sidebar, .tasks-name, .flatpickr-calendar';
+        
+        // If the clicked element is NOT inside any of the safe areas, close the sidebar.
+        if (!e.target.closest(safeSelectors)) {
+            close();
+        }
+    }
+}, { capture: true });
 }
     
     // --- 9. UI HELPERS ---

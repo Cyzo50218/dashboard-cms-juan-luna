@@ -317,7 +317,7 @@ function setupEventListeners() {
         // --- Section Focus and Toggling ---
         const clickedSection = e.target.closest('.task-section');
         if (clickedSection) {
-            currentlyFocusedSectionId = Number(clickedSection.dataset.sectionId);
+            currentlyFocusedSectionId = clickedSection.dataset.sectionId; // Note: dataset values are strings
         }
         
         if (e.target.closest('.section-toggle')) {
@@ -346,43 +346,47 @@ function setupEventListeners() {
         // --- Task Row Interactions ---
         const taskRow = e.target.closest('.task-row-wrapper');
         if (!taskRow) return;
+        
         const taskId = taskRow.dataset.taskId;
         
-        // --- THE FIX: Specific focus logic for new tasks ---
-        // If a new task row is clicked, only trigger auto-focus if the click was directly on the name field.
-        if (taskId.startsWith('temp_')) {
-            if (e.target.matches('.task-name')) {
-                const nameEl = taskRow.querySelector('.task-name');
-                if (nameEl) {
-                    nameEl.focus();
-                }
-            }
-            // IMPORTANT: We do not `return` here unless it's a name click, allowing other controls to work on new rows.
-            if (e.target.matches('.task-name')) return;
-        }
-        // --- END OF FIX ---
+        // --- Find the clicked control FIRST ---
+        // We now check for the task name SPAN as a control as well.
+        const controlElement = e.target.closest('[data-control], .task-name');
+        if (!controlElement) return; // Exit if the click wasn't on any interactive element
         
-        // --- Sidebar and Control Handling ---
-        if (e.target.matches('.task-name')) {
-            return displaySideBarTasks(taskId);
+        // Determine the control type
+        let controlType;
+        if (controlElement.matches('.task-name')) {
+            // If it's the task name, we'll treat it as a special control type
+            controlType = 'open-sidebar';
+        } else {
+            // Otherwise, get the type from the data-control attribute
+            controlType = controlElement.dataset.control;
         }
         
-        const control = e.target.closest('[data-control]');
-        if (!control) return;
+        // Handle new (temporary) tasks: only allow editing the name.
+        if (taskId.startsWith('temp_') && controlType !== 'open-sidebar') {
+            // If it's a new task, don't allow clicking other controls yet.
+            return;
+        }
         
         const sectionEl = taskRow.closest('.task-section');
         const sectionId = sectionEl ? sectionEl.dataset.sectionId : null;
-        
         if (!sectionId) return;
         
-        switch (control.dataset.control) {
+        // --- Unified Switch Statement for ALL Controls ---
+        switch (controlType) {
+            case 'open-sidebar':
+                displaySideBarTasks(taskId);
+                break;
+                
             case 'check':
                 e.stopPropagation();
                 handleTaskCompletion(taskId, taskRow);
                 break;
                 
             case 'due-date':
-                showDatePicker(control, sectionId, taskId);
+                showDatePicker(controlElement, sectionId, taskId);
                 break;
                 
             case 'priority': {
@@ -393,7 +397,7 @@ function setupEventListeners() {
                 if (project.customPriorities) {
                     allPriorityOptions = allPriorityOptions.concat(project.customPriorities);
                 }
-                createDropdown(allPriorityOptions, control, (selectedValue) => updateTask(taskId, sectionId, { priority: selectedValue.name }), 'Priority');
+                createDropdown(allPriorityOptions, controlElement, (selectedValue) => updateTask(taskId, sectionId, { priority: selectedValue.name }), 'Priority');
                 break;
             }
             
@@ -405,15 +409,15 @@ function setupEventListeners() {
                 if (project.customStatuses) {
                     allStatusOptions = allStatusOptions.concat(project.customStatuses);
                 }
-                createDropdown(allStatusOptions, control, (selectedValue) => updateTask(taskId, sectionId, { status: selectedValue.name }), 'Status');
+                createDropdown(allStatusOptions, controlElement, (selectedValue) => updateTask(taskId, sectionId, { status: selectedValue.name }), 'Status');
                 break;
             }
             
             case 'custom-select': {
-                const columnId = Number(control.dataset.columnId);
+                const columnId = Number(controlElement.dataset.columnId);
                 const column = project.customColumns.find(c => c.id === columnId);
                 if (column && column.options) {
-                    createDropdown(column.options, control, (selectedValue) => {
+                    createDropdown(column.options, controlElement, (selectedValue) => {
                         updateTask(taskId, sectionId, {
                             [`customFields.${columnId}`]: selectedValue.name
                         });
@@ -428,13 +432,11 @@ function setupEventListeners() {
                 if (!currentSection) break;
                 
                 const otherSections = project.sections.filter(s => s.id !== currentSection.id);
-                const sectionNames = otherSections.map(s => s.title);
-                
-                if (sectionNames.length > 0) {
+                if (otherSections.length > 0) {
                     createDropdown(
-                        sectionNames.map(name => ({ name: name })), // Convert string[] to {name: string}[]
-                        control,
-                        (selected) => { // 'selected' is now an object
+                        otherSections.map(s => ({ name: s.title })), // Map to object array
+                        controlElement,
+                        (selected) => {
                             const targetSection = project.sections.find(s => s.title === selected.name);
                             if (targetSection) {
                                 moveTaskToSection(taskId, targetSection.id);
@@ -448,18 +450,20 @@ function setupEventListeners() {
             }
             
             case 'assignee': {
-                // This logic allows clicking an existing assignee to open the dropdown again
-                showAssigneeDropdown(control, taskId);
+                showAssigneeDropdown(controlElement, taskId);
                 break;
             }
             
             case 'remove-assignee':
                 e.stopPropagation();
-                updateTask(taskId, sectionId, { assignees: [] });
+                // We need to find the sectionId to update the task correctly
+                const { section } = findTaskAndSection(taskId);
+                if (section) {
+                    updateTask(taskId, section.id, { assignees: [] });
+                }
                 break;
         }
     };
-    
     
     bodyFocusOutListener = (e) => {
         // Case 1: Renaming a section title
