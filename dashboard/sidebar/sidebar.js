@@ -350,12 +350,6 @@ window.TaskSidebar = (function() {
 
 function renderTaskFields(task) {
     taskFieldsContainer.innerHTML = '';
-    
-    // Guard clause: We need the project document (which contains custom column definitions) to proceed.
-    if (!currentProject) {
-        console.warn("Cannot render fields because currentProject data is not available yet.");
-        return;
-    }
 
     // --- Render Standard Fields ---
     const projectOptionsHTML = workspaceProjects.map(p => `<option value="${p.id}" ${p.id === task.projectId ? 'selected' : ''}>${p.title}</option>`).join('');
