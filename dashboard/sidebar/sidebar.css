@@ -621,45 +621,90 @@
 .status-off-track { background-color: #ffdddd; color: #cc0000; }
 .status-completed { background-color: #e3fcef; color: #006442; }
 
-/* Reusable Dropdown */
 .context-dropdown {
     position: absolute;
-    background-color: white;
+    z-index: 110;
+    background: var(--primary-bg);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    border: 1px solid #e0e0e0;
-    padding: 8px;
-    z-index: 100;
-    min-width: 240px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    padding: 0.5rem 0;
+    min-width: 150px;
 }
-.dropdown-item {
+
+/* New/Updated styles for the items INSIDE the dropdown for alignment */
+.context-dropdown .dropdown-item {
+    display: flex;
+    align-items: center;   /* Vertically aligns the swatch/icon with the text */
+    gap: 6px;              /* Creates space between the swatch/icon and text */
+    position: relative;    /* Required for positioning the edit button */
+    padding: 0.4rem 0.8rem; /* Add padding to the items themselves */
+    cursor: pointer;
+}
+
+/* Style for the color swatch */
+.dropdown-color-swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    flex-shrink: 0; /* Prevents the swatch from shrinking */
+}
+
+/* A placeholder to maintain alignment for items without a color or icon */
+.dropdown-color-swatch-placeholder {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 8px;
-    cursor: pointer;
-    font-size: 14px;
+    justify-content: center;
+}
+
+/* Style for the new edit button that appears on hover */
+.dropdown-item-edit-btn {
+    background: #e0e0e0;
+    border: none;
     border-radius: 4px;
-}
-.dropdown-item:hover { background-color: #f5f5f5; }
-
-/* --- NEW: Style for selected item --- */
-.dropdown-item.is-selected {
-    background-color: #e9f2ff;
-    color: #0052cc;
-    font-weight: 600;
-}
-.dropdown-item.is-selected i {
-    visibility: visible;
-}
-.dropdown-item i.fa-check {
-    visibility: hidden;
-    margin-left: auto;
+    cursor: pointer;
+    padding: 2px 5px;
+    margin-left: auto;   /* Pushes the button to the far right */
+    display: none;       /* Hidden by default */
 }
 
+.dropdown-item:hover {
+    background-color: var(--hover-bg-color, #f0f0f0); /* Use a hover variable or a default */
+}
+
+.dropdown-item:hover .dropdown-item-edit-btn {
+    display: inline-block; /* Show the edit button on hover */
+}
+
+.dropdown-item-edit-btn:hover {
+    background: #c7c7c7;
+}
+
+/* Style for the separator line */
+.context-dropdown hr.dropdown-separator {
+    margin: 0.5rem 0;
+    border: none;
+    border-top: 1px solid var(--border-color);
+}
+
+/* NEW: Styles for the color swatch inside the dropdown */
+.dropdown-color-swatch {
+    width: 4px;
+    height: 14px;
+    border-radius: 4px; /* A squircle looks nice with your tags */
+    flex-shrink: 0; /* Prevents the swatch from shrinking */
+    border: 1px solid rgba(0, 0, 0, 0.1); /* A faint border for light colors */
+}
+
+/* NEW: Placeholder for options without a color to keep text perfectly aligned */
+.dropdown-color-swatch-placeholder {
+    width: 4px;
+    height: 14px;
+    flex-shrink: 0;
+}
 /* --- NEW: Assignee Dropdown Specific Styles --- */
 .assignee-dropdown-search {
     width: 100%;
@@ -1398,4 +1443,44 @@ task-fields-table .field-value {
 .field-control[data-key="dueDate"] {
     width: 300px;
     justify-content: flex-end; /* This aligns the date text to the right inside the new width */
+}
+
+/* Add this CSS to your project's stylesheet */
+
+/* This class will be added to the main #task-sidebar element */
+.is-task-completed {
+}
+
+/* Gray out the task name and add a line-through */
+.is-task-completed #task-name,
+.is-task-completed #task-description-text {
+    color: #8a94a6;
+    text-decoration: none;
+}
+
+/* Gray out all field labels and values */
+.is-task-completed .sidebarprojectfield-label,
+.is-task-completed .sidebarprojectfield-value {
+    color: #8a94a6 !important; /* Use !important to override other styles */
+}
+
+/* Gray out the colored tags and remove their background color */
+.is-task-completed .tag {
+    background-color: #f0f2f5 !important;
+    color: #8a94a6 !important;
+    text-decoration: none;
+}
+
+/* IMPORTANT: This disables all clicks on the interactive fields */
+.is-task-completed .field-control {
+    cursor: default;
+}
+
+/* Style the main completion button when task is completed */
+.task-complete-btn.completed {
+    background-color: #36b37e; /* A nice green color */
+    color: white;
+}
+.task-complete-btn.completed .fa-regular {
+    font-weight: 900; /* Makes the checkmark solid */
 }
