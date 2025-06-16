@@ -455,34 +455,15 @@ function appendFieldToTable(tbody, key, label, controlHTML, controlType, customC
     valueCell.appendChild(controlDiv);
 }
 
-// --- ADD THIS NEW HELPER FUNCTION TO YOUR SCRIPT ---
-
 /**
- * Formats a date string (YYYY-MM-DD) into the desired "Month/Day/Year" format.
- * @param {string} dateString - The date string in "YYYY-MM-DD" format.
- * @returns {string} The formatted date or "No date".
- */
-function formatDisplayDate(dateString) {
-    if (!dateString) return 'No date';
-    // Adding T00:00:00 ensures the date is parsed in the local timezone, avoiding off-by-one day errors.
-    const date = new Date(dateString + 'T00:00:00');
-    const month = date.toLocaleString('en-US', { month: 'long' }); // e.g., "January"
-    const day = date.getDate();
-    const year = date.getFullYear();
-    return `${month}/${day}/${year}`;
-}
-
-/**
- * Renders the Due Date field with the correct format and flatpickr structure.
+ * Renders the Due Date field with the flatpickr structure.
  */
 function renderDateValue(dateString) {
-    // Use the new helper to get the desired "Month/Day/Year" display format
-    const displayDate = formatDisplayDate(dateString);
-    
-    // This HTML structure is specifically for flatpickr to attach to
+    const displayDate = dateString ? new Date(dateString + 'T00:00:00').toLocaleDateString() : 'No due date';
+    // This structure is specifically for flatpickr to attach to
     return `
         <div class="flatpickr-wrapper">
-            <input type="text" class="flatpickr-input" value="${displayDate}" readonly="readonly" placeholder="No date">
+            <input type="text" class="flatpickr-input" value="${displayDate}" readonly="readonly" placeholder="No due date">
             <i class="fa-solid fa-calendar-days input-button"></i>
         </div>
     `;
@@ -656,29 +637,21 @@ function renderActivityLogs() {
                 createGenericDropdown(control, options, (newProjectId) => moveTask(newProjectId));
                 break;
             }
-case 'date': {
-    const input = control.querySelector('.flatpickr-input');
-    
-    const fp = flatpickr(input, {
-        // Sets the initial calendar date from the raw 'YYYY-MM-DD' string
-        defaultDate: currentTask.dueDate || 'today',
-        
-        // This is the format that will be SAVED to Firestore
-        dateFormat: "Y-m-d",
-        
-        onClose: function(selectedDates) {
-            // Get the selected date and format it for Firestore
-            const newDate = selectedDates[0] ? flatpickr.formatDate(selectedDates[0], 'Y-m-d') : '';
-            
-            // Save the clean "YYYY-MM-DD" string to the database
-            updateTaskField('dueDate', newDate);
-            
-            fp.destroy(); // Clean up the instance
-        }
-    });
-    fp.open();
-    break;
-}
+            case 'date': {
+                // Initialize flatpickr on the input inside the clicked control
+                const input = control.querySelector('.flatpickr-input');
+                const fp = flatpickr(input, {
+                    defaultDate: currentTask.dueDate || 'today',
+                    dateFormat: "Y-m-d",
+                    onClose: function(selectedDates) {
+                        const newDate = selectedDates[0] ? flatpickr.formatDate(selectedDates[0], 'Y-m-d') : '';
+                        updateTaskField('dueDate', newDate);
+                        fp.destroy(); // Important to clean up the instance
+                    }
+                });
+                fp.open();
+                break;
+            }
             case 'priority': {
                 const options = priorityOptions.map(p => ({ label: p, value: p }));
                 createGenericDropdown(control, options, (newValue) => updateTaskField('priority', newValue));
@@ -804,4 +777,3 @@ document.addEventListener('DOMContentLoaded', () => {
         window.TaskSidebar.init();
     }
 });
-

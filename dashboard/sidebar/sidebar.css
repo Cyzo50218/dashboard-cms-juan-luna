@@ -1051,7 +1051,7 @@ task-fields-table .field-value {
 }
 
 .remove-assignee-btn:hover {
-  background-color: #dc3545; /* A red color for deletion */
+  background-color: #F46371; /* A red color for deletion */
 }
 
 /* --- Generic Dropdown CSS (if you don't have it) --- */
@@ -1155,8 +1155,8 @@ task-fields-table .field-value {
 }
 
 .assignee-add-btn:hover {
-  background-color: var(--accent-color);
-  color: white;
+  background-color: #6C9CF54A;
+  color: black;
   border-style: solid;
 }
 
@@ -1332,6 +1332,7 @@ task-fields-table .field-value {
 .sidebarprojectfield-value {
     vertical-align: right;
     padding: 8px 0;
+    width: 100%;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1394,3 +1395,7 @@ task-fields-table .field-value {
     min-width: 80px;
 }
 
+.field-control[data-key="dueDate"] {
+    width: 300px;
+    justify-content: flex-end; /* This aligns the date text to the right inside the new width */
+}
