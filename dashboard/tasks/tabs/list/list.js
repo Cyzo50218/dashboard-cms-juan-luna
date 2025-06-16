@@ -199,10 +199,6 @@ function initializeListView(params) {
     setupEventListeners();
 }
 
-/**
- * "Debug Mode" version to diagnose task distribution issues.
- * It logs every step of the process to the console.
- */
 function distributeTasksToSections(tasks) {
     console.log("--- Running Task Distribution ---");
     
@@ -291,8 +287,20 @@ function setupEventListeners() {
             const columnEl = deleteButton.closest('[data-column-id]');
             if (columnEl) {
                 const columnId = Number(columnEl.dataset.columnId);
-                // FIX: Pass an array of objects to createDropdown
-                createDropdown([{ name: 'Delete column' }], deleteButton, () => deleteColumn(columnId));
+
+    const dropdownOptions = [
+    { name: 'Rename column' },
+    { name: 'Delete column' }
+];
+
+createDropdown(dropdownOptions, deleteButton, (selected) => {
+    if (selected.name === 'Delete column') {
+        deleteColumn(columnId);
+    } else if (selected.name === 'Rename column') {
+        // Pass the entire column header element to the rename function
+        enableColumnRename(columnEl);
+    }
+});
             }
             return;
         }
@@ -862,13 +870,15 @@ async function handleTaskMoved(evt) {
                 return;
             }
             
-            const taskData = sourceSnap.data();
-            taskData.sectionId = newSectionId; // Update the sectionId in the task's data
-            delete taskData.id; // Clean up data before creating the new document
-            
             // Create a reference for the new task document in the target collection
             const newDocRef = doc(collection(db, `${basePath}/sections/${newSectionId}/tasks`));
             
+            const taskData = sourceSnap.data();
+            taskData.id = newDocRef.id;
+            taskData.sectionId = newSectionId; // Update the sectionId in the task's data
+            delete taskData.id; // Clean up data before creating the new document
+            
+       
             batch.delete(sourceRef); // Delete the original task
             batch.set(newDocRef, taskData); // Create the new task
             
@@ -916,6 +926,65 @@ async function handleTaskMoved(evt) {
     } catch (err) {
         console.error("❌ Error handling task move:", err);
     }
+}
+
+/**
+ * Enables in-place editing for a column header.
+ * @param {HTMLElement} columnEl The header element of the column to rename.
+ */
+function enableColumnRename(columnEl) {
+    const originalName = columnEl.textContent.trim();
+    columnEl.setAttribute('contenteditable', 'true');
+    columnEl.focus();
+    document.execCommand('selectAll', false, null); // Selects the text for immediate editing
+    
+    const columnId = Number(columnEl.dataset.columnId);
+    
+    const finishEditing = async (saveChanges) => {
+        columnEl.removeEventListener('blur', onBlur);
+        columnEl.removeEventListener('keydown', onKeyDown);
+        columnEl.setAttribute('contenteditable', 'false');
+        
+        const newName = columnEl.textContent.trim();
+        
+        if (saveChanges && newName && newName !== originalName) {
+            // Find the column and update its name
+            const newColumns = project.customColumns.map(col => {
+                if (col.id === columnId) {
+                    return { ...col, name: newName };
+                }
+                return col;
+            });
+            // Update the entire array in Firebase
+            await updateProjectInFirebase({ customColumns: newColumns });
+        } else {
+            // If cancelled or name is empty/unchanged, revert to original
+            columnEl.textContent = originalName;
+            // Re-append the menu button which gets wiped by textContent manipulation
+            const menuBtn = document.createElement('button');
+            menuBtn.className = 'delete-column-btn';
+            menuBtn.title = 'Column options';
+            menuBtn.innerHTML = `<i class="fas fa-ellipsis-h"></i>`;
+            columnEl.appendChild(menuBtn);
+        }
+    };
+    
+    const onBlur = () => {
+        finishEditing(true);
+    };
+    
+    const onKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            finishEditing(true);
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            finishEditing(false);
+        }
+    };
+    
+    columnEl.addEventListener('blur', onBlur);
+    columnEl.addEventListener('keydown', onKeyDown);
 }
 
 function render() {
