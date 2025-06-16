@@ -439,9 +439,31 @@ window.TaskSidebar = (function() {
                 appendFieldToTable(tbody, 'project', 'Project', `<span>${currentProjectTitle}</span>`, 'project');
                 appendFieldToTable(tbody, 'assignees', 'Assignee', renderAssigneeValue(task.assignees), 'assignee');
                 appendFieldToTable(tbody, 'dueDate', 'Due Date', renderDateValue(task.dueDate), 'date'); // Uses custom date renderer now
-                appendFieldToTable(tbody, 'priority', 'Priority', createTag(task.priority, defaultPriorityColors[task.priority]), 'priority');
-                appendFieldToTable(tbody, 'status', 'Status', createTag(task.status, defaultStatusColors[task.status]), 'status');
                 
+                    // --- PRIORITY FIELD LOGIC ---
+    const priorityValue = task.priority;
+    // 1. First, try to find a matching option in the project's custom priorities.
+    let priorityColor = currentProject.customPriorities?.find(p => p.name === priorityValue)?.color;
+    // 2. If no custom priority is found, fall back to the default colors.
+    if (!priorityColor) {
+        priorityColor = defaultPriorityColors[priorityValue];
+    }
+    // 3. Render the tag with the correct color.
+    appendFieldToTable(tbody, 'priority', 'Priority', createTag(priorityValue, priorityColor), 'priority');
+    
+    
+    // --- STATUS FIELD LOGIC ---
+    const statusValue = task.status;
+    // 1. First, try to find a matching option in the project's custom statuses.
+    let statusColor = currentProject.customStatuses?.find(s => s.name === statusValue)?.color;
+    // 2. If no custom status is found, fall back to the default colors.
+    if (!statusColor) {
+        statusColor = defaultStatusColors[statusValue];
+    }
+    // 3. Render the tag with the correct color.
+    appendFieldToTable(tbody, 'status', 'Status', createTag(statusValue, statusColor), 'status');
+    
+    
                 // --- Render Custom Fields ---
                 currentProject.customColumns?.forEach(col => {
                     const value = task.customFields ? task.customFields[col.id] : null;
