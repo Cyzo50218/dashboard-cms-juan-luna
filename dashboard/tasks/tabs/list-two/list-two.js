@@ -1098,46 +1098,59 @@ function syncHeaderScroll() {
 
 function renderHeader(projectToRender, container) {
     const customColumns = projectToRender.customColumns || [];
-
+    const fixedHeight = '52px'; // Define the height once for consistency
+    
     // --- SIMPLIFIED & CORRECTED HTML STRUCTURE ---
-
+    
     // 1. Create the FIXED "Task Name" Header Cell
     const taskNameHeader = document.createElement('div');
     taskNameHeader.className = 'header-cell sticky-col-header';
-    // FIX: Simplified structure. Alignment is now handled purely by CSS on the .header-cell class.
+    // FIX: Programmatically set and lock the height via inline styles
+    taskNameHeader.style.height = fixedHeight;
+    taskNameHeader.style.minHeight = fixedHeight;
+    taskNameHeader.style.maxHeight = fixedHeight;
     taskNameHeader.innerHTML = `<span>Name</span>`;
     container.appendChild(taskNameHeader);
-
+    
     // 2. Base Scrollable Header Cells
     ['Assignee', 'Due Date', 'Priority', 'Status'].forEach(name => {
         const cell = document.createElement('div');
         cell.className = 'header-cell';
-        // FIX: Simplified structure.
+        // FIX: Programmatically set and lock the height via inline styles
+        cell.style.height = fixedHeight;
+        cell.style.minHeight = fixedHeight;
+        cell.style.maxHeight = fixedHeight;
         cell.innerHTML = `
             <span>${name}</span>
             <i class="fa-solid fa-angle-down column-icon"></i>
         `;
         container.appendChild(cell);
     });
-
+    
     // 3. Custom Column Header Cells
     customColumns.forEach(col => {
         const cell = document.createElement('div');
         cell.className = 'header-cell';
         cell.dataset.columnId = col.id;
-        // FIX: Simplified structure.
+        // FIX: Programmatically set and lock the height via inline styles
+        cell.style.height = fixedHeight;
+        cell.style.minHeight = fixedHeight;
+        cell.style.maxHeight = fixedHeight;
         cell.innerHTML = `
             <span>${col.name}</span>
             <i class="fa-solid fa-ellipsis-h column-icon options-icon"></i>
         `;
         container.appendChild(cell);
     });
-
+    
     // 4. "Add Column" Button Cell
     const addColumnCell = document.createElement('div');
-    // FIX: Center the plus icon.
     addColumnCell.className = 'header-cell add-column-cell';
-    addColumnCell.style.justifyContent = 'center'; 
+    // FIX: Programmatically set and lock the height via inline styles
+    addColumnCell.style.height = fixedHeight;
+    addColumnCell.style.minHeight = fixedHeight;
+    addColumnCell.style.maxHeight = fixedHeight;
+    addColumnCell.style.justifyContent = 'center';
     addColumnCell.innerHTML = `<i class="fa-solid fa-plus"></i>`;
     container.appendChild(addColumnCell);
 }
