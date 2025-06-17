@@ -632,28 +632,87 @@ window.TaskSidebar = (function() {
     /**
      * Renders all messages and ensures the comment form is VISIBLE.
      */
-    function renderMessages() {
-        const addCommentForm = document.getElementById('add-comment-form');
-        if (addCommentForm) addCommentForm.style.display = 'flex';
-        activityLogContainer.innerHTML = '';
-        if (allMessages.length === 0) {
-            activityLogContainer.innerHTML = `<div class="placeholder-text">No messages yet.</div>`;
-            return;
-        }
-        allMessages.forEach(msg => {
-            const item = document.createElement('div');
-            item.className = 'comment-item';
-            item.dataset.messageId = msg.id;
-            const isAuthor = msg.senderId === currentUser.id;
-            const hasLiked = msg.reactions?.like?.includes(currentUser.id);
-            const likeCount = msg.reactions?.like?.length || 0;
-            let authorActionsHTML = isAuthor ? `<div class="author-actions"><button class="edit-comment-btn" title="Edit"><i class="fa-solid fa-pencil"></i></button><button class="delete-comment-btn" title="Delete"><i class="fa-solid fa-trash"></i></button></div>` : '';
-            const timestamp = msg.timestamp ? new Date(msg.timestamp.toDate()).toLocaleString() : 'Sending...';
-            item.innerHTML = `<div class="avatar" style="background-image: url(${msg.senderAvatar})"></div><div class="comment-body"><div class="comment-header"><span class="comment-author">${msg.senderName}</span> <span class="comment-timestamp">${timestamp}${msg.editedAt ? ' (edited)' : ''}</span></div><div class="comment-content-wrapper"><div class="comment-text">${msg.message || ''}</div>${msg.imageUrl ? `<div class="log-attachment"><img class="scalable-image" src="${msg.imageUrl}" alt="${msg.messageNote || 'Attachment'}"></div>` : ''}${msg.messageNote && msg.imageUrl ? `<div class="attachment-note">${msg.messageNote}</div>` : ''}<div class="comment-edit-area" style="display: none;"><textarea class="comment-edit-input">${msg.message || ''}</textarea><div class="comment-edit-actions"><button class="btn-cancel-edit">Cancel</button><button class="btn-save-edit">Save</button></div></div></div><div class="comment-actions"><div class="reaction-actions"><button class="react-btn like-btn ${hasLiked ? 'reacted' : ''}" title="Like">👍 <span class="like-count">${likeCount > 0 ? likeCount : ''}</span></button></div>${authorActionsHTML}</div></div>`;
-            activityLogContainer.appendChild(item);
-        });
-        activityLogContainer.scrollTop = activityLogContainer.scrollHeight;
+    /**
+ * Renders all messages with a modern "Like" icon.
+ */
+function renderMessages() {
+    const activeTab = tabsContainer.querySelector('.active')?.dataset.tab || 'chat';
+    if (activeTab !== 'chat') return;
+    
+    const addCommentForm = document.getElementById('add-comment-form');
+    if (addCommentForm) addCommentForm.style.display = 'flex';
+    
+    activityLogContainer.innerHTML = '';
+    if (allMessages.length === 0) {
+        activityLogContainer.innerHTML = `<div class="placeholder-text">No messages yet.</div>`;
+        return;
     }
+    
+    allMessages.forEach(msg => {
+        const item = document.createElement('div');
+        item.className = 'comment-item';
+        item.dataset.messageId = msg.id;
+        
+        const isAuthor = msg.senderId === currentUser.id;
+        const hasLiked = msg.reactions?.like?.includes(currentUser.id);
+        const likeCount = msg.reactions?.like?.length || 0;
+        
+        // --- THIS IS THE KEY CHANGE ---
+        // We now use a ternary operator to choose the correct icon class.
+        // fa-regular for the hollow icon, fa-solid for the filled icon.
+        const likeIconClass = hasLiked ? 'fa-solid fa-thumbs-up' : 'fa-regular fa-thumbs-up';
+        
+        const reactionsHTML = `
+            <button class="react-btn like-btn ${hasLiked ? 'reacted' : ''}" title="Like">
+                <i class="${likeIconClass}"></i> <span class="like-count">${likeCount > 0 ? likeCount : ''}</span>
+            </button>
+        `;
+        // --- END OF CHANGE ---
+        
+        let authorActionsHTML = '';
+        if (isAuthor) {
+            authorActionsHTML = `
+                <button class="edit-comment-btn" title="Edit"><i class="fa-solid fa-pencil"></i></button>
+                <button class="delete-comment-btn" title="Delete"><i class="fa-solid fa-trash"></i></button>
+            `;
+        }
+        
+        const iconsHTML = `
+            <div class="sidebarcommenticons">
+                ${reactionsHTML}
+                ${authorActionsHTML}
+            </div>
+        `;
+        
+        const timestamp = msg.timestamp ? new Date(msg.timestamp.toDate()).toLocaleString() : 'Sending...';
+        
+        item.innerHTML = `
+            <div class="avatar" style="background-image: url(${msg.senderAvatar})"></div>
+            <div class="comment-body">
+                <div class="comment-header">
+                    <div class="comment-meta">
+                        <span class="comment-author">${msg.senderName}</span> 
+                        <span class="comment-timestamp">${timestamp}${msg.editedAt ? ' (edited)' : ''}</span>
+                    </div>
+                    ${iconsHTML}
+                </div>
+                <div class="comment-content-wrapper">
+                    <div class="comment-text">${msg.message || ''}</div>
+                    ${msg.imageUrl ? `<div class="log-attachment"><img class="scalable-image" src="${msg.imageUrl}" alt="${msg.messageNote || 'Attachment'}"></div>` : ''}
+                    <div class="comment-edit-area" style="display: none;">
+                        <textarea class="comment-edit-input">${msg.message || ''}</textarea>
+                        <div class="comment-edit-actions">
+                            <button class="btn-cancel-edit">Cancel</button>
+                            <button class="btn-save-edit">Save</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        activityLogContainer.appendChild(item);
+    });
+    activityLogContainer.scrollTop = activityLogContainer.scrollHeight;
+}
     
     /**
      * Renders all activity logs and ensures the comment form is HIDDEN.

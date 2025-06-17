@@ -1484,3 +1484,44 @@ task-fields-table .field-value {
 .task-complete-btn.completed .fa-regular {
     font-weight: 900; /* Makes the checkmark solid */
 }
+.sidebarcommenticons {
+    display: flex;
+    align-items: center;
+    gap: 12px; /* Adds space between the icons */
+}
+
+/* 3. Basic styling for the individual action buttons */
+.sidebarcommenticons .react-btn,
+.sidebarcommenticons .edit-comment-btn,
+.sidebarcommenticons .delete-comment-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #6b778c; /* A standard icon color */
+    padding: 2px;
+    font-size: 14px;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.sidebarcommenticons .react-btn:hover,
+.sidebarcommenticons .edit-comment-btn:hover,
+.sidebarcommenticons .delete-comment-btn:hover {
+    opacity: 1;
+    color: #0052cc; /* A highlight color on hover */
+}
+
+/* 4. Styling for the "Like" button specifically */
+.sidebarcommenticons .react-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+}
+
+/* Add this CSS to your project's stylesheet */
+
+/* This makes the icon blue when the button has the .reacted class */
+.sidebarcommenticons .like-btn.reacted .fa-thumbs-up {
+    color: #0052cc;
+}
