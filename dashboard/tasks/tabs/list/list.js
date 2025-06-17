@@ -1189,22 +1189,45 @@ async function updateTaskInFirebase(taskId, sectionId, propertiesToUpdate) {
 }
 
 /**
- * Creates a new task document in Firestore.
- * onSnapshot will handle the UI update.
- * @param {string} sectionId The ID of the section to add the task to.
- * @param {object} taskData The core data for the new task.
+ * Creates a new task document in Firestore within a specific section.
+ * It automatically generates a unique ID and saves it as an 'id' field
+ * within the document itself, which is essential for queries.
+ *
+ * @param {string} sectionId - The ID of the section to add the task to.
+ * @param {object} taskData - An object containing the initial data for the task (e.g., { name: 'My new task' }).
  */
 async function addTaskToFirebase(sectionId, taskData) {
-    if (!currentUserId || !currentWorkspaceId || !currentProjectId) return console.error("Missing IDs.");
+    // 1. Ensure we have the necessary context to build the path.
+    if (!currentUserId || !currentWorkspaceId || !currentProjectId) {
+        return console.error("Cannot add task: Missing current user, workspace, or project ID.");
+    }
     const tasksPath = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${sectionId}/tasks`;
+    
     try {
-        await addDoc(collection(db, tasksPath), {
+        // --- MODIFICATION START ---
+
+        // 2. Instead of addDoc, first create a reference to a new, empty document.
+        // This generates the unique ID for us *before* we save any data.
+        const newTaskRef = doc(collection(db, tasksPath));
+
+        // 3. Prepare the complete data object, including the new ID.
+        const fullTaskData = {
             ...taskData,
+            id: newTaskRef.id, // <-- Here is the new document's ID
             projectId: currentProjectId,
             userId: currentUserId,
             sectionId: sectionId,
             createdAt: serverTimestamp()
-        });
+            // Add any other default fields here (e.g., status: 'To Do', assignees: [])
+        };
+
+        // 4. Use setDoc() to save the document with the complete data to the exact reference we created.
+        await setDoc(newTaskRef, fullTaskData);
+        
+        console.log("Successfully added task with ID: ", newTaskRef.id);
+
+        // --- MODIFICATION END ---
+
     } catch (error) {
         console.error("Error adding task:", error);
     }

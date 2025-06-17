@@ -360,54 +360,84 @@ async function addSectionToFirebase() {
 }
 
 const handleBlur = async (e) => {
+    // Check if the event target is an editable field
     if (!e.target.isContentEditable) return;
+    
     const newName = e.target.textContent.trim();
     const taskCard = e.target.closest('.boardtasks-task-card.is-new');
-    
+
+    // Logic for handling a NEW inline task
     if (taskCard) {
         const tempId = taskCard.dataset.taskId;
-        const section = findSection(e.target.closest('.boardtasks-kanban-column').dataset.sectionId);
+        const sectionEl = e.target.closest('.boardtasks-kanban-column');
+        if (!sectionEl) return;
+
+        const section = findSection(sectionEl.dataset.sectionId);
         const taskIndex = section.tasks.findIndex(t => t.id === tempId);
         if (taskIndex === -1) return;
-        
-        if (newName) {
-            const taskData = section.tasks.splice(taskIndex, 1)[0];
-            
-            // --- FIX STARTS HERE: Updated default values for a new task ---
-            const defaults = { 
-                dueDate: '', 
-                priority: 'Low', 
-                status: 'On track', 
-                assignees: [], 
-                chatuuid: `chat_${Date.now()}`,
-                customFields: {},      // Added new empty map
-                likedAmount: 0,        // Replaces isLiked
-                likedBy: {}            // Replaces isLiked, stores user UIDs
-            };
-            // --- FIX ENDS HERE ---
 
+        // If the user entered a name, save the new task to Firestore
+        if (newName) {
+            const taskData = section.tasks.splice(taskIndex, 1)[0]; // Get the temporary task data
+
+            const defaults = {
+                dueDate: '',
+                priority: 'Low',
+                status: 'On track',
+                assignees: [],
+                chatuuid: '', // Chat UUID can be created on first message
+                customFields: {},
+                likedAmount: 0,
+                likedBy: {}
+            };
+
+            // Clean up temporary properties from the local task object
             delete taskData.isNew;
             delete taskData.id;
+
             const path = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${section.id}/tasks`;
+
             try {
-                await addDoc(collection(db, path), { ...defaults, ...taskData, name: newName, projectId: currentProjectId, createdAt: serverTimestamp() });
+                // --- MODIFICATION START ---
+
+                // 1. Create a reference for the new document to get its unique ID first.
+                const newTaskRef = doc(collection(db, path));
+
+                // 2. Assemble the complete data object, including the new ID.
+                const fullTaskData = {
+                    ...defaults,
+                    ...taskData,
+                    name: newName,
+                    id: newTaskRef.id, // <-- Add the document's own ID to its data
+                    projectId: currentProjectId,
+                    sectionId: section.id,
+                    userId: currentUserId,
+                    createdAt: serverTimestamp()
+                };
+
+                // 3. Use setDoc() to save the document with the complete data.
+                await setDoc(newTaskRef, fullTaskData);
+                
+                // --- MODIFICATION END ---
+
             } catch (error) {
-                console.error("Error adding task:", error);
-                renderBoard();
+                console.error("Error adding new task from inline edit:", error);
+                renderBoard(); // Re-render to show the failed state
             }
         } else {
+            // If the user left the name blank, just remove the temporary task from the UI
             section.tasks.splice(taskIndex, 1);
             renderBoard();
         }
     } else {
+        // Logic for updating an EXISTING task or section title
         const { task, section } = findTaskAndSection(e.target.closest('.boardtasks-task-card')?.dataset.taskId);
         if (!task) return;
         
-        if (e.target.classList.contains('boardtasks-section-title-editable')) {
-            const parentSection = findSection(e.target.closest('.boardtasks-kanban-column').dataset.sectionId);
-            if (parentSection && parentSection.title !== newName) updateDoc(doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${parentSection.id}`), { title: newName });
-        } else if (e.target.classList.contains('boardtasks-task-name-editable')) {
-            if (task.name !== newName) updateDoc(doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${section.id}/tasks/${task.id}`), { name: newName });
+        const docRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${section.id}/tasks/${task.id}`);
+        
+        if (task.name !== newName) {
+            updateDoc(docRef, { name: newName });
         }
     }
 };
