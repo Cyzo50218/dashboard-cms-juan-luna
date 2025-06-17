@@ -153,3 +153,41 @@ max-height: var(--header-height) !important;
 .grid-row-wrapper:hover .sticky-col-task {
     background-color: var(--secondary-bg);
 }
+
+/* ===========================
+//
+//  Option Menu for Sections
+// 
+============================= */
+/* --- NEW: Dropdown Menu Styling --- */
+.options-dropdown-menu {
+    position: absolute;
+    z-index: 1000;
+    background-color: var(--primary-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+    padding: 6px;
+    min-width: 200px;
+    font-size: 14px;
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.dropdown-item:hover {
+    background-color: var(--secondary-bg);
+}
+
+.dropdown-icon {
+    width: 16px; /* Ensures alignment */
+    text-align: center;
+    color: var(--text-secondary-color);
+}

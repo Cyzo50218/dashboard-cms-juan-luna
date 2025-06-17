@@ -281,7 +281,24 @@ export function init(params) {
 
 
 function setupEventListeners() {
+    document.addEventListener('click', (e) => {
+    const optionsButton = e.target.closest('.section-options-btn');
+    const dropdownItem = e.target.closest('.dropdown-item');
     
+    if (optionsButton) {
+        // If an options button was clicked, open its menu
+        openOptionsMenu(optionsButton);
+    } else if (dropdownItem) {
+        // If a dropdown item was clicked, log the action and close the menu
+        const { action, sectionId } = dropdownItem.dataset;
+        console.log(`Action: ${action}, Section ID: ${sectionId || 'N/A'}`);
+        closeOpenMenu();
+    } else {
+        // If the click was anywhere else, close any open menu
+        closeOpenMenu();
+    }
+});
+
     headerClickListener = (e) => {
         const deleteButton = e.target.closest('.delete-column-btn');
         if (deleteButton) {
@@ -1184,38 +1201,78 @@ function renderBody(projectToRender, container) {
 function createSectionRow(sectionData, customColumns) {
     const cells = [];
     
-    // 1. Create the sticky Section Title Cell
+    // Create the sticky Section Title Cell
     const titleCell = document.createElement('div');
-    // ADDED: Re-introduced the 'align-left' class to push the text to the left.
     titleCell.className = 'task-cell sticky-col-task section-title-cell align-left';
     titleCell.dataset.sectionId = sectionData.id;
-
+    
     const chevronClass = sectionData.isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down';
+    
+    // CHANGE: The "Add Task" button is now a "section-options-btn" with an ellipsis icon.
     titleCell.innerHTML = `
         <div class="section-title-wrapper">
              <i class="fas ${chevronClass} section-toggle"></i>
              <span class="section-title">${sectionData.title}</span>
         </div>
-        <button class="add-task-section-btn">
-            <i class="fa-solid fa-plus"></i>
-            <span>Add Task</span>
+        <button class="section-options-btn" data-section-id="${sectionData.id}">
+            <i class="fa-solid fa-ellipsis-h"></i>
         </button>
     `;
     cells.push(titleCell);
-
-    // 2. Create placeholder cells for the remaining scrollable columns
+    
+    // Create placeholder cells for the remaining scrollable columns
     const baseColumnCount = 4;
     const customColumnCount = customColumns.length;
     const totalPlaceholders = baseColumnCount + customColumnCount + 1;
-
+    
     for (let i = 0; i < totalPlaceholders; i++) {
         const placeholderCell = document.createElement('div');
-        // This cell still needs the section-specific class for its border styling
         placeholderCell.className = 'task-cell section-placeholder-cell';
         cells.push(placeholderCell);
     }
     
     return cells;
+}
+
+function closeOpenMenu() {
+    const existingMenu = document.querySelector('.options-dropdown-menu');
+    if (existingMenu) {
+        existingMenu.remove();
+    }
+}
+
+function openOptionsMenu(buttonEl) {
+    closeOpenMenu(); // Close any other menus first
+    
+    const rect = buttonEl.getBoundingClientRect();
+    const sectionId = buttonEl.dataset.sectionId;
+    
+    // Create menu element
+    const menu = document.createElement('div');
+    menu.className = 'options-dropdown-menu';
+    menu.innerHTML = `
+        <div class="dropdown-item" data-action="addTask" data-section-id="${sectionId}">
+            <i class="fa-solid fa-plus dropdown-icon"></i>
+            <span>Add task</span>
+        </div>
+        <div class="dropdown-item" data-action="renameSection">
+             <i class="fa-solid fa-pen dropdown-icon"></i>
+            <span>Rename section</span>
+        </div>
+        <div class="dropdown-item" data-action="deleteSection">
+             <i class="fa-solid fa-trash dropdown-icon"></i>
+            <span>Delete section</span>
+        </div>
+    `;
+    
+    // Append to body to avoid clipping issues and to measure its width
+    document.body.appendChild(menu);
+    const menuWidth = menu.offsetWidth;
+    
+    // Position the menu relative to the button
+    // This aligns the dropdown's right edge with the button's right edge.
+    menu.style.top = `${rect.bottom + window.scrollY + 4}px`; // 4px vertical offset
+    menu.style.left = `${rect.right + window.scrollX - menuWidth}px`;
 }
 
 function createAddTaskRow(customColumns, sectionId) {
