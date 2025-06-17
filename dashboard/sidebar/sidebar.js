@@ -139,13 +139,6 @@ window.TaskSidebar = (function() {
             const tasksQuery = query(collectionGroup(db, 'tasks'), where('id', '==', taskId), limit(1));
             const querySnapshot = await getDocs(tasksQuery);
 
-            if (querySnapshot.empty) {
-                // This error now correctly means one of two things:
-                // 1. The Firestore Index is missing (check console for a link).
-                // 2. The task document truly does not exist or its 'id' field is wrong.
-                throw new Error(`Task with ID ${taskId} could not be found. Please ensure the Firestore Index has been created.`);
-            }
-
             // Get the full, correct reference to the found document
             currentTaskRef = querySnapshot.docs[0].ref;
             
