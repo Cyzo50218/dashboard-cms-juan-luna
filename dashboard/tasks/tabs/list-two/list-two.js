@@ -1098,7 +1098,7 @@ function syncHeaderScroll() {
 
 function renderHeader(projectToRender, container) {
     const customColumns = projectToRender.customColumns || [];
-    const fixedHeight = '52px'; // Define the height once for consistency
+    const fixedHeight = '80px'; // Define the height once for consistency
     
     // --- SIMPLIFIED & CORRECTED HTML STRUCTURE ---
     
