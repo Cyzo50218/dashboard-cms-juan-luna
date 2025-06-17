@@ -8,7 +8,7 @@
     --high-priority: #ff4d4f;
     --medium-priority: #ffa940;
     --low-priority: #52c41a;
-    --fixed-col-width: 80%;
+    --fixed-col-width: 55%;
     --row-height: 0rem; /* Further reduced row height for more compactness */
     --header-padding-y: 0.5rem; /* New variable for vertical header padding */
     --column-padding-y: 0.2rem; /* New variable for vertical column padding */
