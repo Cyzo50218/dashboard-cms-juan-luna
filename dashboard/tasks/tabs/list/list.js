@@ -280,32 +280,7 @@ export function init(params) {
 
 // --- Event Listener Setup ---
 
-// Example of how you would attach the event listener in your UI
-// (e.g., when rendering a Kanban board)
-function renderTasks(tasks, sectionId, projectId, workspaceId) {
-    const taskListElement = document.getElementById(`section-${sectionId}-tasks`);
-    taskListElement.innerHTML = '';
 
-    tasks.forEach(task => {
-        const taskElement = document.createElement('div');
-        taskElement.className = 'task-item';
-        taskElement.textContent = task.name;
-
-        // Attach the click listener
-        taskElement.addEventListener('click', () => {
-            // Create the context object with all the required info
-            const taskContext = {
-                taskId: task.id,
-                sectionId: sectionId,
-                projectId: projectId,
-                workspaceId: workspaceId
-            };
-            displaySideBarTasks(taskContext);
-        });
-
-        taskListElement.appendChild(taskElement);
-    });
-}
 
 function setupEventListeners() {
     headerClickListener = (e) => {
@@ -388,7 +363,7 @@ function setupEventListeners() {
         
         // --- Sidebar and Control Handling ---
         if (e.target.matches('.task-name')) {
-            return renderTasks(taskId);
+            return displaySideBarTasks(taskId);
         }
         
         const control = e.target.closest('[data-control]');
@@ -1182,25 +1157,12 @@ async function moveTaskToSection(taskId, targetSectionId) {
     }
 }
 
-// --- This code should be in your MAIN application script ---
-
-/**
- * The bridge function between your UI and the TaskSidebar module.
- *
- * @param {object} context - An object containing all necessary IDs.
- * @param {string} context.taskId - The unique ID of the task.
- * @param {string} context.sectionId - The ID of the section the task is in.
- * @param {string} context.projectId - The ID of the project the task belongs to.
- * @param {string} context.workspaceId - The ID of the user's active workspace.
- */
-function displaySideBarTasks(context) {
-    console.log(`UI clicked. Opening sidebar for task ID: ${context.taskId}`);
-    
+function displaySideBarTasks(taskId) {
+    console.log(`Task name clicked. Opening sidebar for task ID: ${taskId}`);
     if (window.TaskSidebar) {
-        // Pass the entire context object to the sidebar's open method
-        window.TaskSidebar.open(context);
+        window.TaskSidebar.open(taskId);
     } else {
-        console.error("TaskSidebar module is not available on the window object.");
+        console.error("TaskSidebar module is not available.");
     }
 }
 
