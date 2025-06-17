@@ -173,7 +173,7 @@ window.TaskSidebar = (function() {
                     renderSidebar(currentTask);
                     
                     listenToActivity();
-                    if (currentTask.chatuuid) listenToMessages();
+                    listenToMessages();
                     
                 } else {
                     close();
@@ -295,15 +295,27 @@ window.TaskSidebar = (function() {
     }
     
     function listenToMessages() {
-        if (!currentProject || !currentTask) return;
-        const messagesPath = `globalChatProjects/${currentProject.id}/tasks/${currentTask.id}/Messages`;
-        const messagesQuery = query(collection(db, messagesPath), orderBy("timestamp", "asc"));
-        
-        messagesListenerUnsubscribe = onSnapshot(messagesQuery, (snapshot) => {
-            allMessages = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-            renderActiveTab();
-        });
+    if (!currentProject || !currentTask) {
+        console.error("DEBUG: listenToMessages stopped: currentProject or currentTask is missing.");
+        return;
     }
+    
+    const messagesPath = `globalChatProjects/${currentProject.id}/tasks/${currentTask.id}/Messages`;
+    console.log("DEBUG: Attempting to listen for messages at path:", messagesPath);
+    
+    const messagesQuery = query(collection(db, messagesPath), orderBy("timestamp", "asc"));
+    
+    messagesListenerUnsubscribe = onSnapshot(messagesQuery, (snapshot) => {
+        console.log(`DEBUG: Message snapshot received. Found ${snapshot.size} documents.`);
+        if (snapshot.empty) {
+            console.warn("DEBUG: Query returned 0 messages. Please check a) data exists at the path, and b) your security rules allow a 'list' operation on this path.");
+        }
+        allMessages = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+        renderActiveTab();
+    }, (error) => {
+        console.error("DEBUG: CRITICAL ERROR in message listener. This is almost certainly a PERMISSION DENIED error from your Firestore Security Rules.", error);
+    });
+}
     
     // --- 6. DATA MUTATION (EDITING & MOVING) ---
     async function updateTaskField(fieldKey, newValue) {
@@ -387,23 +399,30 @@ window.TaskSidebar = (function() {
     }
     
     async function handleCommentSubmit() {
-        const text = commentInput.value.trim();
-        const files = [...pastedFiles];
-        if (!text && files.length === 0) return;
-        commentInput.value = '';
-        clearImagePreview();
-        try {
-            let imageUrl = null;
-            if (files.length > 0) {
-                const file = files[0];
-                const storagePath = `workspaceProjects/${currentProject.id}/messages-attachments/${Date.now()}-${file.name}`;
-                const storageRef = ref(storage, storagePath);
-                const snapshot = await uploadBytes(storageRef, file);
-                imageUrl = await getDownloadURL(snapshot.ref);
-            }
-            await sendMessage(text, null, imageUrl);
-        } catch (error) { console.error("Failed to send message:", error); }
+    const text = commentInput.value.trim();
+    const files = [...pastedFiles]; // Check for any staged files
+    if (!text && files.length === 0) return;
+    
+    // Clear the inputs immediately
+    commentInput.value = '';
+    clearImagePreview();
+    
+    try {
+        let imageUrl = null;
+        if (files.length > 0) {
+            const file = files[0];
+            // Use the correct new storage path
+            const storagePath = `workspaceProjects/${currentProject.id}/messages-attachments/${Date.now()}-${file.name}`;
+            const storageRef = ref(storage, storagePath);
+            const snapshot = await uploadBytes(storageRef, file);
+            imageUrl = await getDownloadURL(snapshot.ref);
+        }
+        // Send message with text and the possible image URL
+        await sendMessage(text, null, imageUrl);
+    } catch (error) {
+        console.error("Failed to send message:", error);
     }
+}
     
     async function updateMessage(messageId, newText, originalText) {
         const messageRef = doc(db, `globalChatProjects/${currentProject.id}/tasks/${currentTask.id}/Messages`, messageId);
@@ -429,10 +448,12 @@ window.TaskSidebar = (function() {
         const fieldPath = `reactions.${reactionType}`;
         if (reactions.includes(currentUser.id)) {
             await updateDoc(messageRef, {
-                [fieldPath]: arrayRemove(currentUser.id) });
+                [fieldPath]: arrayRemove(currentUser.id)
+            });
         } else {
             await updateDoc(messageRef, {
-                [fieldPath]: arrayUnion(currentUser.id) });
+                [fieldPath]: arrayUnion(currentUser.id)
+            });
             logActivity({ action: 'liked', field: 'a comment' });
         }
     }
@@ -662,12 +683,6 @@ window.TaskSidebar = (function() {
         });
     }
     
-    function clearImagePreview() {
-        pastedFiles = [];
-        if (imagePreviewContainer) imagePreviewContainer.innerHTML = '';
-        if (commentInputWrapper) commentInputWrapper.classList.remove('preview-active');
-    }
-    
     // --- 8. EVENT LISTENERS ---
     function attachEventListeners() {
         if (!sidebar) return;
@@ -680,8 +695,41 @@ window.TaskSidebar = (function() {
         // Standard listeners
         closeBtn.addEventListener('click', close);
         sendCommentBtn.addEventListener('click', handleCommentSubmit);
-        commentInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault();
-                handleCommentSubmit(); } });
+        commentInput.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleCommentSubmit();
+            }
+        });
+        
+        const uploadFileBtn = document.getElementById('upload-file-btn');
+if (uploadFileBtn) {
+    uploadFileBtn.addEventListener('click', () => fileUploadInput.click());
+}
+
+fileUploadInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file && file.type.startsWith('image/')) {
+        pastedFiles = [file];
+        addImagePreview(file);
+    }
+});
+
+commentInput.addEventListener('paste', (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    
+    for (const item of items) {
+        if (item.type.indexOf('image') !== -1) {
+            const file = item.getAsFile();
+            if (file) {
+                pastedFiles.push(file);
+                addImagePreview(file);
+                e.preventDefault(); // Prevent text paste
+            }
+        }
+    }
+});
         
         // --- DIAGNOSTIC TAB CLICK LISTENER ---
         tabsContainer.addEventListener('click', (e) => {
@@ -1249,6 +1297,42 @@ window.TaskSidebar = (function() {
         }
     }
     
+    function addImagePreview(file) {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        if (!imagePreviewContainer || !commentInputWrapper) return;
+        commentInputWrapper.classList.add('preview-active');
+        
+        const previewItem = document.createElement('div');
+        previewItem.className = 'image-preview-item';
+        
+        // Use file name and last modified time as a unique key for removal
+        const fileId = file.name + file.lastModified;
+        previewItem.dataset.fileId = fileId;
+        
+        previewItem.innerHTML = `
+            <img src="${event.target.result}" alt="${file.name}">
+            <button class="remove-preview-btn" title="Remove image">&times;</button>
+        `;
+        
+        previewItem.querySelector('.remove-preview-btn').addEventListener('click', () => {
+            pastedFiles = pastedFiles.filter(f => (f.name + f.lastModified) !== fileId);
+            previewItem.remove();
+            if (pastedFiles.length === 0) {
+                commentInputWrapper.classList.remove('preview-active');
+            }
+        });
+        
+        imagePreviewContainer.appendChild(previewItem);
+    };
+    reader.readAsDataURL(file);
+}
+
+    function clearImagePreview() {
+    pastedFiles = [];
+    if (imagePreviewContainer) imagePreviewContainer.innerHTML = '';
+    if (commentInputWrapper) commentInputWrapper.classList.remove('preview-active');
+}
     // --- 10. PUBLIC INTERFACE ---
     return { init, open };
 })();
