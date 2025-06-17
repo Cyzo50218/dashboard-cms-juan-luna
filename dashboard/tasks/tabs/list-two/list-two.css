@@ -50,15 +50,16 @@
 
 /* --- Header & Task Cell Specifics (FIXED) --- */
 .header-cell {
-    height: var(--header-height);
+    /* FIX: Force a fixed height that cannot be overridden */
+    height: var(--header-height) !important;
+    min-height: var(--header-height) !important;
+    max-height: var(--header-height) !important;
+    
     padding: 0 12px;
     position: sticky; top: 0; z-index: 3;
     font-weight: 500; color: var(--text-secondary-color);
-    /* FIX: This pushes the text to the left and the icon to the right */
     justify-content: space-between;
 }
-/* REMOVED .header-cell-content as it's no longer needed */
-
 .task-cell { padding: var(--task-row-padding); color: var(--text-color); }
 .task-cell.align-left {
     gap: 16px; 
