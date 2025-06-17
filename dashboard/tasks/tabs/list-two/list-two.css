@@ -47,16 +47,12 @@
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
-/* --- Header & Task Cell Specifics (FIXED) --- */
-/* --- Header & Task Cell Specifics (FIXED) --- */
 .header-cell {
-    /* FIX: Force a fixed height that cannot be overridden */
-    height: var(--header-height) !important;
-    min-height: var(--header-height) !important;
-    max-height: var(--header-height) !important;
-    
+    display: flex;
     padding: 0 12px;
-    position: sticky; top: 0; z-index: 3;
+    align-items: center;
+    position: sticky;
+    z-index: 3;
     font-weight: 500; color: var(--text-secondary-color);
     justify-content: space-between;
 }
