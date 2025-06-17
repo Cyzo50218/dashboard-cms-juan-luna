@@ -49,7 +49,7 @@ window.TaskSidebar = (function() {
     try {
         app = initializeApp(firebaseConfig);
         auth = getAuth(app);
-        db = getFirestore(app);
+        db = getFirestore(app, "juanluna-cms-01");
         storage = getStorage(app);
     } catch (e) {
         console.error("TaskSidebar: Firebase initialization failed.", e);
@@ -138,12 +138,7 @@ window.TaskSidebar = (function() {
             // for a document where the 'id' field matches the given taskId.
             const tasksQuery = query(collectionGroup(db, 'tasks'), where('id', '==', taskId), limit(1));
             const querySnapshot = await getDocs(tasksQuery);
-
-            const snapshot = await getDocs(collectionGroup(db, 'tasks'));
-snapshot.forEach(doc => {
-  console.log(doc.id, doc.data());
-});
-
+            
 
             if (querySnapshot.empty) {
                 // This error now correctly means one of two things:
