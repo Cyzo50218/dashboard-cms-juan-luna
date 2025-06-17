@@ -37,6 +37,7 @@
 
 
 /* --- Unified Cell Styling --- */
+.header-cell,
 .task-cell {
     display: flex;
     align-items: center; /* This correctly centers content vertically */
@@ -47,12 +48,19 @@
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
+#task-list-header {
+    height: var(--header-height) !important;
+    min-height: var(--header-height) !important;
+    max-height: var(--header-height) !important;
+     position: relative;
+    overflow: hidden;
+    z-index: 10;
+    border-bottom: 2px solid var(--header-border-color);
+}
+
 .header-cell {
-    display: flex;
     padding: 0 12px;
-    align-items: center;
-    position: sticky;
-    z-index: 3;
+    position: sticky; top: 0; z-index: 3;
     font-weight: 500; color: var(--text-secondary-color);
     justify-content: space-between;
 }
