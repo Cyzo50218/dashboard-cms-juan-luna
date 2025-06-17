@@ -37,7 +37,6 @@
 
 
 /* --- Unified Cell Styling --- */
-.header-cell,
 .task-cell {
     display: flex;
     align-items: center; /* This correctly centers content vertically */
