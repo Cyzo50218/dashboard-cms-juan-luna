@@ -49,6 +49,7 @@
 }
 
 /* --- Header & Task Cell Specifics (FIXED) --- */
+/* --- Header & Task Cell Specifics (FIXED) --- */
 .header-cell {
     /* FIX: Force a fixed height that cannot be overridden */
     height: var(--header-height) !important;
