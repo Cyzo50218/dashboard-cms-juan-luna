@@ -1113,25 +1113,24 @@ function createSection(sectionData, customColumns) {
     sectionEl.className = 'task-section';
     sectionEl.dataset.sectionId = sectionData.id;
     
-    // --- Build the HTML for all task rows as a single string ---
+    // --- Build the HTML for all task rows (no changes here) ---
     let tasksHTML = '';
     if (sectionData.tasks && !sectionData.isCollapsed) {
         tasksHTML = sectionData.tasks.map(task => {
-            // createTaskRow returns a DOM element, so we get its HTML content
             return createTaskRow(task, customColumns).outerHTML;
         }).join('');
     }
     
-    // --- Build the HTML for the section footer ---
+    // --- MODIFICATION STARTS HERE ---
+    
+    // --- 1. Build the HTML for the SUMMARY part of the final row ---
     let summaryColsHTML = '';
-    let hasAggregatableColumnInSection = false;
     if (!sectionData.isCollapsed) {
         customColumns.forEach(col => {
             let displayValue = '';
             if (col.aggregation === 'Sum') {
                 const sectionTotal = sectionData.tasks.reduce((sum, task) => sum + Number(task.customFields[col.id] || 0), 0);
                 if (sectionTotal > 0) {
-                    hasAggregatableColumnInSection = true;
                     const formattedTotal = col.type === 'Costing' ? `${col.currency || ''}${sectionTotal.toLocaleString()}` : sectionTotal.toLocaleString();
                     displayValue = `<strong>Sum:</strong> ${formattedTotal}`;
                 }
@@ -1140,26 +1139,26 @@ function createSection(sectionData, customColumns) {
         });
     }
     
-    let sectionFooterHTML = '';
-    if (hasAggregatableColumnInSection) {
-        sectionFooterHTML = `
-        <div class="section-footer">
-            <div class="section-summary-row">
-                <div class="fixed-column"></div>
-                <div class="scrollable-columns-wrapper">
-                    <div class="scrollable-columns">
-                        <div class="task-col header-assignee"></div>
-                        <div class="task-col header-due-date"></div>
-                        <div class="task-col header-priority"></div>
-                        <div class="task-col header-status"></div>
-                        ${summaryColsHTML}
-                    </div>
+    // --- 2. Build the FINAL ROW using the same structure as a task row ---
+    // This ensures perfect column alignment.
+    const finalRowHTML = `
+        <div class="section-summary-row">
+            <div class="fixed-column">
+                <button class="add-task-in-section-btn"><i class="fas fa-plus"></i> Add task</button>
+            </div>
+            <div class="scrollable-columns-wrapper">
+                <div class="scrollable-columns">
+                    <div class="task-col header-assignee"></div>
+                    <div class="task-col header-due-date"></div>
+                    <div class="task-col header-priority"></div>
+                    <div class="task-col header-status"></div>
+                    ${summaryColsHTML}
                 </div>
             </div>
-        </div>`;
-    }
+        </div>
+    `;
     
-    // --- Assemble the entire section's innerHTML in one single operation ---
+    // --- 3. Assemble the entire section's innerHTML ---
     sectionEl.innerHTML = `
         <div class="section-header-list">
             <i class="fas fa-grip-vertical drag-handle"></i>
@@ -1169,9 +1168,10 @@ function createSection(sectionData, customColumns) {
         <div class="tasks-container ${sectionData.isCollapsed ? 'hidden' : ''}">
             ${tasksHTML}
         </div>
-        ${sectionFooterHTML}
-        <button class="add-task-in-section-btn"><i class="fas fa-plus"></i> Add task</button>
+        ${finalRowHTML}
     `;
+    
+    // --- MODIFICATION ENDS HERE ---
     
     return sectionEl;
 }

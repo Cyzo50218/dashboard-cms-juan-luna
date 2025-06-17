@@ -8,7 +8,7 @@
     --high-priority: #ff4d4f;
     --medium-priority: #ffa940;
     --low-priority: #52c41a;
-    --fixed-col-width: 55%;
+    --fixed-col-width: 40%;
     --row-height: 0rem; /* Further reduced row height for more compactness */
     --header-padding-y: 0.5rem; /* New variable for vertical header padding */
     --column-padding-y: 0.2rem; /* New variable for vertical column padding */
@@ -1255,4 +1255,38 @@ button:hover {
 
 .reaction-item:hover i.liked {
   color: #cc0000; /* A slightly darker red on hover for already liked hearts */
+}
+
+/*
+This targets the summary row at the bottom of a section.
+We add padding to give it space that matches the task rows.
+*/
+.section-summary-row {
+  padding: 8px 0;
+  border-top: 1px solid #e9e9e9; /* Visually separates it from the tasks */
+}
+
+/*
+This targets the Add Task button specifically within that final row.
+*/
+.section-summary-row .add-task-in-section-btn {
+  width: auto;
+  padding: 4px 2px;
+  margin-left: 20px; /* Aligns with the start of the task names */
+  text-align: left;
+  background-color: transparent;
+  border: none;
+  color: #1D1E1E; /* A subtle gray color */
+  font-weight: normal;
+  border-radius: 4px;
+}
+
+.section-summary-row .add-task-in-section-btn:hover {
+    background-color: #f0f0f0; /* A light background on hover */
+    color: #1D1E1E;
+}
+
+/* This keeps the summary text aligned properly */
+.section-summary-row .task-col {
+    padding-left: 8px;
 }
