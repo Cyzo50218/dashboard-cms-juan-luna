@@ -159,7 +159,7 @@ window.TaskSidebar = (function() {
             taskListenerUnsubscribe = onSnapshot(currentTaskRef, async (taskDoc) => {
                 if (taskDoc.exists()) {
                     currentTask = { ...taskDoc.data(), id: taskDoc.id };
-                    currentProject = workspaceProjects.find(p => p.id === currentTask.projectId);
+                    currentProject = currentTask.projectId;
                     
                     // Load workspace data using the owner's ID and correct workspaceId
                     await loadWorkspaceData(ownerId, workspaceId, currentTask.projectId);
