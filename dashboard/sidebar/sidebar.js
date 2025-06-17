@@ -335,95 +335,114 @@ window.TaskSidebar = (function() {
     }
     
     // --- 7. UI RENDERING ---
-    function renderSidebar(task) {
-        taskNameEl.textContent = task.name;
-        taskDescriptionEl.textContent = task.description || "Add a description...";
-        renderTaskFields(task);
-        renderActiveTab();
+   function renderSidebar(task) {
+    if (!task || !taskNameEl || !taskDescriptionEl) return;
+    
+    // Set the main task name and description from the task document
+    taskNameEl.textContent = task.name;
+    taskDescriptionEl.textContent = task.description || "Add a description..."; // Correctly uses task description
+    
+    renderTaskFields(task);
+    renderActiveTab();
+}
+
+function renderTaskFields(task) {
+    taskFieldsContainer.innerHTML = '';
+    
+    // Guard clause: We need the project document (which contains custom column definitions) to proceed.
+    if (!currentProject) {
+        console.warn("Cannot render fields because currentProject data is not available yet.");
+        return;
     }
 
-    function renderTaskFields(task) {
-        taskFieldsContainer.innerHTML = '';
-        if (!currentProject) return;
+    // --- Render Standard Fields ---
+    const projectOptionsHTML = workspaceProjects.map(p => `<option value="${p.id}" ${p.id === task.projectId ? 'selected' : ''}>${p.title}</option>`).join('');
+    appendFieldRow('Project', `<select class="field-control" data-field="projectId">${projectOptionsHTML}</select>`);
+    appendFieldRow('Assignee', `<div class="field-control field-popover" data-field="assignees">${renderAssigneeValue(task.assignees)}</div>`, 'assignee-field');
+    appendFieldRow('Due Date', `<div class="field-control field-datepicker" data-field="dueDate">${task.dueDate ? new Date(task.dueDate+'T00:00:00').toLocaleDateString() : 'No date'}</div>`);
+    appendFieldRow('Priority', `<div class="field-control field-popover" data-field="priority">${createTag(task.priority, defaultPriorityColors[task.priority])}</div>`);
+    appendFieldRow('Status', `<div class="field-control field-popover" data-field="status">${createTag(task.status, defaultStatusColors[task.status])}</div>`);
 
-        const projectOptionsHTML = workspaceProjects.map(p => `<option value="${p.id}" ${p.id === task.projectId ? 'selected' : ''}>${p.title}</option>`).join('');
-        appendFieldRow('Project', `<select class="field-control" data-field="projectId">${projectOptionsHTML}</select>`);
-        appendFieldRow('Assignee', `<div class="field-control field-popover" data-field="assignees">${renderAssigneeValue(task.assignees)}</div>`, 'assignee-field');
-        appendFieldRow('Due Date', `<div class="field-control field-datepicker" data-field="dueDate">${task.dueDate ? new Date(task.dueDate+'T00:00:00').toLocaleDateString() : 'No date'}</div>`);
-        appendFieldRow('Priority', `<div class="field-control field-popover" data-field="priority">${createTag(task.priority, defaultPriorityColors[task.priority])}</div>`);
-        appendFieldRow('Status', `<div class="field-control field-popover" data-field="status">${createTag(task.status, defaultStatusColors[task.status])}</div>`);
-
-        currentProject.customColumns?.forEach(col => {
-            const value = task.customFields ? task.customFields[col.id] : null;
-            let displayHTML = `<span class="text-gray-400">Not set</span>`;
-            if (value != null) {
-                if (col.type === 'Type' && col.options) {
-                    const option = col.options.find(opt => opt.name === value);
-                    displayHTML = createTag(value, option ? option.color : '#ccc');
-                } else {
-                    displayHTML = `<span>${value}</span>`;
-                }
+    // --- Render Custom Fields ---
+    // This loop iterates through the column DEFINITIONS from the PROJECT document.
+    currentProject.customColumns?.forEach(col => {
+        // This gets the VALUE for that column from the TASK document's customFields map.
+        const value = task.customFields ? task.customFields[col.id] : null;
+        
+        let displayHTML = `<span class="text-gray-400">Not set</span>`; // Default for empty values
+        
+        if (value != null) {
+            if (col.type === 'Type' && col.options) {
+                const option = col.options.find(opt => opt.name === value);
+                displayHTML = createTag(value, option ? option.color : '#ccc');
+            } else {
+                // For Text, Number, or other types
+                displayHTML = `<span>${value}</span>`;
             }
-            appendFieldRow(col.name, `<div class="field-control" data-field="custom" data-column-id="${col.id}">${displayHTML}</div>`);
-        });
-    }
+        }
+        
+        // This creates the row with the column's name (from the project) and the task's value.
+        appendFieldRow(col.name, `<div class="field-control" data-field="custom" data-column-id="${col.id}">${displayHTML}</div>`);
+    });
+}
     
     function appendFieldRow(label, controlHTML, customClass = '') {
-        const row = document.createElement('div');
-        row.className = `field-row ${customClass}`;
-        row.innerHTML = `<label>${label}</label><div class="field-value">${controlHTML}</div>`;
-        taskFieldsContainer.appendChild(row);
-    }
-    
-    function createTag(text, color = '#e0e0e0') {
-        const hex = color.replace('#', '');
-        const r = parseInt(hex.substring(0, 2), 16), g = parseInt(hex.substring(2, 4), 16), b = parseInt(hex.substring(4, 6), 16);
-        const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-        return `<div class="tag" style="background-color: ${color}; color: ${(yiq >= 128) ? '#000' : '#fff'};">${text}</div>`;
-    }
+    const row = document.createElement('div');
+    row.className = `field-row ${customClass}`;
+    row.innerHTML = `<label>${label}</label><div class="field-value">${controlHTML}</div>`;
+    taskFieldsContainer.appendChild(row);
+}
 
-    function renderAssigneeValue(assignees) {
-        if (assignees && assignees.length > 0) {
-            const user = allUsers.find(u => u.id === assignees[0]);
-            return user ? `<div class="avatar" style="background-image: url(${user.avatar})"></div><span>${user.name}</span>` : '<span>Unknown User</span>';
-        }
-        return '<span>Unassigned</span>';
-    }
+function createTag(text, color = '#e0e0e0') {
+    const hex = color.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16), g = parseInt(hex.substring(2, 4), 16), b = parseInt(hex.substring(4, 6), 16);
+    const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+    return `<div class="tag" style="background-color: ${color}; color: ${(yiq >= 128) ? '#000' : '#fff'};">${text}</div>`;
+}
 
-    function renderActiveTab() {
-        if (!tabsContainer || !activityLogContainer) return;
-        const activeTab = tabsContainer.querySelector('.active')?.dataset.tab || 'chat';
-        activityLogContainer.innerHTML = '';
-        if (activeTab === 'chat') renderMessages();
-        else renderActivityLogs();
+function renderAssigneeValue(assignees) {
+    if (assignees && assignees.length > 0) {
+        const user = allUsers.find(u => u.id === assignees[0]);
+        return user ? `<div class="avatar" style="background-image: url(${user.avatar})"></div><span>${user.name}</span>` : '<span>Unknown User</span>';
     }
-    
+    return '<span>Unassigned</span>';
+}
+
+function renderActiveTab() {
+    if (!tabsContainer || !activityLogContainer) return;
+    const activeTab = tabsContainer.querySelector('.active')?.dataset.tab || 'chat';
+    activityLogContainer.innerHTML = '';
+    if (activeTab === 'chat') renderMessages();
+    else renderActivityLogs();
+}
+
+ 
     function renderMessages() {
-        if (allMessages.length === 0) {
-            activityLogContainer.innerHTML = `<div class="placeholder-text">No messages yet.</div>`;
-            return;
-        }
-        allMessages.forEach(msg => {
-            const item = document.createElement('div');
-            item.className = 'comment-item';
-            item.innerHTML = `<div class="avatar" style="background-image: url(${msg.senderAvatar})"></div><div class="comment-body"><div class="comment-header"><span class="comment-author">${msg.senderName}</span> <span class="comment-timestamp">${new Date(msg.timestamp?.toDate()).toLocaleString()}</span></div>${msg.text ? `<div class="comment-text">${msg.text}</div>` : ''}${msg.imageUrl ? `<div class="log-attachment"><img class="scalable-image" src="${msg.imageUrl}"></div>` : ''}</div>`;
-            activityLogContainer.appendChild(item);
-        });
-        activityLogContainer.scrollTop = activityLogContainer.scrollHeight;
+    if (allMessages.length === 0) {
+        activityLogContainer.innerHTML = `<div class="placeholder-text">No messages yet.</div>`;
+        return;
     }
+    allMessages.forEach(msg => {
+        const item = document.createElement('div');
+        item.className = 'comment-item';
+        item.innerHTML = `<div class="avatar" style="background-image: url(${msg.senderAvatar})"></div><div class="comment-body"><div class="comment-header"><span class="comment-author">${msg.senderName}</span> <span class="comment-timestamp">${new Date(msg.timestamp?.toDate()).toLocaleString()}</span></div>${msg.text ? `<div class="comment-text">${msg.text}</div>` : ''}${msg.imageUrl ? `<div class="log-attachment"><img class="scalable-image" src="${msg.imageUrl}"></div>` : ''}</div>`;
+        activityLogContainer.appendChild(item);
+    });
+    activityLogContainer.scrollTop = activityLogContainer.scrollHeight;
+}
 
-    function renderActivityLogs() {
-        if (allActivities.length === 0) {
-            activityLogContainer.innerHTML = `<div class="placeholder-text">No activity yet.</div>`;
-            return;
-        }
-        allActivities.forEach(log => {
-            const item = document.createElement('div');
-            item.className = 'log-item';
-            item.innerHTML = `<div class="avatar" style="background-image: url(${log.userAvatar})"></div><div class="comment-body"><div class="comment-header"><span class="comment-author">${log.userName}</span> <span class="comment-timestamp">${new Date(log.timestamp?.toDate()).toLocaleString()}</span></div><div class="activity-change-log">${log.details}</div></div>`;
-            activityLogContainer.appendChild(item);
-        });
+function renderActivityLogs() {
+    if (allActivities.length === 0) {
+        activityLogContainer.innerHTML = `<div class="placeholder-text">No activity yet.</div>`;
+        return;
     }
+    allActivities.forEach(log => {
+        const item = document.createElement('div');
+        item.className = 'log-item';
+        item.innerHTML = `<div class="avatar" style="background-image: url(${log.userAvatar})"></div><div class="comment-body"><div class="comment-header"><span class="comment-author">${log.userName}</span> <span class="comment-timestamp">${new Date(log.timestamp?.toDate()).toLocaleString()}</span></div><div class="activity-change-log">${log.details}</div></div>`;
+        activityLogContainer.appendChild(item);
+    });
+}
 
     function clearImagePreview() {
         pastedFiles = [];
