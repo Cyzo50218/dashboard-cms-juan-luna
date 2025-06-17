@@ -6,7 +6,7 @@
     --text-color: #111827;
     --text-secondary-color: #6b7280;
     --accent-color: #4c6ef5;
-    --header-height: 52px;
+    --header-height: 45px;
     --task-row-padding: 10px 12px;
 }
 
@@ -60,6 +60,9 @@
 
 .header-cell {
     padding: 0 12px;
+    height: var(--header-height) !important;
+min-height: var(--header-height) !important;
+max-height: var(--header-height) !important;
     position: sticky; top: 0; z-index: 3;
     font-weight: 500; color: var(--text-secondary-color);
     justify-content: space-between;
