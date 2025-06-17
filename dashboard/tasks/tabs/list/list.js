@@ -569,9 +569,18 @@ function setupEventListeners() {
             
             // For Costing or Numbers types, parse the value as a number.
             if (column.type === 'Costing' || column.type === 'Numbers') {
-                const rawValue = newValue.replace(/,/g, ''); // Remove commas for parsing
-                newValue = parseFloat(rawValue) || 0;
-            }
+    // This more robust regex removes anything that isn't a digit, a hyphen, or a decimal point.
+    // It correctly preserves negative numbers like "-300" or "-12.50".
+    const numericString = newValue.replace(/[^0-9.-]+/g, "");
+    
+    // Only parse if the result is a valid, non-empty number string.
+    // This prevents an input of just "-" from being saved as 0.
+    if (numericString && !isNaN(numericString)) {
+        newValue = parseFloat(numericString);
+    } else {
+        newValue = null; // Default to null (or 0 if you prefer) for invalid input
+    }
+}
             
             // Only update if the value has actually changed.
             if (task.customFields[columnId] !== newValue) {
@@ -581,6 +590,7 @@ function setupEventListeners() {
                 });
             }
         }
+        
     };
     
     addTaskHeaderBtnListener = () => {
@@ -1115,6 +1125,7 @@ function createSection(sectionData, customColumns) {
     
     // --- Build the HTML for all task rows (no changes here) ---
     let tasksHTML = '';
+    let hasAggregatableColumnInSection = false;
     if (sectionData.tasks && !sectionData.isCollapsed) {
         tasksHTML = sectionData.tasks.map(task => {
             return createTaskRow(task, customColumns).outerHTML;
@@ -1130,10 +1141,14 @@ function createSection(sectionData, customColumns) {
             let displayValue = '';
             if (col.aggregation === 'Sum') {
                 const sectionTotal = sectionData.tasks.reduce((sum, task) => sum + Number(task.customFields[col.id] || 0), 0);
-                if (sectionTotal > 0) {
-                    const formattedTotal = col.type === 'Costing' ? `${col.currency || ''}${sectionTotal.toLocaleString()}` : sectionTotal.toLocaleString();
-                    displayValue = `<strong>Sum:</strong> ${formattedTotal}`;
-                }
+               if (sectionTotal !== 0) {
+    hasAggregatableColumnInSection = true;
+    // This formats the number to show decimals only when they exist.
+    const formattedTotal = sectionTotal.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    
+    const displayTotal = col.type === 'Costing' ? `${col.currency || ''}${formattedTotal}` : formattedTotal;
+    displayValue = `<strong>Sum:</strong> ${displayTotal}`;
+}
             }
             summaryColsHTML += `<div class="task-col header-custom">${displayValue}</div>`;
         });
@@ -1222,8 +1237,15 @@ function createTaskRow(task, customColumns) {
         customFieldsHTML += `<div class="task-col header-custom" data-control="custom-select" data-column-id="${col.id}">${displayValue}</div>`;
     } else {
         // Logic for other column types (Text, Costing, etc.)
-        const displayValue = col.type === 'Costing' && value ? `${col.currency || ''}${value.toLocaleString()}` : value;
-        customFieldsHTML += `<div class="task-col header-custom" data-control="custom" data-column-id="${col.id}" contenteditable="true">${displayValue}</div>`;
+        let displayValue = (value !== null && typeof value !== 'undefined') ? value : '';
+// For Costing/Numbers types, format the number to show decimals only if they exist.
+if ((col.type === 'Costing' || col.type === 'Numbers') && typeof value === 'number') {
+    // This formats the number with comma separators and a maximum of 2 decimal places.
+    // It will show "350.75" for 350.75 and "300" for 300.
+    const formattedNumber = value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    displayValue = (col.type === 'Costing' ? (col.currency || '') : '') + formattedNumber;
+}
+customFieldsHTML += `<div class="task-col header-custom" data-control="custom" data-column-id="${col.id}" contenteditable="true">${displayValue}</div>`;
     }
 });
     

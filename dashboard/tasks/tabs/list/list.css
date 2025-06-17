@@ -109,6 +109,7 @@ button:hover {
     border-bottom: 1px solid var(--border-color);
 }
 .task-list-header .fixed-column {
+    position: sticky;
     z-index: 20;
 }
 .task-row-wrapper {
@@ -1198,6 +1199,7 @@ button:hover {
     min-height: 36px;
     display: flex;
     align-items: center;
+    position: sticky;
     padding-right: 10px;
 }
 
