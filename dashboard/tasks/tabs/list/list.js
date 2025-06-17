@@ -1254,30 +1254,46 @@ function createTaskRow(task, customColumns) {
     return rowWrapper;
 }
 
+/**
+ * Moves a task to a different section using only the task's ID and the target section's ID.
+ * This function preserves the task's original document ID during the move.
+ *
+ * @param {string} taskId The ID of the task to move.
+ * @param {string} targetSectionId The ID of the destination section.
+ */
 async function moveTaskToSection(taskId, targetSectionId) {
+    // 1. Find the full task object and its current section from our local data.
     const { task: taskToMove, section: sourceSection } = findTaskAndSection(taskId);
     
+    // 2. Validate that the task and its source section were found.
     if (!taskToMove || !sourceSection || sourceSection.id === targetSectionId) {
         console.error("Cannot move task. Source or target section is invalid.");
         return;
     }
     
-    // 1. Prepare the new task data, ensuring sectionId is updated.
-    const newTaskData = { ...taskToMove, sectionId: targetSectionId };
-    delete newTaskData.id; // Firestore will generate a new ID.
+    // The ID of the task will be preserved. This is the same as the `taskId` passed in.
+    const preservedTaskId = taskToMove.id;
     
-    // 2. Define document references for the batch operation.
-    const sourceTaskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${sourceSection.id}/tasks/${taskId}`);
-    const targetTasksColRef = collection(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${targetSectionId}/tasks`);
+    // 3. Reference to the original document location in Firestore.
+    const sourceTaskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${sourceSection.id}/tasks/${preservedTaskId}`);
+    
+    // 4. Reference the NEW document location, but command Firestore to use the SAME ID.
+    const newTaskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${targetSectionId}/tasks/${preservedTaskId}`);
+    
+    // 5. Prepare the new data for the document.
+    const newTaskData = {
+        ...taskToMove,
+        sectionId: targetSectionId, // Update the sectionId field
+        id: preservedTaskId // Ensure the 'id' field is still the preserved ID
+    };
     
     try {
-        // 3. Use a batch to perform the delete and add atomically.
+        // 6. Atomically delete the old document and create the new one.
         const batch = writeBatch(db);
         batch.delete(sourceTaskRef);
-        batch.set(doc(targetTasksColRef), newTaskData); // Create new task in the target
-        
+        batch.set(newTaskRef, newTaskData);
         await batch.commit();
-        console.log(`Task ${taskId} moved successfully to section ${targetSectionId}`);
+        console.log(`Task ${preservedTaskId} moved successfully to section ${targetSectionId}.`);
     } catch (error) {
         console.error("Error moving task:", error);
     }
