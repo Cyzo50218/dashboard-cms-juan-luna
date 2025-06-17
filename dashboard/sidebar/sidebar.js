@@ -126,45 +126,55 @@ window.TaskSidebar = (function() {
      * @param {string} context.projectId
      * @param {string} context.workspaceId
      */
-    async function open(context) {
+   async function open(taskId) {
         if (!isInitialized) init();
-        if (!context || !context.taskId || !context.projectId || !context.sectionId || !context.workspaceId || !currentUser) {
-            console.error("TaskSidebar: open() called with incomplete context.", context);
-            return;
-        }
-        sidebar.classList.add('is-visible');
+        if (!taskId || !currentUser) return;
+        
         detachAllListeners();
         sidebar.classList.add('is-loading');
 
-        // Set the workspace context for this session
-        currentWorkspaceId = context.workspaceId;
-
         try {
-            // Build the direct, full path to the task document
-            const taskPath = `users/${currentUser.id}/myworkspace/${context.workspaceId}/projects/${context.projectId}/sections/${context.sectionId}/tasks/${context.taskId}`;
-            currentTaskRef = doc(db, taskPath);
+            // THIS IS THE CORRECTED QUERY. It searches all 'tasks' collections
+            // for a document where the 'id' field matches the given taskId.
+            const tasksQuery = query(collectionGroup(db, 'tasks'), where('id', '==', taskId), limit(1));
+            const querySnapshot = await getDocs(tasksQuery);
+
+            if (querySnapshot.empty) {
+                // This error now correctly means one of two things:
+                // 1. The Firestore Index is missing (check console for a link).
+                // 2. The task document truly does not exist or its 'id' field is wrong.
+                throw new Error(`Task with ID ${taskId} could not be found. Please ensure the Firestore Index has been created.`);
+            }
+
+            // Get the full, correct reference to the found document
+            currentTaskRef = querySnapshot.docs[0].ref;
+            
+            // The task's path contains the owner's userId and workspaceId.
+            const pathSegments = currentTaskRef.path.split('/');
+            const ownerId = pathSegments[1];
+            const workspaceId = pathSegments[3];
+            currentWorkspaceId = workspaceId; // Set the correct workspaceId
 
             taskListenerUnsubscribe = onSnapshot(currentTaskRef, async (taskDoc) => {
                 if (taskDoc.exists()) {
                     currentTask = { ...taskDoc.data(), id: taskDoc.id };
                     
-                    // Load all projects from the workspace for the switcher UI
-                    await loadWorkspaceData(currentTask.projectId);
+                    // Load workspace data using the owner's ID and correct workspaceId
+                    await loadWorkspaceData(ownerId, workspaceId, currentTask.projectId);
 
                     sidebar.classList.remove('is-loading');
-                    
+                    sidebar.classList.add('is-visible');
                     renderSidebar(currentTask);
                     
                     listenToActivity();
                     if (currentTask.chatuuid) listenToMessages();
 
                 } else {
-                    console.error(`TaskSidebar: Task at path ${taskPath} not found.`);
                     close();
                 }
             });
         } catch (error) {
-            console.error("TaskSidebar: Error opening task with direct path.", error);
+            console.error("TaskSidebar: Error opening task.", error);
             close();
         }
     }

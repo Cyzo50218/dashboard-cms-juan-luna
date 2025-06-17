@@ -388,32 +388,8 @@ function setupEventListeners() {
         
         // --- Sidebar and Control Handling ---
         if (e.target.matches('.task-name')) {
-        
-        // 1. Find the parent section element from the clicked task row
-        const sectionEl = taskRow.closest('.task-section');
-        if (!sectionEl) {
-            console.error("Could not find a parent '.task-section' for the clicked task.");
-            return;
+            return renderTasks(taskId);
         }
-
-        // 2. Get the sectionId from the element's data attribute
-        const sectionId = sectionEl.dataset.sectionId;
-
-        // 3. Assemble the complete context object for the sidebar
-        const taskContext = {
-            taskId: taskId,
-            sectionId: sectionId,
-            projectId: currentProjectId,    // You already have this
-            workspaceId: currentWorkspaceId // You already have this
-        };
-
-        // 4. Call your function to open the sidebar with the full context
-        // (Assuming your bridge function is named displaySideBarTasks)
-        displaySideBarTasks(taskContext);
-
-        // We are done, so we return to prevent other logic from running.
-        return;
-    }
         
         const control = e.target.closest('[data-control]');
         if (!control) return;
