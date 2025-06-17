@@ -108,7 +108,9 @@ button:hover {
 .task-row-wrapper {
     border-bottom: 1px solid var(--border-color);
 }
-
+.task-list-header .fixed-column {
+    z-index: 20;
+}
 .task-row-wrapper {
     transition: opacity 0.4s ease-in-out;
 }
@@ -118,6 +120,7 @@ button:hover {
     width: var(--fixed-col-width);
     border-right: 1px solid var(--border-color);
     display: flex;
+    position: sticky;
     align-items: center;
     /* Reduced padding for fixed column */
     padding: var(--column-padding-y) 1rem; /* Uses new variable for y-padding */
