@@ -160,7 +160,8 @@ window.TaskSidebar = (function() {
                 if (taskDoc.exists()) {
                     currentTask = { ...taskDoc.data(), id: taskDoc.id };
                     currentProject = currentTask.projectId;
-                    
+                    console.log(currentTask.projectId);
+                    console.log(currentProject);
                     // Load workspace data using the owner's ID and correct workspaceId
                     await loadWorkspaceData(ownerId, workspaceId, currentTask.projectId);
 
