@@ -22,6 +22,7 @@ body {
     position: fixed;
     top: 0;
     left: 0;
+    z-index: 20;
     right: 0;
     z-index: 1000;
 }
@@ -39,6 +40,7 @@ body {
 #drawer {
     width: 260px;
     transition: width 0.3s ease;
+    z-index: 5;
     overflow: auto;
     
 }
@@ -58,6 +60,8 @@ body {
 /* Optional Right Sidebar */
 #right-sidebar {
     width: 0;
+    
+    z-index: 10;
 }
 
 /* Add this to your main stylesheet, e.g., style.css */
