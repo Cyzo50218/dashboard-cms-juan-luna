@@ -363,100 +363,84 @@ window.TaskSidebar = (function() {
         } catch (error) { console.error("Failed to move task:", error); }
     }
     
-    async function logActivity({ action, field, from, to }) {
-        if (!currentTaskRef || !currentUser) return;
-        const details = `<strong>${currentUser.name}</strong> ${action}` +
-            `${field ? ` <strong>${field}</strong>` : ''}` +
-            `${from ? ` from <strong>${from}</strong>` : ''}` +
-            `${to ? ` to <strong>${to}</strong>` : ''}.`;
-        await addDoc(collection(currentTaskRef, "activity"), {
-            type: 'log',
-            userId: currentUser.id,
-            userName: currentUser.name,
-            userAvatar: currentUser.avatar,
-            timestamp: serverTimestamp(),
-            details: details
-        });
-    }
+   async function logActivity({ action, field, from, to }) {
+    if (!currentTaskRef || !currentUser) return;
+    const details = `<strong>${currentUser.name}</strong> ${action}` +
+                    `${field ? ` <strong>${field}</strong>` : ''}` +
+                    `${from ? ` from <strong>'${from}'</strong>` : ''}` +
+                    `${to ? ` to <strong>'${to}'</strong>` : ''}.`;
+    await addDoc(collection(currentTaskRef, "activity"), {
+        type: 'log',
+        userId: currentUser.id,
+        userName: currentUser.name,
+        userAvatar: currentUser.avatar,
+        timestamp: serverTimestamp(),
+        details: details
+    });
+}
+
+async function sendMessage(messageText, messageNote, imageUrl) {
+    if (!currentProject || !currentTask || !currentUser) return;
+    const messagesPath = `globalChatProjects/${currentProject.id}/tasks/${currentTask.id}/Messages`;
+    await addDoc(collection(db, messagesPath), {
+        message: messageText, messageNote, imageUrl,
+        senderId: currentUser.id, senderName: currentUser.name, senderAvatar: currentUser.avatar,
+        timestamp: serverTimestamp(), reactions: { "like": [] }
+    });
+    const logText = imageUrl ? 'attached an image' : `commented: "${messageText.substring(0, 20)}..."`;
+    logActivity({ action: logText });
+}
+
+async function updateMessage(messageId, updates) {
+    const messageRef = doc(db, `globalChatProjects/${currentProject.id}/tasks/${currentTask.id}/Messages`, messageId);
     
-    async function sendMessage(messageText, messageNote, imageUrl) {
-        if (!currentProject || !currentTask || !currentUser) return;
-        const messagesPath = `globalChatProjects/${currentProject.id}/tasks/${currentTask.id}/Messages`;
-        const newDocRef = doc(collection(db, messagesPath));
-        await setDoc(newDocRef, {
-            id: newDocRef.id,
-            message: messageText,
-            messageNote: messageNote,
-            imageUrl: imageUrl,
-            senderId: currentUser.id,
-            senderName: currentUser.name,
-            senderAvatar: currentUser.avatar,
-            timestamp: serverTimestamp(),
-            reactions: { "like": [] }
-        });
-        if (imageUrl) { logActivity({ action: 'attached an image' }); }
-        else { logActivity({ action: 'commented', field: `"${messageText.substring(0, 30)}..."` }); }
-    }
-    
-    async function handleCommentSubmit() {
-    const text = commentInput.value.trim();
-    const files = [...pastedFiles]; // Check for any staged files
-    if (!text && files.length === 0) return;
-    
-    // Clear the inputs immediately
-    commentInput.value = '';
-    clearImagePreview();
-    
-    try {
-        let imageUrl = null;
-        if (files.length > 0) {
-            const file = files[0];
-            // Use the correct new storage path
-            const storagePath = `workspaceProjects/${currentProject.id}/messages-attachments/${Date.now()}-${file.name}`;
-            const storageRef = ref(storage, storagePath);
-            const snapshot = await uploadBytes(storageRef, file);
-            imageUrl = await getDownloadURL(snapshot.ref);
+    // If a new image file is part of the update, handle the upload/delete process
+    if (updates.newImageFile) {
+        // 1. Upload the new image
+        const storagePath = `workspaceProjects/${currentProject.id}/messages-attachments/${Date.now()}-${updates.newImageFile.name}`;
+        const newImageRef = ref(storage, storagePath);
+        const snapshot = await uploadBytes(newImageRef, updates.newImageFile);
+        updates.imageUrl = await getDownloadURL(snapshot.ref);
+
+        // 2. If there was an old image, delete it from storage
+        if (updates.oldImageUrl) {
+            try { await deleteObject(ref(storage, updates.oldImageUrl)); } catch (e) { console.warn("Old image not found, may have been deleted already."); }
         }
-        // Send message with text and the possible image URL
-        await sendMessage(text, null, imageUrl);
-    } catch (error) {
-        console.error("Failed to send message:", error);
+    }
+    
+    // Remove temporary properties before updating Firestore
+    delete updates.newImageFile;
+    delete updates.oldImageUrl;
+    
+    // Add the 'editedAt' timestamp
+    updates.editedAt = serverTimestamp();
+    await updateDoc(messageRef, updates);
+    logActivity({ action: 'edited a message' });
+}
+
+async function deleteMessage(messageId, imageUrl, messageText) {
+    if (imageUrl) {
+        try { await deleteObject(ref(storage, imageUrl)); }
+        catch (error) { if (error.code !== 'storage/object-not-found') console.error("Failed to delete image:", error); }
+    }
+    await deleteDoc(doc(db, `globalChatProjects/${currentProject.id}/tasks/${currentTask.id}/Messages`, messageId));
+    logActivity({ action: 'deleted a comment', field: `"${messageText.substring(0, 30)}..."` });
+}
+
+async function toggleReaction(messageId, reactionType) {
+    if (!currentUser) return;
+    const messageRef = doc(db, `globalChatProjects/${currentProject.id}/tasks/${currentTask.id}/Messages`, messageId);
+    const messageDoc = await getDoc(messageRef);
+    if (!messageDoc.exists()) return;
+    const reactions = messageDoc.data().reactions?.[reactionType] || [];
+    const fieldPath = `reactions.${reactionType}`;
+    if (reactions.includes(currentUser.id)) {
+        await updateDoc(messageRef, { [fieldPath]: arrayRemove(currentUser.id) });
+    } else {
+        await updateDoc(messageRef, { [fieldPath]: arrayUnion(currentUser.id) });
+        logActivity({ action: 'liked', field: 'a comment' });
     }
 }
-    
-    async function updateMessage(messageId, newText, originalText) {
-        const messageRef = doc(db, `globalChatProjects/${currentProject.id}/tasks/${currentTask.id}/Messages`, messageId);
-        await updateDoc(messageRef, { message: newText, editedAt: serverTimestamp() });
-        logActivity({ action: 'edited a comment', from: `"${originalText.substring(0, 20)}..."`, to: `"${newText.substring(0, 20)}..."` });
-    }
-    
-    async function deleteMessage(messageId, imageUrl, messageText) {
-        if (imageUrl) {
-            try { await deleteObject(ref(storage, imageUrl)); }
-            catch (error) { if (error.code !== 'storage/object-not-found') console.error("Failed to delete image:", error); }
-        }
-        await deleteDoc(doc(db, `globalChatProjects/${currentProject.id}/tasks/${currentTask.id}/Messages`, messageId));
-        logActivity({ action: 'deleted a comment', field: `"${messageText.substring(0, 30)}..."` });
-    }
-    
-    async function toggleReaction(messageId, reactionType) {
-        if (!currentUser) return;
-        const messageRef = doc(db, `globalChatProjects/${currentProject.id}/tasks/${currentTask.id}/Messages`, messageId);
-        const messageDoc = await getDoc(messageRef);
-        if (!messageDoc.exists()) return;
-        const reactions = messageDoc.data().reactions?.[reactionType] || [];
-        const fieldPath = `reactions.${reactionType}`;
-        if (reactions.includes(currentUser.id)) {
-            await updateDoc(messageRef, {
-                [fieldPath]: arrayRemove(currentUser.id)
-            });
-        } else {
-            await updateDoc(messageRef, {
-                [fieldPath]: arrayUnion(currentUser.id)
-            });
-            logActivity({ action: 'liked', field: 'a comment' });
-        }
-    }
     
     
     // =================================================================================
@@ -629,46 +613,39 @@ window.TaskSidebar = (function() {
         renderActivityLogs();
     }
     
-    /**
-     * Renders all messages and ensures the comment form is VISIBLE.
-     */
-    /**
- * Renders all messages with a modern "Like" icon.
+  /**
+ * Renders all messages with a full suite of interactive controls for editing,
+ * deleting, and reacting, all updated in real-time.
  */
 function renderMessages() {
+    // This section is responsible for showing/hiding the main comment input form
     const activeTab = tabsContainer.querySelector('.active')?.dataset.tab || 'chat';
     if (activeTab !== 'chat') return;
-    
     const addCommentForm = document.getElementById('add-comment-form');
     if (addCommentForm) addCommentForm.style.display = 'flex';
-    
+
     activityLogContainer.innerHTML = '';
     if (allMessages.length === 0) {
-        activityLogContainer.innerHTML = `<div class="placeholder-text">No messages yet.</div>`;
+        activityLogContainer.innerHTML = `<div class="placeholder-text">No messages yet. Start the conversation!</div>`;
         return;
     }
-    
+
     allMessages.forEach(msg => {
         const item = document.createElement('div');
         item.className = 'comment-item';
         item.dataset.messageId = msg.id;
-        
+
         const isAuthor = msg.senderId === currentUser.id;
         const hasLiked = msg.reactions?.like?.includes(currentUser.id);
         const likeCount = msg.reactions?.like?.length || 0;
-        
-        // --- THIS IS THE KEY CHANGE ---
-        // We now use a ternary operator to choose the correct icon class.
-        // fa-regular for the hollow icon, fa-solid for the filled icon.
         const likeIconClass = hasLiked ? 'fa-solid fa-thumbs-up' : 'fa-regular fa-thumbs-up';
         
+        // Build the reaction and action buttons HTML
         const reactionsHTML = `
             <button class="react-btn like-btn ${hasLiked ? 'reacted' : ''}" title="Like">
                 <i class="${likeIconClass}"></i> <span class="like-count">${likeCount > 0 ? likeCount : ''}</span>
             </button>
         `;
-        // --- END OF CHANGE ---
-        
         let authorActionsHTML = '';
         if (isAuthor) {
             authorActionsHTML = `
@@ -676,16 +653,11 @@ function renderMessages() {
                 <button class="delete-comment-btn" title="Delete"><i class="fa-solid fa-trash"></i></button>
             `;
         }
-        
-        const iconsHTML = `
-            <div class="sidebarcommenticons">
-                ${reactionsHTML}
-                ${authorActionsHTML}
-            </div>
-        `;
-        
+        const iconsHTML = `<div class="sidebarcommenticons">${reactionsHTML}${authorActionsHTML}</div>`;
+
         const timestamp = msg.timestamp ? new Date(msg.timestamp.toDate()).toLocaleString() : 'Sending...';
         
+        // Construct the final HTML for the message item
         item.innerHTML = `
             <div class="avatar" style="background-image: url(${msg.senderAvatar})"></div>
             <div class="comment-body">
@@ -698,9 +670,15 @@ function renderMessages() {
                 </div>
                 <div class="comment-content-wrapper">
                     <div class="comment-text">${msg.message || ''}</div>
-                    ${msg.imageUrl ? `<div class="log-attachment"><img class="scalable-image" src="${msg.imageUrl}" alt="${msg.messageNote || 'Attachment'}"></div>` : ''}
+                    <div class="log-attachment">
+                        ${msg.imageUrl ? `<img class="scalable-image" src="${msg.imageUrl}" alt="${msg.messageNote || 'Attachment'}">` : ''}
+                    </div>
+                    ${msg.messageNote && msg.imageUrl ? `<div class="attachment-note">${msg.messageNote}</div>` : ''}
+                    
                     <div class="comment-edit-area" style="display: none;">
                         <textarea class="comment-edit-input">${msg.message || ''}</textarea>
+                        <input type="text" class="note-edit-input" placeholder="Add an image note..." value="${msg.messageNote || ''}">
+                        ${msg.imageUrl ? `<button class="change-image-btn">Change Image</button>` : ''}
                         <div class="comment-edit-actions">
                             <button class="btn-cancel-edit">Cancel</button>
                             <button class="btn-save-edit">Save</button>
@@ -746,6 +724,66 @@ function renderMessages() {
     function attachEventListeners() {
         if (!sidebar) return;
         
+        activityLogContainer.addEventListener('click', (e) => {
+        const messageItem = e.target.closest('.comment-item');
+        if (!messageItem) return;
+        const messageId = messageItem.dataset.messageId;
+        const messageData = allMessages.find(m => m.id === messageId);
+        if (!messageData) return;
+
+        // --- Handle Likes ---
+        if (e.target.closest('.like-btn')) {
+            toggleReaction(messageId, 'like');
+        }
+
+        // --- Handle Delete ---
+        if (e.target.closest('.delete-comment-btn')) {
+            if (confirm('Are you sure you want to delete this message?')) {
+                deleteMessage(messageId, messageData.imageUrl, messageData.message);
+            }
+        }
+        
+        // --- Handle Starting an Edit ---
+        if (e.target.closest('.edit-comment-btn')) {
+            messageItem.classList.add('is-editing');
+            messageItem.querySelector('.comment-edit-input').focus();
+        }
+        
+        // --- Handle Canceling an Edit ---
+        if (e.target.closest('.btn-cancel-edit')) {
+            messageItem.classList.remove('is-editing');
+            delete messageItem._stagedFile; // Clear any staged file if cancel
+        }
+        
+        // --- Handle Saving an Edit ---
+        if (e.target.closest('.btn-save-edit')) {
+            const updates = {
+                message: messageItem.querySelector('.comment-edit-input').value.trim(),
+                messageNote: messageItem.querySelector('.note-edit-input').value.trim(),
+                newImageFile: messageItem._stagedFile || null, // Check for a newly attached image
+                oldImageUrl: messageData.imageUrl // Pass the old URL for deletion
+            };
+            updateMessage(messageId, updates);
+            messageItem.classList.remove('is-editing');
+            delete messageItem._stagedFile; // Clean up
+        }
+        
+        // --- Handle Changing an Image during Edit ---
+        if (e.target.closest('.change-image-btn')) {
+            const editImageInput = document.getElementById('edit-image-upload-input');
+            editImageInput.onchange = (event) => {
+                const file = event.target.files[0];
+                if(file) {
+                    messageItem._stagedFile = file; // Stage the file for upload on save
+                    // Optional: show a preview of the new image
+                    const newPreviewUrl = URL.createObjectURL(file);
+                    messageItem.querySelector('.scalable-image').src = newPreviewUrl;
+                }
+            };
+            editImageInput.click();
+        }
+    });
+    
         taskCompleteBtn.addEventListener('click', () => {
             if (!currentTask) return;
             const newStatus = currentTask.status === 'Completed' ? 'On track' : 'Completed';
