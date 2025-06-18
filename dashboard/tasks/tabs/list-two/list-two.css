@@ -1,157 +1,137 @@
+/* =====================================================================
+// Modern Spreadsheet View CSS
+// Final, consolidated, and corrected styles.
+// ===================================================================== */
+
 :root {
+    /* Variables */
     --primary-bg: #ffffff;
-    --secondary-bg: #f9fafb; /* For hover */
+    --secondary-bg: #f9fafb; /* Used for hover and section rows */
     --border-color: #e5e7eb;
-    --header-border-color: #d1d5db;
-    --text-color: #111827;
-    --text-secondary-color: #6b7280;
-    --accent-color: #4c6ef5;
+    --header-border-color: #d1d5db; /* A slightly darker border for the header */
     --header-height: 45px;
     --task-row-padding: 10px 12px;
 }
 
-/* --- Main App Container & Controls (No Change) --- */
+/* --- Core App Layout --- */
 .list-view-container {
-    display: flex; flex-direction: column; height: 100vh;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden; /* Prevents the whole page from scrolling */
 }
-.list-view-controls {
-    padding: 10px 16px; background-color: var(--primary-bg);
-    border-bottom: 1px solid var(--border-color); flex-shrink: 0; z-index: 20;
-    display: flex; justify-content: space-between;
+
+/* We no longer use the old header element for structure */
+#task-list-header {
+    display: none;
 }
-.list-view-controls button {
-    background-color: var(--primary-bg); border: 1px solid #d1d5da; padding: 6px 14px;
-    border-radius: 8px; font-weight: 500; cursor: pointer; transition: all 0.2s; font-size: 14px;
+
+/* This is now the single, main scrolling viewport for the entire grid */
+#task-list-body {
+    flex-grow: 1;
+    overflow: auto; /* Handles both horizontal and vertical scrolling */
 }
-.list-view-controls button:hover { background-color: var(--secondary-bg); border-color: #c1c5ca;}
+
+.grid-wrapper {
+    display: grid;
+}
+
+/* NEW: This uses subgrid to align wrapped rows to the main grid */
+.grid-row-wrapper {
+    display: grid;
+    grid-column: 1 / -1; /* Makes the row span all columns */
+    grid-template-columns: subgrid; /* Aligns cells to the parent grid */
+}
 
 
-/* --- Core Scrolling & Grid (No Change) --- */
-#task-list-header { position: relative; overflow: hidden; z-index: 10; border-bottom: 2px solid var(--header-border-color); }
-#task-list-body { flex-grow: 1; position: relative; overflow: auto; }
-.grid-wrapper { display: grid; min-width: 100%; border-top: 1px solid var(--border-color); border-left: 1px solid var(--border-color); }
-#task-list-body::-webkit-scrollbar { height: 14px; width: 14px; }
-#task-list-body::-webkit-scrollbar-track { background: #f1f1f1; }
-#task-list-body::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; border: 3px solid #f1f1f1; }
-#task-list-body::-webkit-scrollbar-thumb:hover { background: #b0b5bb; }
-
-
-/* --- Unified Cell Styling --- */
+/* --- Universal Cell Styling --- */
 .header-cell,
 .task-cell {
     display: flex;
-    align-items: center; /* This correctly centers content vertically */
-    background-color: var(--primary-bg);
-    border-bottom: 1px solid var(--border-color);
+    align-items: center;
+    background-color: var(--primary-bg); /* Give all cells a solid background */
     border-right: 1px solid var(--border-color);
-    transition: background-color 0.2s ease;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-
-#task-list-header {
-    height: var(--header-height) !important;
-    min-height: var(--header-height) !important;
-    max-height: var(--header-height) !important;
-     position: relative;
+    border-bottom: 1px solid var(--border-color);
     overflow: hidden;
-    z-index: 10;
-    border-bottom: 2px solid var(--header-border-color);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: background-color 0.15s ease-in-out;
 }
 
 .header-cell {
+    height: var(--header-height);
+    min-height: var(--header-height);
     padding: 0 12px;
-    height: var(--header-height) !important;
-min-height: var(--header-height) !important;
-max-height: var(--header-height) !important;
-    position: sticky; top: 0; z-index: 3;
-    font-weight: 500; color: var(--text-secondary-color);
+    font-weight: 500;
+    color: var(--text-secondary-color);
     justify-content: space-between;
 }
-.task-cell { padding: var(--task-row-padding); color: var(--text-color); }
-.task-cell.align-left {
-    gap: 16px; 
-    padding-left: 20px;
+
+.task-cell {
+    padding: var(--task-row-padding);
+    color: var(--text-color);
 }
 
 
-/* --- Sticky Column Styling --- */
-.sticky-col-header, .sticky-col-task {
-    position: sticky; left: 0; z-index: 2;
+/* =====================================================================
+// SPREADSHEET STICKY LOGIC
+// ===================================================================== */
+
+/* 1. Make the entire header row sticky to the top */
+.header-cell {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    /* Use a box-shadow for a crisp bottom border that stays on top */
+    border-bottom: none;
+    box-shadow: inset 0 -1px 0 var(--header-border-color);
 }
-/* FIX: The first column header also needs space-between behavior */
-.sticky-col-header { 
-    background-color: var(--primary-bg); 
-    z-index: 4;
-    justify-content: flex-start; /* Override space-between for the Name column */
-}
+
+/* 2. Make all cells in the first column sticky to the left */
 .sticky-col-task {
-    background-color: var(--primary-bg);
-    padding-left: 10px;
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    /* Use a box-shadow for a crisp right border that stays on top */
+    border-right: none;
+    box-shadow: inset -1px 0 0 var(--border-color);
 }
 
-/* --- Section Row Styling --- */
+/* 3. Make the top-left "Name" header cell sticky in the corner */
+.sticky-col-header {
+    position: sticky;
+    top: 0;
+    left: 0;
+    z-index: 999; /* Must have the highest z-index */
+    justify-content: flex-start;
+    /* Combine box-shadows for both bottom and right borders */
+    box-shadow: inset -1px 0 0 var(--border-color),
+                inset 0 -1px 0 var(--header-border-color);
+}
+
+/* Specifically for headers so it sticks above task cells */
+.header-cell.sticky-col-task {
+    z-index: 10; /* higher than normal cells */
+}
+
+/* --- Section Styling --- */
+/* A section row's first cell is also a sticky task cell */
 .section-title-cell {
     justify-content: space-between;
-    background-color: var(--secondary-bg);
-    padding-top: 6px;
-    padding-bottom: 6px;
+    font-weight: 600;
+    background-color: var(--secondary-bg); /* Give sections a distinct background */
 }
+/* All other cells in a section row */
 .section-placeholder-cell {
     background-color: var(--secondary-bg);
 }
 .section-title-wrapper {
     display: flex;
     align-items: center;
-    gap: 8px; 
+    gap: 8px;
 }
-.section-title { font-weight: 600; }
-.section-toggle { cursor: pointer; color: var(--text-secondary-color); }
-
-/* --- Section Options Dropdown Button --- */
-.section-options-btn {
-    background: none;
-    border: none;
-    color: var(--text-secondary-color);
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 14px;
+.section-toggle {
     cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.2s ease, background-color 0.2s ease;
-}
-.grid-row-wrapper:hover .section-options-btn {
-    opacity: 1;
-}
-.section-options-btn:hover {
-    background-color: #e5e7eb;
-    color: var(--text-color);
-}
-
-
-/* --- "Add Task" Row --- */
-.add-task-row .task-cell {
-    color: var(--text-secondary-color);
-    cursor: pointer;
-    gap: 12px;
-    padding-top: 8px;
-    padding-bottom: 8px;
-}
-.add-task-row:hover .task-cell {
-    background-color: var(--secondary-bg);
-    color: var(--text-color);
-}
-.add-task-row .add-task-icon {
-    font-style: normal;
-    font-weight: 500;
-}
-
-
-/* --- Hover Effects --- */
-.header-cell:hover { background-color: var(--secondary-bg); }
-.grid-row-wrapper:hover .task-cell { background-color: var(--secondary-bg); }
-.header-cell:hover.sticky-col-header,
-.grid-row-wrapper:hover .sticky-col-task {
-    background-color: var(--secondary-bg);
 }
 
 /*
@@ -203,41 +183,42 @@ max-height: var(--header-height) !important;
 ===================================
 */
 
-/* --- NEW & FINAL Styling for Shopify Draggable --- */
-
-/* The handle icon to initiate a drag */
 .drag-handle {
     cursor: grab;
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+}
+.grid-row-wrapper:hover .drag-handle {
+    opacity: 1;
 }
 .drag-handle:active {
     cursor: grabbing;
 }
-
-/* The element being dragged by the cursor (the "mirror").
-   This creates the modern "lifted off the page" effect. */
-.draggable-mirror {
-    opacity: 0.95 !important;
-    box-shadow: 0 15px 35px rgba(37, 37, 59, 0.25), 0 5px 15px rgba(0, 0, 0, 0.1) !important;
-    transform: scale(1.02) rotate(1deg);
-    z-index: 9999 !important;
-    border-radius: 8px;
-    /* This makes the mirror a single solid block, hiding the grid lines */
-    background: var(--primary-bg);
+.grid-row-wrapper {
+    transition: transform 0.25s ease-in-out;
 }
-
-/* The original item's spot after it has been "lifted". */
-.draggable-source--is-dragging {
+.sortable-drag {
+    transition: none !important;
+}
+.sortable-ghost {
+    background: #eef2ff !important;
+    border-radius: 8px;
+    opacity: 0.7;
+}
+.sortable-ghost .task-cell {
+    visibility: hidden;
+}
+.sortable-chosen {
     opacity: 0.2;
-    transition: opacity 0.2s ease-in-out;
 }
-
-/* A helper class to visually group a section's tasks with their header */
-.is-dragging-group-follower {
-    opacity: 0.5;
+.sortable-drag {
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.42);
+    background: var(--primary-bg);
+    opacity: 1 !important;
+    z-index: 9999 !important;
+    /* Make sure the clone itself is also a sub-grid */
+    display: grid !important;
 }
-
-/* The placeholder where the item will be dropped. */
-.draggable-dropzone--occupied {
-    background-color: #eef2ff;
-    border-radius: 8px;
+.is-following-drag {
+    opacity: 0.6;
 }
