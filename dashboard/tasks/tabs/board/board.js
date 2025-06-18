@@ -211,12 +211,18 @@ function detachAllListeners() {
 }
 
 // --- 7. REAL-TIME DATA & STATE MANAGEMENT ---
+/**
+ * Attaches all real-time listeners for the board, including the corrected
+ * listener to find the oldest cover image for each task.
+ */
 function attachRealtimeListeners() {
     if (!currentUserId || !currentProjectId) return;
     detachAllListeners();
+
     project.id = currentProjectId;
     const projectPath = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}`;
     
+    // Listener for Sections (no changes needed here)
     const sectionsQuery = query(collection(db, `${projectPath}/sections`), orderBy("order"));
     activeListeners.sections = onSnapshot(sectionsQuery, (snapshot) => {
         project.sections = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, tasks: [] }));
@@ -224,33 +230,53 @@ function attachRealtimeListeners() {
         renderBoard();
     }, err => console.error("Section listener error:", err));
     
-    // --- FIX START ---
-    // The collectionGroup ID must be the simple name of the subcollection, e.g., 'tasks'.
-    // It cannot be a dynamic path with variables and slashes.
+    // Listener for Tasks (no changes needed here)
     const tasksQuery = query(collectionGroup(db, 'tasks'), where('projectId', '==', currentProjectId));
-    // --- FIX END ---
-    
     activeListeners.tasks = onSnapshot(tasksQuery, (snapshot) => {
         allTasksFromSnapshot = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
         distributeTasksToSections(allTasksFromSnapshot);
         if (!isMovingTask) renderBoard();
     }, err => console.error("Task listener error:", err));
     
+
+    // ======================== FIX START ========================
+    // --- This is the listener that finds the oldest cover image ---
+
+    // 1. We query the 'Messages' collection group where an imageUrl exists.
     const messagesQuery = query(collectionGroup(db, 'Messages'), where('projectId', '==', currentProjectId), where('imageUrl', '!=', null));
+    
     activeListeners.messages = onSnapshot(messagesQuery, (snapshot) => {
         const newImageMap = {};
+        
         snapshot.forEach(doc => {
             const data = doc.data();
-            if (data.chatuuid && data.imageUrl && data.imageTimestampSent) {
+
+            // 2. We use the standard 'timestamp' field and ensure all data is present.
+            if (data.chatuuid && data.imageUrl && data.timestamp) {
                 const existing = newImageMap[data.chatuuid];
-                if (!existing || data.imageTimestampSent.toMillis() < existing.timestamp.toMillis()) {
-                    newImageMap[data.chatuuid] = { imageUrl: data.imageUrl, timestamp: data.imageTimestampSent };
+                
+                // 3. This logic now correctly finds the OLDEST image.
+                // If we haven't stored an image for this task yet, OR if the current
+                // message's timestamp is OLDER than the one we have stored, we update it.
+                if (!existing || data.timestamp.toMillis() < existing.timestamp.toMillis()) {
+                    newImageMap[data.chatuuid] = { 
+                        imageUrl: data.imageUrl, 
+                        timestamp: data.timestamp 
+                    };
                 }
             }
         });
-        taskImageMap = Object.entries(newImageMap).reduce((acc, [key, value]) => ({ ...acc, [key]: value.imageUrl }), {});
+        
+        // 4. We create the final map that the renderTask function uses.
+        taskImageMap = Object.fromEntries(
+            Object.entries(newImageMap).map(([key, value]) => [key, value.imageUrl])
+        );
+
+        // 5. We re-render the board to show the images.
         renderBoard();
+        
     }, err => console.error("Message listener error:", err));
+    // ========================= FIX END =========================
 }
 
 function distributeTasksToSections(tasks) {

@@ -1525,3 +1525,35 @@ task-fields-table .field-value {
 .sidebarcommenticons .like-btn.reacted .fa-thumbs-up {
     color: #0052cc;
 }
+
+/* Add this CSS to your project's stylesheet */
+
+/* This is the new container for the image preview during edit mode */
+.sidebareditimage-container {
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Space between the image and the button */
+}
+
+.sidebareditimage-container .current-image-preview {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+}
+
+.sidebareditimage-container .change-image-btn {
+    /* Style for the "Replace Image" button */
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    background-color: #f0f2f5;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.sidebareditimage-container .change-image-btn:hover {
+    background-color: #e0e2e5;
+}
