@@ -1141,27 +1141,28 @@ function renderHeader(projectToRender, fixedPane, scrollablePane) {
 }
 
 function renderBody(projectToRender) {
-  const fixedBody = document.getElementById('fixed-body-rows');
-  const scrollableBody = document.getElementById('scrollable-body-rows');
-  const customColumns = projectToRender.customColumns || [];
+    const customColumns = projectToRender.customColumns || [];
 
-  (projectToRender.sections || []).forEach(section => {
-    const { fixedRow, scrollableRow } = createSectionRowSplit(section, customColumns);
-    fixedBody.appendChild(fixedRow);
-    scrollableBody.appendChild(scrollableRow);
+    const fixedBody = document.getElementById('fixed-body-rows');
+    const scrollableBody = document.getElementById('scrollable-body-rows');
 
-    if (!section.isCollapsed && section.tasks) {
-      section.tasks.forEach(task => {
-        const { fixedRow, scrollableRow } = createTaskRowSplit(task, customColumns);
-        fixedBody.appendChild(fixedRow);
-        scrollableBody.appendChild(scrollableRow);
-      });
-    }
+    (projectToRender.sections || []).forEach(section => {
+        const { fixedRow: fixedSectionRow, scrollableRow: scrollableSectionRow } = createSectionRow(section, customColumns);
+        fixedBody.appendChild(fixedSectionRow);
+        scrollableBody.appendChild(scrollableSectionRow);
 
-    const { fixedRow, scrollableRow } = createAddTaskRowSplit(customColumns, section.id);
-    fixedBody.appendChild(fixedRow);
-    scrollableBody.appendChild(scrollableRow);
-  });
+        if (!section.isCollapsed && section.tasks) {
+            section.tasks.forEach(task => {
+                const { fixedRow: fixedTaskRow, scrollableRow: scrollableTaskRow } = createTaskRow(task, customColumns);
+                fixedBody.appendChild(fixedTaskRow);
+                scrollableBody.appendChild(scrollableTaskRow);
+            });
+        }
+
+        const { fixedRow: fixedAddRow, scrollableRow: scrollableAddRow } = createAddTaskRow(customColumns, section.id);
+        fixedBody.appendChild(fixedAddRow);
+        scrollableBody.appendChild(scrollableAddRow);
+    });
 }
 
 
