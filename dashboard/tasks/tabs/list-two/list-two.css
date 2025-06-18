@@ -202,37 +202,42 @@ max-height: var(--header-height) !important;
 //
 ===================================
 */
+
+/* --- NEW & FINAL Styling for Shopify Draggable --- */
+
+/* The handle icon to initiate a drag */
 .drag-handle {
-    font-size: 14px;
-    color: #d1d5db;
     cursor: grab;
-    opacity: 0;
-    transition: opacity 0.2s ease, color 0.2s ease;
-    margin-right: 8px;
-}
-.grid-row-wrapper:hover .drag-handle {
-    opacity: 1;
 }
 .drag-handle:active {
     cursor: grabbing;
 }
-.grid-row-wrapper {
-    transition: transform 0.2s ease-in-out;
-}
-.sortable-ghost {
-    background: #eef2ff !important;
+
+/* The element being dragged by the cursor (the "mirror").
+   This creates the modern "lifted off the page" effect. */
+.draggable-mirror {
+    opacity: 0.95 !important;
+    box-shadow: 0 15px 35px rgba(37, 37, 59, 0.25), 0 5px 15px rgba(0, 0, 0, 0.1) !important;
+    transform: scale(1.02) rotate(1deg);
+    z-index: 9999 !important;
     border-radius: 8px;
+    /* This makes the mirror a single solid block, hiding the grid lines */
+    background: var(--primary-bg);
 }
-.sortable-ghost .task-cell {
-    visibility: hidden; /* Makes the placeholder an empty block */
+
+/* The original item's spot after it has been "lifted". */
+.draggable-source--is-dragging {
+    opacity: 0.2;
+    transition: opacity 0.2s ease-in-out;
 }
-.dragging-group {
-    opacity: 0.9;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-    transform: rotate(1deg);
-    background: var(--primary-bg); /* Ensures a solid background */
-    z-index: 10; /* Brings the whole group above other rows */
+
+/* A helper class to visually group a section's tasks with their header */
+.is-dragging-group-follower {
+    opacity: 0.5;
 }
-.section-row-wrapper.drop-zone-highlight .task-cell {
-    background-color: #f0fdf4;
+
+/* The placeholder where the item will be dropped. */
+.draggable-dropzone--occupied {
+    background-color: #eef2ff;
+    border-radius: 8px;
 }

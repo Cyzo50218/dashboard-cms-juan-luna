@@ -254,6 +254,7 @@ export function init(params) {
     
     // The initial render will be triggered by the listeners.
     initializeListView(params);
+    render();
     
     // Return a modified cleanup function.
     return function cleanup() {
@@ -2430,77 +2431,67 @@ function initDragAndDrop() {
     const bodyGridWrapper = taskListBody.querySelector('.grid-wrapper');
     if (!bodyGridWrapper) return;
     
-    new Sortable(bodyGridWrapper, {
-        animation: 150,
-        direction: 'vertical',
-        handle: '.drag-handle',
-        draggable: '.section-row-wrapper, .task-row-wrapper',
-        
-        // When a drag starts...
-        onStart: function(evt) {
-            // If we are dragging a section header...
-            if (evt.item.classList.contains('section-row-wrapper')) {
-                // Find all related elements and add a class to visually group them.
-                const group = getSectionGroup(evt.item);
-                group.forEach(el => el.classList.add('dragging-group'));
-            } else {
-                // If dragging a single task, just style that one item.
-                evt.item.classList.add('dragging-group');
-            }
-        },
-        
-        // When a drag ends...
-        onEnd: function(evt) {
-            // Clean up the styling on all elements.
-            document.querySelectorAll('.dragging-group').forEach(el => el.classList.remove('dragging-group'));
-            document.querySelectorAll('.drop-zone-highlight').forEach(el => el.classList.remove('drop-zone-highlight'));
-            
-            // Check if we dragged a section header
-            if (evt.item.classList.contains('section-row-wrapper')) {
-                // A section was moved. Find all its original parts...
-                // (We find them by their shared data-section-id attribute)
-                const sectionId = evt.item.dataset.sectionId;
-                const group = Array.from(bodyGridWrapper.children).filter(el => el.dataset.sectionId === sectionId);
-                
-                // ...and move them in the DOM to be right after the dropped header.
-                // This reassembles the group in the new location.
-                let insertAfterNode = evt.item;
-                group.forEach(node => {
-                    if (node !== evt.item) { // Don't try to move the item we just dropped
-                        insertAfterNode.after(node);
-                        insertAfterNode = node; // Move the next item after this one
-                    }
-                });
-                
-                // Call the function to update Firebase
-                handleSectionReorder(evt);
-                
-            } else if (evt.item.classList.contains('task-row-wrapper')) {
-                // A task was moved. Call the function to update Firebase.
-                handleTaskMoved(evt);
-            }
-        },
-        
-        // Highlighting logic remains simple and effective
-        onDragOver: function(evt) {
-            const dropTarget = evt.originalEvent.target.closest('.section-row-wrapper');
-            if (dropTarget) {
-                dropTarget.classList.add('drop-zone-highlight');
-            }
-        },
-        onDragLeave: function(evt) {
-            const dropTarget = evt.originalEvent.target.closest('.section-row-wrapper');
-            if (dropTarget) {
-                dropTarget.classList.remove('drop-zone-highlight');
-            }
+const sortable = new window.Draggable.Sortable(bodyGridWrapper, {
+        draggable: '.section-row-wrapper, .task-row-wrapper', // What can be dragged
+        handle: '.drag-handle', // The specific handle to grab
+        mirror: {
+            // Constrain the mirror to the Y axis for a clean vertical drag
+            constrainDimensions: true,
         },
     });
+    
+    // --- Event Handling ---
+    
+    // When a drag starts...
+    sortable.on('sortable:start', (evt) => {
+        // If we are dragging a section header...
+        if (evt.data.source.classList.contains('section-row-wrapper')) {
+            // Find all related elements and add a class to visually group them.
+            const group = getSectionGroup(evt.data.source);
+            group.forEach(el => {
+                if (el !== evt.data.source) {
+                    el.classList.add('is-dragging-group-follower');
+                }
+            });
+        }
+    });
+    
+    // When the drag operation stops (on drop)...
+    sortable.on('sortable:stop', (evt) => {
+        // Clean up all visual helper classes
+        document.querySelectorAll('.is-dragging-group-follower').forEach(el => el.classList.remove('is-dragging-group-follower'));
+        
+        const draggedEl = evt.data.dragEvent.source;
+        
+        // Check if we dragged a section header
+        if (draggedEl.classList.contains('section-row-wrapper')) {
+            // The library has already moved the header row in the DOM.
+            // Now, we move the rest of the group to follow it.
+            const sectionId = draggedEl.dataset.sectionId;
+            const group = Array.from(bodyGridWrapper.children).filter(el => el.dataset.sectionId === sectionId);
+            
+            let insertAfterNode = draggedEl;
+            group.forEach(node => {
+                if (node !== draggedEl) {
+                    insertAfterNode.after(node);
+                    insertAfterNode = node;
+                }
+            });
+            
+            // Call your existing Firebase function to save the new order
+            handleSectionReorder(evt);
+        } else if (draggedEl.classList.contains('task-row-wrapper')) {
+            // A task was moved. The library handles the move.
+            // Call your Firebase function to save the changes.
+            handleTaskMoved(evt);
+        }
+    });
 }
+
 function getSectionGroup(sectionRowEl) {
     const sectionId = sectionRowEl.dataset.sectionId;
     if (!sectionId) return [sectionRowEl];
-    
-    // Find all direct children of the grid wrapper that belong to this section
     const allChildren = Array.from(sectionRowEl.parentElement.children);
     return allChildren.filter(el => el.dataset.sectionId === sectionId);
 }
+
