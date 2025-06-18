@@ -211,10 +211,6 @@ function detachAllListeners() {
 }
 
 // --- 7. REAL-TIME DATA & STATE MANAGEMENT ---
-/**
- * Attaches all real-time listeners for the board, now correctly finding the
- * oldest cover image by extracting the taskId directly from the message path.
- */
 function attachRealtimeListeners() {
     if (!currentUserId || !currentProjectId) return;
     detachAllListeners();
@@ -239,36 +235,37 @@ function attachRealtimeListeners() {
     }, err => console.error("Task listener error:", err));
     
 
-    // ======================== THIS IS THE FINAL FIX ========================
-    // --- Listener to find the oldest cover image for each task ---
-
-    const messagesQuery = query(collectionGroup(db, 'Messages'), where('projectId', '==', currentProjectId), where('imageUrl', '!=', null));
+    const messagesQuery = query(collectionGroup(db, 'Messages'), where('imageUrl', '!=', null));
     
     activeListeners.messages = onSnapshot(messagesQuery, (snapshot) => {
         const newImageMap = {};
         
         snapshot.forEach(doc => {
             const data = doc.data();
-            
-            // --- KEY CHANGE: Extract the taskId from the document's path ---
-            // The path looks like '.../tasks/{taskId}/Messages/{messageId}'
-            // We find the 'tasks' segment and get the ID right after it.
             const pathSegments = doc.ref.path.split('/');
-            const tasksIndex = pathSegments.indexOf('tasks');
             
-            // Ensure we found 'tasks' and there's a taskId after it
-            if (tasksIndex > -1 && pathSegments.length > tasksIndex + 1) {
-                const taskId = pathSegments[tasksIndex + 1];
+            // 2. We extract the projectId from the path (e.g., from 'globalChatProjects/{projectId}/...')
+            const projectsIndex = pathSegments.indexOf('globalChatProjects');
+            if (projectsIndex === -1 || pathSegments.length <= projectsIndex + 1) return; // Malformed path
+            
+            const messageProjectId = pathSegments[projectsIndex + 1];
 
-                if (taskId && data.imageUrl && data.timestamp) {
-                    const existing = newImageMap[taskId];
-                    
-                    // This logic correctly finds the OLDEST image for each taskId
-                    if (!existing || data.timestamp.toMillis() < existing.timestamp.toMillis()) {
-                        newImageMap[taskId] = { 
-                            imageUrl: data.imageUrl, 
-                            timestamp: data.timestamp 
-                        };
+            // 3. IMPORTANT: We only process messages that belong to the CURRENTLY active project.
+            if (messageProjectId === currentProjectId) {
+                const tasksIndex = pathSegments.indexOf('tasks');
+                if (tasksIndex > -1 && pathSegments.length > tasksIndex + 1) {
+                    const taskId = pathSegments[tasksIndex + 1];
+
+                    if (taskId && data.imageUrl && data.timestamp) {
+                        const existing = newImageMap[taskId];
+                        
+                        // This logic correctly finds the OLDEST image for each taskId
+                        if (!existing || data.timestamp.toMillis() < existing.timestamp.toMillis()) {
+                            newImageMap[taskId] = { 
+                                imageUrl: data.imageUrl, 
+                                timestamp: data.timestamp 
+                            };
+                        }
                     }
                 }
             }
@@ -282,7 +279,6 @@ function attachRealtimeListeners() {
         renderBoard();
         
     }, err => console.error("Message listener error:", err));
-    // ========================= END OF FIX =========================
 }
 
 function distributeTasksToSections(tasks) {
