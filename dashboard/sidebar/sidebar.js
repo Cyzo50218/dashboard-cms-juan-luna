@@ -429,7 +429,36 @@ async function toggleReaction(messageId, reactionType) {
         logActivity({ action: 'liked', field: 'a comment' });
     }
 }
-    
+    /**
+ * Creates a new message document, ensuring the document's unique ID
+ * is also saved as a field within it for future reference.
+ */
+async function sendMessage(messageText, messageNote, imageUrl) {
+    if (!currentProject || !currentTask || !currentUser) return;
+
+    const messagesPath = `globalChatProjects/${currentProject.id}/tasks/${currentTask.id}/Messages`;
+
+    // 1. Create a reference to a new, empty document to get its unique ID.
+    const newMessageRef = doc(collection(db, messagesPath));
+
+    // 2. Save the document using setDoc(), including the new ID in the data.
+    await setDoc(newMessageRef, {
+        id: newMessageRef.id, // <-- The crucial addition
+        message: messageText,
+        messageNote: messageNote,
+        imageUrl: imageUrl,
+        senderId: currentUser.id,
+        senderName: currentUser.name,
+        senderAvatar: currentUser.avatar,
+        timestamp: serverTimestamp(),
+        reactions: { "like": [] }
+    });
+
+    // 3. The activity logging remains the same and works perfectly.
+    const logText = imageUrl ? 'attached an image' : `commented: "${messageText.substring(0, 20)}..."`;
+    logActivity({ action: logText });
+}
+
     /**
  * Handles sending a message. It intelligently determines if the typed text
  * should be the main message or a note for an attached image.
