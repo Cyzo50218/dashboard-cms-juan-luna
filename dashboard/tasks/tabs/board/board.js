@@ -212,8 +212,8 @@ function detachAllListeners() {
 
 // --- 7. REAL-TIME DATA & STATE MANAGEMENT ---
 /**
- * Attaches all real-time listeners for the board, including the corrected
- * listener to find the oldest cover image for each task.
+ * Attaches all real-time listeners for the board, now correctly finding the
+ * oldest cover image by extracting the taskId directly from the message path.
  */
 function attachRealtimeListeners() {
     if (!currentUserId || !currentProjectId) return;
@@ -222,7 +222,7 @@ function attachRealtimeListeners() {
     project.id = currentProjectId;
     const projectPath = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}`;
     
-    // Listener for Sections (no changes needed here)
+    // Listener for Sections (no changes)
     const sectionsQuery = query(collection(db, `${projectPath}/sections`), orderBy("order"));
     activeListeners.sections = onSnapshot(sectionsQuery, (snapshot) => {
         project.sections = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, tasks: [] }));
@@ -230,7 +230,7 @@ function attachRealtimeListeners() {
         renderBoard();
     }, err => console.error("Section listener error:", err));
     
-    // Listener for Tasks (no changes needed here)
+    // Listener for Tasks (no changes)
     const tasksQuery = query(collectionGroup(db, 'tasks'), where('projectId', '==', currentProjectId));
     activeListeners.tasks = onSnapshot(tasksQuery, (snapshot) => {
         allTasksFromSnapshot = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
@@ -239,10 +239,9 @@ function attachRealtimeListeners() {
     }, err => console.error("Task listener error:", err));
     
 
-    // ======================== FIX START ========================
-    // --- This is the listener that finds the oldest cover image ---
+    // ======================== THIS IS THE FINAL FIX ========================
+    // --- Listener to find the oldest cover image for each task ---
 
-    // 1. We query the 'Messages' collection group where an imageUrl exists.
     const messagesQuery = query(collectionGroup(db, 'Messages'), where('projectId', '==', currentProjectId), where('imageUrl', '!=', null));
     
     activeListeners.messages = onSnapshot(messagesQuery, (snapshot) => {
@@ -250,33 +249,40 @@ function attachRealtimeListeners() {
         
         snapshot.forEach(doc => {
             const data = doc.data();
+            
+            // --- KEY CHANGE: Extract the taskId from the document's path ---
+            // The path looks like '.../tasks/{taskId}/Messages/{messageId}'
+            // We find the 'tasks' segment and get the ID right after it.
+            const pathSegments = doc.ref.path.split('/');
+            const tasksIndex = pathSegments.indexOf('tasks');
+            
+            // Ensure we found 'tasks' and there's a taskId after it
+            if (tasksIndex > -1 && pathSegments.length > tasksIndex + 1) {
+                const taskId = pathSegments[tasksIndex + 1];
 
-            // 2. We use the standard 'timestamp' field and ensure all data is present.
-            if (data.chatuuid && data.imageUrl && data.timestamp) {
-                const existing = newImageMap[data.chatuuid];
-                
-                // 3. This logic now correctly finds the OLDEST image.
-                // If we haven't stored an image for this task yet, OR if the current
-                // message's timestamp is OLDER than the one we have stored, we update it.
-                if (!existing || data.timestamp.toMillis() < existing.timestamp.toMillis()) {
-                    newImageMap[data.chatuuid] = { 
-                        imageUrl: data.imageUrl, 
-                        timestamp: data.timestamp 
-                    };
+                if (taskId && data.imageUrl && data.timestamp) {
+                    const existing = newImageMap[taskId];
+                    
+                    // This logic correctly finds the OLDEST image for each taskId
+                    if (!existing || data.timestamp.toMillis() < existing.timestamp.toMillis()) {
+                        newImageMap[taskId] = { 
+                            imageUrl: data.imageUrl, 
+                            timestamp: data.timestamp 
+                        };
+                    }
                 }
             }
         });
         
-        // 4. We create the final map that the renderTask function uses.
+        // This map now correctly links taskId to the oldest imageUrl
         taskImageMap = Object.fromEntries(
             Object.entries(newImageMap).map(([key, value]) => [key, value.imageUrl])
         );
 
-        // 5. We re-render the board to show the images.
         renderBoard();
         
     }, err => console.error("Message listener error:", err));
-    // ========================= FIX END =========================
+    // ========================= END OF FIX =========================
 }
 
 function distributeTasksToSections(tasks) {

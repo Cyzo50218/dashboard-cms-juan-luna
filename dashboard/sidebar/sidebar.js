@@ -104,19 +104,56 @@ window.TaskSidebar = (function () {
         commentInputWrapper = document.querySelector('.comment-input-wrapper');
 
         onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                currentUserId = user.uid;
+    if (user) {
+        currentUserId = user.uid;
+
+        // 1. Create a reference to the user's profile document in Firestore.
+        const userDocRef = doc(db, "users", user.uid);
+
+        try {
+            // 2. Fetch the document from Firestore.
+            const userDocSnap = await getDoc(userDocRef);
+
+            if (userDocSnap.exists()) {
+                // 3. If the document exists, get its data.
+                const firestoreUserData = userDocSnap.data();
+
+                // 4. Construct the currentUser object using Firestore data first,
+                //    with fallbacks to the Auth profile and then a default.
+                currentUser = {
+                    id: user.uid,
+                    name: firestoreUserData.name || user.displayName || 'Anonymous User',
+                    avatar: firestoreUserData.avatar || user.photoURL || 'https://i.imgur.com/k9qRkiG.png'
+                };
+                
+            } else {
+                // If no profile exists in Firestore, fall back to the basic Auth info.
+                console.warn(`No profile document found for user ${user.uid}. Using default auth info.`);
                 currentUser = {
                     id: user.uid,
                     name: user.displayName || 'Anonymous User',
-                    avatar: user.avatar || 'https://i.imgur.com/k9qRkiG.png'
+                    avatar: user.photoURL || 'https://i.imgur.com/k9qRkiG.png'
                 };
-                await fetchActiveWorkspace(user.uid);
-            } else {
-                currentUser = null;
-                close();
             }
-        });
+        } catch (error) {
+            console.error("Error fetching user profile from Firestore:", error);
+            // Fallback in case of an error during the fetch.
+            currentUser = {
+                id: user.uid,
+                name: user.displayName || 'Anonymous User',
+                avatar: user.photoURL || 'https://i.imgur.com/k9qRkiG.png'
+            };
+        }
+
+        // 5. The rest of the logic continues as before.
+        await fetchActiveWorkspace(user.uid);
+
+    } else {
+        // This part remains the same.
+        currentUser = null;
+        close();
+    }
+});
 
         attachEventListeners();
         isInitialized = true;
