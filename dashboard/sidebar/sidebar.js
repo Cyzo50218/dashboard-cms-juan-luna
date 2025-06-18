@@ -379,18 +379,6 @@ window.TaskSidebar = (function() {
     });
 }
 
-async function sendMessage(messageText, messageNote, imageUrl) {
-    if (!currentProject || !currentTask || !currentUser) return;
-    const messagesPath = `globalChatProjects/${currentProject.id}/tasks/${currentTask.id}/Messages`;
-    await addDoc(collection(db, messagesPath), {
-        message: messageText, messageNote, imageUrl,
-        senderId: currentUser.id, senderName: currentUser.name, senderAvatar: currentUser.avatar,
-        timestamp: serverTimestamp(), reactions: { "like": [] }
-    });
-    const logText = imageUrl ? 'attached an image' : `commented: "${messageText.substring(0, 20)}..."`;
-    logActivity({ action: logText });
-}
-
 async function updateMessage(messageId, updates) {
     const messageRef = doc(db, `globalChatProjects/${currentProject.id}/tasks/${currentTask.id}/Messages`, messageId);
     
