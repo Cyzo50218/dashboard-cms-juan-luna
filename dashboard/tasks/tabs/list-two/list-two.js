@@ -855,7 +855,6 @@ function findTaskAndSection(taskId) {
     return { task: null, section: null };
 }
 
-
 /**
  * Handles the reordering of a task after a drag-and-drop event.
  *
@@ -1106,6 +1105,8 @@ function render() {
     renderHeader(projectToRender, headerGridWrapper);
     renderBody(projectToRender, bodyGridWrapper);
     
+    initDragAndDrop();
+    
     // --- SYNC SCROLLING ---
     syncHeaderScroll();
     
@@ -1177,34 +1178,43 @@ function renderBody(projectToRender, container) {
     
     (projectToRender.sections || []).forEach(section => {
         // --- Render the Section Header Row ---
-        // The section row now gets a proper wrapper for styling and hover effects
         const sectionRowWrapper = document.createElement('div');
-        sectionRowWrapper.className = 'grid-row-wrapper';
-        sectionRowWrapper.style.display = 'contents'; // This keeps it integrated with the parent grid
+        sectionRowWrapper.className = 'grid-row-wrapper section-row-wrapper';
+        sectionRowWrapper.style.display = 'contents';
+        sectionRowWrapper.dataset.sectionId = section.id;
         
         const sectionCells = createSectionRow(section, customColumns);
         sectionCells.forEach(cell => sectionRowWrapper.appendChild(cell));
         container.appendChild(sectionRowWrapper);
-
-        // --- Render Task Rows with Zebra Striping ---
+        
+        // --- Render Task Rows ---
+        // Note: The task-list-items wrapper is now just for grouping tasks for SortableJS,
+        // it does not affect the layout because of display: contents.
+        const taskItemsContainer = document.createElement('div');
+        taskItemsContainer.className = 'task-list-items';
+        taskItemsContainer.style.display = 'contents';
+        taskItemsContainer.dataset.sectionId = section.id;
+        
         if (!section.isCollapsed && section.tasks) {
             section.tasks.forEach(task => {
-                // Each task row now gets its own wrapper, which is crucial for the hover animation
                 const taskRowWrapper = document.createElement('div');
-                taskRowWrapper.className = 'grid-row-wrapper';
+                taskRowWrapper.className = 'grid-row-wrapper task-row-wrapper';
                 taskRowWrapper.style.display = 'contents';
+                taskRowWrapper.dataset.taskId = task.id;
+                taskRowWrapper.dataset.parentSectionId = section.id; // Link task to section
                 
                 const taskCells = createTaskRow(task, customColumns);
                 taskCells.forEach(cell => taskRowWrapper.appendChild(cell));
-                container.appendChild(taskRowWrapper);
+                taskItemsContainer.appendChild(taskRowWrapper);
             });
         }
+        container.appendChild(taskItemsContainer);
         
-         // --- Render the "Add Task" row ---
+        // --- Render the "Add Task" row ---
         const addTaskRowWrapper = document.createElement('div');
         addTaskRowWrapper.className = 'grid-row-wrapper add-task-row';
         addTaskRowWrapper.style.display = 'contents';
-        
+        addTaskRowWrapper.dataset.sectionId = section.id; // Belongs to this section
         const addTaskCells = createAddTaskRow(customColumns, section.id);
         addTaskCells.forEach(cell => addTaskRowWrapper.appendChild(cell));
         container.appendChild(addTaskRowWrapper);
@@ -1213,17 +1223,15 @@ function renderBody(projectToRender, container) {
 
 function createSectionRow(sectionData, customColumns) {
     const cells = [];
-    
-    // Create the sticky Section Title Cell
     const titleCell = document.createElement('div');
     titleCell.className = 'task-cell sticky-col-task section-title-cell align-left';
     titleCell.dataset.sectionId = sectionData.id;
     
     const chevronClass = sectionData.isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down';
     
-    // REVERT: The button is no longer inside a wrapper.
     titleCell.innerHTML = `
         <div class="section-title-wrapper">
+             <i class="fas fa-grip-vertical drag-handle section-drag-handle"></i>
              <i class="fas ${chevronClass} section-toggle"></i>
              <span class="section-title">${sectionData.title}</span>
         </div>
@@ -1233,11 +1241,7 @@ function createSectionRow(sectionData, customColumns) {
     `;
     cells.push(titleCell);
     
-    // Create placeholder cells (No change here)
-    const baseColumnCount = 4;
-    const customColumnCount = customColumns.length;
-    const totalPlaceholders = baseColumnCount + customColumnCount + 1;
-    
+    const totalPlaceholders = 5 + customColumns.length;
     for (let i = 0; i < totalPlaceholders; i++) {
         const placeholderCell = document.createElement('div');
         placeholderCell.className = 'task-cell section-placeholder-cell';
@@ -1246,6 +1250,70 @@ function createSectionRow(sectionData, customColumns) {
     
     return cells;
 }
+
+function createAddTaskRow(customColumns, sectionId) {
+    const cells = [];
+    const totalColumns = 5 + customColumns.length;
+    
+    // --- Sticky "Add Task" Cell ---
+    const addTaskCell = document.createElement('div');
+    addTaskCell.className = 'task-cell sticky-col-task align-left';
+    addTaskCell.dataset.sectionId = sectionId;
+    addTaskCell.innerHTML = `<i class="add-task-icon fa-solid fa-plus"></i><span>Add task...</span>`;
+    cells.push(addTaskCell);
+    
+    // --- Placeholder cells ---
+    for (let i = 0; i < totalColumns; i++) {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'task-cell';
+        cells.push(placeholder);
+    }
+    
+    return cells;
+}
+
+function createTaskRow(task, customColumns) {
+    const cells = [];
+    const isCompletedClass = task.status === 'Completed' ? 'is-completed' : '';
+    
+    const taskNameCell = document.createElement('div');
+    taskNameCell.className = `task-cell sticky-col-task align-left ${isCompletedClass}`;
+    taskNameCell.innerHTML = `
+        <i class="fas fa-grip-vertical drag-handle task-drag-handle"></i>
+        <i class="fa-regular fa-circle-check check-icon"></i>
+        <span class="task-name">${task.name || ''}</span>
+    `;
+    cells.push(taskNameCell);
+    
+    const baseData = [
+        createAssigneeHTML(task.assignees),
+        task.dueDate ? new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '<span class="add-value">+</span>',
+        task.priority || '<span class="add-value">+</span>',
+        task.status || '<span class="add-value">+</span>',
+    ];
+    baseData.forEach(html => {
+        const cell = document.createElement('div');
+        cell.className = `task-cell ${isCompletedClass}`;
+        cell.innerHTML = `<span>${html}</span>`;
+        cells.push(cell);
+    });
+    
+    customColumns.forEach(col => {
+        const cell = document.createElement('div');
+        cell.className = `task-cell ${isCompletedClass}`;
+        cell.dataset.columnId = col.id;
+        const value = task.customFields ? task.customFields[col.id] : null;
+        cell.innerHTML = `<span>${value || '<span class="add-value">+</span>'}</span>`;
+        cells.push(cell);
+    });
+    
+    const placeholderCell = document.createElement('div');
+    placeholderCell.className = `task-cell ${isCompletedClass}`;
+    cells.push(placeholderCell);
+    
+    return cells;
+}
+
 
 // This function will run ONLY when a menu is open and the user scrolls
 function updateMenuPosition() {
@@ -1307,75 +1375,6 @@ function openOptionsMenu(buttonEl) {
     
     // IMPORTANT: Add a temporary scroll listener
     taskListBody.addEventListener('scroll', updateMenuPosition, { passive: true });
-}
-
-
-function createAddTaskRow(customColumns, sectionId) {
-    const cells = [];
-    const totalColumns = 5 + customColumns.length;
-
-    // --- Sticky "Add Task" Cell ---
-    const addTaskCell = document.createElement('div');
-    addTaskCell.className = 'task-cell sticky-col-task align-left';
-    addTaskCell.dataset.sectionId = sectionId;
-    addTaskCell.innerHTML = `<i class="add-task-icon fa-solid fa-plus"></i><span>Add task...</span>`;
-    cells.push(addTaskCell);
-
-    // --- Placeholder cells ---
-    for (let i = 0; i < totalColumns; i++) {
-        const placeholder = document.createElement('div');
-        placeholder.className = 'task-cell';
-        cells.push(placeholder);
-    }
-    
-    return cells;
-}
-
-function createTaskRow(task, customColumns) {
-    const cells = [];
-    const isCompletedClass = task.status === 'Completed' ? 'is-completed' : '';
-
-    // 1. Fixed Task Name Cell
-    const taskNameCell = document.createElement('div');
-    // Add a specific class for left-alignment
-    taskNameCell.className = `task-cell sticky-col-task align-left ${isCompletedClass}`;
-    taskNameCell.innerHTML = `
-        <i class="fa-regular fa-circle-check check-icon"></i>
-        <span class="task-name">${task.name || ''}</span>
-    `;
-    cells.push(taskNameCell);
-
-    // 2. Base Data Cells
-    const baseData = [
-        createAssigneeHTML(task.assignees),
-        task.dueDate ? new Date(task.dueDate).toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '<span class="add-value">+</span>',
-        task.priority || '<span class="add-value">+</span>',
-        task.status || '<span class="add-value">+</span>',
-    ];
-    baseData.forEach(html => {
-        const cell = document.createElement('div');
-        cell.className = `task-cell ${isCompletedClass}`;
-        // Each cell has content and a placeholder for an icon if needed
-        cell.innerHTML = `<span>${html}</span>`;
-        cells.push(cell);
-    });
-    
-    // 3. Custom Field Cells
-    customColumns.forEach(col => {
-        const cell = document.createElement('div');
-        cell.className = `task-cell ${isCompletedClass}`;
-        cell.dataset.columnId = col.id;
-        const value = task.customFields ? task.customFields[col.id] : null;
-        cell.innerHTML = `<span>${value || '<span class="add-value">+</span>'}</span>`;
-        cells.push(cell);
-    });
-
-    // 4. Empty cell for alignment with the "Add Column" button
-    const placeholderCell = document.createElement('div');
-    placeholderCell.className = `task-cell ${isCompletedClass}`;
-    cells.push(placeholderCell);
-
-    return cells;
 }
 
 /**
@@ -2421,4 +2420,87 @@ async function updateCustomOptionInFirebase(optionType, originalOption, newOptio
             [fieldToUpdate]: newArray
         });
     }
+}
+
+
+// =========================================================================
+//  DRAG & DROP INITIALIZATION
+// =========================================================================
+function initDragAndDrop() {
+    const bodyGridWrapper = taskListBody.querySelector('.grid-wrapper');
+    if (!bodyGridWrapper) return;
+    
+    new Sortable(bodyGridWrapper, {
+        animation: 150,
+        direction: 'vertical',
+        handle: '.drag-handle',
+        draggable: '.section-row-wrapper, .task-row-wrapper',
+        
+        // When a drag starts...
+        onStart: function(evt) {
+            // If we are dragging a section header...
+            if (evt.item.classList.contains('section-row-wrapper')) {
+                // Find all related elements and add a class to visually group them.
+                const group = getSectionGroup(evt.item);
+                group.forEach(el => el.classList.add('dragging-group'));
+            } else {
+                // If dragging a single task, just style that one item.
+                evt.item.classList.add('dragging-group');
+            }
+        },
+        
+        // When a drag ends...
+        onEnd: function(evt) {
+            // Clean up the styling on all elements.
+            document.querySelectorAll('.dragging-group').forEach(el => el.classList.remove('dragging-group'));
+            document.querySelectorAll('.drop-zone-highlight').forEach(el => el.classList.remove('drop-zone-highlight'));
+            
+            // Check if we dragged a section header
+            if (evt.item.classList.contains('section-row-wrapper')) {
+                // A section was moved. Find all its original parts...
+                // (We find them by their shared data-section-id attribute)
+                const sectionId = evt.item.dataset.sectionId;
+                const group = Array.from(bodyGridWrapper.children).filter(el => el.dataset.sectionId === sectionId);
+                
+                // ...and move them in the DOM to be right after the dropped header.
+                // This reassembles the group in the new location.
+                let insertAfterNode = evt.item;
+                group.forEach(node => {
+                    if (node !== evt.item) { // Don't try to move the item we just dropped
+                        insertAfterNode.after(node);
+                        insertAfterNode = node; // Move the next item after this one
+                    }
+                });
+                
+                // Call the function to update Firebase
+                handleSectionReorder(evt);
+                
+            } else if (evt.item.classList.contains('task-row-wrapper')) {
+                // A task was moved. Call the function to update Firebase.
+                handleTaskMoved(evt);
+            }
+        },
+        
+        // Highlighting logic remains simple and effective
+        onDragOver: function(evt) {
+            const dropTarget = evt.originalEvent.target.closest('.section-row-wrapper');
+            if (dropTarget) {
+                dropTarget.classList.add('drop-zone-highlight');
+            }
+        },
+        onDragLeave: function(evt) {
+            const dropTarget = evt.originalEvent.target.closest('.section-row-wrapper');
+            if (dropTarget) {
+                dropTarget.classList.remove('drop-zone-highlight');
+            }
+        },
+    });
+}
+function getSectionGroup(sectionRowEl) {
+    const sectionId = sectionRowEl.dataset.sectionId;
+    if (!sectionId) return [sectionRowEl];
+    
+    // Find all direct children of the grid wrapper that belong to this section
+    const allChildren = Array.from(sectionRowEl.parentElement.children);
+    return allChildren.filter(el => el.dataset.sectionId === sectionId);
 }
