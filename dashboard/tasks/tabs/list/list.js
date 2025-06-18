@@ -44,6 +44,7 @@ let taskListHeaderEl, taskListBody, taskListFooter, addSectionBtn, addTaskHeader
 // Event Handler References
 let headerClickListener, bodyClickListener, bodyFocusOutListener, addTaskHeaderBtnListener, addSectionBtnListener, windowClickListener, filterBtnListener, sortBtnListener;
 let sortableSections;
+let activeMenuButton = null;
 const sortableTasks = [];
 
 // --- Data ---
@@ -253,6 +254,7 @@ export function init(params) {
     
     // The initial render will be triggered by the listeners.
     initializeListView(params);
+    render();
     
     // Return a modified cleanup function.
     return function cleanup() {
@@ -281,7 +283,38 @@ export function init(params) {
 
 
 function setupEventListeners() {
+    // Global click listener to handle menu logic
+document.addEventListener('click', (e) => {
+    const optionsButton = e.target.closest('.section-options-btn');
     
+    // Check if the click is inside an open menu. If so, let the item handler work.
+    if (e.target.closest('.options-dropdown-menu')) {
+        const dropdownItem = e.target.closest('.dropdown-item');
+        if (dropdownItem) {
+            const { action, sectionId } = dropdownItem.dataset;
+            console.log(`Action: ${action}, Section ID: ${sectionId || 'N/A'}`);
+            closeOpenMenu();
+        }
+        return; // Do nothing more if click is inside a menu
+    }
+    
+    // If we clicked an options button...
+    if (optionsButton) {
+        // Check if its menu is already open. If so, this click should close it.
+        const wrapper = optionsButton.parentElement;
+        const existingMenu = wrapper.querySelector('.options-dropdown-menu');
+        
+        if (existingMenu) {
+            closeOpenMenu(); // It's open, so close it.
+        } else {
+            openOptionsMenu(optionsButton); // It's closed, so open it.
+        }
+    } else {
+        // If the click was anywhere else on the page, close any open menu.
+        closeOpenMenu();
+    }
+});
+
     headerClickListener = (e) => {
         const deleteButton = e.target.closest('.delete-column-btn');
         if (deleteButton) {
@@ -823,7 +856,6 @@ function findTaskAndSection(taskId) {
     return { task: null, section: null };
 }
 
-
 /**
  * Handles the reordering of a task after a drag-and-drop event.
  *
@@ -1028,256 +1060,263 @@ function enableColumnRename(columnEl) {
 }
 
 function render() {
-    const scrollStates = new Map();
-    document.querySelectorAll('.scrollable-columns-wrapper').forEach((el, i) => scrollStates.set(i, el.scrollLeft));
-    
-    closeFloatingPanels();
-    
-    let projectToRender = getFilteredProject();
-    projectToRender = getSortedProject(projectToRender);
-    
-    generateCustomTagStyles(projectToRender);
-    
-    renderHeader(projectToRender);
+    if (!taskListBody) return;
+
+    const projectToRender = project;
+    const customColumns = projectToRender.customColumns || [];
+
+    // Clear the container
+    taskListBody.innerHTML = '';
+
+    // === STRUCTURE: Create fixed + scrollable containers ===
+    const container = document.createElement('div');
+    container.className = 'list-view-inner';
+
+    const fixedPane = document.createElement('div');
+    fixedPane.id = 'fixed-left-pane';
+    fixedPane.className = 'fixed-left-pane';
+
+    const scrollablePane = document.createElement('div');
+    scrollablePane.id = 'scrollable-right-pane';
+    scrollablePane.className = 'scrollable-right-pane';
+
+    // Create wrappers for rows
+    const fixedBody = document.createElement('div');
+    fixedBody.id = 'fixed-body-rows';
+    fixedBody.className = 'grid-body-wrapper';
+
+    const scrollableBody = document.createElement('div');
+    scrollableBody.id = 'scrollable-body-rows';
+    scrollableBody.className = 'grid-body-wrapper';
+
+    // Headers
+    renderHeader(projectToRender, fixedPane, scrollablePane);
+
+    // Append bodies
+    fixedPane.appendChild(fixedBody);
+    scrollablePane.appendChild(scrollableBody);
+    container.appendChild(fixedPane);
+    container.appendChild(scrollablePane);
+    taskListBody.appendChild(container);
+
+    // Body content
     renderBody(projectToRender);
-    //renderFooter(projectToRender);
-    syncScroll(scrollStates);
-    
+
+    initDragAndDrop();
+
+    // Restore focus if needed
     if (taskIdToFocus) {
-        const newEl = taskListBody.querySelector(`[data-task-id="${taskIdToFocus}"] .task-name`);
-        if (newEl) {
-            newEl.focus();
+        const el = taskListBody.querySelector(`[data-task-id="${taskIdToFocus}"] .task-name`);
+        if (el) {
+            el.focus();
+            el.select?.();
         }
         taskIdToFocus = null;
     }
-    const isSortActive = activeSortState !== 'default';
-    
-    if (activeSortState === 'asc') {
-        sortBtn.innerHTML = `<i class="fas fa-sort-amount-up-alt"></i> Oldest`;
-    } else if (activeSortState === 'desc') {
-        sortBtn.innerHTML = `<i class="fas fa-sort-amount-down-alt"></i> Newest`;
-    } else {
-        sortBtn.innerHTML = `<i class="fas fa-sort"></i> Sort`;
-    }
-    
-    if (sortableSections) sortableSections.destroy();
-    sortableSections = new Sortable(taskListBody, { handle: '.section-header-list .drag-handle', animation: 150, disabled: isSortActive, onEnd: handleSectionReorder });
-    
-    sortableTasks.forEach(st => st.destroy());
-    sortableTasks.length = 0;
-    document.querySelectorAll('.tasks-container').forEach(container => {
-        sortableTasks.push(new Sortable(container, {
-            group: 'tasks',
-            handle: '.fixed-column .drag-handle',
-            animation: 150,
-            disabled: isSortActive,
-            onEnd: handleTaskMoved
-        }));
-    });
-    
-    
-    filterBtn?.classList.toggle('active', !!activeFilters.visibleSections);
-    sortBtn?.classList.toggle('active', isSortActive);
 }
 
-function renderHeader(projectToRender) {
-    if (!taskListHeaderEl) return;
-    const container = taskListHeaderEl.querySelector('#header-scroll-cols');
-    if (!container) return;
-    
-    container.querySelectorAll('.header-custom').forEach(el => el.remove());
-    const addColBtnContainer = container.querySelector('.add-column-container');
-    
-    projectToRender.customColumns.forEach(col => {
-        const colEl = document.createElement('div');
-        colEl.className = 'task-col header-custom';
-        colEl.dataset.columnId = col.id;
-        colEl.textContent = col.name;
-        const menuBtn = document.createElement('button');
-        menuBtn.className = 'delete-column-btn';
-        menuBtn.title = 'Column options';
-        menuBtn.innerHTML = `<i class="fas fa-ellipsis-h"></i>`;
-        colEl.appendChild(menuBtn);
-        if (addColBtnContainer) container.insertBefore(colEl, addColBtnContainer);
+function renderHeader(projectToRender, fixedPane, scrollablePane) {
+    const customColumns = projectToRender.customColumns || [];
+
+    const fixedHeader = document.createElement('div');
+    fixedHeader.className = 'grid-header-wrapper';
+    const nameHeader = document.createElement('div');
+    nameHeader.className = 'header-cell sticky-col-task';
+    nameHeader.textContent = 'Task Name';
+    fixedHeader.appendChild(nameHeader);
+
+    const scrollableHeader = document.createElement('div');
+    scrollableHeader.className = 'grid-header-wrapper';
+
+    const baseHeaders = ['Assignee', 'Due Date', 'Priority', 'Status'];
+    [...baseHeaders, ...customColumns.map(c => c.name), '+'].forEach(text => {
+        const cell = document.createElement('div');
+        cell.className = 'header-cell';
+        cell.textContent = text;
+        scrollableHeader.appendChild(cell);
     });
+
+    fixedPane.appendChild(fixedHeader);
+    scrollablePane.appendChild(scrollableHeader);
 }
 
 function renderBody(projectToRender) {
-    if (!taskListBody) return;
-    taskListBody.innerHTML = '';
-    
-    projectToRender.sections.forEach(section => {
-        const sectionElement = createSection(section, projectToRender.customColumns);
-        if (sectionElement) taskListBody.appendChild(sectionElement);
-    });
-    
-    if (projectToRender.sections.length === 0) {
-        const noResultsEl = document.createElement('div');
-        noResultsEl.className = 'no-results-message';
-        noResultsEl.textContent = 'No sections match your current filter.';
-        taskListBody.appendChild(noResultsEl);
+  const fixedBody = document.getElementById('fixed-body-rows');
+  const scrollableBody = document.getElementById('scrollable-body-rows');
+  const customColumns = projectToRender.customColumns || [];
+
+  (projectToRender.sections || []).forEach(section => {
+    const { fixedRow, scrollableRow } = createSectionRowSplit(section, customColumns);
+    fixedBody.appendChild(fixedRow);
+    scrollableBody.appendChild(scrollableRow);
+
+    if (!section.isCollapsed && section.tasks) {
+      section.tasks.forEach(task => {
+        const { fixedRow, scrollableRow } = createTaskRowSplit(task, customColumns);
+        fixedBody.appendChild(fixedRow);
+        scrollableBody.appendChild(scrollableRow);
+      });
     }
+
+    const { fixedRow, scrollableRow } = createAddTaskRowSplit(customColumns, section.id);
+    fixedBody.appendChild(fixedRow);
+    scrollableBody.appendChild(scrollableRow);
+  });
 }
 
-function createSection(sectionData, customColumns) {
-    const sectionEl = document.createElement('div');
-    sectionEl.className = 'task-section';
-    sectionEl.dataset.sectionId = sectionData.id;
-    
-    // --- Build the HTML for all task rows (no changes here) ---
-    let tasksHTML = '';
-    let hasAggregatableColumnInSection = false;
-    if (sectionData.tasks && !sectionData.isCollapsed) {
-        tasksHTML = sectionData.tasks.map(task => {
-            return createTaskRow(task, customColumns).outerHTML;
-        }).join('');
-    }
-    
-    // --- MODIFICATION STARTS HERE ---
-    
-    // --- 1. Build the HTML for the SUMMARY part of the final row ---
-    let summaryColsHTML = '';
-    if (!sectionData.isCollapsed) {
-        customColumns.forEach(col => {
-            let displayValue = '';
-            if (col.aggregation === 'Sum') {
-                const sectionTotal = sectionData.tasks.reduce((sum, task) => sum + Number(task.customFields[col.id] || 0), 0);
-               if (sectionTotal !== 0) {
-    hasAggregatableColumnInSection = true;
-    // This formats the number to show decimals only when they exist.
-    const formattedTotal = sectionTotal.toLocaleString(undefined, { maximumFractionDigits: 2 });
-    
-    const displayTotal = col.type === 'Costing' ? `${col.currency || ''}${formattedTotal}` : formattedTotal;
-    displayValue = `<strong>Sum:</strong> ${displayTotal}`;
-}
-            }
-            summaryColsHTML += `<div class="task-col header-custom">${displayValue}</div>`;
-        });
-    }
-    
-    // --- 2. Build the FINAL ROW using the same structure as a task row ---
-    // This ensures perfect column alignment.
-    const finalRowHTML = `
-        <div class="section-summary-row">
-            <div class="fixed-column-section">
-                <button class="add-task-in-section-btn"><i class="fas fa-plus"></i> Add task</button>
-            </div>
-            <div class="scrollable-columns-wrapper">
-                <div class="scrollable-columns">
-                    <div class="task-col header-assignee"></div>
-                    <div class="task-col header-due-date"></div>
-                    <div class="task-col header-priority"></div>
-                    <div class="task-col header-status"></div>
-                    ${summaryColsHTML}
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // --- 3. Assemble the entire section's innerHTML ---
-    sectionEl.innerHTML = `
-        <div class="section-header-list">
-            <div class="fixed-column-section">
-            <i class="fas fa-grip-vertical drag-handle"></i>
-            <i class="fas fa-chevron-down section-toggle ${sectionData.isCollapsed ? 'collapsed' : ''}"></i>
-            <span class="section-title" contenteditable="true">${sectionData.title}</span>
-            </div>
-            
-        </div>
-        <div class="tasks-container ${sectionData.isCollapsed ? 'hidden' : ''}">
-            ${tasksHTML}
-        </div>
-        ${finalRowHTML}
-    `;
-    
-    // --- MODIFICATION ENDS HERE ---
-    
-    return sectionEl;
-}
 
 function createTaskRow(task, customColumns) {
-    const rowWrapper = document.createElement('div');
-    rowWrapper.className = `task-row-wrapper ${task.status === 'Completed' ? 'is-completed' : ''}`;
-    rowWrapper.dataset.taskId = task.id;
+    const isCompletedClass = task.status === 'Completed' ? 'is-completed' : '';
+
+    const fixedRow = document.createElement('div');
+    fixedRow.className = `task-row-fixed grid-row-wrapper task-row-wrapper ${isCompletedClass}`;
+    fixedRow.dataset.taskId = task.id;
+    fixedRow.dataset.sectionId = task.sectionId;
+
+    const taskNameCell = document.createElement('div');
+    taskNameCell.className = 'task-cell sticky-col-task';
+    taskNameCell.innerHTML = `
+        <i class="fas fa-grip-vertical drag-handle"></i>
+        <i class="fa-regular fa-circle-check check-icon"></i>
+        <span class="task-name">${task.name || ''}</span>
+    `;
+    fixedRow.appendChild(taskNameCell);
+
+    const scrollableRow = document.createElement('div');
+    scrollableRow.className = `task-row-scroll grid-row-wrapper task-row-wrapper ${isCompletedClass}`;
+    scrollableRow.dataset.taskId = task.id;
+    scrollableRow.dataset.sectionId = task.sectionId;
+
+    const baseData = [task.assignee || '', task.dueDate || '', task.priority || '', task.status || ''];
+    baseData.forEach(html => {
+        const cell = document.createElement('div');
+        cell.className = 'task-cell';
+        cell.innerHTML = `<span>${html}</span>`;
+        scrollableRow.appendChild(cell);
+    });
+
+    customColumns.forEach(col => {
+        const cell = document.createElement('div');
+        cell.className = 'task-cell';
+        cell.dataset.columnId = col.id;
+        const value = task.customFields ? task.customFields[col.id] : null;
+        cell.innerHTML = `<span>${value || '<span class="add-value">+</span>'}</span>`;
+        scrollableRow.appendChild(cell);
+    });
+
+    const plusCell = document.createElement('div');
+    plusCell.className = 'task-cell';
+    scrollableRow.appendChild(plusCell);
+
+    return { fixedRow, scrollableRow };
+}
+
+function createSectionRowSplit(section, customColumns) {
+    const fixedRow = document.createElement('div');
+    fixedRow.className = 'section-row-wrapper grid-row-wrapper';
+    fixedRow.dataset.sectionId = section.id;
+    fixedRow.innerHTML = `<div class="task-cell sticky-col-task">${section.name}</div>`;
+
+    const scrollableRow = document.createElement('div');
+    scrollableRow.className = 'section-row-wrapper grid-row-wrapper';
+    scrollableRow.dataset.sectionId = section.id;
+
+    const placeholderCount = 4 + customColumns.length + 1;
+    for (let i = 0; i < placeholderCount; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'task-cell';
+        scrollableRow.appendChild(cell);
+    }
+
+    return { fixedRow, scrollableRow };
+}
+
+
+function createAddTaskRow(customColumns, sectionId) {
+    const fixedRow = document.createElement('div');
+    fixedRow.className = 'add-task-row grid-row-wrapper';
+    fixedRow.dataset.sectionId = sectionId;
+
+    const addTaskCell = document.createElement('div');
+    addTaskCell.className = 'task-cell sticky-col-task';
+    addTaskCell.innerHTML = `<i class="add-task-icon fa-solid fa-plus"></i><span>Add task...</span>`;
+    fixedRow.appendChild(addTaskCell);
+
+    const scrollableRow = document.createElement('div');
+    scrollableRow.className = 'add-task-row grid-row-wrapper';
+    scrollableRow.dataset.sectionId = sectionId;
+
+    const placeholderCount = 4 + customColumns.length + 1;
+    for (let i = 0; i < placeholderCount; i++) {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'task-cell';
+        scrollableRow.appendChild(placeholder);
+    }
+
+    return { fixedRow, scrollableRow };
+}
+
+
+// This function will run ONLY when a menu is open and the user scrolls
+function updateMenuPosition() {
+    if (!activeMenuButton) return;
     
-    const displayName = task.name;
-    const displayDate = task.dueDate ? new Date(task.dueDate.replace(/-/g, '/')).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '<span class="add-due-date">+ Add date</span>';
+    const menu = document.querySelector('.options-dropdown-menu');
+    if (!menu) return;
     
-    // --- MODIFICATION FOR REACTIONS START ---
-    const userHasLiked = currentUserId && task.likedBy && task.likedBy[currentUserId];
-    const heartIconClass = userHasLiked ? 'fas fa-heart liked' : 'far fa-heart'; // Add 'liked' class for styling
-    const likeCountDisplay = task.likedAmount > 0 ? task.likedAmount : '';
+    // Recalculate button position and update the menu's style
+    const rect = activeMenuButton.getBoundingClientRect();
+    const menuWidth = menu.offsetWidth;
     
-    const reactionsHTML = `
-        <div class="task-reactions">
-            <span class="reaction-item" data-control="like" title="Like task">
-                <i class="${heartIconClass}"></i>
-                <span class="like-count">${likeCountDisplay}</span>
-            </span>
-            <span class="reaction-item" data-control="comment" title="View comments">
-                <i class="far fa-comment"></i>
-            </span>
+    menu.style.top = `${rect.bottom + window.scrollY + 4}px`;
+    menu.style.left = `${rect.right + window.scrollX - menuWidth}px`;
+}
+
+function closeOpenMenu() {
+    if (activeMenuButton) {
+        taskListBody.removeEventListener('scroll', updateMenuPosition);
+        activeMenuButton = null;
+    }
+    const existingMenu = document.querySelector('.options-dropdown-menu');
+    if (existingMenu) {
+        existingMenu.remove();
+    }
+}
+
+function openOptionsMenu(buttonEl) {
+    closeOpenMenu(); // Close any other menus first
+    
+    const sectionId = buttonEl.dataset.sectionId;
+    
+    // Create menu element
+    const menu = document.createElement('div');
+    menu.className = 'options-dropdown-menu';
+    menu.innerHTML = `
+        <div class="dropdown-item" data-action="addTask" data-section-id="${sectionId}">
+            <i class="fa-solid fa-plus dropdown-icon"></i>
+            <span>Add task</span>
+        </div>
+        <div class="dropdown-item" data-action="renameSection">
+             <i class="fa-solid fa-pen dropdown-icon"></i>
+            <span>Rename section</span>
+        </div>
+        <div class="dropdown-item" data-action="deleteSection">
+             <i class="fa-solid fa-trash dropdown-icon"></i>
+            <span>Delete section</span>
         </div>
     `;
-    // --- MODIFICATION FOR REACTIONS END ---
     
-    let customFieldsHTML = '';
-    customColumns.forEach(col => {
-    const value = task.customFields[col.id] || '';
+    // Append to body to ensure it's on top of everything
+    document.body.appendChild(menu);
     
-    // This block handles ANY column with an 'options' array
-    if (col.options && Array.isArray(col.options)) {
-        let displayValue = '<span class="add-value">+ Select</span>';
-        
-        const selectedOption = col.options.find(opt => opt.name === value);
-        
-        if (selectedOption) {
-            // Generate a unique class name for styling
-            const prefix = `custom-col-${col.id}`;
-            const sanitizedName = selectedOption.name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
-            const className = `${prefix}-${sanitizedName}`;
-            displayValue = `<div class="status-tag ${className}">${selectedOption.name}</div>`;
-        }
-        customFieldsHTML += `<div class="task-col header-custom" data-control="custom-select" data-column-id="${col.id}">${displayValue}</div>`;
-    } else {
-        // Logic for other column types (Text, Costing, etc.)
-        let displayValue = (value !== null && typeof value !== 'undefined') ? value : '';
-// For Costing/Numbers types, format the number to show decimals only if they exist.
-if ((col.type === 'Costing' || col.type === 'Numbers') && typeof value === 'number') {
-    // This formats the number with comma separators and a maximum of 2 decimal places.
-    // It will show "350.75" for 350.75 and "300" for 300.
-    const formattedNumber = value.toLocaleString(undefined, { maximumFractionDigits: 2 });
-    displayValue = (col.type === 'Costing' ? (col.currency || '') : '') + formattedNumber;
-}
-customFieldsHTML += `<div class="task-col header-custom" data-control="custom" data-column-id="${col.id}" contenteditable="true">${displayValue}</div>`;
-    }
-});
+    // Set the button as the active one
+    activeMenuButton = buttonEl;
     
-    // NOTE TO DEVELOPER: To make the task name column wider,
-    // adjust the flex-basis or min-width of the `.fixed-column` class in your CSS file.
-    // e.g., .fixed-column { flex-basis: 400px; }
+    // Set initial position
+    updateMenuPosition();
     
-    rowWrapper.innerHTML = `
-    <div class="fixed-column">
-        <i class="fas fa-grip-vertical drag-handle"></i>
-        <i class="far fa-check-circle" data-control="check"></i>
-        <span class="task-name" contenteditable="true" data-placeholder="Add task name">${displayName}</span>
-        ${reactionsHTML} 
-        <button class="move-task-btn" data-control="move-task" title="Move to section">
-            <i class="fas fa-arrow-right-to-bracket"></i>
-        </button>
-    </div>
-    <div class="scrollable-columns-wrapper">
-        <div class="scrollable-columns">
-            <div class="task-col header-assignee" data-control="assignee">${createAssigneeHTML(task.assignees)}</div>
-            <div class="task-col header-due-date" data-control="due-date">${displayDate}</div>
-            <div class="task-col header-priority" data-control="priority">${createPriorityTag(task.priority)}</div>
-            <div class="task-col header-status" data-control="status">${createStatusTag(task.status)}</div>
-            ${customFieldsHTML}
-        </div>
-    </div>
-`;
-    return rowWrapper;
+    // IMPORTANT: Add a temporary scroll listener
+    taskListBody.addEventListener('scroll', updateMenuPosition, { passive: true });
 }
 
 /**
@@ -2323,4 +2362,79 @@ async function updateCustomOptionInFirebase(optionType, originalOption, newOptio
             [fieldToUpdate]: newArray
         });
     }
+}
+
+
+// =========================================================================
+//  DRAG & DROP INITIALIZATION
+// =========================================================================
+
+// =====================================================================
+// JAVASCRIPT - NEW DRAG AND DROP INITIALIZATION
+// =====================================================================
+
+function initDragAndDrop() {
+    const bodyGridWrapper = taskListBody.querySelector('.grid-wrapper');
+    if (!bodyGridWrapper) return;
+    
+    new Sortable(bodyGridWrapper, {
+        animation: 150,
+        handle: '.drag-handle', // We only drag by the handle
+        // Define what is draggable. We exclude '.add-task-row'.
+        draggable: '.section-row-wrapper, .task-row-wrapper',
+        
+        // This is a key event for group dragging
+        onChoose: function(evt) {
+            // If we're dragging a section header...
+            if (evt.item.classList.contains('section-row-wrapper')) {
+                // Find all other rows in its group (tasks + 'add task' row)
+                const group = getSectionGroup(evt.item);
+                // Group them with the dragged item. Sortable handles the rest.
+                Sortable.utils.select(group);
+            }
+        },
+        
+        // This event fires after the group is dropped
+        onEnd: function(evt) {
+            // The onChoose logic handles visual grouping, so onEnd is simpler.
+            // We now determine what moved and where it moved to.
+            
+            // The best practice here is to not move DOM elements manually.
+            // Instead, you should get the new order and update your underlying
+            // project data, then call render() to rebuild the UI.
+            // This ensures data and UI are always in sync.
+            
+            // Example of how to get the new order:
+            const allRows = Array.from(bodyGridWrapper.children);
+            const newOrder = allRows.map(row => ({
+                id: row.dataset.taskId || row.dataset.sectionId,
+                type: row.classList.contains('task-row-wrapper') ? 'task' : 'section'
+            }));
+            
+            console.log("New order:", newOrder);
+            
+            // You would now call a function to process this new order
+            // handleReorder(newOrder); 
+            // Inside handleReorder, you update your main 'project' object
+            // and then call render() to reflect the changes.
+            
+            // For now, we can just log it. You will need to implement the
+            // data-handling logic based on your application's state management.
+        },
+        
+        // Clean up selections when dragging is over
+        onUnchoose: function(evt) {
+            Sortable.utils.deselect(getSectionGroup(evt.item));
+        }
+    });
+}
+
+function getSectionGroup(sectionRowEl) {
+    const sectionId = sectionRowEl.dataset.sectionId;
+    if (!sectionId) return [];
+    
+    // Find all rows (tasks and the 'add task' row) belonging to this section
+    const allRows = Array.from(sectionRowEl.parentElement.children);
+    // Exclude the section header itself since it's the item being dragged
+    return allRows.filter(el => el.dataset.sectionId === sectionId && el !== sectionRowEl);
 }

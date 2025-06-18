@@ -14,103 +14,16 @@
     --column-padding-y: 0.2rem; /* New variable for vertical column padding */
 }
 
-/* --- Main App Container & Controls --- */
+
+
 .list-view-container {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-}
-.list-view-controls {
-    padding: 10px 16px;
-    background-color: #ffffff;
-    border-bottom: 1px solid #eef0f2;
-    flex-shrink: 0;
-    z-index: 20;
-    display: flex; justify-content: space-between;
-}
-.list-view-controls button {
-    background-color: #ffffff; border: 1px solid #d1d5da; padding: 6px 14px;
-    border-radius: 8px; font-weight: 500; cursor: pointer; transition: all 0.2s; font-size: 14px;
-}
-.list-view-controls button:hover { background-color: #f9fafb; border-color: #c1c5ca;}
-
-
-/* --- Core Scrolling & Grid Containers --- */
-#task-list-header, #task-list-body {
+    width: 100%;
+    height: calc(100vh - 100px); /* Adjust 100px based on your actual site header/nav height */
+    margin: 0;
     position: relative;
-    overflow: hidden; /* Hide all scrollbars on the containers themselves */
+    box-sizing: border-box;
+    overflow: auto; 
 }
-#task-list-body {
-    flex-grow: 1;
-    overflow: auto; /* Allow the BODY to scroll */
-}
-.grid-wrapper {
-    display: grid;
-    min-width: 100%;
-}
-#task-list-body::-webkit-scrollbar { height: 14px; width: 14px; }
-#task-list-body::-webkit-scrollbar-track { background: #f1f1f1; }
-#task-list-body::-webkit-scrollbar-thumb {
-    background: #d1d5db; border-radius: 10px; border: 3px solid #f1f1f1;
-}
-#task-list-body::-webkit-scrollbar-thumb:hover { background: #b0b5bb; }
-
-
-/* --- HEADER CELL STYLING --- */
-.header-cell {
-    height: 60px;
-    padding: 0 12px;
-    display: flex;
-    align-items: center;
-    background-color: #ffffff;
-    border-bottom: 2px solid #eef0f2;
-    position: sticky;
-    top: 0; /* Makes ALL header cells stick to the top */
-    z-index: 3; /* Default layer for scrolling headers */
-    transition: background-color 0.2s ease;
-}
-.header-cell:not(:last-child) {
-    border-right: 1px solid #eef0f2;
-}
-.header-cell:hover {
-    background-color: #f9fafb;
-}
-
-
-/* --- TASK CELL STYLING --- */
-.task-cell {
-    padding: 10px 12px;
-    background-color: #ffffff;
-    border-bottom: 1px solid #eef0f2;
-    display: flex;
-    align-items: center;
-}
-.grid-row-wrapper:hover .task-cell {
-    background-color: #f9fafb;
-}
-
-
-/* --- STICKY COLUMN FIX --- */
-.sticky-col-header, .sticky-col-task {
-    position: sticky;
-    left: 0; /* Makes these columns stick to the left */
-    z-index: 2; /* Default layer for sticky data column */
-}
-/* THE FIX: The "Name" header cell needs both sticky `top` (from .header-cell)
-   and sticky `left` (from .sticky-col-header), and the highest z-index
-   to ensure it stays on top of everything. */
-.sticky-col-header {
-    z-index: 4; /* Higher than other header cells */
-}
-.sticky-col-task {
-    border-right: 1px solid #eef0f2;
-}
-
-/* Other styles remain the same... */
-.align-left { justify-content: flex-start; }
-.header-cell .column-icon { margin-left: auto; color: #9ca3af; opacity: 0; transition: opacity 0.2s ease-in-out; cursor: pointer; }
-.header-cell:hover .column-icon { opacity: 1; }
-.add-column-cell { min-width: 100px; }
 
 .listview-header {
     display: flex;
