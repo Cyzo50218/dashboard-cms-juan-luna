@@ -50,7 +50,6 @@
     height: calc(100vh - 100px); /* Adjust 100px based on your actual site header/nav height */
     margin: 0;
     position: relative;
-    padding: 0 1rem 1rem 1rem; /* No top padding */
     box-sizing: border-box;
     overflow: auto; 
 }

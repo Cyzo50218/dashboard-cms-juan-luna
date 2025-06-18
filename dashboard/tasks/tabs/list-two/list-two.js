@@ -1027,257 +1027,214 @@ function enableColumnRename(columnEl) {
     columnEl.addEventListener('keydown', onKeyDown);
 }
 
+// In list.js, replace ONLY the render() function with this:
+
 function render() {
-    const scrollStates = new Map();
-    document.querySelectorAll('.scrollable-columns-wrapper').forEach((el, i) => scrollStates.set(i, el.scrollLeft));
+    if (!taskListHeaderEl || !taskListBody) return;
+
+    const projectToRender = project;
+    const customColumns = projectToRender.customColumns || [];
+
+    // --- DYNAMIC WRAPPER CREATION ---
+    taskListHeaderEl.innerHTML = '';
+    taskListBody.innerHTML = '';
+
+    const headerGridWrapper = document.createElement('div');
+    headerGridWrapper.className = 'grid-wrapper';
+    taskListHeaderEl.appendChild(headerGridWrapper);
+
+    const bodyGridWrapper = document.createElement('div');
+    bodyGridWrapper.className = 'grid-wrapper';
+    taskListBody.appendChild(bodyGridWrapper);
+
+    // --- FIXED COLUMN WIDTH DEFINITION (THE CHANGE) ---
+    const columnWidths = {
+        taskName: '350px',
+        assignee: '150px',
+        dueDate: '150px',
+        priority: '150px',
+        status: '150px',
+        defaultCustom: '160px',
+        addColumn: '120px' // Increased width for more padding on the right
+    };
+
+    const gridTemplateColumns = [
+        columnWidths.taskName,
+        columnWidths.assignee,
+        columnWidths.dueDate,
+        columnWidths.priority,
+        columnWidths.status,
+        ...customColumns.map(() => columnWidths.defaultCustom),
+        columnWidths.addColumn
+    ].join(' ');
+
+    // Apply the fixed-width grid style
+    headerGridWrapper.style.gridTemplateColumns = gridTemplateColumns;
+    bodyGridWrapper.style.gridTemplateColumns = gridTemplateColumns;
+
+    // --- RENDER CONTENT INTO WRAPPERS ---
+    renderHeader(projectToRender, headerGridWrapper);
+    renderBody(projectToRender, bodyGridWrapper);
     
-    closeFloatingPanels();
+    // --- SYNC SCROLLING ---
+    syncHeaderScroll();
     
-    let projectToRender = getFilteredProject();
-    projectToRender = getSortedProject(projectToRender);
-    
-    generateCustomTagStyles(projectToRender);
-    
-    renderHeader(projectToRender);
-    renderBody(projectToRender);
-    //renderFooter(projectToRender);
-    syncScroll(scrollStates);
-    
+    // --- FOCUS ON NEW TASK ---
     if (taskIdToFocus) {
-        const newEl = taskListBody.querySelector(`[data-task-id="${taskIdToFocus}"] .task-name`);
+        const newEl = taskListBody.querySelector(`[data-task-id="${taskIdToFocus}"] .task-name-input`);
         if (newEl) {
             newEl.focus();
+            newEl.select();
         }
         taskIdToFocus = null;
     }
-    const isSortActive = activeSortState !== 'default';
-    
-    if (activeSortState === 'asc') {
-        sortBtn.innerHTML = `<i class="fas fa-sort-amount-up-alt"></i> Oldest`;
-    } else if (activeSortState === 'desc') {
-        sortBtn.innerHTML = `<i class="fas fa-sort-amount-down-alt"></i> Newest`;
-    } else {
-        sortBtn.innerHTML = `<i class="fas fa-sort"></i> Sort`;
-    }
-    
-    if (sortableSections) sortableSections.destroy();
-    sortableSections = new Sortable(taskListBody, { handle: '.section-header-list .drag-handle', animation: 150, disabled: isSortActive, onEnd: handleSectionReorder });
-    
-    sortableTasks.forEach(st => st.destroy());
-    sortableTasks.length = 0;
-    document.querySelectorAll('.tasks-container').forEach(container => {
-        sortableTasks.push(new Sortable(container, {
-            group: 'tasks',
-            handle: '.fixed-column .drag-handle',
-            animation: 150,
-            disabled: isSortActive,
-            onEnd: handleTaskMoved
-        }));
-    });
-    
-    
-    filterBtn?.classList.toggle('active', !!activeFilters.visibleSections);
-    sortBtn?.classList.toggle('active', isSortActive);
 }
 
-function renderHeader(projectToRender) {
-    if (!taskListHeaderEl) return;
-    const container = taskListHeaderEl.querySelector('#header-scroll-cols');
-    if (!container) return;
-    
-    container.querySelectorAll('.header-custom').forEach(el => el.remove());
-    const addColBtnContainer = container.querySelector('.add-column-container');
-    
-    projectToRender.customColumns.forEach(col => {
-        const colEl = document.createElement('div');
-        colEl.className = 'task-col header-custom';
-        colEl.dataset.columnId = col.id;
-        colEl.textContent = col.name;
-        const menuBtn = document.createElement('button');
-        menuBtn.className = 'delete-column-btn';
-        menuBtn.title = 'Column options';
-        menuBtn.innerHTML = `<i class="fas fa-ellipsis-h"></i>`;
-        colEl.appendChild(menuBtn);
-        if (addColBtnContainer) container.insertBefore(colEl, addColBtnContainer);
+function syncHeaderScroll() {
+    taskListBody.addEventListener('scroll', () => {
+        taskListHeaderEl.scrollLeft = taskListBody.scrollLeft;
     });
 }
 
-function renderBody(projectToRender) {
-    if (!taskListBody) return;
-    taskListBody.innerHTML = '';
-    
-    projectToRender.sections.forEach(section => {
-        const sectionElement = createSection(section, projectToRender.customColumns);
-        if (sectionElement) taskListBody.appendChild(sectionElement);
+function renderHeader(projectToRender, container) {
+    const customColumns = projectToRender.customColumns || [];
+
+    // 1. Create the FIXED "Task Name" Header Cell
+    const taskNameHeader = document.createElement('div');
+    // It gets BOTH classes: 'header-cell' for top stickiness and 'sticky-col-header' for left stickiness.
+    taskNameHeader.className = 'header-cell sticky-col-header align-left';
+    taskNameHeader.innerHTML = `<span>Name</span>`;
+    container.appendChild(taskNameHeader);
+
+    // 2. Base Scrollable Header Cells
+    ['Assignee', 'Due Date', 'Priority', 'Status'].forEach(name => {
+        const cell = document.createElement('div');
+        cell.className = 'header-cell align-left'; // These only need the base header class
+        cell.innerHTML = `<span>${name}</span><i class="fa-solid fa-angle-down column-icon"></i>`;
+        container.appendChild(cell);
     });
-    
-    if (projectToRender.sections.length === 0) {
-        const noResultsEl = document.createElement('div');
-        noResultsEl.className = 'no-results-message';
-        noResultsEl.textContent = 'No sections match your current filter.';
-        taskListBody.appendChild(noResultsEl);
-    }
-}
 
-function createSection(sectionData, customColumns) {
-    const sectionEl = document.createElement('div');
-    sectionEl.className = 'task-section';
-    sectionEl.dataset.sectionId = sectionData.id;
-    
-    // --- Build the HTML for all task rows (no changes here) ---
-    let tasksHTML = '';
-    let hasAggregatableColumnInSection = false;
-    if (sectionData.tasks && !sectionData.isCollapsed) {
-        tasksHTML = sectionData.tasks.map(task => {
-            return createTaskRow(task, customColumns).outerHTML;
-        }).join('');
-    }
-    
-    // --- MODIFICATION STARTS HERE ---
-    
-    // --- 1. Build the HTML for the SUMMARY part of the final row ---
-    let summaryColsHTML = '';
-    if (!sectionData.isCollapsed) {
-        customColumns.forEach(col => {
-            let displayValue = '';
-            if (col.aggregation === 'Sum') {
-                const sectionTotal = sectionData.tasks.reduce((sum, task) => sum + Number(task.customFields[col.id] || 0), 0);
-               if (sectionTotal !== 0) {
-    hasAggregatableColumnInSection = true;
-    // This formats the number to show decimals only when they exist.
-    const formattedTotal = sectionTotal.toLocaleString(undefined, { maximumFractionDigits: 2 });
-    
-    const displayTotal = col.type === 'Costing' ? `${col.currency || ''}${formattedTotal}` : formattedTotal;
-    displayValue = `<strong>Sum:</strong> ${displayTotal}`;
-}
-            }
-            summaryColsHTML += `<div class="task-col header-custom">${displayValue}</div>`;
-        });
-    }
-    
-    // --- 2. Build the FINAL ROW using the same structure as a task row ---
-    // This ensures perfect column alignment.
-    const finalRowHTML = `
-        <div class="section-summary-row">
-            <div class="fixed-column-section">
-                <button class="add-task-in-section-btn"><i class="fas fa-plus"></i> Add task</button>
-            </div>
-            <div class="scrollable-columns-wrapper">
-                <div class="scrollable-columns">
-                    <div class="task-col header-assignee"></div>
-                    <div class="task-col header-due-date"></div>
-                    <div class="task-col header-priority"></div>
-                    <div class="task-col header-status"></div>
-                    ${summaryColsHTML}
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // --- 3. Assemble the entire section's innerHTML ---
-    sectionEl.innerHTML = `
-        <div class="section-header-list">
-            <div class="fixed-column-section">
-            <i class="fas fa-grip-vertical drag-handle"></i>
-            <i class="fas fa-chevron-down section-toggle ${sectionData.isCollapsed ? 'collapsed' : ''}"></i>
-            <span class="section-title" contenteditable="true">${sectionData.title}</span>
-            </div>
-            
-        </div>
-        <div class="tasks-container ${sectionData.isCollapsed ? 'hidden' : ''}">
-            ${tasksHTML}
-        </div>
-        ${finalRowHTML}
-    `;
-    
-    // --- MODIFICATION ENDS HERE ---
-    
-    return sectionEl;
-}
-
-function createTaskRow(task, customColumns) {
-    const rowWrapper = document.createElement('div');
-    rowWrapper.className = `task-row-wrapper ${task.status === 'Completed' ? 'is-completed' : ''}`;
-    rowWrapper.dataset.taskId = task.id;
-    
-    const displayName = task.name;
-    const displayDate = task.dueDate ? new Date(task.dueDate.replace(/-/g, '/')).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '<span class="add-due-date">+ Add date</span>';
-    
-    // --- MODIFICATION FOR REACTIONS START ---
-    const userHasLiked = currentUserId && task.likedBy && task.likedBy[currentUserId];
-    const heartIconClass = userHasLiked ? 'fas fa-heart liked' : 'far fa-heart'; // Add 'liked' class for styling
-    const likeCountDisplay = task.likedAmount > 0 ? task.likedAmount : '';
-    
-    const reactionsHTML = `
-        <div class="task-reactions">
-            <span class="reaction-item" data-control="like" title="Like task">
-                <i class="${heartIconClass}"></i>
-                <span class="like-count">${likeCountDisplay}</span>
-            </span>
-            <span class="reaction-item" data-control="comment" title="View comments">
-                <i class="far fa-comment"></i>
-            </span>
-        </div>
-    `;
-    // --- MODIFICATION FOR REACTIONS END ---
-    
-    let customFieldsHTML = '';
+    // 3. Custom Column Header Cells
     customColumns.forEach(col => {
-    const value = task.customFields[col.id] || '';
-    
-    // This block handles ANY column with an 'options' array
-    if (col.options && Array.isArray(col.options)) {
-        let displayValue = '<span class="add-value">+ Select</span>';
-        
-        const selectedOption = col.options.find(opt => opt.name === value);
-        
-        if (selectedOption) {
-            // Generate a unique class name for styling
-            const prefix = `custom-col-${col.id}`;
-            const sanitizedName = selectedOption.name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
-            const className = `${prefix}-${sanitizedName}`;
-            displayValue = `<div class="status-tag ${className}">${selectedOption.name}</div>`;
-        }
-        customFieldsHTML += `<div class="task-col header-custom" data-control="custom-select" data-column-id="${col.id}">${displayValue}</div>`;
-    } else {
-        // Logic for other column types (Text, Costing, etc.)
-        let displayValue = (value !== null && typeof value !== 'undefined') ? value : '';
-// For Costing/Numbers types, format the number to show decimals only if they exist.
-if ((col.type === 'Costing' || col.type === 'Numbers') && typeof value === 'number') {
-    // This formats the number with comma separators and a maximum of 2 decimal places.
-    // It will show "350.75" for 350.75 and "300" for 300.
-    const formattedNumber = value.toLocaleString(undefined, { maximumFractionDigits: 2 });
-    displayValue = (col.type === 'Costing' ? (col.currency || '') : '') + formattedNumber;
+        const cell = document.createElement('div');
+        cell.className = 'header-cell align-left'; // These only need the base header class
+        cell.dataset.columnId = col.id;
+        cell.innerHTML = `<span>${col.name}</span><i class="fa-solid fa-ellipsis-h column-icon options-icon"></i>`;
+        container.appendChild(cell);
+    });
+
+    // 4. "Add Column" Button Cell
+    const addColumnCell = document.createElement('div');
+    addColumnCell.className = 'header-cell add-column-cell';
+    addColumnCell.innerHTML = `<i class="fa-solid fa-plus"></i>`;
+    container.appendChild(addColumnCell);
 }
-customFieldsHTML += `<div class="task-col header-custom" data-control="custom" data-column-id="${col.id}" contenteditable="true">${displayValue}</div>`;
+
+function renderBody(projectToRender, container) {
+    const customColumns = projectToRender.customColumns || [];
+    
+    (projectToRender.sections || []).forEach(section => {
+        // --- Render the Section Header Row ---
+        // The section row now gets a proper wrapper for styling and hover effects
+        const sectionRowWrapper = document.createElement('div');
+        sectionRowWrapper.className = 'grid-row-wrapper';
+        sectionRowWrapper.style.display = 'contents'; // This keeps it integrated with the parent grid
+        
+        const sectionCells = createSectionRow(section, customColumns);
+        sectionCells.forEach(cell => sectionRowWrapper.appendChild(cell));
+        container.appendChild(sectionRowWrapper);
+
+        // --- Render Task Rows with Zebra Striping ---
+        if (!section.isCollapsed && section.tasks) {
+            section.tasks.forEach(task => {
+                // Each task row now gets its own wrapper, which is crucial for the hover animation
+                const taskRowWrapper = document.createElement('div');
+                taskRowWrapper.className = 'grid-row-wrapper';
+                taskRowWrapper.style.display = 'contents';
+                
+                const taskCells = createTaskRow(task, customColumns);
+                taskCells.forEach(cell => taskRowWrapper.appendChild(cell));
+                container.appendChild(taskRowWrapper);
+            });
+        }
+    });
+}
+
+function createSectionRow(sectionData, customColumns) {
+    const cells = [];
+    
+    // 1. Create the sticky Section Title Cell
+    const titleCell = document.createElement('div');
+    // ADDED: Re-introduced the 'align-left' class to push the text to the left.
+    titleCell.className = 'task-cell sticky-col-task section-title-cell align-left';
+    titleCell.dataset.sectionId = sectionData.id;
+
+    const chevronClass = sectionData.isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down';
+    titleCell.innerHTML = `
+        <i class="fas ${chevronClass} section-toggle"></i>
+        <span class="section-title">${sectionData.title}</span>
+    `;
+    cells.push(titleCell);
+
+    // 2. Create placeholder cells for the remaining scrollable columns
+    const baseColumnCount = 4;
+    const customColumnCount = customColumns.length;
+    const totalPlaceholders = baseColumnCount + customColumnCount + 1;
+
+    for (let i = 0; i < totalPlaceholders; i++) {
+        const placeholderCell = document.createElement('div');
+        // This cell still needs the section-specific class for its border styling
+        placeholderCell.className = 'task-cell section-placeholder-cell';
+        cells.push(placeholderCell);
     }
-});
     
-    // NOTE TO DEVELOPER: To make the task name column wider,
-    // adjust the flex-basis or min-width of the `.fixed-column` class in your CSS file.
-    // e.g., .fixed-column { flex-basis: 400px; }
+    return cells;
+}
+function createTaskRow(task, customColumns) {
+    const cells = [];
+    const isCompletedClass = task.status === 'Completed' ? 'is-completed' : '';
+
+    // 1. Fixed Task Name Cell
+    const taskNameCell = document.createElement('div');
+    // Add a specific class for left-alignment
+    taskNameCell.className = `task-cell sticky-col-task align-left ${isCompletedClass}`;
+    taskNameCell.innerHTML = `
+        <i class="fa-regular fa-circle-check check-icon"></i>
+        <span class="task-name">${task.name || ''}</span>
+    `;
+    cells.push(taskNameCell);
+
+    // 2. Base Data Cells
+    const baseData = [
+        createAssigneeHTML(task.assignees),
+        task.dueDate ? new Date(task.dueDate).toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '<span class="add-value">+</span>',
+        task.priority || '<span class="add-value">+</span>',
+        task.status || '<span class="add-value">+</span>',
+    ];
+    baseData.forEach(html => {
+        const cell = document.createElement('div');
+        cell.className = `task-cell ${isCompletedClass}`;
+        // Each cell has content and a placeholder for an icon if needed
+        cell.innerHTML = `<span>${html}</span>`;
+        cells.push(cell);
+    });
     
-    rowWrapper.innerHTML = `
-    <div class="fixed-column">
-        <i class="fas fa-grip-vertical drag-handle"></i>
-        <i class="far fa-check-circle" data-control="check"></i>
-        <span class="task-name" contenteditable="true" data-placeholder="Add task name">${displayName}</span>
-        ${reactionsHTML} 
-        <button class="move-task-btn" data-control="move-task" title="Move to section">
-            <i class="fas fa-arrow-right-to-bracket"></i>
-        </button>
-    </div>
-    <div class="scrollable-columns-wrapper">
-        <div class="scrollable-columns">
-            <div class="task-col header-assignee" data-control="assignee">${createAssigneeHTML(task.assignees)}</div>
-            <div class="task-col header-due-date" data-control="due-date">${displayDate}</div>
-            <div class="task-col header-priority" data-control="priority">${createPriorityTag(task.priority)}</div>
-            <div class="task-col header-status" data-control="status">${createStatusTag(task.status)}</div>
-            ${customFieldsHTML}
-        </div>
-    </div>
-`;
-    return rowWrapper;
+    // 3. Custom Field Cells
+    customColumns.forEach(col => {
+        const cell = document.createElement('div');
+        cell.className = `task-cell ${isCompletedClass}`;
+        cell.dataset.columnId = col.id;
+        const value = task.customFields ? task.customFields[col.id] : null;
+        cell.innerHTML = `<span>${value || '<span class="add-value">+</span>'}</span>`;
+        cells.push(cell);
+    });
+
+    // 4. Empty cell for alignment with the "Add Column" button
+    const placeholderCell = document.createElement('div');
+    placeholderCell.className = `task-cell ${isCompletedClass}`;
+    cells.push(placeholderCell);
+
+    return cells;
 }
 
 /**

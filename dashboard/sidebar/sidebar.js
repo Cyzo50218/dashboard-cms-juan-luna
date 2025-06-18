@@ -82,7 +82,7 @@ window.TaskSidebar = (function () {
     // DOM Elements
     let sidebar, taskNameEl, taskDescriptionEl, taskFieldsContainer, closeBtn,
         tabsContainer, activityLogContainer, commentInput, sendCommentBtn,
-        imagePreviewContainer, taskCompleteText, taskCompleteBtn, fileUploadInput, commentInputWrapper;
+        imagePreviewContainer, currentUserAvatarEl, taskCompleteText, taskCompleteBtn, fileUploadInput, commentInputWrapper;
 
     // --- 3. CORE LOGIC ---
     function init() {
@@ -96,6 +96,7 @@ window.TaskSidebar = (function () {
         taskCompleteText = document.getElementById('task-complete-text');
         closeBtn = document.getElementById('close-sidebar-btn');
         tabsContainer = document.getElementById('comment-tabs-container');
+        currentUserAvatarEl = document.getElementById('current-user-avatar');
         activityLogContainer = document.getElementById('activity-log-container');
         commentInput = document.getElementById('comment-input');
         sendCommentBtn = document.getElementById('send-comment-btn');
@@ -126,6 +127,8 @@ window.TaskSidebar = (function () {
                     avatar: firestoreUserData.avatar || user.photoURL || 'https://i.imgur.com/k9qRkiG.png'
                 };
                 
+                
+
             } else {
                 // If no profile exists in Firestore, fall back to the basic Auth info.
                 console.warn(`No profile document found for user ${user.uid}. Using default auth info.`);
@@ -145,6 +148,10 @@ window.TaskSidebar = (function () {
             };
         }
 
+        if (currentUserAvatarEl && currentUser.avatar) {
+                      currentUserAvatarEl.style.backgroundImage = `url(${currentUser.avatar})`;
+                     }
+                     
         // 5. The rest of the logic continues as before.
         await fetchActiveWorkspace(user.uid);
 

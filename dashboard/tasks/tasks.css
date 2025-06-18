@@ -4,12 +4,13 @@ svg {
     stroke-width: 2;
 }
 .project-container {
-    background-color: #fff;
     border-radius: 8px;
-    overflow: hidden;
     margin-top: 60px;
-    overflow-x: auto;
+    width: 100%;
+    overflow-y: auto;
+    background-color: #ffffff;
 }
+
 .project-header {
     display: flex;
     justify-content: space-between;
@@ -142,7 +143,8 @@ button:hover {
 
 .tabs-fragments {
     padding: 16px; /* Reduced */
-    min-height: 100px;
+    min-height: 10px;
+    overflow-x: auto; 
 }
 
 .tab-content {
