@@ -1,42 +1,24 @@
-/* --- Global & Font --- */
 :root {
     --primary-bg: #ffffff;
-    --secondary-bg: #f9fafb;
-    --border-color: #eef0f2;
-    --header-border-color: #e5e7eb;
+    --secondary-bg: #f9fafb; /* For hover */
+    --border-color: #e5e7eb;
+    --header-border-color: #d1d5db;
     --text-color: #111827;
     --text-secondary-color: #6b7280;
     --accent-color: #4c6ef5;
     --header-height: 52px;
     --task-row-padding: 10px 12px;
 }
-html { box-sizing: border-box; }
-*, *:before, *:after { box-sizing: inherit; }
-body {
-    margin: 0;
-    overflow: hidden;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    font-size: 14px;
-    background-color: var(--secondary-bg);
-}
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 
-
-/* --- Main App Container & Controls --- */
+/* --- Main App Container & Controls (No Change) --- */
 .list-view-container {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
+    display: flex; flex-direction: column; height: 100vh;
 }
 .list-view-controls {
-    padding: 10px 16px;
-    background-color: var(--primary-bg);
-    border-bottom: 1px solid var(--border-color);
-    flex-shrink: 0;
-    z-index: 20;
+    padding: 10px 16px; background-color: var(--primary-bg);
+    border-bottom: 1px solid var(--border-color); flex-shrink: 0; z-index: 20;
     display: flex; justify-content: space-between;
 }
-/* Other button styles can remain the same */
 .list-view-controls button {
     background-color: var(--primary-bg); border: 1px solid #d1d5da; padding: 6px 14px;
     border-radius: 8px; font-weight: 500; cursor: pointer; transition: all 0.2s; font-size: 14px;
@@ -44,150 +26,122 @@ body {
 .list-view-controls button:hover { background-color: var(--secondary-bg); border-color: #c1c5ca;}
 
 
-/* --- Core Scrolling & Grid Containers --- */
-#task-list-header {
-    position: relative;
-    overflow: hidden;
-    z-index: 10;
-    border-bottom: 2px solid var(--header-border-color);
-}
-#task-list-body {
-    flex-grow: 1;
-    position: relative;
-    overflow: auto;
-}
-.grid-wrapper {
-    display: grid;
-    min-width: 100%;
-}
-/* Styled scrollbar from previous version */
+/* --- Core Scrolling & Grid (No Change) --- */
+#task-list-header { position: relative; overflow: hidden; z-index: 10; border-bottom: 2px solid var(--header-border-color); }
+#task-list-body { flex-grow: 1; position: relative; overflow: auto; }
+.grid-wrapper { display: grid; min-width: 100%; border-top: 1px solid var(--border-color); border-left: 1px solid var(--border-color); }
 #task-list-body::-webkit-scrollbar { height: 14px; width: 14px; }
 #task-list-body::-webkit-scrollbar-track { background: #f1f1f1; }
-#task-list-body::-webkit-scrollbar-thumb {
-    background: #d1d5db; border-radius: 10px; border: 3px solid #f1f1f1;
-}
+#task-list-body::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; border: 3px solid #f1f1f1; }
 #task-list-body::-webkit-scrollbar-thumb:hover { background: #b0b5bb; }
 
 
-/* --- Header Cell Styling --- */
+/* --- Unified Cell Styling --- */
+.header-cell,
+.task-cell {
+    display: flex;
+    align-items: center; /* This correctly centers content vertically */
+    background-color: var(--primary-bg);
+    border-bottom: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+    transition: background-color 0.2s ease;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* --- Header & Task Cell Specifics (FIXED) --- */
 .header-cell {
     height: var(--header-height);
     padding: 0 12px;
-    display: flex;
-    align-items: center;
-    background-color: var(--primary-bg);
     position: sticky; top: 0; z-index: 3;
-    font-weight: 500;
-    color: #374151;
-    transition: background-color 0.2s ease;
-    justify-content: flex-start;
+    font-weight: 500; color: var(--text-secondary-color);
+    /* FIX: This pushes the text to the left and the icon to the right */
+    justify-content: space-between;
 }
-.header-cell:not(:last-child) {
-    border-right: 1px solid var(--border-color);
-}
-.header-cell:hover {
-    background-color: var(--secondary-bg);
+/* REMOVED .header-cell-content as it's no longer needed */
+
+.task-cell { padding: var(--task-row-padding); color: var(--text-color); }
+.task-cell.align-left {
+    gap: 16px; 
+    padding-left: 20px;
 }
 
-/* --- Task Cell Styling --- */
-.task-cell {
-    padding: var(--task-row-padding);
-    background-color: var(--primary-bg);
-    border-bottom: 1px solid var(--border-color);
-    display: flex;
-    align-items: center;
-}
-.grid-row-wrapper:hover .task-cell {
-    background-color: var(--secondary-bg);
-}
 
-/* --- Sticky Column Styling & Fixes --- */
+/* --- Sticky Column Styling --- */
 .sticky-col-header, .sticky-col-task {
     position: sticky; left: 0; z-index: 2;
 }
-.sticky-col-header {
-    background-color: var(--primary-bg);
-    border-right: 1px solid var(--header-border-color);
+/* FIX: The first column header also needs space-between behavior */
+.sticky-col-header { 
+    background-color: var(--primary-bg); 
     z-index: 4;
+    justify-content: flex-start; /* Override space-between for the Name column */
 }
 .sticky-col-task {
     background-color: var(--primary-bg);
-    border-right: 1px solid var(--border-color);
-    /* FIX: Move task content left a bit */
-    padding-left: 8px;
+    padding-left: 10px;
 }
+
+/* --- Section Row Styling --- */
+.section-title-cell {
+    justify-content: space-between;
+    background-color: var(--secondary-bg);
+    padding-top: 6px;
+    padding-bottom: 6px;
+}
+.section-placeholder-cell {
+    background-color: var(--secondary-bg);
+}
+.section-title-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px; 
+}
+.section-title { font-weight: 600; }
+.section-toggle { cursor: pointer; color: var(--text-secondary-color); }
+
+/* --- Section Options Dropdown Button --- */
+.section-options-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary-color);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s ease, background-color 0.2s ease;
+}
+.grid-row-wrapper:hover .section-options-btn {
+    opacity: 1;
+}
+.section-options-btn:hover {
+    background-color: #e5e7eb;
+    color: var(--text-color);
+}
+
+
+/* --- "Add Task" Row --- */
+.add-task-row .task-cell {
+    color: var(--text-secondary-color);
+    cursor: pointer;
+    gap: 12px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+.add-task-row:hover .task-cell {
+    background-color: var(--secondary-bg);
+    color: var(--text-color);
+}
+.add-task-row .add-task-icon {
+    font-style: normal;
+    font-weight: 500;
+}
+
+
+/* --- Hover Effects --- */
+.header-cell:hover { background-color: var(--secondary-bg); }
+.grid-row-wrapper:hover .task-cell { background-color: var(--secondary-bg); }
 .header-cell:hover.sticky-col-header,
 .grid-row-wrapper:hover .sticky-col-task {
     background-color: var(--secondary-bg);
 }
-
-/* --- Section Row Styling & Fixes --- */
-.section-title-cell, .section-placeholder-cell {
-    background-color: var(--secondary-bg);
-    border-top: 1px solid var(--border-color);
-    border-bottom: 1px solid var(--border-color);
-}
-.section-title { font-weight: 600; }
-.section-toggle {
-    cursor: pointer;
-    color: var(--text-secondary-color);
-    /* FIX: Add a gap between the icon and section name */
-    margin-right: 8px;
-}
-
-/* --- Modern "Add Task" UI (NEW) --- */
-.add-task-cell {
-    grid-column: 1 / -1; /* Make cell span all columns */
-    padding: 0;
-    position: relative; /* For positioning the line */
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-/* The subtle horizontal line */
-.add-task-cell::before {
-    content: '';
-    position: absolute;
-    left: 40px;
-    right: 40px;
-    top: 50%;
-    height: 1px;
-    background-color: var(--border-color);
-    transition: all 0.2s ease;
-}
-/* The button that appears on hover */
-.add-task-button {
-    background: var(--primary-bg); /* Sits on top of the line */
-    border: 1px solid transparent;
-    color: var(--text-secondary-color);
-    font-weight: 500;
-    font-size: 13px;
-    cursor: pointer;
-    padding: 4px 12px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    position: relative; /* To sit above the ::before pseudo-element */
-    z-index: 1;
-    /* Hidden by default, scales up on hover */
-    opacity: 0;
-    transform: translateY(5px);
-    transition: all 0.2s ease-in-out;
-}
-/* The hover interaction */
-.add-task-cell:hover .add-task-button {
-    opacity: 1;
-    transform: translateY(0);
-}
-.add-task-cell:hover::before {
-    background-color: var(--accent-color); /* Line color changes to accent on hover */
-}
-.add-task-button .fa-plus { font-size: 12px; }
-
-/* --- Other specific styles --- */
-.align-left { justify-content: flex-start; }
-.header-cell .column-icon { margin-left: auto; color: #9ca3af; opacity: 0; transition: opacity 0.2s ease-in-out; cursor: pointer; }
-.header-cell:hover .column-icon { opacity: 1; }
-.add-column-cell { justify-content: center; }

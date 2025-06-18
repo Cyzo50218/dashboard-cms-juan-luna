@@ -1099,36 +1099,49 @@ function syncHeaderScroll() {
 function renderHeader(projectToRender, container) {
     const customColumns = projectToRender.customColumns || [];
 
+    // --- SIMPLIFIED & CORRECTED HTML STRUCTURE ---
+
     // 1. Create the FIXED "Task Name" Header Cell
     const taskNameHeader = document.createElement('div');
-    // It gets BOTH classes: 'header-cell' for top stickiness and 'sticky-col-header' for left stickiness.
-    taskNameHeader.className = 'header-cell sticky-col-header align-left';
+    taskNameHeader.className = 'header-cell sticky-col-header';
+    // FIX: Simplified structure. Alignment is now handled purely by CSS on the .header-cell class.
     taskNameHeader.innerHTML = `<span>Name</span>`;
     container.appendChild(taskNameHeader);
 
     // 2. Base Scrollable Header Cells
     ['Assignee', 'Due Date', 'Priority', 'Status'].forEach(name => {
         const cell = document.createElement('div');
-        cell.className = 'header-cell align-left'; // These only need the base header class
-        cell.innerHTML = `<span>${name}</span><i class="fa-solid fa-angle-down column-icon"></i>`;
+        cell.className = 'header-cell';
+        // FIX: Simplified structure.
+        cell.innerHTML = `
+            <span>${name}</span>
+            <i class="fa-solid fa-angle-down column-icon"></i>
+        `;
         container.appendChild(cell);
     });
 
     // 3. Custom Column Header Cells
     customColumns.forEach(col => {
         const cell = document.createElement('div');
-        cell.className = 'header-cell align-left'; // These only need the base header class
+        cell.className = 'header-cell';
         cell.dataset.columnId = col.id;
-        cell.innerHTML = `<span>${col.name}</span><i class="fa-solid fa-ellipsis-h column-icon options-icon"></i>`;
+        // FIX: Simplified structure.
+        cell.innerHTML = `
+            <span>${col.name}</span>
+            <i class="fa-solid fa-ellipsis-h column-icon options-icon"></i>
+        `;
         container.appendChild(cell);
     });
 
     // 4. "Add Column" Button Cell
     const addColumnCell = document.createElement('div');
+    // FIX: Center the plus icon.
     addColumnCell.className = 'header-cell add-column-cell';
+    addColumnCell.style.justifyContent = 'center'; 
     addColumnCell.innerHTML = `<i class="fa-solid fa-plus"></i>`;
     container.appendChild(addColumnCell);
 }
+
 
 function renderBody(projectToRender, container) {
     const customColumns = projectToRender.customColumns || [];
@@ -1157,6 +1170,15 @@ function renderBody(projectToRender, container) {
                 container.appendChild(taskRowWrapper);
             });
         }
+        
+         // --- Render the "Add Task" row ---
+        const addTaskRowWrapper = document.createElement('div');
+        addTaskRowWrapper.className = 'grid-row-wrapper add-task-row';
+        addTaskRowWrapper.style.display = 'contents';
+        
+        const addTaskCells = createAddTaskRow(customColumns, section.id);
+        addTaskCells.forEach(cell => addTaskRowWrapper.appendChild(cell));
+        container.appendChild(addTaskRowWrapper);
     });
 }
 
@@ -1171,8 +1193,14 @@ function createSectionRow(sectionData, customColumns) {
 
     const chevronClass = sectionData.isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down';
     titleCell.innerHTML = `
-        <i class="fas ${chevronClass} section-toggle"></i>
-        <span class="section-title">${sectionData.title}</span>
+        <div class="section-title-wrapper">
+             <i class="fas ${chevronClass} section-toggle"></i>
+             <span class="section-title">${sectionData.title}</span>
+        </div>
+        <button class="add-task-section-btn">
+            <i class="fa-solid fa-plus"></i>
+            <span>Add Task</span>
+        </button>
     `;
     cells.push(titleCell);
 
@@ -1186,6 +1214,26 @@ function createSectionRow(sectionData, customColumns) {
         // This cell still needs the section-specific class for its border styling
         placeholderCell.className = 'task-cell section-placeholder-cell';
         cells.push(placeholderCell);
+    }
+    
+    return cells;
+}
+function createAddTaskRow(customColumns, sectionId) {
+    const cells = [];
+    const totalColumns = 5 + customColumns.length;
+
+    // --- Sticky "Add Task" Cell ---
+    const addTaskCell = document.createElement('div');
+    addTaskCell.className = 'task-cell sticky-col-task align-left';
+    addTaskCell.dataset.sectionId = sectionId;
+    addTaskCell.innerHTML = `<i class="add-task-icon fa-solid fa-plus"></i><span>Add task...</span>`;
+    cells.push(addTaskCell);
+
+    // --- Placeholder cells ---
+    for (let i = 0; i < totalColumns; i++) {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'task-cell';
+        cells.push(placeholder);
     }
     
     return cells;
