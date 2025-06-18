@@ -44,6 +44,7 @@ let taskListHeaderEl, taskListBody, taskListFooter, addSectionBtn, addTaskHeader
 // Event Handler References
 let headerClickListener, bodyClickListener, bodyFocusOutListener, addTaskHeaderBtnListener, addSectionBtnListener, windowClickListener, filterBtnListener, sortBtnListener;
 let sortableSections;
+let activeMenuButton = null;
 const sortableTasks = [];
 
 // --- Data ---
@@ -1220,18 +1221,15 @@ function createSectionRow(sectionData, customColumns) {
     
     const chevronClass = sectionData.isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down';
     
-    // CHANGE: The button is now inside a ".options-btn-wrapper" div.
-    // This wrapper is essential for correct positioning.
+    // REVERT: The button is no longer inside a wrapper.
     titleCell.innerHTML = `
         <div class="section-title-wrapper">
              <i class="fas ${chevronClass} section-toggle"></i>
              <span class="section-title">${sectionData.title}</span>
         </div>
-        <div class="options-btn-wrapper">
-            <button class="section-options-btn" data-section-id="${sectionData.id}">
-                <i class="fa-solid fa-ellipsis-h"></i>
-            </button>
-        </div>
+        <button class="section-options-btn" data-section-id="${sectionData.id}">
+            <i class="fa-solid fa-ellipsis-h"></i>
+        </button>
     `;
     cells.push(titleCell);
     
@@ -1249,19 +1247,35 @@ function createSectionRow(sectionData, customColumns) {
     return cells;
 }
 
+// This function will run ONLY when a menu is open and the user scrolls
+function updateMenuPosition() {
+    if (!activeMenuButton) return;
+    
+    const menu = document.querySelector('.options-dropdown-menu');
+    if (!menu) return;
+    
+    // Recalculate button position and update the menu's style
+    const rect = activeMenuButton.getBoundingClientRect();
+    const menuWidth = menu.offsetWidth;
+    
+    menu.style.top = `${rect.bottom + window.scrollY + 4}px`;
+    menu.style.left = `${rect.right + window.scrollX - menuWidth}px`;
+}
+
 function closeOpenMenu() {
+    if (activeMenuButton) {
+        taskListBody.removeEventListener('scroll', updateMenuPosition);
+        activeMenuButton = null;
+    }
     const existingMenu = document.querySelector('.options-dropdown-menu');
     if (existingMenu) {
         existingMenu.remove();
     }
 }
 
-// Open Section menu 
 function openOptionsMenu(buttonEl) {
     closeOpenMenu(); // Close any other menus first
     
-    // Get the new wrapper element, which is the button's parent
-    const wrapper = buttonEl.parentElement;
     const sectionId = buttonEl.dataset.sectionId;
     
     // Create menu element
@@ -1282,14 +1296,19 @@ function openOptionsMenu(buttonEl) {
         </div>
     `;
     
-    // Append the menu INSIDE the wrapper, not the body
-    wrapper.appendChild(menu);
+    // Append to body to ensure it's on top of everything
+    document.body.appendChild(menu);
     
-    // The positioning is now incredibly simple, relative to the wrapper.
-    // No more complex calculations!
-    menu.style.top = `${buttonEl.offsetHeight + 4}px`; // 4px below the button
-    menu.style.right = '0'; // Align to the right edge of the wrapper
+    // Set the button as the active one
+    activeMenuButton = buttonEl;
+    
+    // Set initial position
+    updateMenuPosition();
+    
+    // IMPORTANT: Add a temporary scroll listener
+    taskListBody.addEventListener('scroll', updateMenuPosition, { passive: true });
 }
+
 
 function createAddTaskRow(customColumns, sectionId) {
     const cells = [];
