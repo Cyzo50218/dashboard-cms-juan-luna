@@ -159,7 +159,12 @@ max-height: var(--header-height) !important;
 //  Option Menu for Sections
 // 
 ============================= */
-/* --- NEW: Dropdown Menu Styling --- */
+
+.options-btn-wrapper {
+    position: relative; /* This is the anchor point for the absolute positioned menu */
+    display: flex;
+    align-items: center;
+}
 .options-dropdown-menu {
     position: absolute;
     z-index: 1000;
@@ -171,7 +176,6 @@ max-height: var(--header-height) !important;
     min-width: 200px;
     font-size: 14px;
 }
-
 .dropdown-item {
     display: flex;
     align-items: center;
@@ -181,13 +185,11 @@ max-height: var(--header-height) !important;
     cursor: pointer;
     transition: background-color 0.2s ease;
 }
-
 .dropdown-item:hover {
     background-color: var(--secondary-bg);
 }
-
 .dropdown-icon {
-    width: 16px; /* Ensures alignment */
+    width: 16px;
     text-align: center;
     color: var(--text-secondary-color);
 }

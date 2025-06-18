@@ -281,20 +281,34 @@ export function init(params) {
 
 
 function setupEventListeners() {
-    document.addEventListener('click', (e) => {
+    // Global click listener to handle menu logic
+document.addEventListener('click', (e) => {
     const optionsButton = e.target.closest('.section-options-btn');
-    const dropdownItem = e.target.closest('.dropdown-item');
     
+    // Check if the click is inside an open menu. If so, let the item handler work.
+    if (e.target.closest('.options-dropdown-menu')) {
+        const dropdownItem = e.target.closest('.dropdown-item');
+        if (dropdownItem) {
+            const { action, sectionId } = dropdownItem.dataset;
+            console.log(`Action: ${action}, Section ID: ${sectionId || 'N/A'}`);
+            closeOpenMenu();
+        }
+        return; // Do nothing more if click is inside a menu
+    }
+    
+    // If we clicked an options button...
     if (optionsButton) {
-        // If an options button was clicked, open its menu
-        openOptionsMenu(optionsButton);
-    } else if (dropdownItem) {
-        // If a dropdown item was clicked, log the action and close the menu
-        const { action, sectionId } = dropdownItem.dataset;
-        console.log(`Action: ${action}, Section ID: ${sectionId || 'N/A'}`);
-        closeOpenMenu();
+        // Check if its menu is already open. If so, this click should close it.
+        const wrapper = optionsButton.parentElement;
+        const existingMenu = wrapper.querySelector('.options-dropdown-menu');
+        
+        if (existingMenu) {
+            closeOpenMenu(); // It's open, so close it.
+        } else {
+            openOptionsMenu(optionsButton); // It's closed, so open it.
+        }
     } else {
-        // If the click was anywhere else, close any open menu
+        // If the click was anywhere else on the page, close any open menu.
         closeOpenMenu();
     }
 });
@@ -1044,8 +1058,6 @@ function enableColumnRename(columnEl) {
     columnEl.addEventListener('keydown', onKeyDown);
 }
 
-// In list.js, replace ONLY the render() function with this:
-
 function render() {
     if (!taskListHeaderEl || !taskListBody) return;
 
@@ -1208,19 +1220,22 @@ function createSectionRow(sectionData, customColumns) {
     
     const chevronClass = sectionData.isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down';
     
-    // CHANGE: The "Add Task" button is now a "section-options-btn" with an ellipsis icon.
+    // CHANGE: The button is now inside a ".options-btn-wrapper" div.
+    // This wrapper is essential for correct positioning.
     titleCell.innerHTML = `
         <div class="section-title-wrapper">
              <i class="fas ${chevronClass} section-toggle"></i>
              <span class="section-title">${sectionData.title}</span>
         </div>
-        <button class="section-options-btn" data-section-id="${sectionData.id}">
-            <i class="fa-solid fa-ellipsis-h"></i>
-        </button>
+        <div class="options-btn-wrapper">
+            <button class="section-options-btn" data-section-id="${sectionData.id}">
+                <i class="fa-solid fa-ellipsis-h"></i>
+            </button>
+        </div>
     `;
     cells.push(titleCell);
     
-    // Create placeholder cells for the remaining scrollable columns
+    // Create placeholder cells (No change here)
     const baseColumnCount = 4;
     const customColumnCount = customColumns.length;
     const totalPlaceholders = baseColumnCount + customColumnCount + 1;
@@ -1241,10 +1256,12 @@ function closeOpenMenu() {
     }
 }
 
+// Open Section menu 
 function openOptionsMenu(buttonEl) {
     closeOpenMenu(); // Close any other menus first
     
-    const rect = buttonEl.getBoundingClientRect();
+    // Get the new wrapper element, which is the button's parent
+    const wrapper = buttonEl.parentElement;
     const sectionId = buttonEl.dataset.sectionId;
     
     // Create menu element
@@ -1265,14 +1282,13 @@ function openOptionsMenu(buttonEl) {
         </div>
     `;
     
-    // Append to body to avoid clipping issues and to measure its width
-    document.body.appendChild(menu);
-    const menuWidth = menu.offsetWidth;
+    // Append the menu INSIDE the wrapper, not the body
+    wrapper.appendChild(menu);
     
-    // Position the menu relative to the button
-    // This aligns the dropdown's right edge with the button's right edge.
-    menu.style.top = `${rect.bottom + window.scrollY + 4}px`; // 4px vertical offset
-    menu.style.left = `${rect.right + window.scrollX - menuWidth}px`;
+    // The positioning is now incredibly simple, relative to the wrapper.
+    // No more complex calculations!
+    menu.style.top = `${buttonEl.offsetHeight + 4}px`; // 4px below the button
+    menu.style.right = '0'; // Align to the right edge of the wrapper
 }
 
 function createAddTaskRow(customColumns, sectionId) {
