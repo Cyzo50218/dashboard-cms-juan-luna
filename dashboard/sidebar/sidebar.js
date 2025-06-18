@@ -679,10 +679,13 @@ async function handleCommentSubmit() {
  * Renders all messages with a full suite of interactive controls for editing,
  * deleting, and reacting, all updated in real-time.
  */
+/**
+ * Renders all messages with a context-aware editing UI.
+ */
 function renderMessages() {
-    // This section is responsible for showing/hiding the main comment input form
     const activeTab = tabsContainer.querySelector('.active')?.dataset.tab || 'chat';
     if (activeTab !== 'chat') return;
+
     const addCommentForm = document.getElementById('add-comment-form');
     if (addCommentForm) addCommentForm.style.display = 'flex';
 
@@ -702,24 +705,39 @@ function renderMessages() {
         const likeCount = msg.reactions?.like?.length || 0;
         const likeIconClass = hasLiked ? 'fa-solid fa-thumbs-up' : 'fa-regular fa-thumbs-up';
         
-        // Build the reaction and action buttons HTML
-        const reactionsHTML = `
-            <button class="react-btn like-btn ${hasLiked ? 'reacted' : ''}" title="Like">
-                <i class="${likeIconClass}"></i> <span class="like-count">${likeCount > 0 ? likeCount : ''}</span>
-            </button>
-        `;
-        let authorActionsHTML = '';
-        if (isAuthor) {
-            authorActionsHTML = `
-                <button class="edit-comment-btn" title="Edit"><i class="fa-solid fa-pencil"></i></button>
-                <button class="delete-comment-btn" title="Delete"><i class="fa-solid fa-trash"></i></button>
-            `;
-        }
+        // --- Build the Icons ---
+        const reactionsHTML = `<button class="react-btn like-btn ${hasLiked ? 'reacted' : ''}" title="Like"><i class="${likeIconClass}"></i> <span class="like-count">${likeCount > 0 ? likeCount : ''}</span></button>`;
+        let authorActionsHTML = isAuthor ? `<button class="edit-comment-btn" title="Edit"><i class="fa-solid fa-pencil"></i></button><button class="delete-comment-btn" title="Delete"><i class="fa-solid fa-trash"></i></button>` : '';
         const iconsHTML = `<div class="sidebarcommenticons">${reactionsHTML}${authorActionsHTML}</div>`;
 
         const timestamp = msg.timestamp ? new Date(msg.timestamp.toDate()).toLocaleString() : 'Sending...';
         
-        // Construct the final HTML for the message item
+        // --- Build the Display and Edit Areas ---
+        // This is the content that shows by default.
+        const displayAreaHTML = `
+            <div class="comment-display-area">
+                <div class="comment-text">${msg.message || ''}</div>
+                ${msg.imageUrl ? `<div class="log-attachment"><img class="scalable-image" src="${msg.imageUrl}" alt="${msg.messageNote || 'Attachment'}"></div>` : ''}
+                ${msg.messageNote && msg.imageUrl ? `<div class="attachment-note">${msg.messageNote}</div>` : ''}
+            </div>
+        `;
+        
+        // This is the editing interface, hidden by default.
+        const editAreaHTML = `
+            <div class="comment-edit-area" style="display: none;">
+                <textarea class="comment-edit-input" placeholder="Edit message...">${msg.message || ''}</textarea>
+                ${msg.imageUrl ? `
+                    <input type="text" class="note-edit-input" placeholder="Add or edit image note..." value="${msg.messageNote || ''}">
+                    <button class="change-image-btn"><i class="fa-solid fa-camera"></i> Replace Image</button>
+                ` : ''}
+                <div class="comment-edit-actions">
+                    <button class="btn-cancel-edit">Cancel</button>
+                    <button class="btn-save-edit">Save</button>
+                </div>
+            </div>
+        `;
+        
+        // --- Assemble the Final Message Item ---
         item.innerHTML = `
             <div class="avatar" style="background-image: url(${msg.senderAvatar})"></div>
             <div class="comment-body">
@@ -731,21 +749,8 @@ function renderMessages() {
                     ${iconsHTML}
                 </div>
                 <div class="comment-content-wrapper">
-                    <div class="comment-text">${msg.message || ''}</div>
-                    <div class="log-attachment">
-                        ${msg.imageUrl ? `<img class="scalable-image" src="${msg.imageUrl}" alt="${msg.messageNote || 'Attachment'}">` : ''}
-                    </div>
-                    ${msg.messageNote && msg.imageUrl ? `<div class="attachment-note">${msg.messageNote}</div>` : ''}
-                    
-                    <div class="comment-edit-area" style="display: none;">
-                        <textarea class="comment-edit-input">${msg.message || ''}</textarea>
-                        <input type="text" class="note-edit-input" placeholder="Add an image note..." value="${msg.messageNote || ''}">
-                        ${msg.imageUrl ? `<button class="change-image-btn">Change Image</button>` : ''}
-                        <div class="comment-edit-actions">
-                            <button class="btn-cancel-edit">Cancel</button>
-                            <button class="btn-save-edit">Save</button>
-                        </div>
-                    </div>
+                    ${displayAreaHTML}
+                    ${editAreaHTML}
                 </div>
             </div>
         `;
@@ -787,65 +792,78 @@ function renderMessages() {
         if (!sidebar) return;
         
         activityLogContainer.addEventListener('click', (e) => {
-        const messageItem = e.target.closest('.comment-item');
-        if (!messageItem) return;
-        const messageId = messageItem.dataset.messageId;
-        const messageData = allMessages.find(m => m.id === messageId);
-        if (!messageData) return;
+    const messageItem = e.target.closest('.comment-item');
+    if (!messageItem) return;
+    const messageId = messageItem.dataset.messageId;
+    const messageData = allMessages.find(m => m.id === messageId);
+    if (!messageData) return;
 
-        // --- Handle Likes ---
-        if (e.target.closest('.like-btn')) {
-            toggleReaction(messageId, 'like');
-        }
+    const displayArea = messageItem.querySelector('.comment-display-area');
+    const editArea = messageItem.querySelector('.comment-edit-area');
 
-        // --- Handle Delete ---
-        if (e.target.closest('.delete-comment-btn')) {
-            if (confirm('Are you sure you want to delete this message?')) {
-                deleteMessage(messageId, messageData.imageUrl, messageData.message);
-            }
+    // --- Handle Likes ---
+    if (e.target.closest('.like-btn')) {
+        toggleReaction(messageId, 'like');
+    }
+
+    // --- Handle Delete ---
+    if (e.target.closest('.delete-comment-btn')) {
+        if (confirm('Are you sure you want to delete this message?')) {
+            deleteMessage(messageId, messageData.imageUrl, messageData.message);
         }
-        
-        // --- Handle Starting an Edit ---
-        if (e.target.closest('.edit-comment-btn')) {
-            messageItem.classList.add('is-editing');
-            messageItem.querySelector('.comment-edit-input').focus();
-        }
-        
-        // --- Handle Canceling an Edit ---
-        if (e.target.closest('.btn-cancel-edit')) {
-            messageItem.classList.remove('is-editing');
-            delete messageItem._stagedFile; // Clear any staged file if cancel
-        }
-        
-        // --- Handle Saving an Edit ---
-        if (e.target.closest('.btn-save-edit')) {
-            const updates = {
-                message: messageItem.querySelector('.comment-edit-input').value.trim(),
-                messageNote: messageItem.querySelector('.note-edit-input').value.trim(),
-                newImageFile: messageItem._stagedFile || null, // Check for a newly attached image
-                oldImageUrl: messageData.imageUrl // Pass the old URL for deletion
-            };
-            updateMessage(messageId, updates);
-            messageItem.classList.remove('is-editing');
-            delete messageItem._stagedFile; // Clean up
-        }
-        
-        // --- Handle Changing an Image during Edit ---
-        if (e.target.closest('.change-image-btn')) {
-            const editImageInput = document.getElementById('edit-image-upload-input');
-            editImageInput.onchange = (event) => {
-                const file = event.target.files[0];
-                if(file) {
-                    messageItem._stagedFile = file; // Stage the file for upload on save
-                    // Optional: show a preview of the new image
-                    const newPreviewUrl = URL.createObjectURL(file);
-                    messageItem.querySelector('.scalable-image').src = newPreviewUrl;
-                }
-            };
-            editImageInput.click();
-        }
-    });
+    }
     
+    // --- Handle STARTING an Edit ---
+    if (e.target.closest('.edit-comment-btn')) {
+        displayArea.style.display = 'none';
+        editArea.style.display = 'block';
+        editArea.querySelector('.comment-edit-input').focus();
+    }
+    
+    // --- Handle CANCELING an Edit ---
+    if (e.target.closest('.btn-cancel-edit')) {
+        editArea.style.display = 'none';
+        displayArea.style.display = 'block';
+        delete messageItem._stagedFile; // Clear any staged file if cancel
+    }
+    
+    // --- Handle SAVING an Edit ---
+    if (e.target.closest('.btn-save-edit')) {
+        const updates = {
+            message: messageItem.querySelector('.comment-edit-input').value.trim(),
+            // Only try to get the note value if the input exists
+            messageNote: messageItem.querySelector('.note-edit-input')?.value.trim() || null,
+            newImageFile: messageItem._stagedFile || null,
+            oldImageUrl: messageData.imageUrl
+        };
+        updateMessage(messageId, updates);
+        
+        editArea.style.display = 'none';
+        displayArea.style.display = 'block';
+        delete messageItem._stagedFile;
+    }
+    
+    // --- Handle CHANGING an Image ---
+    if (e.target.closest('.change-image-btn')) {
+        const editImageInput = document.getElementById('edit-image-upload-input');
+        
+        // This listener is temporary and will only fire once for this specific edit
+        editImageInput.onchange = (event) => {
+            const file = event.target.files[0];
+            if(file) {
+                // Stage the file on the DOM element itself to be picked up when "Save" is clicked
+                messageItem._stagedFile = file; 
+                
+                // Show a temporary local preview of the new image
+                const newPreviewUrl = URL.createObjectURL(file);
+                // We need to find the image tag in the DISPLAY area to update its preview
+                const displayImage = displayArea.querySelector('.scalable-image');
+                if (displayImage) displayImage.src = newPreviewUrl;
+            }
+        };
+        editImageInput.click();
+    }
+});
         taskCompleteBtn.addEventListener('click', () => {
             if (!currentTask) return;
             const newStatus = currentTask.status === 'Completed' ? 'On track' : 'Completed';
