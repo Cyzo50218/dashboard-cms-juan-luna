@@ -430,7 +430,52 @@ async function toggleReaction(messageId, reactionType) {
     }
 }
     
+    /**
+ * Handles sending a message. It intelligently determines if the typed text
+ * should be the main message or a note for an attached image.
+ */
+async function handleCommentSubmit() {
+    // 1. Get text from input and staged files from the preview.
+    const inputText = commentInput.value.trim();
+    const files = [...pastedFiles];
+
+    // 2. Do nothing if there's no text and no files.
+    if (!inputText && files.length === 0) return;
     
+    // 3. Clear the inputs immediately for a responsive feel.
+    commentInput.value = '';
+    clearImagePreview();
+    
+    try {
+        let message = '';
+        let messageNote = null;
+        let imageUrl = null;
+
+        // 4. Handle image upload if a file is present.
+        if (files.length > 0) {
+            const file = files[0];
+            // If an image is present, the input text becomes the note for that image.
+            messageNote = inputText;
+
+            const storagePath = `workspaceProjects/${currentProject.id}/messages-attachments/${Date.now()}-${file.name}`;
+            const storageRef = ref(storage, storagePath);
+            const snapshot = await uploadBytes(storageRef, file);
+            imageUrl = await getDownloadURL(snapshot.ref);
+        } else {
+            // If there's no image, the input text is the main message.
+            message = inputText;
+        }
+
+        // 5. Send the message to Firestore with the prepared data.
+        await sendMessage(message, messageNote, imageUrl);
+        
+    } catch (error) {
+        console.error("Failed to send message:", error);
+        // Optionally, you could restore the input text if sending fails
+         commentInput.value = inputText; 
+    }
+}
+
     // =================================================================================
     // --- 7. UI RENDERING (Final Polished Version) ---
     // =================================================================================
