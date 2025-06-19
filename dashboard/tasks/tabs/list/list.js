@@ -1508,7 +1508,7 @@ function createAddTaskRow(customColumns, sectionId) {
                 const value = task.customFields?.[col.id];
                 return typeof value === 'number' ? acc + value : acc;
             }, 0);
-            const formatted = sum !== 0 ? `₱ ${sum.toFixed(2)}` : '';
+            const formatted = sum !== 0 ? `Sum: ${sum.toFixed(2)}` : '';
             cell.innerHTML = `<span class="costing-sum">${formatted}</span>`;
         }
 

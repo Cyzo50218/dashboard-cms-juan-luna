@@ -596,8 +596,9 @@ body.is-dragging * {
 }
 
 .costing-sum {
-    font-weight: bold;
-    color: #181818;
+    font-weight: 350;
+    color: #565656;
+    font-size: 12px;
     white-space: nowrap;
 }
 
