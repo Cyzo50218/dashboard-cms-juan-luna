@@ -1219,7 +1219,7 @@ function render() {
     columnWidths.dueDate,
     columnWidths.priority,
     columnWidths.status,
-    ...customColumns.map(() => 'minmax(160px, auto)'),
+    ...customColumns.map(() => 'minmax(160px, max-content)'),
     'minmax(120px, 1fr)'
 ].join(' ');
 
