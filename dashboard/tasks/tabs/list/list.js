@@ -13,6 +13,7 @@ import {
     collection,
     query,
     where,
+    arrayUnion,
     onSnapshot,
     collectionGroup,
     orderBy,
@@ -706,7 +707,7 @@ function setupEventListeners() {
     }
 
     // --- Custom Field Save ---
-    const customFieldCell = focusedOutElement.closest('[data-control="custom-select"]');
+    const customFieldCell = focusedOutElement.closest('[data-control="custom"]');
     if (customFieldCell) {
         const taskRow = customFieldCell.closest('.task-row-wrapper');
         const taskId = taskRow?.dataset.taskId;
@@ -768,7 +769,7 @@ function setupEventListeners() {
     windowClickListener = (e) => {
         const clickedInsidePanel = e.target.closest('.context-dropdown, .datepicker');
         const clickedOverlayOrDialog = e.target.closest('.dialog-overlay, .filterlistview-dialog-overlay');
-        const clickedTrigger = e.target.closest('[data-control="due-date"], [data-control="priority"], [data-control="status"], [data-control="custom-select"], [data-control="assignee"], #add-column-btn, #filter-btn, .delete-column-btn');
+        const clickedTrigger = e.target.closest('[data-control="due-date"], [data-control="priority"], [data-control="status"], [data-control="custom"], [data-control="assignee"], #add-column-btn, #filter-btn, .delete-column-btn');
         
         if (!clickedInsidePanel && !clickedOverlayOrDialog && !clickedTrigger) {
             closeFloatingPanels();
