@@ -1474,11 +1474,12 @@ function createTaskRow(task, customColumns) {
 }
 
 function createAddTaskRow(customColumns, sectionId) {
+    const section = project.sections.find(s => s.id === sectionId);
     const row = document.createElement('div');
     row.className = 'grid-row-wrapper add-task-row-wrapper';
     row.dataset.sectionId = sectionId;
-    
-    // Cell 1: Add task text (Sticky)
+
+    // Sticky cell: "Add task..." button
     const addTaskCell = document.createElement('div');
     addTaskCell.className = 'task-cell sticky-col-task add-task-cell';
     addTaskCell.innerHTML = `
@@ -1488,18 +1489,39 @@ function createAddTaskRow(customColumns, sectionId) {
         </div>
     `;
     row.appendChild(addTaskCell);
-    
-    // Add empty placeholder cells
-    const placeholderCount = 4 + customColumns.length + 1;
-    for (let i = 0; i < placeholderCount; i++) {
+
+    // 4 base columns (Assignee, Due Date, Priority, Status)
+    for (let i = 0; i < 4; i++) {
         const placeholder = document.createElement('div');
         placeholder.className = 'task-cell';
         row.appendChild(placeholder);
     }
-    
+
+    // Custom Columns
+    customColumns.forEach(col => {
+        const cell = document.createElement('div');
+        cell.className = 'task-cell';
+
+        if (col.type === 'Costing') {
+            // Calculate the sum of all task values for this column in this section
+            const sum = (section.tasks || []).reduce((acc, task) => {
+                const value = task.customFields?.[col.id];
+                return typeof value === 'number' ? acc + value : acc;
+            }, 0);
+            const formatted = sum !== 0 ? `₱ ${sum.toFixed(2)}` : '';
+            cell.innerHTML = `<span class="costing-sum">${formatted}</span>`;
+        }
+
+        row.appendChild(cell);
+    });
+
+    // Final Placeholder Cell (Add column button slot)
+    const endPlaceholder = document.createElement('div');
+    endPlaceholder.className = 'task-cell';
+    row.appendChild(endPlaceholder);
+
     return row;
 }
-
 
 
 /*

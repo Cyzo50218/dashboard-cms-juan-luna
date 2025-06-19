@@ -595,6 +595,12 @@ body.is-dragging * {
     cursor: default;
 }
 
+.costing-sum {
+    font-weight: bold;
+    color: #181818;
+    white-space: nowrap;
+}
+
 /* Hide the new action icons by default */
 .task-hover-actions {
     opacity: 0;
