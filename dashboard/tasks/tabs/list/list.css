@@ -37,7 +37,6 @@
     flex-shrink: 0;
     margin-top: 6px;
     margin-bottom: 6px;
-    border-bottom: 1px solid var(--border-color);
 }
 
 .header-controls-right {
