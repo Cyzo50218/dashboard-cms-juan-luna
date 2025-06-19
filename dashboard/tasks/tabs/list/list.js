@@ -128,115 +128,176 @@ function attachRealtimeListeners(userId) {
     console.log(`[DEBUG] Attaching listeners for user: ${userId}`);
     
     const workspaceQuery = query(collection(db, `users/${userId}/myworkspace`), where("isSelected", "==", true));
-    activeListeners.workspace = onSnapshot(workspaceQuery, (workspaceSnapshot) => {
-        if (workspaceSnapshot.empty) return console.warn("No selected workspace.");
-        
+    activeListeners.workspace = onSnapshot(workspaceQuery, async (workspaceSnapshot) => {
+        if (workspaceSnapshot.empty) {
+            console.warn("[DEBUG] No selected workspace.");
+            return;
+        }
+
         currentWorkspaceId = workspaceSnapshot.docs[0].id;
         console.log(`[DEBUG] Found workspaceId: ${currentWorkspaceId}`);
-        
+
         const projectsPath = `users/${userId}/myworkspace/${currentWorkspaceId}/projects`;
         const projectQuery = query(collection(db, projectsPath), where("isSelected", "==", true));
-        
+
         if (activeListeners.project) activeListeners.project();
-        activeListeners.project = onSnapshot(projectQuery, (projectSnapshot) => {
-            if (projectSnapshot.empty) return console.warn("No selected project.");
-            
+        activeListeners.project = onSnapshot(projectQuery, async (projectSnapshot) => {
+            if (projectSnapshot.empty) {
+                console.warn("[DEBUG] No selected project.");
+                return;
+            }
+
             const projectDoc = projectSnapshot.docs[0];
             currentProjectId = projectDoc.id;
             console.log(`[DEBUG] Found projectId: ${currentProjectId}`);
-            
+
             project = { ...project, ...projectDoc.data(), id: currentProjectId };
-            
-            // 3. Listen to the SECTIONS subcollection
+
+            // ✅ NOW call loadProjectUsers once project is confirmed
+            await loadProjectUsers(currentUserId);
+
+            // Then continue with sections and tasks
             const sectionsPath = `${projectsPath}/${currentProjectId}/sections`;
             const sectionsQuery = query(collection(db, sectionsPath), orderBy("order"));
-            
+
             if (activeListeners.sections) activeListeners.sections();
             activeListeners.sections = onSnapshot(sectionsQuery, (sectionsSnapshot) => {
                 console.log(`[DEBUG] Sections snapshot fired. Found ${sectionsSnapshot.size} sections.`);
                 project.sections = sectionsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, tasks: [] }));
-                
-                // Distribute the tasks we already have into the newly updated sections
+
                 distributeTasksToSections(allTasksFromSnapshot);
-                
-                // Re-render the UI with the updated sections and their tasks
-                render(); // <-- ADD RENDER CALL HERE
+                render();
             });
-            
-            // 4. Use a COLLECTION GROUP query to get all tasks
+
             const tasksGroupQuery = query(
                 collectionGroup(db, 'tasks'),
                 where('projectId', '==', currentProjectId),
                 orderBy('createdAt', 'desc')
             );
-            
+
             if (activeListeners.tasks) activeListeners.tasks();
             activeListeners.tasks = onSnapshot(tasksGroupQuery, (tasksSnapshot) => {
                 console.log(`[DEBUG] Tasks CollectionGroup snapshot fired. Found ${tasksSnapshot.size} tasks.`);
                 allTasksFromSnapshot = tasksSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-                console.log(`[DEBUG] Tasks CollectionGroup snapshot ${allTasksFromSnapshot}.`);
-                // Distribute the new tasks into the sections we already have
                 distributeTasksToSections(allTasksFromSnapshot);
-                
-                // Re-render the UI with the tasks distributed into their sections
-                render(); // <-- RENDER CALL STAYS HERE
+                render();
             });
         });
     }, (error) => console.error("[DEBUG] FATAL ERROR in listeners:", error));
 }
 
+
 async function fetchActiveIds(userId) {
-    const workspaceQuery = query(collection(db, `users/${userId}/myworkspace`), where("isSelected", "==", true), limit(1));
-    const workspaceSnapshot = await getDocs(workspaceQuery);
-    if (workspaceSnapshot.empty) {
-        console.warn("No selected workspace found for this user.");
+    console.log(`[DEBUG] [fetchActiveIds] Fetching for user: ${userId}`);
+    
+    try {
+        // Fetch the selected workspace
+        const workspaceQuery = query(
+            collection(db, `users/${userId}/myworkspace`),
+            where("isSelected", "==", true),
+            limit(1)
+        );
+        const workspaceSnapshot = await getDocs(workspaceQuery);
+
+        if (workspaceSnapshot.empty) {
+            console.warn("[DEBUG] No selected workspace found.");
+            return { workspaceId: null, projectId: null };
+        }
+
+        const workspaceId = workspaceSnapshot.docs[0].id;
+        console.log(`[DEBUG] Found workspaceId: ${workspaceId}`);
+
+        // Fetch the selected project
+        const projectQuery = query(
+            collection(db, `users/${userId}/myworkspace/${workspaceId}/projects`),
+            where("isSelected", "==", true),
+            limit(1)
+        );
+        const projectSnapshot = await getDocs(projectQuery);
+
+        if (projectSnapshot.empty) {
+            console.warn("[DEBUG] No selected project found.");
+            return { workspaceId, projectId: null };
+        }
+
+        const projectId = projectSnapshot.docs[0].id;
+        console.log(`[DEBUG] Found projectId: ${projectId}`);
+
+        return { workspaceId, projectId };
+    } catch (error) {
+        console.error("[DEBUG] Error fetching active IDs:", error);
         return { workspaceId: null, projectId: null };
     }
-    const workspaceId = workspaceSnapshot.docs[0].id;
-    
-    const projectQuery = query(collection(db, `users/${userId}/myworkspace/${workspaceId}/projects`), where("isSelected", "==", true), limit(1));
-    const projectSnapshot = await getDocs(projectQuery);
-    if (projectSnapshot.empty) {
-        console.warn("No selected project found for this workspace.");
-        return { workspaceId, projectId: null };
-    }
-    const projectId = projectSnapshot.docs[0].id;
-    return { workspaceId, projectId };
 }
 
+
 async function fetchProjectMembers(userId, workspaceId, projectId) {
-    if (!userId || !workspaceId || !projectId) return [];
+    console.log("[fetchProjectMembers] Called with:", { userId, workspaceId, projectId });
+    if (!userId || !workspaceId || !projectId) {
+        console.warn("[fetchProjectMembers] Missing parameters. Returning empty array.");
+        return [];
+    }
+
     try {
         const projectRef = doc(db, `users/${userId}/myworkspace/${workspaceId}/projects/${projectId}`);
         const projectSnap = await getDoc(projectRef);
-        if (!projectSnap.exists()) return [];
-        
+        console.log("[fetchProjectMembers] Project exists:", projectSnap.exists());
+
+        if (!projectSnap.exists()) {
+            console.warn("[fetchProjectMembers] Project doc not found:", projectRef.path);
+            return [];
+        }
+
         const projectData = projectSnap.data();
-        let memberUids = (projectData.workspaceRole === 'workspace') ?
-            (await getDoc(doc(db, `users/${userId}/myworkspace/${workspaceId}`))).data()?.members || [] :
-            projectData.members?.map(m => m.uid) || [];
-        
-        if (memberUids.length === 0) return [];
+        console.log("[fetchProjectMembers] Project data loaded:", projectData);
+
+        let memberUids;
+        if (projectData.workspaceRole === 'workspace') {
+            const workspaceDoc = await getDoc(doc(db, `users/${userId}/myworkspace/${workspaceId}`));
+            console.log("[fetchProjectMembers] Workspace data:", workspaceDoc.data());
+            memberUids = workspaceDoc.data()?.members || [];
+        } else {
+            memberUids = projectData.members?.map(m => m.uid) || [];
+        }
+
+        console.log("[fetchProjectMembers] Member UIDs:", memberUids);
+
+        if (memberUids.length === 0) {
+            console.warn("[fetchProjectMembers] No member UIDs found.");
+            return [];
+        }
+
         const userPromises = memberUids.map(uid => getDoc(doc(db, `users/${uid}`)));
         const userDocs = await Promise.all(userPromises);
-        return userDocs.filter(d => d.exists()).map(d => ({ uid: d.id, ...d.data() }));
+
+        const validUsers = userDocs.filter(d => d.exists()).map(d => ({ uid: d.id, ...d.data() }));
+        console.log("[fetchProjectMembers] Valid member profiles fetched:", validUsers);
+
+        return validUsers;
     } catch (error) {
-        console.error("Error fetching project members:", error);
+        console.error("[fetchProjectMembers] Error fetching members:", error);
         return [];
     }
 }
 
 async function loadProjectUsers(currentUserId) {
+    console.log("[loadProjectUsers] Starting with userId:", currentUserId);
     try {
         const { workspaceId, projectId } = await fetchActiveIds(currentUserId);
-        if (!workspaceId || !projectId) return;
+        console.log("[loadProjectUsers] Active IDs fetched:", { workspaceId, projectId });
+
+        if (!workspaceId || !projectId) {
+            console.warn("[loadProjectUsers] Missing workspaceId or projectId");
+            return;
+        }
 
         allUsers = await fetchProjectMembers(currentUserId, workspaceId, projectId);
-        console.log("Fetched project members:", allUsers);
+        console.log("[loadProjectUsers] Project members loaded:", allUsers);
     } catch (error) {
-        console.error("Failed to load project users:", error);
+        console.error("[loadProjectUsers] Failed to load project users:", error);
     }
 }
+
 
 // --- Main Initialization and Cleanup ---
 
@@ -298,29 +359,26 @@ export function init(params) {
     // Listen for authentication state changes
     onAuthStateChanged(auth, (user) => {
         if (user) {
-            // User is signed in, attach real-time listeners.
             console.log(`User ${user.uid} signed in. Attaching listeners.`);
             attachRealtimeListeners(user.uid);
-            await loadProjectUsers(user.uid);
         } else {
-            // User is signed out, detach all listeners and clear data.
             console.log("User signed out. Detaching listeners.");
             detachAllListeners();
             project = { customColumns: [], sections: [] };
-            render(); // Render the empty/logged-out state
+            render();
         }
     });
-    
-    // The initial render will be triggered by the listeners.
+
+    // Initial view setup
     initializeListView(params);
-    
+
     render();
-    
-    // Return a modified cleanup function.
+
+    // Cleanup
     return function cleanup() {
         console.log("Cleaning up List View Module...");
-        detachAllListeners(); // Ensure all listeners are gone when the module is destroyed.
-        console.log("Cleaning up List View Module...");
+        detachAllListeners();
+
         if (headerClickListener) taskListHeaderEl.removeEventListener('click', headerClickListener);
         if (bodyClickListener) taskListBody.removeEventListener('click', bodyClickListener);
         if (bodyFocusOutListener) taskListBody.removeEventListener('focusout', bodyFocusOutListener);
@@ -329,14 +387,13 @@ export function init(params) {
         if (windowClickListener) window.removeEventListener('click', windowClickListener);
         if (filterBtnListener) filterBtn.removeEventListener('click', filterBtnListener);
         if (sortBtnListener) sortBtn.removeEventListener('click', sortBtnListener);
-        
+
         if (sortableSections) sortableSections.destroy();
         sortableTasks.forEach(st => st.destroy());
         sortableTasks.length = 0;
     };
-    
-    
 }
+
 
 // --- Event Listener Setup ---
 
