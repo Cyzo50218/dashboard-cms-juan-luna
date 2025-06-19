@@ -500,7 +500,7 @@ function setupEventListeners() {
     }
 
     // --- 2. "Add Task" Button inside section ---
-    const addTaskBtn = e.target.closest('.add-task-in-section-btn');
+    const addTaskBtn = e.target.closest('.add-task-wrapper');
     if (addTaskBtn) {
         console.log('%cACTION: Add Task in Section', 'color: blue; font-weight: bold;');
         const sectionEl = addTaskBtn.closest('.section-wrapper');
@@ -512,7 +512,7 @@ function setupEventListeners() {
     }
 
     // --- 2.5: Add task row clicked ---
-    const addTaskRow = e.target.closest('.add-task-row-wrapper');
+    const addTaskRow = e.target.closest('.add-task-wrapper');
     if (addTaskRow) {
         console.log('%cACTION: Add Task Row clicked', 'color: blue; font-weight: bold;');
         const sectionId = addTaskRow.dataset.sectionId;
