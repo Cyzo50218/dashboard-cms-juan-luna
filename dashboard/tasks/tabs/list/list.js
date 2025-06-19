@@ -1205,23 +1205,25 @@ function render() {
     
     // 3. Define and apply the grid column template
     const columnWidths = {
-        taskName: '350px',
-        assignee: '150px',
-        dueDate: '150px',
-        priority: '150px',
-        status: '150px',
-        defaultCustom: '160px',
-        addColumn: '120px'
-    };
+    taskName: 'minmax(350px, max-content)',
+    assignee: '150px',
+    dueDate: '150px',
+    priority: '150px',
+    status: '150px',
+    defaultCustom: 'minmax(160px, max-content)',
+    addColumn: '1fr'
+};
+
     const gridTemplateColumns = [
     columnWidths.taskName,
     columnWidths.assignee,
     columnWidths.dueDate,
     columnWidths.priority,
     columnWidths.status,
-    ...customColumns.map(() => 'minmax(160px, max-content)'),
-    'minmax(120px, 1fr)'
+    ...customColumns.map(() => columnWidths.defaultCustom),
+    columnWidths.addColumn
 ].join(' ');
+
 
     gridWrapper.style.gridTemplateColumns = gridTemplateColumns;
     
