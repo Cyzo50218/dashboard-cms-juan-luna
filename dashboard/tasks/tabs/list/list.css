@@ -117,7 +117,9 @@ button {
     background-color: var(--primary-bg);
     border-right: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
-    
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     transition: background-color 0.15s ease-in-out;
 }
 
