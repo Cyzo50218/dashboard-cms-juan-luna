@@ -1400,3 +1400,52 @@ Custom class
     font-size: 12px;
     color: #333;
 }
+
+.email-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding-left: 14px;
+  margin-top: 12px;
+  border-radius: 0px;
+  height: 30px;
+  border: 1px solid transparent;
+  width: 100%;
+  padding-right: 8px;
+  color: #7277E9;
+  cursor: pointer;
+  position: fixed;
+  transition: background 0.2s ease;
+}
+
+.email-container.hidden {
+  display: none;
+}
+
+.email-container:hover {
+  background: rgba(114, 119, 233, 0.1);
+}
+
+/* Selected state */
+.email-container.selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 30px;
+  width: 4px;
+  background-color: #7D82F1;
+  border-top-right-radius: 2px;
+  border-bottom-right-radius: 2px;
+}
+
+
+.material-icons-outlined.email {
+  font-size: 18px;
+}
+
+.email-text{
+font-size: 12px;
+padding-top: 9px;
+margin-left: 6px;
+}
