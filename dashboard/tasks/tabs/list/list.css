@@ -6,27 +6,24 @@
 :root {
     /* Variables */
     --primary-bg: #ffffff;
-    --secondary-bg: #f9fafb;
-    /* Used for hover and section rows */
+    --secondary-bg: #f9fafb; /* Used for hover and section rows */
     --border-color: #e5e7eb;
     --accent-color: #4c6ef5;
     --high-priority: #ff4d4f;
     --medium-priority: #ffa940;
     --low-priority: #52c41a;
-    --header-border-color: #d1d5db;
-    /* A slightly darker border for the header */
+    --header-border-color: #d1d5db; /* A slightly darker border for the header */
     --header-height: 35px;
     --task-row-padding: 0px 4px;
 }
 
 /* --- Core App Layout --- */
 .list-view-container {
-    flex: 1;
-    overflow: auto;
     display: flex;
     flex-direction: column;
+    height: 600px;
+    overflow: hidden; 
 }
-
 
 .section-title-cell,
 .task-name-wrapper {
@@ -35,17 +32,18 @@
 
 .listview-header {
     display: flex;
-    justify-content: flex-start;
+    justify-content: flex-start; 
     align-items: center;
     flex-shrink: 0;
     margin-top: 6px;
     margin-bottom: 6px;
+    
 }
 
 .header-controls-right {
     display: flex;
     gap: 0.5rem;
-    margin-left: auto;
+    margin-left: auto; 
 }
 
 /* Base button style — already applied */
@@ -54,20 +52,16 @@ button {
     border: 1px solid var(--text-secondary-color);
     border-radius: 8px;
     cursor: pointer;
-    font-size: 0.75rem;
-    /* Slightly smaller for compact look */
+    font-size: 0.75rem; /* Slightly smaller for compact look */
     font-weight: 500;
     color: var(--text-color);
     transition: background-color 0.2s, color 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.3rem;
-    /* Compact spacing */
-    height: 28px;
-    /* Smaller button height */
-    padding: 0 10px;
-    /* Horizontal padding only */
+    gap: 0.3rem; /* Compact spacing */
+    height: 28px; /* Smaller button height */
+    padding: 0 10px; /* Horizontal padding only */
 }
 
 /* Specifically style your task/section/filter/sort buttons */
@@ -75,8 +69,7 @@ button {
 .add-section-btn,
 #filter-btn,
 #sort-btn {
-    margin: 0 6px;
-    /* Horizontal spacing between buttons */
+    margin: 0 6px; /* Horizontal spacing between buttons */
     font-size: 0.75rem;
     height: 28px;
     padding: 0 10px;
@@ -88,8 +81,7 @@ button {
 #filter-btn i,
 #sort-btn i {
     font-size: 0.7rem;
-    margin-top: 1px;
-    /* Adjust vertical alignment if needed */
+    margin-top: 1px; /* Adjust vertical alignment if needed */
 }
 
 
@@ -105,15 +97,15 @@ button {
 }
 
 .grid-wrapper {
-    display: grid;
-    width: max-content;
-    min-width: 100%;
+  display: grid;
+  width: max-content; 
+  min-width: 100%;    
 }
 
 
 .grid-row-wrapper {
     display: grid;
-    grid-column: 1 / -1;
+    grid-column: 1 / -1; 
     grid-template-columns: subgrid;
 }
 
@@ -141,17 +133,14 @@ button {
     color: var(--text-secondary-color);
     justify-content: space-between;
 }
-
 .header-cell span {
-    font-size: 13px;
+    font-size: 13px; 
     margin-left: 6px;
     font-weight: 500;
-    color: #374151;
+    color: #374151; 
 }
-
 .header-cell:hover {
-    background-color: #f3f4f6;
-    /* Light gray hover */
+    background-color: #f3f4f6; /* Light gray hover */
 }
 
 
@@ -161,25 +150,21 @@ button {
     color: #6b7280;
     cursor: pointer;
 }
-
 .add-column-cell {
     padding-left: 18px;
     color: #4b5563;
     font-size: 14px;
     transition: background-color 0.2s ease;
 }
-
 .add-column-cell:hover {
-    background-color: #f3f4f6;
+    background-color: #f3f4f6; 
 }
-
 .add-column-cell i {
     font-size: 14px;
     color: #6b7280;
     margin-left: 8px;
     transition: color 0.2s ease, transform 0.2s ease;
 }
-
 .add-column-cell:hover i {
     color: #111827;
     transform: scale(1.1);
@@ -191,12 +176,9 @@ button {
     color: var(--text-color);
     transition: background-color 0.15s ease-in-out;
 }
-
 .task-cell:hover {
-    background-color: #f3f4f6;
-    /* Light subtle hover color */
-    cursor: default;
-    /* Change to pointer if cell is clickable */
+    background-color: #f3f4f6; /* Light subtle hover color */
+    cursor: default; /* Change to pointer if cell is clickable */
 }
 
 /* =====================================================================
@@ -228,18 +210,16 @@ button {
     position: sticky;
     top: 0;
     left: 0;
-    z-index: 999;
-    /* Must have the highest z-index */
+    z-index: 999; /* Must have the highest z-index */
     justify-content: flex-start;
     /* Combine box-shadows for both bottom and right borders */
     box-shadow: inset -1px 0 0 var(--border-color),
-        inset 0 -1px 0 var(--header-border-color);
+                inset 0 -1px 0 var(--header-border-color);
 }
 
 /* Specifically for headers so it sticks above task cells */
 .header-cell.sticky-col-task {
-    z-index: 10;
-    /* higher than normal cells */
+    z-index: 10; /* higher than normal cells */
 }
 
 
@@ -250,31 +230,25 @@ button {
     background-color: white;
     transition: background-color 0.15s ease-in-out;
 }
-
 .section-title-cell:hover {
     background-color: var(--secondary-bg);
 }
-
 .section-placeholder-cell {
     background-color: transparent;
     transition: background-color 0.15s ease-in-out;
 }
-
 .section-placeholder-cell:hover {
     background-color: var(--secondary-bg);
 }
-
 .section-title-wrapper {
     display: flex;
     font-size: 14px;
     align-items: center;
     gap: 8px;
 }
-
 .section-toggle {
     cursor: pointer;
 }
-
 .header-cell,
 .task-cell {
     font-size: var(--font-size-small);
@@ -282,10 +256,8 @@ button {
 }
 
 .editable-custom-field[contenteditable] {
-    min-width: 100px;
-    /* or 100px depending on your layout */
-    display: inline-block;
-    /* ensure span can have width */
+    min-width: 100px; /* or 100px depending on your layout */
+    display: inline-block; /* ensure span can have width */
     padding: 2px 6px;
     border-radius: 4px;
     border: 1px solid transparent;
@@ -302,12 +274,10 @@ button {
     font-size: var(--section-font-size);
     padding: 4px 4px;
 }
-
 .section-toggle {
     font-size: 8px;
     padding: 2px;
 }
-
 .task-name-wrapper {
     display: flex;
     align-items: center;
@@ -316,60 +286,49 @@ button {
     cursor: grab;
     user-select: none;
 }
-
 .drag-handle {
     margin-right: 4px;
     opacity: 0;
     transition: opacity 0.2s ease;
     color: #4b5563;
 }
-
 .task-row-wrapper:hover .drag-handle,
 .section-row-wrapper:hover .drag-handle {
     opacity: 1;
 }
 
 .section-toggle {
-    color: #6b7280;
-    /* Gray-500 */
+    color: #6b7280; /* Gray-500 */
     cursor: pointer;
     font-size: 13px;
     transition: transform 0.2s ease;
 }
 
 .section-toggle:hover {
-    color: #374151;
-    /* Gray-700 on hover */
+    color: #374151; /* Gray-700 on hover */
 }
-
 .section-row-wrapper.collapsed .section-toggle i {
     transform: rotate(0deg);
 }
-
 .section-row-wrapper:not(.collapsed) .section-toggle i {
-    transform: rotate(90deg);
-    /* for fa-chevron-right → fa-chevron-down */
+    transform: rotate(90deg); /* for fa-chevron-right → fa-chevron-down */
 }
-
 .check-icon {
-    color: #d1d5db;
+    color: #d1d5db; 
     font-size: 14px;
     transition: color 0.2s ease;
 }
 
 .is-completed {
-    color: #9ca3af;
-    /* Muted gray text */
+    color: #9ca3af;            /* Muted gray text */
 }
 
 .is-completed .task-cell {
-    color: #9ca3af;
-    /* Ensure text inside cells is gray */
+    color: #9ca3af; /* Ensure text inside cells is gray */
 }
 
 .is-completed .check-icon {
-    color: #22c55e;
-    /* Green check icon stands out */
+    color: #22c55e; /* Green check icon stands out */
 }
 
 .is-completed .task-cell span,
@@ -379,8 +338,7 @@ button {
 }
 
 .is-completed .check-icon i {
-    color: #22c55e !important;
-    /* Enforce green only on check icon */
+    color: #22c55e !important; /* Enforce green only on check icon */
 }
 
 .task-row-wrapper:hover .check-icon {
@@ -393,33 +351,27 @@ button {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    color: var(--text-color, #111827);
-    /* default dark text */
+    color: var(--text-color, #111827); /* default dark text */
     font-size: 13px;
 }
-
 .add-task-wrapper {
     display: flex;
     align-items: center;
     gap: 8px;
     padding-left: 40px;
-    color: #6b7280;
-    /* Neutral gray */
+    color: #6b7280; /* Neutral gray */
     font-size: 13px;
     transition: background-color 0.2s ease, color 0.2s ease;
     cursor: pointer;
     height: 100%;
     width: 100%;
 }
-
 .add-task-icon {
     opacity: 0;
     transform: scale(0.8);
     transition: opacity 0.2s ease, transform 0.2s ease;
-    color: #3b3b3b;
-    /* Optional: style for when shown */
+    color: #3b3b3b; /* Optional: style for when shown */
 }
-
 .add-task-cell:hover .add-task-icon {
     opacity: 1;
     transform: scale(1);
@@ -437,28 +389,24 @@ button {
     background: transparent;
     border: none;
     outline: none;
-    color: #6b7280;
+    color: #6b7280; 
     opacity: 0;
     transition: opacity 0.2s ease;
     cursor: pointer;
     padding: 4px;
     margin-right: 6px;
 }
-
 .section-title-cell:hover .section-options-btn {
     opacity: 1;
 }
-
 .section-options-btn:hover i {
-    color: #374151;
+    color: #374151; 
 }
-
 .options-btn-wrapper {
     position: relative;
     display: flex;
     align-items: center;
 }
-
 .options-dropdown-menu {
     position: absolute;
     z-index: 1000;
@@ -470,7 +418,6 @@ button {
     min-width: 200px;
     font-size: 14px;
 }
-
 .dropdown-item {
     display: flex;
     align-items: center;
@@ -480,11 +427,9 @@ button {
     cursor: pointer;
     transition: background-color 0.2s ease;
 }
-
 .dropdown-item:hover {
     background-color: var(--secondary-bg);
 }
-
 .dropdown-icon {
     width: 16px;
     text-align: center;
@@ -516,7 +461,6 @@ button {
 .task-row-wrapper.sortable-chosen {
     opacity: 0.3;
 }
-
 .task-row-wrapper.sortable-drag {
     opacity: 1 !important;
     background: var(--primary-bg);
@@ -524,11 +468,9 @@ button {
     z-index: 9999 !important;
     display: grid !important;
 }
-
 .sortable-ghost .task-cell {
     visibility: hidden;
 }
-
 .is-following-drag {
     opacity: 0.6;
 }
@@ -537,16 +479,16 @@ button {
    Section Block Layout
 --------------------------------------------- */
 .grid-wrapper {
-    display: grid;
-    grid-auto-rows: min-content;
+  display: grid;
+  grid-auto-rows: min-content; 
 }
 
 .section-wrapper {
-    display: contents;
+  display: contents; 
 }
 
 .section-block {
-    display: contents;
+  display: contents; 
 }
 
 /* =================================================================
@@ -556,10 +498,9 @@ button {
 /* 1. Base transition for all rows and sections.
    - Using a standard easing curve for a professional feel.
    - Added will-change for performance optimization. */
-.grid-row-wrapper,
-.section-wrapper {
+.grid-row-wrapper, .section-wrapper {
     transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-        opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+                opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     will-change: transform, opacity;
 }
 
@@ -567,8 +508,8 @@ button {
   2. "Focus Mode" - Gently dim other rows during drag.
    - Replaced grayscale filter with simple opacity for a softer, less dizzying effect.
 */
-body.is-dragging>* .grid-row-wrapper:not(.dragging):not(.drag-placeholder-ghost),
-body.is-dragging>* .section-wrapper:not(.dragging):not(.drag-placeholder-ghost) {
+body.is-dragging > * .grid-row-wrapper:not(.dragging):not(.drag-placeholder-ghost),
+body.is-dragging > * .section-wrapper:not(.dragging):not(.drag-placeholder-ghost) {
     opacity: 0.6;
 }
 
@@ -596,7 +537,7 @@ body.is-dragging>* .section-wrapper:not(.dragging):not(.drag-placeholder-ghost) 
 .drop-animation {
     z-index: 999;
     transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-        opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+                opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 
@@ -616,7 +557,7 @@ body.is-dragging>* .section-wrapper:not(.dragging):not(.drag-placeholder-ghost) 
 }
 
 /* Hide content inside the placeholder */
-.drag-placeholder-ghost>* {
+.drag-placeholder-ghost > * {
     visibility: hidden;
 }
 
@@ -624,7 +565,6 @@ body.is-dragging>* .section-wrapper:not(.dragging):not(.drag-placeholder-ghost) 
 body.is-dragging {
     cursor: grabbing;
 }
-
 body.is-dragging * {
     user-select: none;
 }
@@ -640,7 +580,7 @@ body.is-dragging * {
 .task-name-wrapper {
     display: flex;
     /* This is the key change: it separates the name and actions */
-    justify-content: space-between;
+    justify-content: space-between; 
     align-items: center;
     width: 100%;
 }
@@ -662,10 +602,8 @@ body.is-dragging * {
 
 .task-name:focus {
     min-width: 200px;
-    max-width: none;
-    /* Optional: allow to expand further if needed */
-    white-space: normal;
-    /* Optional: allow wrapping while editing */
+    max-width: none; /* Optional: allow to expand further if needed */
+    white-space: normal; /* Optional: allow wrapping while editing */
     overflow: visible;
 }
 
@@ -715,15 +653,12 @@ body.is-dragging * {
 }
 
 .icon-action.is-liked .fa-heart {
-    color: #e2264d;
-    /* A nice red for the liked heart */
-    font-weight: 900;
-    /* Makes the solid heart icon bold */
+    color: #e2264d; /* A nice red for the liked heart */
+    font-weight: 900; /* Makes the solid heart icon bold */
 }
-
 .icon-action.is-liked:hover .fa-heart,
 .icon-action.is-liked:hover .like-count {
-    color: #c01e40;
+    color: #c01e40; 
 }
 
 .icon-action {
@@ -750,7 +685,6 @@ Custom class
     text-align: center;
     vertical-align: middle;
 }
-
 .priority-High {
     background-color: #ffccc7;
     color: var(--high-priority);
@@ -812,54 +746,45 @@ Custom class
 .dialog-box {
     background: var(--primary-bg);
     border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
     width: 90%;
     max-width: 450px;
 }
 
 .dialog-header {
-    padding: 0.8rem 1.2rem;
-    /* Adjusted padding */
-    font-size: 1rem;
-    /* Slightly smaller font */
+    padding: 0.8rem 1.2rem; /* Adjusted padding */
+    font-size: 1rem; /* Slightly smaller font */
     font-weight: 600;
     border-bottom: 1px solid var(--border-color);
 }
 
 .dialog-body {
-    padding: 1.2rem;
-    /* Adjusted padding */
+    padding: 1.2rem; /* Adjusted padding */
 }
 
 .dialog-footer {
-    padding: 0.8rem 1.2rem;
-    /* Adjusted padding */
+    padding: 0.8rem 1.2rem; /* Adjusted padding */
     display: flex;
     justify-content: flex-end;
-    gap: 0.4rem;
-    /* Adjusted gap */
+    gap: 0.4rem; /* Adjusted gap */
     border-top: 1px solid var(--border-color);
 }
 
 .dialog-body .form-group {
-    margin-bottom: 1rem;
-    /* Adjusted margin */
+    margin-bottom: 1rem; /* Adjusted margin */
 }
 
 .dialog-body label {
     display: block;
-    margin-bottom: 0.4rem;
-    /* Adjusted margin */
+    margin-bottom: 0.4rem; /* Adjusted margin */
     font-weight: 500;
-    font-size: 0.85rem;
-    /* Adjusted font size */
+    font-size: 0.85rem; /* Adjusted font size */
 }
 
 .dialog-body select,
 .dialog-body input {
     width: 100%;
-    padding: 0.5rem;
-    /* Adjusted padding */
+    padding: 0.5rem; /* Adjusted padding */
     border: 1px solid var(--border-color);
     border-radius: 6px;
     box-sizing: border-box;
@@ -867,10 +792,8 @@ Custom class
 }
 
 .dialog-preview-box {
-    margin-top: 0.8rem;
-    /* Adjusted margin */
-    padding: 0.8rem;
-    /* Adjusted padding */
+    margin-top: 0.8rem; /* Adjusted margin */
+    padding: 0.8rem; /* Adjusted padding */
     background-color: var(--secondary-bg);
     border: 1px dashed var(--border-color);
     border-radius: 6px;
@@ -878,18 +801,15 @@ Custom class
 
 .dialog-preview-box p {
     margin: 0;
-    font-size: 0.85rem;
-    /* Adjusted font size */
+    font-size: 0.85rem; /* Adjusted font size */
     color: var(--text-secondary-color);
 }
 
 .dialog-preview-box .preview-value {
     font-weight: 600;
     color: var(--text-color);
-    font-size: 0.9rem;
-    /* Adjusted font size */
-    margin-top: 0.4rem;
-    /* Adjusted margin */
+    font-size: 0.9rem; /* Adjusted font size */
+    margin-top: 0.4rem; /* Adjusted margin */
 }
 
 .context-dropdown.assignee-dropdown {
@@ -897,8 +817,7 @@ Custom class
 }
 
 .dropdown-search-container {
-    padding: 0.4rem;
-    /* Adjusted padding */
+    padding: 0.4rem; /* Adjusted padding */
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -907,47 +826,38 @@ Custom class
     outline: none;
     width: 100%;
     background: transparent;
-    font-size: 0.85rem;
-    /* Adjusted font size */
-    padding: 0.2rem 0.4rem;
-    /* Adjusted padding */
+    font-size: 0.85rem; /* Adjusted font size */
+    padding: 0.2rem 0.4rem; /* Adjusted padding */
 }
 
 .dropdown-list {
-    max-height: 180px;
-    /* Slightly reduced max height */
+    max-height: 180px; /* Slightly reduced max height */
     overflow-y: auto;
-    padding: 0.4rem 0;
-    /* Adjusted padding */
+    padding: 0.4rem 0; /* Adjusted padding */
 }
 
 .dropdown-item .user-info {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-    /* Reduced gap */
+    gap: 0.6rem; /* Reduced gap */
 }
 
 .dropdown-item .profile-picture {
-    width: 22px;
-    /* Even smaller profile picture */
+    width: 22px; /* Even smaller profile picture */
     height: 22px;
     font-size: 0.55rem;
 }
 
 .dropdown-item .assigned-check {
     color: var(--accent-color);
-    font-size: 0.8em;
-    /* Adjusted font size */
+    font-size: 0.8em; /* Adjusted font size */
 }
 
 /* --- Styles for Filter/Sort Buttons and Dialogs --- */
 
 /* Add a visual indicator to buttons when a filter or sort is active */
-#filter-btn.active,
-#sort-btn.active {
-    background-color: #e0eaff;
-    /* A light blue to show it's active */
+#filter-btn.active, #sort-btn.active {
+    background-color: #e0eaff; /* A light blue to show it's active */
     color: #0052cc;
 }
 
@@ -977,12 +887,10 @@ Custom class
     padding: 0 0.5rem;
     margin-left: 1rem;
 }
-
 .listview-search-container .fa-search {
     color: var(--text-secondary-color);
     font-size: 0.8rem;
 }
-
 #task-search-input {
     border: none;
     background: transparent;
@@ -1000,10 +908,8 @@ Custom class
     border-bottom: 1px solid var(--border-color);
     background-color: #fdfdfd;
 }
-
 #active-filters-container:empty {
-    display: none;
-    /* Hide the container when no filters are active */
+    display: none; /* Hide the container when no filters are active */
 }
 
 /* Individual Filter Tag styling */
@@ -1016,11 +922,9 @@ Custom class
     border-radius: 4px;
     padding: 0.2rem 0.2rem 0.2rem 0.6rem;
 }
-
 .filter-tag strong {
     margin-left: 4px;
 }
-
 .remove-tag-btn {
     background: transparent;
     border: none;
@@ -1032,7 +936,6 @@ Custom class
     color: #4361ee;
     opacity: 0.7;
 }
-
 .remove-tag-btn:hover {
     opacity: 1;
 }
@@ -1058,18 +961,16 @@ Custom class
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 2000;
-    /* Ensures it's on top of everything else */
+    z-index: 2000; /* Ensures it's on top of everything else */
 }
 
 /* This is the white dialog box itself */
 .dialog-box {
     background-color: #ffffff;
     border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
     width: 90%;
-    max-width: 400px;
-    /* You can adjust this width */
+    max-width: 400px; /* You can adjust this width */
     display: flex;
     flex-direction: column;
 }
@@ -1133,12 +1034,10 @@ Custom class
     border-top: 1px solid #e9e9e9;
     background-color: #f9f9f9;
 }
-
 /* CSS for the task name placeholder */
 [contenteditable][data-placeholder]:empty::before {
     content: attr(data-placeholder);
-    color: #888;
-    /* Placeholder text color */
+    color: #888; /* Placeholder text color */
     pointer-events: none;
     display: inline-block;
 }
@@ -1147,13 +1046,8 @@ Custom class
 
 /* Keyframes for smooth animations */
 @keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    
-    to {
-        opacity: 1;
-    }
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 @keyframes popIn {
@@ -1161,7 +1055,6 @@ Custom class
         opacity: 0;
         transform: scale(0.95) translateY(10px);
     }
-    
     to {
         opacity: 1;
         transform: scale(1) translateY(0);
@@ -1175,8 +1068,7 @@ Custom class
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(10, 20, 30, 0.5);
-    /* A darker, slightly blue overlay */
+    background-color: rgba(10, 20, 30, 0.5); /* A darker, slightly blue overlay */
     display: flex;
     justify-content: center;
     align-items: center;
@@ -1236,10 +1128,8 @@ Custom class
 .filterlistview-section-checkbox-list {
     max-height: 250px;
     overflow-y: auto;
-    margin-right: -1.5rem;
-    /* Hides scrollbar visually on some browsers */
-    padding-right: 1.5rem;
-    /* Adds the space back */
+    margin-right: -1.5rem; /* Hides scrollbar visually on some browsers */
+    padding-right: 1.5rem; /* Adds the space back */
 }
 
 /* Custom Checkbox Styling */
@@ -1281,8 +1171,7 @@ Custom class
     height: 0.65em;
     transform: scale(0);
     transition: 120ms transform ease-in-out;
-    box-shadow: inset 1em 1em #4c6ef5;
-    /* Accent color for the checkmark */
+    box-shadow: inset 1em 1em #4c6ef5; /* Accent color for the checkmark */
     transform-origin: bottom left;
     clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
 }
@@ -1294,8 +1183,7 @@ Custom class
 
 .filterlistview-filter-dialog input[type="checkbox"]:checked::before {
     transform: scale(1);
-    box-shadow: inset 1em 1em #ffffff;
-    /* White checkmark */
+    box-shadow: inset 1em 1em #ffffff; /* White checkmark */
 }
 
 /* Dialog Footer Styling */
@@ -1321,8 +1209,7 @@ Custom class
 }
 
 .filterlistview-dialog-button:active {
-    transform: scale(0.97);
-    /* Press-down effect */
+    transform: scale(0.97); /* Press-down effect */
 }
 
 .filterlistview-primary {
@@ -1337,8 +1224,7 @@ Custom class
 /* --- Assignee Selection Dialog Specific Styles --- */
 
 .assignee-dialog .filterlistview-dialog-body {
-    padding: 0;
-    /* Remove body padding to allow for full-width list items */
+    padding: 0; /* Remove body padding to allow for full-width list items */
 }
 
 .assignee-dialog-search {
@@ -1448,8 +1334,7 @@ Custom class
     display: flex;
     flex-direction: column;
     line-height: 1.2;
-    overflow: hidden;
-    /* Prevents long text from breaking layout */
+    overflow: hidden; /* Prevents long text from breaking layout */
 }
 
 .assignee-name {
@@ -1475,8 +1360,7 @@ Custom class
     font-size: 1.5rem;
     line-height: 1;
     padding: 0 0.5rem;
-    margin-left: auto;
-    /* Pushes the button to the far right */
+    margin-left: auto; /* Pushes the button to the far right */
     opacity: 0;
     transition: opacity 0.2s, color 0.2s;
 }
@@ -1501,7 +1385,6 @@ Custom class
     cursor: pointer;
     transition: all 0.2s;
 }
-
 .add-assignee-btn:hover {
     background-color: #f0f0f0;
     color: #333;
@@ -1512,8 +1395,7 @@ Custom class
 .section-summary-row {
     display: flex;
     font-size: 13px;
-    color: #333;
-    /* Slightly darker text */
+    color: #333; /* Slightly darker text */
 }
 
 /* Ensure empty cells in the summary row maintain proper height and alignment */
@@ -1539,10 +1421,8 @@ Custom class
     cursor: pointer;
     color: var(--text-secondary-color);
     padding: 0.2rem;
-    margin-left: auto;
-    /* Pushes it to the far right of the fixed column */
-    opacity: 0;
-    /* Hidden by default */
+    margin-left: auto; /* Pushes it to the far right of the fixed column */
+    opacity: 0; /* Hidden by default */
     transition: opacity 0.2s, color 0.2s;
 }
 
@@ -1584,128 +1464,127 @@ Custom class
 }
 
 .email-container {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    padding-left: 14px;
-    margin-top: 12px;
-    border-radius: 0px;
-    height: 30px;
-    border: 1px solid transparent;
-    width: 100%;
-    padding-right: 8px;
-    color: #7277E9;
-    cursor: pointer;
-    position: fixed;
-    transition: background 0.2s ease;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding-left: 14px;
+  margin-top: 12px;
+  border-radius: 0px;
+  height: 30px;
+  border: 1px solid transparent;
+  width: 100%;
+  padding-right: 8px;
+  color: #7277E9;
+  cursor: pointer;
+  position: fixed;
+  transition: background 0.2s ease;
 }
 
 .email-container.hidden {
-    display: none;
+  display: none;
 }
 
 .email-container:hover {
-    background: rgba(114, 119, 233, 0.1);
+  background: rgba(114, 119, 233, 0.1);
 }
 
 /* Selected state */
 .email-container.selected::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    height: 30px;
-    width: 4px;
-    background-color: #7D82F1;
-    border-top-right-radius: 2px;
-    border-bottom-right-radius: 2px;
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 30px;
+  width: 4px;
+  background-color: #7D82F1;
+  border-top-right-radius: 2px;
+  border-bottom-right-radius: 2px;
 }
 
 
 .material-icons-outlined.email {
-    font-size: 18px;
+  font-size: 18px;
 }
 
-.email-text {
-    font-size: 12px;
-    padding-top: 9px;
-    margin-left: 6px;
+.email-text{
+font-size: 12px;
+padding-top: 9px;
+margin-left: 6px;
 }
 
-/*
-
-// Extra small displays (like small tablets or older laptops) 
+/* Extra small displays (like small tablets or older laptops) */
 @media screen and (max-height: 599px) {
     .list-view-container {
         height: 400px;
     }
 }
 
-// Small displays (600-699px) 
+/* Small displays (600-699px) */
 @media screen and (min-height: 600px) and (max-height: 699px) {
     .list-view-container {
         height: 420px;
     }
 }
 
-// Compact laptops (700-799px) 
+/* Compact laptops (700-799px) */
 @media screen and (min-height: 700px) and (max-height: 799px) {
     .list-view-container {
         height: 480px;
     }
 }
 
-// Standard laptop screens (800-899px) 
+/* Standard laptop screens (800-899px) */
 @media screen and (min-height: 800px) and (max-height: 899px) {
     .list-view-container {
         height: 550px;
     }
 }
 
-// Tall laptops or small desktops (900-999px) 
+/* Tall laptops or small desktops (900-999px) */
 @media screen and (min-height: 900px) and (max-height: 999px) {
     .list-view-container {
         height: 580px;
     }
 }
 
-// Regular desktop screens (1000-1099px) 
+/* Regular desktop screens (1000-1099px) */
 @media screen and (min-height: 1000px) and (max-height: 1099px) {
     .list-view-container {
         height: 600px;
     }
 }
 
-//  Slightly larger monitors (1100-1199px) 
+/* Slightly larger monitors (1100-1199px) */
 @media screen and (min-height: 1100px) and (max-height: 1199px) {
     .list-view-container {
         height: 700px;
     }
 }
 
-// Large desktop monitors (1200-1299px) 
+/* Large desktop monitors (1200-1299px) */
 @media screen and (min-height: 1200px) and (max-height: 1299px) {
     .list-view-container {
         height: 750px;
     }
 }
 
- Extra large screens (1300-1399px)
+/* Extra large screens (1300-1399px) */
 @media screen and (min-height: 1300px) and (max-height: 1399px) {
     .list-view-container {
         height: 850px;
     }
 }
- Very tall displays (1400-1499px) 
+
+/* Very tall displays (1400-1499px) */
 @media screen and (min-height: 1400px) and (max-height: 1499px) {
     .list-view-container {
         height: 900px;
     }
 }
- Ultra-tall 4K+ monitors (1500px and above)
+
+/* Ultra-tall 4K+ monitors (1500px and above) */
 @media screen and (min-height: 1500px) {
     .list-view-container {
         height: 1000px;
     }
 }
-*/
