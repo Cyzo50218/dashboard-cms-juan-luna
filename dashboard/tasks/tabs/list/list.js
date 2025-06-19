@@ -1442,28 +1442,28 @@ function createTaskRow(task, customColumns) {
     });
     
     // --- Custom Columns ---
-    (customColumns || []).forEach(col => {
-        const cell = document.createElement('div');
-        cell.className = 'task-cell';
-        if (isCompleted) cell.classList.add('is-completed');
-        cell.dataset.columnId = col.id;
-        cell.dataset.control = 'custom-select';
-        
-        const rawValue = task.customFields ? task.customFields[col.id] : null;
-        
-        let content = `<span class="add-value">+</span>`;
-        if (rawValue) {
-            if (col.name === 'Type' || col.name === 'Tag') {
-                const tagClass = `status-tag status-${rawValue.replace(/\s+/g, '-')}`;
-                content = `<span class="${tagClass}">${rawValue}</span>`;
-            } else {
-                content = `<span>${rawValue}</span>`;
-            }
+  (customColumns || []).forEach(col => {
+    const cell = document.createElement('div');
+    cell.className = 'task-cell';
+    if (isCompleted) cell.classList.add('is-completed');
+    cell.dataset.columnId = col.id;
+    cell.dataset.control = 'custom';
+
+    const rawValue = task.customFields ? task.customFields[col.id] : null;
+
+    let content = `<span class="add-value editable-custom-field" contenteditable="true"></span>`;
+    if (rawValue !== null && rawValue !== undefined) {
+        if (col.name === 'Type' || col.name === 'Tag') {
+            const tagClass = `status-tag status-${String(rawValue).replace(/\s+/g, '-')}`;
+            content = `<span class="editable-custom-field ${tagClass}" contenteditable="true">${rawValue}</span>`;
+        } else {
+            content = `<span class="editable-custom-field" contenteditable="true">${rawValue}</span>`;
         }
-        
-        cell.innerHTML = content;
-        row.appendChild(cell);
-    });
+    }
+
+    cell.innerHTML = content;
+    row.appendChild(cell);
+});
     
     // --- Placeholder Cell ---
     const placeholderCell = document.createElement('div');
@@ -2303,110 +2303,177 @@ function openAddColumnDialog(columnType) {
         openCustomColumnCreatorDialog();
         return;
     }
-    
-    closeFloatingPanels();
+
+    closeFloatingPanels(); // Ensure no other floating panels stay open
+
     const dialogOverlay = document.createElement('div');
     dialogOverlay.className = 'dialog-overlay';
-    
+
     let previewHTML = '';
     if (columnType === 'Costing') {
         previewHTML = `<div class="preview-value">$1,234.56</div><p>Formatted as currency. The sum will be shown in the footer.</p>`;
     } else if (columnType === 'Numbers') {
-        previewHTML = `<div class="preview-value">1,234.56</div><p>For tracking quantities. The sum will be shown in the footer.</p>`;
+        previewHTML = `<div class="preview-value">1,234</div><p>Track plain number values. Sum will be shown in footer.</p>`;
     } else {
-        previewHTML = `<div class="preview-value">Any text value</div><p>For notes or labels.</p>`;
+        previewHTML = `<div class="preview-value">Any text value</div><p>Freeform label or comment.</p>`;
     }
-    
+
     let typeSpecificFields = '';
     if (columnType === 'Costing') {
-        typeSpecificFields = `<div class="form-group"><label>Currency</label><select id="column-currency"><option value="$">USD ($)</option><option value="₱">PHP (©)</option><option value="$">AUD ($)</option></select></div>`;
+        typeSpecificFields = `
+            <div class="form-group">
+                <label>Currency</label>
+                <select id="column-currency">
+                    <option value="$">USD ($)</option>
+                    <option value="₱">PHP (₱)</option>
+                    <option value="A$">AUD (A$)</option>
+                </select>
+            </div>`;
     }
-    
+
     dialogOverlay.innerHTML = `
-<div class="dialog-box">
-<div class="dialog-header">Add "${columnType}" Column</div>
-<div class="dialog-body">
-<div class="form-group"><label for="column-name">Column Name</label><input type="text" id="column-name" placeholder="e.g., Budget"></div>
-${typeSpecificFields}
-<div class="dialog-preview-box">${previewHTML}</div>
-</div>
-<div class="dialog-footer">
-<button class="dialog-button" id="cancel-add-column">Cancel</button>
-<button class="dialog-button primary" id="confirm-add-column">Add Column</button>
-</div>
-</div>`;
-    
+        <div class="dialog-box">
+            <div class="dialog-header">Add "${columnType}" Column</div>
+            <div class="dialog-body">
+                <div class="form-group">
+                    <label for="column-name">Column Name</label>
+                    <input type="text" id="column-name" placeholder="e.g., Budget">
+                </div>
+                ${typeSpecificFields}
+                <div class="dialog-preview-box">${previewHTML}</div>
+            </div>
+            <div class="dialog-footer">
+                <button class="dialog-button" id="cancel-add-column">Cancel</button>
+                <button class="dialog-button primary" id="confirm-add-column">Add Column</button>
+            </div>
+        </div>
+    `;
+
+    // Append to body
     document.body.appendChild(dialogOverlay);
-    document.getElementById('column-name').focus();
-    
+
+    // Focus input on open
+    const inputEl = document.getElementById('column-name');
+    if (inputEl) inputEl.focus();
+
+    // Close function
+    const closeDialog = () => {
+        dialogOverlay.remove();
+    };
+
+    // Cancel Button
+    document.getElementById('cancel-add-column').addEventListener('click', closeDialog);
+
+    // Confirm Add Column
     document.getElementById('confirm-add-column').addEventListener('click', () => {
+        const columnName = document.getElementById('column-name').value.trim();
+        if (!columnName) {
+            alert('Please enter a column name.');
+            return;
+        }
+
         const config = {
-            name: document.getElementById('column-name').value,
+            name: columnName,
             type: columnType,
-            currency: document.getElementById('column-currency')?.value
+            currency: document.getElementById('column-currency')?.value || null
         };
-        if (!config.name) { alert('Please enter a column name.'); return; }
-        addNewColumn(config);
-        closeFloatingPanels();
+
+        addNewColumn(config);   // Your logic to push column into Firestore/local data
+        closeDialog();          // Close dialog after
     });
-    dialogOverlay.addEventListener('click', e => { if (e.target === e.currentTarget) closeFloatingPanels(); });
+
+    // Dismiss modal when clicking outside
+    dialogOverlay.addEventListener('click', (e) => {
+        if (e.target === dialogOverlay) closeDialog();
+    });
 }
 
 function openCustomColumnCreatorDialog() {
     closeFloatingPanels();
+
     const dialogOverlay = document.createElement('div');
     dialogOverlay.className = 'dialog-overlay';
-    
-    const baseTypeOptionsHTML = baseColumnTypes.map(type => `<option value="${type}">${type}</option>`).join('');
-    
+
+    const baseTypeOptionsHTML = baseColumnTypes
+        .map(type => `<option value="${type}">${type}</option>`)
+        .join('');
+
     dialogOverlay.innerHTML = `
-<div class="dialog-box">
-<div class="dialog-header">Create Custom Column</div>
-<div class="dialog-body">
-<div class="form-group">
-<label for="column-name">Column Name</label>
-<input type="text" id="column-name" placeholder="e.g., T-Shirt Size">
-</div>
-<div class="form-group">
-<label for="base-column-type">Select Data Type</label>
-<select id="base-column-type">${baseTypeOptionsHTML}</select>
-</div>
-<div id="type-specific-options-custom"></div>
-</div>
-<div class="dialog-footer">
-<button class="dialog-button" id="cancel-add-column">Cancel</button>
-<button class="dialog-button primary" id="confirm-add-column">Add Column</button>
-</div>
-</div>`;
-    
+        <div class="dialog-box">
+            <div class="dialog-header">Create Custom Column</div>
+            <div class="dialog-body">
+                <div class="form-group">
+                    <label for="custom-column-name">Column Name</label>
+                    <input type="text" id="custom-column-name" placeholder="e.g., T-Shirt Size">
+                </div>
+                <div class="form-group">
+                    <label for="base-column-type">Select Data Type</label>
+                    <select id="base-column-type">${baseTypeOptionsHTML}</select>
+                </div>
+                <div id="type-specific-options-custom"></div>
+            </div>
+            <div class="dialog-footer">
+                <button class="dialog-button" id="cancel-custom-column">Cancel</button>
+                <button class="dialog-button primary" id="confirm-custom-column">Add Column</button>
+            </div>
+        </div>
+    `;
+
     document.body.appendChild(dialogOverlay);
+
+    // Auto-focus
+    const columnNameInput = document.getElementById('custom-column-name');
+    if (columnNameInput) columnNameInput.focus();
+
     const baseTypeSelect = document.getElementById('base-column-type');
     const specificOptionsContainer = document.getElementById('type-specific-options-custom');
-    
+
     const renderTypeSpecificOptions = (selectedType) => {
         let extraFields = '';
         if (selectedType === 'Costing') {
-            extraFields = `<div class="form-group"><label>Currency</label><select id="column-currency"><option value="$">USD ($)</option><option value="€">EUR (€)</option></select></div>`;
+            extraFields = `
+                <div class="form-group">
+                    <label>Currency</label>
+                    <select id="column-currency">
+                        <option value="$">USD ($)</option>
+                        <option value="€">EUR (€)</option>
+                        <option value="₱">PHP (₱)</option>
+                    </select>
+                </div>`;
         }
         specificOptionsContainer.innerHTML = extraFields;
     };
-    
+
+    // Render on change and init
     baseTypeSelect.addEventListener('change', () => renderTypeSpecificOptions(baseTypeSelect.value));
     renderTypeSpecificOptions(baseTypeSelect.value);
-    
-    document.getElementById('confirm-add-column').addEventListener('click', () => {
-        const config = {
-            name: document.getElementById('column-name').value,
-            type: baseTypeSelect.value,
-            currency: document.getElementById('column-currency')?.value
-        };
-        if (!config.name) { alert('Please enter a column name.'); return; }
-        addNewColumn(config);
-        closeFloatingPanels();
+
+    // Confirm button
+    document.getElementById('confirm-custom-column').addEventListener('click', () => {
+        const name = document.getElementById('custom-column-name').value.trim();
+        const type = baseTypeSelect.value;
+        const currency = document.getElementById('column-currency')?.value || null;
+
+        if (!name) {
+            alert('Please enter a column name.');
+            return;
+        }
+
+        addNewColumn({ name, type, currency });
+        dialogOverlay.remove(); // Close modal
     });
-    
-    dialogOverlay.addEventListener('click', e => { if (e.target === e.currentTarget) closeFloatingPanels(); });
+
+    // Cancel button
+    document.getElementById('cancel-custom-column').addEventListener('click', () => {
+        dialogOverlay.remove();
+    });
+
+    // Click outside closes dialog
+    dialogOverlay.addEventListener('click', e => {
+        if (e.target === dialogOverlay) dialogOverlay.remove();
+    });
 }
+
 
 function addNewTask(section) {
     const tempId = `temp_${Date.now()}`;
@@ -2440,7 +2507,7 @@ function openCustomOptionDialog(optionType) {
     closeFloatingPanels();
     const dialogOverlay = document.createElement('div');
     dialogOverlay.className = 'dialog-overlay';
-    
+
     dialogOverlay.innerHTML = `
 <div class="dialog-box">
     <div class="dialog-header">Add Custom ${optionType}</div>
@@ -2459,27 +2526,30 @@ function openCustomOptionDialog(optionType) {
         <button class="dialog-button primary" id="confirm-add-option">Add Option</button>
     </div>
 </div>`;
-    
+
     document.body.appendChild(dialogOverlay);
     document.getElementById('custom-option-name').focus();
-    
+
+    const closeDialog = () => dialogOverlay.remove();
+
+    document.getElementById('cancel-add-option').addEventListener('click', closeDialog);
+
     document.getElementById('confirm-add-option').addEventListener('click', () => {
         const name = document.getElementById('custom-option-name').value.trim();
         const color = document.getElementById('custom-option-color').value;
         if (name) {
             addNewCustomOption(optionType, { name, color });
-            closeFloatingPanels();
+            closeDialog();
         } else {
             alert('Please enter a name for the option.');
         }
     });
-    
+
     dialogOverlay.addEventListener('click', e => {
-        if (e.target === e.currentTarget || e.target.id === 'cancel-add-option') {
-            closeFloatingPanels();
-        }
+        if (e.target === dialogOverlay) closeDialog();
     });
 }
+
 
 /**
  * Writes the new custom Priority or Status option to Firebase.
@@ -2500,9 +2570,10 @@ function addNewCustomOption(optionType, newOption) {
 function openCustomColumnOptionDialog(columnId) {
     if (!columnId) return;
     closeFloatingPanels();
+
     const dialogOverlay = document.createElement('div');
     dialogOverlay.className = 'dialog-overlay';
-    
+
     dialogOverlay.innerHTML = `
 <div class="dialog-box">
     <div class="dialog-header">Add New Option</div>
@@ -2521,27 +2592,30 @@ function openCustomColumnOptionDialog(columnId) {
         <button class="dialog-button primary" id="confirm-add-option">Add Option</button>
     </div>
 </div>`;
-    
+
     document.body.appendChild(dialogOverlay);
     document.getElementById('custom-option-name').focus();
-    
+
+    const closeDialog = () => dialogOverlay.remove();
+
+    document.getElementById('cancel-add-option').addEventListener('click', closeDialog);
+
     document.getElementById('confirm-add-option').addEventListener('click', () => {
         const name = document.getElementById('custom-option-name').value.trim();
         const color = document.getElementById('custom-option-color').value;
         if (name) {
             addNewCustomColumnOption(columnId, { name, color });
-            closeFloatingPanels();
+            closeDialog();
         } else {
             alert('Please enter a name for the option.');
         }
     });
-    
+
     dialogOverlay.addEventListener('click', e => {
-        if (e.target === e.currentTarget || e.target.id === 'cancel-add-option') {
-            closeFloatingPanels();
-        }
+        if (e.target === dialogOverlay) closeDialog();
     });
 }
+
 
 /**
  * Writes a new option to a specific custom column's 'options' array in Firebase.
