@@ -39,7 +39,7 @@ console.log("Initialized Firebase on Dashboard.");
 
 // --- Module-Scoped Variables ---
 // DOM Element Holders
-let taskListHeaderEl, taskListBody, taskListFooter, addSectionBtn, addTaskHeaderBtn, mainContainer, assigneeDropdownTemplate, filterBtn, sortBtn;
+let taskListHeaderEl, taskListWrapper, headerScrollableCols, taskListBody, taskListFooter, addSectionBtn, addTaskHeaderBtn, mainContainer, assigneeDropdownTemplate, filterBtn, sortBtn;
 
 // Event Handler References
 let headerClickListener, bodyClickListener, bodyFocusOutListener, addTaskHeaderBtnListener, addSectionBtnListener, windowClickListener, filterBtnListener, sortBtnListener;
@@ -198,6 +198,16 @@ function initializeListView(params) {
     }
     
     setupEventListeners();
+    
+     taskListWrapper = document.querySelector('.task-list-wrapper');
+     headerScrollableCols = document.querySelector('.scrollable-columns-wrapper');
+
+if (taskListWrapper && headerScrollableCols) {
+    taskListWrapper.addEventListener('scroll', () => {
+        headerScrollableCols.scrollLeft = taskListWrapper.scrollLeft;
+    });
+}
+
 }
 
 function distributeTasksToSections(tasks) {
