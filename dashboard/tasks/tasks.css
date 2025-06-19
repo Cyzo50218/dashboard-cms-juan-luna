@@ -142,7 +142,6 @@ button:hover {
 }
 
 .tabs-fragments {
-    padding: 16px; /* Reduced */
     min-height: 10px;
     overflow-x: auto; 
 }
