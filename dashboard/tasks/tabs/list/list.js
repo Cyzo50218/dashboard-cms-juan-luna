@@ -973,104 +973,86 @@ function findTaskAndSection(taskId) {
 }
 
 /**
- * Handles moving a task after a drag-and-drop.
- * This version is adapted for our custom synthetic event object.
+ * **[CORRECTED]** Persists task moves/reorders to Firestore.
+ * Handles both reordering within a section and moving between sections.
+ * @param {object} evt - The synthetic event from handleDragEnd.
+ * @param {string} basePath - The Firestore path to the project.
  */
-async function handleTaskMoved(evt) {
-    console.log("🚀 Handling task move with synthetic event:", evt);
+async function handleTaskMoved(evt, basePath) {
+    console.log("🚀 Handling task move with event:", evt);
     
-    const user = auth.currentUser;
-    if (!user) {
-        console.error("❌ User not authenticated.");
-        return;
-    }
-    
-    // --- 1. Get IDs and Elements from our custom 'evt' object ---
-    const taskEl = evt.item; // The .grid-row-wrapper element that was dragged
+    const taskEl = evt.item;
     const taskId = taskEl.dataset.taskId;
-    
-    // The new parent is a .section-wrapper
-    const newSectionEl = evt.to;
-    const newSectionId = newSectionEl.dataset.sectionId;
-    
-    // The original parent was also a .section-wrapper
-    const oldSectionEl = evt.from;
-    const oldSectionId = oldSectionEl.dataset.sectionId;
+    const newSectionEl = evt.to; // This is the .task-list container
+    const newSectionId = newSectionEl.closest('.section-wrapper').dataset.sectionId;
+    const oldSectionEl = evt.from; // This is the .task-list container
+    const oldSectionId = oldSectionEl.closest('.section-wrapper').dataset.sectionId;
     
     if (!taskId || !newSectionId || !oldSectionId) {
-        console.error("❌ Critical ID missing from event object or DOM elements.", { taskId, newSectionId, oldSectionId });
-        // Trigger the UI revert logic since the update will fail.
         throw new Error("Critical ID missing for Firestore update.");
     }
     
-    try {
-        // --- 2. Get Firestore project path (this part was correct) ---
-        const workspaceSnap = await getDocs(query(collection(db, `users/${user.uid}/myworkspace`), where("isSelected", "==", true)));
-        if (workspaceSnap.empty) throw new Error("No selected workspace found.");
-        const workspaceId = workspaceSnap.docs[0].id;
-        
-        const projectSnap = await getDocs(query(collection(db, `users/${user.uid}/myworkspace/${workspaceId}/projects`), where("isSelected", "==", true)));
-        if (projectSnap.empty) throw new Error("No selected project found.");
-        const projectId = projectSnap.docs[0].id;
-        const basePath = `users/${user.uid}/myworkspace/${workspaceId}/projects/${projectId}`;
-        
-        // --- 3. Prepare a batched write for atomic updates ---
-        const batch = writeBatch(db);
-        
-        // --- 4. Get all tasks from the affected sections from the DOM ---
-        // The DOM is our "source of truth" for the new order.
-        // NOTE: Use the correct selector '.grid-row-wrapper[data-task-id]'
+    const batch = writeBatch(db);
+    
+    if (newSectionId === oldSectionId) {
+        // --- Case A: Reordering within the SAME section ---
+        console.log(`Reordering task "${taskId}" in section "${newSectionId}"`);
         const tasksInNewSection = Array.from(newSectionEl.querySelectorAll('.grid-row-wrapper[data-task-id]'));
-        const tasksInOldSection = Array.from(oldSectionEl.querySelectorAll('.grid-row-wrapper[data-task-id]'));
+        tasksInNewSection.forEach((el, index) => {
+            const taskRef = doc(db, `${basePath}/sections/${newSectionId}/tasks/${el.dataset.taskId}`);
+            batch.update(taskRef, { order: index });
+        });
         
-        if (newSectionId === oldSectionId) {
-            // --- Case A: Reordering within the SAME section ---
-            console.log(`Reordering task "${taskId}" in section "${newSectionId}"`);
-            tasksInNewSection.forEach((el, index) => {
-                const currentTaskId = el.dataset.taskId;
+    } else {
+        // --- Case B: Moving to a DIFFERENT section (Corrected "Delete and Create" Logic) ---
+        console.log(`Moving task "${taskId}" from section "${oldSectionId}" to "${newSectionId}"`);
+        
+        // 1. Reference the original task document to read and then delete it.
+        const originalTaskRef = doc(db, `${basePath}/sections/${oldSectionId}/tasks/${taskId}`);
+        
+        // We need the task's data to create the new one.
+        const taskSnap = await getDoc(originalTaskRef);
+        if (!taskSnap.exists()) throw new Error(`Task ${taskId} not found in old section!`);
+        const taskData = taskSnap.data();
+        
+        // 2. Delete the original task.
+        batch.delete(originalTaskRef);
+        console.log(` -> Queued DELETE for task ${taskId} from old section.`);
+        
+        // 3. Create the new task in the new section's subcollection.
+        const newTaskRef = doc(db, `${basePath}/sections/${newSectionId}/tasks/${taskId}`);
+        const newOrderIndex = Array.from(newSectionEl.querySelectorAll('.grid-row-wrapper[data-task-id]')).findIndex(el => el.dataset.taskId === taskId);
+        
+        batch.set(newTaskRef, {
+            ...taskData, // Copy all original data (title, completed, etc.)
+            sectionId: newSectionId, // Update the sectionId
+            order: newOrderIndex // Update the order
+        });
+        console.log(` -> Queued CREATE for task ${taskId} in new section.`);
+        
+        // 4. Update the order for all other tasks in the NEW section.
+        const tasksInNewSection = Array.from(newSectionEl.querySelectorAll('.grid-row-wrapper[data-task-id]'));
+        tasksInNewSection.forEach((el, index) => {
+            const currentTaskId = el.dataset.taskId;
+            // The moved task is already handled by the .set() operation above.
+            if (currentTaskId !== taskId) {
                 const taskRef = doc(db, `${basePath}/sections/${newSectionId}/tasks/${currentTaskId}`);
                 batch.update(taskRef, { order: index });
-                console.log(`  -> Queuing update for Task ID: ${currentTaskId}, New Order: ${index}`);
-            });
-        } else {
-            // --- Case B: Moving to a DIFFERENT section ---
-            console.log(`Moving task "${taskId}" from section "${oldSectionId}" to "${newSectionId}"`);
-            
-            // Update the dragged task's sectionId field
-            const movedTaskRef = doc(db, `${basePath}/sections/${oldSectionId}/tasks/${taskId}`);
-            batch.update(movedTaskRef, { sectionId: newSectionId });
-            console.log(`  -> Queuing sectionId update for moved task ${taskId}`);
-            
-            
-            // Re-order all tasks in the NEW section
-            tasksInNewSection.forEach((el, index) => {
-                const currentTaskId = el.dataset.taskId;
-                // Important: Use oldSectionId for the moved task's path, newSectionId for all others
-                const taskOriginalSection = (currentTaskId === taskId) ? oldSectionId : newSectionId;
-                const taskRef = doc(db, `${basePath}/sections/${taskOriginalSection}/tasks/${currentTaskId}`);
-                batch.update(taskRef, { order: index, sectionId: newSectionId }); // Ensure sectionId is correct
-                console.log(`  -> Queuing reorder for NEW section. Task ID: ${currentTaskId}, New Order: ${index}`);
-            });
-            
-            // Re-order all remaining tasks in the OLD section
-            tasksInOldSection.forEach((el, index) => {
-                const currentTaskId = el.dataset.taskId;
-                const taskRef = doc(db, `${basePath}/sections/${oldSectionId}/tasks/${currentTaskId}`);
-                batch.update(taskRef, { order: index });
-                console.log(`  -> Queuing reorder for OLD section. Task ID: ${currentTaskId}, New Order: ${index}`);
-            });
-        }
+            }
+        });
         
-        // --- 5. Commit all changes to Firestore ---
-        await batch.commit();
-        console.log("✅ Batch commit successful. Task positions updated in Firestore.");
-        
-    } catch (err) {
-        console.error("❌ Error handling task move:", err);
-        // Re-throw the error so the calling function's catch block can handle UI reversion.
-        throw err;
+        // 5. Update the order for the remaining tasks in the OLD section.
+        const tasksInOldSection = Array.from(oldSectionEl.querySelectorAll('.grid-row-wrapper[data-task-id]'));
+        tasksInOldSection.forEach((el, index) => {
+            const taskRef = doc(db, `${basePath}/sections/${oldSectionId}/tasks/${el.dataset.taskId}`);
+            batch.update(taskRef, { order: index });
+        });
     }
+    
+    await batch.commit();
+    console.log("✅ Batch commit successful. Task positions updated in Firestore.");
 }
+
 
 /**
  * Enables in-place editing for a column header.
@@ -1361,6 +1343,12 @@ function createSectionRow(sectionData, customColumns) {
 }
 
 function createTaskRow(task, customColumns) {
+    if (!task || typeof task.id !== 'string' || task.id.trim() === '') {
+        console.error(
+            "CRITICAL ERROR - FAULTY TASK DETECTED: A task row is being created with a missing or invalid ID. This is the source of the drag-and-drop error.",
+            { task: task }
+        );
+    }
     const row = document.createElement('div');
     row.className = `grid-row-wrapper task-row-wrapper ${task.status === 'Completed' ? 'is-completed' : ''}`;
     row.dataset.taskId = task.id;
@@ -3203,3 +3191,5 @@ function positionFloatingPanel(targetEl, dropdownEl) {
     dropdownEl.style.zIndex = '9999';
     dropdownEl.style.visibility = 'visible';
 }
+
+
