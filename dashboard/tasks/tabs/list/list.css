@@ -97,8 +97,11 @@ button {
 }
 
 .grid-wrapper {
-    display: grid;
+  display: grid;
+  width: max-content; 
+  min-width: 100%;    
 }
+
 
 .grid-row-wrapper {
     display: grid;
@@ -123,7 +126,7 @@ button {
 
 .header-cell {
     height: var(--header-height);
-    min-height: var(--header-height);
+    min-height: 0;
     padding: 0 4px;
     font-weight: 500;
     border-top: 1px solid var(--border-color);
@@ -140,18 +143,6 @@ button {
     background-color: #f3f4f6; /* Light gray hover */
 }
 
-.task-cell,
-.header-cell {
-  min-width: 0;
-}
-
-.task-cell > span,
-.task-cell > div,
-.header-cell > span,
-.header-cell > div {
-  min-width: 0;
-  width: 100%;
-}
 
 .header-cell .column-icon {
     font-size: 12px;
