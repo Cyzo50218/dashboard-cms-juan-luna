@@ -1676,7 +1676,7 @@ Custom class
     }
 }
 
-// Slightly larger monitors (1100-1199px) 
+//  Slightly larger monitors (1100-1199px) 
 @media screen and (min-height: 1100px) and (max-height: 1199px) {
     .list-view-container {
         height: 700px;
@@ -1690,21 +1690,19 @@ Custom class
     }
 }
 
-// Extra large screens (1300-1399px) 
+ Extra large screens (1300-1399px)
 @media screen and (min-height: 1300px) and (max-height: 1399px) {
     .list-view-container {
         height: 850px;
     }
 }
-
-// Very tall displays (1400-1499px) 
+ Very tall displays (1400-1499px) 
 @media screen and (min-height: 1400px) and (max-height: 1499px) {
     .list-view-container {
         height: 900px;
     }
 }
-
-// Ultra-tall 4K+ monitors (1500px and above) 
+ Ultra-tall 4K+ monitors (1500px and above)
 @media screen and (min-height: 1500px) {
     .list-view-container {
         height: 1000px;
