@@ -1214,11 +1214,15 @@ function render() {
         addColumn: '120px'
     };
     const gridTemplateColumns = [
-        columnWidths.taskName, columnWidths.assignee, columnWidths.dueDate,
-        columnWidths.priority, columnWidths.status,
-        ...customColumns.map(() => columnWidths.defaultCustom),
-        columnWidths.addColumn
-    ].join(' ');
+    columnWidths.taskName,
+    columnWidths.assignee,
+    columnWidths.dueDate,
+    columnWidths.priority,
+    columnWidths.status,
+    ...customColumns.map(() => 'minmax(160px, auto)'),
+    'minmax(120px, 1fr)'
+].join(' ');
+
     gridWrapper.style.gridTemplateColumns = gridTemplateColumns;
     
     // 4. Render header and body cells directly into the grid wrapper
