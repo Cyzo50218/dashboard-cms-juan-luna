@@ -1,44 +1,20 @@
-
-    <div class="list-view-container">
-        <div class="listview-header">
-          <button class="add-task-header-btn"><i class="fas fa-plus"></i> Add task</button>
-          <button id="add-section-btn" class="add-section-btn"><i class="fas fa-plus"></i> Add section</button>
-            <div class="header-controls-right">
-                <button id="filter-btn"><i class="fas fa-filter"></i> Filter</button>
-                <button id="sort-btn"><i class="fas fa-sort"></i> Sort</button>
-            </div>
+<div class="list-view-container">
+    <div class="listview-header">
+        <button class="add-task-header-btn"><i class="fas fa-plus"></i> Add task</button>
+        <button id="add-section-btn" class="add-section-btn"><i class="fas fa-plus"></i> Add section</button>
+        <div class="header-controls-right">
+            <button id="filter-btn"><i class="fas fa-filter"></i> Filter</button>
+            <button id="sort-btn"><i class="fas fa-sort"></i> Sort</button>
         </div>
-        
+    </div>
 
-        <div class="task-list-wrapper">
 
-            <div class="task-list-header" id="task-list-header">
 
-                <div class="fixed-column">
-                    <div class="header-name-column">Name</div>
-                </div>
-                <div class="scrollable-columns-wrapper">
-                    <div class="scrollable-columns" id="header-scroll-cols">
-                        <div class="task-col header-assignee">Assignee</div>
-                        <div class="task-col header-due-date">Due date</div>
-                        <div class="task-col header-priority">Priority</div>
-                        <div class="task-col header-status">Status</div>
-                        <div class="add-column-container">
-                            <button id="add-column-btn"><i class="fas fa-plus"></i></button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <div class="task-list-header" id="task-list-header"></div>
 
             <div class="task-list-body" id="task-list-body">
-                </div>
-
-            <div class="task-list-footer" id="task-list-footer">
-                 </div>
-                 
-        </div>
-        
-    </div>
+            </div>
+</div>
 
 <template id="assignee-dropdown-template">
     <div class="context-dropdown assignee-dropdown">
@@ -48,4 +24,3 @@
         <div class="dropdown-list"></div>
     </div>
 </template>
-    

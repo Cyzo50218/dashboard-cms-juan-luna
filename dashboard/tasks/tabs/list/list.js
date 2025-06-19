@@ -39,7 +39,7 @@ console.log("Initialized Firebase on Dashboard.");
 
 // --- Module-Scoped Variables ---
 // DOM Element Holders
-let taskListHeaderEl, taskListBody, taskListFooter, addSectionBtn, addTaskHeaderBtn, mainContainer, assigneeDropdownTemplate, filterBtn, sortBtn;
+let taskListHeaderEl, taskListBody, taskListWrapper, taskListFooter, addSectionBtn, addTaskHeaderBtn, mainContainer, assigneeDropdownTemplate, filterBtn, sortBtn;
 
 // Event Handler References
 let headerClickListener, bodyClickListener, bodyFocusOutListener, addTaskHeaderBtnListener, addSectionBtnListener, windowClickListener, filterBtnListener, sortBtnListener;
@@ -61,6 +61,7 @@ let activeListeners = {
 let currentUserId = null;
 let currentWorkspaceId = null;
 let currentProjectId = null;
+let isViewInitialized = false;
 
 let activeFilters = {}; // Will hold { visibleSections: [id1, id2] }
 let activeSortState = 'default'; // 'default', 'asc' (oldest), 'desc' (newest)
@@ -184,6 +185,7 @@ function attachRealtimeListeners(userId) {
 function initializeListView(params) {
     taskListHeaderEl = document.getElementById('task-list-header');
     taskListBody = document.getElementById('task-list-body');
+    taskListWrapper = document.querySelector('.task-list-wrapper');
     taskListFooter = document.getElementById('task-list-footer');
     addSectionBtn = document.getElementById('add-section-btn');
     addTaskHeaderBtn = document.querySelector('.add-task-header-btn');
@@ -196,7 +198,7 @@ function initializeListView(params) {
         console.error("List view could not initialize: Essential containers not found.");
         return () => {};
     }
-    
+    initializeScrollSync();
     setupEventListeners();
 }
 
@@ -277,10 +279,8 @@ export function init(params) {
 }
 
 // --- Event Listener Setup ---
-
-
-
 function setupEventListeners() {
+    
     
     headerClickListener = (e) => {
         const deleteButton = e.target.closest('.delete-column-btn');
@@ -1027,9 +1027,33 @@ function enableColumnRename(columnEl) {
     columnEl.addEventListener('keydown', onKeyDown);
 }
 
+function initializeScrollSync() {
+    // CRITICAL: We get the BODY, which is the element with the scrollbar.
+    const scrollContainer = document.getElementById('task-list-body');
+    const taskListHeader = document.getElementById('task-list-header');
+
+    if (scrollContainer && taskListHeader) {
+        const headerScroller = taskListHeader.querySelector('.scrollable-columns-wrapper');
+
+        // The event listener is now attached to the correct scrolling element.
+        scrollContainer.addEventListener('scroll', () => {
+            const scrollLeft = scrollContainer.scrollLeft;
+
+            // This updates the header's scroll position to match the body's.
+            if (headerScroller) {
+                headerScroller.scrollLeft = scrollLeft;
+            }
+        });
+
+        console.log("Scroll sync has been correctly initialized on #task-list-body.");
+
+    } else {
+        console.error("Initialization Error: Could not find #task-list-body or #task-list-header.");
+    }
+}
+
 function render() {
-    const scrollStates = new Map();
-    document.querySelectorAll('.scrollable-columns-wrapper').forEach((el, i) => scrollStates.set(i, el.scrollLeft));
+    // The old scrollStates and syncScroll logic is REMOVED.
     
     closeFloatingPanels();
     
@@ -1040,9 +1064,9 @@ function render() {
     
     renderHeader(projectToRender);
     renderBody(projectToRender);
-    //renderFooter(projectToRender);
-    syncScroll(scrollStates);
+    // renderFooter(projectToRender);
     
+    // The rest of your function remains the same...
     if (taskIdToFocus) {
         const newEl = taskListBody.querySelector(`[data-task-id="${taskIdToFocus}"] .task-name`);
         if (newEl) {
@@ -1075,31 +1099,48 @@ function render() {
         }));
     });
     
-    
     filterBtn?.classList.toggle('active', !!activeFilters.visibleSections);
     sortBtn?.classList.toggle('active', isSortActive);
+
+    if (!isViewInitialized && project.sections.length > 0) {
+        initializeScrollSync();
+        isViewInitialized = true; // Set the flag so this never runs again
+        console.log("View initialized for the first time. Scroll sync is now active.");
+    }
 }
 
 function renderHeader(projectToRender) {
-    if (!taskListHeaderEl) return;
-    const container = taskListHeaderEl.querySelector('#header-scroll-cols');
-    if (!container) return;
+   const taskListHeaderEl = document.getElementById('task-list-header');
     
-    container.querySelectorAll('.header-custom').forEach(el => el.remove());
-    const addColBtnContainer = container.querySelector('.add-column-container');
-    
-    projectToRender.customColumns.forEach(col => {
-        const colEl = document.createElement('div');
-        colEl.className = 'task-col header-custom';
-        colEl.dataset.columnId = col.id;
-        colEl.textContent = col.name;
-        const menuBtn = document.createElement('button');
-        menuBtn.className = 'delete-column-btn';
-        menuBtn.title = 'Column options';
-        menuBtn.innerHTML = `<i class="fas fa-ellipsis-h"></i>`;
-        colEl.appendChild(menuBtn);
-        if (addColBtnContainer) container.insertBefore(colEl, addColBtnContainer);
-    });
+    // First, check if the main header element even exists in your HTML.
+    if (!taskListHeaderEl) {
+        console.error("STOP! The element with id='task-list-header' was not found in your HTML file. This is the root of the problem.");
+        return;
+    }
+
+    // For this test, we build the HTML with a simple, hardcoded string.
+    // The inline background colors will help us see the two parts.
+    const newHeaderHTML = `
+        <div class="fixed-column" style="background-color: lightblue;">
+            <div>Name</div>
+        </div>
+        <div class="scrollable-columns-wrapper" style="background-color: lightgoldenrodyellow;">
+            <div class="scrollable-columns">
+                <div class="task-col col-assignee">Assignee</div>
+                <div class="task-col col-due-date">Due Date</div>
+                <div class="task-col col-priority">Priority</div>
+                <div class="task-col col-status">Status</div>
+                <div class="task-col col-custom">Custom Column 1</div>
+                <div class="task-col col-custom">Custom Column 2</div>
+                <div class="task-col col-custom">Custom Column 3</div>
+                <div class="task-col col-custom">Custom Column 4</div>
+            </div>
+        </div>
+    `;
+
+    taskListHeaderEl.innerHTML = newHeaderHTML;
+    console.log("TEST RENDERHEADER EXECUTED: Header HTML has been replaced with the simple test version.");
+
 }
 
 function renderBody(projectToRender) {
@@ -1123,160 +1164,109 @@ function createSection(sectionData, customColumns) {
     const sectionEl = document.createElement('div');
     sectionEl.className = 'task-section';
     sectionEl.dataset.sectionId = sectionData.id;
-    
-    // --- Build the HTML for all task rows (no changes here) ---
+
+    // --- 1. Create the Section Header with the CORRECT two-part structure ---
+    // The scrollable part contains empty placeholder divs. This is essential 
+    // for creating the grid lines and ensuring perfect alignment.
+    const scrollablePlaceholders = `
+        <div class="task-col col-assignee"></div>
+        <div class="task-col col-due-date"></div>
+        <div class="task-col col-priority"></div>
+        <div class="task-col col-status"></div>
+        ${customColumns.map(() => `<div class="task-col col-custom"></div>`).join('')}
+    `;
+
+    const sectionHeaderHTML = `
+        <div class="section-header-list">
+            <div class="fixed-column">
+                <i class="fas fa-grip-vertical drag-handle"></i>
+                <i class="fas fa-chevron-down section-toggle ${sectionData.isCollapsed ? 'collapsed' : ''}"></i>
+                <span class="section-title" contenteditable="true">${sectionData.title}</span>
+            </div>
+            <div class="scrollable-columns-wrapper">
+                <div class="scrollable-columns">${scrollablePlaceholders}</div>
+            </div>
+        </div>
+    `;
+
+    // --- 2. Create the Tasks Container ---
     let tasksHTML = '';
-    let hasAggregatableColumnInSection = false;
     if (sectionData.tasks && !sectionData.isCollapsed) {
-        tasksHTML = sectionData.tasks.map(task => {
-            return createTaskRow(task, customColumns).outerHTML;
-        }).join('');
+        tasksHTML = sectionData.tasks.map(task => createTaskRow(task, customColumns).outerHTML).join('');
     }
+    const tasksContainerHTML = `<div class="tasks-container ${sectionData.isCollapsed ? 'hidden' : ''}">${tasksHTML}</div>`;
     
-    // --- MODIFICATION STARTS HERE ---
-    
-    // --- 1. Build the HTML for the SUMMARY part of the final row ---
+    // --- 3. Create the Summary Row ---
     let summaryColsHTML = '';
-    if (!sectionData.isCollapsed) {
-        customColumns.forEach(col => {
-            let displayValue = '';
-            if (col.aggregation === 'Sum') {
-                const sectionTotal = sectionData.tasks.reduce((sum, task) => sum + Number(task.customFields[col.id] || 0), 0);
-               if (sectionTotal !== 0) {
-    hasAggregatableColumnInSection = true;
-    // This formats the number to show decimals only when they exist.
-    const formattedTotal = sectionTotal.toLocaleString(undefined, { maximumFractionDigits: 2 });
-    
-    const displayTotal = col.type === 'Costing' ? `${col.currency || ''}${formattedTotal}` : formattedTotal;
-    displayValue = `<strong>Sum:</strong> ${displayTotal}`;
-}
+    customColumns.forEach(col => {
+        let displayValue = '';
+        if (col.aggregation === 'Sum') {
+            const sectionTotal = sectionData.tasks.reduce((sum, task) => sum + Number(task.customFields[col.id] || 0), 0);
+            if (sectionTotal !== 0) {
+                const formattedTotal = sectionTotal.toLocaleString(undefined, { maximumFractionDigits: 2 });
+                const displayTotal = col.type === 'Costing' ? `${col.currency || ''}${formattedTotal}` : formattedTotal;
+                displayValue = `<strong>Sum:</strong> ${displayTotal}`;
             }
-            summaryColsHTML += `<div class="task-col header-custom">${displayValue}</div>`;
-        });
-    }
-    
-    // --- 2. Build the FINAL ROW using the same structure as a task row ---
-    // This ensures perfect column alignment.
+        }
+        summaryColsHTML += `<div class="task-col col-custom">${displayValue}</div>`;
+    });
+
     const finalRowHTML = `
         <div class="section-summary-row">
-            <div class="fixed-column-section">
+            <div class="fixed-column">
                 <button class="add-task-in-section-btn"><i class="fas fa-plus"></i> Add task</button>
             </div>
             <div class="scrollable-columns-wrapper">
                 <div class="scrollable-columns">
-                    <div class="task-col header-assignee"></div>
-                    <div class="task-col header-due-date"></div>
-                    <div class="task-col header-priority"></div>
-                    <div class="task-col header-status"></div>
+                    <div class="task-col col-assignee"></div>
+                    <div class="task-col col-due-date"></div>
+                    <div class="task-col col-priority"></div>
+                    <div class="task-col col-status"></div>
                     ${summaryColsHTML}
                 </div>
             </div>
         </div>
     `;
     
-    // --- 3. Assemble the entire section's innerHTML ---
-    sectionEl.innerHTML = `
-        <div class="section-header-list">
-            <div class="fixed-column-section">
-            <i class="fas fa-grip-vertical drag-handle"></i>
-            <i class="fas fa-chevron-down section-toggle ${sectionData.isCollapsed ? 'collapsed' : ''}"></i>
-            <span class="section-title" contenteditable="true">${sectionData.title}</span>
-            </div>
-            
-        </div>
-        <div class="tasks-container ${sectionData.isCollapsed ? 'hidden' : ''}">
-            ${tasksHTML}
-        </div>
-        ${finalRowHTML}
-    `;
-    
-    // --- MODIFICATION ENDS HERE ---
+    // Assemble the entire section
+    sectionEl.innerHTML = sectionHeaderHTML + tasksContainerHTML + finalRowHTML;
     
     return sectionEl;
 }
+
 
 function createTaskRow(task, customColumns) {
     const rowWrapper = document.createElement('div');
     rowWrapper.className = `task-row-wrapper ${task.status === 'Completed' ? 'is-completed' : ''}`;
     rowWrapper.dataset.taskId = task.id;
-    
-    const displayName = task.name;
-    const displayDate = task.dueDate ? new Date(task.dueDate.replace(/-/g, '/')).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '<span class="add-due-date">+ Add date</span>';
-    
-    // --- MODIFICATION FOR REACTIONS START ---
-    const userHasLiked = currentUserId && task.likedBy && task.likedBy[currentUserId];
-    const heartIconClass = userHasLiked ? 'fas fa-heart liked' : 'far fa-heart'; // Add 'liked' class for styling
-    const likeCountDisplay = task.likedAmount > 0 ? task.likedAmount : '';
-    
-    const reactionsHTML = `
-        <div class="task-reactions">
-            <span class="reaction-item" data-control="like" title="Like task">
-                <i class="${heartIconClass}"></i>
-                <span class="like-count">${likeCountDisplay}</span>
-            </span>
-            <span class="reaction-item" data-control="comment" title="View comments">
-                <i class="far fa-comment"></i>
-            </span>
-        </div>
-    `;
-    // --- MODIFICATION FOR REACTIONS END ---
-    
+
+    const displayName = task.name || '';
+    const displayDate = task.dueDate ? new Date(task.dueDate.replace(/-/g, '/')).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+
     let customFieldsHTML = '';
     customColumns.forEach(col => {
-    const value = task.customFields[col.id] || '';
-    
-    // This block handles ANY column with an 'options' array
-    if (col.options && Array.isArray(col.options)) {
-        let displayValue = '<span class="add-value">+ Select</span>';
-        
-        const selectedOption = col.options.find(opt => opt.name === value);
-        
-        if (selectedOption) {
-            // Generate a unique class name for styling
-            const prefix = `custom-col-${col.id}`;
-            const sanitizedName = selectedOption.name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
-            const className = `${prefix}-${sanitizedName}`;
-            displayValue = `<div class="status-tag ${className}">${selectedOption.name}</div>`;
-        }
-        customFieldsHTML += `<div class="task-col header-custom" data-control="custom-select" data-column-id="${col.id}">${displayValue}</div>`;
-    } else {
-        // Logic for other column types (Text, Costing, etc.)
-        let displayValue = (value !== null && typeof value !== 'undefined') ? value : '';
-// For Costing/Numbers types, format the number to show decimals only if they exist.
-if ((col.type === 'Costing' || col.type === 'Numbers') && typeof value === 'number') {
-    // This formats the number with comma separators and a maximum of 2 decimal places.
-    // It will show "350.75" for 350.75 and "300" for 300.
-    const formattedNumber = value.toLocaleString(undefined, { maximumFractionDigits: 2 });
-    displayValue = (col.type === 'Costing' ? (col.currency || '') : '') + formattedNumber;
-}
-customFieldsHTML += `<div class="task-col header-custom" data-control="custom" data-column-id="${col.id}" contenteditable="true">${displayValue}</div>`;
-    }
-});
-    
-    // NOTE TO DEVELOPER: To make the task name column wider,
-    // adjust the flex-basis or min-width of the `.fixed-column` class in your CSS file.
-    // e.g., .fixed-column { flex-basis: 400px; }
-    
+        const value = task.customFields[col.id] || '';
+        // Add your logic here for displaying different types of custom fields
+        let displayValue = value;
+        customFieldsHTML += `<div class="task-col col-custom" data-column-id="${col.id}">${displayValue}</div>`;
+    });
+
     rowWrapper.innerHTML = `
-    <div class="fixed-column">
-        <i class="fas fa-grip-vertical drag-handle"></i>
-        <i class="far fa-check-circle" data-control="check"></i>
-        <span class="task-name" contenteditable="true" data-placeholder="Add task name">${displayName}</span>
-        ${reactionsHTML} 
-        <button class="move-task-btn" data-control="move-task" title="Move to section">
-            <i class="fas fa-arrow-right-to-bracket"></i>
-        </button>
-    </div>
-    <div class="scrollable-columns-wrapper">
-        <div class="scrollable-columns">
-            <div class="task-col header-assignee" data-control="assignee">${createAssigneeHTML(task.assignees)}</div>
-            <div class="task-col header-due-date" data-control="due-date">${displayDate}</div>
-            <div class="task-col header-priority" data-control="priority">${createPriorityTag(task.priority)}</div>
-            <div class="task-col header-status" data-control="status">${createStatusTag(task.status)}</div>
-            ${customFieldsHTML}
+        <div class="fixed-column">
+            <i class="fas fa-grip-vertical drag-handle"></i>
+            <i class="far fa-check-circle" data-control="check"></i>
+            <span class="task-name" contenteditable="true">${displayName}</span>
         </div>
-    </div>
-`;
+        <div class="scrollable-columns-wrapper">
+            <div class="scrollable-columns">
+                <div class="task-col col-assignee" data-control="assignee">${task.assignee || ''}</div>
+                <div class="task-col col-due-date" data-control="due-date">${displayDate}</div>
+                <div class="task-col col-priority" data-control="priority">${task.priority || ''}</div>
+                <div class="task-col col-status" data-control="status">${task.status || ''}</div>
+                ${customFieldsHTML}
+            </div>
+        </div>
+    `;
     return rowWrapper;
 }
 

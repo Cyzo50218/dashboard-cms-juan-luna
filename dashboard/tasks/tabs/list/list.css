@@ -1,6 +1,9 @@
+/* ==========================================================================
+   1. ROOT VARIABLES
+   ========================================================================== */
 :root {
     --primary-bg: #ffffff;
-    --secondary-bg: #f9f9f9;
+    --secondary-bg: #f5faff;
     --border-color: #e9e9e9;
     --text-color: #1a1a1a;
     --text-secondary-color: #6c757d;
@@ -8,306 +11,228 @@
     --high-priority: #ff4d4f;
     --medium-priority: #ffa940;
     --low-priority: #52c41a;
-    --fixed-col-width: 40%;
-    --row-height: 0rem; /* Further reduced row height for more compactness */
-    --header-padding-y: 0.5rem; /* New variable for vertical header padding */
-    --column-padding-y: 0.2rem; /* New variable for vertical column padding */
+
+    --fixed-col-width: 450px;
+    --header-height: 2.8rem;
+    --row-height: 2.8rem;
 }
 
-
-
+/* ==========================================================================
+   2. MAIN APP LAYOUT
+   ========================================================================== */
 .list-view-container {
-    width: 100%;
-    height: 590px; /* Adjust 100px based on your actual site header/nav height */
-    margin: 0;
-    position: relative;
+    height: calc(100vh - 100px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background-color: var(--primary-bg);
 }
 
 .listview-header {
     display: flex;
-    /* This aligns all items to the start initially */
-    justify-content: flex-start; 
     align-items: center;
     flex-shrink: 0;
-    margin-bottom: 0;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 6px;
-}
-
-.header-controls-right {
-    display: flex;
-    gap: 0.5rem; /* Increased gap slightly for better visuals */
-    /* This is the key change: an auto left margin will push this
-       element all the way to the right of the flex container. */
-    margin-left: auto; 
-}
-button {
-    background-color: transparent;
-    border: 1px solid var(--text-secondary-color);
-    border-radius: 8px;
-    /* Slightly reduced button padding */
-    padding: 0.4rem 0.8rem;
-    cursor: pointer;
-    font-size: 0.85rem; /* Slightly smaller font size for buttons */
-    font-weight: 500;
-    color: var(--text-color);
-    transition: background-color 0.2s, color 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.4rem; /* Reduced gap inside buttons */
-}
-
-button:hover {
-    background-color: var(--text-color);
-    color: var(--primary-bg);
-    border-color: var(--text-color);
-}
-
-.dialog-button.primary {
-    background-color: var(--accent-color) !important;
-    color: white !important;
-    border: none !important;
-}
-
-.dialog-button.primary:hover {
-    background-color: #3b5bdb !important;
-    color: white !important;
-}
-
-.task-list-wrapper {
-    border-top: 1px solid var(--border-color);
-    border-bottom: 1px solid var(--border-color);
-    flex-grow: 1;
-    overflow: auto;
-    display: flex;
-    flex-direction: column;
-}
-
-.task-list-header,
-.task-row-wrapper,
-.task-list-footer {
-    display: flex;
-    transition: background-color 0.2s ease-in-out;
-    flex-shrink: 0;
-}
-
-.task-list-header,
-.task-row-wrapper {
-    border-bottom: 1px solid var(--border-color);
-}
-.task-list-header .fixed-column {
-    position: sticky;
-    z-index: 20;
-}
-.task-row-wrapper {
-    transition: opacity 0.4s ease-in-out;
-}
-
-.fixed-column-section {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-shrink: 0; /* Prevents this column from shrinking */
-    width: var(--fixed-col-width);
     padding: 0.5rem 1rem;
-    position: -webkit-sticky;
-    position: sticky;
-    left: 0; 
-    z-index: 10;
-    background-color: var(--primary-bg); /* Prevents scrolling content from showing through */
-}
-
-.fixed-column {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-shrink: 0; /* Prevents this column from shrinking */
-    width: var(--fixed-col-width);
-    padding: 0.5rem 1rem;
-    border-right: 1px solid var(--border-color);
-
-    /* THIS IS THE KEY FIX FOR THE STICKY COLUMN */
-    position: -webkit-sticky;
-    position: sticky;
-    left: 0; /* Sticks it to the left edge of the scrolling container */
-    z-index: 10;
-    background-color: var(--primary-bg); /* Prevents scrolling content from showing through */
-}
-
-.scrollable-columns-wrapper {
-    flex-grow: 1;
-    overflow-x: unset;
-}
-
-.scrollable-columns-wrapper::-webkit-scrollbar {
-    display: none;
-}
-
-.scrollable-columns {
-    display: flex;
-    min-width: max-content;
-    padding-right: 12rem;
-}
-
-.task-col {
-    /* Reduced padding for all task columns */
-    padding: var(--column-padding-y) 1rem; /* Uses new variable for y-padding */
-    box-sizing: border-box;
-    white-space: nowrap;
-    display: flex;
-    align-items: center;
-    position: relative;
-    transition: color 0.4s ease;
-}
-
-.task-list-header .task-col {
-    cursor: default;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .task-list-header {
-    background-color: transparent;
+    display: flex;
+    background-color: #f8f9fa;
     font-weight: 600;
-    position: -webkit-sticky;
-    position: sticky;
-    font-size: 0.75rem; /* Slightly smaller font size for header text */
+    font-size: 0.75rem;
     text-transform: uppercase;
-    color: var(--text-color);
-}
-
-.drag-handle {
-    opacity: 0;
-    color: var(--text-secondary-color);
-    transition: opacity 0.2s;
-    font-size: 1rem; /* Slightly smaller drag handle */
-    cursor: grab !important;
-}
-
-.header-assignee,
-.header-due-date,
-.header-priority,
-.header-status,
-.header-custom {
-    width: 150px;
-    flex-shrink: 0;
-    border-right: 1px solid var(--border-color);
-}
-
-.add-column-container {
-    display: flex;
-    align-items: center;
-    padding: 0.4rem; /* Adjusted padding */
-}
-
-#add-column-btn {
-    background: none;
-    border: none;
-    font-size: 0.9rem; /* Smaller plus icon */
-    cursor: pointer;
-    color: var(--text-secondary-color);
-}
-
-.delete-column-btn {
-    position: absolute;
-    top: 50%;
-    right: 5px;
-    transform: translateY(-50%);
-    display: none;
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--text-secondary-color);
-    padding: 0.2rem; /* Adjusted padding */
-}
-
-.task-col.header-custom:hover .delete-column-btn {
-    display: block;
-}
-
-.delete-column-btn:hover {
-    color: var(--text-color);
-    background-color: rgba(0, 0, 0, 0.05);
-    border-radius: 4px;
-}
-
-.section-header-list {
-    display: flex;
-    align-items: center;
-    font-weight: 600;
-    position: -webkit-sticky; /* Safari compatibility */
-    position: sticky;
-    cursor: grab;
+    color: #555;
     border-bottom: 1px solid var(--border-color);
-    min-height: var(--row-height);
+    min-height: var(--header-height);
 }
 
-.task-section:hover .section-header-list,
-.task-row-wrapper:hover {
+
+
+.task-list-body {
+    height: 500px;
+    overflow: auto;
+    position: relative;
+    border-bottom: 1px solid var(--border-color);
+    border-top: 1px solid var(--border-color);
+}
+
+/* ==========================================================================
+   3. ROW & SECTION STRUCTURE
+   ========================================================================== */
+.task-row-wrapper,
+.section-header-list,
+.section-summary-row {
+    display: flex;
+    width: max-content;
+    min-height: var(--row-height);
+    border-bottom: 1px solid var(--border-color);
+    box-sizing: border-box;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.task-row-wrapper:hover,
+.task-section:hover .section-header-list {
     background-color: var(--secondary-bg);
 }
 
-.section-header-list:hover .drag-handle,
-.task-row-wrapper:hover .drag-handle {
-    opacity: 1;
+.section-header-list {
+    top: 0;
+    z-index: 5;
+    background-color: var(--primary-bg);
+    font-weight: 600;
 }
 
-.section-toggle,
-.task-row-wrapper [data-control] {
-    cursor: pointer;
-}
-
-.section-toggle {
-    padding: 0 0.4rem; /* Adjusted padding */
-    transition: transform 0.2s ease-in-out;
-}
-
-.section-toggle.collapsed {
-    transform: rotate(-90deg);
-}
-
-.section-title,
-[contenteditable="true"] {
-    cursor: text;
-    position: sticky;
-}
-.section-scroll {
-    overflow-y: auto;
-    overflow-x: hidden;
-    flex-grow: 1;
+.section-summary-row {
+    background-color: #fafafa;
+    font-size: 13px;
 }
 
 .tasks-container.hidden {
     display: none;
 }
 
-[contenteditable="true"]:focus {
-    outline: 2px solid var(--accent-color);
+.no-results-message {
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-secondary-color);
+    font-style: italic;
+}
+/* ==========================================================================
+   FINAL FIX FOR "STUCK" HEADER SCROLL
+   ========================================================================== */
+
+/* This targets the scrollable part of the main header */
+.task-list-header .scrollable-columns-wrapper {
+    display: flex;      /* Ensures flex context */
+    overflow: hidden;   /* CRITICAL: This clips the content that is too wide */
+}
+
+/* This targets the inner container that holds the column titles */
+.task-list-header .scrollable-columns {
+    display: flex;
+    /* This tells the container not to shrink, even if its parent wants it to */
+    flex-shrink: 0; 
+}
+
+/* This targets every individual column title inside the header */
+.task-list-header .task-col {
+    /* CRITICAL: This prevents individual columns like "Assignee" or "Status" 
+       from shrinking to fit. They will always take up their defined width. */
+    flex-shrink: 0; 
+    
+    white-space: nowrap; /* Prevents the title text from wrapping to a new line */
+}
+
+/* A fallback to ensure all rows behave consistently, just in case */
+.task-row-wrapper .task-col,
+.section-header-list .task-col {
+    flex-shrink: 0;
+}
+
+/* ==========================================================================
+   4. STICKY & SCROLLABLE COLUMN MECHANICS
+   ========================================================================== */
+.fixed-column {
+    width: var(--fixed-col-width);
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
+    border-top: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+    position: sticky;
+    left: 0;
+    z-index: 20;
     background-color: white;
 }
 
-.task-name {
-    transition: color 0.4s ease, text-decoration-color 0.3s ease-in 0.1s;
-    text-decoration-color: transparent;
+.scrollable-columns-wrapper {
+    display: flex;
+    flex-grow: 1;
+    min-width: 0;
+    overflow: hidden;
 }
 
-.task-name.is-placeholder {
+.scrollable-columns {
+    display: flex;
+}
+
+/* ==========================================================================
+   5. UNIVERSAL COLUMN & GRID STYLING
+   ========================================================================== */
+.task-col {
+    padding: 6px 1rem;
+    box-sizing: border-box;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border-color);
+    position: relative;
+}
+
+.task-col:last-child {
+    border-right: none;
+}
+
+.col-assignee,
+.col-due-date,
+.col-priority,
+.col-status,
+.col-custom {
+    width: 150px;
+}
+
+.task-list-header .task-col {
+    /* CRITICAL: This prevents columns from shrinking. 
+       If this is missing, the header will not scroll. */
+    flex-shrink: 0; 
+    
+    /* These should also be present */
+    white-space: nowrap;
+    width: 150px; /* or your specific .col- class */
+}
+
+/* ==========================================================================
+   6. TASK CONTENT & CONTROLS (Checklist, Reactions, etc.)
+   ========================================================================== */
+.task-name {
+    font-weight: 500;
+    transition: color 0.4s ease, text-decoration-color 0.3s ease;
+}
+
+[contenteditable][data-placeholder]:empty::before {
+    content: attr(data-placeholder);
+    color: #888;
+    pointer-events: none;
+}
+
+.drag-handle {
+    opacity: 0;
     color: var(--text-secondary-color);
-    font-style: italic;
+    transition: opacity 0.2s;
+    cursor: grab !important;
+}
+
+.task-row-wrapper:hover .drag-handle,
+.section-header-list:hover .drag-handle {
+    opacity: 1;
 }
 
 .task-row-wrapper.is-completed {
     opacity: 0.7;
 }
 
-.task-row-wrapper.is-completed .task-name,
-.task-row-wrapper.is-completed .task-col {
+.task-row-wrapper.is-completed .task-name {
     color: var(--text-secondary-color);
-    text-decoration: none;
-    text-decoration-color: var(--text-secondary-color);
+    text-decoration: line-through;
 }
 
 .fa-check-circle {
     transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    cursor: pointer;
 }
 
 .is-completed .fa-check-circle {
@@ -317,170 +242,91 @@ button:hover {
     transform: scale(1.1);
 }
 
-.profile-picture-stack {
+.reaction-item {
+    cursor: pointer;
+    padding: 0 4px;
+}
+
+.reaction-item i.liked {
+    color: #ff0000;
+    font-weight: 900;
+}
+
+.assignee-cell-content {
     display: flex;
     align-items: center;
-}
-
-.profile-picture {
-    width: 24px; /* Slightly smaller profile picture */
-    height: 24px;
-    border-radius: 50%;
-    background-size: cover;
-    background-position: center;
-    border: 2px solid white;
-    background-color: #d8d8d8;
-}
-
-.add-task-in-section-btn,
-.add-section-btn {
-    border: none;
-    padding: 0.4rem 1.2rem; /* Adjusted padding */
-    margin-left: 3rem; /* Slightly reduced margin */
-    font-size: 0.85rem; /* Smaller font size */
-}
-
-.add-task-in-section-btn:hover,
-.add-section-btn:hover {
-    background: var(--secondary-bg);
-    color: var(--text-color);
-}
-
-.add-section-btn {
-    align-self: flex-start;
-    margin-left: 0;
-}
-
-.datepicker {
-    z-index: 120 !important;
-}
-
-.datepicker-controls {
-    border-bottom: 1px solid transparent !important;
-}
-
-.datepicker .datepicker-controls .button {
-    background-color: transparent !important;
-    border: 1px solid transparent !important;
-    border-radius: 6px !important;
-    color: var(--text-color) !important;
-    font-weight: 500 !important;
-}
-
-.datepicker .datepicker-controls .button:hover {
-    background-color: var(--secondary-bg) !important;
-}
-
-.datepicker-cell {
-    background-color: transparent !important;
-    border-radius: 50% !important;
-    border: 1px solid transparent !important;
-}
-
-.datepicker-cell:not(.selected):not(.disabled):not(.focused):hover {
-    background-color: var(--secondary-bg) !important;
-}
-
-.datepicker-cell.selected,
-.datepicker-cell.selected:hover {
-    background-color: transparent !important;
-    border-color: var(--accent-color) !important;
-    color: var(--accent-color) !important;
-    font-weight: 600 !important;
-}
-
-.datepicker-cell.today:not(.selected) {
-    background-color: transparent !important;
-    border-color: var(--low-priority) !important;
-    color: var(--low-priority) !important;
-}
-
-/* Your existing style for the dropdown container */
-.context-dropdown {
-    position: absolute;
-    z-index: 110;
-    background: var(--primary-bg);
-    border: 1px solid var(--border-color);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    border-radius: 6px;
-    padding: 0.5rem 0;
-    min-width: 150px;
-}
-
-/* New/Updated styles for the items INSIDE the dropdown for alignment */
-.context-dropdown .dropdown-item {
-    display: flex;
-    align-items: center;   /* Vertically aligns the swatch/icon with the text */
-    gap: 6px;              /* Creates space between the swatch/icon and text */
-    position: relative;    /* Required for positioning the edit button */
-    padding: 0.4rem 0.8rem; /* Add padding to the items themselves */
+    gap: 0.75rem;
+    width: 100%;
     cursor: pointer;
 }
 
-/* Style for the color swatch */
-.dropdown-color-swatch {
-    width: 14px;
-    height: 14px;
-    border-radius: 3px;
-    flex-shrink: 0; /* Prevents the swatch from shrinking */
-}
-
-/* A placeholder to maintain alignment for items without a color or icon */
-.dropdown-color-swatch-placeholder {
-    width: 14px;
-    height: 14px;
-    flex-shrink: 0;
+/* ==========================================================================
+   7. BUTTONS & INTERACTIVE ELEMENTS
+   ========================================================================== */
+button {
+    background-color: transparent;
+    border: 1px solid var(--text-secondary-color);
+    border-radius: 8px;
+    padding: 0.4rem 0.8rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-color);
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 0.4rem;
+    transition: background-color 0.2s, color 0.2s;
 }
 
-/* Style for the new edit button that appears on hover */
-.dropdown-item-edit-btn {
-    background: #e0e0e0;
+button:hover {
+    background-color: var(--text-color);
+    color: var(--primary-bg);
+    border-color: var(--text-color);
+}
+
+.header-controls-right {
+    display: flex;
+    gap: 0.5rem;
+    margin-left: auto;
+}
+
+#filter-btn.active, #sort-btn.active {
+    background-color: #e0eaff;
+    color: #0052cc;
+}
+
+.delete-column-btn {
+    position: absolute; top: 50%; right: 5px; transform: translateY(-50%);
+    display: none; background: none; border: none; cursor: pointer;
+    color: var(--text-secondary-color); padding: 0.2rem;
+}
+
+.task-col.header-custom:hover .delete-column-btn {
+    display: block;
+}
+
+.move-task-btn {
+    background: transparent; border: none; cursor: pointer;
+    color: var(--text-secondary-color); padding: 0.2rem;
+    margin-left: auto; opacity: 0;
+    transition: opacity 0.2s, color 0.2s;
+}
+.task-row-wrapper:hover .move-task-btn { opacity: 0.6; }
+.move-task-btn:hover { opacity: 1; color: var(--accent-color); }
+
+.add-task-in-section-btn {
     border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    padding: 2px 5px;
-    margin-left: auto;   /* Pushes the button to the far right */
-    display: none;       /* Hidden by default */
+    font-weight: normal;
+}
+.add-task-in-section-btn:hover {
+    background-color: var(--secondary-bg);
+    color: var(--text-color);
 }
 
-.dropdown-item:hover {
-    background-color: var(--hover-bg-color, #f0f0f0); /* Use a hover variable or a default */
-}
-
-.dropdown-item:hover .dropdown-item-edit-btn {
-    display: inline-block; /* Show the edit button on hover */
-}
-
-.dropdown-item-edit-btn:hover {
-    background: #c7c7c7;
-}
-
-/* Style for the separator line */
-.context-dropdown hr.dropdown-separator {
-    margin: 0.5rem 0;
-    border: none;
-    border-top: 1px solid var(--border-color);
-}
-
-/* NEW: Styles for the color swatch inside the dropdown */
-.dropdown-color-swatch {
-    width: 4px;
-    height: 14px;
-    border-radius: 4px; /* A squircle looks nice with your tags */
-    flex-shrink: 0; /* Prevents the swatch from shrinking */
-    border: 1px solid rgba(0, 0, 0, 0.1); /* A faint border for light colors */
-}
-
-/* NEW: Placeholder for options without a color to keep text perfectly aligned */
-.dropdown-color-swatch-placeholder {
-    width: 4px;
-    height: 14px;
-    flex-shrink: 0;
-}
-
+/* ==========================================================================
+   8. COMPONENT STYLES: TAGS, AVATARS, FILTERS
+   ========================================================================== */
 /* --- Tag Styles (Priority & Status) --- */
 .priority-tag,
 .status-tag {
@@ -527,199 +373,16 @@ button:hover {
     color: var(--text-secondary-color);
 }
 
-.task-list-footer {
-    border-top: 2px solid var(--border-color);
-    font-weight: 600;
+.profile-picture, .assignee-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+    border: 2px solid white;
+    flex-shrink: 0;
 }
 
-.task-list-footer .task-col {
-    color: var(--text-secondary-color);
-    justify-content: flex-end;
-}
-
-.dialog-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.6);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 2000;
-}
-
-.dialog-box {
-    background: var(--primary-bg);
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    width: 90%;
-    max-width: 450px;
-}
-
-.dialog-header {
-    padding: 0.8rem 1.2rem; /* Adjusted padding */
-    font-size: 1rem; /* Slightly smaller font */
-    font-weight: 600;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.dialog-body {
-    padding: 1.2rem; /* Adjusted padding */
-}
-
-.dialog-footer {
-    padding: 0.8rem 1.2rem; /* Adjusted padding */
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.4rem; /* Adjusted gap */
-    border-top: 1px solid var(--border-color);
-}
-
-.dialog-body .form-group {
-    margin-bottom: 1rem; /* Adjusted margin */
-}
-
-.dialog-body label {
-    display: block;
-    margin-bottom: 0.4rem; /* Adjusted margin */
-    font-weight: 500;
-    font-size: 0.85rem; /* Adjusted font size */
-}
-
-.dialog-body select,
-.dialog-body input {
-    width: 100%;
-    padding: 0.5rem; /* Adjusted padding */
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    box-sizing: border-box;
-    background-color: white;
-}
-
-.dialog-preview-box {
-    margin-top: 0.8rem; /* Adjusted margin */
-    padding: 0.8rem; /* Adjusted padding */
-    background-color: var(--secondary-bg);
-    border: 1px dashed var(--border-color);
-    border-radius: 6px;
-}
-
-.dialog-preview-box p {
-    margin: 0;
-    font-size: 0.85rem; /* Adjusted font size */
-    color: var(--text-secondary-color);
-}
-
-.dialog-preview-box .preview-value {
-    font-weight: 600;
-    color: var(--text-color);
-    font-size: 0.9rem; /* Adjusted font size */
-    margin-top: 0.4rem; /* Adjusted margin */
-}
-
-.context-dropdown.assignee-dropdown {
-    padding: 0;
-}
-
-.dropdown-search-container {
-    padding: 0.4rem; /* Adjusted padding */
-    border-bottom: 1px solid var(--border-color);
-}
-
-.dropdown-search-input {
-    border: none;
-    outline: none;
-    width: 100%;
-    background: transparent;
-    font-size: 0.85rem; /* Adjusted font size */
-    padding: 0.2rem 0.4rem; /* Adjusted padding */
-}
-
-.dropdown-list {
-    max-height: 180px; /* Slightly reduced max height */
-    overflow-y: auto;
-    padding: 0.4rem 0; /* Adjusted padding */
-}
-
-.dropdown-item .user-info {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem; /* Reduced gap */
-}
-
-.dropdown-item .profile-picture {
-    width: 22px; /* Even smaller profile picture */
-    height: 22px;
-    font-size: 0.55rem;
-}
-
-.dropdown-item .assigned-check {
-    color: var(--accent-color);
-    font-size: 0.8em; /* Adjusted font size */
-}
-
-/* --- Styles for Filter/Sort Buttons and Dialogs --- */
-
-/* Add a visual indicator to buttons when a filter or sort is active */
-#filter-btn.active, #sort-btn.active {
-    background-color: #e0eaff; /* A light blue to show it's active */
-    color: #0052cc;
-}
-
-/* Style for the main dialog overlay */
-.dialog-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-}
-
-/* --- Styles for NEW Enhanced Features --- */
-
-/* Search Bar in Header */
-.listview-search-container {
-    display: flex;
-    align-items: center;
-    background-color: var(--secondary-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    padding: 0 0.5rem;
-    margin-left: 1rem;
-}
-.listview-search-container .fa-search {
-    color: var(--text-secondary-color);
-    font-size: 0.8rem;
-}
-#task-search-input {
-    border: none;
-    background: transparent;
-    outline: none;
-    padding: 0.4rem 0.5rem;
-    width: 250px;
-}
-
-/* Container for Active Filter Tags */
-#active-filters-container {
-    padding: 0.5rem 1rem;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    border-bottom: 1px solid var(--border-color);
-    background-color: #fdfdfd;
-}
-#active-filters-container:empty {
-    display: none; /* Hide the container when no filters are active */
-}
-
-/* Individual Filter Tag styling */
 .filter-tag {
     display: flex;
     align-items: center;
@@ -729,579 +392,77 @@ button:hover {
     border-radius: 4px;
     padding: 0.2rem 0.2rem 0.2rem 0.6rem;
 }
-.filter-tag strong {
-    margin-left: 4px;
-}
 .remove-tag-btn {
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    font-size: 1rem;
-    line-height: 1;
-    margin-left: 0.4rem;
-    padding: 0;
-    color: #4361ee;
-    opacity: 0.7;
-}
-.remove-tag-btn:hover {
-    opacity: 1;
+    background: transparent; border: none; cursor: pointer;
+    font-size: 1rem; line-height: 1; margin-left: 0.4rem;
+    padding: 0; color: #4361ee; opacity: 0.7;
 }
 
-/* "No Results" Message */
-.no-results-message {
-    padding: 2rem;
-    text-align: center;
-    color: var(--text-secondary-color);
-    font-style: italic;
-}
+/* ==========================================================================
+   9. COMPONENT STYLES: DIALOGS & OVERLAYS
+   ========================================================================== */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes popIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 
-/* --- DIALOG & FILTER PANEL STYLES --- */
-
-/* This creates the dark, full-screen background overlay and centers the dialog */
 .dialog-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.6);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 2000; /* Ensures it's on top of everything else */
-}
-
-/* This is the white dialog box itself */
-.dialog-box {
-    background-color: #ffffff;
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    width: 90%;
-    max-width: 400px; /* You can adjust this width */
-    display: flex;
-    flex-direction: column;
-}
-
-/* Styles for the header area of the dialog */
-.dialog-header {
-    padding: 1rem 1.5rem;
-    font-size: 1.1rem;
-    font-weight: 600;
-    border-bottom: 1px solid #e9e9e9;
-}
-
-/* Styles for the main content area of the dialog */
-.dialog-body {
-    padding: 1rem 1.5rem;
-}
-
-.filter-dialog fieldset {
-    border: none;
-    padding: 0;
-    margin: 0;
-}
-
-.filter-dialog legend {
-    font-weight: 500;
-    margin-bottom: 0.5rem;
-    font-size: 0.9rem;
-    color: #6c757d;
-}
-
-.filter-dialog hr {
-    border: none;
-    border-top: 1px solid #e9e9e9;
-    margin: 0.75rem 0;
-}
-
-/* Styles the list of checkboxes */
-.section-checkbox-list {
-    max-height: 200px;
-    overflow-y: auto;
-}
-
-.filter-dialog label {
-    display: block;
-    padding: 0.5rem 0;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.filter-dialog label:hover {
-    background-color: #f9f9f9;
-}
-
-/* Styles for the footer with the "Apply" button */
-.dialog-footer {
-    padding: 1rem 1.5rem;
-    display: flex;
-    justify-content: flex-end;
-    border-top: 1px solid #e9e9e9;
-    background-color: #f9f9f9;
-}
-/* CSS for the task name placeholder */
-[contenteditable][data-placeholder]:empty::before {
-    content: attr(data-placeholder);
-    color: #888; /* Placeholder text color */
-    pointer-events: none;
-    display: inline-block;
-}
-
-/* --- Modern Dialog Design --- */
-
-/* Keyframes for smooth animations */
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes popIn {
-    from {
-        opacity: 0;
-        transform: scale(0.95) translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-    }
-}
-
-/* The full-screen backdrop */
-.filterlistview-dialog-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(10, 20, 30, 0.5); /* A darker, slightly blue overlay */
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(10, 20, 30, 0.5);
+    display: flex; align-items: center; justify-content: center;
     z-index: 2000;
     animation: fadeIn 0.3s ease-out forwards;
 }
 
-/* The main dialog container */
-.filterlistview-dialog-box {
+.dialog-box {
     background-color: #ffffff;
     border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1), 0 1px 4px rgba(0, 0, 0, 0.05);
-    border: 1px solid #ededed;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
     width: 90%;
     max-width: 420px;
     display: flex;
     flex-direction: column;
     animation: popIn 0.3s ease-out forwards;
 }
+.dialog-header { padding: 1.25rem 1.5rem; font-size: 1.1rem; font-weight: 600; border-bottom: 1px solid var(--border-color); }
+.dialog-body { padding: 1rem 1.5rem; }
+.dialog-footer { padding: 1rem 1.5rem; display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid var(--border-color); background-color: #f9f9f9; }
+.dialog-button.primary { background-color: var(--accent-color); color: white; border: none; }
+.dialog-body label { display: block; margin-bottom: 0.4rem; font-weight: 500; }
+.dialog-body select, .dialog-body input { width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 6px; }
 
-/* Dialog Header Styling */
-.filterlistview-dialog-header {
-    padding: 1.25rem 1.5rem;
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: #1a1a1a;
-    border-bottom: 1px solid #e9e9e9;
-}
+/* Filter Dialog Specifics */
+.filter-dialog fieldset { border: none; padding: 0; margin: 0; }
+.filter-dialog legend { font-weight: 500; margin-bottom: 0.5rem; font-size: 0.9rem; color: #6c757d; }
+.filter-dialog hr { border: none; border-top: 1px solid #e9e9e9; margin: 0.75rem 0; }
+.section-checkbox-list { max-height: 200px; overflow-y: auto; }
+.filter-dialog label { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.25rem; cursor: pointer; border-radius: 6px; }
+.filter-dialog label:hover { background-color: #f9f9f9; }
 
-/* Dialog Body Styling */
-.filterlistview-dialog-body {
-    padding: 1rem 1.5rem;
-    font-size: 0.95rem;
-}
-
-.filterlistview-filter-dialog fieldset {
-    border: none;
-    padding: 0;
-    margin: 0;
-}
-
-.filterlistview-filter-dialog legend {
-    font-weight: 500;
-    padding: 0;
-    margin-bottom: 0.75rem;
-    font-size: 0.9rem;
-    color: #6c757d;
-}
-
-.filterlistview-filter-dialog hr {
-    border: none;
-    border-top: 1px solid #e9e9e9;
-    margin: 0.75rem 0;
-}
-
-/* The container for the list of section checkboxes */
-.filterlistview-section-checkbox-list {
-    max-height: 250px;
-    overflow-y: auto;
-    margin-right: -1.5rem; /* Hides scrollbar visually on some browsers */
-    padding-right: 1.5rem; /* Adds the space back */
-}
-
-/* Custom Checkbox Styling */
-.filterlistview-filter-dialog label {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.6rem 0.25rem;
-    cursor: pointer;
+/* ==========================================================================
+   10. COMPONENT STYLES: DROPDOWNS & MENUS
+   ========================================================================== */
+.context-dropdown {
+    position: absolute;
+    z-index: 110;
+    background: var(--primary-bg);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     border-radius: 6px;
-    transition: background-color 0.2s ease;
-}
-
-.filterlistview-filter-dialog label:hover {
-    background-color: #f9f9f9;
-}
-
-.filterlistview-filter-dialog input[type="checkbox"] {
-    /* Hide the default checkbox */
-    appearance: none;
-    -webkit-appearance: none;
-    margin: 0;
-    
-    /* Custom checkbox styles */
-    height: 1.25em;
-    width: 1.25em;
-    background-color: #f0f0f0;
-    border: 1px solid #d9d9d9;
-    border-radius: 4px;
-    cursor: pointer;
-    display: grid;
-    place-content: center;
-    transition: background-color 0.2s, border-color 0.2s;
-}
-
-.filterlistview-filter-dialog input[type="checkbox"]::before {
-    content: '';
-    width: 0.65em;
-    height: 0.65em;
-    transform: scale(0);
-    transition: 120ms transform ease-in-out;
-    box-shadow: inset 1em 1em #4c6ef5; /* Accent color for the checkmark */
-    transform-origin: bottom left;
-    clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
-}
-
-.filterlistview-filter-dialog input[type="checkbox"]:checked {
-    background-color: #4c6ef5;
-    border-color: #4c6ef5;
-}
-
-.filterlistview-filter-dialog input[type="checkbox"]:checked::before {
-    transform: scale(1);
-    box-shadow: inset 1em 1em #ffffff; /* White checkmark */
-}
-
-/* Dialog Footer Styling */
-.filterlistview-dialog-footer {
-    padding: 1rem 1.5rem;
-    display: flex;
-    justify-content: flex-end;
-    border-top: 1px solid #e9e9e9;
-    background-color: #f9f9f9;
-    border-bottom-left-radius: 12px;
-    border-bottom-right-radius: 12px;
-}
-
-/* Dialog Button Styling */
-.filterlistview-dialog-button {
-    border: none;
-    padding: 0.6rem 1.2rem;
-    font-size: 0.9rem;
-    font-weight: 600;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: transform 0.1s ease, background-color 0.2s ease;
-}
-
-.filterlistview-dialog-button:active {
-    transform: scale(0.97); /* Press-down effect */
-}
-
-.filterlistview-primary {
-    background-color: #4c6ef5;
-    color: white;
-}
-
-.filterlistview-primary:hover {
-    background-color: #3b5bdb;
-}
-
-/* --- Assignee Selection Dialog Specific Styles --- */
-
-.assignee-dialog .filterlistview-dialog-body {
-    padding: 0; /* Remove body padding to allow for full-width list items */
-}
-
-.assignee-dialog-search {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem 1.5rem;
-    border-bottom: 1px solid #e9e9e9;
-}
-
-.assignee-dialog-search .fa-search {
-    color: #999;
-}
-
-#assignee-search-input {
-    border: none;
-    outline: none;
-    background: transparent;
-    width: 100%;
-    font-size: 1rem;
-}
-
-.assignee-list {
-    max-height: 300px;
-    overflow-y: auto;
     padding: 0.5rem 0;
+    min-width: 150px;
 }
-
-.assignee-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.75rem 1.5rem;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
+.context-dropdown .dropdown-item {
+    display: flex; align-items: center; gap: 6px;
+    padding: 0.4rem 0.8rem; cursor: pointer;
 }
-
-.assignee-item:hover {
-    background-color: #f9f9f9;
+.context-dropdown .dropdown-item:hover {
+    background-color: var(--secondary-bg);
 }
-
-.assignee-info {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-.assignee-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    object-fit: cover;
-}
-
-.assignee-name {
-    font-weight: 500;
-}
-
-/* Use the same modern checkbox style from the filter dialog */
-.assignee-checkbox {
-    appearance: none;
-    -webkit-appearance: none;
-    margin: 0;
-    height: 1.25em;
-    width: 1.25em;
-    background-color: #f0f0f0;
-    border: 1px solid #d9d9d9;
-    border-radius: 4px;
-    cursor: pointer;
-    display: grid;
-    place-content: center;
-    transition: background-color 0.2s, border-color 0.2s;
-}
-
-.assignee-checkbox::before {
-    content: '';
-    width: 0.65em;
-    height: 0.65em;
-    transform: scale(0);
-    transition: 120ms transform ease-in-out;
-    box-shadow: inset 1em 1em var(--accent-color, #4c6ef5);
-    transform-origin: bottom left;
-    clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
-}
-
-.assignee-checkbox:checked {
-    background-color: var(--accent-color, #4c6ef5);
-    border-color: var(--accent-color, #4c6ef5);
-}
-
-.assignee-checkbox:checked::before {
-    transform: scale(1);
-    box-shadow: inset 1em 1em #ffffff;
-}
-
-/* --- New styles for the assigned user cell --- */
-
-.assignee-cell-content {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    width: 100%;
-    cursor: pointer;
-}
-
-.assignee-details {
-    display: flex;
-    flex-direction: column;
-    line-height: 1.2;
-    overflow: hidden; /* Prevents long text from breaking layout */
-}
-
-.assignee-name {
-    font-weight: 500;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    overflow: hidden;
-}
-
-.assignee-email {
-    font-size: 0.8rem;
-    color: var(--text-secondary-color, #6c757d);
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    overflow: hidden;
-}
-
-.remove-assignee-btn {
-    background: transparent;
+hr.dropdown-separator {
+    margin: 0.5rem 0;
     border: none;
-    color: #999;
-    cursor: pointer;
-    font-size: 1.5rem;
-    line-height: 1;
-    padding: 0 0.5rem;
-    margin-left: auto; /* Pushes the button to the far right */
-    opacity: 0;
-    transition: opacity 0.2s, color 0.2s;
+    border-top: 1px solid var(--border-color);
 }
-
-/* Show the remove button on hover */
-.assignee-cell-content:hover .remove-assignee-btn {
-    opacity: 1;
-}
-
-.remove-assignee-btn:hover {
-    color: #333;
-}
-
-.add-assignee-btn {
-    display: grid;
-    place-content: center;
-    width: 28px;
-    height: 28px;
-    border: 1px dashed #ccc;
-    color: #999;
-    border-radius: 50%;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-.add-assignee-btn:hover {
-    background-color: #f0f0f0;
-    color: #333;
-    border-style: solid;
-}
-
-/* Add to your project's stylesheet */
-.section-summary-row {
-    display: flex;
-    font-size: 13px;
-    color: #333; /* Slightly darker text */
-}
-
-/* Ensure empty cells in the summary row maintain proper height and alignment */
-.section-summary-row .task-col,
-.section-summary-row .fixed-column {
-    min-height: 36px;
-    display: flex;
-    align-items: center;
-    position: sticky;
-    padding-right: 10px;
-}
-
-/* Add padding to the summary value cell for better spacing */
-.section-summary-row .task-col.header-custom {
-    padding-left: 10px;
-}
-
-/* ADD THIS CSS TO YOUR STYLESHEET */
-
-.move-task-btn {
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    color: var(--text-secondary-color);
-    padding: 0.2rem;
-    margin-left: auto; /* Pushes it to the far right of the fixed column */
-    opacity: 0; /* Hidden by default */
-    transition: opacity 0.2s, color 0.2s;
-}
-
-/* Show the move button when hovering over the task row */
-.task-row-wrapper:hover .move-task-btn {
-    opacity: 0.6;
-}
-
-.move-task-btn:hover {
-    opacity: 0.10;
-    background: transparent;
-    color: var(--accent-color);
-}
-
-/*
- * Style for the reaction icons in the task list.
- */
-
-/* Targets the heart icon <i> element specifically when it has the 'liked' class */
-.reaction-item i.liked {
-  color: #ff0000; /* This is pure red */
-  font-weight: 900; /* Makes the Font Awesome solid icon appear correctly */
-}
-
-/* Optional: Add a smooth color transition for a nicer user experience */
-.reaction-item i {
-  transition: color 0.2s ease-in-out;
-}
-
-/* Optional: Make the icons slightly larger and more clickable */
-.reaction-item {
-  cursor: pointer;
-  padding: 0 4px; /* Adds a little space around the icons */
-}
-
-.reaction-item:hover i {
-  color: #e74c3c; /* A slightly softer red on hover for non-liked hearts */
-}
-
-.reaction-item:hover i.liked {
-  color: #cc0000; /* A slightly darker red on hover for already liked hearts */
-}
-
-/*
-This targets the summary row at the bottom of a section.
-We add padding to give it space that matches the task rows.
-*/
-.section-summary-row {
-  border-top: 1px solid #e9e9e9; /* Visually separates it from the tasks */
-}
-
-/*
-This targets the Add Task button specifically within that final row.
-*/
-.section-summary-row .add-task-in-section-btn {
-  width: auto;
-  margin-left: 20px; /* Aligns with the start of the task names */
-  text-align: left;
-  background-color: transparent;
-  border: none;
-  gap: 4px;
-  color: #1D1E1E; /* A subtle gray color */
-  font-weight: normal;
-  border-radius: 4px;
-}
-
-.section-summary-row .add-task-in-section-btn:hover {
-    background-color: #f0f0f0; /* A light background on hover */
-    color: #1D1E1E;
-}
-
-/* This keeps the summary text aligned properly */
-.section-summary-row .task-col {
-    padding-left: 8px;
+.dropdown-color-swatch {
+    width: 14px; height: 14px;
+    border-radius: 3px; flex-shrink: 0;
 }

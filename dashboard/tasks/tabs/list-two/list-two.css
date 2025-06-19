@@ -196,29 +196,22 @@ button {
 
 
 /* --- Section Styling --- */
-
-/* A section row's first cell is also a sticky task cell */
 .section-title-cell {
     justify-content: space-between;
     font-weight: 600;
     background-color: white;
     transition: background-color 0.15s ease-in-out;
 }
-
 .section-title-cell:hover {
     background-color: var(--secondary-bg);
 }
-
-/* All other cells in a section row */
 .section-placeholder-cell {
     background-color: transparent;
     transition: background-color 0.15s ease-in-out;
 }
-
 .section-placeholder-cell:hover {
     background-color: var(--secondary-bg);
 }
-
 .section-title-wrapper {
     display: flex;
     font-size: 14px;
@@ -228,28 +221,20 @@ button {
 .section-toggle {
     cursor: pointer;
 }
-
-
-/* Apply smaller font size universally for task and header cells */
 .header-cell,
 .task-cell {
     font-size: var(--font-size-small);
     padding: var(--task-row-padding);
 }
-
-/* Make section title rows compact */
 .section-title-cell,
 .section-placeholder-cell {
     font-size: var(--section-font-size);
     padding: 4px 4px;
 }
-
-/* Optional: shrink section toggle as well */
 .section-toggle {
     font-size: 8px;
     padding: 2px;
 }
-
 .task-name-wrapper {
     display: flex;
     align-items: center;
@@ -258,19 +243,16 @@ button {
     cursor: grab;
     user-select: none;
 }
-
 .drag-handle {
     margin-right: 4px;
     opacity: 0;
     transition: opacity 0.2s ease;
     color: #4b5563;
 }
-
 .task-row-wrapper:hover .drag-handle,
 .section-row-wrapper:hover .drag-handle {
     opacity: 1;
 }
-
 
 .section-toggle {
     color: #6b7280; /* Gray-500 */
@@ -282,16 +264,12 @@ button {
 .section-toggle:hover {
     color: #374151; /* Gray-700 on hover */
 }
-
 .section-row-wrapper.collapsed .section-toggle i {
     transform: rotate(0deg);
 }
-
 .section-row-wrapper:not(.collapsed) .section-toggle i {
     transform: rotate(90deg); /* for fa-chevron-right → fa-chevron-down */
 }
-
-
 .check-icon {
     color: #d1d5db;
     font-size: 14px;
@@ -317,16 +295,12 @@ button {
     height: 100%;
     width: 100%;
 }
-
-/* Hide the icon by default */
 .add-task-icon {
     opacity: 0;
     transform: scale(0.8);
     transition: opacity 0.2s ease, transform 0.2s ease;
     color: #3b3b3b; /* Optional: style for when shown */
 }
-
-/* Show the icon only when hovering the whole cell */
 .add-task-cell:hover .add-task-icon {
     opacity: 1;
     transform: scale(1);
@@ -344,20 +318,18 @@ button {
     background: transparent;
     border: none;
     outline: none;
-    color: #6b7280; /* Neutral gray (hidden subtly if shown) */
+    color: #6b7280; 
     opacity: 0;
     transition: opacity 0.2s ease;
     cursor: pointer;
     padding: 4px;
     margin-right: 6px;
 }
-
-/* Show the button when hovering the whole section row */
 .section-title-cell:hover .section-options-btn {
     opacity: 1;
 }
 .section-options-btn:hover i {
-    color: #374151; /* Darker gray */
+    color: #374151; 
 }
 .options-btn-wrapper {
     position: relative;
@@ -418,7 +390,6 @@ button {
 .task-row-wrapper.sortable-chosen {
     opacity: 0.3;
 }
-
 .task-row-wrapper.sortable-drag {
     opacity: 1 !important;
     background: var(--primary-bg);
@@ -426,13 +397,9 @@ button {
     z-index: 9999 !important;
     display: grid !important;
 }
-
-/* Hides contents during ghost phase */
 .sortable-ghost .task-cell {
     visibility: hidden;
 }
-
-/* Additional visual effect when task is part of dragged group */
 .is-following-drag {
     opacity: 0.6;
 }
@@ -442,50 +409,91 @@ button {
 --------------------------------------------- */
 .grid-wrapper {
   display: grid;
-  grid-auto-rows: min-content; /* ensures rows fit content height */
+  grid-auto-rows: min-content; 
 }
 
 .section-wrapper {
-  display: contents; /* acts like grid rows, enables Sortable.js to treat it as one unit */
+  display: contents; 
 }
 
 .section-block {
-  display: contents; /* ensures internal rows are in the grid directly */
+  display: contents; 
 }
 
-/* Section - During Drag */
-.section-block.sortable-chosen {
-    opacity: 0.5;
-    transform: scale(1.02);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-    background: #f9f9f9;
-    z-index: 1000;
-    transition: transform 0.2s ease;
+/* =================================================================
+  REFINED "CLONE" METHOD STYLES (Motion-Friendly & Smooth)
+================================================================= */
+
+/* 1. Base transition for all rows and sections.
+   - Using a standard easing curve for a professional feel.
+   - Added will-change for performance optimization. */
+.grid-row-wrapper, .section-wrapper {
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform, opacity;
 }
 
-/* Section - Ghost placeholder */
-.section-block.sortable-ghost {
-    background: #dfe6e9;
-    border: 2px dashed #b2bec3;
-    min-height: 50px;
-    border-radius: 8px;
-    opacity: 0.7;
+/*
+  2. "Focus Mode" - Gently dim other rows during drag.
+   - Replaced grayscale filter with simple opacity for a softer, less dizzying effect.
+*/
+body.is-dragging > * .grid-row-wrapper:not(.dragging):not(.drag-placeholder-ghost),
+body.is-dragging > * .section-wrapper:not(.dragging):not(.drag-placeholder-ghost) {
+    opacity: 0.6;
 }
 
-/* Section - Active dragging clone */
-.section-block.sortable-drag {
-    background: #ffffff;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-    transform: scale(1.03) rotate(1deg);
-    border-radius: 8px;
+
+/* 3. Style for the ORIGINAL item being dragged.
+   - It becomes nearly transparent, creating the "ghost" effect.
+*/
+.section-wrapper.dragging {
+    opacity: 0.3;
+    position: relative;
+    z-index: 999;
+    background: transparent;
+    border: 2px dashed #4f46e5;
+    box-shadow: 0 8px 25px rgba(100, 116, 139, 0.2);
+    color: transparent;
+    border-radius: 6px;
+    height: auto;
+    /* transform: scale(0.98); Optional: can be enabled for a shrink effect */
+}
+
+/*
+  4. NEW: A class for the smooth "drop" animation at the end.
+   - This makes the element smoothly fade back in when dropped.
+*/
+.drop-animation {
+    z-index: 999;
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+
+/* 5. Style for the placeholder (the visual drop indicator).
+   - This is taken directly from your provided CSS.
+*/
+.drag-placeholder-ghost {
+    position: relative;
+    z-index: 999;
+    background: transparent;
+    border: 2px dashed #4f46e5;
+    box-shadow: 0 8px 25px rgba(100, 116, 139, 0.2);
+    color: transparent;
     opacity: 1 !important;
-    z-index: 10000;
-    cursor: grabbing;
-    overflow: hidden;
+    border-radius: 6px;
+    height: auto;
 }
 
-.drag-ghost {
-    transform: scale(1.02);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    background-color: #f9f9f9;
+/* Hide content inside the placeholder */
+.drag-placeholder-ghost > * {
+    visibility: hidden;
+}
+
+/* 6. Global styles for the body during a drag operation */
+body.is-dragging {
+    cursor: grabbing;
+}
+body.is-dragging * {
+    user-select: none;
 }
