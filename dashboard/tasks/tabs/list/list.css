@@ -1516,18 +1516,18 @@ margin-left: 6px;
 /* Optional upper/lower limits if needed */
 @media screen and (max-height: 700px) {
     .list-view-container {
-        height: 50vh; /* Smaller screens, shrink container */
+        height: 60vh; /* Smaller screens, shrink container */
     }
 }
 
 @media screen and (min-height: 1600px) {
     .list-view-container {
-        height: 65vh; /* 30-inch and up screens */
+        height: 80vh; /* 30-inch and up screens */
     }
 }
 
 @media screen and (min-height: 2000px) {
     .list-view-container {
-        height: 70vh; /* 4K+ monitors */
+        height: 90vh; /* 4K+ monitors */
     }
 }
