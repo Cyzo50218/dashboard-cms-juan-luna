@@ -253,7 +253,7 @@ button {
 }
 
 .editable-custom-field[contenteditable] {
-    min-width: 60px; /* or 100px depending on your layout */
+    min-width: 100px; /* or 100px depending on your layout */
     display: inline-block; /* ensure span can have width */
     padding: 2px 6px;
     border-radius: 4px;
