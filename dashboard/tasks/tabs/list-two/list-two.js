@@ -46,6 +46,7 @@ let headerClickListener, bodyClickListener, bodyFocusOutListener, addTaskHeaderB
 let sortableSections;
 let activeMenuButton = null;
 const sortableTasks = [];
+let isSortActive = false; 
 
 // --- Data ---
 let project = { customColumns: [], sections: [] };
@@ -1075,6 +1076,7 @@ function render() {
     // 2. Create the single grid wrapper that will contain ALL cells
     const gridWrapper = document.createElement('div');
     gridWrapper.className = 'grid-wrapper';
+    
     taskListBody.appendChild(gridWrapper);
 
     // 3. Define and apply the grid column template
@@ -1094,6 +1096,20 @@ function render() {
     // 4. Render header and body cells directly into the grid wrapper
     renderHeader(projectToRender, gridWrapper);
     renderBody(projectToRender, gridWrapper);
+
+    // 👇 Update sort button state and flag
+ isSortActive = activeSortState !== 'default';
+
+if (sortBtn) {
+    if (activeSortState === 'asc') {
+        sortBtn.innerHTML = `<i class="fas fa-sort-amount-up-alt"></i> Oldest`;
+    } else if (activeSortState === 'desc') {
+        sortBtn.innerHTML = `<i class="fas fa-sort-amount-down-alt"></i> Newest`;
+    } else {
+        sortBtn.innerHTML = `<i class="fas fa-sort"></i> Sort`;
+    }
+}
+
 
     // Drag and drop and focus logic remain
     initDragAndDrop();
@@ -1138,26 +1154,35 @@ function renderHeader(projectToRender, container) {
 
 function renderBody(projectToRender, container) {
     const customColumns = projectToRender.customColumns || [];
-    
+
     (projectToRender.sections || []).forEach(section => {
-        // createSectionRow now returns a single DOM element.
-        // We append it directly, without using .forEach.
+        // 🔁 NEW: wrap the whole section
+        const sectionWrapper = document.createElement('div');
+        sectionWrapper.className = 'section-wrapper';
+        sectionWrapper.dataset.sectionId = section.id;
+
+        // Create and add the section title row
         const sectionRow = createSectionRow(section, customColumns);
-        container.appendChild(sectionRow);
-        
+        sectionWrapper.appendChild(sectionRow);
+
+        // Add tasks if not collapsed
         if (!section.isCollapsed && section.tasks) {
             section.tasks.forEach(task => {
-                // Same fix for createTaskRow
                 const taskRow = createTaskRow(task, customColumns);
-                container.appendChild(taskRow);
+                sectionWrapper.appendChild(taskRow);
             });
         }
-        
-        // Same fix for createAddTaskRow
+
+        // Add the "Add Task" row
         const addTaskRow = createAddTaskRow(customColumns, section.id);
-        container.appendChild(addTaskRow);
+        sectionWrapper.appendChild(addTaskRow);
+
+        // Append to main grid container
+        container.appendChild(sectionWrapper);
     });
 }
+
+
 
 function createSectionRow(sectionData, customColumns) {
     // Create the wrapper for the entire row
@@ -1205,7 +1230,14 @@ function createTaskRow(task, customColumns) {
     // Cell 1: Task Name (Sticky)
     const taskNameCell = document.createElement('div');
     taskNameCell.className = `task-cell sticky-col-task ${isCompletedClass}`;
-    taskNameCell.innerHTML = `<i class="fas fa-grip-vertical drag-handle"></i><i class="fa-regular fa-circle-check check-icon"></i><span class="task-name">${task.name || ''}</span>`;
+   taskNameCell.innerHTML = `
+    <div class="task-name-wrapper">
+        <span class="drag-handle"><i class="fas fa-grip-lines"></i></span>
+        <span class="check-icon"><i class="fa-regular fa-circle-check"></i></span>
+        <span class="task-name">${task.name || ''}</span>
+    </div>
+`;
+
     row.appendChild(taskNameCell);
     
     // Append other cells...
@@ -1232,17 +1264,21 @@ function createTaskRow(task, customColumns) {
 }
 
 function createAddTaskRow(customColumns, sectionId) {
-    // Create the wrapper for the entire row
     const row = document.createElement('div');
     row.className = 'grid-row-wrapper add-task-row';
     row.dataset.sectionId = sectionId;
-    
+
     // Cell 1: Add task text (Sticky)
     const addTaskCell = document.createElement('div');
-    addTaskCell.className = 'task-cell sticky-col-task';
-    addTaskCell.innerHTML = `<i class="add-task-icon fa-solid fa-plus"></i><span>Add task...</span>`;
+    addTaskCell.className = 'task-cell sticky-col-task add-task-cell';
+    addTaskCell.innerHTML = `
+        <div class="add-task-wrapper">
+            <i class="add-task-icon fa-solid fa-plus"></i>
+            <span class="add-task-text">Add task...</span>
+        </div>
+    `;
     row.appendChild(addTaskCell);
-    
+
     // Add empty placeholder cells
     const placeholderCount = 4 + customColumns.length + 1;
     for (let i = 0; i < placeholderCount; i++) {
@@ -1250,9 +1286,10 @@ function createAddTaskRow(customColumns, sectionId) {
         placeholder.className = 'task-cell';
         row.appendChild(placeholder);
     }
-    
+
     return row;
 }
+
 
 
 // This function will run ONLY when a menu is open and the user scrolls
@@ -2367,72 +2404,78 @@ async function updateCustomOptionInFirebase(optionType, originalOption, newOptio
 //  DRAG & DROP INITIALIZATION
 // =========================================================================
 
-// =====================================================================
-// JAVASCRIPT - NEW DRAG AND DROP INITIALIZATION
-// =====================================================================
-
 function initDragAndDrop() {
-    const bodyGridWrapper = taskListBody.querySelector('.grid-wrapper');
-    if (!bodyGridWrapper) return;
-    
-    new Sortable(bodyGridWrapper, {
-        animation: 150,
-        handle: '.drag-handle', // We only drag by the handle
-        // Define what is draggable. We exclude '.add-task-row'.
-        draggable: '.section-row-wrapper, .task-row-wrapper',
-        
-        // This is a key event for group dragging
-        onChoose: function(evt) {
-            // If we're dragging a section header...
-            if (evt.item.classList.contains('section-row-wrapper')) {
-                // Find all other rows in its group (tasks + 'add task' row)
-                const group = getSectionGroup(evt.item);
-                // Group them with the dragged item. Sortable handles the rest.
-                Sortable.utils.select(group);
-            }
-        },
-        
-        // This event fires after the group is dropped
-        onEnd: function(evt) {
-            // The onChoose logic handles visual grouping, so onEnd is simpler.
-            // We now determine what moved and where it moved to.
-            
-            // The best practice here is to not move DOM elements manually.
-            // Instead, you should get the new order and update your underlying
-            // project data, then call render() to rebuild the UI.
-            // This ensures data and UI are always in sync.
-            
-            // Example of how to get the new order:
-            const allRows = Array.from(bodyGridWrapper.children);
-            const newOrder = allRows.map(row => ({
-                id: row.dataset.taskId || row.dataset.sectionId,
-                type: row.classList.contains('task-row-wrapper') ? 'task' : 'section'
-            }));
-            
-            console.log("New order:", newOrder);
-            
-            // You would now call a function to process this new order
-            // handleReorder(newOrder); 
-            // Inside handleReorder, you update your main 'project' object
-            // and then call render() to reflect the changes.
-            
-            // For now, we can just log it. You will need to implement the
-            // data-handling logic based on your application's state management.
-        },
-        
-        // Clean up selections when dragging is over
-        onUnchoose: function(evt) {
-            Sortable.utils.deselect(getSectionGroup(evt.item));
-        }
+    // 🔁 Destroy existing sortable instances
+    if (sortableSections) sortableSections.destroy();
+    sortableTasks.forEach(s => s.destroy());
+    sortableTasks.length = 0;
+
+    console.log('[🔁] Reinitializing drag & drop');
+
+    const wrappers = taskListBody.querySelectorAll('.section-wrapper');
+console.log(`[🧱] Found section wrappers: ${wrappers.length}`);
+wrappers.forEach((el, i) => {
+    console.log(`    ↳ Section ${i}: ${el.dataset.sectionId}`);
+});
+
+
+    const gridWrapper = taskListBody.querySelector('.grid-wrapper');
+    if (!gridWrapper) {
+        console.warn('[⚠️] No .grid-wrapper found inside taskListBody!');
+        return;
+    }
+
+sortableSections = new Sortable(taskListBody.querySelector('.grid-wrapper'), {
+    handle: '.section-title-cell .drag-handle',
+    draggable: '.section-wrapper',
+    animation: 150,
+    direction: 'vertical',
+    ghostClass: 'sortable-ghost',
+    onEnd: handleSectionReorder,
+    onChoose(evt) {
+        console.log('Dragging section:', evt.item?.dataset.sectionId);
+    },
+    onMove(evt) {
+        console.log('Hovering over:', evt.related?.dataset.sectionId);
+    }
+});
+
+
+    console.log('[✅] Section Sortable initialized');
+
+   // ✅ Sortable for TASKS inside each SECTION
+    document.querySelectorAll('.section-block').forEach(sectionBlock => {
+        const sectionId = sectionBlock.dataset.sectionId;
+
+        // Container: all rows in section except header
+        const taskRows = [...sectionBlock.querySelectorAll('.task-row-wrapper')];
+        const addTaskRow = sectionBlock.querySelector('.add-task-row');
+
+        // Create a temporary wrapper for drag-targetable elements (or use sectionBlock directly)
+        const sortable = new Sortable(sectionBlock, {
+            group: 'tasks',
+            handle: '.task-row-wrapper .drag-handle',
+            draggable: '.task-row-wrapper',
+            animation: 150,
+            disabled: isSortActive,
+            filter: '.add-task-row',
+            ghostClass: 'drag-ghost',
+            onEnd: handleTaskMoved
+        });
+
+        sortableTasks.push(sortable);
     });
 }
 
 function getSectionGroup(sectionRowEl) {
+    const group = [sectionRowEl];
     const sectionId = sectionRowEl.dataset.sectionId;
-    if (!sectionId) return [];
-    
-    // Find all rows (tasks and the 'add task' row) belonging to this section
-    const allRows = Array.from(sectionRowEl.parentElement.children);
-    // Exclude the section header itself since it's the item being dragged
-    return allRows.filter(el => el.dataset.sectionId === sectionId && el !== sectionRowEl);
+
+    let next = sectionRowEl.nextElementSibling;
+    while (next && next.dataset.sectionId === sectionId && !next.classList.contains('section-row-wrapper')) {
+        group.push(next);
+        next = next.nextElementSibling;
+    }
+
+    return group;
 }

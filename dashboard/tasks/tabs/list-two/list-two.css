@@ -9,16 +9,56 @@
     --secondary-bg: #f9fafb; /* Used for hover and section rows */
     --border-color: #e5e7eb;
     --header-border-color: #d1d5db; /* A slightly darker border for the header */
-    --header-height: 45px;
-    --task-row-padding: 10px 12px;
+    --header-height: 35px;
+    --task-row-padding: 0px 4px;
 }
 
 /* --- Core App Layout --- */
 .list-view-container {
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    height: 590px;
     overflow: hidden; /* Prevents the whole page from scrolling */
+}
+
+.section-title-cell,
+.task-name-wrapper {
+    user-select: none;
+}
+
+.listview-header {
+    display: flex;
+    /* This aligns all items to the start initially */
+    justify-content: flex-start; 
+    align-items: center;
+    flex-shrink: 0;
+    margin-bottom: 0;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 6px;
+}
+
+.header-controls-right {
+    display: flex;
+    gap: 0.5rem; /* Increased gap slightly for better visuals */
+    /* This is the key change: an auto left margin will push this
+       element all the way to the right of the flex container. */
+    margin-left: auto; 
+}
+button {
+    background-color: transparent;
+    border: 1px solid var(--text-secondary-color);
+    border-radius: 8px;
+    /* Slightly reduced button padding */
+    padding: 0.4rem 0.8rem;
+    cursor: pointer;
+    font-size: 0.85rem; /* Slightly smaller font size for buttons */
+    font-weight: 500;
+    color: var(--text-color);
+    transition: background-color 0.2s, color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem; /* Reduced gap inside buttons */
 }
 
 /* We no longer use the old header element for structure */
@@ -61,17 +101,57 @@
 .header-cell {
     height: var(--header-height);
     min-height: var(--header-height);
-    padding: 0 12px;
+    padding: 0 4px;
     font-weight: 500;
+    border-top: 1px solid var(--border-color);
     color: var(--text-secondary-color);
     justify-content: space-between;
 }
+.header-cell span {
+    font-size: 13px; 
+    margin-left: 6px;
+    font-weight: 500;
+    color: #374151; 
+}
+.header-cell:hover {
+    background-color: #f3f4f6; /* Light gray hover */
+}
+.header-cell .column-icon {
+    font-size: 12px;
+    margin-right: 6px;
+    color: #6b7280;
+    cursor: pointer;
+}
+.add-column-cell {
+    padding-left: 18px;
+    color: #4b5563;
+    font-size: 14px;
+    transition: background-color 0.2s ease;
+}
+.add-column-cell:hover {
+    background-color: #f3f4f6; 
+}
+.add-column-cell i {
+    font-size: 14px;
+    color: #6b7280;
+    margin-left: 8px;
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+.add-column-cell:hover i {
+    color: #111827;
+    transform: scale(1.1);
+}
+
 
 .task-cell {
     padding: var(--task-row-padding);
     color: var(--text-color);
+    transition: background-color 0.15s ease-in-out;
 }
-
+.task-cell:hover {
+    background-color: #f3f4f6; /* Light subtle hover color */
+    cursor: default; /* Change to pointer if cell is clickable */
+}
 
 /* =====================================================================
 // SPREADSHEET STICKY LOGIC
@@ -114,25 +194,144 @@
     z-index: 10; /* higher than normal cells */
 }
 
+
 /* --- Section Styling --- */
+
 /* A section row's first cell is also a sticky task cell */
 .section-title-cell {
     justify-content: space-between;
     font-weight: 600;
-    background-color: var(--secondary-bg); /* Give sections a distinct background */
+    background-color: white;
+    transition: background-color 0.15s ease-in-out;
 }
-/* All other cells in a section row */
-.section-placeholder-cell {
+
+.section-title-cell:hover {
     background-color: var(--secondary-bg);
 }
+
+/* All other cells in a section row */
+.section-placeholder-cell {
+    background-color: transparent;
+    transition: background-color 0.15s ease-in-out;
+}
+
+.section-placeholder-cell:hover {
+    background-color: var(--secondary-bg);
+}
+
 .section-title-wrapper {
     display: flex;
+    font-size: 14px;
     align-items: center;
     gap: 8px;
 }
 .section-toggle {
     cursor: pointer;
 }
+
+
+/* Apply smaller font size universally for task and header cells */
+.header-cell,
+.task-cell {
+    font-size: var(--font-size-small);
+    padding: var(--task-row-padding);
+}
+
+/* Make section title rows compact */
+.section-title-cell,
+.section-placeholder-cell {
+    font-size: var(--section-font-size);
+    padding: 4px 4px;
+}
+
+/* Optional: shrink section toggle as well */
+.section-toggle {
+    font-size: 8px;
+    padding: 2px;
+}
+
+.task-name-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-left: 16px;
+    cursor: grab;
+    user-select: none;
+}
+
+.drag-handle {
+    margin-right: 4px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    color: #4b5563;
+}
+
+.task-row-wrapper:hover .drag-handle,
+.section-row-wrapper:hover .drag-handle {
+    opacity: 1;
+}
+
+
+.section-toggle {
+    color: #6b7280; /* Gray-500 */
+    cursor: pointer;
+    font-size: 13px;
+    transition: transform 0.2s ease;
+}
+
+.section-toggle:hover {
+    color: #374151; /* Gray-700 on hover */
+}
+
+.section-row-wrapper.collapsed .section-toggle i {
+    transform: rotate(0deg);
+}
+
+.section-row-wrapper:not(.collapsed) .section-toggle i {
+    transform: rotate(90deg); /* for fa-chevron-right → fa-chevron-down */
+}
+
+
+.check-icon {
+    color: #d1d5db;
+    font-size: 14px;
+}
+
+.task-name {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-color, #111827); /* default dark text */
+    font-size: 13px;
+}
+.add-task-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-left: 40px;
+    color: #6b7280; /* Neutral gray */
+    font-size: 13px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    cursor: pointer;
+    height: 100%;
+    width: 100%;
+}
+
+/* Hide the icon by default */
+.add-task-icon {
+    opacity: 0;
+    transform: scale(0.8);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    color: #3b3b3b; /* Optional: style for when shown */
+}
+
+/* Show the icon only when hovering the whole cell */
+.add-task-cell:hover .add-task-icon {
+    opacity: 1;
+    transform: scale(1);
+}
+
 
 /*
 ===========================
@@ -141,6 +340,25 @@
 // 
 ============================= 
 */
+.section-options-btn {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #6b7280; /* Neutral gray (hidden subtly if shown) */
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    cursor: pointer;
+    padding: 4px;
+    margin-right: 6px;
+}
+
+/* Show the button when hovering the whole section row */
+.section-title-cell:hover .section-options-btn {
+    opacity: 1;
+}
+.section-options-btn:hover i {
+    color: #374151; /* Darker gray */
+}
 .options-btn-wrapper {
     position: relative;
     display: flex;
@@ -175,50 +393,99 @@
     color: var(--text-secondary-color);
 }
 
-/*
-===================================
-//
-// Drag Handle and drop icons design
-//
-===================================
-*/
-
-.drag-handle {
-    cursor: grab;
-    opacity: 0.6;
-    transition: opacity 0.2s ease;
-}
+/* ---------------------------------------------
+   Drag Handle Design
+--------------------------------------------- */
 .grid-row-wrapper:hover .drag-handle {
     opacity: 1;
+    cursor: grab;
 }
+
 .drag-handle:active {
     cursor: grabbing;
 }
+
+/* ---------------------------------------------
+   Base Transition for Smooth Layout
+--------------------------------------------- */
 .grid-row-wrapper {
     transition: transform 0.25s ease-in-out;
 }
-.sortable-drag {
-    transition: none !important;
+
+/* ---------------------------------------------
+   Dragging State for Task Rows
+--------------------------------------------- */
+.task-row-wrapper.sortable-chosen {
+    opacity: 0.3;
 }
-.sortable-ghost {
-    background: #eef2ff !important;
-    border-radius: 8px;
-    opacity: 0.7;
+
+.task-row-wrapper.sortable-drag {
+    opacity: 1 !important;
+    background: var(--primary-bg);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+    z-index: 9999 !important;
+    display: grid !important;
 }
+
+/* Hides contents during ghost phase */
 .sortable-ghost .task-cell {
     visibility: hidden;
 }
-.sortable-chosen {
-    opacity: 0.2;
-}
-.sortable-drag {
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.42);
-    background: var(--primary-bg);
-    opacity: 1 !important;
-    z-index: 9999 !important;
-    /* Make sure the clone itself is also a sub-grid */
-    display: grid !important;
-}
+
+/* Additional visual effect when task is part of dragged group */
 .is-following-drag {
     opacity: 0.6;
+}
+
+/* ---------------------------------------------
+   Section Block Layout
+--------------------------------------------- */
+.grid-wrapper {
+  display: grid;
+  grid-auto-rows: min-content; /* ensures rows fit content height */
+}
+
+.section-wrapper {
+  display: contents; /* acts like grid rows, enables Sortable.js to treat it as one unit */
+}
+
+.section-block {
+  display: contents; /* ensures internal rows are in the grid directly */
+}
+
+/* Section - During Drag */
+.section-block.sortable-chosen {
+    opacity: 0.5;
+    transform: scale(1.02);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    background: #f9f9f9;
+    z-index: 1000;
+    transition: transform 0.2s ease;
+}
+
+/* Section - Ghost placeholder */
+.section-block.sortable-ghost {
+    background: #dfe6e9;
+    border: 2px dashed #b2bec3;
+    min-height: 50px;
+    border-radius: 8px;
+    opacity: 0.7;
+}
+
+/* Section - Active dragging clone */
+.section-block.sortable-drag {
+    background: #ffffff;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    transform: scale(1.03) rotate(1deg);
+    border-radius: 8px;
+    opacity: 1 !important;
+    z-index: 10000;
+    cursor: grabbing;
+    overflow: hidden;
+}
+
+.drag-ghost {
+    transform: scale(1.02);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    background-color: #f9f9f9;
 }
