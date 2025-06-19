@@ -35,6 +35,7 @@
     justify-content: flex-start; 
     align-items: center;
     flex-shrink: 0;
+    margin-top: 6px;
     margin-bottom: 0;
     border-bottom: 1px solid var(--border-color);
 }
@@ -46,22 +47,45 @@
        element all the way to the right of the flex container. */
     margin-left: auto; 
 }
+
+/* Base button style — already applied */
 button {
     background-color: transparent;
     border: 1px solid var(--text-secondary-color);
     border-radius: 8px;
-    /* Slightly reduced button padding */
-    padding: 0.4rem 0.8rem;
     cursor: pointer;
-    font-size: 0.85rem; /* Slightly smaller font size for buttons */
+    font-size: 0.75rem; /* Slightly smaller for compact look */
     font-weight: 500;
     color: var(--text-color);
     transition: background-color 0.2s, color 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.4rem; /* Reduced gap inside buttons */
+    gap: 0.3rem; /* Compact spacing */
+    height: 28px; /* Smaller button height */
+    padding: 0 10px; /* Horizontal padding only */
 }
+
+/* Specifically style your task/section/filter/sort buttons */
+.add-task-header-btn,
+.add-section-btn,
+#filter-btn,
+#sort-btn {
+    margin: 0 6px; /* Horizontal spacing between buttons */
+    font-size: 0.75rem;
+    height: 28px;
+    padding: 0 10px;
+}
+
+/* Reduce icon size inside the buttons */
+.add-task-header-btn i,
+.add-section-btn i,
+#filter-btn i,
+#sort-btn i {
+    font-size: 0.7rem;
+    margin-top: 1px; /* Adjust vertical alignment if needed */
+}
+
 
 /* We no longer use the old header element for structure */
 #task-list-header {
@@ -554,8 +578,17 @@ body.is-dragging * {
     overflow: hidden;
     text-overflow: ellipsis;
     margin-left: 8px;
-    max-width: 250px; /* Optional: Set a max-width to prevent very long names from breaking the layout */
+    max-width: 250px;
+    transition: min-width 0.2s ease, max-width 0.2s ease;
 }
+
+.task-name:focus {
+    min-width: 200px;
+    max-width: none; /* Optional: allow to expand further if needed */
+    white-space: normal; /* Optional: allow wrapping while editing */
+    overflow: visible;
+}
+
 
 /* Hide the new action icons by default */
 .task-hover-actions {

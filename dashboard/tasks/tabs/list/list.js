@@ -431,363 +431,315 @@ function setupEventListeners() {
     });
     
     headerClickListener = (e) => {
-        const deleteButton = e.target.closest('.delete-column-btn');
-        if (deleteButton) {
-            e.stopPropagation();
-            const columnEl = deleteButton.closest('[data-column-id]');
-            if (columnEl) {
-                const columnId = Number(columnEl.dataset.columnId);
-                
-                const dropdownOptions = [
-                    { name: 'Rename column' },
-                    { name: 'Delete column' }
-                ];
-                
-                createDropdown(dropdownOptions, deleteButton, (selected) => {
-                    if (selected.name === 'Delete column') {
-                        deleteColumn(columnId);
-                    } else if (selected.name === 'Rename column') {
-                        // Pass the entire column header element to the rename function
-                        enableColumnRename(columnEl);
-                    }
-                });
-            }
-            return;
+    // Match the options icon in the custom header column
+    const optionsIcon = e.target.closest('.options-icon');
+    if (optionsIcon) {
+        e.stopPropagation();
+        const columnEl = optionsIcon.closest('[data-column-id]');
+        if (columnEl) {
+            const columnId = Number(columnEl.dataset.columnId);
+
+            const dropdownOptions = [
+                { name: 'Rename column' },
+                { name: 'Delete column' }
+            ];
+
+            createDropdown(dropdownOptions, optionsIcon, (selected) => {
+                if (selected.name === 'Delete column') {
+                    deleteColumn(columnId);
+                } else if (selected.name === 'Rename column') {
+                    enableColumnRename(columnEl);
+                }
+            });
         }
-        
-        const addColumnButton = e.target.closest('#add-column-btn');
-        if (addColumnButton) {
-            e.stopPropagation();
-            const existingTypes = new Set(project.customColumns.map(col => col.type));
-            const availableTypes = columnTypeOptions.filter(type => !existingTypes.has(type) || type === 'Custom');
-            if (availableTypes.length === 0) return alert("All available column types have been added.");
-            
-            // FIX: Map strings to objects and update the callback to use the object's 'name' property
-            createDropdown(
-                availableTypes.map(type => ({ name: type })),
-                addColumnButton,
-                (selected) => openAddColumnDialog(selected.name)
-            );
+        return;
+    }
+
+    // Match the "Add Column" button in header
+    const addColumnButton = e.target.closest('.add-column-cell');
+    if (addColumnButton) {
+        e.stopPropagation();
+
+        const existingTypes = new Set(project.customColumns.map(col => col.type));
+        const availableTypes = columnTypeOptions.filter(type => !existingTypes.has(type) || type === 'Custom');
+        if (availableTypes.length === 0) {
+            return alert("All available column types have been added.");
         }
-    };
+
+        createDropdown(
+            availableTypes.map(type => ({ name: type })),
+            addColumnButton,
+            (selected) => openAddColumnDialog(selected.name)
+        );
+    }
+};
     
     bodyClickListener = (e) => {
-        // Log #1: Confirms the listener is running on every click inside the body.
-        console.log('%cbodyClickListener Triggered', 'color: #888;', 'Clicked on:', e.target);
-        
-        // --- 1. Section Toggle (Collapse/Expand) ---
-        const sectionToggle = e.target.closest('.section-toggle');
-        if (sectionToggle) {
-            // Log #2: You clicked a section toggle chevron.
-            console.log('%cACTION: Section Toggle', 'color: blue; font-weight: bold;');
-            
-            const sectionEl = sectionToggle.closest('.section-wrapper'); // CORRECTED SELECTOR
-            if (sectionEl) {
-                const sectionId = sectionEl.dataset.sectionId;
-                const section = project.sections.find(s => s.id == sectionId);
-                if (section) {
-                    console.log(`Found section "${section.title}". Collapsed state is changing from ${section.isCollapsed} to ${!section.isCollapsed}.`);
-                    section.isCollapsed = !section.isCollapsed;
-                    render();
-                } else {
-                    console.error("Section data not found in project object for ID:", sectionId);
-                }
-            } else {
-                console.error("Could not find parent .section-wrapper for the toggle button.");
-            }
-            return; // Stop further execution
+    console.log('%cbodyClickListener Triggered', 'color: #888;', 'Clicked on:', e.target);
+
+    // --- 0. Guard clause: Prevent other clicks if a temp task is still blank ---
+    const activeTempTask = document.querySelector('.task-row-wrapper[data-task-id^="temp_"] .task-name');
+    if (activeTempTask && activeTempTask.innerText.trim() === '' && !e.target.closest('.task-name')) {
+        console.warn('Blocked interaction: A temp task is still blank and active.');
+        activeTempTask.focus();
+        return;
+    }
+
+    // --- 1. Section Toggle ---
+    const sectionToggle = e.target.closest('.section-toggle');
+    if (sectionToggle) {
+        console.log('%cACTION: Section Toggle', 'color: blue; font-weight: bold;');
+        const sectionEl = sectionToggle.closest('.section-wrapper');
+        const sectionId = sectionEl?.dataset.sectionId;
+        const section = project.sections.find(s => s.id == sectionId);
+        if (section) {
+            section.isCollapsed = !section.isCollapsed;
+            render();
         }
-        
-        // --- 2. "Add Task" button within a section ---
-        const addTaskBtn = e.target.closest('.add-task-in-section-btn');
-        if (addTaskBtn) {
-            // Log #3: You clicked an "Add Task" button.
-            console.log('%cACTION: Add Task in Section', 'color: blue; font-weight: bold;');
-            
-            const sectionEl = addTaskBtn.closest('.section-wrapper'); // CORRECTED SELECTOR
-            if (sectionEl) {
-                const section = project.sections.find(s => s.id == sectionEl.dataset.sectionId);
-                if (section) {
-                    console.log(`Adding new task to section "${section.title}".`);
-                    addNewTask(section, 'end');
-                }
-            }
-            return; // Stop further execution
+        return;
+    }
+
+    // --- 2. "Add Task" Button inside section ---
+    const addTaskBtn = e.target.closest('.add-task-in-section-btn');
+    if (addTaskBtn) {
+        console.log('%cACTION: Add Task in Section', 'color: blue; font-weight: bold;');
+        const sectionEl = addTaskBtn.closest('.section-wrapper');
+        const section = project.sections.find(s => s.id == sectionEl?.dataset.sectionId);
+        if (section) {
+            addNewTask(section, 'end');
         }
-        
-        // --- 3. Any Interaction within a Task Row ---
-        const taskRow = e.target.closest('.task-row-wrapper');
-        if (taskRow) {
-            // Log #4: A click occurred inside a task row.
-            console.log('%cEVENT: Task Row Interaction', 'color: green;', taskRow);
-            
-            const taskId = taskRow.dataset.taskId;
-            const sectionId = taskRow.dataset.sectionId;
-            console.log(`Task ID: ${taskId}, Section ID: ${sectionId}`);
-            
-            const controlElement = e.target.closest('[data-control], .task-name');
-            if (!controlElement) {
-                console.log('Click was inside a task row, but not on a specific control. No action taken.');
-                return;
-            }
-            
-            // Determine the control type
-            const controlType = controlElement.matches('.task-name') ? 'open-sidebar' : controlElement.dataset.control;
-            console.log(`Determined Control Type: "${controlType}"`);
-            
-            // Log #5: Entering the main switch statement for task controls.
-            console.log('%cSWITCH: Handling control type...', 'color: purple; font-weight: bold;');
-            switch (controlType) {
-                case 'open-sidebar':
-                    displaySideBarTasks(taskId);
-                    break;
-                case 'check':
-                    e.stopPropagation();
-                    handleTaskCompletion(taskId, taskRow);
-                    break;
-                    
-                case 'due-date':
-                    showDatePicker(controlElement, sectionId, taskId);
-                    break;
-                    
-                case 'priority': {
-                    let allPriorityOptions = priorityOptions.map(p => ({
-                        name: p,
-                        color: defaultPriorityColors[p] || null
-                    }));
-                    if (project.customPriorities) {
-                        allPriorityOptions = allPriorityOptions.concat(project.customPriorities);
-                    }
-                    createDropdown(allPriorityOptions, controlElement, (selectedValue) => updateTask(taskId, sectionId, { priority: selectedValue.name }), 'Priority');
-                    break;
-                }
-                
-                case 'status': {
-                    let allStatusOptions = statusOptions.map(s => ({
-                        name: s,
-                        color: defaultStatusColors[s] || null
-                    }));
-                    if (project.customStatuses) {
-                        allStatusOptions = allStatusOptions.concat(project.customStatuses);
-                    }
-                    createDropdown(allStatusOptions, controlElement, (selectedValue) => updateTask(taskId, sectionId, { status: selectedValue.name }), 'Status');
-                    break;
-                }
-                
-                case 'like': {
-                    const { task, section } = findTaskAndSection(taskId);
-                    if (!task || !section || !currentUserId) break;
-                    
-                    const taskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${section.id}/tasks/${taskId}`);
-                    const userHasLiked = task.likedBy && task.likedBy[currentUserId];
-                    
-                    if (userHasLiked) {
-                        // User is "unliking" the task
-                        updateDoc(taskRef, {
-                            likedAmount: increment(-1),
-                            [`likedBy.${currentUserId}`]: deleteField()
-                        });
-                    } else {
-                        // User is "liking" the task
-                        updateDoc(taskRef, {
-                            likedAmount: increment(1),
-                            [`likedBy.${currentUserId}`]: true
-                        });
-                    }
-                    break;
-                }
-                
-                case 'comment': // Opens the same sidebar as clicking the task name
-                    displaySideBarTasks(taskId);
-                    break;
-                    
-                case 'custom-select': {
-                    const columnId = Number(controlElement.dataset.columnId);
-                    const column = project.customColumns.find(c => c.id === columnId);
-                    if (column && column.options) {
-                        createDropdown(column.options, controlElement, (selectedValue) => {
-                            updateTask(taskId, sectionId, {
-                                [`customFields.${columnId}`]: selectedValue.name
-                            });
-                        }, 'CustomColumn', columnId);
-                    }
-                    break;
-                }
-                
-                case 'move-task': {
-                    e.stopPropagation();
-                    const { section: currentSection } = findTaskAndSection(taskId);
-                    if (!currentSection) break;
-                    
-                    const otherSections = project.sections.filter(s => s.id !== currentSection.id);
-                    if (otherSections.length > 0) {
-                        createDropdown(
-                            otherSections.map(s => ({ name: s.title })), // Map to object array
-                            controlElement,
-                            (selected) => {
-                                const targetSection = project.sections.find(s => s.title === selected.name);
-                                if (targetSection) {
-                                    moveTaskToSection(taskId, targetSection.id);
-                                }
-                            }
-                        );
-                    } else {
-                        alert("There are no other sections to move this task to.");
-                    }
-                    break;
-                }
-                
-                case 'assignee': {
-                    showAssigneeDropdown(controlElement, taskId);
-                    break;
-                }
-                
-                case 'remove-assignee':
-                    e.stopPropagation();
-                    // We need to find the sectionId to update the task correctly
-                    const { section } = findTaskAndSection(taskId);
-                    if (section) {
-                        updateTask(taskId, section.id, { assignees: [] });
-                    }
-                    break;
-            }
-            return; // Stop further execution
+        return;
+    }
+
+    // --- 2.5: Add task row clicked ---
+    const addTaskRow = e.target.closest('.add-task-row-wrapper');
+    if (addTaskRow) {
+        console.log('%cACTION: Add Task Row clicked', 'color: blue; font-weight: bold;');
+        const sectionId = addTaskRow.dataset.sectionId;
+        const section = project.sections.find(s => s.id == sectionId);
+        if (section) {
+            addNewTask(section, 'end');
         }
-        
-        // --- 2.5: Add task row clicked ---
-        const addTaskRow = e.target.closest('.add-task-row-wrapper');
-        if (addTaskRow) {
-            console.log('%cACTION: Add Task Row clicked', 'color: blue; font-weight: bold;');
-            
-            const sectionId = addTaskRow.dataset.sectionId;
-            const section = project.sections.find(s => s.id == sectionId);
-            if (section) {
-                addNewTask(section, 'end');
-            }
+        return;
+    }
+
+    // --- 3. Interaction in a task row ---
+    const taskRow = e.target.closest('.task-row-wrapper');
+    if (taskRow) {
+        console.log('%cEVENT: Task Row Interaction', 'color: green;', taskRow);
+        const taskId = taskRow.dataset.taskId;
+        const sectionId = taskRow.dataset.sectionId;
+
+        const controlElement = e.target.closest('[data-control], .task-name');
+        if (!controlElement) return console.log('Click was inside task row, but not on a control.');
+
+        const controlType = controlElement.matches('.task-name') ? 'open-sidebar' : controlElement.dataset.control;
+
+        // If it's a temp_ task and not clicking task name — ignore
+        if (taskId.startsWith('temp_') && controlType !== 'open-sidebar') {
+            console.log('Blocked: Cannot interact with task controls while temp task is blank.');
             return;
         }
-        
-        // Log #6: If we reach here, the click was not on any known interactive element.
-        console.log('No specific interactive element was clicked.');
-    };
+
+        switch (controlType) {
+            case 'open-sidebar':
+            case 'comment':
+                displaySideBarTasks(taskId);
+                break;
+
+            case 'check':
+                e.stopPropagation();
+                handleTaskCompletion(taskId, taskRow);
+                break;
+
+            case 'due-date':
+                showDatePicker(controlElement, sectionId, taskId);
+                break;
+
+            case 'priority': {
+                let allPriorityOptions = priorityOptions.map(p => ({
+                    name: p,
+                    color: defaultPriorityColors[p] || null
+                }));
+                if (project.customPriorities) {
+                    allPriorityOptions = allPriorityOptions.concat(project.customPriorities);
+                }
+                createDropdown(allPriorityOptions, controlElement, (selected) => {
+                    updateTask(taskId, sectionId, { priority: selected.name });
+                }, 'Priority');
+                break;
+            }
+
+            case 'status': {
+                let allStatusOptions = statusOptions.map(s => ({
+                    name: s,
+                    color: defaultStatusColors[s] || null
+                }));
+                if (project.customStatuses) {
+                    allStatusOptions = allStatusOptions.concat(project.customStatuses);
+                }
+                createDropdown(allStatusOptions, controlElement, (selected) => {
+                    updateTask(taskId, sectionId, { status: selected.name });
+                }, 'Status');
+                break;
+            }
+
+            case 'like': {
+                const { task, section } = findTaskAndSection(taskId);
+                if (!task || !section || !currentUserId) return;
+                const taskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${section.id}/tasks/${taskId}`);
+                const liked = task.likedBy?.[currentUserId];
+                updateDoc(taskRef, liked
+                    ? {
+                        likedAmount: increment(-1),
+                        [`likedBy.${currentUserId}`]: deleteField()
+                    }
+                    : {
+                        likedAmount: increment(1),
+                        [`likedBy.${currentUserId}`]: true
+                    });
+                break;
+            }
+
+            case 'custom-select': {
+                const columnId = Number(controlElement.dataset.columnId);
+                const column = project.customColumns.find(c => c.id === columnId);
+                if (column && column.options) {
+                    createDropdown(column.options, controlElement, (selected) => {
+                        updateTask(taskId, sectionId, {
+                            [`customFields.${columnId}`]: selected.name
+                        });
+                    }, 'CustomColumn', columnId);
+                }
+                break;
+            }
+
+            case 'move-task': {
+                e.stopPropagation();
+                const { section: currentSection } = findTaskAndSection(taskId);
+                const otherSections = project.sections.filter(s => s.id !== currentSection?.id);
+                if (otherSections.length > 0) {
+                    createDropdown(
+                        otherSections.map(s => ({ name: s.title })),
+                        controlElement,
+                        (selected) => {
+                            const targetSection = project.sections.find(s => s.title === selected.name);
+                            if (targetSection) moveTaskToSection(taskId, targetSection.id);
+                        }
+                    );
+                } else {
+                    alert("There are no other sections to move this task to.");
+                }
+                break;
+            }
+
+            case 'assignee':
+                showAssigneeDropdown(controlElement, taskId);
+                break;
+
+            case 'remove-assignee': {
+                e.stopPropagation();
+                const { section } = findTaskAndSection(taskId);
+                if (section) updateTask(taskId, section.id, { assignees: [] });
+                break;
+            }
+        }
+        return;
+    }
+
+    console.log('No specific interactive element was clicked.');
+};
+
     
     bodyFocusOutListener = (e) => {
-        const focusedOutElement = e.target;
-        
-        // Log #1: Confirms the listener is running and shows which element lost focus.
-        console.log('%cbodyFocusOutListener Triggered', 'color: #888;', 'Element that lost focus:', focusedOutElement);
-        
-        // --- Case 1: Renaming a section title ---
-        if (focusedOutElement.matches('.section-title')) {
-            console.log('%cCASE: Section Title Save', 'color: blue; font-weight: bold;');
-            
-            // CORRECTED SELECTOR: Use .section-wrapper
-            const sectionEl = focusedOutElement.closest('.section-wrapper');
-            if (!sectionEl) {
-                console.error("Could not find parent .section-wrapper for section title:", focusedOutElement);
-                return;
-            }
-            
-            const sectionId = sectionEl.dataset.sectionId;
-            const newTitle = focusedOutElement.innerText.trim();
-            const section = project.sections.find(s => s.id === sectionId);
-            
-            // Only update if the title has actually changed
-            if (section && section.title !== newTitle) {
-                console.log(`Section title changed for ID ${sectionId}. New title: "${newTitle}"`);
-                updateSectionInFirebase(sectionId, { title: newTitle });
-            } else {
-                console.log("Section title was not changed.");
-            }
-            return;
+    const focusedOutElement = e.target;
+    console.log('%cbodyFocusOutListener Triggered', 'color: #888;', 'Element that lost focus:', focusedOutElement);
+
+    // --- Case 1: Section Title ---
+    if (focusedOutElement.matches('.section-title')) {
+        console.log('%cCASE: Section Title Save', 'color: blue; font-weight: bold;');
+        const sectionEl = focusedOutElement.closest('.section-wrapper');
+        if (!sectionEl) return console.error("Missing .section-wrapper for section title.");
+
+        const sectionId = sectionEl.dataset.sectionId;
+        const newTitle = focusedOutElement.innerText.trim();
+        const section = project.sections.find(s => s.id === sectionId);
+        if (section && section.title !== newTitle) {
+            console.log(`Updated section title: ${newTitle}`);
+            updateSectionInFirebase(sectionId, { title: newTitle });
         }
-        
-        // --- Case 2: Editing a task name ---
-        if (focusedOutElement.matches('.task-name')) {
-            console.log('%cCASE: Task Name Save', 'color: green; font-weight: bold;');
-            
-            const taskRow = focusedOutElement.closest('.task-row-wrapper');
-            if (!taskRow) return;
-            
-            const taskId = taskRow.dataset.taskId;
-            const { task, section } = findTaskAndSection(taskId);
-            
-            if (!task || !section) {
-                console.error(`Could not find task or section data for task ID: ${taskId}`);
-                return;
+        return;
+    }
+
+    // --- Case 2: Task Name Editing ---
+    if (focusedOutElement.matches('.task-name')) {
+        console.log('%cCASE: Task Name Save', 'color: green; font-weight: bold;');
+
+        const taskRow = focusedOutElement.closest('.task-row-wrapper');
+        if (!taskRow) return;
+
+        const taskId = taskRow.dataset.taskId;
+        const { task, section } = findTaskAndSection(taskId);
+        if (!task || !section) return console.error("Missing task or section data.");
+
+        const newName = focusedOutElement.innerText.trim();
+
+        if (task.isNew) {
+            if (newName) {
+                console.log(`Saving new task: "${newName}"`);
+                section.tasks = section.tasks.filter(t => t.id !== taskId);
+                const { isNew, id, ...taskData } = task;
+                addTaskToFirebase(section.id, { ...taskData, name: newName });
+            } else {
+                console.log("Empty new task discarded.");
+                section.tasks = section.tasks.filter(t => t.id !== taskId);
+                render();
             }
-            
-            const newName = focusedOutElement.innerText.trim();
-            
-            // If it was a new, temporary task...
-            if (task.isNew) {
-                console.log("Handling save for a new, temporary task...");
-                if (newName) {
-                    // ... and the user entered a name, save it permanently.
-                    console.log(`Creating new task with name: "${newName}"`);
-                    section.tasks = section.tasks.filter(t => t.id !== taskId);
-                    const { isNew, id, ...taskData } = task;
-                    addTaskToFirebase(section.id, { ...taskData, name: newName });
-                } else {
-                    // ... but the name is empty, just remove the temporary row.
-                    console.log("New task name is empty. Removing temporary row.");
-                    section.tasks = section.tasks.filter(t => t.id !== taskId);
-                    render();
-                }
-            }
-            // If it's an existing task and the name has changed, update it.
-            else if (task.name !== newName) {
-                console.log(`Task name changed for ID ${taskId}. New name: "${newName}"`);
+        } else {
+            if (task.name !== newName) {
+                console.log(`Renamed existing task (${taskId}) to "${newName}"`);
                 updateTask(taskId, section.id, { name: newName });
             } else {
-                console.log("Task name was not changed.");
+                console.log("Task name unchanged.");
             }
-            return;
         }
-        
-        // --- Case 3: Editing a custom field cell ---
-        // IMPROVED: Check for the parent cell, not just the direct target.
-        const customFieldCell = focusedOutElement.closest('[data-control="custom-select"]');
-        if (customFieldCell) {
-            console.log('%cCASE: Custom Field Save', 'color: orange; font-weight: bold;');
-            
-            const taskRow = customFieldCell.closest('.task-row-wrapper');
-            const columnId = customFieldCell.dataset.columnId;
-            const { task, section } = findTaskAndSection(taskRow.dataset.taskId);
-            const column = project.customColumns.find(c => c.id == columnId);
-            
-            if (!task || !section || !column) {
-                console.error("Missing data for custom field update (task, section, or column definition).");
-                return;
-            }
-            
-            let newValue = customFieldCell.innerText.trim();
-            console.log(`Original text value: "${newValue}"`);
-            
-            // For numeric types, parse the value as a number.
-            if (column.type === 'Costing' || column.type === 'Numbers') {
-                const numericString = newValue.replace(/[^0-9.-]+/g, "");
-                if (numericString && !isNaN(numericString)) {
-                    newValue = parseFloat(numericString);
-                } else {
-                    newValue = null; // Default to null for invalid input
-                }
-                console.log(`Parsed numeric value: ${newValue}`);
-            }
-            
-            // Only update if the value has actually changed.
-            const oldValue = task.customFields ? task.customFields[columnId] : null;
-            if (oldValue !== newValue) {
-                console.log(`Custom field ${columnId} changed from "${oldValue}" to "${newValue}". Updating.`);
-                updateTask(task.id, section.id, {
-                    [`customFields.${columnId}`]: newValue
-                });
-            } else {
-                console.log("Custom field value was not changed.");
-            }
-            return;
+        return;
+    }
+
+    // --- Case 3: Custom Field Save ---
+    const customFieldCell = focusedOutElement.closest('[data-control="custom-select"]');
+    if (customFieldCell) {
+        console.log('%cCASE: Custom Field Save', 'color: orange; font-weight: bold;');
+
+        const taskRow = customFieldCell.closest('.task-row-wrapper');
+        const taskId = taskRow.dataset.taskId;
+        const columnId = customFieldCell.dataset.columnId;
+        const { task, section } = findTaskAndSection(taskId);
+        const column = project.customColumns.find(c => c.id == columnId);
+
+        if (!task || !section || !column) {
+            return console.error("Missing task/section/column for custom field.");
         }
-    };
+
+        let newValue = customFieldCell.innerText.trim();
+        const oldValue = task.customFields?.[columnId] ?? null;
+
+        if (column.type === 'Costing' || column.type === 'Numbers') {
+            const numeric = newValue.replace(/[^0-9.-]+/g, '');
+            newValue = numeric && !isNaN(numeric) ? parseFloat(numeric) : null;
+        }
+
+        if (newValue !== oldValue) {
+            console.log(`Custom field ${columnId} updated:`, oldValue, '→', newValue);
+            updateTask(task.id, section.id, {
+                [`customFields.${columnId}`]: newValue
+            });
+        } else {
+            console.log("No change in custom field value.");
+        }
+    }
+};
+
     
     addTaskHeaderBtnListener = () => {
         if (!currentlyFocusedSectionId && project.sections.length > 0) {
@@ -832,7 +784,7 @@ function setupEventListeners() {
     };
     
     // Attach all listeners
-    taskListHeaderEl.addEventListener('click', headerClickListener);
+    
     taskListBody.addEventListener('click', bodyClickListener);
     taskListBody.addEventListener('focusout', bodyFocusOutListener);
     addTaskHeaderBtn.addEventListener('click', addTaskHeaderBtnListener);
@@ -1169,6 +1121,8 @@ function enableColumnRename(columnEl) {
 }
 
 
+
+
 /*
 ==================
 
@@ -1179,6 +1133,52 @@ Working Component
 
 function render() {
     if (!taskListBody) return;
+    
+    const headerClickListener = (e) => {
+    const columnOptionsIcon = e.target.closest('.options-icon');
+    const addColumnBtn = e.target.closest('.add-column-cell');
+    
+    if (columnOptionsIcon) {
+        e.stopPropagation();
+        const columnEl = columnOptionsIcon.closest('[data-column-id]');
+        if (!columnEl) return;
+        
+        const columnId = Number(columnEl.dataset.columnId);
+        const dropdownOptions = [
+            { name: 'Rename column' },
+            { name: 'Delete column' }
+        ];
+        
+        createDropdown(dropdownOptions, columnOptionsIcon, (selected) => {
+            if (selected.name === 'Delete column') {
+                deleteColumn(columnId);
+            } else if (selected.name === 'Rename column') {
+                enableColumnRename(columnEl);
+            }
+        });
+        return;
+    }
+    
+    if (addColumnBtn) {
+        e.stopPropagation();
+        
+        const existingTypes = new Set(project.customColumns.map(col => col.type));
+        const availableTypes = columnTypeOptions.filter(type =>
+            !existingTypes.has(type) || type === 'Custom'
+        );
+        
+        if (availableTypes.length === 0) {
+            alert("All available column types have been added.");
+            return;
+        }
+        
+        createDropdown(
+            availableTypes.map(type => ({ name: type })),
+            addColumnBtn,
+            (selected) => openAddColumnDialog(selected.name)
+        );
+    }
+};
     
     const projectToRender = project;
     const customColumns = projectToRender.customColumns || [];
@@ -1211,8 +1211,16 @@ function render() {
     gridWrapper.style.gridTemplateColumns = gridTemplateColumns;
     
     // 4. Render header and body cells directly into the grid wrapper
+    
     renderHeader(projectToRender, gridWrapper);
     renderBody(projectToRender, gridWrapper);
+    
+    gridWrapper.addEventListener('click', (e) => {
+        const isHeaderCell = e.target.closest('.header-cell');
+        if (isHeaderCell) {
+            headerClickListener(e);
+        }
+    });
     
     // 👇 Update sort button state and flag
     isSortActive = activeSortState !== 'default';
@@ -1480,6 +1488,7 @@ function createAddTaskRow(customColumns, sectionId) {
 }
 
 
+
 /*
 ==================
 
@@ -1487,6 +1496,9 @@ EndWorking Component
 
 ==================
 */
+
+
+
 
 
 // This function will run ONLY when a menu is open and the user scrolls
@@ -1890,29 +1902,7 @@ async function handleTaskCompletion(taskId, taskRowEl) {
     }
 }
 
-function addNewTask(section) {
-    const tempId = `temp_${Date.now()}`;
-    const newTask = {
-        id: tempId,
-        name: '',
-        isNew: true,
-        dueDate: '',
-        priority: 'Low',
-        status: 'On track',
-        assignees: [],
-        customFields: {},
-        order: section.tasks.length
-    };
-    
-    section.tasks.push(newTask);
-    taskIdToFocus = tempId;
-    
-    if (section.isCollapsed) {
-        section.isCollapsed = false;
-    }
-    
-    render();
-}
+
 
 function createTag(text, type, pClass) {
     return `<div class="${type}-tag ${pClass}">${text}</div>`;
@@ -1959,6 +1949,75 @@ function createStatusTag(s) {
     // If the status is not found, return an empty string.
     return '';
 }
+
+function createDropdown(options, targetEl, callback, optionType = null, columnId = null) {
+    if (!targetEl) return console.error("createDropdown was called with a null target element.");
+    closeFloatingPanels();
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'context-dropdown';
+    dropdown.style.visibility = 'hidden'; // measure after append
+
+    const isEditable = optionType === 'Priority' || optionType === 'Status' || optionType === 'CustomColumn';
+
+    options.forEach(option => {
+        const item = document.createElement('div');
+        item.className = 'dropdown-item';
+
+        let itemHTML = '';
+        if (option.color) {
+            itemHTML += `<span class="dropdown-color-swatch" style="background-color: ${option.color};"></span>`;
+        } else {
+            itemHTML += `<span class="dropdown-color-swatch-placeholder"></span>`;
+        }
+        itemHTML += `<span class="dropdown-item-name">${option.name}</span>`;
+        item.innerHTML = itemHTML;
+
+        item.addEventListener('click', (e) => {
+            if (e.target.closest('.dropdown-item-edit-btn')) return;
+            callback(option);
+        });
+
+        if (isEditable && option.name) {
+            const editBtn = document.createElement('button');
+            editBtn.className = 'dropdown-item-edit-btn';
+            editBtn.innerHTML = `<i class="fas fa-pencil-alt fa-xs"></i>`;
+            editBtn.title = 'Edit Option';
+            editBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openEditOptionDialog(optionType, option, columnId);
+            });
+            item.appendChild(editBtn);
+        }
+
+        dropdown.appendChild(item);
+    });
+
+    if (optionType) {
+        const separator = document.createElement('hr');
+        separator.className = 'dropdown-separator';
+        dropdown.appendChild(separator);
+
+        const addNewItem = document.createElement('div');
+        addNewItem.className = 'dropdown-item';
+        addNewItem.innerHTML = `<span class="dropdown-color-swatch-placeholder"><i class="fas fa-plus"></i></span><span>Add New...</span>`;
+
+        if (optionType === 'CustomColumn') {
+            addNewItem.addEventListener('click', () => openCustomColumnOptionDialog(columnId));
+        } else if (optionType === 'Priority' || optionType === 'Status') {
+            addNewItem.addEventListener('click', () => openCustomOptionDialog(optionType));
+        }
+
+        dropdown.appendChild(addNewItem);
+    }
+
+    document.body.appendChild(dropdown); // append to body
+
+    requestAnimationFrame(() => {
+        positionFloatingPanel(targetEl, dropdown);
+    });
+}
+
 
 function showDatePicker(targetEl, sectionId, taskId) {
     closeFloatingPanels();
@@ -2312,6 +2371,30 @@ function openCustomColumnCreatorDialog() {
     });
     
     dialogOverlay.addEventListener('click', e => { if (e.target === e.currentTarget) closeFloatingPanels(); });
+}
+
+function addNewTask(section) {
+    const tempId = `temp_${Date.now()}`;
+    const newTask = {
+        id: tempId,
+        name: '',
+        isNew: true,
+        dueDate: '',
+        priority: 'Low',
+        status: 'On track',
+        assignees: [],
+        customFields: {},
+        order: section.tasks.length
+    };
+    
+    section.tasks.push(newTask);
+    taskIdToFocus = tempId;
+    
+    if (section.isCollapsed) {
+        section.isCollapsed = false;
+    }
+    
+    render();
 }
 
 /**
