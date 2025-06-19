@@ -21,8 +21,8 @@
 .list-view-container {
     display: flex;
     flex-direction: column;
-    height: 60vh; 
-    transition: height 0.4s ease-in-out;
+    height: 600px;
+transition: height 0.4s ease-in-out;
     overflow: hidden; 
 }
 
@@ -1513,21 +1513,37 @@ padding-top: 9px;
 margin-left: 6px;
 }
 
-/* Optional upper/lower limits if needed */
-@media screen and (max-height: 700px) {
+/* Medium desktop screens (1000–1099px) */
+@media screen and (min-height: 1000px) and (max-height: 1099px) {
     .list-view-container {
-        height: 60vh; /* Smaller screens, shrink container */
+        height: 650px;
     }
 }
 
-@media screen and (min-height: 1600px) {
+/* Standard 1080p (1100–1299px) */
+@media screen and (min-height: 1100px) and (max-height: 1299px) {
     .list-view-container {
-        height: 80vh; /* 30-inch and up screens */
+        height: 700px;
     }
 }
 
-@media screen and (min-height: 2000px) {
+/* 30-inch monitors (1300–1499px, includes 1440p) */
+@media screen and (min-height: 1300px) and (max-height: 1499px) {
     .list-view-container {
-        height: 90vh; /* 4K+ monitors */
+        height: 900px;
+    }
+}
+
+/* Larger 30-inch monitors (1500–1699px, includes 1600p) */
+@media screen and (min-height: 1500px) and (max-height: 1699px) {
+    .list-view-container {
+        height: 1000px;
+    }
+}
+
+/* Ultra-wide and 4K+ monitors (1700px and above) */
+@media screen and (min-height: 1700px) {
+    .list-view-container {
+        height: 1200px;
     }
 }
