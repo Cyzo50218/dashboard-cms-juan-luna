@@ -655,90 +655,100 @@ function setupEventListeners() {
     const focusedOutElement = e.target;
     console.log('%cbodyFocusOutListener Triggered', 'color: #888;', 'Element that lost focus:', focusedOutElement);
 
-    // --- Case 1: Section Title ---
+    // --- Section Title Save ---
     if (focusedOutElement.matches('.section-title')) {
-        console.log('%cCASE: Section Title Save', 'color: blue; font-weight: bold;');
         const sectionEl = focusedOutElement.closest('.section-wrapper');
-        if (!sectionEl) return console.error("Missing .section-wrapper for section title.");
+        if (!sectionEl) return;
 
         const sectionId = sectionEl.dataset.sectionId;
         const newTitle = focusedOutElement.innerText.trim();
         const section = project.sections.find(s => s.id === sectionId);
-        if (section && section.title !== newTitle) {
+
+        if (!section) return;
+        if (['Completed', 'Todo', 'Doing'].includes(section.title)) {
+            focusedOutElement.innerText = section.title;
+            return;
+        }
+
+        if (section.title !== newTitle) {
             console.log(`Updated section title: ${newTitle}`);
             updateSectionInFirebase(sectionId, { title: newTitle });
         }
         return;
     }
 
-    // --- Case 2: Task Name Editing ---
+    // --- Task Name Save ---
     if (focusedOutElement.matches('.task-name')) {
-        console.log('%cCASE: Task Name Save', 'color: green; font-weight: bold;');
-
         const taskRow = focusedOutElement.closest('.task-row-wrapper');
         if (!taskRow) return;
 
         const taskId = taskRow.dataset.taskId;
         const { task, section } = findTaskAndSection(taskId);
-        if (!task || !section) return console.error("Missing task or section data.");
+        if (!task || !section) return;
 
         const newName = focusedOutElement.innerText.trim();
 
         if (task.isNew) {
             if (newName) {
-                console.log(`Saving new task: "${newName}"`);
                 section.tasks = section.tasks.filter(t => t.id !== taskId);
                 const { isNew, id, ...taskData } = task;
+                console.log(`Saving new task: "${newName}"`);
                 addTaskToFirebase(section.id, { ...taskData, name: newName });
             } else {
-                console.log("Empty new task discarded.");
+                console.log("Discarding empty new task.");
                 section.tasks = section.tasks.filter(t => t.id !== taskId);
                 render();
             }
-        } else {
-            if (task.name !== newName) {
-                console.log(`Renamed existing task (${taskId}) to "${newName}"`);
-                updateTask(taskId, section.id, { name: newName });
-            } else {
-                console.log("Task name unchanged.");
-            }
+        } else if (task.name !== newName) {
+            updateTask(taskId, section.id, { name: newName });
         }
         return;
     }
 
-    // --- Case 3: Custom Field Save ---
+    // --- Custom Field Save ---
     const customFieldCell = focusedOutElement.closest('[data-control="custom-select"]');
     if (customFieldCell) {
-        console.log('%cCASE: Custom Field Save', 'color: orange; font-weight: bold;');
-
         const taskRow = customFieldCell.closest('.task-row-wrapper');
-        const taskId = taskRow.dataset.taskId;
+        const taskId = taskRow?.dataset.taskId;
         const columnId = customFieldCell.dataset.columnId;
+
         const { task, section } = findTaskAndSection(taskId);
         const column = project.customColumns.find(c => c.id == columnId);
 
-        if (!task || !section || !column) {
-            return console.error("Missing task/section/column for custom field.");
-        }
+        if (!task || !section || !column) return;
 
-        let newValue = customFieldCell.innerText.trim();
+        let rawValue = customFieldCell.innerText.trim();
         const oldValue = task.customFields?.[columnId] ?? null;
+        let newValue = rawValue;
 
-        if (column.type === 'Costing' || column.type === 'Numbers') {
-            const numeric = newValue.replace(/[^0-9.-]+/g, '');
-            newValue = numeric && !isNaN(numeric) ? parseFloat(numeric) : null;
+        if (column.type === 'Costing') {
+            const numeric = rawValue.replace(/[^0-9.-]+/g, '');
+            if (/^-?\d+(\.\d+)?$/.test(numeric)) {
+                newValue = parseFloat(numeric);
+            } else {
+                console.log("Invalid costing format. Cancelling save.");
+                return;
+            }
+        } else if (column.type === 'Numbers') {
+            if (/^\d+$/.test(rawValue)) {
+                newValue = parseInt(rawValue, 10);
+            } else {
+                console.log("Non-numeric input in Numbers column. Cancelling save.");
+                return;
+            }
         }
 
         if (newValue !== oldValue) {
-            console.log(`Custom field ${columnId} updated:`, oldValue, '→', newValue);
+            console.log(`Updating customFields.${columnId} →`, newValue);
             updateTask(task.id, section.id, {
                 [`customFields.${columnId}`]: newValue
             });
         } else {
-            console.log("No change in custom field value.");
+            console.log("Custom field unchanged.");
         }
     }
 };
+
 
     
     addTaskHeaderBtnListener = () => {
@@ -1411,7 +1421,7 @@ function createTaskRow(task, customColumns) {
         if (isCompleted) cell.classList.add('is-completed');
         cell.dataset.control = col.control;
         
-        let content = col.value || '+';
+        let content = col.value || '';
         
         if (col.control === 'assignee') {
             // Render full assignee HTML (avatar + name + remove button)
