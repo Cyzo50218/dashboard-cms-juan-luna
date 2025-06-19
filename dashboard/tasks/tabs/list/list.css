@@ -139,6 +139,20 @@ button {
 .header-cell:hover {
     background-color: #f3f4f6; /* Light gray hover */
 }
+
+.task-cell,
+.header-cell {
+  min-width: 0;
+}
+
+.task-cell > span,
+.task-cell > div,
+.header-cell > span,
+.header-cell > div {
+  min-width: 0;
+  width: 100%;
+}
+
 .header-cell .column-icon {
     font-size: 12px;
     margin-right: 6px;
