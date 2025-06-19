@@ -36,15 +36,13 @@
     align-items: center;
     flex-shrink: 0;
     margin-top: 6px;
-    margin-bottom: 0;
+    margin-bottom: 6px;
     border-bottom: 1px solid var(--border-color);
 }
 
 .header-controls-right {
     display: flex;
-    gap: 0.5rem; /* Increased gap slightly for better visuals */
-    /* This is the key change: an auto left margin will push this
-       element all the way to the right of the flex container. */
+    gap: 0.5rem;
     margin-left: auto; 
 }
 
