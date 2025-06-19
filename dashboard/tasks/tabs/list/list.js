@@ -1307,37 +1307,40 @@ function renderBody(projectToRender, container) {
 }
 
 function createSectionRow(sectionData, customColumns) {
-    // Create the wrapper for the entire row
     const row = document.createElement('div');
     row.className = 'grid-row-wrapper section-row-wrapper';
     row.dataset.sectionId = sectionData.id;
-    
+
     const chevronClass = sectionData.isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down';
-    
-    // Cell 1: The Section Title (Sticky)
+
+    // Determine if title is editable
+    const protectedTitles = ['Completed', 'Todo', 'Doing'];
+    const isEditable = !protectedTitles.includes(sectionData.title.trim());
+
+    const titleAttributes = isEditable ? 'contenteditable="true"' : 'contenteditable="false"';
+
     const titleCell = document.createElement('div');
     titleCell.className = 'task-cell sticky-col-task section-title-cell';
     titleCell.innerHTML = `
         <div class="section-title-wrapper">
             <i class="fas fa-grip-vertical drag-handle"></i>
             <i class="fas ${chevronClass} section-toggle"></i>
-            <span class="section-title">${sectionData.title}</span>
+            <span class="section-title" ${titleAttributes}>${sectionData.title}</span>
         </div>
         <button class="section-options-btn" data-section-id="${sectionData.id}">
             <i class="fa-solid fa-ellipsis-h"></i>
         </button>
     `;
-    row.appendChild(titleCell); // Append cell to the row wrapper
-    
-    // Cells 2 to N: Create empty placeholder cells
-    const placeholderCount = 4 + customColumns.length + 1; // 4 base + custom + add column
+    row.appendChild(titleCell);
+
+    const placeholderCount = 4 + customColumns.length + 1;
     for (let i = 0; i < placeholderCount; i++) {
         const placeholderCell = document.createElement('div');
         placeholderCell.className = 'task-cell section-placeholder-cell';
-        row.appendChild(placeholderCell); // Append cell to the row wrapper
+        row.appendChild(placeholderCell);
     }
-    
-    return row; // Return the fully constructed row element
+
+    return row;
 }
 
 function createTaskRow(task, customColumns) {

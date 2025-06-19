@@ -589,6 +589,11 @@ body.is-dragging * {
     overflow: visible;
 }
 
+.section-title[contenteditable="false"] {
+    pointer-events: none;
+    opacity: 0.6;
+    cursor: default;
+}
 
 /* Hide the new action icons by default */
 .task-hover-actions {
