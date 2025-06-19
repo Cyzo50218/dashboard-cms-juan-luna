@@ -17,8 +17,8 @@
 .list-view-container {
     display: flex;
     flex-direction: column;
-    height: 590px;
-    overflow: hidden; /* Prevents the whole page from scrolling */
+    height: auto;
+    overflow: hidden; 
 }
 
 .section-title-cell,
@@ -28,7 +28,6 @@
 
 .listview-header {
     display: flex;
-    /* This aligns all items to the start initially */
     justify-content: flex-start; 
     align-items: center;
     flex-shrink: 0;
@@ -69,18 +68,17 @@ button {
 /* This is now the single, main scrolling viewport for the entire grid */
 #task-list-body {
     flex-grow: 1;
-    overflow: auto; /* Handles both horizontal and vertical scrolling */
+    overflow: auto;
 }
 
 .grid-wrapper {
     display: grid;
 }
 
-/* NEW: This uses subgrid to align wrapped rows to the main grid */
 .grid-row-wrapper {
     display: grid;
-    grid-column: 1 / -1; /* Makes the row span all columns */
-    grid-template-columns: subgrid; /* Aligns cells to the parent grid */
+    grid-column: 1 / -1; 
+    grid-template-columns: subgrid;
 }
 
 
@@ -89,7 +87,7 @@ button {
 .task-cell {
     display: flex;
     align-items: center;
-    background-color: var(--primary-bg); /* Give all cells a solid background */
+    background-color: var(--primary-bg);
     border-right: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
     overflow: hidden;
