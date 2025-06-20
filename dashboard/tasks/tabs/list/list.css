@@ -49,7 +49,7 @@
 #task-list-body {
     flex-grow: 1;     /* Tells this element to expand and take all available remaining vertical space */
     overflow-y: auto; /* Show a vertical scrollbar ONLY if its content is taller than the space it was given */
-    overflow-x: auto; /* Typically you don't want horizontal scroll here */
+    overflow-x: hidden; /* Typically you don't want horizontal scroll here */
     /* REMOVED: height: 100%; */
 }
 
@@ -144,6 +144,8 @@ button {
     min-height: 0;
     padding: 0 4px;
     font-weight: 500;
+    position: sticky;  
+    top: 0;    
     border-top: 1px solid var(--border-color);
     color: var(--text-secondary-color);
     justify-content: space-between;
