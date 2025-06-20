@@ -18,13 +18,39 @@
 }
 
 /* --- Core App Layout --- */
-/* This is the main container from your previous question */
 .list-view-container {
     display: flex;
-    flex-direction: column; /* Stack children vertically */
-    flex: 1;               /* Ensure it fills the space from its parent (e.g., .tabs-fragments) */
-    overflow: hidden;      /* CRITICAL: Prevents this parent from ever showing a scrollbar */
-    min-height: 0;         /* A flexbox best practice to prevent shrinking issues */
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+}
+
+/* 1. Task list body is now just a flex container, NO SCROLLING */
+#task-list-body {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    min-height: 0; /* Important for nested flex */
+}
+
+/* 2. NEW: Styles for the separate header and body wrappers */
+.list-header-wrapper {
+    flex-shrink: 0; /* Prevent header from shrinking */
+    overflow: hidden; /* Hide its own horizontal scrollbar */
+}
+
+.list-body-wrapper {
+    flex-grow: 1;  /* Take up all remaining space */
+    overflow: auto; /* Handles BOTH vertical and horizontal scroll */
+    min-height: 0;
+}
+
+/* 3. Grid wrapper styles remain mostly the same */
+.grid-wrapper {
+    display: grid;
+    width: max-content; 
+    min-width: 100%;   
 }
 
 .section-title-cell,
@@ -46,19 +72,12 @@
     flex-shrink: 0; /* Ensures headers don't get squished if content is small */
 }
 
-#task-list-body {
-    flex-grow: 1;   
-    overflow-y: auto; 
-    overflow-x: auto;
-}
-
 .header-controls-right {
     display: flex;
     gap: 0.5rem;
     margin-left: auto; 
 }
 
-/* Base button style — already applied */
 button {
     background-color: transparent;
     border: 1px solid var(--text-secondary-color);
@@ -97,15 +116,8 @@ button {
 }
 
 
-/* We no longer use the old header element for structure */
 #task-list-header {
     display: none;
-}
-
-.grid-wrapper {
-  display: grid;
-  width: max-content; 
-  min-width: 100%;    
 }
 
 
@@ -114,7 +126,6 @@ button {
     grid-column: 1 / -1; 
     grid-template-columns: subgrid;
 }
-
 
 /* --- Universal Cell Styling --- */
 .header-cell,
@@ -143,8 +154,6 @@ button {
     min-height: 0;
     padding: 0 4px;
     font-weight: 500;
-    position: sticky;  
-    top: 0;    
     border-top: 1px solid var(--border-color);
     color: var(--text-secondary-color);
     justify-content: space-between;

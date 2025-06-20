@@ -1154,106 +1154,134 @@ Working Component
 ==================
 */
 
+/**
+ * Renders the entire task list, including headers and body, with a split-scrolling behavior.
+ * - The header is in a non-scrolling container.
+ * - The body is in a container that scrolls both vertically and horizontally.
+ * - A JS event listener synchronizes the horizontal scroll of the header with the body.
+ */
 function render() {
+    // Abort if the main container isn't in the DOM
     if (!taskListBody) return;
     
+    // --- Event listener for header actions (options, add column) ---
+    // This logic remains the same, but we will attach it to the new headerGrid later.
     const headerClickListener = (e) => {
-    const columnOptionsIcon = e.target.closest('.options-icon');
-    const addColumnBtn = e.target.closest('.add-column-cell');
-    
-    if (columnOptionsIcon) {
-        e.stopPropagation();
-        const columnEl = columnOptionsIcon.closest('[data-column-id]');
-        if (!columnEl) return;
+        const columnOptionsIcon = e.target.closest('.options-icon');
+        const addColumnBtn = e.target.closest('.add-column-cell');
         
-        const columnId = Number(columnEl.dataset.columnId);
-        const dropdownOptions = [
-            { name: 'Rename column' },
-            { name: 'Delete column' }
-        ];
-        
-        createDropdown(dropdownOptions, columnOptionsIcon, (selected) => {
-            if (selected.name === 'Delete column') {
-                deleteColumn(columnId);
-            } else if (selected.name === 'Rename column') {
-                enableColumnRename(columnEl);
-            }
-        });
-        return;
-    }
-    
-    if (addColumnBtn) {
-        e.stopPropagation();
-        
-        const existingTypes = new Set(project.customColumns.map(col => col.type));
-        const availableTypes = columnTypeOptions.filter(type =>
-            !existingTypes.has(type) || type === 'Custom'
-        );
-        
-        if (availableTypes.length === 0) {
-            alert("All available column types have been added.");
+        if (columnOptionsIcon) {
+            e.stopPropagation();
+            const columnEl = columnOptionsIcon.closest('[data-column-id]');
+            if (!columnEl) return;
+            
+            const columnId = Number(columnEl.dataset.columnId);
+            const dropdownOptions = [
+                { name: 'Rename column' },
+                { name: 'Delete column' }
+            ];
+            
+            createDropdown(dropdownOptions, columnOptionsIcon, (selected) => {
+                if (selected.name === 'Delete column') {
+                    deleteColumn(columnId);
+                } else if (selected.name === 'Rename column') {
+                    enableColumnRename(columnEl);
+                }
+            });
             return;
         }
         
-        createDropdown(
-            availableTypes.map(type => ({ name: type })),
-            addColumnBtn,
-            (selected) => openAddColumnDialog(selected.name)
-        );
-    }
-};
+        if (addColumnBtn) {
+            e.stopPropagation();
+            
+            const existingTypes = new Set(project.customColumns.map(col => col.type));
+            const availableTypes = columnTypeOptions.filter(type =>
+                !existingTypes.has(type) || type === 'Custom'
+            );
+            
+            if (availableTypes.length === 0) {
+                alert("All available column types have been added.");
+                return;
+            }
+            
+            createDropdown(
+                availableTypes.map(type => ({ name: type })),
+                addColumnBtn,
+                (selected) => openAddColumnDialog(selected.name)
+            );
+        }
+    };
+    
+    // --- Main Rendering Logic ---
     
     const projectToRender = project;
     const customColumns = projectToRender.customColumns || [];
     
-    // 1. Clear the main scrolling container
+    // 1. Clear the main container that holds our new structure
     taskListBody.innerHTML = '';
     
-    // 2. Create the single grid wrapper that will contain ALL cells
-    const gridWrapper = document.createElement('div');
-    gridWrapper.className = 'grid-wrapper';
+    // 2. NEW: Create the two-container structure
+    const headerContainer = document.createElement('div');
+    headerContainer.className = 'list-header-wrapper';
     
-    taskListBody.appendChild(gridWrapper);
+    const bodyContainer = document.createElement('div');
+    bodyContainer.className = 'list-body-wrapper';
     
-    // 3. Define and apply the grid column template
+    // 3. NEW: Create a grid for the header and a grid for the body
+    const headerGrid = document.createElement('div');
+    headerGrid.className = 'grid-wrapper';
+    
+    const bodyGrid = document.createElement('div');
+    bodyGrid.className = 'grid-wrapper';
+    
+    // 4. NEW: Assemble the structure
+    headerContainer.appendChild(headerGrid);
+    bodyContainer.appendChild(bodyGrid);
+    taskListBody.appendChild(headerContainer);
+    taskListBody.appendChild(bodyContainer);
+    
+    // 5. Define the grid column layout
     const columnWidths = {
-    taskName: 'minmax(350px, max-content)',
-    assignee: '150px',
-    dueDate: '150px',
-    priority: '150px',
-    status: '150px',
-    defaultCustom: 'minmax(160px, max-content)',
-    addColumn: '1fr'
-};
-
+        taskName: 'minmax(350px, max-content)',
+        assignee: '150px',
+        dueDate: '150px',
+        priority: '150px',
+        status: '150px',
+        defaultCustom: 'minmax(160px, max-content)',
+        addColumn: '1fr'
+    };
+    
     const gridTemplateColumns = [
-    columnWidths.taskName,
-    columnWidths.assignee,
-    columnWidths.dueDate,
-    columnWidths.priority,
-    columnWidths.status,
-    ...customColumns.map(() => columnWidths.defaultCustom),
-    columnWidths.addColumn
-].join(' ');
-
-
-    gridWrapper.style.gridTemplateColumns = gridTemplateColumns;
+        columnWidths.taskName,
+        columnWidths.assignee,
+        columnWidths.dueDate,
+        columnWidths.priority,
+        columnWidths.status,
+        ...customColumns.map(() => columnWidths.defaultCustom),
+        columnWidths.addColumn
+    ].join(' ');
     
-    // 4. Render header and body cells directly into the grid wrapper
+    // 6. UPDATED: Apply the same column layout to BOTH grids for perfect alignment
+    headerGrid.style.gridTemplateColumns = gridTemplateColumns;
+    bodyGrid.style.gridTemplateColumns = gridTemplateColumns;
     
-    renderHeader(projectToRender, gridWrapper);
-    renderBody(projectToRender, gridWrapper);
+    // 7. UPDATED: Render the header into the header's grid and the body into the body's grid
+    renderHeader(projectToRender, headerGrid);
+    renderBody(projectToRender, bodyGrid);
     
-    gridWrapper.addEventListener('click', (e) => {
-        const isHeaderCell = e.target.closest('.header-cell');
-        if (isHeaderCell) {
-            headerClickListener(e);
-        }
+    // 8. UPDATED: Attach the click listener specifically to the header grid
+    headerGrid.addEventListener('click', headerClickListener);
+    
+    // 9. NEW: Synchronize the horizontal scroll position
+    // This is the magic that links the two containers' horizontal movement.
+    bodyContainer.addEventListener('scroll', () => {
+        headerContainer.scrollLeft = bodyContainer.scrollLeft;
     });
     
-    // 👇 Update sort button state and flag
-    isSortActive = activeSortState !== 'default';
+    // --- Post-Rendering Logic (no changes needed here) ---
     
+    // Update sort button state and flag
+    isSortActive = activeSortState !== 'default';
     if (sortBtn) {
         if (activeSortState === 'asc') {
             sortBtn.innerHTML = `<i class="fas fa-sort-amount-up-alt"></i> Oldest`;
@@ -1263,6 +1291,8 @@ function render() {
             sortBtn.innerHTML = `<i class="fas fa-sort"></i> Sort`;
         }
     }
+    
+    // Focus a specific task if needed (e.g., after creation)
     if (taskIdToFocus) {
         const newEl = taskListBody.querySelector(`[data-task-id="${taskIdToFocus}"] .task-name-input`);
         if (newEl) {
@@ -1271,7 +1301,9 @@ function render() {
         }
         taskIdToFocus = null;
     }
-    initializeDragAndDrop(gridWrapper);
+    
+    // UPDATED: Initialize drag and drop on the body's grid, which contains the draggable rows.
+    initializeDragAndDrop(bodyGrid);
 }
 
 function renderHeader(projectToRender, container) {
@@ -1305,28 +1337,32 @@ function renderHeader(projectToRender, container) {
     container.appendChild(addColumnCell);
 }
 
+/**
+ * Renders the body content (sections and tasks), ensuring each row
+ * aligns perfectly with the columns defined in renderHeader.
+ */
 function renderBody(projectToRender, container) {
     const customColumns = projectToRender.customColumns || [];
     
     (projectToRender.sections || []).forEach(section => {
-        // 🔁 NEW: wrap the whole section
         const sectionWrapper = document.createElement('div');
         sectionWrapper.className = 'section-wrapper';
         sectionWrapper.dataset.sectionId = section.id;
         
-        // Create and add the section title row
+        // Create and add the section title row (uses updated helper)
         const sectionRow = createSectionRow(section, customColumns);
         sectionWrapper.appendChild(sectionRow);
         
         // Add tasks if not collapsed
         if (!section.isCollapsed && section.tasks) {
             section.tasks.forEach(task => {
+                // Uses updated helper
                 const taskRow = createTaskRow(task, customColumns);
                 sectionWrapper.appendChild(taskRow);
             });
         }
         
-        // Add the "Add Task" row
+        // Add the "Add Task" row (uses updated helper)
         const addTaskRow = createAddTaskRow(customColumns, section.id);
         sectionWrapper.appendChild(addTaskRow);
         
