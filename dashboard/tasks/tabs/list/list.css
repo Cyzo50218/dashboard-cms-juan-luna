@@ -40,9 +40,6 @@
     min-height: 0;
 }
 
-/* --- NEW: The Horizontal Scrolling Container --- */
-/* This container's ONLY job is to scroll horizontally.
-   Its scrollbar will always be visible at the bottom of the component. */
 .grid-scroll-container {
     display: flex;
     flex-direction: column;
@@ -71,7 +68,6 @@
 .grid-wrapper {
     display: grid;
     width: max-content;
-    overflow-y: auto; 
     min-width: 100%;   
 }
 

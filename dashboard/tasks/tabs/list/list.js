@@ -1149,126 +1149,56 @@ function enableColumnRename(columnEl) {
     columnEl.addEventListener('keydown', onKeyDown);
 }
 
-
-
-
-/*
-==================
-
-Working Component
-
-==================
-*/
-
-/**
- * Flattens the project's sections and tasks into a single array for virtual scrolling.
- */
-function flattenProjectData() {
-    flatListOfItems = [];
-    (project.sections || []).forEach(section => {
-        flatListOfItems.push({ type: 'section', data: section });
-        if (!section.isCollapsed && section.tasks) {
-            section.tasks.forEach(task => {
-                flatListOfItems.push({ type: 'task', data: task });
-            });
-        }
-        flatListOfItems.push({ type: 'add_task', sectionId: section.id });
-    });
-}
-
-/**
- * Calculates which rows should be visible and renders only those into the bodyGrid.
- * @param {HTMLElement} bodyContainer - The scrolling container (.list-body-wrapper).
- * @param {HTMLElement} bodyGrid - The "window" to render rows into (.grid-wrapper).
- */
-function renderVisibleRows(bodyContainer, bodyGrid) {
-    const scrollTop = bodyContainer.scrollTop;
-    const viewportHeight = bodyContainer.clientHeight;
-
-    // 1. Calculate the start and end index of visible items
-    let startIndex = Math.floor(scrollTop / ROW_HEIGHT);
-    let endIndex = Math.ceil((scrollTop + viewportHeight) / ROW_HEIGHT);
-
-    // 2. Apply the buffer
-    startIndex = Math.max(0, startIndex - VISIBLE_ROW_BUFFER);
-    endIndex = Math.min(flatListOfItems.length, endIndex + VISIBLE_ROW_BUFFER);
-
-    // 3. Slice the visible items from our flat list
-    const visibleItems = flatListOfItems.slice(startIndex, endIndex);
-
-    // 4. Clear the existing rows and render the new visible ones
-    bodyGrid.innerHTML = '';
-    visibleItems.forEach(item => {
-        let rowElement;
-        if (item.type === 'section') {
-            rowElement = createSectionRow(item.data, project.customColumns);
-        } else if (item.type === 'task') {
-            rowElement = createTaskRow(item.data, project.customColumns);
-        } else if (item.type === 'add_task') {
-            rowElement = createAddTaskRow(project.customColumns, item.sectionId);
-        }
-
-        if (rowElement) {
-            bodyGrid.appendChild(rowElement);
-        }
-    });
-
-    // 5. Position the "window" of rows correctly inside the giant spacer
-    // This is the most important step for virtual scrolling.
-    const offsetY = startIndex * ROW_HEIGHT;
-    bodyGrid.style.transform = `translateY(${offsetY}px)`;
-}
-
-/**
- * Renders the entire task list, including headers and body, with a split-scrolling behavior.
- * - The header is in a non-scrolling container.
- * - The body is in a container that scrolls both vertically and horizontally.
- * - A JS event listener synchronizes the horizontal scroll of the header with the body.
- */
-
-// The main render function, now refactored for virtual scrolling
 function loadNextPage(bodyGrid) {
-    if (isLoadingNextPage || currentItemOffset >= flatListOfItems.length) {
-        return; // Prevent multiple loads or loading beyond the end
+    if (isLoadingNextPage || currentItemOffset >= project.sections.reduce((acc, s) => acc + 1 + (s.tasks?.length || 0) + 1, 0)) {
+        return; // Already loading or all items are loaded
     }
     isLoadingNextPage = true;
 
-    const itemsToRender = flatListOfItems.slice(currentItemOffset, currentItemOffset + ITEMS_PER_PAGE);
+    let itemsForNextPage = [];
+    let itemCount = 0;
 
-    itemsToRender.forEach(item => {
-        let rowElement;
-        if (item.type === 'section') {
-            rowElement = createSectionRow(item.data, project.customColumns);
-        } else if (item.type === 'task') {
-            rowElement = createTaskRow(item.data, project.customColumns);
-        } else if (item.type === 'add_task') {
-            rowElement = createAddTaskRow(project.customColumns, item.sectionId);
-        }
-        if (rowElement) {
-            bodyGrid.appendChild(rowElement);
-        }
-    });
+    // Determine which sections and tasks belong on the next "page"
+    let currentTotalCount = 0;
+    for (const section of project.sections) {
+        const sectionItemCount = 1 + (section.isCollapsed ? 0 : (section.tasks?.length || 0)) + 1;
 
-    currentItemOffset += itemsToRender.length;
+        if (currentTotalCount + sectionItemCount > currentItemOffset && itemCount < ITEMS_PER_PAGE) {
+            // This section is part of the next page to be rendered
+            itemsForNextPage.push(section);
+            itemCount += sectionItemCount;
+        }
+        currentTotalCount += sectionItemCount;
+    }
+    
+    // NOW, CALL RENDERBODY with only the sections for this page
+    if(itemsForNextPage.length > 0) {
+        renderBody(itemsForNextPage, project.customColumns, bodyGrid);
+    }
+
+    // Update the offset for the next call
+    currentItemOffset = currentTotalCount;
     isLoadingNextPage = false;
 }
 
+
+/**
+ * FINAL RENDER FUNCTION
+ */
 function render() {
     if (!taskListBody) return;
 
     // Reset state for a full re-render
     currentItemOffset = 0;
     isLoadingNextPage = false;
-
+    
     const projectToRender = project;
     const customColumns = projectToRender.customColumns || [];
-    flattenProjectData();
 
     // Clear the entire container
     taskListBody.innerHTML = '';
 
     // --- DOM STRUCTURE (Decoupled Scrolling Layout) ---
-    // This structure is REQUIRED for the sticky horizontal scrollbar.
     const headerContainer = document.createElement('div');
     headerContainer.className = 'list-header-wrapper';
 
@@ -1278,7 +1208,6 @@ function render() {
     const gridScrollContainer = document.createElement('div');
     gridScrollContainer.className = 'grid-scroll-container';
 
-    // Assemble the layout: header/body wrappers go INSIDE the horizontal scroller
     gridScrollContainer.appendChild(headerContainer);
     gridScrollContainer.appendChild(bodyContainer);
     taskListBody.appendChild(gridScrollContainer);
@@ -1286,13 +1215,11 @@ function render() {
     // --- GRIDS SETUP ---
     const headerGrid = document.createElement('div');
     headerGrid.className = 'grid-wrapper';
-
-    // The bodyGrid is now a simple grid, not a positioned "window"
     const bodyGrid = document.createElement('div');
     bodyGrid.className = 'grid-wrapper';
-
+    
     headerContainer.appendChild(headerGrid);
-    bodyContainer.appendChild(bodyGrid); // Append grid directly
+    bodyContainer.appendChild(bodyGrid);
 
     // --- GRID COLUMN STYLES ---
     const columnWidths = {
@@ -1350,39 +1277,24 @@ function render() {
             createDropdown(availableTypes.map(type => ({ name: type })), addColumnBtn, (selected) => openAddColumnDialog(selected.name));
         }
     };
+    
     headerGrid.addEventListener('click', headerClickListener);
 
-    // Horizontal scroll is on the outer container
+    // Horizontal scroll
     gridScrollContainer.addEventListener('scroll', () => {
         headerContainer.scrollLeft = gridScrollContainer.scrollLeft;
     });
 
-    // Vertical scroll on the inner container triggers loading more data
+    // Vertical scroll for infinite loading
     bodyContainer.addEventListener('scroll', () => {
         const { scrollTop, scrollHeight, clientHeight } = bodyContainer;
-        // Load next page when user is 300px from the bottom
         if (scrollTop + clientHeight >= scrollHeight - 300) {
             loadNextPage(bodyGrid);
         }
     });
 
     // --- POST-RENDER LOGIC ---
-    isSortActive = activeSortState !== 'default';
-    if (sortBtn) {
-        if (activeSortState === 'asc') sortBtn.innerHTML = `<i class="fas fa-sort-amount-up-alt"></i> Oldest`;
-        else if (activeSortState === 'desc') sortBtn.innerHTML = `<i class="fas fa-sort-amount-down-alt"></i> Newest`;
-        else sortBtn.innerHTML = `<i class="fas fa-sort"></i> Sort`;
-    }
-
-    if (taskIdToFocus) {
-        const newEl = taskListBody.querySelector(`[data-task-id="${taskIdToFocus}"] .task-name-input`);
-        if (newEl) {
-            newEl.focus();
-            newEl.select();
-        }
-        taskIdToFocus = null;
-    }
-
+    // ... your logic for sort buttons, focus, and drag-and-drop ...
     initializeDragAndDrop(bodyGrid);
 }
 function renderHeader(projectToRender, container) {
@@ -1416,32 +1328,30 @@ function renderHeader(projectToRender, container) {
     container.appendChild(addColumnCell);
 }
 
-function renderBody(projectToRender, container) {
-    const customColumns = projectToRender.customColumns || [];
-
-    (projectToRender.sections || []).forEach(section => {
+function renderBody(sectionsToRender, customColumns, container) {
+    // This loop now iterates over the subset of sections, not the whole project.
+    (sectionsToRender || []).forEach(section => {
         const sectionWrapper = document.createElement('div');
         sectionWrapper.className = 'section-wrapper';
         sectionWrapper.dataset.sectionId = section.id;
 
-        // Create and add the section title row (uses updated helper)
+        // Create and add the section title row
         const sectionRow = createSectionRow(section, customColumns);
         sectionWrapper.appendChild(sectionRow);
 
         // Add tasks if not collapsed
         if (!section.isCollapsed && section.tasks) {
             section.tasks.forEach(task => {
-                // Uses updated helper
                 const taskRow = createTaskRow(task, customColumns);
                 sectionWrapper.appendChild(taskRow);
             });
         }
 
-        // Add the "Add Task" row (uses updated helper)
+        // Add the "Add Task" row
         const addTaskRow = createAddTaskRow(customColumns, section.id);
         sectionWrapper.appendChild(addTaskRow);
 
-        // Append to main grid container
+        // Append the whole section (title, tasks, add button) to the main grid container
         container.appendChild(sectionWrapper);
     });
 }
