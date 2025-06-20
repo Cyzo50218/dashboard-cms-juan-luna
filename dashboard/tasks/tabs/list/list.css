@@ -45,12 +45,14 @@
     overflow-y: auto;
     overflow-x: auto; 
     padding-bottom: 60px;
+    width: fit-content;
 }
 
 /* --- Grid & Header Wrappers --- */
 .list-header-wrapper {
     flex-shrink: 0;
     z-index: 10;
+    width: fit-content;
 }
 .grid-wrapper {
     display: grid;

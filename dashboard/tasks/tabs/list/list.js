@@ -1249,6 +1249,8 @@ function render() {
 
     const bodyContainer = document.createElement('div');
     bodyContainer.className = 'list-body-wrapper'; // This will scroll VERTICALLY
+   
+
 
     // Assemble the layout: header and body are inside the horizontal scroller
     gridScrollContainer.appendChild(headerContainer);
@@ -1260,6 +1262,8 @@ function render() {
     headerGrid.className = 'grid-wrapper';
     const bodyGrid = document.createElement('div');
     bodyGrid.className = 'grid-wrapper';
+    headerGrid.style.width = 'max-content';
+    bodyGrid.style.width = 'max-content';
 
     headerContainer.appendChild(headerGrid);
     bodyContainer.appendChild(bodyGrid); // The body grid goes inside the vertical scroller
