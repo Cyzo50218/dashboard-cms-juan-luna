@@ -70,7 +70,8 @@
 /* --- Grid Layout (No change needed) --- */
 .grid-wrapper {
     display: grid;
-    width: max-content; 
+    width: max-content;
+    overflow-y: auto; 
     min-width: 100%;   
 }
 
