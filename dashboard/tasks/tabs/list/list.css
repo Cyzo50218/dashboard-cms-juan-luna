@@ -44,8 +44,7 @@
     height: calc(100vh - 160px);
     overflow-y: auto;
     overflow-x: auto; 
-    
-    margin-bottom: 60px;
+    padding-bottom: 60px;
 }
 
 /* --- Grid & Header Wrappers --- */
