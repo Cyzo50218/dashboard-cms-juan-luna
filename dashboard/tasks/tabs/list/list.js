@@ -1149,51 +1149,18 @@ function enableColumnRename(columnEl) {
     columnEl.addEventListener('keydown', onKeyDown);
 }
 
-function loadNextPage(bodyGrid) {
-    if (isLoadingNextPage || currentItemOffset >= project.sections.reduce((acc, s) => acc + 1 + (s.tasks?.length || 0) + 1, 0)) {
-        return; // Already loading or all items are loaded
-    }
-    isLoadingNextPage = true;
-
-    let itemsForNextPage = [];
-    let itemCount = 0;
-
-    // Determine which sections and tasks belong on the next "page"
-    let currentTotalCount = 0;
-    for (const section of project.sections) {
-        const sectionItemCount = 1 + (section.isCollapsed ? 0 : (section.tasks?.length || 0)) + 1;
-
-        if (currentTotalCount + sectionItemCount > currentItemOffset && itemCount < ITEMS_PER_PAGE) {
-            // This section is part of the next page to be rendered
-            itemsForNextPage.push(section);
-            itemCount += sectionItemCount;
-        }
-        currentTotalCount += sectionItemCount;
-    }
-    
-    // NOW, CALL RENDERBODY with only the sections for this page
-    if(itemsForNextPage.length > 0) {
-        renderBody(itemsForNextPage, project.customColumns, bodyGrid);
-    }
-
-    // Update the offset for the next call
-    currentItemOffset = currentTotalCount;
-    isLoadingNextPage = false;
-}
-
-
-// =================================================
-// FINAL JAVASCRIPT - ASANA-STYLE ADVANCED LAYOUT
-// =================================================
-
 // --- STATE & CONSTANTS ---
 const STICKY_COLUMN_WIDTH = 350; // Define this once
 
-// --- MAIN RENDER FUNCTION ---
+/**
+ * =================================================
+ * THE MAIN RENDER FUNCTION
+ * =================================================
+ */
 function render() {
-     if (!taskListBody) return;
+    if (!taskListBody) return;
 
-    // Reset state for a clean re-render
+    // Reset state for a full re-render
     currentItemOffset = 0;
     isLoadingNextPage = false;
     const projectToRender = project;
@@ -1209,19 +1176,17 @@ function render() {
     const bodyContainer = document.createElement('div');
     bodyContainer.className = 'list-body-wrapper';
     
-    // Assemble the layout
-    gridScrollContainer.appendChild(headerContainer);
-    gridScrollContainer.appendChild(bodyContainer);
-    taskListBody.appendChild(gridScrollContainer);
-    
-    // (Optional) Add the seam and custom scrollbar placeholder
     const seam = document.createElement('div');
     seam.className = 'horizontal-scroll-seam';
     seam.style.left = `${STICKY_COLUMN_WIDTH}px`;
-    headerContainer.appendChild(seam);
     const scrollbarPlaceholder = document.createElement('div');
     scrollbarPlaceholder.className = 'custom-scrollbar-placeholder';
+
+    gridScrollContainer.appendChild(headerContainer);
+    gridScrollContainer.appendChild(bodyContainer);
+    taskListBody.appendChild(gridScrollContainer);
     taskListBody.appendChild(scrollbarPlaceholder);
+    headerContainer.appendChild(seam);
 
     // --- 2. Setup Grids ---
     const headerGrid = document.createElement('div');
@@ -1231,7 +1196,7 @@ function render() {
     headerContainer.appendChild(headerGrid);
     bodyContainer.appendChild(bodyGrid);
 
-    // --- 3. Define Grid Columns ---
+    // --- 3. Define Grid Columns for the SCROLLING Part ---
     const columnWidths = {
         assignee: '150px',
         dueDate: '150px',
@@ -1240,9 +1205,8 @@ function render() {
         defaultCustom: 'minmax(160px, max-content)',
         addColumn: '1fr'
     };
-    // The first column is the placeholder for our absolute "Name" column
     const gridTemplateColumns = [
-        `${STICKY_COLUMN_WIDTH}px`,
+        `${STICKY_COLUMN_WIDTH}px`, // Placeholder for the sticky column
         columnWidths.assignee,
         columnWidths.dueDate,
         columnWidths.priority,
@@ -1254,13 +1218,10 @@ function render() {
     headerGrid.style.gridTemplateColumns = gridTemplateColumns;
     bodyGrid.style.gridTemplateColumns = gridTemplateColumns;
 
-    // --- 4. Initial Render ---
+    // --- 4. Initial Render & Event Listeners ---
     renderHeader(projectToRender, headerGrid);
     loadNextPage(bodyGrid);
 
-    // --- 5. EVENT LISTENERS ---
-
-    // YOUR DETAILED HEADER CLICK LISTENER IS NOW INTEGRATED HERE
     const headerClickListener = (e) => {
         const columnOptionsIcon = e.target.closest('.options-icon');
         const addColumnBtn = e.target.closest('.add-column-cell');
@@ -1287,16 +1248,12 @@ function render() {
             createDropdown(availableTypes.map(type => ({ name: type })), addColumnBtn, (selected) => openAddColumnDialog(selected.name));
         }
     };
-    
-    // Attach the listener to the header grid
     headerGrid.addEventListener('click', headerClickListener);
 
-    // Horizontal scroll sync
     gridScrollContainer.addEventListener('scroll', () => {
         headerContainer.scrollLeft = gridScrollContainer.scrollLeft;
     });
 
-    // Vertical scroll for infinite loading
     bodyContainer.addEventListener('scroll', () => {
         const { scrollTop, scrollHeight, clientHeight } = bodyContainer;
         if (scrollTop + clientHeight >= scrollHeight - 300 && !isLoadingNextPage) {
@@ -1304,19 +1261,46 @@ function render() {
         }
     });
 
-    // --- 6. Post-Render Logic ---
-    // ... your logic for sort buttons, focus, and drag-and-drop ...
+    // --- 5. Post-Render Logic ---
     initializeDragAndDrop(bodyGrid);
 }
 
-// --- ROW CREATION HELPERS (REVISED FOR ASANA METHOD) ---
+/**
+ * =================================================
+ * DATA & ROW CREATION HELPERS
+ * =================================================
+ */
+
+function loadNextPage(bodyGrid) {
+    if (isLoadingNextPage || !project.sections || currentItemOffset >= project.sections.length) {
+        return;
+    }
+    isLoadingNextPage = true;
+    const itemsToRender = project.sections.slice(currentItemOffset, currentItemOffset + ITEMS_PER_PAGE);
+    if (itemsToRender.length > 0) {
+        renderBody(itemsToRender, project.customColumns, bodyGrid);
+    }
+    currentItemOffset += itemsToRender.length;
+    isLoadingNextPage = false;
+}
+
+function renderBody(sectionsToRender, customColumns, container) {
+    (sectionsToRender || []).forEach(section => {
+        container.appendChild(createSectionRow(section, customColumns));
+        if (!section.isCollapsed && section.tasks) {
+            section.tasks.forEach(task => {
+                container.appendChild(createTaskRow(task, customColumns));
+            });
+        }
+        container.appendChild(createAddTaskRow(section, customColumns));
+    });
+}
+
 function renderHeader(projectToRender, container) {
     container.innerHTML = '';
     const customColumns = projectToRender.customColumns || [];
     const row = document.createElement('div');
     row.className = 'grid-row-container';
-
-    // 1. The Fixed Part
     const stickyWrapper = document.createElement('div');
     stickyWrapper.className = 'absolute-sticky-container';
     const nameCell = document.createElement('div');
@@ -1324,12 +1308,9 @@ function renderHeader(projectToRender, container) {
     nameCell.innerHTML = `<span>Name</span>`;
     stickyWrapper.appendChild(nameCell);
     row.appendChild(stickyWrapper);
-
-    // 2. The Scrolling Part
     const placeholderCell = document.createElement('div');
     placeholderCell.className = 'sticky-placeholder-cell';
     row.appendChild(placeholderCell);
-
     const standardHeaders = ['Assignee', 'Due Date', 'Priority', 'Status'];
     standardHeaders.forEach(name => {
         const cell = document.createElement('div');
@@ -1348,31 +1329,14 @@ function renderHeader(projectToRender, container) {
     addColumnCell.className = 'header-cell add-column-cell';
     addColumnCell.innerHTML = `<i class="fa-solid fa-plus"></i>`;
     row.appendChild(addColumnCell);
-
     container.appendChild(row);
 }
 
-function renderBody(sectionsToRender, customColumns, container) {
-    (sectionsToRender || []).forEach(section => {
-        container.appendChild(createSectionRow(section, customColumns));
-        if (!section.isCollapsed && section.tasks) {
-            section.tasks.forEach(task => {
-                container.appendChild(createTaskRow(task, customColumns));
-            });
-        }
-        container.appendChild(createAddTaskRow(customColumns, section.id));
-    });
-}
-
-function createSectionRow(sectionData, customColumns) {
+function createSectionRow(sectionData) {
     const row = document.createElement('div');
     row.className = 'grid-row-container section-title-row';
-
     const chevronClass = sectionData.isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down';
-    const protectedTitles = ['Completed', 'Todo', 'Doing'];
-    const isEditable = !protectedTitles.includes(sectionData.title.trim());
-    const titleAttributes = isEditable ? 'contenteditable="true"' : 'contenteditable="false"';
-    
+    const titleAttributes = 'contenteditable="true"';
     const titleCell = document.createElement('div');
     titleCell.className = 'task-cell section-title-cell';
     titleCell.style.gridColumn = '1 / -1';
@@ -1382,20 +1346,15 @@ function createSectionRow(sectionData, customColumns) {
             <i class="fas ${chevronClass} section-toggle"></i>
             <span class="section-title" ${titleAttributes}>${sectionData.title}</span>
         </div>
-        <button class="section-options-btn" data-section-id="${sectionData.id}">
-            <i class="fa-solid fa-ellipsis-h"></i>
-        </button>
-    `;
+        <button class="section-options-btn" data-section-id="${sectionData.id}"><i class="fa-solid fa-ellipsis-h"></i></button>`;
     row.appendChild(titleCell);
     return row;
 }
 
-
-function createTaskRow(task) {
+function createTaskRow(task, customColumns = []) {
     const row = document.createElement('div');
     row.className = 'grid-row-container';
-
-    // 1. Absolute Sticky Part
+    row.dataset.taskId = task.id;
     const stickyWrapper = document.createElement('div');
     stickyWrapper.className = 'absolute-sticky-container';
     const nameCell = document.createElement('div');
@@ -1403,166 +1362,53 @@ function createTaskRow(task) {
     nameCell.textContent = task.name;
     stickyWrapper.appendChild(nameCell);
     row.appendChild(stickyWrapper);
-    
-    // 2. Placeholder
-    const placeholder = document.createElement('div');
-    placeholder.className = 'sticky-placeholder-cell';
-    row.appendChild(placeholder);
-
-    // 3. Scrolling Cells
-    const assigneeCell = document.createElement('div');
-    assigneeCell.className = 'task-cell';
-    assigneeCell.textContent = task.assignee || '...';
-    row.appendChild(assigneeCell);
-
-    const dueDateCell = document.createElement('div');
-    dueDateCell.className = 'task-cell';
-    dueDateCell.textContent = task.dueDate || '...';
-    row.appendChild(dueDateCell);
-
-    const baseColumns = [
-        {
-            control: 'assignee',
-            value: task.assignees && task.assignees.length > 0 ? task.assignees[0].name : 'Add assignee'
-        },
-        {
-            control: 'due-date',
-            value: task.dueDate || 'Set date'
-        },
-        {
-            control: 'priority',
-            value: task.priority
-        },
-        {
-            control: 'status',
-            value: task.status
-        }];
-
-    baseColumns.forEach(col => {
-        const cell = document.createElement('div');
-        cell.className = 'task-cell';
-        if (isCompleted) cell.classList.add('is-completed');
-        cell.dataset.control = col.control;
-
-        let content = col.value || '';
-
-        if (col.control === 'assignee') {
-            // Render full assignee HTML (avatar + name + remove button)
-            content = createAssigneeHTML(task.assignees);
-        } else if (col.control === 'priority' && col.value) {
-            const className = `priority-tag priority-${col.value}`;
-            content = `<span class="${className}">${col.value}</span>`;
-        } else if (col.control === 'status' && col.value) {
-            const statusClass = `status-tag status-${col.value.replace(/\s+/g, '-')}`;
-            content = `<span class="${statusClass}">${col.value}</span>`;
-        } else {
-            content = `<span>${content}</span>`;
-        }
-
-
-        cell.innerHTML = content;
-        row.appendChild(cell);
-    });
-
-    // --- Custom Columns ---
-    (customColumns || []).forEach(col => {
-        const cell = document.createElement('div');
-        cell.className = 'task-cell';
-        if (isCompleted) cell.classList.add('is-completed');
-        cell.dataset.columnId = col.id;
-        cell.dataset.control = 'custom';
-
-        const rawValue = task.customFields ? task.customFields[col.id] : null;
-
-        let content = `<span class="add-value editable-custom-field" contenteditable="true"></span>`;
-        if (rawValue !== null && rawValue !== undefined) {
-            if (col.name === 'Type' || col.name === 'Tag') {
-                const tagClass = `status-tag status-${String(rawValue).replace(/\s+/g, '-')}`;
-                content = `<span class="editable-custom-field ${tagClass}" contenteditable="true">${rawValue}</span>`;
-            } else {
-                content = `<span class="editable-custom-field" contenteditable="true">${rawValue}</span>`;
-            }
-        }
-
-        cell.innerHTML = content;
-        row.appendChild(cell);
-    });
-
-    // --- Placeholder Cell ---
-    const placeholderCell = document.createElement('div');
-    placeholderCell.className = 'task-cell';
-    row.appendChild(placeholderCell);
-
-    return row;
-}
-
-function createAddTaskRow(customColumns, sectionId) {
-    const row = document.createElement('div');
-    row.className = 'grid-row-container add-task-row-wrapper';
-    row.dataset.sectionId = sectionId;
-
-    // First, find the relevant section to access its tasks for the sum calculation
-    const section = project.sections.find(s => s.id === sectionId);
-    if (!section) return row; // Return an empty row if section not found
-
-    // --- 1. The Fixed Part (The "Add Task" Button) ---
-    const stickyWrapper = document.createElement('div');
-    stickyWrapper.className = 'absolute-sticky-container';
-    
-    const addTaskCell = document.createElement('div');
-    addTaskCell.className = 'task-cell'; // It's a cell within the sticky container
-    addTaskCell.innerHTML = `
-        <div class="add-task-wrapper">
-            <i class="add-task-icon fa-solid fa-plus"></i>
-            <span class="add-task-text">Add task...</span>
-        </div>
-    `;
-    stickyWrapper.appendChild(addTaskCell);
-    row.appendChild(stickyWrapper);
-
-
-    // --- 2. The Scrolling Part (Placeholders and Sums) ---
-    
-    // a. The placeholder for the sticky column
     const placeholderCell = document.createElement('div');
     placeholderCell.className = 'sticky-placeholder-cell';
     row.appendChild(placeholderCell);
-
-    // b. Empty placeholders for the standard columns (Assignee, Due Date, etc.)
-    const standardColumnCount = 4; // Assignee, Due Date, Priority, Status
-    for (let i = 0; i < standardColumnCount; i++) {
-        const placeholder = document.createElement('div');
-        placeholder.className = 'task-cell';
-        row.appendChild(placeholder);
-    }
-
-    // c. YOUR SUM CALCULATION LOGIC (Integrated Here)
-    // This creates cells for each custom column, with sums for 'Costing' types.
-    customColumns.forEach(col => {
+    ['assignee', 'dueDate', 'priority', 'status'].forEach(key => {
         const cell = document.createElement('div');
-        cell.className = 'task-cell summary-cell'; // Use a specific class for styling
-
-        if (col.type === 'Costing') {
-            // Calculate the sum of all task values for this column in this section
-            const sum = (section.tasks || []).reduce((acc, task) => {
-                const value = task.customFields?.[col.id];
-                // Ensure the value is a number before adding
-                return typeof value === 'number' ? acc + value : acc;
-            }, 0);
-            
-            const formatted = sum !== 0 ? `Sum: ${sum.toFixed(2)}` : '';
-            cell.innerHTML = `<span class="costing-sum">${formatted}</span>`;
-        }
-        // For other custom column types, the cell will be created but remain empty.
-        
+        cell.className = 'task-cell';
+        cell.textContent = task[key] || '';
         row.appendChild(cell);
     });
+    customColumns.forEach(col => {
+        const cell = document.createElement('div');
+        cell.className = 'task-cell';
+        cell.textContent = task.customFields?.[col.id] || '';
+        row.appendChild(cell);
+    });
+    row.appendChild(document.createElement('div'));
+    return row;
+}
 
-    // d. Final placeholder to align with the "Add Column" button in the header
-    const finalPlaceholder = document.createElement('div');
-    finalPlaceholder.className = 'task-cell';
-    row.appendChild(finalPlaceholder);
-    
+function createAddTaskRow(section, customColumns = []) {
+    const row = document.createElement('div');
+    row.className = 'grid-row-container add-task-row-wrapper';
+    const stickyWrapper = document.createElement('div');
+    stickyWrapper.className = 'absolute-sticky-container';
+    const addTaskCell = document.createElement('div');
+    addTaskCell.className = 'task-cell';
+    addTaskCell.innerHTML = `<div class="add-task-wrapper"><i class="add-task-icon fa-solid fa-plus"></i><span class="add-task-text">Add task...</span></div>`;
+    stickyWrapper.appendChild(addTaskCell);
+    row.appendChild(stickyWrapper);
+    const placeholderCell = document.createElement('div');
+    placeholderCell.className = 'sticky-placeholder-cell';
+    row.appendChild(placeholderCell);
+    const standardHeaders = ['Assignee', 'Due Date', 'Priority', 'Status'];
+    standardHeaders.forEach(() => row.appendChild(document.createElement('div')));
+    customColumns.forEach(col => {
+        const cell = document.createElement('div');
+        cell.className = 'task-cell summary-cell';
+        if (col.type === 'Costing') {
+            const sum = (section.tasks || []).reduce((acc, task) => {
+                const value = task.customFields?.[col.id];
+                return typeof value === 'number' ? acc + value : acc;
+            }, 0);
+            cell.innerHTML = sum !== 0 ? `<span class="costing-sum">Sum: ${sum.toFixed(2)}</span>` : '';
+        }
+        row.appendChild(cell);
+    });
+    row.appendChild(document.createElement('div'));
     return row;
 }
     
