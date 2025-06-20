@@ -19,131 +19,17 @@
     --task-row-padding: 0px 4px;
 }
 
-/* =================================================
-   FINAL & COMPLETE CSS - ASANA-STYLE STICKY LAYOUT
-   ================================================= */
-
-/* --- Main Layout Frames --- */
+/* --- Core App Layout --- */
 .list-view-container {
     display: flex;
     flex-direction: column;
-    flex: 1;
-    overflow: hidden;
-    min-height: 0;
-}
-.listview-header {
-    flex-shrink: 0;
-    padding: 8px 16px;
-    border-bottom: 1px solid #e8e8e8;
+    height: 590px;
+    overflow: hidden; /* Prevents the whole page from scrolling */
 }
 
-#task-list-body {
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1;
-    overflow: hidden;
-    min-height: 0;
-}
-
-.list-view-container {
-    display: flex;
-    flex-direction: column;
-    flex: 1; /* Makes the component fill its parent */
-    overflow: hidden;
-    min-height: 0;
-}
-.listview-header {
-    flex-shrink: 0;
-    padding: 8px 16px;
-    border-bottom: 1px solid #e8e8e8;
-}
-
-/* --- Main Grid Layout Manager --- */
-#task-list-body {
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1;
-    overflow: hidden;
-    min-height: 0;
-}
-
-/* --- THE SCROLLING CONTAINERS (THE CORE OF THE SOLUTION) --- */
-
-/* The HORIZONTAL scroller: Always visible at the bottom of the component */
-.grid-scroll-container {
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1;
-    overflow-x: auto;
-    overflow-y: hidden; /* Does NOT scroll vertically */
-    min-height: 0;
-}
-
-/* The VERTICAL scroller: Always visible on the right */
-.list-body-wrapper {
-    flex-grow: 1;
-    overflow-y: auto;
-    overflow-x: hidden; /* Does NOT scroll horizontally */
-    position: relative; /* Anchor for sticky children */
-}
-
-/* --- Grid Structure --- */
-.list-header-wrapper {
-    flex-shrink: 0;
-    position: relative;
-    z-index: 30; /* Header must be on top */
-}
-.grid-wrapper {
-    display: grid;
-    width: max-content;
-    min-width: 100%;
-}
-.grid-row-wrapper {
-    display: contents; /* Makes cells direct children of the grid */
-}
-
-/*
-=========================================
-=== STICKY BEHAVIOR (Frozen Panes) ======
-=========================================
-*/
-.header-cell,
-.task-cell {
-    padding: 8px 12px;
-    border-bottom: 1px solid #e8e8e8;
-    background-color: #fff;
-}
-
-/* 1. Makes ALL header cells sticky to the top */
-.header-cell {
-    position: sticky;
-    top: 0;
-    z-index: 20;
-    background-color: #f7f8f9;
-    border-right: 1px solid #e8e8e8;
-    font-weight: 500;
-}
-
-/* 2. Makes SECTION headers sticky to the top */
-.section-title-cell {
-    position: sticky;
-    top: 0;
-    z-index: 999; /* Lower z-index than main header so it sticks underneath */
-    background-color: #f0f0f0;
-    grid-column: 1 / -1; /* This makes it span all columns */
-}
-
-/* 3. Makes the FIRST COLUMN sticky to the left */
-.sticky-col-task {
-    position: sticky;
-    left: 0;
-    z-index: 5; /* Above normal cells */
-    border-right: 1px solid #e8e8e8;
-}
-
-/* 4. Makes the TOP-LEFT "Name" header the master sticky cell */
-.sticky-col-header {
-    z-index: 25; /* Higher than other sticky elements */
+.section-title-cell,
+.task-name-wrapper {
+    user-select: none;
 }
 
 .listview-header {
@@ -188,15 +74,8 @@ button {
 
 /* This is now the single, main scrolling viewport for the entire grid */
 #task-list-body {
-    display: flex;         /* MUST be a flex container */
-    flex-direction: column;
-    flex-grow: 1;          /* Takes all remaining vertical space */
-    overflow: hidden;      /* This container must NOT scroll */
-    min-height: 0;
-}
-
-.section-wrapper{
-overflow: auto; /* Handles both horizontal and vertical scrolling */
+    flex-grow: 1;
+    overflow: auto; /* Handles both horizontal and vertical scrolling */
 }
 
 .grid-wrapper {
@@ -216,7 +95,6 @@ overflow: auto; /* Handles both horizontal and vertical scrolling */
 .task-cell {
     display: flex;
     align-items: center;
-    
     background-color: var(--primary-bg); /* Give all cells a solid background */
     border-right: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
@@ -231,7 +109,6 @@ overflow: auto; /* Handles both horizontal and vertical scrolling */
     min-height: var(--header-height);
     padding: 0 4px;
     font-weight: 500;
-    position: sticky;
     border-top: 1px solid var(--border-color);
     color: var(--text-secondary-color);
     justify-content: space-between;
@@ -297,6 +174,16 @@ overflow: auto; /* Handles both horizontal and vertical scrolling */
 /* =====================================================================
 // SPREADSHEET STICKY LOGIC
 // ===================================================================== */
+
+/* 1. Make the entire header row sticky to the top */
+.header-cell {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    /* Use a box-shadow for a crisp bottom border that stays on top */
+    border-bottom: none;
+    box-shadow: inset 0 -1px 0 var(--header-border-color);
+}
 
 /* 2. Make all cells in the first column sticky to the left */
 .sticky-col-task {
@@ -1241,7 +1128,7 @@ Custom class
     from {
         opacity: 0;
     }
-
+    
     to {
         opacity: 1;
     }
@@ -1252,7 +1139,7 @@ Custom class
         opacity: 0;
         transform: scale(0.95) translateY(10px);
     }
-
+    
     to {
         opacity: 1;
         transform: scale(1) translateY(0);
@@ -1353,7 +1240,7 @@ Custom class
     appearance: none;
     -webkit-appearance: none;
     margin: 0;
-
+    
     /* Custom checkbox styles */
     height: 1.25em;
     width: 1.25em;
@@ -1722,125 +1609,158 @@ Custom class
     padding-top: 9px;
     margin-left: 6px;
 }
-
-/**
- * Base styles for the juanlunaspreadsheet-list-view component.
- * Establishes a flexbox layout to position the left and right panes.
- */
-.juanlunaspreadsheet-list-view {
-    display: flex;
-    flex-direction: row; /* Lay out left and right panes side-by-side */
+.juanlunacms-spreadsheetlist-container {
     width: 100%;
-    height: 100%; /* Ensure it fills the parent container */
-    overflow: hidden; /* Prevent the main container from scrolling */
-    border: 1px solid #dcdcdc; /* A border similar to the reference image */
-    background-color: #fff;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-}
-
-/**
- * Styles for the fixed left pane (Task Name column).
- */
-.juanlunaspreadsheet-list-view__left-pane {
-    flex-shrink: 0; /* Prevents the left pane from shrinking */
     display: flex;
     flex-direction: column;
-    border-right: 1px solid #dcdcdc; /* Separator line */
-    background-color: #fafafa; /* Slightly different background for the fixed column */
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 14px;
 }
 
-/**
- * Styles for the scrollable right pane (Task Data columns).
- */
-.juanlunaspreadsheet-list-view__right-pane {
-    flex-grow: 1; /* Allows the right pane to fill remaining space */
+/* Sticky Header Row */
+.juanlunacms-spreadsheetlist-header {
+    display: flex;
+    position: sticky;
+    top: 0;
+    background: #f9f9f9;
+    z-index: 50;
+    border-bottom: 1px solid #ddd;
+}
+
+/* Left Header */
+.juanlunacms-spreadsheetlist-left-header {
+    width: 240px;
+    min-width: 240px;
+    padding: 12px;
+    font-weight: 600;
+    background: #fff;
+    border-right: 1px solid #ddd;
+    position: sticky;
+    left: 0;
+    z-index: 51;
+}
+
+/* Right Header Scroll Container */
+.juanlunacms-spreadsheetlist-right-header-scroll {
+    overflow-x: auto;
+    width: 100%;
+}
+
+.juanlunacms-spreadsheetlist-right-header {
+    display: flex;
+    min-width: max-content;
+}
+
+.juanlunacms-spreadsheetlist-header-cell {
+    padding: 12px;
+    min-width: 160px;
+    font-weight: 600;
+    background: #f9f9f9;
+    border-right: 1px solid #ddd;
+    white-space: nowrap;
+}
+
+/* Body Container */
+.juanlunacms-spreadsheetlist-body {
     display: flex;
     flex-direction: column;
-    overflow: hidden; /* Important: Hides default scrollbars */
 }
 
-/**
- * Wrapper for the horizontally scrollable content in the right pane.
- */
-.juanlunaspreadsheet-list-view__scroll-container {
-    overflow-x: auto; /* Enables horizontal scrolling */
-    overflow-y: hidden;
-    flex-grow: 1;
+/* Full Row */
+.juanlunacms-spreadsheetlist-row {
     display: flex;
-    flex-direction: column;
+    width: 100%;
 }
 
-/**
- * Common styles for header wrappers in both panes.
- */
-.juanlunaspreadsheet-list-view__header-wrapper {
-    flex-shrink: 0;
-    font-weight: 500;
-    color: #6a6a6a;
-    background-color: #ffffff;
-    border-bottom: 1px solid #dcdcdc;
-    overflow: hidden; /* Hides the part of the header that scrolls out of view */
+/* Left Cell (Fixed) */
+.juanlunacms-spreadsheetlist-left-cell {
+    width: 240px;
+    min-width: 240px;
+    padding: 10px;
+    border-right: 1px solid #eee;
+    border-bottom: 1px solid #f0f0f0;
+    background: #fff;
+    position: sticky;
+    left: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    word-break: break-word;
 }
 
-/**
- * Common styles for the body wrappers that contain the grid data.
- * These are the elements that will have the synchronized vertical scrollbars.
- */
-.juanlunaspreadsheet-list-view__body-wrapper {
-    overflow-y: auto; /* The primary vertical scrollbar */
-    overflow-x: hidden;
-    flex-grow: 1; /* Ensures it fills the available vertical space */
+/* Section Styling */
+.juanlunacms-spreadsheetlist-left-cell.section {
+    font-weight: bold;
+    background: #f5f5f5;
 }
 
-/* Hide scrollbar for the left pane's body to only show one */
-.juanlunaspreadsheet-list-view__left-pane .juanlunaspreadsheet-list-view__body-wrapper {
-   scrollbar-width: none; /* Firefox */
-   -ms-overflow-style: none;  /* IE and Edge */
+/* Add Task Row */
+.juanlunacms-spreadsheetlist-left-cell.add-task {
+    font-style: italic;
+    color: #888;
+    cursor: pointer;
 }
 
-.juanlunaspreadsheet-list-view__left-pane .juanlunaspreadsheet-list-view__body-wrapper::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, and Opera */
+.juanlunacms-spreadsheetlist-left-cell.add-task:hover {
+    background: #f1f1f1;
 }
 
-
-/**
- * The grid container itself. Used for both header and body.
- */
-.juanlunaspreadsheet-list-view__grid {
-    display: grid;
-    min-width: max-content; /* Critical for horizontal scrolling */
+/* Right Row (scrollable) */
+.juanlunacms-spreadsheetlist-right-row {
+    display: flex;
+    min-width: max-content;
 }
 
-/**
- * Styling for individual header cells.
- */
-.juanlunaspreadsheet-list-view__header-cell {
-    padding: 10px 12px;
-    text-align: left;
+/* Cell Styling */
+.juanlunacms-spreadsheetlist-cell {
+    min-width: 160px;
+    padding: 10px;
+    border-bottom: 1px solid #f0f0f0;
+    border-right: 1px solid #f0f0f0;
+    background: #fff;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    border-right: 1px solid #ebebeb;
 }
 
-.juanlunaspreadsheet-list-view__header-cell:last-child {
-    border-right: none;
-}
-
-/**
- * Placeholder styling for data cells that will be added by JavaScript.
- * You can create a class like this for your dynamically generated cells.
- */
-.juanlunaspreadsheet-list-view__body-cell {
-    padding: 10px 12px;
-    display: flex;
-    align-items: center;
-    border-right: 1px solid #ebebeb;
-    border-bottom: 1px solid #ebebeb;
-    white-space: nowrap;
+/* Checkbox Styling */
+.juanlunacms-spreadsheetlist-left-cell input[type="checkbox"] {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: 1.5px solid #ccc;
     background-color: #fff;
+    cursor: pointer;
+    position: relative;
 }
 
-.juanlunaspreadsheet-list-view__body-cell:last-child {
-    border-right: none;
+.juanlunacms-spreadsheetlist-left-cell input[type="checkbox"]:checked {
+    background-color: #276ef1;
+    border-color: #276ef1;
+}
+
+.juanlunacms-spreadsheetlist-left-cell input[type="checkbox"]:checked::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 5px;
+    width: 4px;
+    height: 9px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+.juanlunacms-spreadsheetlist-header-cell.add-column {
+    text-align: center;
+    color: #555;
+    background: #f9f9f9;
+    min-width: 100px;
+    border-left: 1px solid #ddd;
+    font-weight: normal;
+}
+
+.juanlunacms-spreadsheetlist-header-cell.add-column:hover {
+    background: #eaeaea;
 }
