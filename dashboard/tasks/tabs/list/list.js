@@ -1552,94 +1552,65 @@ function createTaskRow(task, customColumns) {
 }
 
 function createAddTaskRow(customColumns, sectionId) {
-    
+    // Find the relevant section to access its tasks for the sum calculation
     const section = project.sections.find(s => s.id === sectionId);
-    
+
+    // Add robustness: If the section doesn't exist for any reason, return an empty row to prevent errors.
+    if (!section) {
+        console.error(`Could not find section with ID: ${sectionId} while creating an 'Add Task' row.`);
+        return document.createElement('div');
+    }
+
+    // 1. Create the main row wrapper
     const row = document.createElement('div');
-    
     row.className = 'grid-row-wrapper add-task-row-wrapper';
-    
     row.dataset.sectionId = sectionId;
-    
-    
-    
-    // Sticky cell: "Add task..." button
-    
+
+    // 2. Create the STICKY "Add Task" Cell (First Column)
     const addTaskCell = document.createElement('div');
     addTaskCell.className = 'task-cell sticky-col-task add-task-cell';
     addTaskCell.innerHTML = `
-        <div class="add-task-wrapper">
-            <i class="add-task-icon fa-solid fa-plus"></i>
-            <span class="add-task-text">Add task...</span>
-        </div>
-    `;
-    
+        <div class="add-task-wrapper">
+            <i class="add-task-icon fa-solid fa-plus"></i>
+            <span class="add-task-text">Add task...</span>
+        </div>
+    `;
     row.appendChild(addTaskCell);
-    
-    
-    
-    // 4 base columns (Assignee, Due Date, Priority, Status)
-    
-    for (let i = 0; i < 4; i++) {
-        
+
+    // 3. Create placeholder cells for the standard scrolling columns
+    const standardColumnCount = 4; // Corresponds to Assignee, Due Date, Priority, Status
+    for (let i = 0; i < standardColumnCount; i++) {
         const placeholder = document.createElement('div');
-        
         placeholder.className = 'task-cell';
-        
         row.appendChild(placeholder);
-        
     }
-    
-    
-    
-    // Custom Columns
-    
-    customColumns.forEach(col => {
-        
+
+    // 4. Create cells for Custom Columns, with SUM logic for 'Costing' type
+    (customColumns || []).forEach(col => {
         const cell = document.createElement('div');
-        
-        cell.className = 'task-cell';
-        
-        
-        
+        cell.className = 'task-cell summary-cell'; // Use a specific class for styling sums
+
         if (col.type === 'Costing') {
-            
-            // Calculate the sum of all task values for this column in this section
-            
             const sum = (section.tasks || []).reduce((acc, task) => {
-                
                 const value = task.customFields?.[col.id];
-                
                 return typeof value === 'number' ? acc + value : acc;
-                
             }, 0);
             
-            const formatted = sum !== 0 ? `Sum: ${sum.toFixed(2)}` : '';
-            
-            cell.innerHTML = `<span class="costing-sum">${formatted}</span>`;
-            
+            // Only display the sum if it's not zero
+            if (sum !== 0) {
+                cell.innerHTML = `<span class="costing-sum">Sum: ${sum.toFixed(2)}</span>`;
+            }
         }
-        
-        
-        
+        // For other custom column types, the cell will be appended but remain empty.
         row.appendChild(cell);
-        
     });
-    
-    
-    
-    // Final Placeholder Cell (Add column button slot)
-    
+
+    // 5. Create the final placeholder cell to align with the "Add Column" button
     const endPlaceholder = document.createElement('div');
-    
     endPlaceholder.className = 'task-cell';
-    
     row.appendChild(endPlaceholder);
-    
-    
-    
+
     return row;
-    
 }
 
 
