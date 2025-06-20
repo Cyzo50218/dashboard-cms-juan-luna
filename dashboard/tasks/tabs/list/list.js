@@ -1236,164 +1236,241 @@ function renderVisibleRows(bodyContainer, bodyGrid) {
 
 // The main render function, now refactored for virtual scrolling
 function render() {
+
     if (!taskListBody) return;
 
+
+
     const headerClickListener = (e) => {
+
         const columnOptionsIcon = e.target.closest('.options-icon');
+
         const addColumnBtn = e.target.closest('.add-column-cell');
 
+
+
         if (columnOptionsIcon) {
+
             e.stopPropagation();
+
             const columnEl = columnOptionsIcon.closest('[data-column-id]');
+
             if (!columnEl) return;
 
+
+
             const columnId = Number(columnEl.dataset.columnId);
+
             const dropdownOptions = [
+
                 { name: 'Rename column' },
+
                 { name: 'Delete column' }
+
             ];
 
+
+
             createDropdown(dropdownOptions, columnOptionsIcon, (selected) => {
+
                 if (selected.name === 'Delete column') {
+
                     deleteColumn(columnId);
+
                 } else if (selected.name === 'Rename column') {
+
                     enableColumnRename(columnEl);
+
                 }
+
             });
+
             return;
+
         }
+
+
 
         if (addColumnBtn) {
+
             e.stopPropagation();
 
+
+
             const existingTypes = new Set(project.customColumns.map(col => col.type));
+
             const availableTypes = columnTypeOptions.filter(type =>
+
                 !existingTypes.has(type) || type === 'Custom'
+
             );
+
+
 
             if (availableTypes.length === 0) {
+
                 alert("All available column types have been added.");
+
                 return;
+
             }
 
+
+
             createDropdown(
+
                 availableTypes.map(type => ({ name: type })),
+
                 addColumnBtn,
+
                 (selected) => openAddColumnDialog(selected.name)
+
             );
+
         }
+
     };
+
+
 
     const projectToRender = project;
+
     const customColumns = projectToRender.customColumns || [];
 
+
+
     // 1. Clear the main scrolling container
+
     taskListBody.innerHTML = '';
 
-    // NEW: Apply flex layout to the main container to position header and body
-    taskListBody.style.display = 'flex';
-    taskListBody.style.flexDirection = 'column';
-    taskListBody.style.height = '100%'; // Ensure parent has a defined height
-
-    // 2. Create two separate wrappers: one for the header and one for the body.
-    const headerWrapper = document.createElement('div');
-    headerWrapper.className = 'header-wrapper';
-
-    const bodyWrapper = document.createElement('div');
-    bodyWrapper.className = 'grid-wrapper body-wrapper'; // Keep grid-wrapper for existing styles
-
-    // NEW: Style the wrappers for independent scrolling
-    headerWrapper.style.overflowX = 'auto';
-    headerWrapper.style.overflowY = 'hidden'; // Header only scrolls horizontally
-    headerWrapper.style.display = 'grid'; // Use grid for the header itself
-
-    bodyWrapper.style.overflow = 'auto';     // Body scrolls in both directions
-    bodyWrapper.style.flexGrow = '1';      // Body takes up remaining vertical space
-    bodyWrapper.style.display = 'grid'; // Use grid for the body itself
 
 
-    taskListBody.appendChild(headerWrapper);
-    taskListBody.appendChild(bodyWrapper);
+    // 2. Create the single grid wrapper that will contain ALL cells
 
-    // 3. Define and apply the grid column template to BOTH wrappers
+    const gridWrapper = document.createElement('div');
+
+    gridWrapper.className = 'grid-wrapper';
+
+
+
+    taskListBody.appendChild(gridWrapper);
+
+
+
+    // 3. Define and apply the grid column template
+
     const columnWidths = {
+
         taskName: 'minmax(350px, max-content)',
+
         assignee: '150px',
+
         dueDate: '150px',
+
         priority: '150px',
+
         status: '150px',
+
         defaultCustom: 'minmax(160px, max-content)',
+
         addColumn: '1fr'
+
     };
 
+
+
     const gridTemplateColumns = [
+
         columnWidths.taskName,
+
         columnWidths.assignee,
+
         columnWidths.dueDate,
+
         columnWidths.priority,
+
         columnWidths.status,
+
         ...customColumns.map(() => columnWidths.defaultCustom),
+
         columnWidths.addColumn
+
     ].join(' ');
 
-    // Apply the same column structure to both header and body for alignment
-    headerWrapper.style.gridTemplateColumns = gridTemplateColumns;
-    bodyWrapper.style.gridTemplateColumns = gridTemplateColumns;
 
 
-    // 4. Render header cells into the header wrapper and body cells into the body wrapper
-    renderHeader(projectToRender, headerWrapper);
-    renderBody(projectToRender, bodyWrapper);
-
-    // NEW: Synchronize horizontal scrolling between header and body
-    let isScrolling = false; // Flag to prevent infinite scroll loop
-    headerWrapper.addEventListener('scroll', () => {
-        if (!isScrolling) {
-            isScrolling = true;
-            bodyWrapper.scrollLeft = headerWrapper.scrollLeft;
-            isScrolling = false;
-        }
-    });
-
-    bodyWrapper.addEventListener('scroll', () => {
-        if (!isScrolling) {
-            isScrolling = true;
-            headerWrapper.scrollLeft = bodyWrapper.scrollLeft;
-            isScrolling = false;
-        }
-    });
 
 
-    // Attach click listener to the header wrapper
-    headerWrapper.addEventListener('click', (e) => {
+    gridWrapper.style.gridTemplateColumns = gridTemplateColumns;
+
+
+
+    // 4. Render header and body cells directly into the grid wrapper
+
+
+
+    renderHeader(projectToRender, gridWrapper);
+
+    renderBody(projectToRender, gridWrapper);
+
+
+
+    gridWrapper.addEventListener('click', (e) => {
+
         const isHeaderCell = e.target.closest('.header-cell');
+
         if (isHeaderCell) {
+
             headerClickListener(e);
+
         }
+
     });
 
-    // 👇 Update sort button state and flag (no changes needed below this line)
+
+
+    // 👇 Update sort button state and flag
+
     isSortActive = activeSortState !== 'default';
 
+
+
     if (sortBtn) {
+
         if (activeSortState === 'asc') {
+
             sortBtn.innerHTML = `<i class="fas fa-sort-amount-up-alt"></i> Oldest`;
+
         } else if (activeSortState === 'desc') {
+
             sortBtn.innerHTML = `<i class="fas fa-sort-amount-down-alt"></i> Newest`;
+
         } else {
+
             sortBtn.innerHTML = `<i class="fas fa-sort"></i> Sort`;
+
         }
+
     }
+
     if (taskIdToFocus) {
+
         const newEl = taskListBody.querySelector(`[data-task-id="${taskIdToFocus}"] .task-name-input`);
+
         if (newEl) {
+
             newEl.focus();
+
             newEl.select();
+
         }
+
         taskIdToFocus = null;
+
     }
-    // Initialize drag and drop on the body wrapper, not the old grid wrapper
-    initializeDragAndDrop(bodyWrapper);
+
+    initializeDragAndDrop(gridWrapper);
+
 }
 
 function renderHeader(projectToRender, container) {
