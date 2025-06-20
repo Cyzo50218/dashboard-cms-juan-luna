@@ -20,130 +20,82 @@
 }
 
 /* --- Core App Layout --- */
-
-/* This is the main container from your previous question */
-
 .list-view-container {
     display: flex;
     flex-direction: column;
-    flex: 1;
-    overflow: hidden;
-    height: 600px;
+    height: 590px;
+    overflow: hidden; /* Prevents the whole page from scrolling */
 }
-
-
 
 .section-title-cell,
 .task-name-wrapper {
     user-select: none;
 }
 
-
-
 .listview-header {
     display: flex;
-    justify-content: flex-start;
+    /* This aligns all items to the start initially */
+    justify-content: flex-start; 
     align-items: center;
     flex-shrink: 0;
-    margin-top: 6px;
-    margin-bottom: 6px;
+    margin-bottom: 0;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 6px;
 }
-
-
-
-.listview-header,
-#task-list-header {
-    flex-shrink: 0;
-    /* Ensures headers don't get squished if content is small */
-}
-
-
-
-#task-list-body {
-    flex-grow: 1;
-    overflow-y: auto;
-    overflow-x: auto;
-}
-
-
 
 .header-controls-right {
     display: flex;
-    gap: 0.5rem;
-    margin-left: auto;
+    gap: 0.5rem; /* Increased gap slightly for better visuals */
+    /* This is the key change: an auto left margin will push this
+       element all the way to the right of the flex container. */
+    margin-left: auto; 
 }
-
-
-
 button {
     background-color: transparent;
     border: 1px solid var(--text-secondary-color);
     border-radius: 8px;
+    /* Slightly reduced button padding */
+    padding: 0.4rem 0.8rem;
     cursor: pointer;
-    font-size: 0.75rem;
+    font-size: 0.85rem; /* Slightly smaller font size for buttons */
     font-weight: 500;
     color: var(--text-color);
     transition: background-color 0.2s, color 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.3rem;
-    height: 28px;
-    padding: 0 10px;
-    /* Horizontal padding only */
+    gap: 0.4rem; /* Reduced gap inside buttons */
 }
 
-
-
-/* Specifically style your task/section/filter/sort buttons */
-
-.add-task-header-btn,
-.add-section-btn,
-#filter-btn,
-#sort-btn {
-    margin: 0 6px;
-    /* Horizontal spacing between buttons */
-    font-size: 0.75rem;
-    height: 28px;
-    padding: 0 10px;
-}
-
-/* Reduce icon size inside the buttons */
-
-.add-task-header-btn i,
-.add-section-btn i,
-#filter-btn i,
-#sort-btn i {
-    font-size: 0.7rem;
-    margin-top: 1px;
-    /* Adjust vertical alignment if needed */
-}
-
+/* We no longer use the old header element for structure */
 #task-list-header {
     display: none;
 }
 
+/* This is now the single, main scrolling viewport for the entire grid */
+#task-list-body {
+    flex-grow: 1;
+    overflow: auto; /* Handles both horizontal and vertical scrolling */
+}
+
 .grid-wrapper {
     display: grid;
-    width: max-content;
-    min-width: 100%;
 }
 
+/* NEW: This uses subgrid to align wrapped rows to the main grid */
 .grid-row-wrapper {
     display: grid;
-    grid-column: 1 / -1;
-    grid-template-columns: subgrid;
+    grid-column: 1 / -1; /* Makes the row span all columns */
+    grid-template-columns: subgrid; /* Aligns cells to the parent grid */
 }
-
 
 
 /* --- Universal Cell Styling --- */
-
 .header-cell,
 .task-cell {
     display: flex;
     align-items: center;
-    background-color: var(--primary-bg);
+    background-color: var(--primary-bg); /* Give all cells a solid background */
     border-right: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
     overflow: hidden;
@@ -152,28 +104,14 @@ button {
     transition: background-color 0.15s ease-in-out;
 }
 
-.add-task-row-wrapper .task-cell {
-    border-top-color: transparent;
-    border-bottom-color: transparent;
-    border-right-color: transparent;
-}
-
-.section-row-wrapper .task-cell {
-    border-top-color: transparent;
-    border-right-color: transparent;
-}
-
 .header-cell {
     height: var(--header-height);
-    min-height: 0;
+    min-height: var(--header-height);
     padding: 0 4px;
     font-weight: 500;
-    position: sticky;
-    top: 0;
     border-top: 1px solid var(--border-color);
     color: var(--text-secondary-color);
     justify-content: space-between;
-
 }
 
 .header-cell span {
