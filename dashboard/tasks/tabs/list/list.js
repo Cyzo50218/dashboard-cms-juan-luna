@@ -1384,32 +1384,38 @@ function renderHeader(projectToRender, container) {
 function renderBody(projectToRender, container) {
     const customColumns = projectToRender.customColumns || [];
 
+    // Create the outer scrollable container
+    const scrollWrapper = document.createElement('div');
+    scrollWrapper.className = 'task-scroll-wrapper';
+
+    const taskContainer = document.createElement('div');
+    taskContainer.className = 'task-container';
+    
     (projectToRender.sections || []).forEach(section => {
         const sectionWrapper = document.createElement('div');
         sectionWrapper.className = 'section-wrapper';
         sectionWrapper.dataset.sectionId = section.id;
 
-        // Create and add the section title row (uses updated helper)
         const sectionRow = createSectionRow(section, customColumns);
         sectionWrapper.appendChild(sectionRow);
 
-        // Add tasks if not collapsed
         if (!section.isCollapsed && section.tasks) {
             section.tasks.forEach(task => {
-                // Uses updated helper
                 const taskRow = createTaskRow(task, customColumns);
                 sectionWrapper.appendChild(taskRow);
             });
         }
 
-        // Add the "Add Task" row (uses updated helper)
         const addTaskRow = createAddTaskRow(customColumns, section.id);
         sectionWrapper.appendChild(addTaskRow);
 
-        // Append to main grid container
-        container.appendChild(sectionWrapper);
+        taskContainer.appendChild(sectionWrapper);
     });
+
+    scrollWrapper.appendChild(taskContainer);
+    container.appendChild(scrollWrapper);
 }
+
 
 function createSectionRow(sectionData, customColumns) {
     const row = document.createElement('div');
