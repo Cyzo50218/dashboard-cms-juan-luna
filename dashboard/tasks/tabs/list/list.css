@@ -28,11 +28,23 @@
 
 /* 1. Task list body is now just a flex container, NO SCROLLING */
 #task-list-body {
+    display: flex; /* This is important */
+    flex-direction: column;
+    flex-grow: 1;
+    overflow: hidden; /* It MUST hide overflow */
+    min-height: 0;
+}
+
+/* --- NEW: The Horizontal Scrolling Container --- */
+.grid-scroll-container {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
-    min-height: 0; /* Important for nested flex */
+    overflow-x: auto;  /* This container ONLY handles HORIZONTAL scroll */
+    overflow-y: hidden;/* It HIDES vertical scroll */
+    min-height: 0;
 }
+
 
 /* 2. NEW: Styles for the separate header and body wrappers */
 .list-header-wrapper {
@@ -42,7 +54,8 @@
 
 .list-body-wrapper {
     flex-grow: 1;  /* Take up all remaining space */
-    overflow: auto; /* Handles BOTH vertical and horizontal scroll */
+    overflow-y: auto;   /* This container ONLY handles VERTICAL scroll */
+    overflow-x: hidden;
     min-height: 0;
 }
 
