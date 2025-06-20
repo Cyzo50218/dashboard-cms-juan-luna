@@ -3,6 +3,7 @@ svg {
     vertical-align: middle;
     stroke-width: 2;
 }
+
 .project-container {
     border-radius: 8px;
     width: 100%;
@@ -14,19 +15,23 @@ svg {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 16px; /* Reduced */
+    padding: 8px 16px;
+    /* Reduced */
     border-bottom: 1px solid #e8e8e8;
 }
 
 .project-title-group {
     display: flex;
     align-items: center;
-    gap: 6px; /* Reduced */
+    gap: 6px;
+    /* Reduced */
 }
 
 .project-icon {
-    width: 28px; /* Reduced */
-    height: 28px; /* Reduced */
+    width: 28px;
+    /* Reduced */
+    height: 28px;
+    /* Reduced */
     background-color: #cdeae3;
     border-radius: 6px;
     display: flex;
@@ -40,7 +45,8 @@ svg {
 }
 
 h1 {
-    font-size: 18px; /* Reduced */
+    font-size: 18px;
+    /* Reduced */
     font-weight: 500;
     margin: 0;
 }
@@ -54,12 +60,15 @@ button {
     border: 1px solid #c9c9c9;
     background-color: #fff;
     border-radius: 6px;
-    padding: 4px 10px; /* Reduced */
-    font-size: 13px; /* Reduced */
+    padding: 4px 10px;
+    /* Reduced */
+    font-size: 13px;
+    /* Reduced */
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 4px; /* Reduced */
+    gap: 4px;
+    /* Reduced */
 }
 
 button:hover {
@@ -73,12 +82,15 @@ button:hover {
 .project-actions {
     display: flex;
     align-items: center;
-    gap: 8px; /* Reduced */
+    gap: 8px;
+    /* Reduced */
 }
 
 .user-avatars .avatar {
-    width: 28px; /* Reduced */
-    height: 28px; /* Reduced */
+    width: 28px;
+    /* Reduced */
+    height: 28px;
+    /* Reduced */
     background-color: #f4d76a;
     border-radius: 50%;
     display: inline-block;
@@ -103,18 +115,22 @@ button:hover {
 .project-tabs ul {
     list-style: none;
     margin: 0;
-    padding: 0 16px; /* Reduced */
+    padding: 0 16px;
+    /* Reduced */
     display: flex;
-    gap: 12px; /* Reduced */
+    gap: 12px;
+    /* Reduced */
 }
 
 .project-tabs a {
     text-decoration: none;
     color: #6f6f6f;
-    padding: 8px 2px; /* Reduced */
+    padding: 8px 2px;
+    /* Reduced */
     display: flex;
     align-items: center;
-    gap: 5px; /* Reduced */
+    gap: 5px;
+    /* Reduced */
     border-bottom: 2px solid transparent;
     font-size: 14px;
     transition: color 0.2s ease;
@@ -142,12 +158,16 @@ button:hover {
 
 /* tasks.css */
 .tabs-fragments {
-    flex: 1; /* Allows this container to grow and fill #content */
-    display: flex; /* Make it a flex container to control its child's height */
-    flex-direction: column; /* Arrange tab content vertically */
+    flex: 1;
+    /* Allows this container to grow and fill #content */
+    display: flex;
+    /* Make it a flex container to control its child's height */
+    flex-direction: column;
+    /* Arrange tab content vertically */
     overflow-y: hidden;
     overflow-x: hidden;
-    min-height: 0; /* Important: Prevents flexbox from shrinking issues */
+    min-height: 0;
+    /* Important: Prevents flexbox from shrinking issues */
 }
 
 .tab-content {
@@ -160,25 +180,27 @@ button:hover {
 
 /* Add this to your main stylesheet, e.g., style.css */
 .section-loader {
-  border: 4px solid rgba(0, 0, 0, 0.1);
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  border-left-color: #2B2B2B; /* Or your preferred brand color */
-  animation: spin 1s ease infinite;
-
-  /* This helps center it nicely within the tab container */
-  position: absolute;
-  top: 40%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+    border: 4px solid rgba(0, 0, 0, 0.1);
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border-left-color: #2B2B2B;
+    /* Or your preferred brand color */
+    animation: spin 1s ease infinite;
+    
+    /* This helps center it nicely within the tab container */
+    position: absolute;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 }
 
 @keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
+    0% {
+        transform: rotate(0deg);
+    }
+    
+    100% {
+        transform: rotate(360deg);
+    }
 }
