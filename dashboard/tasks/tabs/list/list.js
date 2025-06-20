@@ -974,144 +974,120 @@ function findTaskAndSection(taskId) {
     return { task: null, section: null };
 }
 
-/**
- * [HELPER FUNCTION] Gathers all valid task elements belonging to a section.
- * @param {HTMLElement} sectionHeaderEl - The header element of the section.
- * @returns {HTMLElement[]} An array of the task row elements in that section.
- */
 function _getTasksForSectionFromDOM(sectionHeaderEl) {
     const tasks = [];
     if (!sectionHeaderEl) return tasks;
     
+    // Start with the element right after the header
     let nextElement = sectionHeaderEl.nextElementSibling;
+    
+    // Loop as long as we have a sibling AND it's not another section header
     while (nextElement && !nextElement.classList.contains('section-row-wrapper')) {
-        // Only add elements that are actual tasks with a taskId
+        // If it's a valid task, add it
         if (nextElement.classList.contains('task-row-wrapper') && nextElement.dataset.taskId) {
             tasks.push(nextElement);
         }
+        // Move to the next sibling
         nextElement = nextElement.nextElementSibling;
     }
     return tasks;
 }
 
-
-/**
- * [COMPLETE - GRID AWARE] Persists task moves/reorders by analyzing the flat grid DOM.
- * Handles both reordering within a section and moving between sections.
- * @param {HTMLElement} draggedTaskEl - The task element that was moved.
- * @param {HTMLElement} gridWrapper - The main grid container.
- * @param {string} basePath - The Firestore path to the project.
- */
 async function handleTaskMoved(draggedTaskEl, gridWrapper, basePath) {
-    console.log("🚀 Handling complete, grid-aware task move.");
+    console.group(`🚀 Handling Task Move: "${draggedTaskEl.querySelector('.task-name')?.textContent}"`);
     
-    // --- 1. Gather Initial State from the DOM ---
-    const taskId = draggedTaskEl.dataset.taskId;
-    const oldSectionId = draggedTaskEl.dataset.sectionId;
-    
-    // Find the new section by looking backwards from the dragged element
-    let currentElement = draggedTaskEl;
-    let newSectionHeader = null;
-    while (currentElement.previousElementSibling) {
-        currentElement = currentElement.previousElementSibling;
-        if (currentElement.classList.contains('section-row-wrapper')) {
-            newSectionHeader = currentElement;
-            break;
+    try {
+        const taskId = draggedTaskEl.dataset.taskId;
+        if (!taskId) throw new Error("CRITICAL: Dragged element is missing a task ID.");
+        
+        const oldSectionId = draggedTaskEl.dataset.sectionId;
+        const newSectionWrapper = draggedTaskEl.closest('.section-wrapper');
+        const newSectionHeader = newSectionWrapper ? newSectionWrapper.querySelector('.section-row-wrapper') : null;
+        
+        if (!newSectionHeader || !newSectionWrapper) {
+            throw new Error("Could not determine the new section for the dropped task.");
         }
-    }
-    
-    if (!newSectionHeader) {
-        throw new Error("Could not determine the new section for the dropped task.");
-    }
-    const newSectionId = newSectionHeader.dataset.sectionId;
-    
-    const batch = writeBatch(db);
-    
-    // --- 2. Determine if it's a REORDER or a MOVE ---
-    
-    if (oldSectionId === newSectionId) {
-        // =================================================================
-        // CASE A: Reordering task WITHIN the same section
-        // =================================================================
-        console.log(`Reordering task "${taskId}" in section "${newSectionId}"`);
+        const newSectionId = newSectionHeader.dataset.sectionId;
         
-        const tasksToUpdate = _getTasksForSectionFromDOM(newSectionHeader);
+        const batch = writeBatch(db);
         
-        tasksToUpdate.forEach((taskEl, index) => {
-            const currentTaskId = taskEl.dataset.taskId;
-            const taskRef = doc(db, `${basePath}/sections/${newSectionId}/tasks/${currentTaskId}`);
-            batch.update(taskRef, { order: index });
-        });
-        console.log(`Queued ${tasksToUpdate.length} task order updates.`);
-        
-    } else {
-        // =================================================================
-        // CASE B: MOVING task to a DIFFERENT section
-        // =================================================================
-        console.log(`Moving task "${taskId}" from section "${oldSectionId}" to "${newSectionId}"`);
-        
-        // --- Step B.1: Delete and Create the moved task (the "Move" operation) ---
-        const originalTaskRef = doc(db, `${basePath}/sections/${oldSectionId}/tasks/${taskId}`);
-        
-        // We must fetch the original task's data to recreate it
-        const taskSnap = await getDoc(originalTaskRef);
-        if (!taskSnap.exists()) {
-            throw new Error(`Critical: Cannot find original task ${taskId} to move.`);
-        }
-        const taskData = taskSnap.data();
-        
-        // Queue the deletion from the old subcollection
-        batch.delete(originalTaskRef);
-        
-        // Get the new order index from its position in the DOM
-        const tasksInNewSection = _getTasksForSectionFromDOM(newSectionHeader);
-        const newOrderIndex = tasksInNewSection.findIndex(el => el.dataset.taskId === taskId);
-        
-        // Queue the creation in the new subcollection with updated data
-        const newTaskRef = doc(db, `${basePath}/sections/${newSectionId}/tasks/${taskId}`);
-        batch.set(newTaskRef, {
-            ...taskData,
-            order: newOrderIndex,
-            sectionId: newSectionId, // Explicitly update the sectionId field
-            // You might want to update a 'movedAt' timestamp here as well
-        });
-        console.log(`Queued DELETE for task ${taskId} from old section and CREATE in new section.`);
-        
-        // --- Step B.2: Re-order the remaining tasks in the OLD section ---
-        const oldSectionHeader = gridWrapper.querySelector(`.section-row-wrapper[data-section-id="${oldSectionId}"]`);
-        const tasksInOldSection = _getTasksForSectionFromDOM(oldSectionHeader);
-        
-        tasksInOldSection.forEach((taskEl, index) => {
-            const currentTaskId = taskEl.dataset.taskId;
-            const taskRef = doc(db, `${basePath}/sections/${oldSectionId}/tasks/${currentTaskId}`);
-            batch.update(taskRef, { order: index });
-        });
-        console.log(`Queued ${tasksInOldSection.length} task order updates for the OLD section.`);
-        
-        // --- Step B.3: Re-order all tasks in the NEW section ---
-        // This is necessary because all their indices have shifted
-        tasksInNewSection.forEach((taskEl, index) => {
-            const currentTaskId = taskEl.dataset.taskId;
-            // The task we moved was already handled with batch.set, so we don't need to update it again.
-            // All other tasks in the new section just need their order updated.
-            if (currentTaskId !== taskId) {
+        if (oldSectionId === newSectionId) {
+            console.log(`➡️ [Decision]: Reordering task WITHIN section ${newSectionId}.`);
+            const tasksToUpdate = Array.from(newSectionWrapper.querySelectorAll('.task-row-wrapper[data-task-id]'));
+            
+            tasksToUpdate.forEach((taskEl, index) => {
+                const currentTaskId = taskEl.dataset.taskId;
                 const taskRef = doc(db, `${basePath}/sections/${newSectionId}/tasks/${currentTaskId}`);
-                batch.update(taskRef, { order: index });
+                
+                // [FIX] Use set with merge to prevent "not-found" errors.
+                batch.set(taskRef, { order: index }, { merge: true });
+            });
+            
+        } else {
+            console.log(`➡️ [Decision]: MOVING task from ${oldSectionId} to ${newSectionId}.`);
+            
+            // Step A: Get original task data
+            const originalTaskRef = doc(db, `${basePath}/sections/${oldSectionId}/tasks/${taskId}`);
+            const taskSnap = await getDoc(originalTaskRef);
+            if (!taskSnap.exists()) {
+                // The task we are dragging doesn't exist in the source. This is a critical data issue.
+                // We will stop here to prevent further errors. The UI will revert.
+                throw new Error(`Dragged task with ID ${taskId} not found in source section ${oldSectionId}.`);
             }
-        });
-        console.log(`Queued ${tasksInNewSection.length} task order updates for the NEW section.`);
+            const taskData = taskSnap.data();
+            
+            // Step B: Delete from old section
+            batch.delete(originalTaskRef);
+            
+            // Step C: Re-order tasks in the OLD section
+            const oldSectionHeader = gridWrapper.querySelector(`.section-row-wrapper[data-section-id="${oldSectionId}"]`);
+            if (oldSectionHeader) {
+                const oldSectionWrapper = oldSectionHeader.closest('.section-wrapper');
+                if (oldSectionWrapper) {
+                    const tasksInOldSection = Array.from(oldSectionWrapper.querySelectorAll('.task-row-wrapper[data-task-id]'));
+                    tasksInOldSection.forEach((taskEl, index) => {
+                        const taskRef = doc(db, `${basePath}/sections/${oldSectionId}/tasks/${taskEl.dataset.taskId}`);
+                        // [FIX] Use set with merge
+                        batch.set(taskRef, { order: index }, { merge: true });
+                    });
+                }
+            }
+            
+            // Step D: Re-order tasks in the NEW section
+            const tasksInNewSection = Array.from(newSectionWrapper.querySelectorAll('.task-row-wrapper[data-task-id]'));
+            tasksInNewSection.forEach((taskEl, index) => {
+                const currentTaskId = taskEl.dataset.taskId;
+                const taskRef = doc(db, `${basePath}/sections/${newSectionId}/tasks/${currentTaskId}`);
+                
+                if (currentTaskId === taskId) {
+                    // This is the moved task. Use SET to create it fully in the new location.
+                    const newData = { ...taskData, order: index, sectionId: newSectionId };
+                    batch.set(taskRef, newData);
+                } else {
+                    // [FIX] For existing tasks, use set with merge.
+                    // This will update the order if the task exists, or create a placeholder if it's a phantom.
+                    const fallbackData = {
+                        name: taskEl.querySelector('.task-name')?.textContent || "Unnamed Task",
+                        status: "High risk",
+                        sectionId: newSectionId
+                    };
+                    batch.set(taskRef, { ...fallbackData, order: index }, { merge: true });
+                }
+            });
+        }
+        
+        console.log("📌 Committing batch to Firestore...");
+        await batch.commit();
+        console.log("✅ Batch commit successful.");
+        
+    } catch (error) {
+        console.error("❌ Error in handleTaskMoved. Reverting UI.", error);
+        throw error;
+    } finally {
+        console.groupEnd();
     }
-    
-    // --- 3. Commit all the changes atomically ---
-    await batch.commit();
-    console.log("✅ Puzzle solved. Batch commit successful.");
 }
 
-
-/**
- * Enables in-place editing for a column header.
- * @param {HTMLElement} columnEl The header element of the column to rename.
- */
 function enableColumnRename(columnEl) {
     const originalName = columnEl.textContent.trim();
     columnEl.setAttribute('contenteditable', 'true');
@@ -2982,19 +2958,10 @@ function handleDragStart(e) {
     document.addEventListener('mouseup', handleDragEnd, { once: true });
     document.addEventListener('touchend', handleDragEnd, { once: true });
 }
-
-/**
- * Tracks mouse/touch movement and repositions the placeholder accordingly.
- *
- * REFACTORED FOR PRECISION: This version decouples the drop target from
- * the drop zone rectangle for more intuitive positioning, especially when
- * dragging sections over other tall, expanded sections.
- */
  
 function handleDragMove(e) {
     if (!draggedElement) return;
     
-    // (Code from previous steps remains the same...)
     if (e.type === 'touchmove') e.preventDefault();
     if (!dragHasMoved) {
         dragHasMoved = true;
@@ -3006,73 +2973,63 @@ function handleDragMove(e) {
     placeholder.style.display = '';
     if (!elementOver) return;
     
-    // =================================================================
-    // ▼ NEW: AUTO-EXPAND LOGIC ▼
-    // =================================================================
+    // Auto-expand logic (remains the same)
     const isDraggingTask = draggedElement.matches('.task-row-wrapper');
-    
-    // Find if the cursor is over any section header
     const hoveredSectionHeader = elementOver.closest('.section-row-wrapper');
-    
     if (isDraggingTask && hoveredSectionHeader) {
         const hoveredSectionId = hoveredSectionHeader.dataset.sectionId;
         const isCollapsed = hoveredSectionHeader.querySelector('.fa-chevron-right');
-        
-        // If we are over a *new* collapsed section, start a timer to expand it.
         if (isCollapsed && hoveredSectionId !== lastHoveredSectionId) {
             lastHoveredSectionId = hoveredSectionId;
-            // Clear any old timer and start a new one
             clearTimeout(expansionTimeout);
             expansionTimeout = setTimeout(() => {
                 expandCollapsedSection(hoveredSectionId);
-            }, 600); // 600ms delay
+            }, 600);
         }
     } else {
-        // If we are not hovering over a section header, cancel any pending expansion.
         clearTimeout(expansionTimeout);
         lastHoveredSectionId = null;
     }
-    // =================================================================
-    // ▲ END OF AUTO-EXPAND LOGIC ▲
-    // =================================================================
     
-    // (The rest of the positioning logic from the previous step remains IDENTICAL)
-    let finalTarget = null;
-    let dropZoneRect = null;
-    const specialRow = elementOver.closest('.section-row-wrapper, .add-task-row-wrapper');
-    if (specialRow) {
-        finalTarget = specialRow.closest('.section-wrapper');
-        dropZoneRect = specialRow.getBoundingClientRect();
-    } else {
-        finalTarget = elementOver.closest('.task-row-wrapper, .section-wrapper');
-        if (finalTarget) {
-            dropZoneRect = finalTarget.getBoundingClientRect();
-        }
-    }
-    const isDraggingSection = draggedElement.matches('.section-wrapper');
-    if (isDraggingSection && finalTarget && finalTarget.matches('.task-row-wrapper')) {
-        finalTarget = finalTarget.closest('.section-wrapper');
-        if (finalTarget) {
-            dropZoneRect = finalTarget.getBoundingClientRect();
-        }
+    // ▼▼▼ NEW & IMPROVED POSITIONING LOGIC ▼▼▼
+    
+    // Rule 1: Prioritize the "Add Task" row as a primary drop zone.
+    const addTaskTarget = elementOver.closest('.add-task-row-wrapper');
+    if (addTaskTarget) {
+        // If hovering on "Add Task", always drop before it.
+        addTaskTarget.before(placeholder);
+        return;
     }
     
-    if (finalTarget && dropZoneRect && finalTarget !== draggedElement && !finalTarget.contains(draggedElement)) {
-        // Correctly position placeholder at the end of a newly opened section
-        const isHoveringOverAddTask = elementOver.closest('.add-task-row-wrapper');
-        if (isHoveringOverAddTask) {
-            finalTarget.insertBefore(placeholder, isHoveringOverAddTask);
-            return; // Exit here to prevent other logic from moving the placeholder
+    // Rule 2: Handle dropping in the empty space at the bottom of a section.
+    const hoveredSection = elementOver.closest('.section-wrapper');
+    const isHoveringTask = elementOver.closest('.task-row-wrapper');
+    const isHoveringHeader = elementOver.closest('.section-row-wrapper');
+    
+    if (hoveredSection && !isHoveringTask && !isHoveringHeader) {
+        // We are inside a section, but not over a specific task or header.
+        // This means we're in the empty space (likely at the bottom).
+        const addTaskRowInSection = hoveredSection.querySelector('.add-task-row-wrapper');
+        if (addTaskRowInSection) {
+            // Force the drop to occur before the "Add Task" row.
+            addTaskRowInSection.before(placeholder);
+            return;
         }
-        
-        const parent = finalTarget.parentNode;
+    }
+    
+    // Rule 3: General logic for dropping relative to other tasks and sections.
+    const finalTarget = elementOver.closest('.task-row-wrapper, .section-wrapper');
+    if (finalTarget && finalTarget !== draggedElement && !finalTarget.contains(draggedElement)) {
+        const dropZoneRect = finalTarget.getBoundingClientRect();
         const isAfter = coords.y > dropZoneRect.top + dropZoneRect.height / 2;
+        
         if (isAfter) {
-            parent.insertBefore(placeholder, finalTarget.nextSibling);
+            finalTarget.after(placeholder);
         } else {
-            parent.insertBefore(placeholder, finalTarget);
+            finalTarget.before(placeholder);
         }
     }
+    // ▲▲▲ END OF NEW LOGIC ▲▲▲
 }
 
 async function handleDragEnd(e) {
@@ -3089,7 +3046,7 @@ async function handleDragEnd(e) {
     placeholder.parentNode.replaceChild(draggedElement, placeholder);
     
     const isTask = draggedElement.classList.contains('task-row-wrapper');
-    const gridWrapper = draggedElement.closest('.grid-wrapper');
+        const gridWrapper = draggedElement.closest('.grid-wrapper');
     
     try {
         const user = auth.currentUser;

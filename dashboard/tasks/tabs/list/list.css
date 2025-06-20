@@ -124,7 +124,15 @@ button {
     white-space: nowrap;
     transition: background-color 0.15s ease-in-out;
 }
-
+.add-task-row-wrapper .task-cell {
+    border-top-color: transparent;
+    border-bottom-color: transparent;
+    border-right-color: transparent;
+}
+.section-row-wrapper .task-cell {
+    border-top-color: transparent;
+    border-right-color: transparent;
+}
 .header-cell {
     height: var(--header-height);
     min-height: 0;
@@ -229,22 +237,27 @@ button {
     justify-content: space-between;
     font-weight: 600;
     background-color: white;
+    border-top: none;
     transition: background-color 0.15s ease-in-out;
 }
 .section-title-cell:hover {
+    border-top: none;
     background-color: var(--secondary-bg);
 }
 .section-placeholder-cell {
     background-color: transparent;
+    border-top: none;
     transition: background-color 0.15s ease-in-out;
 }
 .section-placeholder-cell:hover {
+    border-top: none;
     background-color: var(--secondary-bg);
 }
 .section-title-wrapper {
     display: flex;
     font-size: 14px;
     align-items: center;
+    border-top: none;
     gap: 8px;
 }
 .section-toggle {
@@ -359,6 +372,7 @@ button {
     display: flex;
     align-items: center;
     gap: 8px;
+    margin-top: 6px;
     padding-left: 40px;
     color: #6b7280; /* Neutral gray */
     font-size: 13px;
