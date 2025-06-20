@@ -24,122 +24,73 @@
 /* This is the main container from your previous question */
 
 .list-view-container {
-
     display: flex;
-
     flex-direction: column;
-    /* Stack children vertically */
-
     flex: 1;
-    /* Ensure it fills the space from its parent (e.g., .tabs-fragments) */
-
     overflow: hidden;
-    /* CRITICAL: Prevents this parent from ever showing a scrollbar */
-
-    min-height: 0;
-    /* A flexbox best practice to prevent shrinking issues */
-
+    height: 600px;
 }
 
 
 
 .section-title-cell,
-
 .task-name-wrapper {
-
     user-select: none;
-
 }
 
 
 
 .listview-header {
-
     display: flex;
-
     justify-content: flex-start;
-
     align-items: center;
-
     flex-shrink: 0;
-
     margin-top: 6px;
-
     margin-bottom: 6px;
-
 }
 
 
 
 .listview-header,
-
 #task-list-header {
-
     flex-shrink: 0;
     /* Ensures headers don't get squished if content is small */
-
 }
 
 
 
 #task-list-body {
-
     flex-grow: 1;
-
     overflow-y: auto;
-
     overflow-x: auto;
-
 }
 
 
 
 .header-controls-right {
-
     display: flex;
-
     gap: 0.5rem;
-
     margin-left: auto;
-
 }
 
 
 
 button {
-
     background-color: transparent;
-
     border: 1px solid var(--text-secondary-color);
-
     border-radius: 8px;
-
     cursor: pointer;
-
     font-size: 0.75rem;
-    /* Slightly smaller for compact look */
-
     font-weight: 500;
-
     color: var(--text-color);
-
     transition: background-color 0.2s, color 0.2s;
-
     display: flex;
-
     align-items: center;
-
     justify-content: center;
-
     gap: 0.3rem;
-    /* Compact spacing */
-
     height: 28px;
-    /* Smaller button height */
-
     padding: 0 10px;
     /* Horizontal padding only */
-
 }
 
 
@@ -147,77 +98,40 @@ button {
 /* Specifically style your task/section/filter/sort buttons */
 
 .add-task-header-btn,
-
 .add-section-btn,
-
 #filter-btn,
-
 #sort-btn {
-
     margin: 0 6px;
     /* Horizontal spacing between buttons */
-
     font-size: 0.75rem;
-
     height: 28px;
-
     padding: 0 10px;
-
 }
-
-
-
 /* Reduce icon size inside the buttons */
 
 .add-task-header-btn i,
-
 .add-section-btn i,
-
 #filter-btn i,
-
 #sort-btn i {
-
     font-size: 0.7rem;
-
     margin-top: 1px;
     /* Adjust vertical alignment if needed */
-
 }
-
-
-
-
 
 #task-list-header {
-
     display: none;
-
 }
-
-
 
 .grid-wrapper {
-
     display: grid;
-
     width: max-content;
-
     min-width: 100%;
-
 }
 
-
-
-
-
 .grid-row-wrapper {
-
     display: grid;
-
     grid-column: 1 / -1;
-
     grid-template-columns: subgrid;
-
 }
 
 
@@ -225,65 +139,38 @@ button {
 /* --- Universal Cell Styling --- */
 
 .header-cell,
-
 .task-cell {
-
     display: flex;
-
     align-items: center;
-
     background-color: var(--primary-bg);
-
     border-right: 1px solid var(--border-color);
-
     border-bottom: 1px solid var(--border-color);
-
     overflow: hidden;
-
     text-overflow: ellipsis;
-
     white-space: nowrap;
-
     transition: background-color 0.15s ease-in-out;
-
 }
 
 .add-task-row-wrapper .task-cell {
-
     border-top-color: transparent;
-
     border-bottom-color: transparent;
-
     border-right-color: transparent;
-
 }
 
 .section-row-wrapper .task-cell {
-
     border-top-color: transparent;
-
     border-right-color: transparent;
-
 }
 
 .header-cell {
-
     height: var(--header-height);
-
     min-height: 0;
-
     padding: 0 4px;
-
     font-weight: 500;
-
     position: sticky;
-
     top: 0;
-
     border-top: 1px solid var(--border-color);
-
     color: var(--text-secondary-color);
-
     justify-content: space-between;
 
 }
