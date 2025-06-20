@@ -40,12 +40,10 @@
 /* This container's ONLY job is to scroll the rows vertically.
    Its own native scrollbar becomes the visible placeholder on the right. */
 .list-body-wrapper {
-    flex-grow: 1;
-    height: calc(100vh - 160px);
     overflow-y: auto;
-    overflow-x: auto; 
-    padding-bottom: 60px;
-    width: fit-content;
+    overflow-x: hidden;
+    height: calc(100vh - 160px); /* Adjust as needed */
+    width: fit-content; /* So it matches the grid width */
 }
 
 /* --- Grid & Header Wrappers --- */
