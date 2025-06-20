@@ -75,8 +75,12 @@ button {
 /* This is now the single, main scrolling viewport for the entire grid */
 #task-list-body {
     flex-grow: 1;
-    overflow: auto; /* Handles both horizontal and vertical scrolling */
+    
     position: relative; /* Establishes a stacking context for sticky items */
+}
+
+.section-wrapper{
+overflow: auto; /* Handles both horizontal and vertical scrolling */
 }
 
 .grid-wrapper {
