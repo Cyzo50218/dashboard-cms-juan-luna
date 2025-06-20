@@ -45,7 +45,7 @@
     margin-bottom: 16px;
     height: calc(100vh - 160px);
     overflow-y: auto;
-    overflow-x: hidden; /* It does NOT scroll horizontally */
+    overflow-x: auto; /* It does NOT scroll horizontally */
 }
 
 /* --- Grid & Header Wrappers --- */
