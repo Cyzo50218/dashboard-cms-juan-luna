@@ -1191,40 +1191,39 @@ const STICKY_COLUMN_WIDTH = 350; // Define this once
 
 // --- MAIN RENDER FUNCTION ---
 function render() {
-    // --- Initial Setup ---
-    if (!taskListBody) return;
+     if (!taskListBody) return;
+
+    // Reset state for a clean re-render
     currentItemOffset = 0;
     isLoadingNextPage = false;
     const projectToRender = project;
     const customColumns = projectToRender.customColumns || [];
+
     taskListBody.innerHTML = '';
 
-    // --- Build Core Layout ---
+    // --- 1. Build the Decoupled DOM Structure ---
     const gridScrollContainer = document.createElement('div');
     gridScrollContainer.className = 'grid-scroll-container';
-
     const headerContainer = document.createElement('div');
     headerContainer.className = 'list-header-wrapper';
-
     const bodyContainer = document.createElement('div');
     bodyContainer.className = 'list-body-wrapper';
     
-    // NEW: The visual seam and custom scrollbar placeholder
-    const seam = document.createElement('div');
-    seam.className = 'horizontal-scroll-seam';
-    seam.style.left = `${STICKY_COLUMN_WIDTH}px`;
-
-    const scrollbarPlaceholder = document.createElement('div');
-    scrollbarPlaceholder.className = 'custom-scrollbar-placeholder';
-
     // Assemble the layout
     gridScrollContainer.appendChild(headerContainer);
     gridScrollContainer.appendChild(bodyContainer);
     taskListBody.appendChild(gridScrollContainer);
-    taskListBody.appendChild(scrollbarPlaceholder); // Add scrollbar placeholder at the end
-    headerContainer.appendChild(seam); // Add seam to the header
+    
+    // (Optional) Add the seam and custom scrollbar placeholder
+    const seam = document.createElement('div');
+    seam.className = 'horizontal-scroll-seam';
+    seam.style.left = `${STICKY_COLUMN_WIDTH}px`;
+    headerContainer.appendChild(seam);
+    const scrollbarPlaceholder = document.createElement('div');
+    scrollbarPlaceholder.className = 'custom-scrollbar-placeholder';
+    taskListBody.appendChild(scrollbarPlaceholder);
 
-    // --- Setup Grids ---
+    // --- 2. Setup Grids ---
     const headerGrid = document.createElement('div');
     headerGrid.className = 'grid-wrapper';
     const bodyGrid = document.createElement('div');
@@ -1232,7 +1231,7 @@ function render() {
     headerContainer.appendChild(headerGrid);
     bodyContainer.appendChild(bodyGrid);
 
-    // --- Grid Column Styles (for the SCROLLING part) ---
+    // --- 3. Define Grid Columns ---
     const columnWidths = {
         assignee: '150px',
         dueDate: '150px',
@@ -1241,8 +1240,9 @@ function render() {
         defaultCustom: 'minmax(160px, max-content)',
         addColumn: '1fr'
     };
+    // The first column is the placeholder for our absolute "Name" column
     const gridTemplateColumns = [
-        columnWidths.taskName,
+        `${STICKY_COLUMN_WIDTH}px`,
         columnWidths.assignee,
         columnWidths.dueDate,
         columnWidths.priority,
@@ -1253,122 +1253,130 @@ function render() {
 
     headerGrid.style.gridTemplateColumns = gridTemplateColumns;
     bodyGrid.style.gridTemplateColumns = gridTemplateColumns;
-    
-    // --- Initial Render ---
+
+    // --- 4. Initial Render ---
     renderHeader(projectToRender, headerGrid);
     loadNextPage(bodyGrid);
 
-    // --- Event Listeners ---
+    // --- 5. EVENT LISTENERS ---
+
+    // YOUR DETAILED HEADER CLICK LISTENER IS NOW INTEGRATED HERE
+    const headerClickListener = (e) => {
+        const columnOptionsIcon = e.target.closest('.options-icon');
+        const addColumnBtn = e.target.closest('.add-column-cell');
+        if (columnOptionsIcon) {
+            e.stopPropagation();
+            const columnEl = columnOptionsIcon.closest('[data-column-id]');
+            if (!columnEl) return;
+            const columnId = Number(columnEl.dataset.columnId);
+            const dropdownOptions = [{ name: 'Rename column' }, { name: 'Delete column' }];
+            createDropdown(dropdownOptions, columnOptionsIcon, (selected) => {
+                if (selected.name === 'Delete column') deleteColumn(columnId);
+                else if (selected.name === 'Rename column') enableColumnRename(columnEl);
+            });
+            return;
+        }
+        if (addColumnBtn) {
+            e.stopPropagation();
+            const existingTypes = new Set(project.customColumns.map(col => col.type));
+            const availableTypes = columnTypeOptions.filter(type => !existingTypes.has(type) || type === 'Custom');
+            if (availableTypes.length === 0) {
+                alert("All available column types have been added.");
+                return;
+            }
+            createDropdown(availableTypes.map(type => ({ name: type })), addColumnBtn, (selected) => openAddColumnDialog(selected.name));
+        }
+    };
+    
+    // Attach the listener to the header grid
+    headerGrid.addEventListener('click', headerClickListener);
+
+    // Horizontal scroll sync
     gridScrollContainer.addEventListener('scroll', () => {
         headerContainer.scrollLeft = gridScrollContainer.scrollLeft;
-        // Sync seam position if needed, though left:0 is usually enough
     });
 
+    // Vertical scroll for infinite loading
     bodyContainer.addEventListener('scroll', () => {
-        // Infinite scroll logic
         const { scrollTop, scrollHeight, clientHeight } = bodyContainer;
         if (scrollTop + clientHeight >= scrollHeight - 300 && !isLoadingNextPage) {
             loadNextPage(bodyGrid);
         }
     });
+
+    // --- 6. Post-Render Logic ---
+    // ... your logic for sort buttons, focus, and drag-and-drop ...
+    initializeDragAndDrop(bodyGrid);
 }
 
 
 // --- ROW CREATION HELPERS (REVISED FOR ASANA METHOD) ---
 function renderHeader(projectToRender, container) {
-    // Ensure the container is empty before rendering
     container.innerHTML = '';
-
     const customColumns = projectToRender.customColumns || [];
-    
-    // Each row, including the header, needs this container for positioning
     const row = document.createElement('div');
     row.className = 'grid-row-container';
 
-    // --- 1. The Fixed/Sticky Part (Absolute Position) ---
-    // This wrapper holds all columns that should NOT scroll horizontally.
+    // 1. The Fixed Part
     const stickyWrapper = document.createElement('div');
     stickyWrapper.className = 'absolute-sticky-container';
-
     const nameCell = document.createElement('div');
-    // The 'sticky-col-header' class can be used for specific styling like a higher z-index
-    nameCell.className = 'task-cell sticky-col-header'; 
-    nameCell.innerHTML = '<span>Name</span>';
-    
-    // Add the fixed cell to the absolute wrapper
+    nameCell.className = 'task-cell sticky-col-header';
+    nameCell.innerHTML = `<span>Name</span>`;
     stickyWrapper.appendChild(nameCell);
-    // Add the absolute wrapper to the main row container
     row.appendChild(stickyWrapper);
 
-
-    // --- 2. The Scrolling Part (In Grid Flow) ---
-
-    // a. The Placeholder
-    // This invisible cell pushes the scrolling content to the right,
-    // creating the space for the absolute sticky part to sit in.
+    // 2. The Scrolling Part
     const placeholderCell = document.createElement('div');
     placeholderCell.className = 'sticky-placeholder-cell';
     row.appendChild(placeholderCell);
 
-    // b. Standard Scrollable Headers
     const standardHeaders = ['Assignee', 'Due Date', 'Priority', 'Status'];
     standardHeaders.forEach(name => {
         const cell = document.createElement('div');
         cell.className = 'header-cell';
         cell.innerHTML = `<span>${name}</span>`;
-        row.appendChild(cell); // Append to the row, not the container directly
+        row.appendChild(cell);
     });
-
-    // c. YOUR CUSTOM COLUMN HEADERS (Integrated here)
     customColumns.forEach(col => {
         const cell = document.createElement('div');
         cell.className = 'header-cell';
         cell.dataset.columnId = col.id;
         cell.innerHTML = `<span>${col.name}</span><i class="fa-solid fa-ellipsis-h column-icon options-icon"></i>`;
-        row.appendChild(cell); // Append to the row
+        row.appendChild(cell);
     });
-
-    // d. YOUR "ADD COLUMN" BUTTON (Integrated here)
     const addColumnCell = document.createElement('div');
     addColumnCell.className = 'header-cell add-column-cell';
     addColumnCell.innerHTML = `<i class="fa-solid fa-plus"></i>`;
-    row.appendChild(addColumnCell); // Append to the row
+    row.appendChild(addColumnCell);
 
-    // --- Final Assembly ---
-    // Append the fully constructed row to the main header grid container
     container.appendChild(row);
 }
 
 function renderBody(sectionsToRender, customColumns, container) {
     (sectionsToRender || []).forEach(section => {
-        container.appendChild(createSectionRow(section));
-        (section.tasks || []).forEach(task => {
-            container.appendChild(createTaskRow(task));
-        });
-        container.appendChild(createAddTaskRow(section.id));
+        container.appendChild(createSectionRow(section, customColumns));
+        if (!section.isCollapsed && section.tasks) {
+            section.tasks.forEach(task => {
+                container.appendChild(createTaskRow(task, customColumns));
+            });
+        }
+        container.appendChild(createAddTaskRow(customColumns, section.id));
     });
 }
 
 function createSectionRow(sectionData, customColumns) {
     const row = document.createElement('div');
     row.className = 'grid-row-container section-title-row';
-    row.dataset.sectionId = sectionData.id;
 
-    // 1. Your logic for chevron and editability is integrated here
     const chevronClass = sectionData.isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down';
     const protectedTitles = ['Completed', 'Todo', 'Doing'];
     const isEditable = !protectedTitles.includes(sectionData.title.trim());
     const titleAttributes = isEditable ? 'contenteditable="true"' : 'contenteditable="false"';
-
-    // 2. We create ONE cell to contain all the content
+    
     const titleCell = document.createElement('div');
-    // This class makes the row sticky to the top of the vertical scroller
-    titleCell.className = 'task-cell section-title-cell'; 
-
-    // 3. KEY: This makes the single cell span the entire width of the grid
+    titleCell.className = 'task-cell section-title-cell';
     titleCell.style.gridColumn = '1 / -1';
-
-    // 4. Your detailed innerHTML is placed inside this single cell
     titleCell.innerHTML = `
         <div class="section-title-wrapper">
             <i class="fas fa-grip-vertical drag-handle"></i>
@@ -1379,11 +1387,10 @@ function createSectionRow(sectionData, customColumns) {
             <i class="fa-solid fa-ellipsis-h"></i>
         </button>
     `;
-    
     row.appendChild(titleCell);
-
     return row;
 }
+
 
 function createTaskRow(task) {
     const row = document.createElement('div');
@@ -1491,56 +1498,75 @@ function createTaskRow(task) {
 }
 
 function createAddTaskRow(customColumns, sectionId) {
-    const section = project.sections.find(s => s.id === sectionId);
     const row = document.createElement('div');
-    row.className = 'grid-row-wrapper add-task-row-wrapper';
+    row.className = 'grid-row-container add-task-row-wrapper';
     row.dataset.sectionId = sectionId;
 
-    // Sticky cell: "Add task..." button
+    // First, find the relevant section to access its tasks for the sum calculation
+    const section = project.sections.find(s => s.id === sectionId);
+    if (!section) return row; // Return an empty row if section not found
+
+    // --- 1. The Fixed Part (The "Add Task" Button) ---
+    const stickyWrapper = document.createElement('div');
+    stickyWrapper.className = 'absolute-sticky-container';
+    
     const addTaskCell = document.createElement('div');
-    addTaskCell.className = 'task-cell sticky-col-task add-task-cell';
+    addTaskCell.className = 'task-cell'; // It's a cell within the sticky container
     addTaskCell.innerHTML = `
         <div class="add-task-wrapper">
             <i class="add-task-icon fa-solid fa-plus"></i>
             <span class="add-task-text">Add task...</span>
         </div>
     `;
-    row.appendChild(addTaskCell);
+    stickyWrapper.appendChild(addTaskCell);
+    row.appendChild(stickyWrapper);
 
-    // 4 base columns (Assignee, Due Date, Priority, Status)
-    for (let i = 0; i < 4; i++) {
+
+    // --- 2. The Scrolling Part (Placeholders and Sums) ---
+    
+    // a. The placeholder for the sticky column
+    const placeholderCell = document.createElement('div');
+    placeholderCell.className = 'sticky-placeholder-cell';
+    row.appendChild(placeholderCell);
+
+    // b. Empty placeholders for the standard columns (Assignee, Due Date, etc.)
+    const standardColumnCount = 4; // Assignee, Due Date, Priority, Status
+    for (let i = 0; i < standardColumnCount; i++) {
         const placeholder = document.createElement('div');
         placeholder.className = 'task-cell';
         row.appendChild(placeholder);
     }
 
-    // Custom Columns
+    // c. YOUR SUM CALCULATION LOGIC (Integrated Here)
+    // This creates cells for each custom column, with sums for 'Costing' types.
     customColumns.forEach(col => {
         const cell = document.createElement('div');
-        cell.className = 'task-cell';
+        cell.className = 'task-cell summary-cell'; // Use a specific class for styling
 
         if (col.type === 'Costing') {
             // Calculate the sum of all task values for this column in this section
             const sum = (section.tasks || []).reduce((acc, task) => {
                 const value = task.customFields?.[col.id];
+                // Ensure the value is a number before adding
                 return typeof value === 'number' ? acc + value : acc;
             }, 0);
+            
             const formatted = sum !== 0 ? `Sum: ${sum.toFixed(2)}` : '';
             cell.innerHTML = `<span class="costing-sum">${formatted}</span>`;
         }
-
+        // For other custom column types, the cell will be created but remain empty.
+        
         row.appendChild(cell);
     });
 
-    // Final Placeholder Cell (Add column button slot)
-    const endPlaceholder = document.createElement('div');
-    endPlaceholder.className = 'task-cell';
-    row.appendChild(endPlaceholder);
-
+    // d. Final placeholder to align with the "Add Column" button in the header
+    const finalPlaceholder = document.createElement('div');
+    finalPlaceholder.className = 'task-cell';
+    row.appendChild(finalPlaceholder);
+    
     return row;
 }
-
-
+    
 /*
 ==================
 
