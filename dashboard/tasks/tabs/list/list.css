@@ -47,10 +47,9 @@
 }
 
 #task-list-body {
-    flex-grow: 1;     /* Tells this element to expand and take all available remaining vertical space */
-    overflow-y: auto; /* Show a vertical scrollbar ONLY if its content is taller than the space it was given */
-    overflow-x: hidden; /* Typically you don't want horizontal scroll here */
-    /* REMOVED: height: 100%; */
+    flex-grow: 1;   
+    overflow-y: auto; 
+    overflow-x: auto;
 }
 
 .header-controls-right {
