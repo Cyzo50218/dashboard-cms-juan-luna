@@ -48,7 +48,7 @@
     flex-direction: column;
     flex-grow: 1;
     overflow-x: auto;
-    overflow-y: auto; /* It does NOT scroll vertically */
+    overflow-y: auto; 
     min-height: 0;
 }
 
@@ -63,8 +63,8 @@
 /* This container's ONLY job is to scroll the rows vertically. */
 .list-body-wrapper {
     flex-grow: 1;
-    overflow-y: hidden;
-    overflow-x: hidden; /* It does NOT scroll horizontally */
+    overflow-y: auto;
+    overflow-x: auto; /* It does NOT scroll horizontally */
 }
 
 /* --- Grid Layout (No change needed) --- */
