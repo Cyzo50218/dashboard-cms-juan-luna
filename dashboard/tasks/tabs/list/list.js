@@ -1262,8 +1262,7 @@ function render() {
     headerGrid.className = 'grid-wrapper';
     const bodyGrid = document.createElement('div');
     bodyGrid.className = 'grid-wrapper';
-    headerGrid.style.width = 'max-content';
-    bodyGrid.style.width = 'max-content';
+    
 
     headerContainer.appendChild(headerGrid);
     bodyContainer.appendChild(bodyGrid); // The body grid goes inside the vertical scroller
@@ -1290,7 +1289,8 @@ function render() {
 
     headerGrid.style.gridTemplateColumns = gridTemplateColumns;
     bodyGrid.style.gridTemplateColumns = gridTemplateColumns;
-
+    headerGrid.style.width = 'max-content';
+    bodyGrid.style.width = 'max-content';
     // --- 4. Render Content ---
     // renderHeader now populates the headerGrid
     renderHeader(projectToRender, headerGrid);
