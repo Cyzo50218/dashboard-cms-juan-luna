@@ -1544,42 +1544,42 @@ margin-left: 6px;
 /* Standard 1080p (1100–1199px) */
 @media screen and (min-height: 1100px) and (max-height: 1199px) {
     .list-view-container {
-        height: 3000px;
+        height: 2000px;
     }
 }
 
 /* Slightly taller 1080p monitors (1200–1299px) */
 @media screen and (min-height: 1200px) and (max-height: 1299px) {
     .list-view-container {
-        height: 3500px;
+        height: 2500px;
     }
 }
 
 /* WQHD / 1440p (1300–1399px) */
 @media screen and (min-height: 1300px) and (max-height: 1399px) {
     .list-view-container {
-        height: 4000px;
+        height: 3000px;
     }
 }
 
 /* Slightly larger than 1440p (1400–1499px) */
 @media screen and (min-height: 1400px) and (max-height: 1499px) {
     .list-view-container {
-        height: 4000px;
+        height: 3000px;
     }
 }
 
 /* 1600p monitors (1500–1599px) */
 @media screen and (min-height: 1500px) and (max-height: 1599px) {
     .list-view-container {
-        height: 7000px;
+        height: 5000px;
     }
 }
 
 /* 16:10 taller 1600p monitors (1600–1699px) */
 @media screen and (min-height: 1600px) and (max-height: 1699px) {
     .list-view-container {
-        height: 8000px;
+        height: 6000px;
     }
 }
 
