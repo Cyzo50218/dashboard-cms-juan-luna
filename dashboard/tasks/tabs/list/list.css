@@ -100,9 +100,11 @@ button {
 
 /* This is now the single, main scrolling viewport for the entire grid */
 #task-list-body {
-    flex-grow: 1;
-    
-    position: relative; /* Establishes a stacking context for sticky items */
+    display: flex;         /* MUST be a flex container */
+    flex-direction: column;
+    flex-grow: 1;          /* Takes all remaining vertical space */
+    overflow: hidden;      /* This container must NOT scroll */
+    min-height: 0;
 }
 
 .section-wrapper{

@@ -1598,8 +1598,110 @@ EndWorking Component
 ==================
 */
 
+/*
+function render() {
+    if (!taskListBody) return;
 
+    const projectToRender = project;
+    const customColumns = projectToRender.customColumns || [];
 
+    // 1. Clear the main container
+    taskListBody.innerHTML = '';
+
+    // 2. Create the SINGLE grid wrapper that will hold everything
+    const gridWrapper = document.createElement('div');
+    gridWrapper.className = 'grid-wrapper';
+    taskListBody.appendChild(gridWrapper);
+
+    // 3. Define and apply the grid column template
+    const columnWidths = {
+        taskName: 'minmax(350px, max-content)',
+        assignee: '150px',
+        dueDate: '150px',
+        priority: '150px',
+        status: '150px',
+        defaultCustom: 'minmax(160px, max-content)',
+        addColumn: '1fr'
+    };
+    const gridTemplateColumns = [
+        columnWidths.taskName,
+        columnWidths.assignee,
+        columnWidths.dueDate,
+        columnWidths.priority,
+        columnWidths.status,
+        ...(customColumns || []).map(() => columnWidths.defaultCustom),
+        columnWidths.addColumn
+    ].join(' ');
+    gridWrapper.style.gridTemplateColumns = gridTemplateColumns;
+
+    // 4. Render header and all body rows directly into the SAME grid wrapper
+    renderHeader(projectToRender, gridWrapper);
+    renderBody(projectToRender, gridWrapper);
+
+    // 5. Setup header click listener
+    const headerClickListener = (e) => {
+        const columnOptionsIcon = e.target.closest('.options-icon');
+        const addColumnBtn = e.target.closest('.add-column-cell');
+        if (columnOptionsIcon) {
+            e.stopPropagation();
+            const columnEl = columnOptionsIcon.closest('[data-column-id]');
+            if (!columnEl) return;
+            const columnId = columnEl.dataset.columnId;
+            const dropdownOptions = [{ name: 'Rename column' }, { name: 'Delete column' }];
+            createDropdown(dropdownOptions, columnOptionsIcon, (selected) => {
+                if (selected.name === 'Delete column') deleteColumn(columnId);
+                else if (selected.name === 'Rename column') enableColumnRename(columnEl);
+            });
+            return;
+        }
+        if (addColumnBtn) {
+            e.stopPropagation();
+            const existingTypes = new Set(project.customColumns.map(col => col.type));
+            const availableTypes = columnTypeOptions.filter(type => !existingTypes.has(type) || type === 'Custom');
+            if (availableTypes.length === 0) {
+                alert("All available column types have been added.");
+                return;
+            }
+            createDropdown(availableTypes.map(type => ({ name: type })), addColumnBtn, (selected) => openAddColumnDialog(selected.name));
+        }
+    };
+    gridWrapper.addEventListener('click', (e) => {
+        if (e.target.closest('.header-cell')) {
+            headerClickListener(e);
+        }
+    });
+
+    // 6. Post-Render Logic
+    if (sortBtn) {
+        
+        if (activeSortState === 'asc') {
+            
+            sortBtn.innerHTML = `<i class="fas fa-sort-amount-up-alt"></i> Oldest`;
+            
+        } else if (activeSortState === 'desc') {
+            
+            sortBtn.innerHTML = `<i class="fas fa-sort-amount-down-alt"></i> Newest`;
+            
+        } else {
+            
+            sortBtn.innerHTML = `<i class="fas fa-sort"></i> Sort`;
+            
+        }
+
+    }
+    
+    if (taskIdToFocus) {
+        const newEl = taskListBody.querySelector(`[data-task-id="${taskIdToFocus}"] .task-name-input`);
+        
+        if (newEl) {
+            newEl.focus();
+            newEl.select();   
+        }
+        taskIdToFocus = null;
+    }
+    initializeDragAndDrop(gridWrapper);
+}
+*/
 
 
 // This function will run ONLY when a menu is open and the user scrolls
