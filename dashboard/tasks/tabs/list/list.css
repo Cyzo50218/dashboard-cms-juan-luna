@@ -27,40 +27,6 @@
     overflow: hidden; /* Prevents the whole page from scrolling */
 }
 
-.task-scroll-wrapper {
-    display: flex;
-    justify-content: flex-end; /* Align scrollbar to the end */
-    overflow-x: auto;
-    width: 100%;
-    height: auto;
-    padding-bottom: 8px; /* Optional: spacing below content */
-}
-
-/* This is where your actual content lives */
-.task-container {
-    display: flex;
-    flex-direction: column;
-    min-width: 100%;
-}
-
-/* Custom Scrollbar Styles */
-.task-scroll-wrapper::-webkit-scrollbar {
-    height: 10px;
-}
-
-.task-scroll-wrapper::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.task-scroll-wrapper::-webkit-scrollbar-thumb {
-    background-color: #888;
-    border-radius: 6px;
-}
-
-.task-scroll-wrapper::-webkit-scrollbar-thumb:hover {
-    background-color: #555;
-}
-
 
 .section-title-cell,
 .task-name-wrapper {
