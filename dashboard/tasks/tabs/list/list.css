@@ -34,6 +34,7 @@
     overflow-x: auto;
     overflow-y: hidden; /* It does NOT scroll vertically */
     min-height: 0;
+    width: 100%;
 }
 
 /* --- THE VERTICAL SCROLLER (Your Placeholder) --- */
