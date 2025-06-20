@@ -95,7 +95,7 @@ button {
 .task-cell {
     display: flex;
     align-items: center;
-    position: sticky;
+    
     background-color: var(--primary-bg); /* Give all cells a solid background */
     border-right: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
@@ -110,6 +110,7 @@ button {
     min-height: var(--header-height);
     padding: 0 4px;
     font-weight: 500;
+    position: sticky;
     border-top: 1px solid var(--border-color);
     color: var(--text-secondary-color);
     justify-content: space-between;
