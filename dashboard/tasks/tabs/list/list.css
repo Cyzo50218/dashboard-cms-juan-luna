@@ -296,12 +296,13 @@ button {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding-left: 16px;
+    padding-left: 8px;
     cursor: grab;
     user-select: none;
 }
+
 .drag-handle {
-    margin-right: 4px;
+    margin-right: 14px;
     opacity: 0;
     transition: opacity 0.2s ease;
     color: #4b5563;
