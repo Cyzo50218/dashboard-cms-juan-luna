@@ -43,7 +43,7 @@
     flex-grow: 1;
     margin-right: 16px;
     margin-bottom: 16px;
-    min-height: 0;
+    height: calc(100vh - 160px);
     overflow-y: auto;
     overflow-x: hidden; /* It does NOT scroll horizontally */
 }
