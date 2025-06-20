@@ -1532,64 +1532,34 @@ function renderHeader(projectToRender, container) {
     
 }
 
-
-
 function renderBody(projectToRender, container) {
-    
     const customColumns = projectToRender.customColumns || [];
-    
-    
-    
+
     (projectToRender.sections || []).forEach(section => {
-        
-        // 🔁 NEW: wrap the whole section
-        
         const sectionWrapper = document.createElement('div');
-        
         sectionWrapper.className = 'section-wrapper';
-        
         sectionWrapper.dataset.sectionId = section.id;
-        
-        
-        
-        // Create and add the section title row
-        
+
+        // Create and add the section title row (uses updated helper)
         const sectionRow = createSectionRow(section, customColumns);
-        
         sectionWrapper.appendChild(sectionRow);
-        
-        
-        
+
         // Add tasks if not collapsed
-        
         if (!section.isCollapsed && section.tasks) {
-            
             section.tasks.forEach(task => {
-                
+                // Uses updated helper
                 const taskRow = createTaskRow(task, customColumns);
-                
                 sectionWrapper.appendChild(taskRow);
-                
             });
-            
         }
-        
-        
-        
-        // Add the "Add Task" row
-        
+
+        // Add the "Add Task" row (uses updated helper)
         const addTaskRow = createAddTaskRow(customColumns, section.id);
-        
         sectionWrapper.appendChild(addTaskRow);
-        
-        
-        
+
         // Append to main grid container
-        
         container.appendChild(sectionWrapper);
-        
     });
-    
 }
 
 function createSectionRow(sectionData, customColumns) {
@@ -1638,87 +1608,52 @@ function createTaskRow(task, customColumns) {
             "CRITICAL ERROR - FAULTY TASK DETECTED: A task row is being created with a missing or invalid ID. This is the source of the drag-and-drop error.",
             
             { task: task }
-            
+
         );
         
     }
     
     const row = document.createElement('div');
-    
     row.className = `grid-row-wrapper task-row-wrapper ${task.status === 'Completed' ? 'is-completed' : ''}`;
-    
     row.dataset.taskId = task.id;
-    
     row.dataset.sectionId = task.sectionId;
-    
-    
-    
     const isCompleted = task.status === 'Completed';
     
     
     
     // --- Like Button Logic ---
-    
     const likeCount = task.likedAmount || 0;
-    
     const isLikedByCurrentUser = task.likedBy && task.likedBy[currentUserId];
-    
     const heartIconClass = isLikedByCurrentUser ? 'fas fa-heart' : 'far fa-heart';
-    
     const likeStatusClass = isLikedByCurrentUser ? 'is-liked' : '';
-    
     const likeCountHTML = likeCount > 0 ? `<span class="like-count">${likeCount}</span>` : '';
     
     
     
     // --- Sticky Task Name Cell ---
-    
     const taskNameCell = document.createElement('div');
-    
     taskNameCell.className = 'task-cell sticky-col-task';
-    
     taskNameCell.innerHTML = `
-
         <div class="task-name-wrapper">
-
             <div class="task-name-main">
-
                 <span class="drag-handle"><i class="fas fa-grip-lines"></i></span>
-
                 <span class="check-icon" data-control="check">
-
-                    <i class="${isCompleted ? 'fa-solid' : 'fa-regular'} fa-circle-check"></i>
-
+                   <i class="${isCompleted ? 'fa-solid' : 'fa-regular'} fa-circle-check"></i>
                 </span>
-
                 <span class="task-name" contenteditable="true">${task.name || ''}</span>
-
             </div>
-
             <div class="task-hover-actions">
-
                 <span class="icon-action ${likeStatusClass}" data-control="like" title="Like task">
-
                     <i class="${heartIconClass}"></i>
-
                     ${likeCountHTML}
-
                 </span>
-
                 <span class="icon-action" data-control="comment" title="View comments">
-
                     <i class="far fa-comment"></i>
-
                 </span>
-
                 <span class="icon-action" data-control="move-task" title="Move task to another section">
-
                     <i class="fas fa-sort"></i>
-
                 </span>
-
             </div>
-
         </div>
 
     `;
@@ -1895,19 +1830,12 @@ function createAddTaskRow(customColumns, sectionId) {
     // Sticky cell: "Add task..." button
     
     const addTaskCell = document.createElement('div');
-    
     addTaskCell.className = 'task-cell sticky-col-task add-task-cell';
-    
     addTaskCell.innerHTML = `
-
         <div class="add-task-wrapper">
-
             <i class="add-task-icon fa-solid fa-plus"></i>
-
             <span class="add-task-text">Add task...</span>
-
         </div>
-
     `;
     
     row.appendChild(addTaskCell);
