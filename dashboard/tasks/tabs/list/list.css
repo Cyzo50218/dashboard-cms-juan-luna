@@ -22,7 +22,7 @@
     display: flex;
     flex-direction: column;
     flex: 1;
-    overflow: auto; /* Guarantees this outer frame NEVER scrolls */
+    overflow: hidden; /* Guarantees this outer frame NEVER scrolls */
     min-height: 0;
 }
 
@@ -36,7 +36,7 @@
     display: flex;
     flex-direction: column;
     flex-grow: 1;
-    overflow: hidden; /* This container also must NOT scroll */
+    overflow: auto; /* This container also must NOT scroll */
     min-height: 0;
 }
 
