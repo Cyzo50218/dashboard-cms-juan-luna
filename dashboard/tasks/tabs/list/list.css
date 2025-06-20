@@ -49,6 +49,12 @@
     min-height: 0;
 }
 
+.custom-scrollbar-placeholder {
+    flex-shrink: 0; /* Prevents it from shrinking if content is squeezed */
+    height: 16px;   /* Or your desired scrollbar height */
+    background-color: #dfdfdf; /* A light background to make it visible */
+}
+
 /* --- THE VERTICAL SCROLLER --- */
 .list-body-wrapper {
     flex-grow: 1;
