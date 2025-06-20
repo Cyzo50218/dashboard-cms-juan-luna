@@ -1283,7 +1283,6 @@ function render() {
         ...(customColumns || []).map(() => columnWidths.defaultCustom),
         columnWidths.addColumn
     ].join(' ');
-    gridWrapper.style.gridTemplateColumns = gridTemplateColumns;
 
     headerGrid.style.gridTemplateColumns = gridTemplateColumns;
     bodyGrid.style.gridTemplateColumns = gridTemplateColumns;
