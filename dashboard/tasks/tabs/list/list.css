@@ -23,7 +23,7 @@
     flex: 1; /* Grow to fill the parent (.tabs-fragments) */
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow: auto;
     min-height: 0; /* Important: Prevents flexbox from shrinking issues */
 }
 
@@ -96,7 +96,7 @@ button {
 #task-list-body {
     flex-grow: 1;
     height: 100%;
-    overflow: auto;
+    
 }
 
 .grid-wrapper {
