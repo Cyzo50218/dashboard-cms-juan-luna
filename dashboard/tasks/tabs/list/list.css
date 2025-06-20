@@ -1531,14 +1531,14 @@ margin-left: 6px;
 /* Medium desktop screens (1000–1099px) */
 @media screen and (min-height: 1000px) and (max-height: 1099px) {
     .list-view-container {
-        height: 750px;
+        height: 1000px;
     }
 }
 
 /* Standard 1080p (1100–1299px) */
 @media screen and (min-height: 1100px) and (max-height: 1299px) {
     .list-view-container {
-        height: 700px;
+        height: 3000px;
     }
 }
 
