@@ -143,7 +143,6 @@ button:hover {
 
 /* tasks.css */
 .tabs-fragments {
-    flex: 1; /* Allows this container to grow and fill #content */
     display: flex; /* Make it a flex container to control its child's height */
     flex-direction: column; /* Arrange tab content vertically */
     overflow-y: hidden;
