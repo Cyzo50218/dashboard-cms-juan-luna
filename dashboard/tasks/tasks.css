@@ -141,9 +141,13 @@ button:hover {
     color: #151515;
 }
 
+/* tasks.css */
 .tabs-fragments {
-    min-height: 10px;
-    overflow-x: auto; 
+    flex: 1; /* Allows this container to grow and fill #content */
+    display: flex; /* Make it a flex container to control its child's height */
+    flex-direction: column; /* Arrange tab content vertically */
+    overflow-x: auto;  /* Keep for horizontal scrolling if tab content is wide */
+    min-height: 0; /* Important: Prevents flexbox from shrinking issues */
 }
 
 .tab-content {

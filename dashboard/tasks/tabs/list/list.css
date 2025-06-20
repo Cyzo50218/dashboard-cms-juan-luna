@@ -18,11 +18,13 @@
 }
 
 /* --- Core App Layout --- */
+/* list.css */
 .list-view-container {
+    flex: 1; /* Grow to fill the parent (.tabs-fragments) */
     display: flex;
     flex-direction: column;
-    min-height: 600px;
-    overflow: hidden; 
+    overflow: hidden;
+    min-height: 0; /* Important: Prevents flexbox from shrinking issues */
 }
 
 .section-title-cell,
@@ -93,6 +95,7 @@ button {
 /* This is now the single, main scrolling viewport for the entire grid */
 #task-list-body {
     flex-grow: 1;
+    height: 100%;
     overflow: auto;
 }
 
