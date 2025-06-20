@@ -22,35 +22,63 @@
     display: flex;
     flex-direction: column;
     flex: 1;
-    overflow: hidden;
+    overflow: hidden; /* Guarantees this outer frame NEVER scrolls */
     min-height: 0;
 }
 
-/* 1. Task list body is now just a flex container, NO SCROLLING */
+.listview-header {
+    flex-shrink: 0; /* Prevents the top button bar from shrinking */
+}
+
+/* --- Main Layout Manager --- */
+/* This contains the entire grid system */
 #task-list-body {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
-    min-height: 0; /* Important for nested flex */
-}
-
-/* 2. NEW: Styles for the separate header and body wrappers */
-.list-header-wrapper {
-    flex-shrink: 0; /* Prevent header from shrinking */
-    overflow: hidden; /* Hide its own horizontal scrollbar */
-}
-
-.list-body-wrapper {
-    flex-grow: 1;  /* Take up all remaining space */
-    overflow: auto; /* Handles BOTH vertical and horizontal scroll */
+    overflow: hidden; /* This container also must NOT scroll */
     min-height: 0;
 }
 
-/* 3. Grid wrapper styles remain mostly the same */
+/* --- NEW: The Horizontal Scrolling Container --- */
+/* This container's ONLY job is to scroll horizontally.
+   Its scrollbar will always be visible at the bottom of the component. */
+.grid-scroll-container {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    overflow-x: auto;
+    overflow-y: hidden; /* It does NOT scroll vertically */
+    min-height: 0;
+}
+
+/* --- Grid Header Wrapper (No scroll responsibility) --- */
+.list-header-wrapper {
+    flex-shrink: 0;
+    position: relative; /* Needed for z-index to work with sticky columns */
+    z-index: 10;      /* Keeps header above body content */
+}
+
+/* --- The Vertical Scrolling Container --- */
+/* This container's ONLY job is to scroll the rows vertically. */
+.list-body-wrapper {
+    flex-grow: 1;
+    overflow-y: auto;
+    overflow-x: hidden; /* It does NOT scroll horizontally */
+}
+
+/* --- Grid Layout (No change needed) --- */
 .grid-wrapper {
     display: grid;
     width: max-content; 
     min-width: 100%;   
+}
+
+/* --- Sticky Column (No change needed) --- */
+.sticky-col-task {
+    position: sticky;
+    left: 0;
+    z-index: 2;
 }
 
 .section-title-cell,
