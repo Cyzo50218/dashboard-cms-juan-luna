@@ -41,7 +41,6 @@
    Its own native scrollbar becomes the visible placeholder on the right. */
 .list-body-wrapper {
     flex-grow: 1;
-    margin-bottom: 16px;
     height: calc(100vh - 160px);
     overflow-y: auto;
     overflow-x: auto; 
@@ -55,7 +54,8 @@
 .grid-wrapper {
     display: grid;
     width: max-content;
-    min-width: 600px;
+    margin-bottom: 30px;
+    min-width: 100%;
 }
 
 .listview-header {
