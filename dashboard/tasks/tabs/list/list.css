@@ -76,6 +76,7 @@ button {
 #task-list-body {
     flex-grow: 1;
     overflow: auto; /* Handles both horizontal and vertical scrolling */
+    position: relative; /* Establishes a stacking context for sticky items */
 }
 
 .grid-wrapper {
@@ -176,16 +177,6 @@ button {
 /* =====================================================================
 // SPREADSHEET STICKY LOGIC
 // ===================================================================== */
-
-/* 1. Make the entire header row sticky to the top */
-.header-cell {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    /* Use a box-shadow for a crisp bottom border that stays on top */
-    border-bottom: none;
-    box-shadow: inset 0 -1px 0 var(--header-border-color);
-}
 
 /* 2. Make all cells in the first column sticky to the left */
 .sticky-col-task {
