@@ -49,12 +49,13 @@
 /* --- Grid & Header Wrappers --- */
 .list-header-wrapper {
     flex-shrink: 0;
+     overflow-x: auto;
     z-index: 10;
+    margin-bottom: 30px;
 }
 .grid-wrapper {
     display: grid;
     width: max-content;
-    margin-bottom: 30px;
     min-width: 100%;
 }
 
