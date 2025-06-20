@@ -13,17 +13,16 @@ body {
     line-height: 1.4;
     height: 100vh;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Fixed Header */
 #top-header {
     height: 60px;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-    position: fixed;
-    top: 0;
-    left: 0;
+    flex-shrink: 0;
     z-index: 20;
-    right: 0;
     z-index: 1000;
 }
 
@@ -31,9 +30,10 @@ body {
 #main-container {
     display: flex;
     background: transparent;
-    height: 100%;
     overflow: hidden;
     position: relative;
+    flex-grow: 1;
+    min-height: 0;
 }
 
 /* dashboard.css */
