@@ -23,7 +23,7 @@
 .list-view-container {
     display: flex;
     flex-direction: column;
-    height: 590px;
+    min-height: 0;
     overflow: hidden; /* Prevents the whole page from scrolling */
 }
 
@@ -41,6 +41,8 @@
    Its own native scrollbar becomes the visible placeholder on the right. */
 .list-body-wrapper {
     flex-grow: 1;
+    margin-right: 16px;
+    margin-bottom: 16px;
     overflow-y: auto;
     overflow-x: hidden; /* It does NOT scroll horizontally */
 }
