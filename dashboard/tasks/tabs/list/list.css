@@ -1531,7 +1531,7 @@ margin-left: 6px;
 /* Medium desktop screens (1000–1099px) */
 @media screen and (min-height: 1000px) and (max-height: 1099px) {
     .list-view-container {
-        height: 650px;
+        height: 750px;
     }
 }
 
@@ -1545,20 +1545,20 @@ margin-left: 6px;
 /* 30-inch monitors (1300–1499px, includes 1440p) */
 @media screen and (min-height: 1300px) and (max-height: 1499px) {
     .list-view-container {
-        height: 900px;
+        height: 2000px;
     }
 }
 
 /* Larger 30-inch monitors (1500–1699px, includes 1600p) */
 @media screen and (min-height: 1500px) and (max-height: 1699px) {
     .list-view-container {
-        height: 1000px;
+        height: 4000px;
     }
 }
 
 /* Ultra-wide and 4K+ monitors (1700px and above) */
 @media screen and (min-height: 1700px) {
     .list-view-container {
-        height: 1200px;
+        height: 5000px;
     }
 }
