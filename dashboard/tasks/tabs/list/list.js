@@ -1296,6 +1296,7 @@ function render() {
     // 2. Create and set up the header (NO CHANGE HERE)
     const headerContainer = document.createElement('div');
     headerContainer.className = 'list-header-wrapper';
+
     const headerGrid = document.createElement('div');
     headerGrid.className = 'grid-wrapper';
     headerContainer.appendChild(headerGrid);
@@ -1329,6 +1330,14 @@ headerGrid.style.gridTemplateColumns = gridTemplateColumns;
     // 3. --- VIRTUAL SCROLLING SETUP ---
     const bodyContainer = document.createElement('div');
     bodyContainer.className = 'list-body-wrapper';
+
+    // NEW: This container is for HORIZONTAL scrolling of the entire grid
+    const gridScrollContainer = document.createElement('div');
+    gridScrollContainer.className = 'grid-scroll-container';
+
+    gridScrollContainer.appendChild(headerContainer);
+    gridScrollContainer.appendChild(bodyContainer);
+    taskListBody.appendChild(gridScrollContainer);
     
     // 3a. Create the giant spacer to produce the correct scrollbar height
     const totalContentSpacer = document.createElement('div');
@@ -1351,11 +1360,13 @@ headerGrid.style.gridTemplateColumns = gridTemplateColumns;
     bodyGrid.style.gridTemplateColumns = gridTemplateColumns; // Apply same columns
     
     // 5. Setup the scroll event listener
+     gridScrollContainer.addEventListener('scroll', () => {
+        // Sync the header's scroll position. The body grid moves naturally.
+        headerContainer.scrollLeft = gridScrollContainer.scrollLeft;
+    });
+
+    // 2. Vertical scroll for virtual rendering remains on the body wrapper
     bodyContainer.addEventListener('scroll', () => {
-        // Synchronize horizontal scroll for the header (as before)
-        headerContainer.scrollLeft = bodyContainer.scrollLeft;
-        
-        // Throttle vertical scroll rendering using requestAnimationFrame
         if (!isScrolling) {
             window.requestAnimationFrame(() => {
                 renderVisibleRows(bodyContainer, bodyGrid);
