@@ -22,7 +22,7 @@
     display: flex;
     flex-direction: column;
     flex: 1;
-    overflow: hidden; /* Guarantees this outer frame NEVER scrolls */
+    overflow: hidden; 
     min-height: 0;
 }
 
