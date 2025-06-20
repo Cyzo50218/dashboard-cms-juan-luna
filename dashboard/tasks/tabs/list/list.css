@@ -31,6 +31,8 @@
 #task-list-body {
     display: flex;
     flex-direction: column;
+     overflow-y: auto;
+    overflow-x: auto;
     flex-grow: 1;
     min-height: 0; /* Important for nested flex */
 }
@@ -43,7 +45,8 @@
 
 .list-body-wrapper {
     flex-grow: 1;  /* Take up all remaining space */
-    overflow: auto;
+     overflow-y: hidden;
+    overflow-x: hidden;
     min-height: 0;
 }
 
