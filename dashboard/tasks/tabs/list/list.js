@@ -52,11 +52,14 @@ let activeMenuButton = null;
 const sortableTasks = [];
 let isSortActive = false;
 
-const ITEMS_PER_PAGE = 30; // How many items to load at a time
-let currentItemOffset = 0; // How many items are currently rendered
-let isLoadingNextPage = false; // Flag to prevent loading multiple pages at once
-let flatListOfItems = []; // A flattened array of all sections and tasks
-let isScrolling = false; // For throttling scroll events
+// --- VIRTUAL SCROLLING CONSTANTS ---
+const ROW_HEIGHT = 32; // The fixed height of a single task or section row in pixels.
+const VISIBLE_ROW_BUFFER = 5; // Render 5 extra rows above and below the viewport for smoothness.
+
+// --- STATE ---
+let flatListOfItems = []; // A flattened array of all sections and tasks.
+let isScrolling = false; // For throttling scroll events.
+
 
 // State variables to track the drag operation
 let draggedElement = null;
@@ -1149,269 +1152,902 @@ function enableColumnRename(columnEl) {
     columnEl.addEventListener('keydown', onKeyDown);
 }
 
-// --- STATE & CONSTANTS ---
-const STICKY_COLUMN_WIDTH = 350; // Define this once
+
+
+
+/*
+==================
+
+Working Component
+
+==================
+*/
 
 /**
- * =================================================
- * THE MAIN RENDER FUNCTION
- * =================================================
+ * Flattens the project's sections and tasks into a single array for virtual scrolling.
  */
+function flattenProjectData() {
+    flatListOfItems = [];
+    project.sections.forEach(section => {
+        // Add the section itself as an item
+        flatListOfItems.push({ type: 'section', data: section });
+
+        // Add its tasks if not collapsed
+        if (!section.isCollapsed && section.tasks) {
+            section.tasks.forEach(task => {
+                flatListOfItems.push({ type: 'task', data: task });
+            });
+        }
+
+        // Add the "Add Task" row for the section
+        flatListOfItems.push({ type: 'add_task', sectionId: section.id });
+    });
+}
+
+/**
+ * Calculates which rows should be visible and renders only those into the bodyGrid.
+ * @param {HTMLElement} bodyContainer - The scrolling container (.list-body-wrapper).
+ * @param {HTMLElement} bodyGrid - The "window" to render rows into (.grid-wrapper).
+ */
+function renderVisibleRows(bodyContainer, bodyGrid) {
+    const scrollTop = bodyContainer.scrollTop;
+    const viewportHeight = bodyContainer.clientHeight;
+
+    // 1. Calculate the start and end index of visible items
+    let startIndex = Math.floor(scrollTop / ROW_HEIGHT);
+    let endIndex = Math.ceil((scrollTop + viewportHeight) / ROW_HEIGHT);
+
+    // 2. Apply the buffer
+    startIndex = Math.max(0, startIndex - VISIBLE_ROW_BUFFER);
+    endIndex = Math.min(flatListOfItems.length, endIndex + VISIBLE_ROW_BUFFER);
+
+    // 3. Slice the visible items from our flat list
+    const visibleItems = flatListOfItems.slice(startIndex, endIndex);
+
+    // 4. Clear the existing rows and render the new visible ones
+    bodyGrid.innerHTML = '';
+    visibleItems.forEach(item => {
+        let rowElement;
+        if (item.type === 'section') {
+            rowElement = createSectionRow(item.data, project.customColumns);
+        } else if (item.type === 'task') {
+            rowElement = createTaskRow(item.data, project.customColumns);
+        } else if (item.type === 'add_task') {
+            rowElement = createAddTaskRow(project.customColumns, item.sectionId);
+        }
+
+        if (rowElement) {
+            bodyGrid.appendChild(rowElement);
+        }
+    });
+
+    // 5. Position the "window" of rows correctly inside the giant spacer
+    // This is the most important step for virtual scrolling.
+    const offsetY = startIndex * ROW_HEIGHT;
+    bodyGrid.style.transform = `translateY(${offsetY}px)`;
+}
+
+/**
+ * Renders the entire task list, including headers and body, with a split-scrolling behavior.
+ * - The header is in a non-scrolling container.
+ * - The body is in a container that scrolls both vertically and horizontally.
+ * - A JS event listener synchronizes the horizontal scroll of the header with the body.
+ */
+
 function render() {
+
     if (!taskListBody) return;
 
-    // Reset state for a full re-render
-    currentItemOffset = 0;
-    isLoadingNextPage = false;
+
+
+    const headerClickListener = (e) => {
+
+        const columnOptionsIcon = e.target.closest('.options-icon');
+
+        const addColumnBtn = e.target.closest('.add-column-cell');
+
+
+
+        if (columnOptionsIcon) {
+
+            e.stopPropagation();
+
+            const columnEl = columnOptionsIcon.closest('[data-column-id]');
+
+            if (!columnEl) return;
+
+
+
+            const columnId = Number(columnEl.dataset.columnId);
+
+            const dropdownOptions = [
+
+                { name: 'Rename column' },
+
+                { name: 'Delete column' }
+
+            ];
+
+
+
+            createDropdown(dropdownOptions, columnOptionsIcon, (selected) => {
+
+                if (selected.name === 'Delete column') {
+
+                    deleteColumn(columnId);
+
+                } else if (selected.name === 'Rename column') {
+
+                    enableColumnRename(columnEl);
+
+                }
+
+            });
+
+            return;
+
+        }
+
+
+
+        if (addColumnBtn) {
+
+            e.stopPropagation();
+
+
+
+            const existingTypes = new Set(project.customColumns.map(col => col.type));
+
+            const availableTypes = columnTypeOptions.filter(type =>
+
+                !existingTypes.has(type) || type === 'Custom'
+
+            );
+
+
+
+            if (availableTypes.length === 0) {
+
+                alert("All available column types have been added.");
+
+                return;
+
+            }
+
+
+
+            createDropdown(
+
+                availableTypes.map(type => ({ name: type })),
+
+                addColumnBtn,
+
+                (selected) => openAddColumnDialog(selected.name)
+
+            );
+
+        }
+
+    };
+
+
+
     const projectToRender = project;
+
     const customColumns = projectToRender.customColumns || [];
+
+
+
+    // 1. Clear the main scrolling container
 
     taskListBody.innerHTML = '';
 
-    // --- 1. Build the Decoupled DOM Structure ---
-    const gridScrollContainer = document.createElement('div');
-    gridScrollContainer.className = 'grid-scroll-container';
-    const headerContainer = document.createElement('div');
-    headerContainer.className = 'list-header-wrapper';
-    const bodyContainer = document.createElement('div');
-    bodyContainer.className = 'list-body-wrapper';
-    
-    const seam = document.createElement('div');
-    seam.className = 'horizontal-scroll-seam';
-    seam.style.left = `${STICKY_COLUMN_WIDTH}px`;
-    const scrollbarPlaceholder = document.createElement('div');
-    scrollbarPlaceholder.className = 'custom-scrollbar-placeholder';
 
-    gridScrollContainer.appendChild(headerContainer);
-    gridScrollContainer.appendChild(bodyContainer);
-    taskListBody.appendChild(gridScrollContainer);
-    taskListBody.appendChild(scrollbarPlaceholder);
-    headerContainer.appendChild(seam);
 
-    // --- 2. Setup Grids ---
-    const headerGrid = document.createElement('div');
-    headerGrid.className = 'grid-wrapper';
-    const bodyGrid = document.createElement('div');
-    bodyGrid.className = 'grid-wrapper';
-    headerContainer.appendChild(headerGrid);
-    bodyContainer.appendChild(bodyGrid);
+    // 2. Create the single grid wrapper that will contain ALL cells
 
-    // --- 3. Define Grid Columns for the SCROLLING Part ---
+    const gridWrapper = document.createElement('div');
+
+    gridWrapper.className = 'grid-wrapper';
+
+
+
+    taskListBody.appendChild(gridWrapper);
+
+
+
+    // 3. Define and apply the grid column template
+
     const columnWidths = {
+
+        taskName: 'minmax(350px, max-content)',
+
         assignee: '150px',
+
         dueDate: '150px',
+
         priority: '150px',
+
         status: '150px',
+
         defaultCustom: 'minmax(160px, max-content)',
+
         addColumn: '1fr'
+
     };
+
+
+
     const gridTemplateColumns = [
-        `${STICKY_COLUMN_WIDTH}px`, // Placeholder for the sticky column
+
+        columnWidths.taskName,
+
         columnWidths.assignee,
+
         columnWidths.dueDate,
+
         columnWidths.priority,
+
         columnWidths.status,
-        ...(customColumns || []).map(() => columnWidths.defaultCustom),
+
+        ...customColumns.map(() => columnWidths.defaultCustom),
+
         columnWidths.addColumn
+
     ].join(' ');
 
-    headerGrid.style.gridTemplateColumns = gridTemplateColumns;
-    bodyGrid.style.gridTemplateColumns = gridTemplateColumns;
 
-    // --- 4. Initial Render & Event Listeners ---
-    renderHeader(projectToRender, headerGrid);
-    loadNextPage(bodyGrid);
 
-    const headerClickListener = (e) => {
-        const columnOptionsIcon = e.target.closest('.options-icon');
-        const addColumnBtn = e.target.closest('.add-column-cell');
-        if (columnOptionsIcon) {
-            e.stopPropagation();
-            const columnEl = columnOptionsIcon.closest('[data-column-id]');
-            if (!columnEl) return;
-            const columnId = Number(columnEl.dataset.columnId);
-            const dropdownOptions = [{ name: 'Rename column' }, { name: 'Delete column' }];
-            createDropdown(dropdownOptions, columnOptionsIcon, (selected) => {
-                if (selected.name === 'Delete column') deleteColumn(columnId);
-                else if (selected.name === 'Rename column') enableColumnRename(columnEl);
-            });
-            return;
+
+
+    gridWrapper.style.gridTemplateColumns = gridTemplateColumns;
+
+
+
+    // 4. Render header and body cells directly into the grid wrapper
+
+
+
+    renderHeader(projectToRender, gridWrapper);
+
+    renderBody(projectToRender, gridWrapper);
+
+
+
+    gridWrapper.addEventListener('click', (e) => {
+
+        const isHeaderCell = e.target.closest('.header-cell');
+
+        if (isHeaderCell) {
+
+            headerClickListener(e);
+
         }
-        if (addColumnBtn) {
-            e.stopPropagation();
-            const existingTypes = new Set(project.customColumns.map(col => col.type));
-            const availableTypes = columnTypeOptions.filter(type => !existingTypes.has(type) || type === 'Custom');
-            if (availableTypes.length === 0) {
-                alert("All available column types have been added.");
-                return;
-            }
-            createDropdown(availableTypes.map(type => ({ name: type })), addColumnBtn, (selected) => openAddColumnDialog(selected.name));
-        }
-    };
-    headerGrid.addEventListener('click', headerClickListener);
 
-    gridScrollContainer.addEventListener('scroll', () => {
-        headerContainer.scrollLeft = gridScrollContainer.scrollLeft;
     });
 
-    bodyContainer.addEventListener('scroll', () => {
-        const { scrollTop, scrollHeight, clientHeight } = bodyContainer;
-        if (scrollTop + clientHeight >= scrollHeight - 300 && !isLoadingNextPage) {
-            loadNextPage(bodyGrid);
+
+
+    // 👇 Update sort button state and flag
+
+    isSortActive = activeSortState !== 'default';
+
+
+
+    if (sortBtn) {
+
+        if (activeSortState === 'asc') {
+
+            sortBtn.innerHTML = `<i class="fas fa-sort-amount-up-alt"></i> Oldest`;
+
+        } else if (activeSortState === 'desc') {
+
+            sortBtn.innerHTML = `<i class="fas fa-sort-amount-down-alt"></i> Newest`;
+
+        } else {
+
+            sortBtn.innerHTML = `<i class="fas fa-sort"></i> Sort`;
+
         }
-    });
 
-    // --- 5. Post-Render Logic ---
-    initializeDragAndDrop(bodyGrid);
-}
-
-/**
- * =================================================
- * DATA & ROW CREATION HELPERS
- * =================================================
- */
-
-function loadNextPage(bodyGrid) {
-    if (isLoadingNextPage || !project.sections || currentItemOffset >= project.sections.length) {
-        return;
     }
-    isLoadingNextPage = true;
-    const itemsToRender = project.sections.slice(currentItemOffset, currentItemOffset + ITEMS_PER_PAGE);
-    if (itemsToRender.length > 0) {
-        renderBody(itemsToRender, project.customColumns, bodyGrid);
-    }
-    currentItemOffset += itemsToRender.length;
-    isLoadingNextPage = false;
-}
 
-function renderBody(sectionsToRender, customColumns, container) {
-    (sectionsToRender || []).forEach(section => {
-        container.appendChild(createSectionRow(section, customColumns));
-        if (!section.isCollapsed && section.tasks) {
-            section.tasks.forEach(task => {
-                container.appendChild(createTaskRow(task, customColumns));
-            });
+    if (taskIdToFocus) {
+
+        const newEl = taskListBody.querySelector(`[data-task-id="${taskIdToFocus}"] .task-name-input`);
+
+        if (newEl) {
+
+            newEl.focus();
+
+            newEl.select();
+
         }
-        container.appendChild(createAddTaskRow(section, customColumns));
-    });
+
+        taskIdToFocus = null;
+
+    }
+
+    initializeDragAndDrop(gridWrapper);
+
 }
 
 function renderHeader(projectToRender, container) {
-    container.innerHTML = '';
+
     const customColumns = projectToRender.customColumns || [];
-    const row = document.createElement('div');
-    row.className = 'grid-row-container';
-    const stickyWrapper = document.createElement('div');
-    stickyWrapper.className = 'absolute-sticky-container';
-    const nameCell = document.createElement('div');
-    nameCell.className = 'task-cell sticky-col-header';
-    nameCell.innerHTML = `<span>Name</span>`;
-    stickyWrapper.appendChild(nameCell);
-    row.appendChild(stickyWrapper);
-    const placeholderCell = document.createElement('div');
-    placeholderCell.className = 'sticky-placeholder-cell';
-    row.appendChild(placeholderCell);
-    const standardHeaders = ['Assignee', 'Due Date', 'Priority', 'Status'];
-    standardHeaders.forEach(name => {
+
+    const headers = ['Name', 'Assignee', 'Due Date', 'Priority', 'Status']; // Simplified for clarity
+
+
+
+    // Create fixed headers
+
+    headers.forEach((name, index) => {
+
         const cell = document.createElement('div');
-        cell.className = 'header-cell';
+
+        cell.className = index === 0 ? 'header-cell sticky-col-task sticky-col-header' : 'header-cell';
+
         cell.innerHTML = `<span>${name}</span>`;
-        row.appendChild(cell);
+
+        if (index > 0) {
+
+            cell.innerHTML += `<i class="fa-solid fa-angle-down column-icon"></i>`;
+
+        }
+
+        container.appendChild(cell);
+
     });
+
+
+
+    // Create custom column headers
+
     customColumns.forEach(col => {
+
         const cell = document.createElement('div');
+
         cell.className = 'header-cell';
+
         cell.dataset.columnId = col.id;
+
         cell.innerHTML = `<span>${col.name}</span><i class="fa-solid fa-ellipsis-h column-icon options-icon"></i>`;
-        row.appendChild(cell);
+
+        container.appendChild(cell);
+
     });
+
+
+
+    // "Add Column" button cell
+
     const addColumnCell = document.createElement('div');
+
     addColumnCell.className = 'header-cell add-column-cell';
+
     addColumnCell.innerHTML = `<i class="fa-solid fa-plus"></i>`;
-    row.appendChild(addColumnCell);
-    container.appendChild(row);
+
+    container.appendChild(addColumnCell);
+
 }
 
-function createSectionRow(sectionData) {
+
+
+function renderBody(projectToRender, container) {
+
+    const customColumns = projectToRender.customColumns || [];
+
+
+
+    (projectToRender.sections || []).forEach(section => {
+
+        // 🔁 NEW: wrap the whole section
+
+        const sectionWrapper = document.createElement('div');
+
+        sectionWrapper.className = 'section-wrapper';
+
+        sectionWrapper.dataset.sectionId = section.id;
+
+
+
+        // Create and add the section title row
+
+        const sectionRow = createSectionRow(section, customColumns);
+
+        sectionWrapper.appendChild(sectionRow);
+
+
+
+        // Add tasks if not collapsed
+
+        if (!section.isCollapsed && section.tasks) {
+
+            section.tasks.forEach(task => {
+
+                const taskRow = createTaskRow(task, customColumns);
+
+                sectionWrapper.appendChild(taskRow);
+
+            });
+
+        }
+
+
+
+        // Add the "Add Task" row
+
+        const addTaskRow = createAddTaskRow(customColumns, section.id);
+
+        sectionWrapper.appendChild(addTaskRow);
+
+
+
+        // Append to main grid container
+
+        container.appendChild(sectionWrapper);
+
+    });
+
+}
+
+function createSectionRow(sectionData, customColumns) {
     const row = document.createElement('div');
-    row.className = 'grid-row-container section-title-row';
+    row.className = 'grid-row-wrapper section-row-wrapper';
+    row.dataset.sectionId = sectionData.id;
+
     const chevronClass = sectionData.isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down';
-    const titleAttributes = 'contenteditable="true"';
+
+    // Determine if title is editable
+    const protectedTitles = ['Completed', 'Todo', 'Doing'];
+    const isEditable = !protectedTitles.includes(sectionData.title.trim());
+
+    const titleAttributes = isEditable ? 'contenteditable="true"' : 'contenteditable="false"';
+
     const titleCell = document.createElement('div');
-    titleCell.className = 'task-cell section-title-cell';
-    titleCell.style.gridColumn = '1 / -1';
+    titleCell.className = 'task-cell sticky-col-task section-title-cell';
     titleCell.innerHTML = `
         <div class="section-title-wrapper">
             <i class="fas fa-grip-vertical drag-handle"></i>
             <i class="fas ${chevronClass} section-toggle"></i>
             <span class="section-title" ${titleAttributes}>${sectionData.title}</span>
         </div>
-        <button class="section-options-btn" data-section-id="${sectionData.id}"><i class="fa-solid fa-ellipsis-h"></i></button>`;
+        <button class="section-options-btn" data-section-id="${sectionData.id}">
+            <i class="fa-solid fa-ellipsis-h"></i>
+        </button>
+    `;
     row.appendChild(titleCell);
+
+    const placeholderCount = 4 + customColumns.length + 1;
+    for (let i = 0; i < placeholderCount; i++) {
+        const placeholderCell = document.createElement('div');
+        placeholderCell.className = 'task-cell section-placeholder-cell';
+        row.appendChild(placeholderCell);
+    }
+
     return row;
 }
 
-function createTaskRow(task, customColumns = []) {
+function createSectionRow(sectionData, customColumns) {
+
     const row = document.createElement('div');
-    row.className = 'grid-row-container';
+
+    row.className = 'grid-row-wrapper section-row-wrapper';
+
+    row.dataset.sectionId = sectionData.id;
+
+
+
+    const chevronClass = sectionData.isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down';
+
+
+
+    // Determine if title is editable
+
+    const protectedTitles = ['Completed', 'Todo', 'Doing'];
+
+    const isEditable = !protectedTitles.includes(sectionData.title.trim());
+
+
+
+    const titleAttributes = isEditable ? 'contenteditable="true"' : 'contenteditable="false"';
+
+
+
+    const titleCell = document.createElement('div');
+
+    titleCell.className = 'task-cell sticky-col-task section-title-cell';
+
+    titleCell.innerHTML = `
+
+        <div class="section-title-wrapper">
+
+            <i class="fas fa-grip-vertical drag-handle"></i>
+
+            <i class="fas ${chevronClass} section-toggle"></i>
+
+            <span class="section-title" ${titleAttributes}>${sectionData.title}</span>
+
+        </div>
+
+        <button class="section-options-btn" data-section-id="${sectionData.id}">
+
+            <i class="fa-solid fa-ellipsis-h"></i>
+
+        </button>
+
+    `;
+
+    row.appendChild(titleCell);
+
+
+
+    const placeholderCount = 4 + customColumns.length + 1;
+
+    for (let i = 0; i < placeholderCount; i++) {
+
+        const placeholderCell = document.createElement('div');
+
+        placeholderCell.className = 'task-cell section-placeholder-cell';
+
+        row.appendChild(placeholderCell);
+
+    }
+
+
+
+    return row;
+
+}
+function createTaskRow(task, customColumns) {
+
+    if (!task || typeof task.id !== 'string' || task.id.trim() === '') {
+
+        console.error(
+
+            "CRITICAL ERROR - FAULTY TASK DETECTED: A task row is being created with a missing or invalid ID. This is the source of the drag-and-drop error.",
+
+            { task: task }
+
+        );
+
+    }
+
+    const row = document.createElement('div');
+
+    row.className = `grid-row-wrapper task-row-wrapper ${task.status === 'Completed' ? 'is-completed' : ''}`;
+
     row.dataset.taskId = task.id;
-    const stickyWrapper = document.createElement('div');
-    stickyWrapper.className = 'absolute-sticky-container';
-    const nameCell = document.createElement('div');
-    nameCell.className = 'task-cell';
-    nameCell.textContent = task.name;
-    stickyWrapper.appendChild(nameCell);
-    row.appendChild(stickyWrapper);
+
+    row.dataset.sectionId = task.sectionId;
+
+
+
+    const isCompleted = task.status === 'Completed';
+
+
+
+    // --- Like Button Logic ---
+
+    const likeCount = task.likedAmount || 0;
+
+    const isLikedByCurrentUser = task.likedBy && task.likedBy[currentUserId];
+
+    const heartIconClass = isLikedByCurrentUser ? 'fas fa-heart' : 'far fa-heart';
+
+    const likeStatusClass = isLikedByCurrentUser ? 'is-liked' : '';
+
+    const likeCountHTML = likeCount > 0 ? `<span class="like-count">${likeCount}</span>` : '';
+
+
+
+    // --- Sticky Task Name Cell ---
+
+    const taskNameCell = document.createElement('div');
+
+    taskNameCell.className = 'task-cell sticky-col-task';
+
+    taskNameCell.innerHTML = `
+
+        <div class="task-name-wrapper">
+
+            <div class="task-name-main">
+
+                <span class="drag-handle"><i class="fas fa-grip-lines"></i></span>
+
+                <span class="check-icon" data-control="check">
+
+                    <i class="${isCompleted ? 'fa-solid' : 'fa-regular'} fa-circle-check"></i>
+
+                </span>
+
+                <span class="task-name" contenteditable="true">${task.name || ''}</span>
+
+            </div>
+
+            <div class="task-hover-actions">
+
+                <span class="icon-action ${likeStatusClass}" data-control="like" title="Like task">
+
+                    <i class="${heartIconClass}"></i>
+
+                    ${likeCountHTML}
+
+                </span>
+
+                <span class="icon-action" data-control="comment" title="View comments">
+
+                    <i class="far fa-comment"></i>
+
+                </span>
+
+                <span class="icon-action" data-control="move-task" title="Move task to another section">
+
+                    <i class="fas fa-sort"></i>
+
+                </span>
+
+            </div>
+
+        </div>
+
+    `;
+
+    row.appendChild(taskNameCell);
+
+
+
+    // --- Base Columns ---
+
+    const baseColumns = [
+
+        {
+
+            control: 'assignee',
+
+            value: task.assignees && task.assignees.length > 0 ? task.assignees[0].name : 'Add assignee'
+
+        },
+
+        {
+
+            control: 'due-date',
+
+            value: task.dueDate || 'Set date'
+
+        },
+
+        {
+
+            control: 'priority',
+
+            value: task.priority
+
+        },
+
+        {
+
+            control: 'status',
+
+            value: task.status
+
+        }];
+
+
+
+    baseColumns.forEach(col => {
+
+        const cell = document.createElement('div');
+
+        cell.className = 'task-cell';
+
+        if (isCompleted) cell.classList.add('is-completed');
+
+        cell.dataset.control = col.control;
+
+
+
+        let content = col.value || '';
+
+
+
+        if (col.control === 'assignee') {
+
+            // Render full assignee HTML (avatar + name + remove button)
+
+            content = createAssigneeHTML(task.assignees);
+
+        } else if (col.control === 'priority' && col.value) {
+
+            const className = `priority-tag priority-${col.value}`;
+
+            content = `<span class="${className}">${col.value}</span>`;
+
+        } else if (col.control === 'status' && col.value) {
+
+            const statusClass = `status-tag status-${col.value.replace(/\s+/g, '-')}`;
+
+            content = `<span class="${statusClass}">${col.value}</span>`;
+
+        } else {
+
+            content = `<span>${content}</span>`;
+
+        }
+
+
+
+
+
+        cell.innerHTML = content;
+
+        row.appendChild(cell);
+
+    });
+
+
+
+    // --- Custom Columns ---
+
+    (customColumns || []).forEach(col => {
+
+        const cell = document.createElement('div');
+
+        cell.className = 'task-cell';
+
+        if (isCompleted) cell.classList.add('is-completed');
+
+        cell.dataset.columnId = col.id;
+
+        cell.dataset.control = 'custom';
+
+
+
+        const rawValue = task.customFields ? task.customFields[col.id] : null;
+
+
+
+        let content = `<span class="add-value editable-custom-field" contenteditable="true"></span>`;
+
+        if (rawValue !== null && rawValue !== undefined) {
+
+            if (col.name === 'Type' || col.name === 'Tag') {
+
+                const tagClass = `status-tag status-${String(rawValue).replace(/\s+/g, '-')}`;
+
+                content = `<span class="editable-custom-field ${tagClass}" contenteditable="true">${rawValue}</span>`;
+
+            } else {
+
+                content = `<span class="editable-custom-field" contenteditable="true">${rawValue}</span>`;
+
+            }
+
+        }
+
+
+
+        cell.innerHTML = content;
+
+        row.appendChild(cell);
+
+    });
+
+
+
+    // --- Placeholder Cell ---
+
     const placeholderCell = document.createElement('div');
-    placeholderCell.className = 'sticky-placeholder-cell';
+
+    placeholderCell.className = 'task-cell';
+
     row.appendChild(placeholderCell);
-    ['assignee', 'dueDate', 'priority', 'status'].forEach(key => {
-        const cell = document.createElement('div');
-        cell.className = 'task-cell';
-        cell.textContent = task[key] || '';
-        row.appendChild(cell);
-    });
-    customColumns.forEach(col => {
-        const cell = document.createElement('div');
-        cell.className = 'task-cell';
-        cell.textContent = task.customFields?.[col.id] || '';
-        row.appendChild(cell);
-    });
-    row.appendChild(document.createElement('div'));
+
+
+
     return row;
+
+}
+function createAddTaskRow(customColumns, sectionId) {
+
+    const section = project.sections.find(s => s.id === sectionId);
+
+    const row = document.createElement('div');
+
+    row.className = 'grid-row-wrapper add-task-row-wrapper';
+
+    row.dataset.sectionId = sectionId;
+
+
+
+    // Sticky cell: "Add task..." button
+
+    const addTaskCell = document.createElement('div');
+
+    addTaskCell.className = 'task-cell sticky-col-task add-task-cell';
+
+    addTaskCell.innerHTML = `
+
+        <div class="add-task-wrapper">
+
+            <i class="add-task-icon fa-solid fa-plus"></i>
+
+            <span class="add-task-text">Add task...</span>
+
+        </div>
+
+    `;
+
+    row.appendChild(addTaskCell);
+
+
+
+    // 4 base columns (Assignee, Due Date, Priority, Status)
+
+    for (let i = 0; i < 4; i++) {
+
+        const placeholder = document.createElement('div');
+
+        placeholder.className = 'task-cell';
+
+        row.appendChild(placeholder);
+
+    }
+
+
+
+    // Custom Columns
+
+    customColumns.forEach(col => {
+
+        const cell = document.createElement('div');
+
+        cell.className = 'task-cell';
+
+
+
+        if (col.type === 'Costing') {
+
+            // Calculate the sum of all task values for this column in this section
+
+            const sum = (section.tasks || []).reduce((acc, task) => {
+
+                const value = task.customFields?.[col.id];
+
+                return typeof value === 'number' ? acc + value : acc;
+
+            }, 0);
+
+            const formatted = sum !== 0 ? `Sum: ${sum.toFixed(2)}` : '';
+
+            cell.innerHTML = `<span class="costing-sum">${formatted}</span>`;
+
+        }
+
+
+
+        row.appendChild(cell);
+
+    });
+
+
+
+    // Final Placeholder Cell (Add column button slot)
+
+    const endPlaceholder = document.createElement('div');
+
+    endPlaceholder.className = 'task-cell';
+
+    row.appendChild(endPlaceholder);
+
+
+
+    return row;
+
 }
 
-function createAddTaskRow(section, customColumns = []) {
-    const row = document.createElement('div');
-    row.className = 'grid-row-container add-task-row-wrapper';
-    const stickyWrapper = document.createElement('div');
-    stickyWrapper.className = 'absolute-sticky-container';
-    const addTaskCell = document.createElement('div');
-    addTaskCell.className = 'task-cell';
-    addTaskCell.innerHTML = `<div class="add-task-wrapper"><i class="add-task-icon fa-solid fa-plus"></i><span class="add-task-text">Add task...</span></div>`;
-    stickyWrapper.appendChild(addTaskCell);
-    row.appendChild(stickyWrapper);
-    const placeholderCell = document.createElement('div');
-    placeholderCell.className = 'sticky-placeholder-cell';
-    row.appendChild(placeholderCell);
-    const standardHeaders = ['Assignee', 'Due Date', 'Priority', 'Status'];
-    standardHeaders.forEach(() => row.appendChild(document.createElement('div')));
-    customColumns.forEach(col => {
-        const cell = document.createElement('div');
-        cell.className = 'task-cell summary-cell';
-        if (col.type === 'Costing') {
-            const sum = (section.tasks || []).reduce((acc, task) => {
-                const value = task.customFields?.[col.id];
-                return typeof value === 'number' ? acc + value : acc;
-            }, 0);
-            cell.innerHTML = sum !== 0 ? `<span class="costing-sum">Sum: ${sum.toFixed(2)}</span>` : '';
-        }
-        row.appendChild(cell);
-    });
-    row.appendChild(document.createElement('div'));
-    return row;
-}
-    
+
 /*
 ==================
 
