@@ -17,6 +17,20 @@
     --task-row-padding: 0px 4px;
 }
 
+/* --- Core App Layout --- */
+.list-view-container {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden; /* Guarantees this outer frame NEVER scrolls */
+    min-height: 0;
+}
+
+.listview-header {
+    flex-shrink: 0; /* Prevents the top button bar from shrinking */
+}
+
+/* --- Main Grid Layout Manager --- */
 #task-list-body {
     display: flex;
     flex-direction: column;
@@ -46,7 +60,7 @@
 /* --- Grid & Header Wrappers --- */
 .list-header-wrapper {
     flex-shrink: 0;
-    position: relative; /* Anchor for the seam */
+    position: relative;
     z-index: 10;
 }
 .grid-wrapper {
@@ -55,10 +69,11 @@
     min-width: 100%;
 }
 
-/* --- Asana-Style Sticky Column --- */
-.grid-row {
-    display: contents; /* Allows children to be direct grid items */
-}
+/*
+=========================================
+=== ASANA-STYLE STICKY COLUMN LOGIC =====
+=========================================
+*/
 .grid-row-container {
     display: grid;
     grid-column: 1 / -1;
@@ -66,17 +81,66 @@
     position: relative; /* CRITICAL: Anchor for the absolute sticky cell */
 }
 
-/* 1. The absolutely positioned container for the sticky column's content */
 .absolute-sticky-container {
     position: absolute;
     top: 0;
     left: 0;
     height: 100%;
-    width: 350px; /* MUST match the placeholder's width */
+    width: 350px; /* MUST match STICKY_COLUMN_WIDTH in JS */
     z-index: 2;
-    display: flex; /* To layout cells within it if you have more than one */
-    background-color: #fff; /* Opaque background is essential */
+    display: flex;
+    background-color: #fff;
     border-right: 1px solid #e8e8e8;
+}
+
+.sticky-placeholder-cell {
+    /* This cell just takes up space. No special styles needed. */
+}
+
+/* --- Sticky Section Header --- */
+.section-title-cell {
+    position: sticky; /* The only `sticky` needed for this effect */
+    top: 0;
+    z-index: 5; /* Above rows and sticky column, below main header */
+    background-color: #f7f8f9;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #e8e8e8;
+}
+
+/* --- Visual Seam & Custom Scrollbar --- */
+.horizontal-scroll-seam {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 350px; /* Set by JS to match STICKY_COLUMN_WIDTH */
+    width: 1px;
+    background-color: #e8e8e8;
+    z-index: 15;
+    pointer-events: none;
+}
+
+.custom-scrollbar-placeholder {
+    flex-shrink: 0;
+    height: 16px;
+    background-color: #f0f0f0;
+}
+
+/* --- Universal Cell & Header Styling --- */
+.header-cell,
+.task-cell {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #e8e8e8;
+    padding: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.header-cell {
+    border-right: 1px solid #e8e8e8;
+    font-weight: 500;
 }
 
 /* --- Sticky Section Header --- */
@@ -173,25 +237,6 @@ button {
 }
 
 
-.grid-row-wrapper {
-    display: grid;
-    grid-column: 1 / -1; 
-    grid-template-columns: subgrid;
-}
-
-/* --- Universal Cell Styling --- */
-.header-cell,
-.task-cell {
-    display: flex;
-    align-items: center;
-    background-color: var(--primary-bg);
-    border-right: 1px solid var(--border-color);
-    border-bottom: 1px solid var(--border-color);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    transition: background-color 0.15s ease-in-out;
-}
 .add-task-row-wrapper .task-cell {
     border-top-color: transparent;
     border-bottom-color: transparent;
@@ -200,15 +245,6 @@ button {
 .section-row-wrapper .task-cell {
     border-top-color: transparent;
     border-right-color: transparent;
-}
-.header-cell {
-    height: var(--header-height);
-    min-height: 0;
-    padding: 0 4px;
-    font-weight: 500;
-    border-top: 1px solid var(--border-color);
-    color: var(--text-secondary-color);
-    justify-content: space-between;
 }
 .header-cell span {
     font-size: 13px; 
@@ -247,58 +283,10 @@ button {
     transform: scale(1.1);
 }
 
-
-.task-cell {
-    padding: var(--task-row-padding);
-    color: var(--text-color);
-    transition: background-color 0.15s ease-in-out;
-}
 .task-cell:hover {
     background-color: #f3f4f6; /* Light subtle hover color */
     cursor: default; /* Change to pointer if cell is clickable */
 }
-
-/* =====================================================================
-// SPREADSHEET STICKY LOGIC
-// ===================================================================== */
-
-/* 1. Make the entire header row sticky to the top */
-.header-cell {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    /* Use a box-shadow for a crisp bottom border that stays on top */
-    border-bottom: none;
-    box-shadow: inset 0 -1px 0 var(--header-border-color);
-}
-
-/* 2. Make all cells in the first column sticky to the left */
-.sticky-col-task {
-    position: sticky;
-    left: 0;
-    z-index: 1;
-    /* Use a box-shadow for a crisp right border that stays on top */
-    border-right: none;
-    box-shadow: inset -1px 0 0 var(--border-color);
-}
-
-/* 3. Make the top-left "Name" header cell sticky in the corner */
-.sticky-col-header {
-    position: sticky;
-    top: 0;
-    left: 0;
-    z-index: 999; /* Must have the highest z-index */
-    justify-content: flex-start;
-    /* Combine box-shadows for both bottom and right borders */
-    box-shadow: inset -1px 0 0 var(--border-color),
-                inset 0 -1px 0 var(--header-border-color);
-}
-
-/* Specifically for headers so it sticks above task cells */
-.header-cell.sticky-col-task {
-    z-index: 10; /* higher than normal cells */
-}
-
 
 /* --- Section Styling --- */
 .section-title-cell {
@@ -334,7 +322,6 @@ button {
 .header-cell,
 .task-cell {
     font-size: var(--font-size-small);
-    padding: var(--task-row-padding);
 }
 
 .editable-custom-field[contenteditable] {

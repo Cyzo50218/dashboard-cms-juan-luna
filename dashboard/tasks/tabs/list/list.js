@@ -1309,7 +1309,6 @@ function render() {
     initializeDragAndDrop(bodyGrid);
 }
 
-
 // --- ROW CREATION HELPERS (REVISED FOR ASANA METHOD) ---
 function renderHeader(projectToRender, container) {
     container.innerHTML = '';
