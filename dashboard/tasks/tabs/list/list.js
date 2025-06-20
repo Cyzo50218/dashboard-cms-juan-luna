@@ -52,6 +52,15 @@ let activeMenuButton = null;
 const sortableTasks = [];
 let isSortActive = false;
 
+// --- VIRTUAL SCROLLING CONSTANTS ---
+const ROW_HEIGHT = 32; // The fixed height of a single task or section row in pixels.
+const VISIBLE_ROW_BUFFER = 5; // Render 5 extra rows above and below the viewport for smoothness.
+
+// --- STATE ---
+let flatListOfItems = []; // A flattened array of all sections and tasks.
+let isScrolling = false; // For throttling scroll events.
+
+
 // State variables to track the drag operation
 let draggedElement = null;
 let placeholder = null;
@@ -1155,130 +1164,209 @@ Working Component
 */
 
 /**
+ * Flattens the project's sections and tasks into a single array for virtual scrolling.
+ */
+function flattenProjectData() {
+    flatListOfItems = [];
+    project.sections.forEach(section => {
+        // Add the section itself as an item
+        flatListOfItems.push({ type: 'section', data: section });
+        
+        // Add its tasks if not collapsed
+        if (!section.isCollapsed && section.tasks) {
+            section.tasks.forEach(task => {
+                flatListOfItems.push({ type: 'task', data: task });
+            });
+        }
+        
+        // Add the "Add Task" row for the section
+        flatListOfItems.push({ type: 'add_task', sectionId: section.id });
+    });
+}
+
+/**
+ * Calculates which rows should be visible and renders only those into the bodyGrid.
+ * @param {HTMLElement} bodyContainer - The scrolling container (.list-body-wrapper).
+ * @param {HTMLElement} bodyGrid - The "window" to render rows into (.grid-wrapper).
+ */
+function renderVisibleRows(bodyContainer, bodyGrid) {
+    const scrollTop = bodyContainer.scrollTop;
+    const viewportHeight = bodyContainer.clientHeight;
+    
+    // 1. Calculate the start and end index of visible items
+    let startIndex = Math.floor(scrollTop / ROW_HEIGHT);
+    let endIndex = Math.ceil((scrollTop + viewportHeight) / ROW_HEIGHT);
+    
+    // 2. Apply the buffer
+    startIndex = Math.max(0, startIndex - VISIBLE_ROW_BUFFER);
+    endIndex = Math.min(flatListOfItems.length, endIndex + VISIBLE_ROW_BUFFER);
+    
+    // 3. Slice the visible items from our flat list
+    const visibleItems = flatListOfItems.slice(startIndex, endIndex);
+    
+    // 4. Clear the existing rows and render the new visible ones
+    bodyGrid.innerHTML = '';
+    visibleItems.forEach(item => {
+        let rowElement;
+        if (item.type === 'section') {
+            rowElement = createSectionRow(item.data, project.customColumns);
+        } else if (item.type === 'task') {
+            rowElement = createTaskRow(item.data, project.customColumns);
+        } else if (item.type === 'add_task') {
+            rowElement = createAddTaskRow(project.customColumns, item.sectionId);
+        }
+        
+        if (rowElement) {
+            bodyGrid.appendChild(rowElement);
+        }
+    });
+    
+    // 5. Position the "window" of rows correctly inside the giant spacer
+    // This is the most important step for virtual scrolling.
+    const offsetY = startIndex * ROW_HEIGHT;
+    bodyGrid.style.transform = `translateY(${offsetY}px)`;
+}
+
+/**
  * Renders the entire task list, including headers and body, with a split-scrolling behavior.
  * - The header is in a non-scrolling container.
  * - The body is in a container that scrolls both vertically and horizontally.
  * - A JS event listener synchronizes the horizontal scroll of the header with the body.
  */
+
+// The main render function, now refactored for virtual scrolling
 function render() {
-    // Abort if the main container isn't in the DOM
     if (!taskListBody) return;
     
-    // --- Event listener for header actions (options, add column) ---
-    // This logic remains the same, but we will attach it to the new headerGrid later.
+    // --- SETUP (Header) ---
     const headerClickListener = (e) => {
-        const columnOptionsIcon = e.target.closest('.options-icon');
-        const addColumnBtn = e.target.closest('.add-column-cell');
+    const columnOptionsIcon = e.target.closest('.options-icon');
+    const addColumnBtn = e.target.closest('.add-column-cell');
+    
+    if (columnOptionsIcon) {
+        e.stopPropagation();
+        const columnEl = columnOptionsIcon.closest('[data-column-id]');
+        if (!columnEl) return;
         
-        if (columnOptionsIcon) {
-            e.stopPropagation();
-            const columnEl = columnOptionsIcon.closest('[data-column-id]');
-            if (!columnEl) return;
-            
-            const columnId = Number(columnEl.dataset.columnId);
-            const dropdownOptions = [
-                { name: 'Rename column' },
-                { name: 'Delete column' }
-            ];
-            
-            createDropdown(dropdownOptions, columnOptionsIcon, (selected) => {
-                if (selected.name === 'Delete column') {
-                    deleteColumn(columnId);
-                } else if (selected.name === 'Rename column') {
-                    enableColumnRename(columnEl);
-                }
-            });
+        const columnId = Number(columnEl.dataset.columnId);
+        const dropdownOptions = [
+            { name: 'Rename column' },
+            { name: 'Delete column' }
+        ];
+        
+        createDropdown(dropdownOptions, columnOptionsIcon, (selected) => {
+            if (selected.name === 'Delete column') {
+                deleteColumn(columnId);
+            } else if (selected.name === 'Rename column') {
+                enableColumnRename(columnEl);
+            }
+        });
+        return;
+    }
+    
+    if (addColumnBtn) {
+        e.stopPropagation();
+        
+        const existingTypes = new Set(project.customColumns.map(col => col.type));
+        const availableTypes = columnTypeOptions.filter(type =>
+            !existingTypes.has(type) || type === 'Custom'
+        );
+        
+        if (availableTypes.length === 0) {
+            alert("All available column types have been added.");
             return;
         }
         
-        if (addColumnBtn) {
-            e.stopPropagation();
-            
-            const existingTypes = new Set(project.customColumns.map(col => col.type));
-            const availableTypes = columnTypeOptions.filter(type =>
-                !existingTypes.has(type) || type === 'Custom'
-            );
-            
-            if (availableTypes.length === 0) {
-                alert("All available column types have been added.");
-                return;
-            }
-            
-            createDropdown(
-                availableTypes.map(type => ({ name: type })),
-                addColumnBtn,
-                (selected) => openAddColumnDialog(selected.name)
-            );
-        }
-    };
-    
-    // --- Main Rendering Logic ---
-    
+        createDropdown(
+            availableTypes.map(type => ({ name: type })),
+            addColumnBtn,
+            (selected) => openAddColumnDialog(selected.name)
+        );
+    }
+};
+
+    // Flatten the data for easier processing
+    flattenProjectData();
     const projectToRender = project;
     const customColumns = projectToRender.customColumns || [];
     
-    // 1. Clear the main container that holds our new structure
+    // 1. Clear the main task list container (which holds header and body wrappers)
     taskListBody.innerHTML = '';
     
-    // 2. NEW: Create the two-container structure
+    // 2. Create and set up the header (NO CHANGE HERE)
     const headerContainer = document.createElement('div');
     headerContainer.className = 'list-header-wrapper';
+    const headerGrid = document.createElement('div');
+    headerGrid.className = 'grid-wrapper';
+    headerContainer.appendChild(headerGrid);
+    taskListBody.appendChild(headerContainer);
     
+    const columnWidths = {
+    taskName: 'minmax(350px, max-content)',
+    assignee: '150px',
+    dueDate: '150px',
+    priority: '150px',
+    status: '150px',
+    defaultCustom: 'minmax(160px, max-content)',
+    addColumn: '1fr'
+};
+
+const gridTemplateColumns = [
+    columnWidths.taskName,
+    columnWidths.assignee,
+    columnWidths.dueDate,
+    columnWidths.priority,
+    columnWidths.status,
+    ...customColumns.map(() => columnWidths.defaultCustom),
+    columnWidths.addColumn
+].join(' ');
+
+// 6. UPDATED: Apply the same column layout to BOTH grids for perfect alignment
+headerGrid.style.gridTemplateColumns = gridTemplateColumns;
+    renderHeader(projectToRender, headerGrid);
+    headerGrid.addEventListener('click', headerClickListener);
+    
+    // 3. --- VIRTUAL SCROLLING SETUP ---
     const bodyContainer = document.createElement('div');
     bodyContainer.className = 'list-body-wrapper';
     
-    // 3. NEW: Create a grid for the header and a grid for the body
-    const headerGrid = document.createElement('div');
-    headerGrid.className = 'grid-wrapper';
+    // 3a. Create the giant spacer to produce the correct scrollbar height
+    const totalContentSpacer = document.createElement('div');
+    totalContentSpacer.style.height = `${flatListOfItems.length * ROW_HEIGHT}px`;
+    totalContentSpacer.style.position = 'relative'; // Anchor for the visible rows container
     
+    // 3b. This is our "window" - it will hold the few visible rows.
+    // We are reusing your existing bodyGrid variable for this.
     const bodyGrid = document.createElement('div');
-    bodyGrid.className = 'grid-wrapper';
+    bodyGrid.className = 'grid-wrapper'; // It's still a grid
+    bodyGrid.style.position = 'absolute'; // So we can move it with `transform`
+    bodyGrid.style.top = '0';
+    bodyGrid.style.left = '0';
+    bodyGrid.style.width = '100%';
     
-    // 4. NEW: Assemble the structure
-    headerContainer.appendChild(headerGrid);
-    bodyContainer.appendChild(bodyGrid);
-    taskListBody.appendChild(headerContainer);
+    // 4. Assemble the body and attach to DOM
+    totalContentSpacer.appendChild(bodyGrid);
+    bodyContainer.appendChild(totalContentSpacer);
     taskListBody.appendChild(bodyContainer);
+    bodyGrid.style.gridTemplateColumns = gridTemplateColumns; // Apply same columns
     
-    // 5. Define the grid column layout
-    const columnWidths = {
-        taskName: 'minmax(350px, max-content)',
-        assignee: '150px',
-        dueDate: '150px',
-        priority: '150px',
-        status: '150px',
-        defaultCustom: 'minmax(160px, max-content)',
-        addColumn: '1fr'
-    };
-    
-    const gridTemplateColumns = [
-        columnWidths.taskName,
-        columnWidths.assignee,
-        columnWidths.dueDate,
-        columnWidths.priority,
-        columnWidths.status,
-        ...customColumns.map(() => columnWidths.defaultCustom),
-        columnWidths.addColumn
-    ].join(' ');
-    
-    // 6. UPDATED: Apply the same column layout to BOTH grids for perfect alignment
-    headerGrid.style.gridTemplateColumns = gridTemplateColumns;
-    bodyGrid.style.gridTemplateColumns = gridTemplateColumns;
-    
-    // 7. UPDATED: Render the header into the header's grid and the body into the body's grid
-    renderHeader(projectToRender, headerGrid);
-    renderBody(projectToRender, bodyGrid);
-    
-    // 8. UPDATED: Attach the click listener specifically to the header grid
-    headerGrid.addEventListener('click', headerClickListener);
-    
-    // 9. NEW: Synchronize the horizontal scroll position
-    // This is the magic that links the two containers' horizontal movement.
+    // 5. Setup the scroll event listener
     bodyContainer.addEventListener('scroll', () => {
+        // Synchronize horizontal scroll for the header (as before)
         headerContainer.scrollLeft = bodyContainer.scrollLeft;
+        
+        // Throttle vertical scroll rendering using requestAnimationFrame
+        if (!isScrolling) {
+            window.requestAnimationFrame(() => {
+                renderVisibleRows(bodyContainer, bodyGrid);
+                isScrolling = false;
+            });
+            isScrolling = true;
+        }
     });
     
-    // --- Post-Rendering Logic (no changes needed here) ---
+    // 6. Perform the INITIAL render of visible rows
+    renderVisibleRows(bodyContainer, bodyGrid);
     
     // Update sort button state and flag
     isSortActive = activeSortState !== 'default';
@@ -1304,6 +1392,7 @@ function render() {
     
     // UPDATED: Initialize drag and drop on the body's grid, which contains the draggable rows.
     initializeDragAndDrop(bodyGrid);
+    
 }
 
 function renderHeader(projectToRender, container) {
@@ -1337,10 +1426,6 @@ function renderHeader(projectToRender, container) {
     container.appendChild(addColumnCell);
 }
 
-/**
- * Renders the body content (sections and tasks), ensuring each row
- * aligns perfectly with the columns defined in renderHeader.
- */
 function renderBody(projectToRender, container) {
     const customColumns = projectToRender.customColumns || [];
     
