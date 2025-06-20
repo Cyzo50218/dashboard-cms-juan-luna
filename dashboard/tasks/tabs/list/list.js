@@ -21,7 +21,7 @@ import {
     getDoc,
     getDocs,
     addDoc,
-    
+
     setDoc,
     updateDoc,
     deleteDoc,
@@ -138,7 +138,7 @@ function attachRealtimeListeners(userId) {
     detachAllListeners();
     currentUserId = userId;
     console.log(`[DEBUG] Attaching listeners for user: ${userId}`);
-    
+
     const workspaceQuery = query(collection(db, `users/${userId}/myworkspace`), where("isSelected", "==", true));
     activeListeners.workspace = onSnapshot(workspaceQuery, async (workspaceSnapshot) => {
         if (workspaceSnapshot.empty) {
@@ -201,7 +201,7 @@ function attachRealtimeListeners(userId) {
 
 async function fetchActiveIds(userId) {
     console.log(`[DEBUG] [fetchActiveIds] Fetching for user: ${userId}`);
-    
+
     try {
         // Fetch the selected workspace
         const workspaceQuery = query(
@@ -323,30 +323,30 @@ function initializeListView(params) {
     assigneeDropdownTemplate = document.getElementById('assignee-dropdown-template');
     filterBtn = document.getElementById('filter-btn');
     sortBtn = document.getElementById('sort-btn');
-    
+
     if (!mainContainer || !taskListBody) {
         console.error("List view could not initialize: Essential containers not found.");
-        return () => {};
+        return () => { };
     }
-    
+
     setupEventListeners();
 }
 
 function distributeTasksToSections(tasks) {
     console.log("--- Running Task Distribution ---");
-    
+
     const availableSectionIds = project.sections.map(s => s.id);
     console.log("Available section IDs on client:", availableSectionIds);
-    
+
     // Reset tasks on all sections
     project.sections.forEach(section => section.tasks = []);
-    
+
     let unmatchedTasks = 0;
     for (const task of tasks) {
         console.log(`Processing Task "${task.name || 'New Task'}" (ID: ${task.id}). Looking for sectionId: "${task.sectionId}"`);
-        
+
         const section = project.sections.find(s => s.id === task.sectionId);
-        
+
         if (section) {
             console.log(`   ✅ SUCCESS: Matched with section "${section.title}" (ID: "${section.id}")`);
             section.tasks.push(task);
@@ -355,19 +355,19 @@ function distributeTasksToSections(tasks) {
             unmatchedTasks++;
         }
     }
-    
+
     // ✅ NOW sort the tasks inside each section by their `order`
     project.sections.forEach(section => {
         section.tasks.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     });
-    
+
     console.log(`--- Distribution Complete. ${unmatchedTasks} tasks could not be matched. ---`);
 }
 
 
 export function init(params) {
     console.log("Initializing List View Module...", params);
-    
+
     // Listen for authentication state changes
     onAuthStateChanged(auth, (user) => {
         if (user) {
@@ -413,7 +413,7 @@ function setupEventListeners() {
     // Global click listener to handle menu logic
     document.addEventListener('click', (e) => {
         const optionsButton = e.target.closest('.section-options-btn');
-        
+
         // Check if the click is inside an open menu. If so, let the item handler work.
         if (e.target.closest('.options-dropdown-menu')) {
             const dropdownItem = e.target.closest('.dropdown-item');
@@ -424,13 +424,13 @@ function setupEventListeners() {
             }
             return; // Do nothing more if click is inside a menu
         }
-        
+
         // If we clicked an options button...
         if (optionsButton) {
             // Check if its menu is already open. If so, this click should close it.
             const wrapper = optionsButton.parentElement;
             const existingMenu = wrapper.querySelector('.options-dropdown-menu');
-            
+
             if (existingMenu) {
                 closeOpenMenu(); // It's open, so close it.
             } else {
@@ -441,328 +441,328 @@ function setupEventListeners() {
             closeOpenMenu();
         }
     });
-    
+
     headerClickListener = (e) => {
-    // Match the options icon in the custom header column
-    const optionsIcon = e.target.closest('.options-icon');
-    if (optionsIcon) {
-        e.stopPropagation();
-        const columnEl = optionsIcon.closest('[data-column-id]');
-        if (columnEl) {
-            const columnId = Number(columnEl.dataset.columnId);
+        // Match the options icon in the custom header column
+        const optionsIcon = e.target.closest('.options-icon');
+        if (optionsIcon) {
+            e.stopPropagation();
+            const columnEl = optionsIcon.closest('[data-column-id]');
+            if (columnEl) {
+                const columnId = Number(columnEl.dataset.columnId);
 
-            const dropdownOptions = [
-                { name: 'Rename column' },
-                { name: 'Delete column' }
-            ];
+                const dropdownOptions = [
+                    { name: 'Rename column' },
+                    { name: 'Delete column' }
+                ];
 
-            createDropdown(dropdownOptions, optionsIcon, (selected) => {
-                if (selected.name === 'Delete column') {
-                    deleteColumn(columnId);
-                } else if (selected.name === 'Rename column') {
-                    enableColumnRename(columnEl);
-                }
-            });
-        }
-        return;
-    }
-
-    // Match the "Add Column" button in header
-    const addColumnButton = e.target.closest('.add-column-cell');
-    if (addColumnButton) {
-        e.stopPropagation();
-
-        const existingTypes = new Set(project.customColumns.map(col => col.type));
-        const availableTypes = columnTypeOptions.filter(type => !existingTypes.has(type) || type === 'Custom');
-        if (availableTypes.length === 0) {
-            return alert("All available column types have been added.");
-        }
-
-        createDropdown(
-            availableTypes.map(type => ({ name: type })),
-            addColumnButton,
-            (selected) => openAddColumnDialog(selected.name)
-        );
-    }
-};
-    
-    bodyClickListener = (e) => {
-    console.log('%cbodyClickListener Triggered', 'color: #888;', 'Clicked on:', e.target);
-
-    // --- 0. Guard clause: Prevent other clicks if a temp task is still blank ---
-    const activeTempTask = document.querySelector('.task-row-wrapper[data-task-id^="temp_"] .task-name');
-    if (activeTempTask && activeTempTask.innerText.trim() === '' && !e.target.closest('.task-name')) {
-        console.warn('Blocked interaction: A temp task is still blank and active.');
-        activeTempTask.focus();
-        return;
-    }
-
-    // --- 1. Section Toggle ---
-    const sectionToggle = e.target.closest('.section-toggle');
-    if (sectionToggle) {
-        console.log('%cACTION: Section Toggle', 'color: blue; font-weight: bold;');
-        const sectionEl = sectionToggle.closest('.section-wrapper');
-        const sectionId = sectionEl?.dataset.sectionId;
-        const section = project.sections.find(s => s.id == sectionId);
-        if (section) {
-            section.isCollapsed = !section.isCollapsed;
-            render();
-        }
-        return;
-    }
-
-    // --- 2. "Add Task" Button inside section ---
-    const addTaskBtn = e.target.closest('.add-task-wrapper');
-    if (addTaskBtn) {
-        console.log('%cACTION: Add Task in Section', 'color: blue; font-weight: bold;');
-        const sectionEl = addTaskBtn.closest('.section-wrapper');
-        const section = project.sections.find(s => s.id == sectionEl?.dataset.sectionId);
-        if (section) {
-            addNewTask(section, 'end');
-        }
-        return;
-    }
-
-    // --- 2.5: Add task row clicked ---
-    const addTaskRow = e.target.closest('.add-task-wrapper');
-    if (addTaskRow) {
-        console.log('%cACTION: Add Task Row clicked', 'color: blue; font-weight: bold;');
-        const sectionId = addTaskRow.dataset.sectionId;
-        const section = project.sections.find(s => s.id == sectionId);
-        if (section) {
-            addNewTask(section, 'end');
-        }
-        return;
-    }
-
-    // --- 3. Interaction in a task row ---
-    const taskRow = e.target.closest('.task-row-wrapper');
-    if (taskRow) {
-        console.log('%cEVENT: Task Row Interaction', 'color: green;', taskRow);
-        const taskId = taskRow.dataset.taskId;
-        const sectionId = taskRow.dataset.sectionId;
-
-        const controlElement = e.target.closest('[data-control], .task-name');
-        if (!controlElement) return console.log('Click was inside task row, but not on a control.');
-
-        const controlType = controlElement.matches('.task-name') ? 'open-sidebar' : controlElement.dataset.control;
-
-        // If it's a temp_ task and not clicking task name — ignore
-        if (taskId.startsWith('temp_') && controlType !== 'open-sidebar') {
-            console.log('Blocked: Cannot interact with task controls while temp task is blank.');
-            return;
-        }
-
-        switch (controlType) {
-            case 'open-sidebar':
-            case 'comment':
-                displaySideBarTasks(taskId);
-                break;
-
-            case 'check':
-                e.stopPropagation();
-                handleTaskCompletion(taskId, taskRow);
-                break;
-
-            case 'due-date':
-                showDatePicker(controlElement, sectionId, taskId);
-                break;
-
-            case 'priority': {
-                let allPriorityOptions = priorityOptions.map(p => ({
-                    name: p,
-                    color: defaultPriorityColors[p] || null
-                }));
-                if (project.customPriorities) {
-                    allPriorityOptions = allPriorityOptions.concat(project.customPriorities);
-                }
-                createDropdown(allPriorityOptions, controlElement, (selected) => {
-                    updateTask(taskId, sectionId, { priority: selected.name });
-                }, 'Priority');
-                break;
-            }
-
-            case 'status': {
-                let allStatusOptions = statusOptions.map(s => ({
-                    name: s,
-                    color: defaultStatusColors[s] || null
-                }));
-                if (project.customStatuses) {
-                    allStatusOptions = allStatusOptions.concat(project.customStatuses);
-                }
-                createDropdown(allStatusOptions, controlElement, (selected) => {
-                    updateTask(taskId, sectionId, { status: selected.name });
-                }, 'Status');
-                break;
-            }
-
-            case 'like': {
-                const { task, section } = findTaskAndSection(taskId);
-                if (!task || !section || !currentUserId) return;
-                const taskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${section.id}/tasks/${taskId}`);
-                const liked = task.likedBy?.[currentUserId];
-                updateDoc(taskRef, liked
-                    ? {
-                        likedAmount: increment(-1),
-                        [`likedBy.${currentUserId}`]: deleteField()
+                createDropdown(dropdownOptions, optionsIcon, (selected) => {
+                    if (selected.name === 'Delete column') {
+                        deleteColumn(columnId);
+                    } else if (selected.name === 'Rename column') {
+                        enableColumnRename(columnEl);
                     }
-                    : {
-                        likedAmount: increment(1),
-                        [`likedBy.${currentUserId}`]: true
-                    });
-                break;
+                });
             }
-
-            case 'custom-select': {
-                const columnId = Number(controlElement.dataset.columnId);
-                const column = project.customColumns.find(c => c.id === columnId);
-                if (column && column.options) {
-                    createDropdown(column.options, controlElement, (selected) => {
-                        updateTask(taskId, sectionId, {
-                            [`customFields.${columnId}`]: selected.name
-                        });
-                    }, 'CustomColumn', columnId);
-                }
-                break;
-            }
-
-            case 'move-task': {
-                e.stopPropagation();
-                const { section: currentSection } = findTaskAndSection(taskId);
-                const otherSections = project.sections.filter(s => s.id !== currentSection?.id);
-                if (otherSections.length > 0) {
-                    createDropdown(
-                        otherSections.map(s => ({ name: s.title })),
-                        controlElement,
-                        (selected) => {
-                            const targetSection = project.sections.find(s => s.title === selected.name);
-                            if (targetSection) moveTaskToSection(taskId, targetSection.id);
-                        }
-                    );
-                } else {
-                    alert("There are no other sections to move this task to.");
-                }
-                break;
-            }
-
-            case 'assignee':
-                showAssigneeDropdown(controlElement, taskId);
-                break;
-
-            case 'remove-assignee': {
-                e.stopPropagation();
-                const { section } = findTaskAndSection(taskId);
-                if (section) updateTask(taskId, section.id, { assignees: [] });
-                break;
-            }
-        }
-        return;
-    }
-
-    console.log('No specific interactive element was clicked.');
-};
-
-    
-    bodyFocusOutListener = (e) => {
-    const focusedOutElement = e.target;
-    console.log('%cbodyFocusOutListener Triggered', 'color: #888;', 'Element that lost focus:', focusedOutElement);
-
-    // --- Section Title Save ---
-    if (focusedOutElement.matches('.section-title')) {
-        const sectionEl = focusedOutElement.closest('.section-wrapper');
-        if (!sectionEl) return;
-
-        const sectionId = sectionEl.dataset.sectionId;
-        const newTitle = focusedOutElement.innerText.trim();
-        const section = project.sections.find(s => s.id === sectionId);
-
-        if (!section) return;
-        if (['Completed', 'Todo', 'Doing'].includes(section.title)) {
-            focusedOutElement.innerText = section.title;
             return;
         }
 
-        if (section.title !== newTitle) {
-            console.log(`Updated section title: ${newTitle}`);
-            updateSectionInFirebase(sectionId, { title: newTitle });
+        // Match the "Add Column" button in header
+        const addColumnButton = e.target.closest('.add-column-cell');
+        if (addColumnButton) {
+            e.stopPropagation();
+
+            const existingTypes = new Set(project.customColumns.map(col => col.type));
+            const availableTypes = columnTypeOptions.filter(type => !existingTypes.has(type) || type === 'Custom');
+            if (availableTypes.length === 0) {
+                return alert("All available column types have been added.");
+            }
+
+            createDropdown(
+                availableTypes.map(type => ({ name: type })),
+                addColumnButton,
+                (selected) => openAddColumnDialog(selected.name)
+            );
         }
-        return;
-    }
+    };
 
-    // --- Task Name Save ---
-    if (focusedOutElement.matches('.task-name')) {
-        const taskRow = focusedOutElement.closest('.task-row-wrapper');
-        if (!taskRow) return;
+    bodyClickListener = (e) => {
+        console.log('%cbodyClickListener Triggered', 'color: #888;', 'Clicked on:', e.target);
 
-        const taskId = taskRow.dataset.taskId;
-        const { task, section } = findTaskAndSection(taskId);
-        if (!task || !section) return;
+        // --- 0. Guard clause: Prevent other clicks if a temp task is still blank ---
+        const activeTempTask = document.querySelector('.task-row-wrapper[data-task-id^="temp_"] .task-name');
+        if (activeTempTask && activeTempTask.innerText.trim() === '' && !e.target.closest('.task-name')) {
+            console.warn('Blocked interaction: A temp task is still blank and active.');
+            activeTempTask.focus();
+            return;
+        }
 
-        const newName = focusedOutElement.innerText.trim();
-
-        if (task.isNew) {
-            if (newName) {
-                section.tasks = section.tasks.filter(t => t.id !== taskId);
-                const { isNew, id, ...taskData } = task;
-                console.log(`Saving new task: "${newName}"`);
-                addTaskToFirebase(section.id, { ...taskData, name: newName });
-            } else {
-                console.log("Discarding empty new task.");
-                section.tasks = section.tasks.filter(t => t.id !== taskId);
+        // --- 1. Section Toggle ---
+        const sectionToggle = e.target.closest('.section-toggle');
+        if (sectionToggle) {
+            console.log('%cACTION: Section Toggle', 'color: blue; font-weight: bold;');
+            const sectionEl = sectionToggle.closest('.section-wrapper');
+            const sectionId = sectionEl?.dataset.sectionId;
+            const section = project.sections.find(s => s.id == sectionId);
+            if (section) {
+                section.isCollapsed = !section.isCollapsed;
                 render();
             }
-        } else if (task.name !== newName) {
-            updateTask(taskId, section.id, { name: newName });
+            return;
         }
-        return;
-    }
 
-    // --- Custom Field Save ---
-    const customFieldCell = focusedOutElement.closest('[data-control="custom"]');
-    if (customFieldCell) {
-        const taskRow = customFieldCell.closest('.task-row-wrapper');
-        const taskId = taskRow?.dataset.taskId;
-        const columnId = customFieldCell.dataset.columnId;
+        // --- 2. "Add Task" Button inside section ---
+        const addTaskBtn = e.target.closest('.add-task-wrapper');
+        if (addTaskBtn) {
+            console.log('%cACTION: Add Task in Section', 'color: blue; font-weight: bold;');
+            const sectionEl = addTaskBtn.closest('.section-wrapper');
+            const section = project.sections.find(s => s.id == sectionEl?.dataset.sectionId);
+            if (section) {
+                addNewTask(section, 'end');
+            }
+            return;
+        }
 
-        const { task, section } = findTaskAndSection(taskId);
-        const column = project.customColumns.find(c => c.id == columnId);
+        // --- 2.5: Add task row clicked ---
+        const addTaskRow = e.target.closest('.add-task-wrapper');
+        if (addTaskRow) {
+            console.log('%cACTION: Add Task Row clicked', 'color: blue; font-weight: bold;');
+            const sectionId = addTaskRow.dataset.sectionId;
+            const section = project.sections.find(s => s.id == sectionId);
+            if (section) {
+                addNewTask(section, 'end');
+            }
+            return;
+        }
 
-        if (!task || !section || !column) return;
+        // --- 3. Interaction in a task row ---
+        const taskRow = e.target.closest('.task-row-wrapper');
+        if (taskRow) {
+            console.log('%cEVENT: Task Row Interaction', 'color: green;', taskRow);
+            const taskId = taskRow.dataset.taskId;
+            const sectionId = taskRow.dataset.sectionId;
 
-        let rawValue = customFieldCell.innerText.trim();
-        const oldValue = task.customFields?.[columnId] ?? null;
-        let newValue = rawValue;
+            const controlElement = e.target.closest('[data-control], .task-name');
+            if (!controlElement) return console.log('Click was inside task row, but not on a control.');
 
-        if (column.type === 'Costing') {
-            const numeric = rawValue.replace(/[^0-9.-]+/g, '');
-            if (/^-?\d+(\.\d+)?$/.test(numeric)) {
-                newValue = parseFloat(numeric);
-            } else {
-                console.log("Invalid costing format. Cancelling save.");
+            const controlType = controlElement.matches('.task-name') ? 'open-sidebar' : controlElement.dataset.control;
+
+            // If it's a temp_ task and not clicking task name — ignore
+            if (taskId.startsWith('temp_') && controlType !== 'open-sidebar') {
+                console.log('Blocked: Cannot interact with task controls while temp task is blank.');
                 return;
             }
-        } else if (column.type === 'Numbers') {
-            if (/^\d+$/.test(rawValue)) {
-                newValue = parseInt(rawValue, 10);
-            } else {
-                console.log("Non-numeric input in Numbers column. Cancelling save.");
+
+            switch (controlType) {
+                case 'open-sidebar':
+                case 'comment':
+                    displaySideBarTasks(taskId);
+                    break;
+
+                case 'check':
+                    e.stopPropagation();
+                    handleTaskCompletion(taskId, taskRow);
+                    break;
+
+                case 'due-date':
+                    showDatePicker(controlElement, sectionId, taskId);
+                    break;
+
+                case 'priority': {
+                    let allPriorityOptions = priorityOptions.map(p => ({
+                        name: p,
+                        color: defaultPriorityColors[p] || null
+                    }));
+                    if (project.customPriorities) {
+                        allPriorityOptions = allPriorityOptions.concat(project.customPriorities);
+                    }
+                    createDropdown(allPriorityOptions, controlElement, (selected) => {
+                        updateTask(taskId, sectionId, { priority: selected.name });
+                    }, 'Priority');
+                    break;
+                }
+
+                case 'status': {
+                    let allStatusOptions = statusOptions.map(s => ({
+                        name: s,
+                        color: defaultStatusColors[s] || null
+                    }));
+                    if (project.customStatuses) {
+                        allStatusOptions = allStatusOptions.concat(project.customStatuses);
+                    }
+                    createDropdown(allStatusOptions, controlElement, (selected) => {
+                        updateTask(taskId, sectionId, { status: selected.name });
+                    }, 'Status');
+                    break;
+                }
+
+                case 'like': {
+                    const { task, section } = findTaskAndSection(taskId);
+                    if (!task || !section || !currentUserId) return;
+                    const taskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${section.id}/tasks/${taskId}`);
+                    const liked = task.likedBy?.[currentUserId];
+                    updateDoc(taskRef, liked
+                        ? {
+                            likedAmount: increment(-1),
+                            [`likedBy.${currentUserId}`]: deleteField()
+                        }
+                        : {
+                            likedAmount: increment(1),
+                            [`likedBy.${currentUserId}`]: true
+                        });
+                    break;
+                }
+
+                case 'custom-select': {
+                    const columnId = Number(controlElement.dataset.columnId);
+                    const column = project.customColumns.find(c => c.id === columnId);
+                    if (column && column.options) {
+                        createDropdown(column.options, controlElement, (selected) => {
+                            updateTask(taskId, sectionId, {
+                                [`customFields.${columnId}`]: selected.name
+                            });
+                        }, 'CustomColumn', columnId);
+                    }
+                    break;
+                }
+
+                case 'move-task': {
+                    e.stopPropagation();
+                    const { section: currentSection } = findTaskAndSection(taskId);
+                    const otherSections = project.sections.filter(s => s.id !== currentSection?.id);
+                    if (otherSections.length > 0) {
+                        createDropdown(
+                            otherSections.map(s => ({ name: s.title })),
+                            controlElement,
+                            (selected) => {
+                                const targetSection = project.sections.find(s => s.title === selected.name);
+                                if (targetSection) moveTaskToSection(taskId, targetSection.id);
+                            }
+                        );
+                    } else {
+                        alert("There are no other sections to move this task to.");
+                    }
+                    break;
+                }
+
+                case 'assignee':
+                    showAssigneeDropdown(controlElement, taskId);
+                    break;
+
+                case 'remove-assignee': {
+                    e.stopPropagation();
+                    const { section } = findTaskAndSection(taskId);
+                    if (section) updateTask(taskId, section.id, { assignees: [] });
+                    break;
+                }
+            }
+            return;
+        }
+
+        console.log('No specific interactive element was clicked.');
+    };
+
+
+    bodyFocusOutListener = (e) => {
+        const focusedOutElement = e.target;
+        console.log('%cbodyFocusOutListener Triggered', 'color: #888;', 'Element that lost focus:', focusedOutElement);
+
+        // --- Section Title Save ---
+        if (focusedOutElement.matches('.section-title')) {
+            const sectionEl = focusedOutElement.closest('.section-wrapper');
+            if (!sectionEl) return;
+
+            const sectionId = sectionEl.dataset.sectionId;
+            const newTitle = focusedOutElement.innerText.trim();
+            const section = project.sections.find(s => s.id === sectionId);
+
+            if (!section) return;
+            if (['Completed', 'Todo', 'Doing'].includes(section.title)) {
+                focusedOutElement.innerText = section.title;
                 return;
             }
+
+            if (section.title !== newTitle) {
+                console.log(`Updated section title: ${newTitle}`);
+                updateSectionInFirebase(sectionId, { title: newTitle });
+            }
+            return;
         }
 
-        if (newValue !== oldValue) {
-            console.log(`Updating customFields.${columnId} →`, newValue);
-            updateTask(task.id, section.id, {
-                [`customFields.${columnId}`]: newValue
-            });
-        } else {
-            console.log("Custom field unchanged.");
+        // --- Task Name Save ---
+        if (focusedOutElement.matches('.task-name')) {
+            const taskRow = focusedOutElement.closest('.task-row-wrapper');
+            if (!taskRow) return;
+
+            const taskId = taskRow.dataset.taskId;
+            const { task, section } = findTaskAndSection(taskId);
+            if (!task || !section) return;
+
+            const newName = focusedOutElement.innerText.trim();
+
+            if (task.isNew) {
+                if (newName) {
+                    section.tasks = section.tasks.filter(t => t.id !== taskId);
+                    const { isNew, id, ...taskData } = task;
+                    console.log(`Saving new task: "${newName}"`);
+                    addTaskToFirebase(section.id, { ...taskData, name: newName });
+                } else {
+                    console.log("Discarding empty new task.");
+                    section.tasks = section.tasks.filter(t => t.id !== taskId);
+                    render();
+                }
+            } else if (task.name !== newName) {
+                updateTask(taskId, section.id, { name: newName });
+            }
+            return;
         }
-    }
-};
+
+        // --- Custom Field Save ---
+        const customFieldCell = focusedOutElement.closest('[data-control="custom"]');
+        if (customFieldCell) {
+            const taskRow = customFieldCell.closest('.task-row-wrapper');
+            const taskId = taskRow?.dataset.taskId;
+            const columnId = customFieldCell.dataset.columnId;
+
+            const { task, section } = findTaskAndSection(taskId);
+            const column = project.customColumns.find(c => c.id == columnId);
+
+            if (!task || !section || !column) return;
+
+            let rawValue = customFieldCell.innerText.trim();
+            const oldValue = task.customFields?.[columnId] ?? null;
+            let newValue = rawValue;
+
+            if (column.type === 'Costing') {
+                const numeric = rawValue.replace(/[^0-9.-]+/g, '');
+                if (/^-?\d+(\.\d+)?$/.test(numeric)) {
+                    newValue = parseFloat(numeric);
+                } else {
+                    console.log("Invalid costing format. Cancelling save.");
+                    return;
+                }
+            } else if (column.type === 'Numbers') {
+                if (/^\d+$/.test(rawValue)) {
+                    newValue = parseInt(rawValue, 10);
+                } else {
+                    console.log("Non-numeric input in Numbers column. Cancelling save.");
+                    return;
+                }
+            }
+
+            if (newValue !== oldValue) {
+                console.log(`Updating customFields.${columnId} →`, newValue);
+                updateTask(task.id, section.id, {
+                    [`customFields.${columnId}`]: newValue
+                });
+            } else {
+                console.log("Custom field unchanged.");
+            }
+        }
+    };
 
 
-    
+
     addTaskHeaderBtnListener = () => {
         if (!currentlyFocusedSectionId && project.sections.length > 0) {
             currentlyFocusedSectionId = project.sections[0].id;
@@ -771,29 +771,29 @@ function setupEventListeners() {
         if (focusedSection) addNewTask(focusedSection);
         else alert('Please create a section before adding a task.');
     };
-    
+
     addSectionBtnListener = () => {
         handleAddSectionClick();
     };
-    
+
     // This is the corrected version:
     windowClickListener = (e) => {
         const clickedInsidePanel = e.target.closest('.context-dropdown, .datepicker');
         const clickedOverlayOrDialog = e.target.closest('.dialog-overlay, .filterlistview-dialog-overlay');
         const clickedTrigger = e.target.closest('[data-control="due-date"], [data-control="priority"], [data-control="status"], [data-control="custom"], [data-control="assignee"], #add-column-btn, #filter-btn, .delete-column-btn');
-        
+
         if (!clickedInsidePanel && !clickedOverlayOrDialog && !clickedTrigger) {
             closeFloatingPanels();
         }
     };
-    
-    
+
+
     filterBtnListener = () => {
         // DEBUG: Confirm the listener is firing
         console.log("Filter button clicked. Opening section filter panel...");
         openSectionFilterPanel();
     }
-    
+
     sortBtnListener = () => {
         if (activeSortState === 'default') {
             activeSortState = 'asc'; // asc = Oldest first
@@ -804,9 +804,9 @@ function setupEventListeners() {
         }
         render();
     };
-    
+
     // Attach all listeners
-    
+
     taskListBody.addEventListener('click', bodyClickListener);
     taskListBody.addEventListener('focusout', bodyFocusOutListener);
     addTaskHeaderBtn.addEventListener('click', addTaskHeaderBtnListener);
@@ -814,13 +814,13 @@ function setupEventListeners() {
     window.addEventListener('click', windowClickListener);
     if (filterBtn) filterBtn.addEventListener('click', filterBtnListener);
     if (sortBtn) sortBtn.addEventListener('click', sortBtnListener);
-    
+
     window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' || e.key === 'Esc') {
             closeFloatingPanels();
         }
     });
-    
+
 }
 
 // --- Core Logic & UI Functions ---
@@ -839,15 +839,15 @@ function openSectionFilterPanel() {
     const dialogOverlay = document.createElement('div');
     // MODIFIED: Changed class name
     dialogOverlay.className = 'filterlistview-dialog-overlay';
-    
+
     const sectionOptionsHTML = project.sections.map(s => {
         const isChecked = !activeFilters.visibleSections || activeFilters.visibleSections.includes(s.id);
         // MODIFIED: Changed class name for checkboxes
         return `<div><label><input type="checkbox" class="filterlistview-section-checkbox" name="section" value="${s.id}" ${isChecked ? 'checked' : ''}> ${s.title}</label></div>`;
     }).join('');
-    
+
     const allChecked = !activeFilters.visibleSections;
-    
+
     // MODIFIED: Changed all class names within the HTML string
     dialogOverlay.innerHTML = `
     <div class="filterlistview-dialog-box filterlistview-filter-dialog">
@@ -864,51 +864,51 @@ function openSectionFilterPanel() {
                 <button class="filterlistview-dialog-button filterlistview-primary" id="apply-filters-btn">Apply</button>
             </div>
         </div>`;
-    
+
     document.body.appendChild(dialogOverlay);
-    
+
     const applyBtn = dialogOverlay.querySelector('#apply-filters-btn');
     const selectAllBox = dialogOverlay.querySelector('#select-all-sections');
     // MODIFIED: Changed selector to match new class name
     const allSectionBoxes = dialogOverlay.querySelectorAll('.filterlistview-section-checkbox');
-    
+
     selectAllBox.addEventListener('change', (e) => {
         allSectionBoxes.forEach(box => box.checked = e.target.checked);
     });
-    
+
     applyBtn.addEventListener('click', () => {
         const checkedBoxes = Array.from(allSectionBoxes).filter(box => box.checked);
-        
+
         if (checkedBoxes.length === allSectionBoxes.length) {
             delete activeFilters.visibleSections;
         } else {
             activeFilters.visibleSections = checkedBoxes.map(box => Number(box.value));
         }
-        
+
         closeFloatingPanels();
         render();
     });
-    
+
     // MODIFIED: Changed selector to match new class name
     dialogOverlay.addEventListener('click', e => {
         if (e.target.classList.contains('filterlistview-dialog-overlay')) {
             closeFloatingPanels();
         }
     });
-    
+
 }
 
 function getFilteredProject() {
     // DEBUG: See what filters are being applied at the start of the render cycle
     // console.log("getFilteredProject called with state:", JSON.stringify(activeFilters));
     const projectCopy = JSON.parse(JSON.stringify(project));
-    
+
     if (activeFilters.visibleSections && activeFilters.visibleSections.length < project.sections.length) {
         projectCopy.sections = projectCopy.sections.filter(section =>
             activeFilters.visibleSections.includes(section.id)
         );
     }
-    
+
     return projectCopy;
 }
 
@@ -935,26 +935,26 @@ async function _getSelectedProjectPath(db, userId) {
     const workspaceSnap = await getDocs(workspaceQuery);
     if (workspaceSnap.empty) throw new Error("No selected workspace found.");
     const workspaceId = workspaceSnap.docs[0].id;
-    
+
     const projectQuery = query(collection(db, `users/${userId}/myworkspace/${workspaceId}/projects`), where("isSelected", "==", true));
     const projectSnap = await getDocs(projectQuery);
     if (projectSnap.empty) throw new Error("No selected project found.");
     const projectId = projectSnap.docs[0].id;
-    
+
     return `users/${userId}/myworkspace/${workspaceId}/projects/${projectId}`;
 }
 
 async function handleSectionReorder(evt) {
     console.log("🔄 Section reorder triggered.");
-    
+
     const user = auth.currentUser;
     if (!user) throw new Error("User not authenticated.");
-    
+
     try {
         const basePath = await _getSelectedProjectPath(db, user.uid);
         const sectionEls = [...taskListBody.querySelectorAll('.section-wrapper')];
         console.log(`🧱 Found ${sectionEls.length} section elements to reorder.`);
-        
+
         const batch = writeBatch(db);
         sectionEls.forEach((el, index) => {
             const sectionId = el.dataset.sectionId;
@@ -964,10 +964,10 @@ async function handleSectionReorder(evt) {
                 console.log(`🔢 Set order ${index} for section ${sectionId}`);
             }
         });
-        
+
         await batch.commit();
         console.log("✅ Sections reordered and saved to Firestore.");
-        
+
     } catch (err) {
         console.error("❌ Error committing section reordering batch:", err);
         // Re-throw to allow the calling function to revert the UI.
@@ -986,10 +986,10 @@ function findTaskAndSection(taskId) {
 function _getTasksForSectionFromDOM(sectionHeaderEl) {
     const tasks = [];
     if (!sectionHeaderEl) return tasks;
-    
+
     // Start with the element right after the header
     let nextElement = sectionHeaderEl.nextElementSibling;
-    
+
     // Loop as long as we have a sibling AND it's not another section header
     while (nextElement && !nextElement.classList.contains('section-row-wrapper')) {
         // If it's a valid task, add it
@@ -1004,37 +1004,37 @@ function _getTasksForSectionFromDOM(sectionHeaderEl) {
 
 async function handleTaskMoved(draggedTaskEl, gridWrapper, basePath) {
     console.group(`🚀 Handling Task Move: "${draggedTaskEl.querySelector('.task-name')?.textContent}"`);
-    
+
     try {
         const taskId = draggedTaskEl.dataset.taskId;
         if (!taskId) throw new Error("CRITICAL: Dragged element is missing a task ID.");
-        
+
         const oldSectionId = draggedTaskEl.dataset.sectionId;
         const newSectionWrapper = draggedTaskEl.closest('.section-wrapper');
         const newSectionHeader = newSectionWrapper ? newSectionWrapper.querySelector('.section-row-wrapper') : null;
-        
+
         if (!newSectionHeader || !newSectionWrapper) {
             throw new Error("Could not determine the new section for the dropped task.");
         }
         const newSectionId = newSectionHeader.dataset.sectionId;
-        
+
         const batch = writeBatch(db);
-        
+
         if (oldSectionId === newSectionId) {
             console.log(`➡️ [Decision]: Reordering task WITHIN section ${newSectionId}.`);
             const tasksToUpdate = Array.from(newSectionWrapper.querySelectorAll('.task-row-wrapper[data-task-id]'));
-            
+
             tasksToUpdate.forEach((taskEl, index) => {
                 const currentTaskId = taskEl.dataset.taskId;
                 const taskRef = doc(db, `${basePath}/sections/${newSectionId}/tasks/${currentTaskId}`);
-                
+
                 // [FIX] Use set with merge to prevent "not-found" errors.
                 batch.set(taskRef, { order: index }, { merge: true });
             });
-            
+
         } else {
             console.log(`➡️ [Decision]: MOVING task from ${oldSectionId} to ${newSectionId}.`);
-            
+
             // Step A: Get original task data
             const originalTaskRef = doc(db, `${basePath}/sections/${oldSectionId}/tasks/${taskId}`);
             const taskSnap = await getDoc(originalTaskRef);
@@ -1044,10 +1044,10 @@ async function handleTaskMoved(draggedTaskEl, gridWrapper, basePath) {
                 throw new Error(`Dragged task with ID ${taskId} not found in source section ${oldSectionId}.`);
             }
             const taskData = taskSnap.data();
-            
+
             // Step B: Delete from old section
             batch.delete(originalTaskRef);
-            
+
             // Step C: Re-order tasks in the OLD section
             const oldSectionHeader = gridWrapper.querySelector(`.section-row-wrapper[data-section-id="${oldSectionId}"]`);
             if (oldSectionHeader) {
@@ -1061,13 +1061,13 @@ async function handleTaskMoved(draggedTaskEl, gridWrapper, basePath) {
                     });
                 }
             }
-            
+
             // Step D: Re-order tasks in the NEW section
             const tasksInNewSection = Array.from(newSectionWrapper.querySelectorAll('.task-row-wrapper[data-task-id]'));
             tasksInNewSection.forEach((taskEl, index) => {
                 const currentTaskId = taskEl.dataset.taskId;
                 const taskRef = doc(db, `${basePath}/sections/${newSectionId}/tasks/${currentTaskId}`);
-                
+
                 if (currentTaskId === taskId) {
                     // This is the moved task. Use SET to create it fully in the new location.
                     const newData = { ...taskData, order: index, sectionId: newSectionId };
@@ -1084,11 +1084,11 @@ async function handleTaskMoved(draggedTaskEl, gridWrapper, basePath) {
                 }
             });
         }
-        
+
         console.log("📌 Committing batch to Firestore...");
         await batch.commit();
         console.log("✅ Batch commit successful.");
-        
+
     } catch (error) {
         console.error("❌ Error in handleTaskMoved. Reverting UI.", error);
         throw error;
@@ -1102,16 +1102,16 @@ function enableColumnRename(columnEl) {
     columnEl.setAttribute('contenteditable', 'true');
     columnEl.focus();
     document.execCommand('selectAll', false, null); // Selects the text for immediate editing
-    
+
     const columnId = Number(columnEl.dataset.columnId);
-    
+
     const finishEditing = async (saveChanges) => {
         columnEl.removeEventListener('blur', onBlur);
         columnEl.removeEventListener('keydown', onKeyDown);
         columnEl.setAttribute('contenteditable', 'false');
-        
+
         const newName = columnEl.textContent.trim();
-        
+
         if (saveChanges && newName && newName !== originalName) {
             // Find the column and update its name
             const newColumns = project.customColumns.map(col => {
@@ -1133,11 +1133,11 @@ function enableColumnRename(columnEl) {
             columnEl.appendChild(menuBtn);
         }
     };
-    
+
     const onBlur = () => {
         finishEditing(true);
     };
-    
+
     const onKeyDown = (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -1147,7 +1147,7 @@ function enableColumnRename(columnEl) {
             finishEditing(false);
         }
     };
-    
+
     columnEl.addEventListener('blur', onBlur);
     columnEl.addEventListener('keydown', onKeyDown);
 }
@@ -1171,14 +1171,14 @@ function flattenProjectData() {
     project.sections.forEach(section => {
         // Add the section itself as an item
         flatListOfItems.push({ type: 'section', data: section });
-        
+
         // Add its tasks if not collapsed
         if (!section.isCollapsed && section.tasks) {
             section.tasks.forEach(task => {
                 flatListOfItems.push({ type: 'task', data: task });
             });
         }
-        
+
         // Add the "Add Task" row for the section
         flatListOfItems.push({ type: 'add_task', sectionId: section.id });
     });
@@ -1192,18 +1192,18 @@ function flattenProjectData() {
 function renderVisibleRows(bodyContainer, bodyGrid) {
     const scrollTop = bodyContainer.scrollTop;
     const viewportHeight = bodyContainer.clientHeight;
-    
+
     // 1. Calculate the start and end index of visible items
     let startIndex = Math.floor(scrollTop / ROW_HEIGHT);
     let endIndex = Math.ceil((scrollTop + viewportHeight) / ROW_HEIGHT);
-    
+
     // 2. Apply the buffer
     startIndex = Math.max(0, startIndex - VISIBLE_ROW_BUFFER);
     endIndex = Math.min(flatListOfItems.length, endIndex + VISIBLE_ROW_BUFFER);
-    
+
     // 3. Slice the visible items from our flat list
     const visibleItems = flatListOfItems.slice(startIndex, endIndex);
-    
+
     // 4. Clear the existing rows and render the new visible ones
     bodyGrid.innerHTML = '';
     visibleItems.forEach(item => {
@@ -1215,12 +1215,12 @@ function renderVisibleRows(bodyContainer, bodyGrid) {
         } else if (item.type === 'add_task') {
             rowElement = createAddTaskRow(project.customColumns, item.sectionId);
         }
-        
+
         if (rowElement) {
             bodyGrid.appendChild(rowElement);
         }
     });
-    
+
     // 5. Position the "window" of rows correctly inside the giant spacer
     // This is the most important step for virtual scrolling.
     const offsetY = startIndex * ROW_HEIGHT;
@@ -1237,150 +1237,144 @@ function renderVisibleRows(bodyContainer, bodyGrid) {
 // The main render function, now refactored for virtual scrolling
 function render() {
     if (!taskListBody) return;
-    
-    // --- SETUP (Header) ---
+
     const headerClickListener = (e) => {
-    const columnOptionsIcon = e.target.closest('.options-icon');
-    const addColumnBtn = e.target.closest('.add-column-cell');
-    
-    if (columnOptionsIcon) {
-        e.stopPropagation();
-        const columnEl = columnOptionsIcon.closest('[data-column-id]');
-        if (!columnEl) return;
-        
-        const columnId = Number(columnEl.dataset.columnId);
-        const dropdownOptions = [
-            { name: 'Rename column' },
-            { name: 'Delete column' }
-        ];
-        
-        createDropdown(dropdownOptions, columnOptionsIcon, (selected) => {
-            if (selected.name === 'Delete column') {
-                deleteColumn(columnId);
-            } else if (selected.name === 'Rename column') {
-                enableColumnRename(columnEl);
-            }
-        });
-        return;
-    }
-    
-    if (addColumnBtn) {
-        e.stopPropagation();
-        
-        const existingTypes = new Set(project.customColumns.map(col => col.type));
-        const availableTypes = columnTypeOptions.filter(type =>
-            !existingTypes.has(type) || type === 'Custom'
-        );
-        
-        if (availableTypes.length === 0) {
-            alert("All available column types have been added.");
+        const columnOptionsIcon = e.target.closest('.options-icon');
+        const addColumnBtn = e.target.closest('.add-column-cell');
+
+        if (columnOptionsIcon) {
+            e.stopPropagation();
+            const columnEl = columnOptionsIcon.closest('[data-column-id]');
+            if (!columnEl) return;
+
+            const columnId = Number(columnEl.dataset.columnId);
+            const dropdownOptions = [
+                { name: 'Rename column' },
+                { name: 'Delete column' }
+            ];
+
+            createDropdown(dropdownOptions, columnOptionsIcon, (selected) => {
+                if (selected.name === 'Delete column') {
+                    deleteColumn(columnId);
+                } else if (selected.name === 'Rename column') {
+                    enableColumnRename(columnEl);
+                }
+            });
             return;
         }
-        
-        createDropdown(
-            availableTypes.map(type => ({ name: type })),
-            addColumnBtn,
-            (selected) => openAddColumnDialog(selected.name)
-        );
-    }
-};
 
-    // Flatten the data for easier processing
-    flattenProjectData();
+        if (addColumnBtn) {
+            e.stopPropagation();
+
+            const existingTypes = new Set(project.customColumns.map(col => col.type));
+            const availableTypes = columnTypeOptions.filter(type =>
+                !existingTypes.has(type) || type === 'Custom'
+            );
+
+            if (availableTypes.length === 0) {
+                alert("All available column types have been added.");
+                return;
+            }
+
+            createDropdown(
+                availableTypes.map(type => ({ name: type })),
+                addColumnBtn,
+                (selected) => openAddColumnDialog(selected.name)
+            );
+        }
+    };
+
     const projectToRender = project;
     const customColumns = projectToRender.customColumns || [];
-    
-    // 1. Clear the main task list container (which holds header and body wrappers)
+
+    // 1. Clear the main scrolling container
     taskListBody.innerHTML = '';
-    
-    // 2. Create and set up the header (NO CHANGE HERE)
-    const headerContainer = document.createElement('div');
-    headerContainer.className = 'list-header-wrapper';
 
-    const headerGrid = document.createElement('div');
-    headerGrid.className = 'grid-wrapper';
-    headerContainer.appendChild(headerGrid);
-    taskListBody.appendChild(headerContainer);
-    
+    // NEW: Apply flex layout to the main container to position header and body
+    taskListBody.style.display = 'flex';
+    taskListBody.style.flexDirection = 'column';
+    taskListBody.style.height = '100%'; // Ensure parent has a defined height
+
+    // 2. Create two separate wrappers: one for the header and one for the body.
+    const headerWrapper = document.createElement('div');
+    headerWrapper.className = 'header-wrapper';
+
+    const bodyWrapper = document.createElement('div');
+    bodyWrapper.className = 'grid-wrapper body-wrapper'; // Keep grid-wrapper for existing styles
+
+    // NEW: Style the wrappers for independent scrolling
+    headerWrapper.style.overflowX = 'auto';
+    headerWrapper.style.overflowY = 'hidden'; // Header only scrolls horizontally
+    headerWrapper.style.display = 'grid'; // Use grid for the header itself
+
+    bodyWrapper.style.overflow = 'auto';     // Body scrolls in both directions
+    bodyWrapper.style.flexGrow = '1';      // Body takes up remaining vertical space
+    bodyWrapper.style.display = 'grid'; // Use grid for the body itself
+
+
+    taskListBody.appendChild(headerWrapper);
+    taskListBody.appendChild(bodyWrapper);
+
+    // 3. Define and apply the grid column template to BOTH wrappers
     const columnWidths = {
-    taskName: 'minmax(350px, max-content)',
-    assignee: '150px',
-    dueDate: '150px',
-    priority: '150px',
-    status: '150px',
-    defaultCustom: 'minmax(160px, max-content)',
-    addColumn: '1fr'
-};
+        taskName: 'minmax(350px, max-content)',
+        assignee: '150px',
+        dueDate: '150px',
+        priority: '150px',
+        status: '150px',
+        defaultCustom: 'minmax(160px, max-content)',
+        addColumn: '1fr'
+    };
 
-const gridTemplateColumns = [
-    columnWidths.taskName,
-    columnWidths.assignee,
-    columnWidths.dueDate,
-    columnWidths.priority,
-    columnWidths.status,
-    ...customColumns.map(() => columnWidths.defaultCustom),
-    columnWidths.addColumn
-].join(' ');
+    const gridTemplateColumns = [
+        columnWidths.taskName,
+        columnWidths.assignee,
+        columnWidths.dueDate,
+        columnWidths.priority,
+        columnWidths.status,
+        ...customColumns.map(() => columnWidths.defaultCustom),
+        columnWidths.addColumn
+    ].join(' ');
 
-// 6. UPDATED: Apply the same column layout to BOTH grids for perfect alignment
-headerGrid.style.gridTemplateColumns = gridTemplateColumns;
-    renderHeader(projectToRender, headerGrid);
-    headerGrid.addEventListener('click', headerClickListener);
-    
-    // 3. --- VIRTUAL SCROLLING SETUP ---
-    const bodyContainer = document.createElement('div');
-    bodyContainer.className = 'list-body-wrapper';
+    // Apply the same column structure to both header and body for alignment
+    headerWrapper.style.gridTemplateColumns = gridTemplateColumns;
+    bodyWrapper.style.gridTemplateColumns = gridTemplateColumns;
 
-    // NEW: This container is for HORIZONTAL scrolling of the entire grid
-    const gridScrollContainer = document.createElement('div');
-    gridScrollContainer.className = 'grid-scroll-container';
 
-    gridScrollContainer.appendChild(headerContainer);
-    gridScrollContainer.appendChild(bodyContainer);
-    taskListBody.appendChild(gridScrollContainer);
-    
-    // 3a. Create the giant spacer to produce the correct scrollbar height
-    const totalContentSpacer = document.createElement('div');
-    totalContentSpacer.style.height = `${flatListOfItems.length * ROW_HEIGHT}px`;
-    totalContentSpacer.style.position = 'relative'; // Anchor for the visible rows container
-    
-    // 3b. This is our "window" - it will hold the few visible rows.
-    // We are reusing your existing bodyGrid variable for this.
-    const bodyGrid = document.createElement('div');
-    bodyGrid.className = 'grid-wrapper'; // It's still a grid
-    bodyGrid.style.position = 'absolute'; // So we can move it with `transform`
-    bodyGrid.style.top = '0';
-    bodyGrid.style.left = '0';
-    bodyGrid.style.width = '100%';
-    
-    // 4. Assemble the body and attach to DOM
-    totalContentSpacer.appendChild(bodyGrid);
-    bodyContainer.appendChild(totalContentSpacer);
-    taskListBody.appendChild(bodyContainer);
-    bodyGrid.style.gridTemplateColumns = gridTemplateColumns; // Apply same columns
-    
-    // 5. Setup the scroll event listener
-     gridScrollContainer.addEventListener('scroll', () => {
-        // Sync the header's scroll position. The body grid moves naturally.
-        headerContainer.scrollLeft = gridScrollContainer.scrollLeft;
-    });
+    // 4. Render header cells into the header wrapper and body cells into the body wrapper
+    renderHeader(projectToRender, headerWrapper);
+    renderBody(projectToRender, bodyWrapper);
 
-    // 2. Vertical scroll for virtual rendering remains on the body wrapper
-    bodyContainer.addEventListener('scroll', () => {
+    // NEW: Synchronize horizontal scrolling between header and body
+    let isScrolling = false; // Flag to prevent infinite scroll loop
+    headerWrapper.addEventListener('scroll', () => {
         if (!isScrolling) {
-            window.requestAnimationFrame(() => {
-                renderVisibleRows(bodyContainer, bodyGrid);
-                isScrolling = false;
-            });
             isScrolling = true;
+            bodyWrapper.scrollLeft = headerWrapper.scrollLeft;
+            isScrolling = false;
         }
     });
-    
-    // 6. Perform the INITIAL render of visible rows
-    renderVisibleRows(bodyContainer, bodyGrid);
-    
-    // Update sort button state and flag
+
+    bodyWrapper.addEventListener('scroll', () => {
+        if (!isScrolling) {
+            isScrolling = true;
+            headerWrapper.scrollLeft = bodyWrapper.scrollLeft;
+            isScrolling = false;
+        }
+    });
+
+
+    // Attach click listener to the header wrapper
+    headerWrapper.addEventListener('click', (e) => {
+        const isHeaderCell = e.target.closest('.header-cell');
+        if (isHeaderCell) {
+            headerClickListener(e);
+        }
+    });
+
+    // 👇 Update sort button state and flag (no changes needed below this line)
     isSortActive = activeSortState !== 'default';
+
     if (sortBtn) {
         if (activeSortState === 'asc') {
             sortBtn.innerHTML = `<i class="fas fa-sort-amount-up-alt"></i> Oldest`;
@@ -1390,8 +1384,6 @@ headerGrid.style.gridTemplateColumns = gridTemplateColumns;
             sortBtn.innerHTML = `<i class="fas fa-sort"></i> Sort`;
         }
     }
-    
-    // Focus a specific task if needed (e.g., after creation)
     if (taskIdToFocus) {
         const newEl = taskListBody.querySelector(`[data-task-id="${taskIdToFocus}"] .task-name-input`);
         if (newEl) {
@@ -1400,16 +1392,14 @@ headerGrid.style.gridTemplateColumns = gridTemplateColumns;
         }
         taskIdToFocus = null;
     }
-    
-    // UPDATED: Initialize drag and drop on the body's grid, which contains the draggable rows.
-    initializeDragAndDrop(bodyGrid);
-    
+    // Initialize drag and drop on the body wrapper, not the old grid wrapper
+    initializeDragAndDrop(bodyWrapper);
 }
 
 function renderHeader(projectToRender, container) {
     const customColumns = projectToRender.customColumns || [];
     const headers = ['Name', 'Assignee', 'Due Date', 'Priority', 'Status']; // Simplified for clarity
-    
+
     // Create fixed headers
     headers.forEach((name, index) => {
         const cell = document.createElement('div');
@@ -1420,7 +1410,7 @@ function renderHeader(projectToRender, container) {
         }
         container.appendChild(cell);
     });
-    
+
     // Create custom column headers
     customColumns.forEach(col => {
         const cell = document.createElement('div');
@@ -1429,7 +1419,7 @@ function renderHeader(projectToRender, container) {
         cell.innerHTML = `<span>${col.name}</span><i class="fa-solid fa-ellipsis-h column-icon options-icon"></i>`;
         container.appendChild(cell);
     });
-    
+
     // "Add Column" button cell
     const addColumnCell = document.createElement('div');
     addColumnCell.className = 'header-cell add-column-cell';
@@ -1439,16 +1429,16 @@ function renderHeader(projectToRender, container) {
 
 function renderBody(projectToRender, container) {
     const customColumns = projectToRender.customColumns || [];
-    
+
     (projectToRender.sections || []).forEach(section => {
         const sectionWrapper = document.createElement('div');
         sectionWrapper.className = 'section-wrapper';
         sectionWrapper.dataset.sectionId = section.id;
-        
+
         // Create and add the section title row (uses updated helper)
         const sectionRow = createSectionRow(section, customColumns);
         sectionWrapper.appendChild(sectionRow);
-        
+
         // Add tasks if not collapsed
         if (!section.isCollapsed && section.tasks) {
             section.tasks.forEach(task => {
@@ -1457,11 +1447,11 @@ function renderBody(projectToRender, container) {
                 sectionWrapper.appendChild(taskRow);
             });
         }
-        
+
         // Add the "Add Task" row (uses updated helper)
         const addTaskRow = createAddTaskRow(customColumns, section.id);
         sectionWrapper.appendChild(addTaskRow);
-        
+
         // Append to main grid container
         container.appendChild(sectionWrapper);
     });
@@ -1515,16 +1505,16 @@ function createTaskRow(task, customColumns) {
     row.className = `grid-row-wrapper task-row-wrapper ${task.status === 'Completed' ? 'is-completed' : ''}`;
     row.dataset.taskId = task.id;
     row.dataset.sectionId = task.sectionId;
-    
+
     const isCompleted = task.status === 'Completed';
-    
+
     // --- Like Button Logic ---
     const likeCount = task.likedAmount || 0;
     const isLikedByCurrentUser = task.likedBy && task.likedBy[currentUserId];
     const heartIconClass = isLikedByCurrentUser ? 'fas fa-heart' : 'far fa-heart';
     const likeStatusClass = isLikedByCurrentUser ? 'is-liked' : '';
     const likeCountHTML = likeCount > 0 ? `<span class="like-count">${likeCount}</span>` : '';
-    
+
     // --- Sticky Task Name Cell ---
     const taskNameCell = document.createElement('div');
     taskNameCell.className = 'task-cell sticky-col-task';
@@ -1552,34 +1542,34 @@ function createTaskRow(task, customColumns) {
         </div>
     `;
     row.appendChild(taskNameCell);
-    
+
     // --- Base Columns ---
     const baseColumns = [
-    {
-        control: 'assignee',
-        value: task.assignees && task.assignees.length > 0 ? task.assignees[0].name : 'Add assignee'
-    },
-    {
-        control: 'due-date',
-        value: task.dueDate || 'Set date'
-    },
-    {
-        control: 'priority',
-        value: task.priority
-    },
-    {
-        control: 'status',
-        value: task.status
-    }];
-    
+        {
+            control: 'assignee',
+            value: task.assignees && task.assignees.length > 0 ? task.assignees[0].name : 'Add assignee'
+        },
+        {
+            control: 'due-date',
+            value: task.dueDate || 'Set date'
+        },
+        {
+            control: 'priority',
+            value: task.priority
+        },
+        {
+            control: 'status',
+            value: task.status
+        }];
+
     baseColumns.forEach(col => {
         const cell = document.createElement('div');
         cell.className = 'task-cell';
         if (isCompleted) cell.classList.add('is-completed');
         cell.dataset.control = col.control;
-        
+
         let content = col.value || '';
-        
+
         if (col.control === 'assignee') {
             // Render full assignee HTML (avatar + name + remove button)
             content = createAssigneeHTML(task.assignees);
@@ -1592,41 +1582,41 @@ function createTaskRow(task, customColumns) {
         } else {
             content = `<span>${content}</span>`;
         }
-        
-        
+
+
         cell.innerHTML = content;
         row.appendChild(cell);
     });
-    
+
     // --- Custom Columns ---
-  (customColumns || []).forEach(col => {
-    const cell = document.createElement('div');
-    cell.className = 'task-cell';
-    if (isCompleted) cell.classList.add('is-completed');
-    cell.dataset.columnId = col.id;
-    cell.dataset.control = 'custom';
+    (customColumns || []).forEach(col => {
+        const cell = document.createElement('div');
+        cell.className = 'task-cell';
+        if (isCompleted) cell.classList.add('is-completed');
+        cell.dataset.columnId = col.id;
+        cell.dataset.control = 'custom';
 
-    const rawValue = task.customFields ? task.customFields[col.id] : null;
+        const rawValue = task.customFields ? task.customFields[col.id] : null;
 
-    let content = `<span class="add-value editable-custom-field" contenteditable="true"></span>`;
-    if (rawValue !== null && rawValue !== undefined) {
-        if (col.name === 'Type' || col.name === 'Tag') {
-            const tagClass = `status-tag status-${String(rawValue).replace(/\s+/g, '-')}`;
-            content = `<span class="editable-custom-field ${tagClass}" contenteditable="true">${rawValue}</span>`;
-        } else {
-            content = `<span class="editable-custom-field" contenteditable="true">${rawValue}</span>`;
+        let content = `<span class="add-value editable-custom-field" contenteditable="true"></span>`;
+        if (rawValue !== null && rawValue !== undefined) {
+            if (col.name === 'Type' || col.name === 'Tag') {
+                const tagClass = `status-tag status-${String(rawValue).replace(/\s+/g, '-')}`;
+                content = `<span class="editable-custom-field ${tagClass}" contenteditable="true">${rawValue}</span>`;
+            } else {
+                content = `<span class="editable-custom-field" contenteditable="true">${rawValue}</span>`;
+            }
         }
-    }
 
-    cell.innerHTML = content;
-    row.appendChild(cell);
-});
-    
+        cell.innerHTML = content;
+        row.appendChild(cell);
+    });
+
     // --- Placeholder Cell ---
     const placeholderCell = document.createElement('div');
     placeholderCell.className = 'task-cell';
     row.appendChild(placeholderCell);
-    
+
     return row;
 }
 
@@ -1696,14 +1686,14 @@ EndWorking Component
 // This function will run ONLY when a menu is open and the user scrolls
 function updateMenuPosition() {
     if (!activeMenuButton) return;
-    
+
     const menu = document.querySelector('.options-dropdown-menu');
     if (!menu) return;
-    
+
     // Recalculate button position and update the menu's style
     const rect = activeMenuButton.getBoundingClientRect();
     const menuWidth = menu.offsetWidth;
-    
+
     menu.style.top = `${rect.bottom + window.scrollY + 4}px`;
     menu.style.left = `${rect.right + window.scrollX - menuWidth}px`;
 }
@@ -1721,9 +1711,9 @@ function closeOpenMenu() {
 
 function openOptionsMenu(buttonEl) {
     closeOpenMenu(); // Close any other menus first
-    
+
     const sectionId = buttonEl.dataset.sectionId;
-    
+
     // Create menu element
     const menu = document.createElement('div');
     menu.className = 'options-dropdown-menu';
@@ -1741,16 +1731,16 @@ function openOptionsMenu(buttonEl) {
             <span>Delete section</span>
         </div>
     `;
-    
+
     // Append to body to ensure it's on top of everything
     document.body.appendChild(menu);
-    
+
     // Set the button as the active one
     activeMenuButton = buttonEl;
-    
+
     // Set initial position
     updateMenuPosition();
-    
+
     // IMPORTANT: Add a temporary scroll listener
     taskListBody.addEventListener('scroll', updateMenuPosition, { passive: true });
 }
@@ -1765,29 +1755,29 @@ function openOptionsMenu(buttonEl) {
 async function moveTaskToSection(taskId, targetSectionId) {
     // 1. Find the full task object and its current section from our local data.
     const { task: taskToMove, section: sourceSection } = findTaskAndSection(taskId);
-    
+
     // 2. Validate that the task and its source section were found.
     if (!taskToMove || !sourceSection || sourceSection.id === targetSectionId) {
         console.error("Cannot move task. Source or target section is invalid.");
         return;
     }
-    
+
     // The ID of the task will be preserved. This is the same as the `taskId` passed in.
     const preservedTaskId = taskToMove.id;
-    
+
     // 3. Reference to the original document location in Firestore.
     const sourceTaskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${sourceSection.id}/tasks/${preservedTaskId}`);
-    
+
     // 4. Reference the NEW document location, but command Firestore to use the SAME ID.
     const newTaskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${targetSectionId}/tasks/${preservedTaskId}`);
-    
+
     // 5. Prepare the new data for the document.
     const newTaskData = {
         ...taskToMove,
         sectionId: targetSectionId, // Update the sectionId field
         id: preservedTaskId // Ensure the 'id' field is still the preserved ID
     };
-    
+
     try {
         // 6. Atomically delete the old document and create the new one.
         const batch = writeBatch(db);
@@ -1845,14 +1835,14 @@ async function addTaskToFirebase(sectionId, taskData) {
         return console.error("Cannot add task: Missing current user, workspace, or project ID.");
     }
     const tasksPath = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${sectionId}/tasks`;
-    
+
     try {
         // --- MODIFICATION START ---
-        
+
         // 2. Instead of addDoc, first create a reference to a new, empty document.
         // This generates the unique ID for us *before* we save any data.
         const newTaskRef = doc(collection(db, tasksPath));
-        
+
         // 3. Prepare the complete data object, including the new ID.
         const fullTaskData = {
             ...taskData,
@@ -1863,14 +1853,14 @@ async function addTaskToFirebase(sectionId, taskData) {
             createdAt: serverTimestamp()
             // Add any other default fields here (e.g., status: 'To Do', assignees: [])
         };
-        
+
         // 4. Use setDoc() to save the document with the complete data to the exact reference we created.
         await setDoc(newTaskRef, fullTaskData);
-        
+
         console.log("Successfully added task with ID: ", newTaskRef.id);
-        
+
         // --- MODIFICATION END ---
-        
+
     } catch (error) {
         console.error("Error adding task:", error);
     }
@@ -1918,11 +1908,11 @@ async function updateProjectInFirebase(propertiesToUpdate) {
     if (!currentUserId || !currentWorkspaceId || !currentProjectId) {
         return console.error("Cannot update project: Missing IDs.");
     }
-    
+
     // FIX: Build the full, nested path to the project document.
     const projectPath = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}`;
     const projectRef = doc(db, projectPath);
-    
+
     try {
         await updateDoc(projectRef, propertiesToUpdate);
     } catch (error) {
@@ -1943,7 +1933,7 @@ function showConfirmationModal(message) {
     return new Promise((resolve) => {
         const dialogOverlay = document.createElement('div');
         dialogOverlay.className = 'dialog-overlay'; // Use existing class for styling
-        
+
         dialogOverlay.innerHTML = `
         <div class="dialog-box" style="width: 400px;">
             <div class="dialog-body" style="padding: 2rem; font-size: 1.1rem; text-align: center;">
@@ -1954,17 +1944,17 @@ function showConfirmationModal(message) {
                 <button class="dialog-button primary" id="modal-confirm-btn">Confirm</button>
             </div>
         </div>`;
-        
+
         document.body.appendChild(dialogOverlay);
-        
+
         const confirmBtn = document.getElementById('modal-confirm-btn');
         const cancelBtn = document.getElementById('modal-cancel-btn');
-        
+
         const close = (result) => {
             dialogOverlay.remove();
             resolve(result);
         };
-        
+
         confirmBtn.addEventListener('click', () => close(true));
         cancelBtn.addEventListener('click', () => close(false));
         dialogOverlay.addEventListener('click', (e) => {
@@ -1984,7 +1974,7 @@ async function deleteColumnInFirebase(columnId) {
     if (!currentUserId || !currentWorkspaceId || !currentProjectId) {
         return console.error("Cannot delete column: Missing IDs.");
     }
-    
+
     // Use the new, non-blocking confirmation modal
     const confirmed = await showConfirmationModal(
         'Are you sure you want to delete this column and all its data? This action cannot be undone.'
@@ -1992,36 +1982,36 @@ async function deleteColumnInFirebase(columnId) {
     if (!confirmed) {
         return;
     }
-    
+
     const batch = writeBatch(db);
-    
+
     // 1. Update the project document to remove the column from the array
     const projectPath = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}`;
     const projectRef = doc(db, projectPath);
     const newColumnsArray = project.customColumns.filter(col => col.id != columnId);
     batch.update(projectRef, { customColumns: newColumnsArray });
-    
+
     // 2. Query for ONLY the tasks the current user owns within the project
     const tasksQuery = query(
         collectionGroup(db, "tasks"),
         where("projectId", "==", currentProjectId),
         where("userId", "==", currentUserId) // <-- THE CRUCIAL FIX
     );
-    
+
     try {
         const tasksSnapshot = await getDocs(tasksQuery);
-        
+
         tasksSnapshot.forEach(taskDoc => {
             // 3. Queue an update for each task to remove the custom field
             batch.update(taskDoc.ref, {
                 [`customFields.${columnId}`]: deleteField()
             });
         });
-        
+
         // 4. Commit all the changes at once
         await batch.commit();
         console.log("Column and its data were deleted successfully.");
-        
+
     } catch (error) {
         console.error("Error deleting column and its data:", error);
         alert("Error: Could not completely delete the column. Check console for details.");
@@ -2030,25 +2020,25 @@ async function deleteColumnInFirebase(columnId) {
 
 async function handleTaskCompletion(taskId, taskRowEl) {
     if (!taskRowEl) return;
-    
+
     const { task, section: sourceSection } = findTaskAndSection(taskId);
     if (!task || !sourceSection) {
         console.error("Could not find task or section to update completion status.");
         return;
     }
-    
+
     const statusCell = taskRowEl.querySelector('[data-control="status"] span');
     const checkIcon = taskRowEl.querySelector('.check-icon i');
-    
+
     const isCurrentlyCompleted = task.status === 'Completed';
-    
+
     if (isCurrentlyCompleted) {
         // --- UNCHECK ---
         console.log(`Un-completing task: "${task.name}"`);
-        
+
         const previousStatus = task.previousStatus || 'On track';
         task.status = previousStatus;
-        
+
         taskRowEl.classList.remove('is-completed');
         if (checkIcon) {
             checkIcon.classList.remove('fa-solid');
@@ -2056,38 +2046,38 @@ async function handleTaskCompletion(taskId, taskRowEl) {
             checkIcon.style.color = ''; // reset color if needed
         }
         if (statusCell) statusCell.textContent = previousStatus;
-        
+
         updateTask(taskId, sourceSection.id, { status: previousStatus });
     } else {
         // --- COMPLETE ---
         console.log(`Completing task: "${task.name}"`);
-        
+
         task.previousStatus = task.status;
         task.status = 'Completed';
-        
+
         taskRowEl.classList.add('is-completed');
         if (checkIcon) {
             checkIcon.classList.remove('fa-regular');
             checkIcon.classList.add('fa-solid');
         }
         if (statusCell) statusCell.textContent = 'Completed';
-        
+
         setTimeout(async () => {
             const completedSection = project.sections.find(s => s.title.toLowerCase() === 'completed');
-            
+
             await updateTask(taskId, sourceSection.id, { status: 'Completed' });
-            
+
             if (completedSection && completedSection.id !== sourceSection.id) {
                 console.log(`Moving task to "${completedSection.title}" section.`);
-                
+
                 await moveTaskToSection(taskId, sourceSection.id, completedSection.id);
-                
+
                 const taskToMove = sourceSection.tasks.find(t => t.id === taskId);
                 if (taskToMove) {
                     sourceSection.tasks = sourceSection.tasks.filter(t => t.id !== taskId);
                     completedSection.tasks.push(taskToMove);
                 }
-                
+
                 render();
             }
         }, 400);
@@ -2120,24 +2110,24 @@ function createStatusTag(s) {
     if (typeof s !== 'string' || !s) {
         return '';
     }
-    
+
     // Sanitize the string once to create a valid CSS class name.
     // This replaces spaces with dashes and removes any non-alphanumeric characters (except dashes).
     const sanitizedName = s.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
     const className = `status-${sanitizedName}`;
-    
+
     // Check if it's a known default or custom status, then create the tag.
     if (statusOptions.includes(s)) {
         return createTag(s, 'status', className);
     }
-    
+
     if (project.customStatuses) {
         const customStatus = project.customStatuses.find(cs => cs.name === s);
         if (customStatus) {
             return createTag(s, 'status', className);
         }
     }
-    
+
     // If the status is not found, return an empty string.
     return '';
 }
@@ -2213,51 +2203,51 @@ function createDropdown(options, targetEl, callback, optionType = null, columnId
 
 function showDatePicker(targetEl, sectionId, taskId) {
     closeFloatingPanels();
-    
+
     const dropdownPanel = document.createElement('div');
     dropdownPanel.className = 'context-dropdown datepicker-panel';
     dropdownPanel.style.position = 'absolute';
     dropdownPanel.style.visibility = 'hidden';
     dropdownPanel.style.zIndex = '9999'; // Ensure it's on top
-    
+
     const datepickerContainer = document.createElement('div');
     dropdownPanel.appendChild(datepickerContainer);
     document.body.appendChild(dropdownPanel); // Use body instead of mainContainer
-    
+
     requestAnimationFrame(() => {
         const targetRect = targetEl.getBoundingClientRect();
         const panelRect = dropdownPanel.getBoundingClientRect();
         const viewportHeight = window.innerHeight;
         const viewportWidth = window.innerWidth;
-        
+
         // Vertical positioning: prefer below, fallback above if no space
         let top = targetRect.bottom + 4;
         if (top + panelRect.height > viewportHeight) {
             top = targetRect.top - panelRect.height - 4;
         }
-        
+
         // Horizontal positioning: align left with target
         let left = targetRect.left;
         if (left + panelRect.width > viewportWidth) {
             left = viewportWidth - panelRect.width - 8; // 8px margin from right
         }
-        
+
         dropdownPanel.style.top = `${top}px`;
         dropdownPanel.style.left = `${left}px`;
         dropdownPanel.style.visibility = 'visible';
-        
+
         // Initialize datepicker
         const datepicker = new Datepicker(datepickerContainer, {
             autohide: true,
             format: 'yyyy-mm-dd',
             todayHighlight: true,
         });
-        
+
         const { task } = findTaskAndSection(taskId);
         if (task && task.dueDate) {
             datepicker.setDate(task.dueDate);
         }
-        
+
         datepickerContainer.addEventListener(
             'changeDate',
             (e) => {
@@ -2375,12 +2365,12 @@ function showAssignModal(email, taskId, sectionId) {
         </div>
     `;
     document.body.appendChild(modal);
-    
+
     modal.querySelector('#confirm-assignee').addEventListener('click', () => {
         //sendInviteEmail(email); // ✅ invite logic
         modal.remove();
     });
-    
+
     modal.querySelector('#cancel-assignee').addEventListener('click', () => {
         modal.remove();
     });
@@ -2444,7 +2434,7 @@ function addNewColumn(config) {
         // When type is 'Type', assign the array. For all other types that need options, start with an empty array.
         options: (config.type === 'Type' || config.type === 'Custom') ? (config.type === 'Type' ? typeColumnOptions : []) : null
     };
-    
+
     updateProjectInFirebase({
         customColumns: arrayUnion(newColumn)
     });
@@ -2645,14 +2635,14 @@ function addNewTask(section) {
         customFields: {},
         order: section.tasks.length
     };
-    
+
     section.tasks.push(newTask);
     taskIdToFocus = tempId;
-    
+
     if (section.isCollapsed) {
         section.isCollapsed = false;
     }
-    
+
     render();
 }
 
@@ -2801,18 +2791,18 @@ async function addNewCustomColumnOption(columnId, newOption) {
 function generateCustomTagStyles(projectData) {
     const styleId = 'custom-tag-styles';
     let styleElement = document.getElementById(styleId);
-    
+
     if (!styleElement) {
         styleElement = document.createElement('style');
         styleElement.id = styleId;
         document.head.appendChild(styleElement);
     }
-    
+
     let cssRules = '';
-    
+
     const generateRules = (items, prefix) => {
         if (!items) return;
-        
+
         // This loop is where the error occurs
         items.forEach(item => {
             // --- FIX STARTS HERE ---
@@ -2828,10 +2818,10 @@ function generateCustomTagStyles(projectData) {
             // --- FIX ENDS HERE ---
         });
     };
-    
+
     generateRules(projectData.customPriorities, 'priority');
     generateRules(projectData.customStatuses, 'status');
-    
+
     if (projectData.customColumns) {
         projectData.customColumns.forEach(col => {
             if (col.options && Array.isArray(col.options)) {
@@ -2865,11 +2855,11 @@ function openEditOptionDialog(optionType, originalOption, columnId = null) {
     closeFloatingPanels();
     const dialogOverlay = document.createElement('div');
     dialogOverlay.className = 'dialog-overlay';
-    
+
     // --- FIX STARTS HERE ---
     // Determine the correct dialog title based on the option type.
     let dialogTitle = `Edit ${optionType} Option`; // Default title
-    
+
     if (optionType === 'CustomColumn' && columnId) {
         // Find the custom column by its ID in our project data
         const column = project.customColumns.find(c => c.id === columnId);
@@ -2879,7 +2869,7 @@ function openEditOptionDialog(optionType, originalOption, columnId = null) {
         }
     }
     // --- FIX ENDS HERE ---
-    
+
     dialogOverlay.innerHTML = `
     <div class="dialog-box">
         <div class="dialog-header">${dialogTitle}</div>
@@ -2898,11 +2888,11 @@ function openEditOptionDialog(optionType, originalOption, columnId = null) {
             <button class="dialog-button primary" id="confirm-edit-option">Save Changes</button>
         </div>
     </div>`;
-    
+
     document.body.appendChild(dialogOverlay);
     const nameInput = document.getElementById('edit-option-name');
     nameInput.focus();
-    
+
     document.getElementById('confirm-edit-option').addEventListener('click', () => {
         const newOption = {
             name: document.getElementById('edit-option-name').value.trim(),
@@ -2916,7 +2906,7 @@ function openEditOptionDialog(optionType, originalOption, columnId = null) {
             showConfirmationModal('Please enter a name for the option.');
         }
     });
-    
+
     dialogOverlay.addEventListener('click', e => {
         if (e.target === e.currentTarget || e.target.id === 'cancel-edit-option') {
             closeFloatingPanels();
@@ -2936,7 +2926,7 @@ async function updateCustomOptionInFirebase(optionType, originalOption, newOptio
     const projectCopy = JSON.parse(JSON.stringify(project));
     let fieldToUpdate = null;
     let newArray = [];
-    
+
     if (optionType === 'Priority') {
         fieldToUpdate = 'customPriorities';
         newArray = projectCopy.customPriorities || [];
@@ -2954,7 +2944,7 @@ async function updateCustomOptionInFirebase(optionType, originalOption, newOptio
         }
         newArray = projectCopy.customColumns;
     }
-    
+
     // For non-column options, find and replace the option in the array
     if (optionType === 'Priority' || optionType === 'Status') {
         const optionIndex = newArray.findIndex(opt => opt.name === originalOption.name && opt.color === originalOption.color);
@@ -2962,7 +2952,7 @@ async function updateCustomOptionInFirebase(optionType, originalOption, newOptio
             newArray[optionIndex] = newOption;
         }
     }
-    
+
     if (fieldToUpdate) {
         // Update the entire array in Firestore
         await updateProjectInFirebase({
@@ -2976,43 +2966,43 @@ async function expandCollapsedSection(sectionId) {
     const sectionWrapper = document.querySelector(`.section-wrapper[data-section-id="${sectionId}"]`);
     const sectionHeaderRow = document.querySelector(`.section-row-wrapper[data-section-id="${sectionId}"]`);
     const chevron = sectionHeaderRow ? sectionHeaderRow.querySelector('.section-toggle') : null;
-    
+
     if (!sectionWrapper || !chevron || !chevron.classList.contains('fa-chevron-right')) {
         // Section not found, not collapsed, or already expanding
         return;
     }
-    
+
     // --- 1. Update the UI immediately for responsiveness ---
     chevron.classList.replace('fa-chevron-right', 'fa-chevron-down');
-    
+
     // --- 2. Find the section and its tasks from your local data source ---
     // NOTE: This assumes 'currentProject' holds your full project data.
     const sectionData = currentProject.sections.find(s => s.id === sectionId);
     if (!sectionData || !sectionData.tasks) return;
-    
+
     // --- 3. Render the task rows ---
     const customColumns = currentProject.customColumns || [];
     const addTaskRow = sectionWrapper.querySelector('.add-task-row-wrapper');
-    
+
     sectionData.tasks.forEach(task => {
         const taskRow = createTaskRow(task, customColumns);
         // Insert each task before the "Add Task" button
         sectionWrapper.insertBefore(taskRow, addTaskRow);
     });
-    
+
     // --- 4. Update Firestore in the background ---
     try {
         const user = auth.currentUser;
         if (!user) throw new Error("User not authenticated.");
-        
+
         const basePath = await _getSelectedProjectPath(db, user.uid);
         const sectionRef = doc(db, `${basePath}/sections/${sectionId}`);
         await updateDoc(sectionRef, { isCollapsed: false });
         console.log(`✅ Section ${sectionId} marked as expanded in Firestore.`);
-        
+
         // Also update our local state
         sectionData.isCollapsed = false;
-        
+
     } catch (error) {
         console.error("❌ Error updating section collapse state:", error);
         // Optional: Revert UI changes if Firestore update fails
@@ -3036,7 +3026,7 @@ function initializeDragAndDrop(gridWrapper) {
     // Ensure we don't attach multiple listeners on re-renders
     if (gridWrapper.dataset.dragInit === 'true') return;
     gridWrapper.dataset.dragInit = 'true';
-    
+
     gridWrapper.addEventListener('mousedown', handleDragStart);
     gridWrapper.addEventListener('touchstart', handleDragStart, { passive: false });
 }
@@ -3044,12 +3034,12 @@ function initializeDragAndDrop(gridWrapper) {
 function handleDragStart(e) {
     const dragHandle = e.target.closest('.drag-handle');
     if (!dragHandle) return;
-    
+
     e.preventDefault();
-    
+
     const taskRow = dragHandle.closest('.task-row-wrapper');
     const sectionRow = dragHandle.closest('.section-row-wrapper');
-    
+
     if (taskRow) {
         draggedElement = taskRow;
     } else if (sectionRow) {
@@ -3058,42 +3048,42 @@ function handleDragStart(e) {
     } else {
         return;
     }
-    
+
     if (!draggedElement) return;
-    
+
     sourceContainer = draggedElement.closest('.grid-wrapper');
     originalNextSibling = draggedElement.nextSibling;
     dragHasMoved = false;
-    
+
     // --- Placeholder for CSS Grid ---
     placeholder = document.createElement('div');
     placeholder.classList.add('drag-placeholder-ghost');
-    
+
     const draggedHeight = draggedElement.getBoundingClientRect().height;
     placeholder.style.height = `${draggedHeight}px`;
-    
+
     // CRITICAL: Make the placeholder span all columns in the grid
     placeholder.style.gridColumn = '1 / -1';
-    
+
     draggedElement.parentNode.insertBefore(placeholder, draggedElement);
     placeholder.style.display = 'none'; // Hide until drag moves
-    
+
     setTimeout(() => {
         if (draggedElement) draggedElement.classList.add('dragging');
     }, 0);
-    
+
     document.body.classList.add('is-dragging');
-    
+
     // Attach follow-up events
     document.addEventListener('mousemove', handleDragMove);
     document.addEventListener('touchmove', handleDragMove, { passive: false });
     document.addEventListener('mouseup', handleDragEnd, { once: true });
     document.addEventListener('touchend', handleDragEnd, { once: true });
 }
- 
+
 function handleDragMove(e) {
     if (!draggedElement) return;
-    
+
     if (e.type === 'touchmove') e.preventDefault();
     if (!dragHasMoved) {
         dragHasMoved = true;
@@ -3104,7 +3094,7 @@ function handleDragMove(e) {
     const elementOver = document.elementFromPoint(coords.x, coords.y);
     placeholder.style.display = '';
     if (!elementOver) return;
-    
+
     // Auto-expand logic (remains the same)
     const isDraggingTask = draggedElement.matches('.task-row-wrapper');
     const hoveredSectionHeader = elementOver.closest('.section-row-wrapper');
@@ -3122,9 +3112,9 @@ function handleDragMove(e) {
         clearTimeout(expansionTimeout);
         lastHoveredSectionId = null;
     }
-    
+
     // ▼▼▼ NEW & IMPROVED POSITIONING LOGIC ▼▼▼
-    
+
     // Rule 1: Prioritize the "Add Task" row as a primary drop zone.
     const addTaskTarget = elementOver.closest('.add-task-row-wrapper');
     if (addTaskTarget) {
@@ -3132,12 +3122,12 @@ function handleDragMove(e) {
         addTaskTarget.before(placeholder);
         return;
     }
-    
+
     // Rule 2: Handle dropping in the empty space at the bottom of a section.
     const hoveredSection = elementOver.closest('.section-wrapper');
     const isHoveringTask = elementOver.closest('.task-row-wrapper');
     const isHoveringHeader = elementOver.closest('.section-row-wrapper');
-    
+
     if (hoveredSection && !isHoveringTask && !isHoveringHeader) {
         // We are inside a section, but not over a specific task or header.
         // This means we're in the empty space (likely at the bottom).
@@ -3148,13 +3138,13 @@ function handleDragMove(e) {
             return;
         }
     }
-    
+
     // Rule 3: General logic for dropping relative to other tasks and sections.
     const finalTarget = elementOver.closest('.task-row-wrapper, .section-wrapper');
     if (finalTarget && finalTarget !== draggedElement && !finalTarget.contains(draggedElement)) {
         const dropZoneRect = finalTarget.getBoundingClientRect();
         const isAfter = coords.y > dropZoneRect.top + dropZoneRect.height / 2;
-        
+
         if (isAfter) {
             finalTarget.after(placeholder);
         } else {
@@ -3173,18 +3163,18 @@ async function handleDragEnd(e) {
         cleanUpDragState();
         return;
     }
-    
+
     // Optimistic UI update
     placeholder.parentNode.replaceChild(draggedElement, placeholder);
-    
+
     const isTask = draggedElement.classList.contains('task-row-wrapper');
-        const gridWrapper = draggedElement.closest('.grid-wrapper');
-    
+    const gridWrapper = draggedElement.closest('.grid-wrapper');
+
     try {
         const user = auth.currentUser;
         if (!user) throw new Error("User not authenticated.");
         const basePath = await _getSelectedProjectPath(db, user.uid);
-        
+
         if (isTask) {
             // Call our new, grid-aware function
             await handleTaskMoved(draggedElement, gridWrapper, basePath);
@@ -3214,12 +3204,12 @@ function cleanUpDragState() {
         placeholder.parentNode.removeChild(placeholder);
     }
     document.body.classList.remove('is-dragging');
-    
+
     draggedElement = null;
     placeholder = null;
     sourceContainer = null;
     dragHasMoved = false;
-    
+
     // --- Remove ALL potential listeners ---
     document.removeEventListener('mousemove', handleDragMove);
     document.removeEventListener('touchmove', handleDragMove);
@@ -3237,7 +3227,7 @@ function updateDataOnDrop(draggedId, isTask, targetSectionId, targetId) {
     let itemToMove;
     let sourceArray;
     let sourceIndex = -1;
-    
+
     // 1. Find and remove the item from its original location
     if (isTask) {
         for (const section of project.sections) {
@@ -3255,12 +3245,12 @@ function updateDataOnDrop(draggedId, isTask, targetSectionId, targetId) {
             itemToMove = sourceArray.splice(sourceIndex, 1)[0];
         }
     }
-    
+
     if (!itemToMove) {
         console.error("Could not find the dragged item in the data source.");
         return;
     }
-    
+
     // 2. Add the item to its new location
     if (isTask) {
         const targetSection = project.sections.find(s => s.id === targetSectionId);
@@ -3294,17 +3284,17 @@ function positionFloatingPanel(targetEl, dropdownEl) {
     const panelRect = dropdownEl.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
     const viewportWidth = window.innerWidth;
-    
+
     let top = targetRect.bottom + 4;
     if (top + panelRect.height > viewportHeight) {
         top = targetRect.top - panelRect.height - 4;
     }
-    
+
     let left = targetRect.left;
     if (left + panelRect.width > viewportWidth) {
         left = viewportWidth - panelRect.width - 8;
     }
-    
+
     dropdownEl.style.top = `${top}px`;
     dropdownEl.style.left = `${left}px`;
     dropdownEl.style.position = 'absolute';
