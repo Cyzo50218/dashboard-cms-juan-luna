@@ -24,8 +24,6 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
-    margin-bottom: 30px;
-     overflow-x: auto;
     overflow: hidden; /* Prevents the whole page from scrolling */
 }
 
@@ -46,6 +44,8 @@
     height: calc(100vh - 160px);
     overflow-y: auto;
     overflow-x: auto; 
+    
+    margin-bottom: 60px;
 }
 
 /* --- Grid & Header Wrappers --- */
