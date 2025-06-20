@@ -1336,23 +1336,33 @@ function render() {
     initializeDragAndDrop(gridWrapper);
 }
 
+
 function renderHeader(projectToRender, container) {
     const customColumns = projectToRender.customColumns || [];
-    // The `grid-row-wrapper` with `display: contents` makes its children direct grid items
+    
+    // The `grid-row-wrapper` with `display: contents` in the CSS ensures
+    // that all cells created here become direct children of the grid.
     const row = document.createElement('div');
     row.className = 'grid-row-wrapper';
 
-    // Create standard headers
+    // --- 1. Create the Standard Headers ---
     const headers = ['Name', 'Assignee', 'Due Date', 'Priority', 'Status'];
+
     headers.forEach((name, index) => {
         const cell = document.createElement('div');
-        // The first cell gets special classes for top-left stickiness
-        cell.className = index === 0 ? 'header-cell sticky-col-task sticky-col-header' : 'header-cell';
+
+        // The first cell ("Name") is special: it's sticky top, left, and is the corner.
+        if (index === 0) {
+            cell.className = 'header-cell sticky-col-task sticky-col-header';
+        } else {
+            cell.className = 'header-cell';
+        }
+
         cell.innerHTML = `<span>${name}</span><i class="fa-solid fa-angle-down column-icon"></i>`;
         row.appendChild(cell);
     });
 
-    // Create custom column headers
+    // --- 2. Create Custom Column Headers ---
     customColumns.forEach(col => {
         const cell = document.createElement('div');
         cell.className = 'header-cell';
@@ -1361,12 +1371,13 @@ function renderHeader(projectToRender, container) {
         row.appendChild(cell);
     });
 
-    // "Add Column" button cell
+    // --- 3. Create the "Add Column" Button Cell ---
     const addColumnCell = document.createElement('div');
     addColumnCell.className = 'header-cell add-column-cell';
     addColumnCell.innerHTML = `<i class="fa-solid fa-plus"></i>`;
     row.appendChild(addColumnCell);
 
+    // Append the fully constructed header row to the main grid container
     container.appendChild(row);
 }
 
@@ -1438,219 +1449,106 @@ function createSectionRow(sectionData, customColumns) {
 }
 
 function createTaskRow(task, customColumns) {
-    
+    // Basic validation to prevent errors from bad data
     if (!task || typeof task.id !== 'string' || task.id.trim() === '') {
-        
-        console.error(
-            
-            "CRITICAL ERROR - FAULTY TASK DETECTED: A task row is being created with a missing or invalid ID. This is the source of the drag-and-drop error.",
-            
-            { task: task }
-
-        );
-        
+        console.error("Attempted to create a task row with invalid data:", { task });
+        const errorRow = document.createElement('div');
+        errorRow.textContent = "Error: Invalid task data.";
+        return errorRow;
     }
-    
+
+    // 1. Create the main row wrapper
+    // This element uses `display: contents` in the CSS, so its children become direct grid items.
     const row = document.createElement('div');
     row.className = `grid-row-wrapper task-row-wrapper ${task.status === 'Completed' ? 'is-completed' : ''}`;
     row.dataset.taskId = task.id;
     row.dataset.sectionId = task.sectionId;
+
     const isCompleted = task.status === 'Completed';
-    
-    
-    
-    // --- Like Button Logic ---
+
+    // --- Like Button Logic (for use in the Name cell) ---
     const likeCount = task.likedAmount || 0;
     const isLikedByCurrentUser = task.likedBy && task.likedBy[currentUserId];
     const heartIconClass = isLikedByCurrentUser ? 'fas fa-heart' : 'far fa-heart';
     const likeStatusClass = isLikedByCurrentUser ? 'is-liked' : '';
     const likeCountHTML = likeCount > 0 ? `<span class="like-count">${likeCount}</span>` : '';
-    
-    
-    
-    // --- Sticky Task Name Cell ---
-    const taskNameCell = document.createElement('div');
-    taskNameCell.className = 'task-cell sticky-col-task';
-    taskNameCell.innerHTML = `
-        <div class="task-name-wrapper">
-            <div class="task-name-main">
-                <span class="drag-handle"><i class="fas fa-grip-lines"></i></span>
-                <span class="check-icon" data-control="check">
-                   <i class="${isCompleted ? 'fa-solid' : 'fa-regular'} fa-circle-check"></i>
-                </span>
-                <span class="task-name" contenteditable="true">${task.name || ''}</span>
-            </div>
-            <div class="task-hover-actions">
-                <span class="icon-action ${likeStatusClass}" data-control="like" title="Like task">
-                    <i class="${heartIconClass}"></i>
-                    ${likeCountHTML}
-                </span>
-                <span class="icon-action" data-control="comment" title="View comments">
-                    <i class="far fa-comment"></i>
-                </span>
-                <span class="icon-action" data-control="move-task" title="Move task to another section">
-                    <i class="fas fa-sort"></i>
-                </span>
-            </div>
-        </div>
 
-    `;
-    
+    // --- 2. Create the STICKY "Name" Column ---
+    const taskNameCell = document.createElement('div');
+    taskNameCell.className = 'task-cell sticky-col-task'; // This class makes it sticky!
+    taskNameCell.innerHTML = `
+        <div class="task-name-wrapper">
+            <div class="task-name-main">
+                <span class="drag-handle"><i class="fas fa-grip-lines"></i></span>
+                <span class="check-icon" data-control="check">
+                    <i class="${isCompleted ? 'fa-solid' : 'fa-regular'} fa-circle-check"></i>
+                </span>
+                <span class="task-name" contenteditable="true">${task.name || ''}</span>
+            </div>
+            <div class="task-hover-actions">
+                <span class="icon-action ${likeStatusClass}" data-control="like" title="Like task">
+                    <i class="${heartIconClass}"></i>
+                    ${likeCountHTML}
+                </span>
+                <span class="icon-action" data-control="comment" title="View comments">
+                    <i class="far fa-comment"></i>
+                </span>
+                <span class="icon-action" data-control="move-task" title="Move task to another section">
+                    <i class="fas fa-sort"></i>
+                </span>
+            </div>
+        </div>
+    `;
     row.appendChild(taskNameCell);
+
+    // --- 3. Create the standard SCROLLING Columns ---
     
-    
-    
-    // --- Base Columns ---
-    
-    const baseColumns = [
-        
-        {
-            
-            control: 'assignee',
-            
-            value: task.assignees && task.assignees.length > 0 ? task.assignees[0].name : 'Add assignee'
-            
-        },
-        
-        {
-            
-            control: 'due-date',
-            
-            value: task.dueDate || 'Set date'
-            
-        },
-        
-        {
-            
-            control: 'priority',
-            
-            value: task.priority
-            
-        },
-        
-        {
-            
-            control: 'status',
-            
-            value: task.status
-            
-        }
-    ];
-    
-    
-    
-    baseColumns.forEach(col => {
-        
-        const cell = document.createElement('div');
-        
-        cell.className = 'task-cell';
-        
-        if (isCompleted) cell.classList.add('is-completed');
-        
-        cell.dataset.control = col.control;
-        
-        
-        
-        let content = col.value || '';
-        
-        
-        
-        if (col.control === 'assignee') {
-            
-            // Render full assignee HTML (avatar + name + remove button)
-            
-            content = createAssigneeHTML(task.assignees);
-            
-        } else if (col.control === 'priority' && col.value) {
-            
-            const className = `priority-tag priority-${col.value}`;
-            
-            content = `<span class="${className}">${col.value}</span>`;
-            
-        } else if (col.control === 'status' && col.value) {
-            
-            const statusClass = `status-tag status-${col.value.replace(/\s+/g, '-')}`;
-            
-            content = `<span class="${statusClass}">${col.value}</span>`;
-            
-        } else {
-            
-            content = `<span>${content}</span>`;
-            
-        }
-        
-        
-        
-        
-        
-        cell.innerHTML = content;
-        
-        row.appendChild(cell);
-        
-    });
-    
-    
-    
-    // --- Custom Columns ---
-    
+    // Assignee Cell
+    const assigneeCell = document.createElement('div');
+    assigneeCell.className = 'task-cell';
+    assigneeCell.innerHTML = createAssigneeHTML(task.assignees); // Assuming you have this helper
+    row.appendChild(assigneeCell);
+
+    // Due Date Cell
+    const dueDateCell = document.createElement('div');
+    dueDateCell.className = 'task-cell';
+    dueDateCell.innerHTML = `<span>${task.dueDate || ''}</span>`;
+    row.appendChild(dueDateCell);
+
+    // Priority Cell
+    const priorityCell = document.createElement('div');
+    priorityCell.className = 'task-cell';
+    if (task.priority) {
+        priorityCell.innerHTML = `<span class="priority-tag priority-${task.priority.toLowerCase()}">${task.priority}</span>`;
+    }
+    row.appendChild(priorityCell);
+
+    // Status Cell
+    const statusCell = document.createElement('div');
+    statusCell.className = 'task-cell';
+    if (task.status) {
+        const statusClass = task.status.replace(/\s+/g, '-').toLowerCase();
+        statusCell.innerHTML = `<span class="status-tag status-${statusClass}">${task.status}</span>`;
+    }
+    row.appendChild(statusCell);
+
+    // --- 4. Create the CUSTOM SCROLLING Columns ---
     (customColumns || []).forEach(col => {
-        
         const cell = document.createElement('div');
-        
         cell.className = 'task-cell';
-        
-        if (isCompleted) cell.classList.add('is-completed');
-        
         cell.dataset.columnId = col.id;
-        
         cell.dataset.control = 'custom';
-        
-        
-        
         const rawValue = task.customFields ? task.customFields[col.id] : null;
-        
-        
-        
-        let content = `<span class="add-value editable-custom-field" contenteditable="true"></span>`;
-        
-        if (rawValue !== null && rawValue !== undefined) {
-            
-            if (col.name === 'Type' || col.name === 'Tag') {
-                
-                const tagClass = `status-tag status-${String(rawValue).replace(/\s+/g, '-')}`;
-                
-                content = `<span class="editable-custom-field ${tagClass}" contenteditable="true">${rawValue}</span>`;
-                
-            } else {
-                
-                content = `<span class="editable-custom-field" contenteditable="true">${rawValue}</span>`;
-                
-            }
-            
-        }
-        
-        
-        
-        cell.innerHTML = content;
-        
+        cell.innerHTML = (rawValue !== null && rawValue !== undefined) ? `<span>${rawValue}</span>` : '';
         row.appendChild(cell);
-        
     });
-    
-    
-    
-    // --- Placeholder Cell ---
-    
-    const placeholderCell = document.createElement('div');
-    
-    placeholderCell.className = 'task-cell';
-    
-    row.appendChild(placeholderCell);
-    
-    
-    
+
+    // --- 5. Create the final placeholder cell for the "Add Column" button ---
+    const finalPlaceholder = document.createElement('div');
+    finalPlaceholder.className = 'task-cell';
+    row.appendChild(finalPlaceholder);
+
     return row;
-    
 }
 
 function createAddTaskRow(customColumns, sectionId) {

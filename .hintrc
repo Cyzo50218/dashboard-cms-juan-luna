@@ -6,7 +6,9 @@
     "defaults",
     "not ie 11",
     "not ios_saf <= 18.5",
-    "not safari <= 18.5"
+    "not safari <= 18.5",
+    "not chrome <= 109",
+    "not samsung <= 27"
   ],
   "hints": {
     "axe/name-role-value": "off",
