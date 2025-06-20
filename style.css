@@ -3,6 +3,7 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    
 }
 
 body {
@@ -32,6 +33,7 @@ body {
     background: transparent;
     overflow: hidden;
     position: relative;
+    overflow: hidden;
     flex-grow: 1;
     min-height: 0;
 }
