@@ -52,14 +52,11 @@ let activeMenuButton = null;
 const sortableTasks = [];
 let isSortActive = false;
 
-// --- VIRTUAL SCROLLING CONSTANTS ---
-const ROW_HEIGHT = 32; // The fixed height of a single task or section row in pixels.
-const VISIBLE_ROW_BUFFER = 5; // Render 5 extra rows above and below the viewport for smoothness.
-
-// --- STATE ---
-let flatListOfItems = []; // A flattened array of all sections and tasks.
-let isScrolling = false; // For throttling scroll events.
-
+const ITEMS_PER_PAGE = 30; // How many items to load at a time
+let currentItemOffset = 0; // How many items are currently rendered
+let isLoadingNextPage = false; // Flag to prevent loading multiple pages at once
+let flatListOfItems = []; // A flattened array of all sections and tasks
+let isScrolling = false; // For throttling scroll events
 
 // State variables to track the drag operation
 let draggedElement = null;
@@ -1168,18 +1165,13 @@ Working Component
  */
 function flattenProjectData() {
     flatListOfItems = [];
-    project.sections.forEach(section => {
-        // Add the section itself as an item
+    (project.sections || []).forEach(section => {
         flatListOfItems.push({ type: 'section', data: section });
-
-        // Add its tasks if not collapsed
         if (!section.isCollapsed && section.tasks) {
             section.tasks.forEach(task => {
                 flatListOfItems.push({ type: 'task', data: task });
             });
         }
-
-        // Add the "Add Task" row for the section
         flatListOfItems.push({ type: 'add_task', sectionId: section.id });
     });
 }
@@ -1235,244 +1227,164 @@ function renderVisibleRows(bodyContainer, bodyGrid) {
  */
 
 // The main render function, now refactored for virtual scrolling
-function render() {
+function loadNextPage(bodyGrid) {
+    if (isLoadingNextPage || currentItemOffset >= flatListOfItems.length) {
+        return; // Prevent multiple loads or loading beyond the end
+    }
+    isLoadingNextPage = true;
 
-    if (!taskListBody) return;
+    const itemsToRender = flatListOfItems.slice(currentItemOffset, currentItemOffset + ITEMS_PER_PAGE);
 
-
-
-    const headerClickListener = (e) => {
-
-        const columnOptionsIcon = e.target.closest('.options-icon');
-
-        const addColumnBtn = e.target.closest('.add-column-cell');
-
-
-
-        if (columnOptionsIcon) {
-
-            e.stopPropagation();
-
-            const columnEl = columnOptionsIcon.closest('[data-column-id]');
-
-            if (!columnEl) return;
-
-
-
-            const columnId = Number(columnEl.dataset.columnId);
-
-            const dropdownOptions = [
-
-                { name: 'Rename column' },
-
-                { name: 'Delete column' }
-
-            ];
-
-
-
-            createDropdown(dropdownOptions, columnOptionsIcon, (selected) => {
-
-                if (selected.name === 'Delete column') {
-
-                    deleteColumn(columnId);
-
-                } else if (selected.name === 'Rename column') {
-
-                    enableColumnRename(columnEl);
-
-                }
-
-            });
-
-            return;
-
+    itemsToRender.forEach(item => {
+        let rowElement;
+        if (item.type === 'section') {
+            rowElement = createSectionRow(item.data, project.customColumns);
+        } else if (item.type === 'task') {
+            rowElement = createTaskRow(item.data, project.customColumns);
+        } else if (item.type === 'add_task') {
+            rowElement = createAddTaskRow(project.customColumns, item.sectionId);
         }
-
-
-
-        if (addColumnBtn) {
-
-            e.stopPropagation();
-
-
-
-            const existingTypes = new Set(project.customColumns.map(col => col.type));
-
-            const availableTypes = columnTypeOptions.filter(type =>
-
-                !existingTypes.has(type) || type === 'Custom'
-
-            );
-
-
-
-            if (availableTypes.length === 0) {
-
-                alert("All available column types have been added.");
-
-                return;
-
-            }
-
-
-
-            createDropdown(
-
-                availableTypes.map(type => ({ name: type })),
-
-                addColumnBtn,
-
-                (selected) => openAddColumnDialog(selected.name)
-
-            );
-
+        if (rowElement) {
+            bodyGrid.appendChild(rowElement);
         }
-
-    };
-
-
-
-    const projectToRender = project;
-
-    const customColumns = projectToRender.customColumns || [];
-
-
-
-    // 1. Clear the main scrolling container
-
-    taskListBody.innerHTML = '';
-
-
-
-    // 2. Create the single grid wrapper that will contain ALL cells
-
-    const gridWrapper = document.createElement('div');
-
-    gridWrapper.className = 'grid-wrapper';
-
-
-
-    taskListBody.appendChild(gridWrapper);
-
-
-
-    // 3. Define and apply the grid column template
-
-    const columnWidths = {
-
-        taskName: 'minmax(350px, max-content)',
-
-        assignee: '150px',
-
-        dueDate: '150px',
-
-        priority: '150px',
-
-        status: '150px',
-
-        defaultCustom: 'minmax(160px, max-content)',
-
-        addColumn: '1fr'
-
-    };
-
-
-
-    const gridTemplateColumns = [
-
-        columnWidths.taskName,
-
-        columnWidths.assignee,
-
-        columnWidths.dueDate,
-
-        columnWidths.priority,
-
-        columnWidths.status,
-
-        ...customColumns.map(() => columnWidths.defaultCustom),
-
-        columnWidths.addColumn
-
-    ].join(' ');
-
-
-
-
-
-    gridWrapper.style.gridTemplateColumns = gridTemplateColumns;
-
-
-
-    // 4. Render header and body cells directly into the grid wrapper
-
-
-
-    renderHeader(projectToRender, gridWrapper);
-
-    renderBody(projectToRender, gridWrapper);
-
-
-
-    gridWrapper.addEventListener('click', (e) => {
-
-        const isHeaderCell = e.target.closest('.header-cell');
-
-        if (isHeaderCell) {
-
-            headerClickListener(e);
-
-        }
-
     });
 
+    currentItemOffset += itemsToRender.length;
+    isLoadingNextPage = false;
+}
 
+function render() {
+    if (!taskListBody) return;
 
-    // 👇 Update sort button state and flag
+    // Reset state for a full re-render
+    currentItemOffset = 0;
+    isLoadingNextPage = false;
 
-    isSortActive = activeSortState !== 'default';
+    const projectToRender = project;
+    const customColumns = projectToRender.customColumns || [];
+    flattenProjectData();
 
+    // Clear the entire container
+    taskListBody.innerHTML = '';
 
+    // --- DOM STRUCTURE (Decoupled Scrolling Layout) ---
+    // This structure is REQUIRED for the sticky horizontal scrollbar.
+    const headerContainer = document.createElement('div');
+    headerContainer.className = 'list-header-wrapper';
 
-    if (sortBtn) {
+    const bodyContainer = document.createElement('div');
+    bodyContainer.className = 'list-body-wrapper';
 
-        if (activeSortState === 'asc') {
+    const gridScrollContainer = document.createElement('div');
+    gridScrollContainer.className = 'grid-scroll-container';
 
-            sortBtn.innerHTML = `<i class="fas fa-sort-amount-up-alt"></i> Oldest`;
+    // Assemble the layout: header/body wrappers go INSIDE the horizontal scroller
+    gridScrollContainer.appendChild(headerContainer);
+    gridScrollContainer.appendChild(bodyContainer);
+    taskListBody.appendChild(gridScrollContainer);
 
-        } else if (activeSortState === 'desc') {
+    // --- GRIDS SETUP ---
+    const headerGrid = document.createElement('div');
+    headerGrid.className = 'grid-wrapper';
 
-            sortBtn.innerHTML = `<i class="fas fa-sort-amount-down-alt"></i> Newest`;
+    // The bodyGrid is now a simple grid, not a positioned "window"
+    const bodyGrid = document.createElement('div');
+    bodyGrid.className = 'grid-wrapper';
 
-        } else {
+    headerContainer.appendChild(headerGrid);
+    bodyContainer.appendChild(bodyGrid); // Append grid directly
 
-            sortBtn.innerHTML = `<i class="fas fa-sort"></i> Sort`;
+    // --- GRID COLUMN STYLES ---
+    const columnWidths = {
+        taskName: 'minmax(350px, max-content)',
+        assignee: '150px',
+        dueDate: '150px',
+        priority: '150px',
+        status: '150px',
+        defaultCustom: 'minmax(160px, max-content)',
+        addColumn: '1fr'
+    };
+    const gridTemplateColumns = [
+        columnWidths.taskName,
+        columnWidths.assignee,
+        columnWidths.dueDate,
+        columnWidths.priority,
+        columnWidths.status,
+        ...(customColumns || []).map(() => columnWidths.defaultCustom),
+        columnWidths.addColumn
+    ].join(' ');
 
+    // Apply the same column layout to BOTH grids for perfect alignment
+    headerGrid.style.gridTemplateColumns = gridTemplateColumns;
+    bodyGrid.style.gridTemplateColumns = gridTemplateColumns;
+
+    // --- INITIAL RENDER & EVENT LISTENERS ---
+    renderHeader(projectToRender, headerGrid);
+
+    // Load the very first page of items
+    loadNextPage(bodyGrid);
+
+    const headerClickListener = (e) => {
+        const columnOptionsIcon = e.target.closest('.options-icon');
+        const addColumnBtn = e.target.closest('.add-column-cell');
+        if (columnOptionsIcon) {
+            e.stopPropagation();
+            const columnEl = columnOptionsIcon.closest('[data-column-id]');
+            if (!columnEl) return;
+            const columnId = Number(columnEl.dataset.columnId);
+            const dropdownOptions = [{ name: 'Rename column' }, { name: 'Delete column' }];
+            createDropdown(dropdownOptions, columnOptionsIcon, (selected) => {
+                if (selected.name === 'Delete column') deleteColumn(columnId);
+                else if (selected.name === 'Rename column') enableColumnRename(columnEl);
+            });
+            return;
         }
+        if (addColumnBtn) {
+            e.stopPropagation();
+            const existingTypes = new Set(project.customColumns.map(col => col.type));
+            const availableTypes = columnTypeOptions.filter(type => !existingTypes.has(type) || type === 'Custom');
+            if (availableTypes.length === 0) {
+                alert("All available column types have been added.");
+                return;
+            }
+            createDropdown(availableTypes.map(type => ({ name: type })), addColumnBtn, (selected) => openAddColumnDialog(selected.name));
+        }
+    };
+    headerGrid.addEventListener('click', headerClickListener);
 
+    // Horizontal scroll is on the outer container
+    gridScrollContainer.addEventListener('scroll', () => {
+        headerContainer.scrollLeft = gridScrollContainer.scrollLeft;
+    });
+
+    // Vertical scroll on the inner container triggers loading more data
+    bodyContainer.addEventListener('scroll', () => {
+        const { scrollTop, scrollHeight, clientHeight } = bodyContainer;
+        // Load next page when user is 300px from the bottom
+        if (scrollTop + clientHeight >= scrollHeight - 300) {
+            loadNextPage(bodyGrid);
+        }
+    });
+
+    // --- POST-RENDER LOGIC ---
+    isSortActive = activeSortState !== 'default';
+    if (sortBtn) {
+        if (activeSortState === 'asc') sortBtn.innerHTML = `<i class="fas fa-sort-amount-up-alt"></i> Oldest`;
+        else if (activeSortState === 'desc') sortBtn.innerHTML = `<i class="fas fa-sort-amount-down-alt"></i> Newest`;
+        else sortBtn.innerHTML = `<i class="fas fa-sort"></i> Sort`;
     }
 
     if (taskIdToFocus) {
-
         const newEl = taskListBody.querySelector(`[data-task-id="${taskIdToFocus}"] .task-name-input`);
-
         if (newEl) {
-
             newEl.focus();
-
             newEl.select();
-
         }
-
         taskIdToFocus = null;
-
     }
 
-    initializeDragAndDrop(gridWrapper);
-
+    initializeDragAndDrop(bodyGrid);
 }
-
 function renderHeader(projectToRender, container) {
     const customColumns = projectToRender.customColumns || [];
     const headers = ['Name', 'Assignee', 'Due Date', 'Priority', 'Status']; // Simplified for clarity

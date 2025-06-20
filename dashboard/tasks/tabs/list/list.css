@@ -22,8 +22,7 @@
     display: flex;
     flex-direction: column;
     flex: 1;
-    overflow-y: hidden;
-    overflow-x: hidden;
+    overflow: hidden;
     min-height: 0;
 }
 
@@ -31,8 +30,6 @@
 #task-list-body {
     display: flex;
     flex-direction: column;
-     overflow-y: auto;
-    overflow-x: auto;
     flex-grow: 1;
     min-height: 0; /* Important for nested flex */
 }
@@ -45,8 +42,7 @@
 
 .list-body-wrapper {
     flex-grow: 1;  /* Take up all remaining space */
-     overflow-y: hidden;
-    overflow-x: hidden;
+    overflow: auto; /* Handles BOTH vertical and horizontal scroll */
     min-height: 0;
 }
 
