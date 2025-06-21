@@ -28,7 +28,7 @@
 }
 
 .grid-outer-container {
-    height: calc(100vh - 100px); /* adjust as needed */
+    height: calc(100vh - 160px); /* adjust as needed */
     overflow: hidden;
     position: relative;
 }
