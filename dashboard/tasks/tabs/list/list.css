@@ -69,6 +69,43 @@ button {
     gap: 0.4rem; /* Reduced gap inside buttons */
 }
 
+.add-task-header-btn {
+    background-color: transparent;
+    border: 1px solid var(--text-secondary-color);
+    border-radius: 8px;
+    /* Slightly reduced button padding */
+    padding: 0.4rem 0.8rem;
+    cursor: pointer;
+    margin-left: 8px;
+    font-size: 0.85rem; /* Slightly smaller font size for buttons */
+    font-weight: 500;
+    color: var(--text-color);
+    transition: background-color 0.2s, color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem; /* Reduced gap inside buttons */
+}
+
+
+.add-section-btn {
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    /* Slightly reduced button padding */
+    padding: 0.4rem 0.8rem;
+    margin-left: 8px;
+    cursor: pointer;
+    font-size: 0.85rem; /* Slightly smaller font size for buttons */
+    font-weight: 500;
+    color: var(--text-color);
+    transition: background-color 0.2s, color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem; /* Reduced gap inside buttons */
+}
+
 /* We no longer use the old header element for structure */
 #task-list-header {
     display: none;
