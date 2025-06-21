@@ -1722,3 +1722,125 @@ Custom class
     padding-top: 9px;
     margin-left: 6px;
 }
+
+/**
+ * Base styles for the juanlunaspreadsheet-list-view component.
+ * Establishes a flexbox layout to position the left and right panes.
+ */
+.juanlunaspreadsheet-list-view {
+    display: flex;
+    flex-direction: row; /* Lay out left and right panes side-by-side */
+    width: 100%;
+    height: 100%; /* Ensure it fills the parent container */
+    overflow: hidden; /* Prevent the main container from scrolling */
+    border: 1px solid #dcdcdc; /* A border similar to the reference image */
+    background-color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/**
+ * Styles for the fixed left pane (Task Name column).
+ */
+.juanlunaspreadsheet-list-view__left-pane {
+    flex-shrink: 0; /* Prevents the left pane from shrinking */
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #dcdcdc; /* Separator line */
+    background-color: #fafafa; /* Slightly different background for the fixed column */
+}
+
+/**
+ * Styles for the scrollable right pane (Task Data columns).
+ */
+.juanlunaspreadsheet-list-view__right-pane {
+    flex-grow: 1; /* Allows the right pane to fill remaining space */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Important: Hides default scrollbars */
+}
+
+/**
+ * Wrapper for the horizontally scrollable content in the right pane.
+ */
+.juanlunaspreadsheet-list-view__scroll-container {
+    overflow-x: auto; /* Enables horizontal scrolling */
+    overflow-y: hidden;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/**
+ * Common styles for header wrappers in both panes.
+ */
+.juanlunaspreadsheet-list-view__header-wrapper {
+    flex-shrink: 0;
+    font-weight: 500;
+    color: #6a6a6a;
+    background-color: #ffffff;
+    border-bottom: 1px solid #dcdcdc;
+    overflow: hidden; /* Hides the part of the header that scrolls out of view */
+}
+
+/**
+ * Common styles for the body wrappers that contain the grid data.
+ * These are the elements that will have the synchronized vertical scrollbars.
+ */
+.juanlunaspreadsheet-list-view__body-wrapper {
+    overflow-y: auto; /* The primary vertical scrollbar */
+    overflow-x: hidden;
+    flex-grow: 1; /* Ensures it fills the available vertical space */
+}
+
+/* Hide scrollbar for the left pane's body to only show one */
+.juanlunaspreadsheet-list-view__left-pane .juanlunaspreadsheet-list-view__body-wrapper {
+   scrollbar-width: none; /* Firefox */
+   -ms-overflow-style: none;  /* IE and Edge */
+}
+
+.juanlunaspreadsheet-list-view__left-pane .juanlunaspreadsheet-list-view__body-wrapper::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, and Opera */
+}
+
+
+/**
+ * The grid container itself. Used for both header and body.
+ */
+.juanlunaspreadsheet-list-view__grid {
+    display: grid;
+    min-width: max-content; /* Critical for horizontal scrolling */
+}
+
+/**
+ * Styling for individual header cells.
+ */
+.juanlunaspreadsheet-list-view__header-cell {
+    padding: 10px 12px;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-right: 1px solid #ebebeb;
+}
+
+.juanlunaspreadsheet-list-view__header-cell:last-child {
+    border-right: none;
+}
+
+/**
+ * Placeholder styling for data cells that will be added by JavaScript.
+ * You can create a class like this for your dynamically generated cells.
+ */
+.juanlunaspreadsheet-list-view__body-cell {
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    border-right: 1px solid #ebebeb;
+    border-bottom: 1px solid #ebebeb;
+    white-space: nowrap;
+    background-color: #fff;
+}
+
+.juanlunaspreadsheet-list-view__body-cell:last-child {
+    border-right: none;
+}

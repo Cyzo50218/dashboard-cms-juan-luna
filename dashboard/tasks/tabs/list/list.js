@@ -1233,7 +1233,7 @@ function loadNextPage(bodyGrid) {
     isLoadingNextPage = true;
     const sectionToRender = project.sections[currentItemOffset];
     if (sectionToRender) {
-        renderBody([sectionToRender], project.customColumns, bodyGrid);
+        //renderBody([sectionToRender], project.customColumns, bodyGrid);
     }
     currentItemOffset++;
     isLoadingNextPage = false;
@@ -1243,7 +1243,7 @@ function loadNextPage(bodyGrid) {
  * REVISED: Builds the "Decoupled Scrolling" layout needed for a dedicated
  * vertical scrollbar area on the right.
  */
-
+/*
 function render() {
     if (!taskListBody) return;
 
@@ -1381,15 +1381,7 @@ function renderBody(sectionsToRender, customColumns, container) {
     });
 }
 
-/**
- * Creates a sticky section header row.
- * This function builds the row as a single cell that spans all grid columns,
- * and applies a class that makes it sticky to the top of the scroll container.
- *
- * @param {object} sectionData - The section object.
- * @param {Array} customColumns - Passed for consistency, but not needed for this layout.
- * @returns {HTMLElement} The complete, sticky section row element.
- */
+ 
 function createSectionRow(sectionData, customColumns) {
     // 1. Create the main row wrapper
     const row = document.createElement('div');
@@ -1594,6 +1586,200 @@ function createAddTaskRow(customColumns, sectionId) {
 
     return row;
 }
+*/
+
+/**
+ * Main render function to build the spreadsheet-style task list.
+ * It orchestrates the rendering of the fixed left column and the scrollable right columns.
+ */
+function render() {
+    // Ensure the main container exists before proceeding.
+    if (!taskListBody) return;
+
+    // --- 1. Initial Setup & State Reset ---
+    // Clear the container for a full re-render.
+    taskListBody.innerHTML = '';
+    // Reset loading state for infinite scroll.
+    isLoadingNextPage = false;
+    // Set a consistent reference to the project object.
+    const projectToRender = project;
+
+    // --- 2. Create Main Layout Structure ---
+    // The main container will use Flexbox to position the left and right panes.
+    taskListBody.className = 'juanlunaspreadsheet-list-view'; // Use a specific class for styling
+
+    // Create the container for the fixed left column (Task Names).
+    const leftPane = document.createElement('div');
+    leftPane.className = 'juanlunaspreadsheet-list-view__left-pane';
+
+    // Create the container for the scrollable right columns (Task Data).
+    const rightPane = document.createElement('div');
+    rightPane.className = 'juanlunaspreadsheet-list-view__right-pane';
+
+    // Append the panes to the main container.
+    taskListBody.appendChild(leftPane);
+    taskListBody.appendChild(rightPane);
+
+    // --- 3. Render Panes & Setup Interactions ---
+    // Render the content for both the left and right sides.
+    const { bodyContainer: leftBody } = renderHorizontalLeftFixedColumn(projectToRender, leftPane);
+    const { bodyContainer: rightBody, gridScrollContainer, headerContainer } = renderHorizontalRightColumn(projectToRender, rightPane);
+
+    // --- 4. Synchronize Scrolling ---
+    // Sync vertical scrolling between the left and right panes.
+    let isSyncingScroll = false; // Flag to prevent scroll event loops.
+    const syncScroll = (source, target) => {
+        if (!isSyncingScroll) {
+            isSyncingScroll = true;
+            target.scrollTop = source.scrollTop;
+            setTimeout(() => { isSyncingScroll = false; }, 50); // Small delay to prevent jitter
+        }
+    };
+
+    leftBody.addEventListener('scroll', () => syncScroll(leftBody, rightBody));
+    rightBody.addEventListener('scroll', () => syncScroll(rightBody, leftBody));
+
+    // Sync horizontal scrolling for the right pane's header.
+    gridScrollContainer.addEventListener('scroll', () => {
+        headerContainer.scrollLeft = gridScrollContainer.scrollLeft;
+    });
+
+    // --- 5. Infinite Scroll ---
+    // Attach the infinite scroll listener to the right pane's body, as it's the primary scrolling area.
+    rightBody.addEventListener('scroll', () => {
+        const { scrollTop, scrollHeight, clientHeight } = rightBody;
+        // Load next page when user is 300px from the bottom.
+        if (scrollTop + clientHeight >= scrollHeight - 300 && !isLoadingNextPage) {
+            console.log("Loading next page...");
+            // We need to pass the body grids of both panes to loadNextPage
+            const leftBodyGrid = leftBody.querySelector('.juanlunaspreadsheet-list-view__grid');
+            const rightBodyGrid = rightBody.querySelector('.juanlunaspreadsheet-list-view__grid');
+            loadNextPage(leftBodyGrid, rightBodyGrid);
+        }
+    });
+    
+    // --- 6. Initial Data Load & Drag and Drop ---
+    const leftBodyGrid = leftBody.querySelector('.juanlunaspreadsheet-list-view__grid');
+    const rightBodyGrid = rightBody.querySelector('.juanlunaspreadsheet-list-view__grid');
+    loadNextPage(leftBodyGrid, rightBodyGrid); // Load the first batch of tasks.
+    initializeDragAndDrop(leftBody, rightBody); // Initialize drag and drop on the containers.
+}
+
+
+/**
+ * Renders the fixed left column containing the task names.
+ * @param {object} projectToRender - The project data object.
+ * @param {HTMLElement} container - The parent element for this column.
+ * @returns {object} An object containing the created body container.
+ */
+function renderHorizontalLeftFixedColumn(projectToRender, container) {
+    // --- 1. Create Header ---
+    const headerContainer = document.createElement('div');
+    headerContainer.className = 'juanlunaspreadsheet-list-view__header-wrapper juanlunaspreadsheet-list-view__header-wrapper--fixed';
+    const headerGrid = document.createElement('div');
+    headerGrid.className = 'juanlunaspreadsheet-list-view__grid';
+    headerGrid.style.gridTemplateColumns = 'minmax(350px, 1fr)'; // Width of the name column
+
+    const headerCell = document.createElement('div');
+    headerCell.className = 'juanlunaspreadsheet-list-view__header-cell';
+    headerCell.textContent = 'Name';
+    headerGrid.appendChild(headerCell);
+    headerContainer.appendChild(headerGrid);
+
+    // --- 2. Create Body ---
+    const bodyContainer = document.createElement('div');
+    bodyContainer.className = 'juanlunaspreadsheet-list-view__body-wrapper';
+    const bodyGrid = document.createElement('div');
+    bodyGrid.className = 'juanlunaspreadsheet-list-view__grid';
+    bodyGrid.style.gridTemplateColumns = 'minmax(350px, 1fr)';
+    bodyContainer.appendChild(bodyGrid);
+
+    // --- 3. Append to Parent Container ---
+    container.appendChild(headerContainer);
+    container.appendChild(bodyContainer);
+    
+    // NOTE: The actual task rows are not rendered here.
+    // They will be dynamically added by `loadNextPage`.
+
+    return { bodyContainer };
+}
+
+/**
+ * Renders the horizontally scrollable right columns containing task details.
+ * @param {object} projectToRender - The project data object.
+ * @param {HTMLElement} container - The parent element for these columns.
+ * @returns {object} An object containing key DOM elements for scrolling.
+ */
+function renderHorizontalRightColumn(projectToRender, container) {
+    const customColumns = projectToRender.customColumns || [];
+
+    // --- 1. Define Column Widths ---
+    const columnWidths = {
+        assignee: '150px',
+        dueDate: '150px',
+        priority: '150px',
+        status: '150px',
+        defaultCustom: 'minmax(160px, max-content)',
+        addColumn: '1fr' // Flexible space for the '+' button
+    };
+
+    // --- 2. Build Grid Template ---
+    const gridTemplateColumns = [
+        columnWidths.dueDate,
+        columnWidths.priority,
+        columnWidths.status,
+        ...customColumns.map(() => columnWidths.defaultCustom),
+        columnWidths.addColumn
+    ].join(' ');
+
+    // --- 3. Create DOM Structure ---
+    // This outer container handles horizontal scrolling.
+    const gridScrollContainer = document.createElement('div');
+    gridScrollContainer.className = 'juanlunaspreadsheet-list-view__scroll-container';
+
+    // Header container sticks to the top of the scroll container.
+    const headerContainer = document.createElement('div');
+    headerContainer.className = 'juanlunaspreadsheet-list-view__header-wrapper';
+    const headerGrid = document.createElement('div');
+    headerGrid.className = 'juanlunaspreadsheet-list-view__grid';
+    headerGrid.style.gridTemplateColumns = gridTemplateColumns;
+
+    // Body container holds the scrollable task data.
+    const bodyContainer = document.createElement('div');
+    bodyContainer.className = 'juanlunaspreadsheet-list-view__body-wrapper';
+    const bodyGrid = document.createElement('div');
+    bodyGrid.className = 'juanlunaspreadsheet-list-view__grid';
+    bodyGrid.style.gridTemplateColumns = gridTemplateColumns;
+
+    // --- 4. Populate Header ---
+    // This could be refactored into a helper function for cleanliness.
+    const headers = ['Due date', 'Priority', 'Status', ...customColumns.map(c => c.name), '+'];
+    headers.forEach(text => {
+        const cell = document.createElement('div');
+        cell.className = 'juanlunaspreadsheet-list-view__header-cell';
+        if (text === '+') {
+            cell.classList.add('juanlunaspreadsheet-list-view__add-column-cell');
+        }
+        cell.textContent = text;
+        headerGrid.appendChild(cell);
+    });
+
+    // --- 5. Assemble and Append ---
+    headerContainer.appendChild(headerGrid);
+    bodyContainer.appendChild(bodyGrid);
+    gridScrollContainer.appendChild(headerContainer);
+    gridScrollContainer.appendChild(bodyContainer);
+    container.appendChild(gridScrollContainer);
+
+    // NOTE: The actual task rows are not rendered here.
+    // They will be dynamically added by `loadNextPage`.
+
+    return { bodyContainer, gridScrollContainer, headerContainer };
+}
+
+// NOTE: You would need to update your `loadNextPage` and `initializeDragAndDrop` functions
+// to work with this new structure, likely accepting both the left and right body grid elements
+// to append new rows to both sides simultaneously.
 
 
 /*
