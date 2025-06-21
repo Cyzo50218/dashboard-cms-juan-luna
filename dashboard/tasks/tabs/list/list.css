@@ -1736,3 +1736,113 @@ Custom class
             -ms-transform: rotate(45deg);
             transform: rotate(45deg);
         }
+
+        /* --- Tag Styles --- */
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+        .tag:hover {
+            border-color: #ccc;
+        }
+
+        /* --- Dropdown Styles --- */
+        .context-dropdown {
+            position: absolute;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+            min-width: 220px;
+            padding: 8px;
+        }
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            justify-content: space-between;
+        }
+        .dropdown-item:hover {
+            background-color: #f1f5f9;
+        }
+        .dropdown-color-swatch {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            margin-right: 12px;
+        }
+        .dropdown-color-swatch-placeholder {
+            width: 14px;
+            height: 14px;
+            margin-right: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .dropdown-item-edit-btn {
+            opacity: 0;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+        .dropdown-item:hover .dropdown-item-edit-btn {
+            opacity: 1;
+        }
+        .dropdown-separator {
+            border: none;
+            border-top: 1px solid #e5e7eb;
+            margin: 8px 0;
+        }
+
+        /* Assignee Styles */
+        .add-assignee-btn {
+            width: 24px;
+            height: 24px;
+            border: 1px dashed #ccc;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #9ca3af;
+            cursor: pointer;
+        }
+        .add-assignee-btn:hover {
+            background-color: #f3f4f6;
+            color: #111827;
+        }
+        .assignee-cell-content {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+        .rounded-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+      /* Drag and Drop Styles */
+        .ghost-class {
+            opacity: 0.5;
+            background: #cce5ff;
+        }
+        .drag-handle {
+            cursor: grab;
+        }
+        .sortable-chosen {
+            background: #f0f8ff;
+        }
+        
+        .juanlunacms-spreadsheetlist-section-dragging .tasks-container,
+        .juanlunacms-spreadsheetlist-section-dragging .add-task-wrapper {
+            display: none;
+        }
