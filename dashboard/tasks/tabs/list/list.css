@@ -128,7 +128,7 @@
 .section-title-cell {
     position: sticky;
     top: 0;
-    z-index: 10; /* Lower z-index than main header so it sticks underneath */
+    z-index: 999; /* Lower z-index than main header so it sticks underneath */
     background-color: #f0f0f0;
     grid-column: 1 / -1; /* This makes it span all columns */
 }

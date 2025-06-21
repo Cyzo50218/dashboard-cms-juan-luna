@@ -1381,21 +1381,37 @@ function renderBody(sectionsToRender, customColumns, container) {
     });
 }
 
+/**
+ * Creates a sticky section header row.
+ * This function builds the row as a single cell that spans all grid columns,
+ * and applies a class that makes it sticky to the top of the scroll container.
+ *
+ * @param {object} sectionData - The section object.
+ * @param {Array} customColumns - Passed for consistency, but not needed for this layout.
+ * @returns {HTMLElement} The complete, sticky section row element.
+ */
 function createSectionRow(sectionData, customColumns) {
+    // 1. Create the main row wrapper
     const row = document.createElement('div');
     row.className = 'grid-row-wrapper section-row-wrapper';
     row.dataset.sectionId = sectionData.id;
-    
+
+    // 2. Your logic for calculating attributes remains the same
     const chevronClass = sectionData.isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down';
-    
-    // Determine if title is editable
     const protectedTitles = ['Completed', 'Todo', 'Doing'];
     const isEditable = !protectedTitles.includes(sectionData.title.trim());
-    
     const titleAttributes = isEditable ? 'contenteditable="true"' : 'contenteditable="false"';
-    
+
+    // 3. Create only ONE cell that will act as the full-width header
     const titleCell = document.createElement('div');
-    titleCell.className = 'task-cell sticky-col-task section-title-cell';
+    
+    // This class is targeted by the CSS to make the row sticky to the top
+    titleCell.className = 'task-cell section-title-cell';
+
+    // 4. KEY FIX: This CSS property makes the single cell span all columns
+    titleCell.style.gridColumn = '1 / -1';
+    
+    // 5. Place all your detailed HTML inside this single, spanning cell
     titleCell.innerHTML = `
         <div class="section-title-wrapper">
             <i class="fas fa-grip-vertical drag-handle"></i>
@@ -1407,13 +1423,9 @@ function createSectionRow(sectionData, customColumns) {
         </button>
     `;
     row.appendChild(titleCell);
-    
-    const placeholderCount = 4 + customColumns.length + 1;
-    for (let i = 0; i < placeholderCount; i++) {
-        const placeholderCell = document.createElement('div');
-        placeholderCell.className = 'task-cell section-placeholder-cell';
-        row.appendChild(placeholderCell);
-    }
+
+    // NOTE: The loop that created placeholder cells has been removed.
+    // It is not needed because this single cell now covers the entire row.
     
     return row;
 }
