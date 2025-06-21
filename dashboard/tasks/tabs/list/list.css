@@ -32,7 +32,7 @@
     flex-direction: column;
     flex-grow: 1;
     overflow-x: auto;  /* HORIZONTAL SCROLL HERE */
-    overflow-y: hidden;
+    overflow-y: auto;
     width: 100%;
     min-height: 0;
 }
@@ -44,7 +44,7 @@
 
 .list-body-wrapper {
     overflow-y: auto;   /* VERTICAL SCROLL HERE */
-    overflow-x: hidden;
+    overflow-x: auto;
     height: calc(100vh - 160px); /* or whatever makes sense */
     width: fit-content; /* match grid content to enable horizontal scroll */
     min-height: 0;
