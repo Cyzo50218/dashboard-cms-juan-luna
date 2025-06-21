@@ -31,9 +31,9 @@ body {
 #main-container {
     display: flex;
     background: transparent;
-    overflow: hidden;
     position: relative;
     overflow: hidden;
+    height: calc(100vh - 60px);
     flex-grow: 1;
     min-height: 0;
 }
@@ -43,7 +43,7 @@ body {
     display: flex; /* Make it a flex container */
     flex-direction: column; /* Arrange children (tabs) vertically */
     flex: 1; /* Keep this to take available space in its parent */
-    overflow: hidden; /* Prevent this container itself from scrolling */
+    overflow: hidden;
     transition: margin 0.3s ease;
 }
 

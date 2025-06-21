@@ -23,8 +23,10 @@
 .list-view-container {
     display: flex;
     flex-direction: column;
-    height: 590px;
-    overflow: hidden; /* Prevents the whole page from scrolling */
+    /* This is the crucial part. It should fill the available height, not be auto. */
+    height: 100%; 
+    /* Or use viewport height if it's a top-level container */
+    /* height: 100vh; */
 }
 
 .section-title-cell,
@@ -75,7 +77,7 @@ button {
 /* This is now the single, main scrolling viewport for the entire grid */
 #task-list-body {
     flex-grow: 1;
-    overflow: auto; /* Handles both horizontal and vertical scrolling */
+    overflow: auto;
 }
 
 .grid-wrapper {
@@ -1609,158 +1611,91 @@ Custom class
     padding-top: 9px;
     margin-left: 6px;
 }
-.juanlunacms-spreadsheetlist-container {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    font-family: 'Segoe UI', sans-serif;
-    font-size: 14px;
-}
+/* Custom scrollbar for a cleaner look */
+        .juanlunacms-spreadsheetlist-custom-scrollbar::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        .juanlunacms-spreadsheetlist-custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9; /* slate-100 */
+        }
+        .juanlunacms-spreadsheetlist-custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1; /* slate-300 */
+            border-radius: 10px;
+            border: 2px solid #f1f5f9;
+        }
+        .juanlunacms-spreadsheetlist-custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; /* slate-400 */
+        }
+        /* Transitions for smooth shadow appearance */
+        .juanlunacms-spreadsheetlist-sticky-header, .juanlunacms-spreadsheetlist-left-sticky-pane {
+             transition: box-shadow 0.2s ease-in-out;
+        }
+        /* Custom shadow class for a clean, right-only shadow */
+        .juanlunacms-spreadsheetlist-shadow-right-custom {
+            box-shadow: 5px 0 5px -3px rgba(0, 0, 0, 0.1);
+        }
+        /* Ensure sticky elements have a background to prevent content from showing through during scroll */
+        .juanlunacms-spreadsheetlist-sticky-pane-bg {
+            background-color: white;
+        }
+         .juanlunacms-spreadsheetlist-sticky-pane-bg-alt {
+            background-color: #f8fafc; /* bg-slate-50 */
+        }
 
-/* Sticky Header Row */
-.juanlunacms-spreadsheetlist-header {
-    display: flex;
-    position: sticky;
-    top: 0;
-    background: #f9f9f9;
-    z-index: 50;
-    border-bottom: 1px solid #ddd;
-}
-
-/* Left Header */
-.juanlunacms-spreadsheetlist-left-header {
-    width: 240px;
-    min-width: 240px;
-    padding: 12px;
-    font-weight: 600;
-    background: #fff;
-    border-right: 1px solid #ddd;
-    position: sticky;
-    left: 0;
-    z-index: 51;
-}
-
-/* Right Header Scroll Container */
-.juanlunacms-spreadsheetlist-right-header-scroll {
-    overflow-x: auto;
-    width: 100%;
-}
-
-.juanlunacms-spreadsheetlist-right-header {
-    display: flex;
-    min-width: max-content;
-}
-
-.juanlunacms-spreadsheetlist-header-cell {
-    padding: 12px;
-    min-width: 160px;
-    font-weight: 600;
-    background: #f9f9f9;
-    border-right: 1px solid #ddd;
-    white-space: nowrap;
-}
-
-/* Body Container */
-.juanlunacms-spreadsheetlist-body {
-    display: flex;
-    flex-direction: column;
-}
-
-/* Full Row */
-.juanlunacms-spreadsheetlist-row {
-    display: flex;
-    width: 100%;
-}
-
-/* Left Cell (Fixed) */
-.juanlunacms-spreadsheetlist-left-cell {
-    width: 240px;
-    min-width: 240px;
-    padding: 10px;
-    border-right: 1px solid #eee;
-    border-bottom: 1px solid #f0f0f0;
-    background: #fff;
-    position: sticky;
-    left: 0;
-    z-index: 10;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    word-break: break-word;
-}
-
-/* Section Styling */
-.juanlunacms-spreadsheetlist-left-cell.section {
-    font-weight: bold;
-    background: #f5f5f5;
-}
-
-/* Add Task Row */
-.juanlunacms-spreadsheetlist-left-cell.add-task {
-    font-style: italic;
-    color: #888;
-    cursor: pointer;
-}
-
-.juanlunacms-spreadsheetlist-left-cell.add-task:hover {
-    background: #f1f1f1;
-}
-
-/* Right Row (scrollable) */
-.juanlunacms-spreadsheetlist-right-row {
-    display: flex;
-    min-width: max-content;
-}
-
-/* Cell Styling */
-.juanlunacms-spreadsheetlist-cell {
-    min-width: 160px;
-    padding: 10px;
-    border-bottom: 1px solid #f0f0f0;
-    border-right: 1px solid #f0f0f0;
-    background: #fff;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* Checkbox Styling */
-.juanlunacms-spreadsheetlist-left-cell input[type="checkbox"] {
-    appearance: none;
-    width: 16px;
-    height: 16px;
-    border-radius: 4px;
-    border: 1.5px solid #ccc;
-    background-color: #fff;
-    cursor: pointer;
-    position: relative;
-}
-
-.juanlunacms-spreadsheetlist-left-cell input[type="checkbox"]:checked {
-    background-color: #276ef1;
-    border-color: #276ef1;
-}
-
-.juanlunacms-spreadsheetlist-left-cell input[type="checkbox"]:checked::after {
-    content: '';
-    position: absolute;
-    top: 2px;
-    left: 5px;
-    width: 4px;
-    height: 9px;
-    border: solid white;
-    border-width: 0 2px 2px 0;
-    transform: rotate(45deg);
-}
-.juanlunacms-spreadsheetlist-header-cell.add-column {
-    text-align: center;
-    color: #555;
-    background: #f9f9f9;
-    min-width: 100px;
-    border-left: 1px solid #ddd;
-    font-weight: normal;
-}
-
-.juanlunacms-spreadsheetlist-header-cell.add-column:hover {
-    background: #eaeaea;
-}
+        /* --- Modern Checkbox Styles --- */
+        .juanlunacms-spreadsheetlist-custom-checkbox-container {
+            display: inline-block;
+            position: relative;
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+        .juanlunacms-spreadsheetlist-custom-checkbox-container input {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+            height: 0;
+            width: 0;
+        }
+        .juanlunacms-spreadsheetlist-custom-checkbox {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 18px;
+            width: 18px;
+            background-color: #fff;
+            border: 1.5px solid #ccc;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+        }
+        .juanlunacms-spreadsheetlist-custom-checkbox-container:hover input ~ .juanlunacms-spreadsheetlist-custom-checkbox {
+            border-color: #999;
+        }
+        .juanlunacms-spreadsheetlist-custom-checkbox-container input:checked ~ .juanlunacms-spreadsheetlist-custom-checkbox {
+            background-color: #28a745;
+            border-color: #28a745;
+        }
+        .juanlunacms-spreadsheetlist-custom-checkbox::after {
+            content: "";
+            position: absolute;
+            display: none;
+        }
+        .juanlunacms-spreadsheetlist-custom-checkbox-container input:checked ~ .juanlunacms-spreadsheetlist-custom-checkbox::after {
+            display: block;
+        }
+        .juanlunacms-spreadsheetlist-custom-checkbox-container .juanlunacms-spreadsheetlist-custom-checkbox::after {
+            left: 5px;
+            top: 2px;
+            width: 5px;
+            height: 10px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            -webkit-transform: rotate(45deg);
+            -ms-transform: rotate(45deg);
+            transform: rotate(45deg);
+        }

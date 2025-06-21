@@ -4,11 +4,13 @@ svg {
     stroke-width: 2;
 }
 
+/* --- AFTER --- */
 .project-container {
     border-radius: 8px;
     width: 100%;
-    overflow: hidden;
-    background-color: #ffffff;
+    height: 100%;           /* Add this */
+    display: flex;          /* And this */
+    flex-direction: column; /* And this */
 }
 
 .project-header {
@@ -164,8 +166,6 @@ button:hover {
     /* Make it a flex container to control its child's height */
     flex-direction: column;
     /* Arrange tab content vertically */
-    overflow-y: hidden;
-    overflow-x: hidden;
     min-height: 0;
     /* Important: Prevents flexbox from shrinking issues */
 }

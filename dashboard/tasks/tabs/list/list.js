@@ -1235,169 +1235,240 @@ function renderVisibleRows(bodyContainer, bodyGrid) {
  */
 
 function render() {
-    if (!taskListBody) return;
+            if (!taskListBody) return;
 
-    const customColumns = [
-        { id: 'due_date', name: 'Due date' },
-        { id: 'priority', name: 'Priority' },
-        { id: 'status', name: 'Status' },
-        { id: 'progress', name: 'Progress' }
-    ];
+            // --- DATA ---
+            const defaultColumns = [
+                { id: 'priority', name: 'Priority' },
+                { id: 'status', name: 'Status' },
+                { id: 'date', name: 'Date' },
+                { id: 'assignee', name: 'Assignee' }
+            ];
 
-    const sections = [
-    {
-        name: 'To Do',
-        tasks: [
-            { name: 'Draft brief', completed: false, data: { due_date: 'Jun 17', priority: 'High', status: 'Not started' } },
-            { name: 'Schedule meeting', completed: true, data: { due_date: 'Jun 18', priority: 'Medium', status: 'Done' } },
-            { name: 'Collect feedback', completed: false, data: { due_date: 'Jun 19', priority: 'Low', status: 'In progress' } },
-            { name: 'Analyze requirements', completed: false, data: { due_date: 'Jun 20', priority: 'High', status: 'Blocked' } }
-        ]
-    },
-    {
-        name: 'In Progress',
-        tasks: [
-            { name: 'Design wireframes', completed: false, data: { due_date: 'Jun 21', priority: 'High', status: 'In progress' } },
-            { name: 'Develop components', completed: false, data: { due_date: 'Jun 22', priority: 'Medium', status: 'In progress' } },
-            { name: 'Unit testing', completed: false, data: { due_date: 'Jun 23', priority: 'Low', status: 'Pending' } }
-        ]
-    },
-    {
-        name: 'Review',
-        tasks: [
-            { name: 'Code review', completed: false, data: { due_date: 'Jun 24', priority: 'Medium', status: 'Pending' } },
-            { name: 'QA feedback', completed: false, data: { due_date: 'Jun 25', priority: 'High', status: 'On hold' } }
-        ]
-    },
-    {
-        name: 'Completed',
-        tasks: [
-            { name: 'Launch MVP', completed: true, data: { due_date: 'Jun 10', priority: 'High', status: 'Done' } },
-            { name: 'Finalize docs', completed: true, data: { due_date: 'Jun 12', priority: 'Medium', status: 'Done' } }
-        ]
-    }
-];
+            const customColumns = [
+                 { id: 'custom_field_1', name: 'Team' },
+                 { id: 'custom_field_2', name: 'Effort' },
+                 { id: 'custom_field_3', name: 'Sprint' },
+                 { id: 'custom_field_4', name: 'Reviewer' }
+            ];
+            
+            const allColumns = [...defaultColumns, ...customColumns];
 
+            const sections = [
+                {
+                    name: 'To Do',
+                    tasks: [
+                        { name: 'Draft project brief for Q3 launch and initial stakeholder alignment', completed: false, data: { date: 'Jun 21', priority: 'High', status: 'Not started', assignee: 'Alex', custom_field_1: 'Marketing', custom_field_2: 'High', custom_field_3: 'Sprint 2', custom_field_4: 'Maria' } },
+                        { name: 'Schedule kickoff meeting with all stakeholders and prepare presentation slides', completed: true, data: { date: 'Jun 22', priority: 'Medium', status: 'Not started', assignee: 'Brenda', custom_field_1: 'Product', custom_field_2: 'Medium', custom_field_3: 'Sprint 2', custom_field_4: 'David' } },
+                    ]
+                },
+                {
+                    name: 'In Progress',
+                    tasks: [
+                        { name: 'Design wireframes for the main dashboard and user profile pages', completed: false, data: { date: 'Jun 25', priority: 'High', status: 'In progress', assignee: 'David', custom_field_1: 'Design', custom_field_2: 'High', custom_field_3: 'Sprint 2', custom_field_4: 'Maria' } },
+                        { name: 'Develop reusable UI components for the new design system', completed: false, data: { date: 'Jun 28', priority: 'Medium', status: 'In progress', assignee: 'Alex', custom_field_1: 'Engineering', custom_field_2: 'High', custom_field_3: 'Sprint 2', custom_field_4: 'John' } },
+                        { name: 'Another task in progress for scrolling demonstration purposes', completed: true, data: { date: 'Jun 29', priority: 'Low', status: 'In progress', assignee: 'Casey', custom_field_1: 'Design', custom_field_2: 'Low', custom_field_3: 'Sprint 3', custom_field_4: 'Emily' } },
+                        { name: 'Final QA testing on the new feature before the code freeze deadline', completed: false, data: { date: 'Jun 30', priority: 'High', status: 'In progress', assignee: 'Frank', custom_field_1: 'QA', custom_field_2: 'Medium', custom_field_3: 'Sprint 3', custom_field_4: 'Jane' } }
+                    ]
+                },
+                 {
+                    name: 'Completed',
+                    tasks: [
+                        { name: 'Deploy MVP to staging server for internal review', completed: true, data: { date: 'Jun 10', priority: 'High', status: 'Done', assignee: 'Brenda', custom_field_1: 'Engineering', custom_field_2: 'Medium', custom_field_3: 'Sprint 1', custom_field_4: 'Chloe' } },
+                    ]
+                },
+                 {
+                    name: 'Backlog',
+                    tasks: [
+                         { name: 'Integrate with third-party analytics service for event tracking', completed: false, data: { date: 'Jul 1', priority: 'Medium', status: 'Backlog', assignee: 'Unassigned', custom_field_1: 'Engineering', custom_field_2: 'High', custom_field_3: 'Sprint 4', custom_field_4: '' } },
+                         { name: 'Research new payment gateway options for international transactions', completed: false, data: { date: 'Jul 5', priority: 'Low', status: 'Backlog', assignee: 'Unassigned', custom_field_1: 'Product', custom_field_2: 'Medium', custom_field_3: 'Sprint 4', custom_field_4: '' } },
+                         { name: 'Plan the Q4 product development roadmap and feature prioritization', completed: false, data: { date: 'Jul 8', priority: 'High', status: 'Backlog', assignee: 'Brenda', custom_field_1: 'Product', custom_field_2: 'High', custom_field_3: 'Sprint 4', custom_field_4: '' } },
+                         { name: 'Update all front-end and back-end dependencies to their latest stable versions', completed: false, data: { date: 'Jul 10', priority: 'Medium', status: 'Backlog', assignee: 'Alex', custom_field_1: 'Engineering', custom_field_2: 'Low', custom_field_3: 'Sprint 4', custom_field_4: '' } },
+                    ]
+                }
+            ];
+            
+            taskListBody.innerHTML = '';
 
-    taskListBody.innerHTML = '';
+            // --- HTML STRUCTURE ---
+            const container = document.createElement('div');
+            container.className = 'w-full h-full bg-white overflow-auto juanlunacms-spreadsheetlist-custom-scrollbar border border-slate-200 rounded-lg shadow-sm';
 
-    // =============== MAIN CONTAINER ===============
-    const container = document.createElement('div');
-    container.className = 'juanlunacms-spreadsheetlist-container';
+            const table = document.createElement('div');
+            table.className = 'min-w-max relative'; 
+            
+            // --- HEADER ---
+            const header = document.createElement('div');
+            header.className = 'flex sticky top-0 z-20 bg-white juanlunacms-spreadsheetlist-sticky-header';
 
-    // =============== HEADER ROW ===============
-    const headerRow = document.createElement('div');
-    headerRow.className = 'juanlunacms-spreadsheetlist-header';
-
-    const leftHeader = document.createElement('div');
-    leftHeader.className = 'juanlunacms-spreadsheetlist-left-header';
-    leftHeader.textContent = 'Name';
-
-    const rightHeaderScroll = document.createElement('div');
-    rightHeaderScroll.className = 'juanlunacms-spreadsheetlist-right-header-scroll';
-    
-    const rightHeader = document.createElement('div');
-    rightHeader.className = 'juanlunacms-spreadsheetlist-right-header';
-    
-    // Build header first
-customColumns.forEach(col => {
-    const cell = document.createElement('div');
-    cell.className = 'juanlunacms-spreadsheetlist-header-cell';
-    cell.textContent = col.name;
-    rightHeader.appendChild(cell);
-});
-
-// THEN append ➕ button at the end *before appending the rightHeader*
-const addColumnBtn = document.createElement('div');
-addColumnBtn.className = 'juanlunacms-spreadsheetlist-header-cell add-column';
-addColumnBtn.innerHTML = `<span style="font-size: 20px; cursor: pointer;">➕</span>`;
-addColumnBtn.addEventListener('click', () => {
-    console.log('Open Add Column Dialog');
-});
-rightHeader.appendChild(addColumnBtn); // append to rightHeader
-
-// Now append fully built rightHeader into scroll container
-rightHeaderScroll.appendChild(rightHeader);
-
-// Continue with rest of header
-headerRow.appendChild(leftHeader);
-headerRow.appendChild(rightHeaderScroll);
-container.appendChild(headerRow);
-
-    // =============== BODY ===============
-    const body = document.createElement('div');
-    body.className = 'juanlunacms-spreadsheetlist-body';
-
-    sections.forEach(section => {
-        // SECTION ROW
-        const row = document.createElement('div');
-        row.className = 'juanlunacms-spreadsheetlist-row';
-
-        const left = document.createElement('div');
-        left.className = 'juanlunacms-spreadsheetlist-left-cell section';
-        left.innerHTML = `<span class="juanlunacms-spreadsheetlist-section-toggle">▼</span> ${section.name}`;
-        row.appendChild(left);
-
-        const right = document.createElement('div');
-        right.className = 'juanlunacms-spreadsheetlist-right-row';
-        customColumns.forEach(() => {
-            const cell = document.createElement('div');
-            cell.className = 'juanlunacms-spreadsheetlist-cell';
-            right.appendChild(cell);
-        });
-        row.appendChild(right);
-        body.appendChild(row);
-
-        // TASK ROWS
-        section.tasks.forEach(task => {
-            const taskRow = document.createElement('div');
-            taskRow.className = 'juanlunacms-spreadsheetlist-row';
-
-            const leftTask = document.createElement('div');
-            leftTask.className = 'juanlunacms-spreadsheetlist-left-cell task';
-            leftTask.innerHTML = `
-                <input type="checkbox" ${task.completed ? 'checked' : ''}>
-                <span>${task.name}</span>
-            `;
-            taskRow.appendChild(leftTask);
-
-            const rightTask = document.createElement('div');
-            rightTask.className = 'juanlunacms-spreadsheetlist-right-row';
-            customColumns.forEach(col => {
-                const val = task.data[col.id] || '';
+            const leftHeader = document.createElement('div');
+            leftHeader.className = 'sticky left-0 z-10 w-72 md:w-96 lg:w-[420px] flex-shrink-0 px-4 py-3 font-semibold text-slate-600 border-r border-b border-slate-200 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
+            leftHeader.textContent = 'Task Name';
+            
+            const rightHeaderContent = document.createElement('div');
+            rightHeaderContent.className = 'flex flex-grow';
+            
+            allColumns.forEach(col => {
+                const isCustom = customColumns.some(customCol => customCol.id === col.id);
                 const cell = document.createElement('div');
-                cell.className = 'juanlunacms-spreadsheetlist-cell';
-                cell.textContent = val;
-                rightTask.appendChild(cell);
+                cell.className = 'group w-44 flex-shrink-0 px-4 py-3 font-semibold text-slate-600 border-r border-b border-slate-200 bg-white flex items-center justify-between';
+                
+                const cellText = document.createElement('span');
+                cellText.textContent = col.name;
+                cell.appendChild(cellText);
+
+                if (isCustom) {
+                    const cellMenu = document.createElement('div');
+                    cellMenu.className = 'opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer';
+                    cellMenu.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>`;
+                    cell.appendChild(cellMenu);
+                }
+                rightHeaderContent.appendChild(cell);
             });
-            taskRow.appendChild(rightTask);
-            body.appendChild(taskRow);
-        });
 
-        // ADD TASK ROW
-        const addRow = document.createElement('div');
-        addRow.className = 'juanlunacms-spreadsheetlist-row';
+            const addColumnBtn = document.createElement('div');
+            addColumnBtn.className = 'w-12 flex-shrink-0 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 cursor-pointer border-l border-b border-slate-200 bg-white';
+            rightHeaderContent.appendChild(addColumnBtn);
+            addColumnBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
+            
+            const headerSpacer = document.createElement('div');
+            headerSpacer.className = 'w-4 flex-shrink-0 border-b border-slate-200';
+            rightHeaderContent.appendChild(headerSpacer);
 
-        const leftAdd = document.createElement('div');
-        leftAdd.className = 'juanlunacms-spreadsheetlist-left-cell add-task';
-        leftAdd.textContent = 'Add task...';
+            header.appendChild(leftHeader);
+            header.appendChild(rightHeaderContent);
+            
+            // --- BODY ---
+            const body = document.createElement('div');
+            
+            sections.forEach(section => {
+                const sectionRow = document.createElement('div');
+                sectionRow.className = 'flex';
+                
+                const leftSectionCell = document.createElement('div');
+                leftSectionCell.className = 'sticky left-0 w-72 md:w-96 lg:w-[420px] flex-shrink-0 flex items-center gap-2 px-3 py-1.5 font-semibold text-slate-800 border-b border-r border-slate-200 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg hover:bg-slate-50';
+                leftSectionCell.innerHTML = `
+                    <div class="opacity-0 hover:opacity-100 transition-opacity cursor-grab">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle><circle cx="5" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="5" r="1"></circle><circle cx="19" cy="5" r="1"></circle><circle cx="5" cy="19" r="1"></circle><circle cx="19" cy="19" r="1"></circle></svg>
+                    </div>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="flex-shrink-0"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    <span>${section.name}</span>`;
 
-        const rightAdd = document.createElement('div');
-        rightAdd.className = 'juanlunacms-spreadsheetlist-right-row';
-        customColumns.forEach(() => {
-            const cell = document.createElement('div');
-            cell.className = 'juanlunacms-spreadsheetlist-cell';
-            rightAdd.appendChild(cell);
-        });
+                const rightSectionCell = document.createElement('div');
+                rightSectionCell.className = 'flex-grow flex border-b border-slate-200';
+                 allColumns.forEach(() => {
+                    const cell = document.createElement('div');
+                    cell.className = 'w-44 flex-shrink-0 border-r border-slate-200 h-full hover:bg-slate-50';
+                    rightSectionCell.appendChild(cell);
+                });
+                const emptyAddCell = document.createElement('div');
+                emptyAddCell.className = 'w-12 flex-shrink-0 h-full border-l border-slate-200 hover:bg-slate-50';
+                rightSectionCell.appendChild(emptyAddCell);
 
-        addRow.appendChild(leftAdd);
-        addRow.appendChild(rightAdd);
-        body.appendChild(addRow);
-    });
+                const emptyEndSpacer = document.createElement('div');
+                emptyEndSpacer.className = 'w-4 flex-shrink-0 h-full hover:bg-slate-50';
+                rightSectionCell.appendChild(emptyEndSpacer);
+                
+                sectionRow.appendChild(leftSectionCell);
+                sectionRow.appendChild(rightSectionCell);
+                body.appendChild(sectionRow);
 
-    container.appendChild(body);
-    taskListBody.appendChild(container);
-}
+                section.tasks.forEach(task => {
+                    const taskRow = document.createElement('div');
+                    taskRow.className = 'flex group';
+
+                    const leftTaskCell = document.createElement('div');
+                    leftTaskCell.className = 'sticky left-0 w-72 md:w-96 lg:w-[420px] flex-shrink-0 flex items-center gap-4 px-3 py-1.5 border-b border-r border-slate-200 group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
+                    leftTaskCell.innerHTML = `
+                        <div class="opacity-0 group-hover:opacity-100 transition-opacity cursor-grab">
+                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle><circle cx="5" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="5" r="1"></circle><circle cx="19" cy="5" r="1"></circle><circle cx="5" cy="19" r="1"></circle><circle cx="19" cy="19" r="1"></circle></svg>
+                        </div>
+                        <label class="juanlunacms-spreadsheetlist-custom-checkbox-container">
+                           <input type="checkbox" ${task.completed ? 'checked' : ''}>
+                           <span class="juanlunacms-spreadsheetlist-custom-checkbox"></span>
+                        </label>
+                        <span class="truncate">${task.name}</span>`;
+
+                    const rightTaskCells = document.createElement('div');
+                    rightTaskCells.className = 'flex-grow flex group-hover:bg-slate-50';
+                    allColumns.forEach(col => {
+                        const cell = document.createElement('div');
+                        cell.className = 'w-44 flex-shrink-0 px-3 py-1.5 border-r border-b border-slate-200 truncate';
+                        cell.textContent = task.data[col.id] || '';
+                        rightTaskCells.appendChild(cell);
+                    });
+                    
+                    const emptyAddCellTask = document.createElement('div');
+                    emptyAddCellTask.className = 'w-12 flex-shrink-0 h-full border-b border-l border-slate-200';
+                    rightTaskCells.appendChild(emptyAddCellTask);
+                    
+                    const emptyEndSpacerTask = document.createElement('div');
+                    emptyEndSpacerTask.className = 'w-4 flex-shrink-0 h-full border-b border-slate-200';
+                    rightTaskCells.appendChild(emptyEndSpacerTask);
+
+                    taskRow.appendChild(leftTaskCell);
+                    taskRow.appendChild(rightTaskCells);
+                    body.appendChild(taskRow);
+                });
+
+                const addRow = document.createElement('div');
+                addRow.className = 'flex group';
+                
+                const leftAddCell = document.createElement('div');
+                leftAddCell.className = 'sticky left-0 w-72 md:w-96 lg:w-[420px] flex-shrink-0 flex items-center px-3 py-1.5 text-slate-500 cursor-pointer border-r group-hover:bg-slate-100 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
+                
+                const indentedText = document.createElement('div');
+                indentedText.className = 'flex items-center gap-4 ml-8';
+                indentedText.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    <span>Add task...</span>
+                `;
+                leftAddCell.appendChild(indentedText);
+
+                const rightAddCells = document.createElement('div');
+                rightAddCells.className = 'flex-grow flex group-hover:bg-slate-100';
+                allColumns.forEach(() => {
+                    const cell = document.createElement('div');
+                    cell.className = 'w-44 flex-shrink-0 border-r border-slate-200 h-full';
+                    rightAddCells.appendChild(cell);
+                });
+                
+                const emptyAddCellLast = document.createElement('div');
+                emptyAddCellLast.className = 'w-12 flex-shrink-0 h-full border-l';
+                rightAddCells.appendChild(emptyAddCellLast);
+
+                const emptyEndSpacerLast = document.createElement('div');
+                emptyEndSpacerLast.className = 'w-4 flex-shrink-0 h-full';
+                rightAddCells.appendChild(emptyEndSpacerLast);
+
+                addRow.appendChild(leftAddCell);
+                addRow.appendChild(rightAddCells);
+                body.appendChild(addRow);
+            });
+
+            table.appendChild(header);
+            table.appendChild(body);
+            container.appendChild(table);
+            taskListBody.appendChild(container);
+
+            // --- DYNAMIC SHADOWS SCRIPT ---
+            const stickyHeader = container.querySelector('.juanlunacms-spreadsheetlist-sticky-header');
+            const leftStickyPanes = container.querySelectorAll('.juanlunacms-spreadsheetlist-left-sticky-pane');
+
+            container.addEventListener('scroll', () => {
+                if (container.scrollTop > 0) {
+                    stickyHeader.classList.add('shadow-md');
+                } else {
+                    stickyHeader.classList.remove('shadow-md');
+                }
+                if (container.scrollLeft > 0) {
+                    leftStickyPanes.forEach(pane => pane.classList.add('juanlunacms-spreadsheetlist-shadow-right-custom'));
+                } else {
+                    leftStickyPanes.forEach(pane => pane.classList.remove('juanlunacms-spreadsheetlist-shadow-right-custom'));
+                }
+            });
+        }
+
 
 /*
 function render() {
