@@ -1231,39 +1231,36 @@ function renderVisibleRows(bodyContainer, bodyGrid) {
  * REVISED: Builds the "Decoupled Scrolling" layout needed for a dedicated
  * vertical scrollbar area on the right.
  */
+
 function render() {
     if (!taskListBody) return;
 
+    // Reset state for a full re-render
+    currentItemOffset = 0;
+    isLoadingNextPage = false;
     const projectToRender = project;
-    const customColumns = projectToRender.customColumns || [];
 
-    // Clear the main container
+    // Build the Decoupled DOM Structure
     taskListBody.innerHTML = '';
-
-    // --- 1. Containers
-    const outerContainer = document.createElement('div');
-    outerContainer.className = 'grid-outer-container';
-
-    const innerScrollWrapper = document.createElement('div');
-    innerScrollWrapper.className = 'grid-inner-wrapper';
-
-    const headerRow = document.createElement('div');
-    headerRow.className = 'header-row grid-wrapper';
-
+    const gridScrollContainer = document.createElement('div');
+    gridScrollContainer.className = 'grid-scroll-container';
+    const headerContainer = document.createElement('div');
+    headerContainer.className = 'list-header-wrapper';
     const bodyContainer = document.createElement('div');
-    bodyContainer.className = 'body-rows-container';
+    bodyContainer.className = 'list-body-wrapper';
+    gridScrollContainer.appendChild(headerContainer);
+    gridScrollContainer.appendChild(bodyContainer);
+    taskListBody.appendChild(gridScrollContainer);
 
+    // Setup Grids
+    const headerGrid = document.createElement('div');
+    headerGrid.className = 'grid-wrapper';
     const bodyGrid = document.createElement('div');
     bodyGrid.className = 'grid-wrapper';
-
-    // Nest structure
+    headerContainer.appendChild(headerGrid);
     bodyContainer.appendChild(bodyGrid);
-    innerScrollWrapper.appendChild(headerRow);
-    innerScrollWrapper.appendChild(bodyContainer);
-    outerContainer.appendChild(innerScrollWrapper);
-    taskListBody.appendChild(outerContainer);
 
-    // --- 2. Grid Columns Setup
+    // Define and Apply Grid Columns
     const columnWidths = {
         taskName: 'minmax(350px, max-content)',
         assignee: '150px',
@@ -1283,25 +1280,27 @@ function render() {
         ...(customColumns || []).map(() => columnWidths.defaultCustom),
         columnWidths.addColumn
     ].join(' ');
-
-    headerRow.style.gridTemplateColumns = gridTemplateColumns;
+    headerGrid.style.gridTemplateColumns = gridTemplateColumns;
     bodyGrid.style.gridTemplateColumns = gridTemplateColumns;
-    headerRow.style.width = 'max-content';
-    bodyGrid.style.width = 'max-content';
+    
+    // Initial Render
+    renderHeader(projectToRender, headerGrid);
+    loadNextPage(bodyGrid); // Load first batch of tasks
 
-    // --- 3. Render header and body
-    renderHeader(projectToRender, headerRow);
-    renderBody(projectToRender, bodyGrid);
-
-    // --- 4. Scroll sync (optional if you want sticky header effect)
-    innerScrollWrapper.addEventListener('scroll', () => {
-        headerRow.style.transform = `translateX(-${innerScrollWrapper.scrollLeft}px)`;
+    // Event Listeners for scrolling
+    gridScrollContainer.addEventListener('scroll', () => {
+        headerContainer.scrollLeft = gridScrollContainer.scrollLeft;
+    });
+    bodyContainer.addEventListener('scroll', () => {
+        const { scrollTop, scrollHeight, clientHeight } = bodyContainer;
+        if (scrollTop + clientHeight >= scrollHeight - 300 && !isLoadingNextPage) {
+            loadNextPage(bodyGrid);
+        }
     });
 
     initializeDragAndDrop(bodyGrid);
+    // ... your other listeners (e.g., for header clicks)
 }
-
-
 
 function renderHeader(projectToRender, container) {
     const customColumns = projectToRender.customColumns || [];

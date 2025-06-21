@@ -19,54 +19,132 @@
     --task-row-padding: 0px 4px;
 }
 
-/* --- Core App Layout --- */
+/* =================================================
+   FINAL & COMPLETE CSS - ASANA-STYLE STICKY LAYOUT
+   ================================================= */
+
+/* --- Main Layout Frames --- */
 .list-view-container {
     display: flex;
     flex-direction: column;
+    flex: 1;
+    overflow: hidden;
     min-height: 0;
-    overflow: hidden; /* Prevents the whole page from scrolling */
+}
+.listview-header {
+    flex-shrink: 0;
+    padding: 8px 16px;
+    border-bottom: 1px solid #e8e8e8;
 }
 
-.grid-outer-container {
-    height: calc(100vh - 100px); /* adjust for header/nav */
+#task-list-body {
     display: flex;
     flex-direction: column;
+    flex-grow: 1;
+    overflow: hidden;
+    min-height: 0;
 }
 
-.grid-inner-wrapper {
-    flex: 1;
-    overflow: auto;
+.list-view-container {
+    display: flex;
+    flex-direction: column;
+    flex: 1; /* Makes the component fill its parent */
+    overflow: hidden;
+    min-height: 0;
+}
+.listview-header {
+    flex-shrink: 0;
+    padding: 8px 16px;
+    border-bottom: 1px solid #e8e8e8;
+}
+
+/* --- Main Grid Layout Manager --- */
+#task-list-body {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    overflow: hidden;
+    min-height: 0;
+}
+
+/* --- THE SCROLLING CONTAINERS (THE CORE OF THE SOLUTION) --- */
+
+/* The HORIZONTAL scroller: Always visible at the bottom of the component */
+.grid-scroll-container {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    overflow-x: auto;
+    overflow-y: hidden; /* Does NOT scroll vertically */
+    min-height: 0;
+}
+
+/* The VERTICAL scroller: Always visible on the right */
+.list-body-wrapper {
+    flex-grow: 1;
+    overflow-y: auto;
+    overflow-x: hidden; /* Does NOT scroll horizontally */
+    position: relative; /* Anchor for sticky children */
+}
+
+/* --- Grid Structure --- */
+.list-header-wrapper {
+    flex-shrink: 0;
     position: relative;
+    z-index: 30; /* Header must be on top */
 }
-
-.header-row {
-    display: grid;
-    grid-auto-rows: 50px;
-    position: sticky;
-    top: 0;
-    background: white;
-    z-index: 2;
-}
-
-.body-rows-container {
-    display: block;
-}
-
 .grid-wrapper {
     display: grid;
-    grid-auto-rows: 48px;
     width: max-content;
     min-width: 100%;
 }
-
-/* Sticky first column (optional) */
-.grid-cell:first-child {
-    position: sticky;
-    left: 0;
-    background: #f9f9f9;
-    z-index: 1;
+.grid-row-wrapper {
+    display: contents; /* Makes cells direct children of the grid */
 }
 
+/*
+=========================================
+=== STICKY BEHAVIOR (Frozen Panes) ======
+=========================================
+*/
+.header-cell,
+.task-cell {
+    padding: 8px 12px;
+    border-bottom: 1px solid #e8e8e8;
+    background-color: #fff;
+}
+
+/* 1. Makes ALL header cells sticky to the top */
+.header-cell {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background-color: #f7f8f9;
+    border-right: 1px solid #e8e8e8;
+    font-weight: 500;
+}
+
+/* 2. Makes SECTION headers sticky to the top */
+.section-title-cell {
+    position: sticky;
+    top: 0;
+    z-index: 10; /* Lower z-index than main header so it sticks underneath */
+    background-color: #f0f0f0;
+    grid-column: 1 / -1; /* This makes it span all columns */
+}
+
+/* 3. Makes the FIRST COLUMN sticky to the left */
+.sticky-col-task {
+    position: sticky;
+    left: 0;
+    z-index: 5; /* Above normal cells */
+    border-right: 1px solid #e8e8e8;
+}
+
+/* 4. Makes the TOP-LEFT "Name" header the master sticky cell */
+.sticky-col-header {
+    z-index: 25; /* Higher than other sticky elements */
+}
 
 .listview-header {
     display: flex;
