@@ -1249,7 +1249,7 @@ function render() {
 
     const bodyContainer = document.createElement('div');
     bodyContainer.className = 'list-body-wrapper'; // This will scroll VERTICALLY
-    
+
     // Assemble the layout: header and body are inside the horizontal scroller
     gridScrollContainer.appendChild(headerContainer);
     gridScrollContainer.appendChild(bodyContainer);
