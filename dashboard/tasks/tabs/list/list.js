@@ -1289,8 +1289,6 @@ function render() {
 
     headerGrid.style.gridTemplateColumns = gridTemplateColumns;
     bodyGrid.style.gridTemplateColumns = gridTemplateColumns;
-    headerGrid.style.width = 'max-content';
-    bodyGrid.style.width = 'max-content';
     // --- 4. Render Content ---
     // renderHeader now populates the headerGrid
     renderHeader(projectToRender, headerGrid);

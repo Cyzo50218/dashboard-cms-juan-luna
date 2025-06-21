@@ -55,7 +55,6 @@
     width: max-content; /* KEY to enable horizontal overflow */
 }
 
-
 .listview-header {
     display: flex;
     /* This aligns all items to the start initially */
