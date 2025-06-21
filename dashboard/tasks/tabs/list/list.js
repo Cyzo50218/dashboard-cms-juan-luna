@@ -1239,6 +1239,7 @@ function render() {
     // Reset state for a full re-render
     isLoadingNextPage = false;
     const projectToRender = project;
+    const customColumns = projectToRender.customColumns || [];
 
     // Build the Decoupled DOM Structure
     taskListBody.innerHTML = '';
