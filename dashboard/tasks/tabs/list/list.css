@@ -43,7 +43,7 @@
     flex-grow: 1;
     height: calc(100vh - 160px);
     overflow-y: auto;
-    width: fit-content;
+    width: 100%;
     overflow-x: auto;
 }
 
