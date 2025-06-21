@@ -1306,12 +1306,12 @@ function render() {
             leftHeader.textContent = 'Task Name';
             
             const rightHeaderContent = document.createElement('div');
-            rightHeaderContent.className = 'flex flex-grow';
+            rightHeaderContent.className = 'flex flex-grow border-b border-slate-200';
             
             allColumns.forEach(col => {
                 const isCustom = customColumns.some(customCol => customCol.id === col.id);
                 const cell = document.createElement('div');
-                cell.className = 'group w-44 flex-shrink-0 px-4 py-3 font-semibold text-slate-600 border-r border-b border-slate-200 bg-white flex items-center justify-between';
+                cell.className = 'group w-44 flex-shrink-0 px-4 py-3 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center justify-between';
                 
                 const cellText = document.createElement('span');
                 cellText.textContent = col.name;
@@ -1327,12 +1327,12 @@ function render() {
             });
 
             const addColumnBtn = document.createElement('div');
-            addColumnBtn.className = 'w-12 flex-shrink-0 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 cursor-pointer border-l border-b border-slate-200 bg-white';
+            addColumnBtn.className = 'w-12 flex-shrink-0 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 cursor-pointer border-l border-r border-slate-200 bg-white';
             rightHeaderContent.appendChild(addColumnBtn);
             addColumnBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
             
             const headerSpacer = document.createElement('div');
-            headerSpacer.className = 'w-4 flex-shrink-0 border-b border-slate-200';
+            headerSpacer.className = 'w-4 flex-shrink-0';
             rightHeaderContent.appendChild(headerSpacer);
 
             header.appendChild(leftHeader);
@@ -1343,10 +1343,10 @@ function render() {
             
             sections.forEach(section => {
                 const sectionRow = document.createElement('div');
-                sectionRow.className = 'flex';
+                sectionRow.className = 'flex border-b border-slate-200';
                 
                 const leftSectionCell = document.createElement('div');
-                leftSectionCell.className = 'sticky left-0 w-72 md:w-96 lg:w-[420px] flex-shrink-0 flex items-center gap-2 px-3 py-1.5 font-semibold text-slate-800 border-b border-r border-slate-200 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg hover:bg-slate-50';
+                leftSectionCell.className = 'sticky left-0 w-72 md:w-96 lg:w-[420px] flex-shrink-0 flex items-center gap-2 px-3 py-1.5 font-semibold text-slate-800 border-r border-slate-200 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg hover:bg-slate-50';
                 leftSectionCell.innerHTML = `
                     <div class="opacity-0 hover:opacity-100 transition-opacity cursor-grab">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle><circle cx="5" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="5" r="1"></circle><circle cx="19" cy="5" r="1"></circle><circle cx="5" cy="19" r="1"></circle><circle cx="19" cy="19" r="1"></circle></svg>
@@ -1355,14 +1355,14 @@ function render() {
                     <span>${section.name}</span>`;
 
                 const rightSectionCell = document.createElement('div');
-                rightSectionCell.className = 'flex-grow flex border-b border-slate-200';
+                rightSectionCell.className = 'flex-grow flex';
                  allColumns.forEach(() => {
                     const cell = document.createElement('div');
                     cell.className = 'w-44 flex-shrink-0 border-r border-slate-200 h-full hover:bg-slate-50';
                     rightSectionCell.appendChild(cell);
                 });
                 const emptyAddCell = document.createElement('div');
-                emptyAddCell.className = 'w-12 flex-shrink-0 h-full border-l border-slate-200 hover:bg-slate-50';
+                emptyAddCell.className = 'w-12 flex-shrink-0 h-full border-r border-slate-200 hover:bg-slate-50';
                 rightSectionCell.appendChild(emptyAddCell);
 
                 const emptyEndSpacer = document.createElement('div');
@@ -1375,10 +1375,10 @@ function render() {
 
                 section.tasks.forEach(task => {
                     const taskRow = document.createElement('div');
-                    taskRow.className = 'flex group';
+                    taskRow.className = 'flex group border-b border-slate-200';
 
                     const leftTaskCell = document.createElement('div');
-                    leftTaskCell.className = 'sticky left-0 w-72 md:w-96 lg:w-[420px] flex-shrink-0 flex items-center gap-4 px-3 py-1.5 border-b border-r border-slate-200 group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
+                    leftTaskCell.className = 'sticky left-0 w-72 md:w-96 lg:w-[420px] flex-shrink-0 flex items-center gap-4 px-3 py-1.5 border-r border-slate-200 group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
                     leftTaskCell.innerHTML = `
                         <div class="opacity-0 group-hover:opacity-100 transition-opacity cursor-grab">
                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle><circle cx="5" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="5" r="1"></circle><circle cx="19" cy="5" r="1"></circle><circle cx="5" cy="19" r="1"></circle><circle cx="19" cy="19" r="1"></circle></svg>
@@ -1393,17 +1393,17 @@ function render() {
                     rightTaskCells.className = 'flex-grow flex group-hover:bg-slate-50';
                     allColumns.forEach(col => {
                         const cell = document.createElement('div');
-                        cell.className = 'w-44 flex-shrink-0 px-3 py-1.5 border-r border-b border-slate-200 truncate';
+                        cell.className = 'w-44 flex-shrink-0 px-3 py-1.5 border-r border-slate-200 truncate';
                         cell.textContent = task.data[col.id] || '';
                         rightTaskCells.appendChild(cell);
                     });
                     
                     const emptyAddCellTask = document.createElement('div');
-                    emptyAddCellTask.className = 'w-12 flex-shrink-0 h-full border-b border-l border-slate-200';
+                    emptyAddCellTask.className = 'w-12 flex-shrink-0 h-full border-r border-slate-200';
                     rightTaskCells.appendChild(emptyAddCellTask);
                     
                     const emptyEndSpacerTask = document.createElement('div');
-                    emptyEndSpacerTask.className = 'w-4 flex-shrink-0 h-full border-b border-slate-200';
+                    emptyEndSpacerTask.className = 'w-4 flex-shrink-0 h-full';
                     rightTaskCells.appendChild(emptyEndSpacerTask);
 
                     taskRow.appendChild(leftTaskCell);
@@ -1429,12 +1429,12 @@ function render() {
                 rightAddCells.className = 'flex-grow flex group-hover:bg-slate-100';
                 allColumns.forEach(() => {
                     const cell = document.createElement('div');
-                    cell.className = 'w-44 flex-shrink-0 border-r border-slate-200 h-full';
+                    cell.className = 'w-44 flex-shrink-0 border-r h-full';
                     rightAddCells.appendChild(cell);
                 });
                 
                 const emptyAddCellLast = document.createElement('div');
-                emptyAddCellLast.className = 'w-12 flex-shrink-0 h-full border-l';
+                emptyAddCellLast.className = 'w-12 flex-shrink-0 h-full border-r';
                 rightAddCells.appendChild(emptyAddCellLast);
 
                 const emptyEndSpacerLast = document.createElement('div');
@@ -1468,7 +1468,6 @@ function render() {
                 }
             });
         }
-
 
 /*
 function render() {
