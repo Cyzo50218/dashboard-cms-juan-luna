@@ -1302,7 +1302,7 @@ function render() {
             header.className = 'flex sticky top-0 z-20 bg-white juanlunacms-spreadsheetlist-sticky-header';
 
             const leftHeader = document.createElement('div');
-            leftHeader.className = 'sticky left-0 z-10 w-72 md:w-96 lg:w-[420px] flex-shrink-0 px-4 py-3 font-semibold text-slate-600 border-r border-b border-slate-200 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
+            leftHeader.className = 'sticky left-0 z-10 w-80 md:w-96 lg:w-[450px] flex-shrink-0 px-4 py-3 font-semibold text-slate-600 border-b border-r border-slate-200 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
             leftHeader.textContent = 'Task Name';
             
             const rightHeaderContent = document.createElement('div');
@@ -1327,7 +1327,7 @@ function render() {
             });
 
             const addColumnBtn = document.createElement('div');
-            addColumnBtn.className = 'w-12 flex-shrink-0 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 cursor-pointer border-l border-r border-slate-200 bg-white';
+            addColumnBtn.className = 'w-12 flex-shrink-0 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 cursor-pointer border-l border-slate-200 bg-white';
             rightHeaderContent.appendChild(addColumnBtn);
             addColumnBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
             
@@ -1346,7 +1346,7 @@ function render() {
                 sectionRow.className = 'flex border-b border-slate-200';
                 
                 const leftSectionCell = document.createElement('div');
-                leftSectionCell.className = 'sticky left-0 w-72 md:w-96 lg:w-[420px] flex-shrink-0 flex items-center gap-2 px-3 py-1.5 font-semibold text-slate-800 border-r border-slate-200 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg hover:bg-slate-50';
+                leftSectionCell.className = 'sticky left-0 w-80 md:w-96 lg:w-[450px] flex-shrink-0 flex items-center gap-2 px-3 py-1.5 font-semibold text-slate-800 border-r border-transparent juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg hover:bg-slate-50';
                 leftSectionCell.innerHTML = `
                     <div class="opacity-0 hover:opacity-100 transition-opacity cursor-grab">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle><circle cx="5" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="5" r="1"></circle><circle cx="19" cy="5" r="1"></circle><circle cx="5" cy="19" r="1"></circle><circle cx="19" cy="19" r="1"></circle></svg>
@@ -1356,13 +1356,14 @@ function render() {
 
                 const rightSectionCell = document.createElement('div');
                 rightSectionCell.className = 'flex-grow flex';
-                 allColumns.forEach(() => {
+                 allColumns.forEach((col, i) => {
                     const cell = document.createElement('div');
-                    cell.className = 'w-44 flex-shrink-0 border-r border-slate-200 h-full hover:bg-slate-50';
+                    const borderClass = i === 0 ? 'border-l border-slate-200' : '';
+                    cell.className = `w-44 flex-shrink-0 h-full hover:bg-slate-50 ${borderClass}`;
                     rightSectionCell.appendChild(cell);
                 });
                 const emptyAddCell = document.createElement('div');
-                emptyAddCell.className = 'w-12 flex-shrink-0 h-full border-r border-slate-200 hover:bg-slate-50';
+                emptyAddCell.className = 'w-12 flex-shrink-0 h-full hover:bg-slate-50';
                 rightSectionCell.appendChild(emptyAddCell);
 
                 const emptyEndSpacer = document.createElement('div');
@@ -1378,7 +1379,7 @@ function render() {
                     taskRow.className = 'flex group border-b border-slate-200';
 
                     const leftTaskCell = document.createElement('div');
-                    leftTaskCell.className = 'sticky left-0 w-72 md:w-96 lg:w-[420px] flex-shrink-0 flex items-center gap-4 px-3 py-1.5 border-r border-slate-200 group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
+                    leftTaskCell.className = 'sticky left-0 w-80 md:w-96 lg:w-[450px] flex-shrink-0 flex items-center gap-4 px-3 py-1.5 border-r border-transparent group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg juanlunacms-spreadsheetlist-dynamic-border';
                     leftTaskCell.innerHTML = `
                         <div class="opacity-0 group-hover:opacity-100 transition-opacity cursor-grab">
                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle><circle cx="5" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="5" r="1"></circle><circle cx="19" cy="5" r="1"></circle><circle cx="5" cy="19" r="1"></circle><circle cx="19" cy="19" r="1"></circle></svg>
@@ -1391,15 +1392,17 @@ function render() {
 
                     const rightTaskCells = document.createElement('div');
                     rightTaskCells.className = 'flex-grow flex group-hover:bg-slate-50';
-                    allColumns.forEach(col => {
+                    allColumns.forEach((col, i) => {
                         const cell = document.createElement('div');
-                        cell.className = 'w-44 flex-shrink-0 px-3 py-1.5 border-r border-slate-200 truncate';
+                        const borderClass = 'border-r';
+                        const leftBorderClass = i === 0 ? 'border-l' : '';
+                        cell.className = `w-44 flex-shrink-0 px-3 py-1.5 ${borderClass} ${leftBorderClass} border-slate-200 truncate`;
                         cell.textContent = task.data[col.id] || '';
                         rightTaskCells.appendChild(cell);
                     });
                     
                     const emptyAddCellTask = document.createElement('div');
-                    emptyAddCellTask.className = 'w-12 flex-shrink-0 h-full border-r border-slate-200';
+                    emptyAddCellTask.className = 'w-12 flex-shrink-0 h-full border-l border-slate-200';
                     rightTaskCells.appendChild(emptyAddCellTask);
                     
                     const emptyEndSpacerTask = document.createElement('div');
@@ -1415,7 +1418,7 @@ function render() {
                 addRow.className = 'flex group';
                 
                 const leftAddCell = document.createElement('div');
-                leftAddCell.className = 'sticky left-0 w-72 md:w-96 lg:w-[420px] flex-shrink-0 flex items-center px-3 py-1.5 text-slate-500 cursor-pointer border-r group-hover:bg-slate-100 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
+                leftAddCell.className = 'sticky left-0 w-80 md:w-96 lg:w-[450px] flex-shrink-0 flex items-center px-3 py-1.5 text-slate-500 cursor-pointer border-r-transparent group-hover:bg-slate-100 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
                 
                 const indentedText = document.createElement('div');
                 indentedText.className = 'flex items-center gap-4 ml-8';
@@ -1427,14 +1430,15 @@ function render() {
 
                 const rightAddCells = document.createElement('div');
                 rightAddCells.className = 'flex-grow flex group-hover:bg-slate-100';
-                allColumns.forEach(() => {
+                allColumns.forEach((col, i) => {
                     const cell = document.createElement('div');
-                    cell.className = 'w-44 flex-shrink-0 border-r h-full';
+                     const leftBorderClass = i === 0 ? 'border-l border-slate-200' : '';
+                    cell.className = `w-44 flex-shrink-0 h-full ${leftBorderClass}`;
                     rightAddCells.appendChild(cell);
                 });
                 
                 const emptyAddCellLast = document.createElement('div');
-                emptyAddCellLast.className = 'w-12 flex-shrink-0 h-full border-r';
+                emptyAddCellLast.className = 'w-12 flex-shrink-0 h-full';
                 rightAddCells.appendChild(emptyAddCellLast);
 
                 const emptyEndSpacerLast = document.createElement('div');
@@ -1453,22 +1457,39 @@ function render() {
 
             // --- DYNAMIC SHADOWS SCRIPT ---
             const stickyHeader = container.querySelector('.juanlunacms-spreadsheetlist-sticky-header');
-            const leftStickyPanes = container.querySelectorAll('.juanlunacms-spreadsheetlist-left-sticky-pane');
+            const dynamicBorders = container.querySelectorAll('.juanlunacms-spreadsheetlist-dynamic-border');
+            const leftHeaderPane = container.querySelector('.juanlunacms-spreadsheetlist-left-sticky-pane');
+            const allStickyPanes = container.querySelectorAll('.juanlunacms-spreadsheetlist-left-sticky-pane');
+
 
             container.addEventListener('scroll', () => {
+                const scrolled = container.scrollLeft > 0;
+                // Shadow for main header
                 if (container.scrollTop > 0) {
                     stickyHeader.classList.add('shadow-md');
                 } else {
                     stickyHeader.classList.remove('shadow-md');
                 }
-                if (container.scrollLeft > 0) {
-                    leftStickyPanes.forEach(pane => pane.classList.add('juanlunacms-spreadsheetlist-shadow-right-custom'));
+                // Shadow and border for left task pane cells
+                if (scrolled) {
+                    allStickyPanes.forEach(pane => {
+                        pane.classList.add('juanlunacms-spreadsheetlist-shadow-right-custom');
+                    });
+                    dynamicBorders.forEach(pane => {
+                        pane.classList.remove('border-transparent');
+                        pane.classList.add('border-slate-200');
+                    });
                 } else {
-                    leftStickyPanes.forEach(pane => pane.classList.remove('juanlunacms-spreadsheetlist-shadow-right-custom'));
+                     allStickyPanes.forEach(pane => {
+                        pane.classList.remove('juanlunacms-spreadsheetlist-shadow-right-custom');
+                    });
+                    dynamicBorders.forEach(pane => {
+                        pane.classList.add('border-transparent');
+                        pane.classList.remove('border-slate-200');
+                    });
                 }
             });
         }
-
 /*
 function render() {
     
