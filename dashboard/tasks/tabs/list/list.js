@@ -1310,7 +1310,7 @@ function render() {
             header.className = 'flex sticky top-0 z-20 bg-white juanlunacms-spreadsheetlist-sticky-header';
 
             const leftHeader = document.createElement('div');
-            leftHeader.className = 'sticky left-0 z-10 w-80 md:w-96 lg:w-[560px] flex-shrink-0 px-4 py-3 font-semibold text-slate-600 border-b border-r border-slate-200 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
+            leftHeader.className = 'sticky left-0 z-10 w-80 md:w-96 lg:w-[860px] flex-shrink-0 px-4 py-3 font-semibold text-slate-600 border-b border-r border-slate-200 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
             leftHeader.textContent = 'Task Name';
             
             const rightHeaderContent = document.createElement('div');
@@ -1358,7 +1358,7 @@ sectionGroupsContainer.className = 'section-groups-container flex flex-col gap-0
     sectionRow.className = 'flex border-b border-slate-200';
 
     const leftSectionCell = document.createElement('div');
-    leftSectionCell.className = 'group sticky left-0 w-80 md:w-96 lg:w-[560px] flex-shrink-0 flex items-center px-1 py-1.5 font-semibold text-slate-800 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg hover:bg-slate-50';
+    leftSectionCell.className = 'group sticky left-0 w-80 md:w-96 lg:w-[860px] flex-shrink-0 flex items-center px-1 py-1.5 font-semibold text-slate-800 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg hover:bg-slate-50';
     if (section.id) leftSectionCell.dataset.sectionId = section.id;
 
     leftSectionCell.innerHTML = `
@@ -1425,7 +1425,7 @@ sectionGroup.appendChild(sectionWrapper);
         const commountCountHTML = commentCount > 0 ? `<span class="comment-count">${commentCount }</span>` : '';
 
         const leftTaskCell = document.createElement('div');
-        leftTaskCell.className = 'sticky left-0 w-[560px] flex-shrink-0 flex items-center gap-1 px-2 py-1.5 border-r border-transparent group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg juanlunacms-spreadsheetlist-dynamic-border';
+        leftTaskCell.className = 'sticky left-0 w-[860px] flex-shrink-0 flex items-center gap-1 px-2 py-1.5 border-r border-transparent group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg juanlunacms-spreadsheetlist-dynamic-border';
        const isCompleted = task.status === 'Completed';
 
 const taskNameClass = isCompleted ? 'task-name task-name-completed' : 'task-name';
@@ -1497,69 +1497,59 @@ leftTaskCell.innerHTML = `
         taskRow.appendChild(rightTaskCells);
         sectionWrapper.appendChild(taskRow);
 
+// Inside your sections.forEach loop...
+
 Sortable.create(sectionWrapper, {
-  group: 'tasks',
-  handle: '.drag-handle',
-  animation: 150,
-  draggable: '.task-row-wrapper',
-   ghostClass: 'custom-ghost-hidden',
- onStart(evt) {
-    const taskRow = evt.item;
-    const name = taskRow.querySelector('[data-control="task-name"]')?.textContent || 'Untitled';
-
-    // ⛔️ Prevent browser drag image
-    const invisibleImage = document.createElement('div');
-    invisibleImage.style.width = '1px';
-    invisibleImage.style.height = '1px';
-    invisibleImage.style.opacity = '0';
-    document.body.appendChild(invisibleImage);
-    evt.originalEvent.dataTransfer.setDragImage(invisibleImage, 0, 0);
-
-    // ✅ Create absolute-position ghost
-    const overlay = document.createElement('div');
-    overlay.className = 'drag-ghost-overlay';
-
-    const ghost = document.createElement('div');
-    ghost.className = 'drag-ghost';
-    ghost.innerHTML = `<input type="checkbox" disabled><span>${name}</span>`;
-
-    overlay.appendChild(ghost);
-    document.body.appendChild(overlay);
-
-    // Store refs
-    window._dragOverlay = overlay;
-    window._dragGhost = ghost;
-
-    const move = (e) => {
-      ghost.style.position = 'fixed';
-      ghost.style.top = `${e.clientY}px`;
-      ghost.style.left = `${e.clientX}px`;
-      ghost.style.transform = 'translate(-50%, -50%)';
-    };
-
-    ghost._move = move;
-    window.addEventListener('mousemove', move);
-  },
-
-  onEnd(evt) {
-    // Restore dragged item
-    evt.item.classList.remove('custom-ghost-hidden');
-
-    // Clean ghost
-    if (window._dragOverlay) {
-      window._dragOverlay.remove();
-      window._dragOverlay = null;
+    group: 'tasks',
+    handle: '.drag-handle',
+    animation: 150,
+    draggable: '.task-row-wrapper',
+    ghostClass: 'custom-ghost-hidden', // This is for the placeholder, keep it if you use it
+    dragClass: 'item-is-dragging', // This will hide the original item
+    
+    // ... inside Sortable.create for tasks ...
+onStart(evt) {
+        const taskRow = evt.item;
+        const taskName = taskRow.querySelector('[data-control="task-name"]')?.textContent.trim() || 'Untitled';
+        
+        // Create the custom ghost element
+        const ghost = document.createElement('div');
+        ghost.className = 'task-drag-ghost';
+        ghost.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+          <path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/>
+        </svg>
+        <span>${taskName}</span>
+    `;
+        
+        // Position it off-screen and add to body
+        ghost.style.position = 'absolute';
+        ghost.style.top = '-9999px';
+        ghost.style.left = '-9999px';
+        document.body.appendChild(ghost);
+        
+        // Store reference for cleanup
+        taskRow._dragGhostEl = ghost;
+        
+        // *** THE KEY FIX ***
+        // Defer the setDragImage call to allow the browser to render the ghost.
+        setTimeout(() => {
+            if (evt.originalEvent.dataTransfer) {
+                // Adjust the offset (e.g., 20, 20) to position the ghost
+                // relative to the cursor.
+                evt.originalEvent.dataTransfer.setDragImage(ghost, 20, 20);
+            }
+        }, 0);
+    },
+    // onEnd remains the same...
+    onEnd(evt) {
+        // Clean up the ghost element
+        if (evt.item._dragGhostEl) {
+            document.body.removeChild(evt.item._dragGhostEl);
+            delete evt.item._dragGhostEl;
+        }
     }
-
-    if (window._dragGhost?._move) {
-      window.removeEventListener('mousemove', window._dragGhost._move);
-    }
-
-    window._dragGhost = null;
-  }
 });
-
-
 
     });
 
@@ -1569,7 +1559,7 @@ Sortable.create(sectionWrapper, {
     addRow.dataset.sectionId = section.id;
 
     const leftAddCell = document.createElement('div');
-    leftAddCell.className = 'sticky left-0 w-80 md:w-96 lg:w-[560px] flex-shrink-0 flex items-center px-3 py-1.5 group-hover:bg-slate-100 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
+    leftAddCell.className = 'sticky left-0 w-80 md:w-96 lg:w-[860px] flex-shrink-0 flex items-center px-3 py-1.5 group-hover:bg-slate-100 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
 
     const indentedText = document.createElement('div');
     indentedText.className = 'flex items-center gap-2 ml-8 text-slate-500 cursor-pointer hover:bg-slate-200 px-2 py-1 rounded transition';
@@ -1647,51 +1637,58 @@ Sortable.create(sectionWrapper, {
                 }
             });
 
-           Sortable.create(sectionGroupsContainer, {
-  handle: '.drag-handle',
-  animation: 150,
- onStart(evt) {
-  const group = evt.item;
-  const sectionId = group.dataset.sectionId;
-  const section = sections.find(s => s.id == sectionId); // use == because section.id might be number
+           // Outside the forEach loop, for the section container...
 
-  if (section) section.isCollapsed = true;
-
-  const wrapper = group.querySelector('.section-wrapper');
-  const addRow = group.querySelector('.add-task-row-wrapper');
-  if (wrapper) wrapper.style.display = 'none';
-  if (addRow) addRow.style.display = 'none';
-
-  const sectionName = group.querySelector('[contenteditable]')?.textContent.trim() || 'Untitled';
-  const ghost = document.createElement('div');
-  ghost.className = 'ghost-drag';
-  ghost.innerHTML = `
-    <div class="flex items-center gap-2 p-3 bg-white rounded-lg shadow-lg text-slate-800 font-semibold text-base">
-      <span class="fas fa-chevron-down text-slate-500"></span>
-      <span>${sectionName}</span>
-    </div>
-  `;
-  document.body.appendChild(ghost);
-  setTimeout(() => evt.originalEvent.dataTransfer.setDragImage(ghost, 10, 10));
-},
-  onEnd(evt) {
-    const group = evt.item;
-
-    // Uncollapse after drag
-    const sectionId = group.dataset.sectionId;
-    const section = sections.find(s => s.id === sectionId);
-    if (section) section.isCollapsed = false;
-
-    const wrapper = group.querySelector('.section-wrapper');
-    const addRow = group.querySelector('.add-task-row-wrapper');
-    if (wrapper) wrapper.style.display = '';
-    if (addRow) addRow.style.display = '';
-
-    document.querySelectorAll('.ghost-drag').forEach(el => el.remove());
-  }
+Sortable.create(sectionGroupsContainer, {
+    handle: '.drag-handle',
+    animation: 150,
+    dragClass: 'item-is-dragging', // Re-use the class to hide the original section
+    
+    // ... inside Sortable.create for sections ...
+onStart(evt) {
+        const sectionGroup = evt.item;
+        const sectionName = sectionGroup.querySelector('[contenteditable]')?.textContent.trim() || 'Untitled';
+        
+        const wrapper = sectionGroup.querySelector('.section-wrapper');
+        if (wrapper) wrapper.style.display = 'none';
+        
+        // Create the custom ghost element for the section
+        const ghost = document.createElement('div');
+        ghost.className = 'section-drag-ghost';
+        ghost.innerHTML = `
+        <span class="fas fa-chevron-down"></span>
+        <span>${sectionName}</span>
+    `;
+        
+        // Position off-screen and add to body
+        ghost.style.position = 'absolute';
+        ghost.style.top = '-9999px';
+        ghost.style.left = '-9999px';
+        document.body.appendChild(ghost);
+        
+        // Store reference for cleanup
+        sectionGroup._dragGhostEl = ghost;
+        
+        // *** THE KEY FIX ***
+        // Defer the setDragImage call.
+        setTimeout(() => {
+            if (evt.originalEvent.dataTransfer) {
+                evt.originalEvent.dataTransfer.setDragImage(ghost, 20, 20);
+            }
+        }, 0);
+    },
+    // onEnd remains the same...
+    onEnd(evt) {
+        const sectionGroup = evt.item;
+        const wrapper = sectionGroup.querySelector('.section-wrapper');
+        if (wrapper) wrapper.style.display = '';
+        
+        if (sectionGroup._dragGhostEl) {
+            document.body.removeChild(sectionGroup._dragGhostEl);
+            delete sectionGroup._dragGhostEl;
+        }
+    }
 });
-
-
 
         }
 

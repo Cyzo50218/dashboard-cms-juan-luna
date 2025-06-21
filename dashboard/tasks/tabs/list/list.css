@@ -1859,3 +1859,45 @@ Custom class
 .juanlunacms-spreadsheetlist-custom-checkbox-container input[type="checkbox"]:hover {
   border-color: #2563eb; /* Tailwind blue-600 */
 }
+
+/* Custom ghost element that follows the cursor */
+.task-drag-ghost {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 18px;
+    font-weight: 400;
+    background-color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    pointer-events: none; /* Important */
+}
+
+.section-drag-ghost {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    background: white;
+    padding: 12px;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #333;
+    pointer-events: none; /* Important */
+}
+.section-drag-ghost .fa-chevron-down {
+    color: #6b7280; /* text-slate-500 */
+}
+
+
+/* This class is applied by SortableJS to the item being dragged */
+.item-is-dragging {
+    opacity: 0 !important;
+    color: transparent !important;
+    background: transparent !important;
+    border-color: transparent !important;
+}
