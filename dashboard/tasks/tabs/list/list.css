@@ -31,33 +31,30 @@
     display: flex;
     flex-direction: column;
     flex-grow: 1;
-    overflow-x: auto;
-    overflow-y: hidden; /* It does NOT scroll vertically */
-    min-height: 0;
+    overflow-x: auto;  /* HORIZONTAL SCROLL HERE */
+    overflow-y: hidden;
     width: 100%;
+    min-height: 0;
 }
 
-/* --- THE VERTICAL SCROLLER (Your Placeholder) --- */
-/* This container's ONLY job is to scroll the rows vertically.
-   Its own native scrollbar becomes the visible placeholder on the right. */
-.list-body-wrapper {
-    overflow-y: auto;
-    overflow-x: hidden;
-    height: calc(100vh - 160px); /* Adjust as needed */
-    width: fit-content; /* So it matches the grid width */
-}
-
-/* --- Grid & Header Wrappers --- */
 .list-header-wrapper {
-    flex-shrink: 0;
-    z-index: 10;
-    width: fit-content;
+    overflow: hidden;
+    width: fit-content; /* match content size for horizontal sync */
 }
+
+.list-body-wrapper {
+    overflow-y: auto;   /* VERTICAL SCROLL HERE */
+    overflow-x: hidden;
+    height: calc(100vh - 160px); /* or whatever makes sense */
+    width: fit-content; /* match grid content to enable horizontal scroll */
+    min-height: 0;
+}
+
 .grid-wrapper {
     display: grid;
-    width: max-content;
-    min-width: 100%;
+    width: max-content; /* KEY to enable horizontal overflow */
 }
+
 
 .listview-header {
     display: flex;
