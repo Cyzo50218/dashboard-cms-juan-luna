@@ -27,30 +27,31 @@
     overflow: hidden; /* Prevents the whole page from scrolling */
 }
 
-.grid-scroll-container {
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1;
-    overflow-x: auto;
-    overflow-y: hidden; /* It does NOT scroll vertically */
-    min-height: 0;
+.grid-outer-container {
+    height: calc(100vh - 100px); /* adjust as needed */
+    overflow: hidden;
+    position: relative;
 }
 
-/* --- THE VERTICAL SCROLLER (Your Placeholder) --- */
-/* This container's ONLY job is to scroll the rows vertically.
-   Its own native scrollbar becomes the visible placeholder on the right. */
-.list-body-wrapper {
-    flex-grow: 1;
-    height: calc(100vh - 160px);
-    overflow-y: auto;
-    overflow-x: auto; 
+.grid-inner-wrapper {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    position: relative;
 }
 
-/* --- Grid & Header Wrappers --- */
-.list-header-wrapper {
-    flex-shrink: 0;
-    z-index: 10;
+.header-row {
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 2;
+    display: grid;
 }
+
+.body-rows-container {
+    display: block;
+}
+
 .grid-wrapper {
     display: grid;
     width: max-content;
