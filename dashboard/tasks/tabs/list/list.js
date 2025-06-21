@@ -1228,6 +1228,17 @@ function renderVisibleRows(bodyContainer, bodyGrid) {
     bodyGrid.style.transform = `translateY(${offsetY}px)`;
 }
 
+function loadNextPage(bodyGrid) {
+    if (isLoadingNextPage || !project.sections || currentItemOffset >= project.sections.length) return;
+    isLoadingNextPage = true;
+    const sectionToRender = project.sections[currentItemOffset];
+    if (sectionToRender) {
+        renderBody([sectionToRender], project.customColumns, bodyGrid);
+    }
+    currentItemOffset++;
+    isLoadingNextPage = false;
+}
+
 /**
  * REVISED: Builds the "Decoupled Scrolling" layout needed for a dedicated
  * vertical scrollbar area on the right.
@@ -1347,33 +1358,26 @@ function renderHeader(projectToRender, container) {
     container.appendChild(row);
 }
 
-function renderBody(projectToRender, container) {
-    const customColumns = projectToRender.customColumns || [];
+function renderBody(sectionsToRender, customColumns, container) {
+    // Loop through each section that needs to be rendered for the current "page"
+    (sectionsToRender || []).forEach(section => {
 
-    (projectToRender.sections || []).forEach(section => {
-        const sectionWrapper = document.createElement('div');
-        sectionWrapper.className = 'section-wrapper';
-        sectionWrapper.dataset.sectionId = section.id;
-
-        // Create and add the section title row (uses updated helper)
+        // 1. Create and add the section title row
         const sectionRow = createSectionRow(section, customColumns);
-        sectionWrapper.appendChild(sectionRow);
+        container.appendChild(sectionRow);
 
-        // Add tasks if not collapsed
+        // 2. Add all tasks for this section (if it's not collapsed)
         if (!section.isCollapsed && section.tasks) {
             section.tasks.forEach(task => {
-                // Uses updated helper
                 const taskRow = createTaskRow(task, customColumns);
-                sectionWrapper.appendChild(taskRow);
+                container.appendChild(taskRow);
             });
         }
 
-        // Add the "Add Task" row (uses updated helper)
-        const addTaskRow = createAddTaskRow(customColumns, section.id);
-        sectionWrapper.appendChild(addTaskRow);
-
-        // Append to main grid container
-        container.appendChild(sectionWrapper);
+        // 3. THIS IS YOUR REQUESTED LOGIC, ALREADY INCLUDED:
+        // Create and add the "Add Task" row for this specific section.
+        const addTaskRow = createAddTaskRow(section, customColumns);
+        container.appendChild(addTaskRow);
     });
 }
 
