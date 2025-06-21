@@ -1260,8 +1260,8 @@ function render() {
                     isCollapsed: true,
                     id: 1222333,
                     tasks: [
-                        { name: 'Draft project brief for Q3 launch and initial stakeholder alignment', completed: false, data: { date: 'Jun 21', priority: 'High', status: 'Not started', assignee: 'Alex', custom_field_1: 'Marketing', custom_field_2: 'High', custom_field_3: 'Sprint 2', custom_field_4: 'Maria' } },
-                        { name: 'Schedule kickoff meeting with all stakeholders and prepare presentation slides', completed: true, data: { date: 'Jun 22', priority: 'Medium', status: 'Not started', assignee: 'Brenda', custom_field_1: 'Product', custom_field_2: 'Medium', custom_field_3: 'Sprint 2', custom_field_4: 'David' } },
+                        { name: 'Draft project brief for Q3 launch and initial stakeholder alignment', completed: false,  date: 'Jun 21', priority: 'High', status: 'Not started', assignee: 'Alex', custom_field_1: 'Marketing', custom_field_2: 'High', custom_field_3: 'Sprint 2', custom_field_4: 'Maria' },
+                        { name: 'Schedule kickoff meeting with all stakeholders and prepare presentation slides', completed: true, date: 'Jun 22', priority: 'Medium', status: 'Not started', assignee: 'Brenda', custom_field_1: 'Product', custom_field_2: 'Medium', custom_field_3: 'Sprint 2', custom_field_4: 'David'},
                     ]
                 },
                 {
@@ -1269,10 +1269,10 @@ function render() {
                     isCollapsed: false,
                     id: 1222333,
                     tasks: [
-                        { name: 'Design wireframes for the main dashboard and user profile pages', completed: false, status: 'Completed', data: { date: 'Jun 25', priority: 'High', status: 'In progress', assignee: 'David', custom_field_1: 'Design', custom_field_2: 'High', custom_field_3: 'Sprint 2', custom_field_4: 'Maria' } },
-                        { name: 'Develop reusable UI components for the new design system', completed: false, data: { date: 'Jun 28', priority: 'Medium', status: 'In progress', assignee: 'Alex', custom_field_1: 'Engineering', custom_field_2: 'High', custom_field_3: 'Sprint 2', custom_field_4: 'John' } },
-                        { name: 'Another task in progress for scrolling demonstration purposes', completed: true, data: { date: 'Jun 29', priority: 'Low', status: 'In progress', assignee: 'Casey', custom_field_1: 'Design', custom_field_2: 'Low', custom_field_3: 'Sprint 3', custom_field_4: 'Emily' } },
-                        { name: 'Final QA testing on the new feature before the code freeze deadline', completed: false, data: { date: 'Jun 30', priority: 'High', status: 'In progress', assignee: 'Frank', custom_field_1: 'QA', custom_field_2: 'Medium', custom_field_3: 'Sprint 3', custom_field_4: 'Jane' } }
+                        { name: 'Design wireframes for the main dashboard and user profile pages', completed: false, status: 'Completed', date: 'Jun 25', priority: 'High', status: 'In progress', assignee: 'David', custom_field_1: 'Design', custom_field_2: 'High', custom_field_3: 'Sprint 2', custom_field_4: 'Maria' },
+                        { name: 'Develop reusable UI components for the new design system', completed: false, date: 'Jun 28', priority: 'Medium', status: 'In progress', assignee: 'Alex', custom_field_1: 'Engineering', custom_field_2: 'High', custom_field_3: 'Sprint 2', custom_field_4: 'John' },
+                        { name: 'Another task in progress for scrolling demonstration purposes', completed: true, date: 'Jun 29', priority: 'Low', status: 'In progress', assignee: 'Casey', custom_field_1: 'Design', custom_field_2: 'Low', custom_field_3: 'Sprint 3', custom_field_4: 'Emily' },
+                        { name: 'Final QA testing on the new feature before the code freeze deadline', completed: false, date: 'Jun 30', priority: 'High', status: 'In progress', assignee: 'Frank', custom_field_1: 'QA', custom_field_2: 'Medium', custom_field_3: 'Sprint 3', custom_field_4: 'Jane' } 
                     ]
                 },
                  {
@@ -1280,7 +1280,7 @@ function render() {
                     isCollapsed: true,
                     id: 1222333,
                     tasks: [
-                        { name: 'Deploy MVP to staging server for internal review', completed: true, data: { date: 'Jun 10', priority: 'High', status: 'Done', assignee: 'Brenda', custom_field_1: 'Engineering', custom_field_2: 'Medium', custom_field_3: 'Sprint 1', custom_field_4: 'Chloe' } },
+                        { name: 'Deploy MVP to staging server for internal review', completed: true, date: 'Jun 10', priority: 'High', status: 'Done', assignee: 'Brenda', custom_field_1: 'Engineering', custom_field_2: 'Medium', custom_field_3: 'Sprint 1', custom_field_4: 'Chloe' },
                     ]
                 },
                  {
@@ -1349,6 +1349,10 @@ function render() {
             // --- BODY ---
             const body = document.createElement('div');
             
+            const sectionGroupsContainer = document.createElement('div');
+sectionGroupsContainer.className = 'section-groups-container flex flex-col gap-0';
+
+            
             sections.forEach(section => {
     const sectionRow = document.createElement('div');
     sectionRow.className = 'flex border-b border-slate-200';
@@ -1358,7 +1362,7 @@ function render() {
     if (section.id) leftSectionCell.dataset.sectionId = section.id;
 
     leftSectionCell.innerHTML = `
-        <div class="drag-handle group-hover:opacity-100 transition-opacity cursor-grab mr-2 p-1 rounded flex items-center justify-center hover:bg-slate-200 user-select-none" onmousedown="event.preventDefault()">
+        <div class="drag-handle group-hover:opacity-100 transition-opacity cursor-grab mr-2 p-1 rounded flex items-center justify-center hover:bg-slate-200 user-select-none">
             <span class="material-icons text-slate-500 select-none" style="font-size: 20px;" draggable="false">drag_indicator</span>
         </div>
 
@@ -1390,18 +1394,25 @@ function render() {
 
     sectionRow.appendChild(leftSectionCell);
     sectionRow.appendChild(rightSectionCell);
-    body.appendChild(sectionRow);
+   const sectionGroup = document.createElement('div');
+sectionGroup.className = 'section-group';
+sectionGroup.dataset.sectionId = section.id;
+
+sectionGroup.appendChild(sectionRow);
+sectionGroupsContainer.appendChild(sectionGroup);
 
     // Create sectionWrapper container and append to body
     const sectionWrapper = document.createElement('div');
     sectionWrapper.className = 'section-wrapper w-full';
     sectionWrapper.dataset.sectionId = section.id;
-    body.appendChild(sectionWrapper);
+
+    
+sectionGroup.appendChild(sectionWrapper);
 
     // ⛔️ Skip rendering tasks and add row if collapsed
     if (section.isCollapsed) return;
 
-    // Render task rows
+    // Render task rows`
     section.tasks.forEach(task => {
         const taskRow = document.createElement('div');
         taskRow.className = 'task-row-wrapper flex group border-b border-slate-200';
@@ -1420,7 +1431,7 @@ function render() {
 const taskNameClass = isCompleted ? 'task-name task-name-completed' : 'task-name';
 
 leftTaskCell.innerHTML = `
-    <div class="drag-handle cursor-grab rounded flex items-center justify-center hover:bg-slate-200 user-select-none" onmousedown="event.preventDefault()">
+    <div class="drag-handle cursor-grab rounded flex items-center justify-center hover:bg-slate-200 user-select-none">
         <span class="material-icons text-slate-400 select-none opacity-1 group-hover:opacity-100 transition-opacity" style="font-size: 20px;" draggable="false">drag_indicator</span>
     </div>
 
@@ -1471,7 +1482,7 @@ leftTaskCell.innerHTML = `
             const borderClass = 'border-r';
             const leftBorderClass = i === 0 ? 'border-l' : '';
             cell.className = `w-44 flex-shrink-0 px-3 py-1.5 ${borderClass} ${leftBorderClass} border-slate-200 truncate`;
-            cell.textContent = task.data[col.id] || '';
+            cell.textContent = task[col.id] || '';
             rightTaskCells.appendChild(cell);
         });
 
@@ -1485,6 +1496,71 @@ leftTaskCell.innerHTML = `
         taskRow.appendChild(leftTaskCell);
         taskRow.appendChild(rightTaskCells);
         sectionWrapper.appendChild(taskRow);
+
+Sortable.create(sectionWrapper, {
+  group: 'tasks',
+  handle: '.drag-handle',
+  animation: 150,
+  draggable: '.task-row-wrapper',
+   ghostClass: 'custom-ghost-hidden',
+ onStart(evt) {
+    const taskRow = evt.item;
+    const name = taskRow.querySelector('[data-control="task-name"]')?.textContent || 'Untitled';
+
+    // ⛔️ Prevent browser drag image
+    const invisibleImage = document.createElement('div');
+    invisibleImage.style.width = '1px';
+    invisibleImage.style.height = '1px';
+    invisibleImage.style.opacity = '0';
+    document.body.appendChild(invisibleImage);
+    evt.originalEvent.dataTransfer.setDragImage(invisibleImage, 0, 0);
+
+    // ✅ Create absolute-position ghost
+    const overlay = document.createElement('div');
+    overlay.className = 'drag-ghost-overlay';
+
+    const ghost = document.createElement('div');
+    ghost.className = 'drag-ghost';
+    ghost.innerHTML = `<input type="checkbox" disabled><span>${name}</span>`;
+
+    overlay.appendChild(ghost);
+    document.body.appendChild(overlay);
+
+    // Store refs
+    window._dragOverlay = overlay;
+    window._dragGhost = ghost;
+
+    const move = (e) => {
+      ghost.style.position = 'fixed';
+      ghost.style.top = `${e.clientY}px`;
+      ghost.style.left = `${e.clientX}px`;
+      ghost.style.transform = 'translate(-50%, -50%)';
+    };
+
+    ghost._move = move;
+    window.addEventListener('mousemove', move);
+  },
+
+  onEnd(evt) {
+    // Restore dragged item
+    evt.item.classList.remove('custom-ghost-hidden');
+
+    // Clean ghost
+    if (window._dragOverlay) {
+      window._dragOverlay.remove();
+      window._dragOverlay = null;
+    }
+
+    if (window._dragGhost?._move) {
+      window.removeEventListener('mousemove', window._dragGhost._move);
+    }
+
+    window._dragGhost = null;
+  }
+});
+
+
+
     });
 
     // Add task row
@@ -1526,8 +1602,10 @@ leftTaskCell.innerHTML = `
     addRow.appendChild(leftAddCell);
     addRow.appendChild(rightAddCells);
     sectionWrapper.appendChild(addRow);
+
 });
 
+    body.appendChild(sectionGroupsContainer);
 
             table.appendChild(header);
             table.appendChild(body);
@@ -1568,7 +1646,61 @@ leftTaskCell.innerHTML = `
                     });
                 }
             });
+
+           Sortable.create(sectionGroupsContainer, {
+  handle: '.drag-handle',
+  animation: 150,
+ onStart(evt) {
+  const group = evt.item;
+  const sectionId = group.dataset.sectionId;
+  const section = sections.find(s => s.id == sectionId); // use == because section.id might be number
+
+  if (section) section.isCollapsed = true;
+
+  const wrapper = group.querySelector('.section-wrapper');
+  const addRow = group.querySelector('.add-task-row-wrapper');
+  if (wrapper) wrapper.style.display = 'none';
+  if (addRow) addRow.style.display = 'none';
+
+  const sectionName = group.querySelector('[contenteditable]')?.textContent.trim() || 'Untitled';
+  const ghost = document.createElement('div');
+  ghost.className = 'ghost-drag';
+  ghost.innerHTML = `
+    <div class="flex items-center gap-2 p-3 bg-white rounded-lg shadow-lg text-slate-800 font-semibold text-base">
+      <span class="fas fa-chevron-down text-slate-500"></span>
+      <span>${sectionName}</span>
+    </div>
+  `;
+  document.body.appendChild(ghost);
+  setTimeout(() => evt.originalEvent.dataTransfer.setDragImage(ghost, 10, 10));
+},
+  onEnd(evt) {
+    const group = evt.item;
+
+    // Uncollapse after drag
+    const sectionId = group.dataset.sectionId;
+    const section = sections.find(s => s.id === sectionId);
+    if (section) section.isCollapsed = false;
+
+    const wrapper = group.querySelector('.section-wrapper');
+    const addRow = group.querySelector('.add-task-row-wrapper');
+    if (wrapper) wrapper.style.display = '';
+    if (addRow) addRow.style.display = '';
+
+    document.querySelectorAll('.ghost-drag').forEach(el => el.remove());
+  }
+});
+
+
+
         }
+
+        function handleMouseMoveDragGhost(e) {
+  if (!window._currentGhost) return;
+  window._currentGhost.style.left = `${e.clientX}px`;
+  window._currentGhost.style.top = `${e.clientY}px`;
+}
+
 /*
 function render() {
     
