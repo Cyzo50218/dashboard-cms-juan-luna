@@ -24,7 +24,7 @@
     display: flex;
     flex-direction: column;
     /* This is the crucial part. It should fill the available height, not be auto. */
-    height: 100%; 
+    height: 100%;
     /* Or use viewport height if it's a top-level container */
     /* height: 100vh; */
 }
@@ -37,7 +37,7 @@
 .listview-header {
     display: flex;
     /* This aligns all items to the start initially */
-    justify-content: flex-start; 
+    justify-content: flex-start;
     align-items: center;
     flex-shrink: 0;
     margin-bottom: 0;
@@ -47,11 +47,13 @@
 
 .header-controls-right {
     display: flex;
-    gap: 0.5rem; /* Increased gap slightly for better visuals */
+    gap: 0.5rem;
+    /* Increased gap slightly for better visuals */
     /* This is the key change: an auto left margin will push this
        element all the way to the right of the flex container. */
-    margin-left: auto; 
+    margin-left: auto;
 }
+
 button {
     background-color: transparent;
     border: 1px solid var(--text-secondary-color);
@@ -59,14 +61,16 @@ button {
     /* Slightly reduced button padding */
     padding: 0.4rem 0.8rem;
     cursor: pointer;
-    font-size: 0.85rem; /* Slightly smaller font size for buttons */
+    font-size: 0.85rem;
+    /* Slightly smaller font size for buttons */
     font-weight: 500;
     color: var(--text-color);
     transition: background-color 0.2s, color 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.4rem; /* Reduced gap inside buttons */
+    gap: 0.4rem;
+    /* Reduced gap inside buttons */
 }
 
 .add-task-header-btn {
@@ -77,14 +81,16 @@ button {
     padding: 0.4rem 0.8rem;
     cursor: pointer;
     margin-left: 8px;
-    font-size: 0.85rem; /* Slightly smaller font size for buttons */
+    font-size: 0.85rem;
+    /* Slightly smaller font size for buttons */
     font-weight: 500;
     color: var(--text-color);
     transition: background-color 0.2s, color 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.4rem; /* Reduced gap inside buttons */
+    gap: 0.4rem;
+    /* Reduced gap inside buttons */
 }
 
 
@@ -96,14 +102,16 @@ button {
     padding: 0.4rem 0.8rem;
     margin-left: 8px;
     cursor: pointer;
-    font-size: 0.85rem; /* Slightly smaller font size for buttons */
+    font-size: 0.85rem;
+    /* Slightly smaller font size for buttons */
     font-weight: 500;
     color: var(--text-color);
     transition: background-color 0.2s, color 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.4rem; /* Reduced gap inside buttons */
+    gap: 0.4rem;
+    /* Reduced gap inside buttons */
 }
 
 /* We no longer use the old header element for structure */
@@ -124,8 +132,10 @@ button {
 /* NEW: This uses subgrid to align wrapped rows to the main grid */
 .grid-row-wrapper {
     display: grid;
-    grid-column: 1 / -1; /* Makes the row span all columns */
-    grid-template-columns: subgrid; /* Aligns cells to the parent grid */
+    grid-column: 1 / -1;
+    /* Makes the row span all columns */
+    grid-template-columns: subgrid;
+    /* Aligns cells to the parent grid */
 }
 
 
@@ -134,7 +144,8 @@ button {
 .task-cell {
     display: flex;
     align-items: center;
-    background-color: var(--primary-bg); /* Give all cells a solid background */
+    background-color: var(--primary-bg);
+    /* Give all cells a solid background */
     border-right: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
     overflow: hidden;
@@ -1167,7 +1178,7 @@ Custom class
     from {
         opacity: 0;
     }
-    
+
     to {
         opacity: 1;
     }
@@ -1178,7 +1189,7 @@ Custom class
         opacity: 0;
         transform: scale(0.95) translateY(10px);
     }
-    
+
     to {
         opacity: 1;
         transform: scale(1) translateY(0);
@@ -1279,7 +1290,7 @@ Custom class
     appearance: none;
     -webkit-appearance: none;
     margin: 0;
-    
+
     /* Custom checkbox styles */
     height: 1.25em;
     width: 1.25em;
@@ -1648,201 +1659,203 @@ Custom class
     padding-top: 9px;
     margin-left: 6px;
 }
+
 /* Custom scrollbar for a cleaner look */
-        .juanlunacms-spreadsheetlist-custom-scrollbar::-webkit-scrollbar {
-            width: 10px;
-            height: 10px;
-        }
-        .juanlunacms-spreadsheetlist-custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f5f9; /* slate-100 */
-        }
-        .juanlunacms-spreadsheetlist-custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #cbd5e1; /* slate-300 */
-            border-radius: 10px;
-            border: 2px solid #f1f5f9;
-        }
-        .juanlunacms-spreadsheetlist-custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8; /* slate-400 */
-        }
-        /* Transitions for smooth shadow appearance */
-        .juanlunacms-spreadsheetlist-sticky-header, .juanlunacms-spreadsheetlist-left-sticky-pane {
-             transition: box-shadow 0.2s ease-in-out;
-        }
-        /* Custom shadow class for a clean, right-only shadow */
-        .juanlunacms-spreadsheetlist-shadow-right-custom {
-            box-shadow: 5px 0 5px -3px rgba(0, 0, 0, 0.1);
-        }
-        /* Ensure sticky elements have a background to prevent content from showing through during scroll */
-        .juanlunacms-spreadsheetlist-sticky-pane-bg {
-            background-color: white;
-        }
-         .juanlunacms-spreadsheetlist-sticky-pane-bg-alt {
-            background-color: #f8fafc; /* bg-slate-50 */
-        }
+.juanlunacms-spreadsheetlist-custom-scrollbar::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
 
-        /* --- Modern Checkbox Styles --- */
-        .juanlunacms-spreadsheetlist-custom-checkbox-container {
-            display: inline-block;
-            position: relative;
-            cursor: pointer;
-            width: 18px;
-            height: 18px;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
-        }
-        .juanlunacms-spreadsheetlist-custom-checkbox-container input {
-            position: absolute;
-            opacity: 0;
-            cursor: pointer;
-            height: 0;
-            width: 0;
-        }
-        .juanlunacms-spreadsheetlist-custom-checkbox {
-            position: absolute;
-            top: 0;
-            left: 0;
-            height: 18px;
-            width: 18px;
-            background-color: #fff;
-            border: 1.5px solid #ccc;
-            border-radius: 50%;
-            transition: all 0.2s ease;
-        }
-        .juanlunacms-spreadsheetlist-custom-checkbox-container:hover input ~ .juanlunacms-spreadsheetlist-custom-checkbox {
-            border-color: #999;
-        }
-        .juanlunacms-spreadsheetlist-custom-checkbox-container input:checked ~ .juanlunacms-spreadsheetlist-custom-checkbox {
-            background-color: #28a745;
-            border-color: #28a745;
-        }
-        .juanlunacms-spreadsheetlist-custom-checkbox::after {
-            content: "";
-            position: absolute;
-            display: none;
-        }
-        .juanlunacms-spreadsheetlist-custom-checkbox-container input:checked ~ .juanlunacms-spreadsheetlist-custom-checkbox::after {
-            display: block;
-        }
-        .juanlunacms-spreadsheetlist-custom-checkbox-container .juanlunacms-spreadsheetlist-custom-checkbox::after {
-            left: 5px;
-            top: 2px;
-            width: 5px;
-            height: 10px;
-            border: solid white;
-            border-width: 0 2px 2px 0;
-            -webkit-transform: rotate(45deg);
-            -ms-transform: rotate(45deg);
-            transform: rotate(45deg);
-        }
+.juanlunacms-spreadsheetlist-custom-scrollbar::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
 
-        /* --- Tag Styles --- */
-        .tag {
-            display: inline-flex;
-            align-items: center;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 500;
-            cursor: pointer;
-            border: 1px solid transparent;
-        }
-        .tag:hover {
-            border-color: #ccc;
-        }
+.juanlunacms-spreadsheetlist-custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+    border: 2px solid #f1f5f9;
+}
 
-        /* --- Dropdown Styles --- */
-        .context-dropdown {
-            position: absolute;
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            z-index: 1000;
-            min-width: 220px;
-            padding: 8px;
-        }
-        .dropdown-item {
-            display: flex;
-            align-items: center;
-            padding: 8px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            justify-content: space-between;
-        }
-        .dropdown-item:hover {
-            background-color: #f1f5f9;
-        }
-        .dropdown-color-swatch {
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            margin-right: 12px;
-        }
-        .dropdown-color-swatch-placeholder {
-            width: 14px;
-            height: 14px;
-            margin-right: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .dropdown-item-edit-btn {
-            opacity: 0;
-            background: none;
-            border: none;
-            cursor: pointer;
-        }
-        .dropdown-item:hover .dropdown-item-edit-btn {
-            opacity: 1;
-        }
-        .dropdown-separator {
-            border: none;
-            border-top: 1px solid #e5e7eb;
-            margin: 8px 0;
-        }
+.juanlunacms-spreadsheetlist-custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #8595ac;
+}
 
-        /* Assignee Styles */
-        .add-assignee-btn {
-            width: 24px;
-            height: 24px;
-            border: 1px dashed #ccc;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #9ca3af;
-            cursor: pointer;
-        }
-        .add-assignee-btn:hover {
-            background-color: #f3f4f6;
-            color: #111827;
-        }
-        .assignee-cell-content {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-        }
-        .rounded-avatar {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            object-fit: cover;
-        }
-      /* Drag and Drop Styles */
-        .ghost-class {
-            opacity: 0.5;
-            background: #cce5ff;
-        }
-        .drag-handle {
-            cursor: grab;
-        }
-        .sortable-chosen {
-            background: #f0f8ff;
-        }
-        
-        .juanlunacms-spreadsheetlist-section-dragging .tasks-container,
-        .juanlunacms-spreadsheetlist-section-dragging .add-task-wrapper {
-            display: none;
-        }
+.juanlunacms-spreadsheetlist-sticky-header,
+.juanlunacms-spreadsheetlist-left-sticky-pane {
+    transition: box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out;
+}
+
+.juanlunacms-spreadsheetlist-shadow-right-custom {
+    box-shadow: 5px 0 5px -3px rgba(0, 0, 0, 0.1);
+}
+
+.juanlunacms-spreadsheetlist-sticky-pane-bg {
+    background-color: white;
+}
+
+.juanlunacms-spreadsheetlist-sticky-pane-bg-alt {
+    background-color: #f8fafc;
+}
+
+
+/* --- Drag and Drop Styles --- */
+.ghost-class {
+    opacity: 0.5;
+    background: #cce5ff;
+}
+
+.drag-handle {
+    cursor: grab;
+}
+
+.sortable-chosen {
+    background: #f0f8ff;
+}
+
+.section-dragging .tasks-container,
+.section-dragging .add-task-wrapper {
+    display: none;
+}
+
+.juanlunacms-spreadsheetlist-custom-checkbox-container {
+    display: inline-block;
+    position: relative;
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+    user-select: none;
+}
+
+.juanlunacms-spreadsheetlist-custom-checkbox-container input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.juanlunacms-spreadsheetlist-custom-checkbox {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 18px;
+    width: 18px;
+    background-color: #fff;
+    border: 1.5px solid #ccc;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.juanlunacms-spreadsheetlist-custom-checkbox-container:hover input~.juanlunacms-spreadsheetlist-custom-checkbox {
+    border-color: #999;
+}
+
+.juanlunacms-spreadsheetlist-custom-checkbox-container input:checked~.juanlunacms-spreadsheetlist-custom-checkbox {
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+.juanlunacms-spreadsheetlist-custom-checkbox::after {
+    content: "";
+    position: absolute;
+    display: none;
+}
+
+.juanlunacms-spreadsheetlist-custom-checkbox-container input:checked~.juanlunacms-spreadsheetlist-custom-checkbox::after {
+    display: block;
+}
+
+.juanlunacms-spreadsheetlist-custom-checkbox-container .juanlunacms-spreadsheetlist-custom-checkbox::after {
+    left: 5px;
+    top: 2px;
+    width: 5px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+.tag:hover {
+    border-color: #ccc;
+}
+
+.context-dropdown {
+    position: absolute;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    min-width: 220px;
+    padding: 8px;
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    justify-content: space-between;
+}
+
+.dropdown-item:hover {
+    background-color: #f1f5f9;
+}
+
+.dropdown-color-swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    margin-right: 12px;
+}
+
+.add-assignee-btn {
+    width: 24px;
+    height: 24px;
+    border: 1px dashed #ccc;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9ca3af;
+    cursor: pointer;
+}
+
+.assignee-cell-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.rounded-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.like-count, .comment-count {
+    margin-right: 4px;
+    font-size: 12px;
+    color: #64748b; /* Tailwind slate-500 */
+}
+
+.task-name-completed {
+  color: #94a3b8; /* Tailwind slate-400 or a soft gray */
+}
+
+.juanlunacms-spreadsheetlist-custom-checkbox-container input[type="checkbox"]:hover {
+  border-color: #2563eb; /* Tailwind blue-600 */
+}
