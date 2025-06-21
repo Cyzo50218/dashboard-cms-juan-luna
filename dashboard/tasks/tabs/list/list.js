@@ -1236,7 +1236,6 @@ function render() {
     if (!taskListBody) return;
 
     // Reset state for a full re-render
-    currentItemOffset = 0;
     isLoadingNextPage = false;
     const projectToRender = project;
 
