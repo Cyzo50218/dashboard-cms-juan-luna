@@ -59,7 +59,7 @@ const VISIBLE_ROW_BUFFER = 5; // Render 5 extra rows above and below the viewpor
 // --- STATE ---
 let flatListOfItems = []; // A flattened array of all sections and tasks.
 let isScrolling = false; // For throttling scroll events.
-
+let currentItemOffset = 0;
 
 // State variables to track the drag operation
 let draggedElement = null;
