@@ -1582,6 +1582,23 @@ function render() {
             <span class="material-icons text-slate-500">more_horiz</span>
         </div>
     `;
+    const toggleIcon = leftSectionCell.querySelector('.section-toggle');
+
+// 2. Add a click listener to it.
+if (toggleIcon) {
+    toggleIcon.addEventListener('click', () => {
+        const sectionId = toggleIcon.dataset.sectionId;
+        
+        // 3. Check the icon's class to decide whether to expand or collapse.
+        if (toggleIcon.classList.contains('fa-chevron-right')) {
+            // If it's collapsed (showing right arrow), expand it.
+            expandCollapsedSection(sectionId);
+        } else {
+            // If it's expanded (showing down arrow), collapse it.
+            expandCollapsedSection(sectionId);
+        }
+    });
+}
         
         const rightSectionCell = document.createElement('div');
         rightSectionCell.className = 'flex-grow flex';
@@ -4018,51 +4035,29 @@ async function updateCustomOptionInFirebase(optionType, originalOption, newOptio
 }
 
 async function expandCollapsedSection(sectionId) {
-    console.log(`🚀 Expanding section ${sectionId}...`);
-    const sectionWrapper = document.querySelector(`.section-wrapper[data-section-id="${sectionId}"]`);
-    const sectionHeaderRow = document.querySelector(`.section-row-wrapper[data-section-id="${sectionId}"]`);
-    const chevron = sectionHeaderRow ? sectionHeaderRow.querySelector('.section-toggle') : null;
+    console.log(`🚀 Collapsing section ${sectionId}...`);
+    // Note: We find the toggle icon inside the '.section-title-wrapper' as per your code
+    const sectionHeader = document.querySelector(`.section-title-wrapper[data-section-id="${sectionId}"]`);
+    const chevron = sectionHeader ? sectionHeader.querySelector('.section-toggle') : null;
     
-    if (!sectionWrapper || !chevron || !chevron.classList.contains('fa-chevron-right')) {
-        // Section not found, not collapsed, or already expanding
-        return;
-    }
+    // --- 1. Update the UI immediately ---
+    chevron.classList.replace('fa-chevron-down', 'fa-chevron-right');
     
-    // --- 1. Update the UI immediately for responsiveness ---
-    chevron.classList.replace('fa-chevron-right', 'fa-chevron-down');
-    
-    // --- 2. Find the section and its tasks from your local data source ---
-    // NOTE: This assumes 'currentProject' holds your full project data.
-    const sectionData = currentProject.sections.find(s => s.id === sectionId);
-    if (!sectionData || !sectionData.tasks) return;
-    
-    // --- 3. Render the task rows ---
-    const customColumns = currentProject.customColumns || [];
-    const addTaskRow = sectionWrapper.querySelector('.add-task-row-wrapper');
-    
-    sectionData.tasks.forEach(task => {
-        const taskRow = createTaskRow(task, customColumns);
-        // Insert each task before the "Add Task" button
-        sectionWrapper.insertBefore(taskRow, addTaskRow);
-    });
-    
-    // --- 4. Update Firestore in the background ---
+    // --- 2. Update Firestore in the background ---
     try {
         const user = auth.currentUser;
         if (!user) throw new Error("User not authenticated.");
         
         const basePath = await _getSelectedProjectPath(db, user.uid);
         const sectionRef = doc(db, `${basePath}/sections/${sectionId}`);
-        await updateDoc(sectionRef, { isCollapsed: false });
-        console.log(`✅ Section ${sectionId} marked as expanded in Firestore.`);
-        
-        // Also update our local state
-        sectionData.isCollapsed = false;
+        await updateDoc(sectionRef, { isCollapsed: true });
+        console.log(`✅ Section ${sectionId} marked as collapsed in Firestore.`);
         
     } catch (error) {
         console.error("❌ Error updating section collapse state:", error);
         // Optional: Revert UI changes if Firestore update fails
-        chevron.classList.replace('fa-chevron-down', 'fa-chevron-right');
+        chevron.classList.replace('fa-chevron-right', 'fa-chevron-down');
+        // You would also need to re-render the tasks here if you want a full revert.
     }
 }
 
