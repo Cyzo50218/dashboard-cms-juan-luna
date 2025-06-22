@@ -106,16 +106,16 @@ const typeColumnOptions = [
 const baseColumnTypes = ['Text', 'Numbers', 'Costing', 'Type'];
 
 const defaultPriorityColors = {
-    'High': '#ffccc7',
-    'Medium': '#ffe7ba',
-    'Low': '#d9f7be'
+    'High': '#EF4D3D',
+    'Medium': '#FFD15E',
+    'Low': '#59E166'
 };
 
 const defaultStatusColors = {
-    'On track': '#b7eb8f',
+    'On track': '#59E166',
     'At risk': '#fff1b8',
-    'Off track': '#ffccc7',
-    'Completed': '#d9d9d9'
+    'Off track': '#FFD15E',
+    'Completed': '#878787'
 };
 
 // --- New Real-time Data Loading Functions ---
@@ -1632,17 +1632,26 @@ switch (col.id) {
         content = `<span>${task.dueDate || 'Set date'}</span>`;
         break;
     case 'priority':
-cell.contentEditable = true;
 if (task.priority) {
-    // Find the matching priority setting in our new project.customPriorities array
-    const prioritySetting = project.customPriorities.find(p => p.name === task.priority);
+    // --- NEW LOGIC: Find color in two steps ---
+    let color = null;
     
-    if (prioritySetting) {
-        // If found, use its color to create a styled tag
-        const style = `background-color: ${prioritySetting.color}40; color: ${prioritySetting.color}; `;
+    // Step 1: Check for a custom color first.
+    // The ?. (optional chaining) safely handles if customPriorities doesn't exist.
+    color = project.customPriorities?.find(p => p.name === task.priority)?.color;
+    
+    // Step 2: If no custom color was found, check the default colors object.
+    if (!color) {
+        color = defaultPriorityColors[task.priority];
+    }
+    
+    // --- RENDER ---
+    // Now, render based on whether we found a color in either step.
+    if (color) {
+        const style = `background-color: ${color}20; color: ${color};`;
         content = `<div class="priority-tag" style="${style}">${task.priority}</div>`;
     } else {
-        // Fallback for priorities not in the custom list
+        // Step 3: Fallback to plain text only if no color was found anywhere.
         content = `<span>${task.priority}</span>`;
     }
 }
@@ -1650,15 +1659,24 @@ break;
     case 'status':
 cell.contentEditable = true;
 if (task.status) {
-    // Find the matching status setting in our new project.customStatuses array
-    const statusSetting = project.customStatuses.find(s => s.name === task.status);
+    // --- NEW LOGIC: Find color in two steps ---
+    let color = null;
     
-    if (statusSetting) {
-        // If found, use its color to create a styled tag
-        const style = `background-color: ${statusSetting.color}20; color: ${statusSetting.color}; border: 1px solid ${statusSetting.color}80;`;
+    // Step 1: Check for a custom status color first.
+    color = project.customStatuses?.find(s => s.name === task.status)?.color;
+    
+    // Step 2: If no custom color, check for a default color.
+    if (!color) {
+        color = defaultStatusColors[task.status];
+    }
+    
+    // --- RENDER ---
+    // Now, render based on the result.
+    if (color) {
+        const style = `background-color: ${color}20; color: ${color};`;
         content = `<div class="status-tag" style="${style}">${task.status}</div>`;
     } else {
-        // Fallback for statuses not in the custom list
+        // Step 3: Fallback to plain text if no color was found.
         content = `<span>${task.status}</span>`;
     }
 }
