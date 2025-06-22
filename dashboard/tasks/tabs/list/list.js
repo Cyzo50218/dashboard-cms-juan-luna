@@ -512,7 +512,7 @@ function setupEventListeners() {
         }
         
         // --- 2. "Add Task" Button inside section ---
-        const addTaskBtn = e.target.closest('.add-task-wrapper');
+        const addTaskBtn = e.target.closest('.add-task-btn');
         if (addTaskBtn) {
             console.log('%cACTION: Add Task in Section', 'color: blue; font-weight: bold;');
             const sectionEl = addTaskBtn.closest('.section-wrapper');
@@ -524,7 +524,7 @@ function setupEventListeners() {
         }
         
         // --- 2.5: Add task row clicked ---
-        const addTaskRow = e.target.closest('.add-task-wrapper');
+        const addTaskRow = e.target.closest('.add-task-row-wrapper');
         if (addTaskRow) {
             console.log('%cACTION: Add Task Row clicked', 'color: blue; font-weight: bold;');
             const sectionId = addTaskRow.dataset.sectionId;
@@ -612,19 +612,61 @@ function setupEventListeners() {
                     });
                     break;
                 }
-                
-                case 'custom-select': {
-                    const columnId = Number(controlElement.dataset.columnId);
-                    const column = project.customColumns.find(c => c.id === columnId);
-                    if (column && column.options) {
-                        createDropdown(column.options, controlElement, (selected) => {
-                            updateTask(taskId, sectionId, {
-                                [`customFields.${columnId}`]: selected.name
-                            });
-                        }, 'CustomColumn', columnId);
-                    }
-                    break;
-                }
+// Replace your existing 'custom-select' case with this debugging version
+case 'custom-select': {
+    console.log("--- 🕵️‍♂️ DEBUGGING 'custom-select' ---");
+
+    // Step 1: Log the element that was clicked
+    console.log("1. The clicked element (controlElement) is:", controlElement);
+
+    // Step 2: Get the column ID from the element's dataset.
+    const columnIdFromElement = controlElement.dataset.columnId;
+
+    if (!columnIdFromElement) {
+        console.error("❌ FATAL: Clicked cell is MISSING the 'data-column-id' attribute. The process stops here.");
+        break;
+    }
+    console.log(`2. Found 'data-column-id' attribute. Value (as string): "${columnIdFromElement}"`);
+
+    // Step 3: Log the data source we are about to search.
+    console.log("3. Will now search for this ID inside this 'project.customColumns' array:", project.customColumns);
+
+    // Step 4: Find the column definition by comparing IDs as strings.
+    let foundColumn = null;
+    console.log("4. Starting search...");
+    project.customColumns.forEach(c => {
+        const isMatch = String(c.id) === columnIdFromElement;
+        console.log(`   - Comparing cell ID "${columnIdFromElement}" with column ID "${c.id}". Match: ${isMatch ? '✅' : '⛔️'}`);
+        if (isMatch) {
+            foundColumn = c;
+        }
+    });
+
+    // Step 5: Log the result of the search.
+    if (foundColumn) {
+        console.log("5. ✅ SUCCESS: Found a matching column definition:", foundColumn);
+    } else {
+        console.error("5. ❌ FAILURE: Could not find any column in 'project.customColumns' with a matching ID. The process stops here.");
+        break;
+    }
+
+    // Step 6: Check if the found column has the necessary 'options' array.
+    if (foundColumn.options && Array.isArray(foundColumn.options)) {
+        console.log("6. ✅ SUCCESS: The found column has a valid 'options' array:", foundColumn.options);
+        console.log("7. 👉 Calling createDropdown() function now...");
+        
+        createDropdown(foundColumn.options, controlElement, (selectedValue) => {
+            const originalColumnId = foundColumn.id;
+            updateTask(taskId, sectionId, { [`customFields.${originalColumnId}`]: selectedValue.name });
+        });
+
+    } else {
+        console.error("6. ❌ FAILURE: The found column does not have a valid 'options' array to create a dropdown from.", foundColumn);
+    }
+
+    console.log("--- Debugging Complete ---");
+    break;
+}
                 
                 case 'move-task': {
                     e.stopPropagation();
@@ -669,7 +711,7 @@ function setupEventListeners() {
         
         // --- Section Title Save ---
         if (focusedOutElement.matches('.section-title')) {
-            const sectionEl = focusedOutElement.closest('.section-wrapper');
+            const sectionEl = focusedOutElement.closest('.section-title-wrapper');
             if (!sectionEl) return;
             
             const sectionId = sectionEl.dataset.sectionId;
@@ -1301,6 +1343,55 @@ function formatNumberOnBlur(cell) {
     });
 }
 
+/**
+ * Analyzes a due date string and returns the correct display text and color code.
+ * @param {string | null} dueDateString - The due date, e.g., "2025-06-26".
+ * @returns {{text: string, color: string}} An object with the text and color.
+ */
+function formatDueDate(dueDateString) {
+    // --- Setup ---
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Normalize today to the beginning of the day
+    
+    // Handle empty or invalid dates
+    if (!dueDateString) {
+        return { text: 'Set date', color: 'default' };
+    }
+    
+    const dueDate = new Date(dueDateString + 'T00:00:00');
+    if (isNaN(dueDate.getTime())) {
+        return { text: 'Invalid date', color: 'red' };
+    }
+    
+    const dayDifference = Math.round((dueDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
+    
+    // --- LOGIC FOR PAST DUE DATES (MODIFIED) ---
+    if (dayDifference < 0) {
+        if (dayDifference === -1) {
+            return { text: 'Yesterday', color: 'red' };
+        }
+        // For any other date in the past, it's now explicitly "Overdue"
+        const MmmDddFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+        return { text: `Overdue (${MmmDddFormat.format(dueDate)})`, color: 'red' };
+    }
+    
+    // --- Logic for Today and Future Dates (No change here) ---
+    switch (dayDifference) {
+        case 0:
+            return { text: 'Today', color: 'green' };
+        case 1:
+            return { text: 'Tomorrow', color: 'red' };
+        default:
+            const endOfWeek = new Date(today);
+            endOfWeek.setDate(today.getDate() + (6 - today.getDay()));
+            if (dueDate <= endOfWeek) {
+                return { text: 'This Week', color: 'yellow' };
+            }
+            const MmmDddFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+            return { text: MmmDddFormat.format(dueDate), color: 'default' };
+    }
+}
+
 function render() {
     if (!taskListBody) return;
     
@@ -1490,7 +1581,7 @@ function render() {
         sectionRow.className = 'flex border-b border-slate-200';
         
         const leftSectionCell = document.createElement('div');
-        leftSectionCell.className = 'group sticky left-0 w-80 md:w-96 lg:w-[860px] flex-shrink-0 flex items-center px-1 py-1.5 font-semibold text-slate-800 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg hover:bg-slate-50';
+        leftSectionCell.className = 'section-title-wrapper group sticky left-0 w-80 md:w-96 lg:w-[860px] flex-shrink-0 flex items-center px-1 py-1.5 font-semibold text-slate-800 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg hover:bg-slate-50';
         if (section.id) leftSectionCell.dataset.sectionId = section.id;
         
         leftSectionCell.innerHTML = `
@@ -1500,7 +1591,7 @@ function render() {
 
         <span class="section-toggle fas ${section.isCollapsed ? 'fa-chevron-down' : 'fa-chevron-right'} text-slate-500 mr-2 cursor-pointer" data-section-id="${section.id}"></span>
 
-        <div contenteditable="true" class="truncate max-w-[460px] outline-none bg-transparent focus:bg-white focus:ring-1 focus:ring-slate-300 rounded px-1">${section.title}</div>
+        <div contenteditable="true" class="section-title truncate max-w-[460px] outline-none bg-transparent focus:bg-white focus:ring-1 focus:ring-slate-300 rounded px-1">${section.title}</div>
 
         <div class="flex-grow"></div> 
 
@@ -1606,7 +1697,6 @@ function render() {
             const rightTaskCells = document.createElement('div');
             rightTaskCells.className = 'flex-grow flex group-hover:bg-slate-50';
             
-            
 // This loop creates the cells for a single task row.
 allColumns.forEach((col, i) => {
     const cell = document.createElement('div');
@@ -1621,17 +1711,22 @@ allColumns.forEach((col, i) => {
     
     // --- Set Inner HTML and Data Controls based on column type ---
 let content = '';
-cell.dataset.control = col.control;
+
 
 switch (col.id) {
     case 'assignees':
+        cell.dataset.control = 'assignee';
         content = createAssigneeHTML(task.assignees);
         break;
-    case 'dueDate':
-        // This cell correctly uses a <span>
-        content = `<span>${task.dueDate || 'Set date'}</span>`;
-        break;
+case 'dueDate':
+    cell.dataset.control = 'due-date';
+const dueDateInfo = formatDueDate(task.dueDate);
+
+const className = `date-tag date-${dueDateInfo.color}`;
+content = `<span class="${className}">${dueDateInfo.text}</span>`;
+break;
     case 'priority':
+        cell.dataset.control = 'priority';
 if (task.priority) {
     // --- NEW LOGIC: Find color in two steps ---
     let color = null;
@@ -1657,7 +1752,7 @@ if (task.priority) {
 }
 break;
     case 'status':
-cell.contentEditable = true;
+        cell.dataset.control = 'status';
 if (task.status) {
     // --- NEW LOGIC: Find color in two steps ---
     let color = null;
@@ -1681,57 +1776,61 @@ if (task.status) {
     }
 }
 break;
-    default:
-        const rawValue = task.customFields ? task.customFields[col.id] : undefined;
-        
-        if (col.options && col.options[0]?.hasOwnProperty('color')) {
-            cell.dataset.control = 'custom-select'; // It behaves like a select
-            const selectedOption = col.options.find(opt => opt.name === rawValue);
+default:
+// --- FIX: Set the columnId for ALL custom columns right away. ---
+// This solves the "missing data-column-id" error.
+cell.dataset.columnId = col.id;
 
-            if (selectedOption && selectedOption.color) {
-                // Use the color from the data to create a styled tag
-                // We make the background a transparent version of the main color
-                const style = `background-color: ${selectedOption.color}20; color: ${selectedOption.color}; `;
-                content = `<div class="status-tag" style="${style}">${selectedOption.name}</div>`;
-            } else {
-                content = '<span class="add-value">+ Select Type</span>';
-            }
-        } else if (col.options && Array.isArray(col.options)) {
+const rawValue = task.customFields ? task.customFields[col.id] : undefined;
+
+// --- Logic for ALL 'Select' type columns (with options) ---
+if (col.options && Array.isArray(col.options)) {
+    // It's a select/dropdown type.
     cell.dataset.control = 'custom-select';
     const selectedOption = col.options.find(opt => opt.name === rawValue);
     
     if (selectedOption) {
-        const sanitizedName = (selectedOption.name || '').toLowerCase().replace(/\s+/g, '-');
-        content = `<div class="status-tag status-${sanitizedName}">${selectedOption.name}</div>`;
+        // Check if this dropdown uses colors.
+        if (selectedOption.color) {
+            const style = `background-color: ${selectedOption.color}20; color: ${selectedOption.color}; border: 1px solid ${selectedOption.color}80;`;
+            content = `<div class="status-tag" style="${style}">${selectedOption.name}</div>`;
+        }
+        // Fallback for generic dropdowns without colors.
+        else {
+            const sanitizedName = (selectedOption.name || '').toLowerCase().replace(/\s+/g, '-');
+            content = `<div class="status-tag status-${sanitizedName}">${selectedOption.name}</div>`;
+        }
     } else {
+        // No value is selected for this dropdown.
         content = '<span class="add-value">+ Select</span>';
     }
 }
-        // --- Logic for other column types (Text, Costing, etc.) ---
-        else {
-            cell.contentEditable = true;
-            let displayValue = (rawValue !== null && typeof rawValue !== 'undefined') ? rawValue : '';
-            
-            if ((col.type === 'Costing' || col.type === 'Numbers') && typeof rawValue === 'number') {
-    // For the INITIAL display, format the number correctly
-    if (rawValue % 1 !== 0) {
-        displayValue = rawValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    } else {
-        displayValue = rawValue.toLocaleString('en-US', { maximumFractionDigits: 0 });
+// --- Logic for other column types (Text, Costing, etc.) ---
+else {
+    // It's an editable type.
+    cell.dataset.control = 'custom';
+    cell.contentEditable = true;
+    
+    let displayValue = (rawValue !== null && typeof rawValue !== 'undefined') ? rawValue : '';
+    
+    if ((col.type === 'Costing' || col.type === 'Numbers') && typeof rawValue === 'number') {
+        // For the INITIAL display, format the number correctly
+        if (rawValue % 1 !== 0) {
+            displayValue = rawValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        } else {
+            displayValue = rawValue.toLocaleString('en-US', { maximumFractionDigits: 0 });
+        }
+    }
+    
+    content = `<span>${displayValue}</span>`;
+    
+    // Attach listeners for numeric input validation
+    if (col.type === 'Costing' || col.type === 'Numbers') {
+        allowNumericChars(cell);
+        formatNumberOnBlur(cell);
     }
 }
-            
-            // *** THE FIX IS HERE ***
-            // We now wrap the plain text value in a <span> for consistent HTML structure.
-            content = `<span>${displayValue}</span>`;
-            
-            // The numeric input enforcer is attached to the parent cell, so it still works correctly.
-            if (col.type === 'Costing' || col.type === 'Numbers') {
-    allowNumericChars(cell); // Allows typing numbers, commas, etc.
-    formatNumberOnBlur(cell); // Formats the number when the user is done
-}
-        }
-        break;
+break;
 }
     
     cell.innerHTML = content;
@@ -1761,7 +1860,7 @@ break;
         leftAddCell.className = 'sticky left-0 w-80 md:w-96 lg:w-[860px] flex-shrink-0 flex items-center px-3 py-1.5 group-hover:bg-slate-100 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
         
         const indentedText = document.createElement('div');
-        indentedText.className = 'flex items-center gap-2 ml-8 text-slate-500 cursor-pointer hover:bg-slate-200 px-2 py-1 rounded transition';
+        indentedText.className = 'add-task-btn flex items-center gap-2 ml-8 text-slate-500 cursor-pointer hover:bg-slate-200 px-2 py-1 rounded transition';
         indentedText.dataset.sectionId = section.id;
         indentedText.innerHTML = `
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400">
@@ -3100,12 +3199,13 @@ function createStatusTag(s) {
 
 function createDropdown(options, targetEl, callback, optionType = null, columnId = null) {
     if (!targetEl) return console.error("createDropdown was called with a null target element.");
-    closeFloatingPanels();
     
+    closeFloatingPanels(); // Your function to close other panels
+
     const dropdown = document.createElement('div');
     dropdown.className = 'context-dropdown';
-    dropdown.style.visibility = 'hidden'; // measure after append
     
+    // --- The rest of your logic for building the items is good ---
     const isEditable = optionType === 'Priority' || optionType === 'Status' || optionType === 'CustomColumn';
     
     options.forEach(option => {
@@ -3124,12 +3224,13 @@ function createDropdown(options, targetEl, callback, optionType = null, columnId
         item.addEventListener('click', (e) => {
             if (e.target.closest('.dropdown-item-edit-btn')) return;
             callback(option);
+            
         });
         
         if (isEditable && option.name) {
             const editBtn = document.createElement('button');
             editBtn.className = 'dropdown-item-edit-btn';
-            editBtn.innerHTML = `<i class="fas fa-pencil-alt fa-xs"></i>`;
+            editBtn.innerHTML = `<i class="fas fa-pencil-alt fa-xs"></i>`; // Assumes Font Awesome is loaded
             editBtn.title = 'Edit Option';
             editBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -3141,14 +3242,14 @@ function createDropdown(options, targetEl, callback, optionType = null, columnId
         dropdown.appendChild(item);
     });
     
-    if (optionType) {
+    if (isEditable) { // Simplified the check here
         const separator = document.createElement('hr');
         separator.className = 'dropdown-separator';
         dropdown.appendChild(separator);
         
         const addNewItem = document.createElement('div');
         addNewItem.className = 'dropdown-item';
-        addNewItem.innerHTML = `<span class="dropdown-color-swatch-placeholder"><i class="fas fa-plus"></i></span><span>Add New...</span>`;
+        addNewItem.innerHTML = `<span class="dropdown-color-swatch-placeholder"><i class="fas fa-plus fa-xs"></i></span><span>Add New...</span>`;
         
         if (optionType === 'CustomColumn') {
             addNewItem.addEventListener('click', () => openCustomColumnOptionDialog(columnId));
@@ -3159,13 +3260,32 @@ function createDropdown(options, targetEl, callback, optionType = null, columnId
         dropdown.appendChild(addNewItem);
     }
     
-    document.body.appendChild(dropdown); // append to body
-    
-    requestAnimationFrame(() => {
-        positionFloatingPanel(targetEl, dropdown);
-    });
-}
+    document.body.appendChild(dropdown); // Append to body first
 
+    // --- FIX & IMPROVEMENT ---
+    // Instead of calling an external function, we position and show it right here.
+    
+    // 1. Get position of the clicked element.
+    const rect = targetEl.getBoundingClientRect();
+    
+    // 2. Set the dropdown's position.
+    dropdown.style.top = `${rect.bottom + window.scrollY + 5}px`;
+    dropdown.style.left = `${rect.left + window.scrollX}px`;
+    
+    // 3. Make the dropdown visible. This was the missing step.
+    dropdown.style.visibility = 'visible';
+
+    // 4. Add a listener to close the dropdown when clicking anywhere else.
+    setTimeout(() => {
+        document.addEventListener('click', function closeHandler(e) {
+            // If the click is not inside the dropdown, remove it.
+            if (!dropdown.contains(e.target)) {
+                closeFloatingPanels();
+                document.removeEventListener('click', closeHandler);
+            }
+        });
+    }, 0);
+}
 
 function showDatePicker(targetEl, sectionId, taskId) {
     closeFloatingPanels();
