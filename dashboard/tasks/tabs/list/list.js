@@ -443,6 +443,8 @@ function setupEventListeners() {
     });
     
     headerClickListener = (e) => {
+        
+        
         // Match the options icon in the custom header column
         const optionsIcon = e.target.closest('.options-icon');
         if (optionsIcon) {
@@ -1408,6 +1410,7 @@ function render() {
     const allColumns = [...defaultColumnNames, ...mappedCustomColumns];
     
     const headerClickListener = (e) => {
+        
         const columnOptionsIcon = e.target.closest('.options-icon');
         const addColumnBtn = e.target.closest('.add-column-cell');
         
@@ -1433,14 +1436,21 @@ function render() {
         }
         
         if (addColumnBtn) {
-    e.stopPropagation();
-    
-    createDropdown(
-        columnTypeOptions.map(type => ({ name: type })),
-        addColumnBtn,
-        (selected) => openAddColumnDialog(selected.name)
-    );
-}
+            e.stopPropagation();
+            const existingTypes = new Set(project.customColumns.map(col => col.type));
+            const availableTypes = columnTypeOptions.filter(type => !existingTypes.has(type));
+            
+            if (availableTypes.length === 0) {
+                alert("All available column types have been added.");
+                return;
+            }
+            
+            createDropdown(
+                availableTypes.map(type => ({ name: type })),
+                addColumnBtn,
+                (selected) => openAddColumnDialog(selected.name)
+            );
+        }
     };
     
     const sections = [
@@ -3506,11 +3516,9 @@ function openAddColumnDialog(columnType) {
         return;
     }
     
-    closeFloatingPanels(); // Ensure no other floating panels stay open
-    
     const dialogOverlay = document.createElement('div');
     dialogOverlay.className = 'dialog-overlay';
-    
+    console.log('opened');
     let previewHTML = '';
     if (columnType === 'Costing') {
         previewHTML = `<div class="preview-value">$1,234.56</div><p>Formatted as currency. The sum will be shown in the footer.</p>`;
