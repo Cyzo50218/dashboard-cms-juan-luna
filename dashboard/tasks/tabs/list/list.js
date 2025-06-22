@@ -612,59 +612,46 @@ function setupEventListeners() {
                     });
                     break;
                 }
-// Replace your existing 'custom-select' case with this debugging version
+// Replace your existing 'custom-select' case with this more robust version.
 case 'custom-select': {
-    console.log("--- 🕵️‍♂️ DEBUGGING 'custom-select' ---");
-
-    // Step 1: Log the element that was clicked
-    console.log("1. The clicked element (controlElement) is:", controlElement);
-
-    // Step 2: Get the column ID from the element's dataset.
+    // 1. Get the column ID from the element.
     const columnIdFromElement = controlElement.dataset.columnId;
 
     if (!columnIdFromElement) {
-        console.error("❌ FATAL: Clicked cell is MISSING the 'data-column-id' attribute. The process stops here.");
-        break;
-    }
-    console.log(`2. Found 'data-column-id' attribute. Value (as string): "${columnIdFromElement}"`);
-
-    // Step 3: Log the data source we are about to search.
-    console.log("3. Will now search for this ID inside this 'project.customColumns' array:", project.customColumns);
-
-    // Step 4: Find the column definition by comparing IDs as strings.
-    let foundColumn = null;
-    console.log("4. Starting search...");
-    project.customColumns.forEach(c => {
-        const isMatch = String(c.id) === columnIdFromElement;
-        console.log(`   - Comparing cell ID "${columnIdFromElement}" with column ID "${c.id}". Match: ${isMatch ? '✅' : '⛔️'}`);
-        if (isMatch) {
-            foundColumn = c;
-        }
-    });
-
-    // Step 5: Log the result of the search.
-    if (foundColumn) {
-        console.log("5. ✅ SUCCESS: Found a matching column definition:", foundColumn);
-    } else {
-        console.error("5. ❌ FAILURE: Could not find any column in 'project.customColumns' with a matching ID. The process stops here.");
+        console.error("Clicked custom-select cell is missing a data-column-id attribute.");
         break;
     }
 
-    // Step 6: Check if the found column has the necessary 'options' array.
-    if (foundColumn.options && Array.isArray(foundColumn.options)) {
-        console.log("6. ✅ SUCCESS: The found column has a valid 'options' array:", foundColumn.options);
-        console.log("7. 👉 Calling createDropdown() function now...");
-        
-        createDropdown(foundColumn.options, controlElement, (selectedValue) => {
-            const originalColumnId = foundColumn.id;
-            updateTask(taskId, sectionId, { [`customFields.${originalColumnId}`]: selectedValue.name });
+    // 2. Find the column definition.
+    const column = project.customColumns.find(c => String(c.id) === columnIdFromElement);
+
+    // 3. Check if the column and its options exist.
+    if (column && column.options) {
+
+        // 4. THE FIX: Use .map() to ensure the options are in the correct format.
+        // This makes sure every item is an object like { name: '...', color: '...' }
+        const dropdownOptions = column.options.map(opt => {
+            // If the option is already a well-formed object, return it as is.
+            if (typeof opt === 'object' && opt !== null && opt.name) {
+                return opt;
+            }
+            // If the option is just a string, convert it into the object format.
+            if (typeof opt === 'string') {
+                return { name: opt, color: null };
+            }
+            // Handle any other unexpected format.
+            return { name: 'Invalid Option', color: null };
         });
 
-    } else {
-        console.error("6. ❌ FAILURE: The found column does not have a valid 'options' array to create a dropdown from.", foundColumn);
-    }
+        // 5. Call createDropdown with the clean, guaranteed-to-be-correct options.
+        createDropdown(dropdownOptions, controlElement, (selectedValue) => {
+            const originalColumnId = column.id;
+            updateTask(taskId, sectionId, { [`customFields.${originalColumnId}`]: selectedValue.name });
+        }, 'CustomColumn', column.id); // Pass 'CustomColumn' and the ID for the "Add/Edit" logic
 
-    console.log("--- Debugging Complete ---");
+    } else {
+        console.error(`Could not find a column or options for ID: ${columnIdFromElement}`);
+    }
     break;
 }
                 
@@ -1446,21 +1433,14 @@ function render() {
         }
         
         if (addColumnBtn) {
-            e.stopPropagation();
-            const existingTypes = new Set(project.customColumns.map(col => col.type));
-            const availableTypes = columnTypeOptions.filter(type => !existingTypes.has(type));
-            
-            if (availableTypes.length === 0) {
-                alert("All available column types have been added.");
-                return;
-            }
-            
-            createDropdown(
-                availableTypes.map(type => ({ name: type })),
-                addColumnBtn,
-                (selected) => openAddColumnDialog(selected.name)
-            );
-        }
+    e.stopPropagation();
+    
+    createDropdown(
+        columnTypeOptions.map(type => ({ name: type })),
+        addColumnBtn,
+        (selected) => openAddColumnDialog(selected.name)
+    );
+}
     };
     
     const sections = [
@@ -1776,61 +1756,67 @@ if (task.status) {
     }
 }
 break;
+// This is the updated 'default' case for handling all custom columns.
 default:
-// --- FIX: Set the columnId for ALL custom columns right away. ---
-// This solves the "missing data-column-id" error.
-cell.dataset.columnId = col.id;
+    // --- FIX: Set the columnId for ALL custom columns right away. ---
+    cell.dataset.columnId = col.id;
 
-const rawValue = task.customFields ? task.customFields[col.id] : undefined;
+    const rawValue = task.customFields ? task.customFields[col.id] : undefined;
 
-// --- Logic for ALL 'Select' type columns (with options) ---
-if (col.options && Array.isArray(col.options)) {
-    // It's a select/dropdown type.
-    cell.dataset.control = 'custom-select';
-    const selectedOption = col.options.find(opt => opt.name === rawValue);
-    
-    if (selectedOption) {
-        // Check if this dropdown uses colors.
-        if (selectedOption.color) {
-            const style = `background-color: ${selectedOption.color}20; color: ${selectedOption.color}; border: 1px solid ${selectedOption.color}80;`;
-            content = `<div class="status-tag" style="${style}">${selectedOption.name}</div>`;
-        }
-        // Fallback for generic dropdowns without colors.
-        else {
-            const sanitizedName = (selectedOption.name || '').toLowerCase().replace(/\s+/g, '-');
-            content = `<div class="status-tag status-${sanitizedName}">${selectedOption.name}</div>`;
-        }
-    } else {
-        // No value is selected for this dropdown.
-        content = '<span class="add-value">+ Select</span>';
-    }
-}
-// --- Logic for other column types (Text, Costing, etc.) ---
-else {
-    // It's an editable type.
-    cell.dataset.control = 'custom';
-    cell.contentEditable = true;
-    
-    let displayValue = (rawValue !== null && typeof rawValue !== 'undefined') ? rawValue : '';
-    
-    if ((col.type === 'Costing' || col.type === 'Numbers') && typeof rawValue === 'number') {
-        // For the INITIAL display, format the number correctly
-        if (rawValue % 1 !== 0) {
-            displayValue = rawValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    // --- Logic for ALL 'Select' type columns (with options) ---
+    if (col.options && Array.isArray(col.options)) {
+        // It's a select/dropdown type.
+        cell.dataset.control = 'custom-select';
+        
+        const selectedOption = col.options.find(opt => opt.name === rawValue);
+
+        if (selectedOption) {
+            if (selectedOption.color) {
+                const style = `background-color: ${selectedOption.color}20; color: ${selectedOption.color}; border: 1px solid ${selectedOption.color}80;`;
+                content = `<div class="status-tag" style="${style}">${selectedOption.name}</div>`;
+            } else {
+                const sanitizedName = (selectedOption.name || '').toLowerCase().replace(/\s+/g, '-');
+                content = `<div class="status-tag status-${sanitizedName}">${selectedOption.name}</div>`;
+            }
         } else {
-            displayValue = rawValue.toLocaleString('en-US', { maximumFractionDigits: 0 });
+            content = '<span class="add-value">+ Select</span>';
+        }
+
+        // *** NEW: Add the click listener directly to the cell ***
+        cell.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent the event from bubbling up
+
+            // We use 'col' directly from the loop's scope. No need to find it again.
+            if (col && col.options) {
+                createDropdown(col.options, cell, (selectedValue) => {
+                    // This assumes 'taskId' and 'sectionId' are available from the parent loops
+                    updateTask(task.id, section.id, { [`customFields.${col.id}`]: selectedValue.name });
+                }, 'CustomColumn', col.id);
+            }
+        });
+    }
+    // --- Logic for other column types (Text, Costing, etc.) ---
+    else {
+        cell.dataset.control = 'custom';
+        cell.contentEditable = true;
+        
+        let displayValue = (rawValue !== null && typeof rawValue !== 'undefined') ? rawValue : '';
+        if ((col.type === 'Costing' || col.type === 'Numbers') && typeof rawValue === 'number') {
+            if (rawValue % 1 !== 0) {
+                displayValue = rawValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            } else {
+                displayValue = rawValue.toLocaleString('en-US', { maximumFractionDigits: 0 });
+            }
+        }
+        
+        content = `<span>${displayValue}</span>`;
+
+        if (col.type === 'Costing' || col.type === 'Numbers') {
+            allowNumericChars(cell);
+            formatNumberOnBlur(cell);
         }
     }
-    
-    content = `<span>${displayValue}</span>`;
-    
-    // Attach listeners for numeric input validation
-    if (col.type === 'Costing' || col.type === 'Numbers') {
-        allowNumericChars(cell);
-        formatNumberOnBlur(cell);
-    }
-}
-break;
+    break;
 }
     
     cell.innerHTML = content;
@@ -3206,7 +3192,7 @@ function createDropdown(options, targetEl, callback, optionType = null, columnId
     dropdown.className = 'context-dropdown';
     
     // --- The rest of your logic for building the items is good ---
-    const isEditable = optionType === 'Priority' || optionType === 'Status' || optionType === 'CustomColumn';
+    const isEditable = optionType === 'Priority' || optionType === 'Status' ||  optionType === 'Type' ||  optionType === 'CustomColumn';
     
     options.forEach(option => {
         const item = document.createElement('div');
@@ -3224,7 +3210,7 @@ function createDropdown(options, targetEl, callback, optionType = null, columnId
         item.addEventListener('click', (e) => {
             if (e.target.closest('.dropdown-item-edit-btn')) return;
             callback(option);
-            
+            closeFloatingPanels();
         });
         
         if (isEditable && option.name) {
@@ -3234,6 +3220,7 @@ function createDropdown(options, targetEl, callback, optionType = null, columnId
             editBtn.title = 'Edit Option';
             editBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
+                closeFloatingPanels();
                 openEditOptionDialog(optionType, option, columnId);
             });
             item.appendChild(editBtn);
@@ -3260,31 +3247,13 @@ function createDropdown(options, targetEl, callback, optionType = null, columnId
         dropdown.appendChild(addNewItem);
     }
     
-    document.body.appendChild(dropdown); // Append to body first
-
-    // --- FIX & IMPROVEMENT ---
-    // Instead of calling an external function, we position and show it right here.
-    
-    // 1. Get position of the clicked element.
     const rect = targetEl.getBoundingClientRect();
     
     // 2. Set the dropdown's position.
     dropdown.style.top = `${rect.bottom + window.scrollY + 5}px`;
     dropdown.style.left = `${rect.left + window.scrollX}px`;
     
-    // 3. Make the dropdown visible. This was the missing step.
-    dropdown.style.visibility = 'visible';
-
-    // 4. Add a listener to close the dropdown when clicking anywhere else.
-    setTimeout(() => {
-        document.addEventListener('click', function closeHandler(e) {
-            // If the click is not inside the dropdown, remove it.
-            if (!dropdown.contains(e.target)) {
-                closeFloatingPanels();
-                document.removeEventListener('click', closeHandler);
-            }
-        });
-    }, 0);
+    document.body.appendChild(dropdown);
 }
 
 function showDatePicker(targetEl, sectionId, taskId) {
