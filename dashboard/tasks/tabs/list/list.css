@@ -835,7 +835,7 @@ Custom class
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 2000;
+    z-index: 99999;
 }
 
 .dialog-box {
@@ -991,7 +991,7 @@ Custom class
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 2000;
+    z-index: 99999;
 }
 
 /* --- Styles for NEW Enhanced Features --- */
@@ -1087,7 +1087,7 @@ Custom class
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 2000;
+    z-index: 99999;
     /* Ensures it's on top of everything else */
 }
 
