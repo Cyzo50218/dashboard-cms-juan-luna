@@ -476,10 +476,7 @@ function setupEventListeners() {
             
             const existingTypes = new Set(project.customColumns.map(col => col.type));
             const availableTypes = columnTypeOptions.filter(type => !existingTypes.has(type) || type === 'Custom');
-            if (availableTypes.length === 0) {
-                return alert("All available column types have been added.");
-            }
-            
+
             createDropdown(
                 availableTypes.map(type => ({ name: type })),
                 addColumnButton,
@@ -837,7 +834,7 @@ case 'custom-select': {
     };
     
     // Attach all listeners
-    
+    taskListBody.addEventListener('click', headerClickListener);
     taskListBody.addEventListener('click', bodyClickListener);
     taskListBody.addEventListener('focusout', bodyFocusOutListener);
     addTaskHeaderBtn.addEventListener('click', addTaskHeaderBtnListener);
@@ -1440,13 +1437,9 @@ function render() {
             const existingTypes = new Set(project.customColumns.map(col => col.type));
             const availableTypes = columnTypeOptions.filter(type => !existingTypes.has(type));
             
-            if (availableTypes.length === 0) {
-                alert("All available column types have been added.");
-                return;
-            }
             
             createDropdown(
-                availableTypes.map(type => ({ name: type })),
+                columnTypeOptions.map(type => ({ name: type })),
                 addColumnBtn,
                 (selected) => openAddColumnDialog(selected.name)
             );
@@ -1553,7 +1546,7 @@ function render() {
     
     header.appendChild(leftHeader);
     header.appendChild(rightHeaderContent);
-    rightHeaderContent.addEventListener('click', headerClickListener);
+   // rightHeaderContent.addEventListener('click', headerClickListener);
     
     // --- BODY ---
     const body = document.createElement('div');
