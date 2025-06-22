@@ -1572,7 +1572,7 @@ function render() {
             <span class="material-icons text-slate-500 select-none" style="font-size: 20px;" draggable="false">drag_indicator</span>
         </div>
 
-        <span class="section-toggle fas ${section.isCollapsed ? 'fa-chevron-down' : 'fa-chevron-right'} text-slate-500 mr-2 cursor-pointer" data-section-id="${section.id}"></span>
+        <span class="section-toggle fas ${section.isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'} text-slate-500 mr-2 cursor-pointer" data-section-id="${section.id}"></span>
 
         <div contenteditable="true" class="section-title truncate max-w-[460px] outline-none bg-transparent focus:bg-white focus:ring-1 focus:ring-slate-300 rounded px-1">${section.title}</div>
 
@@ -1590,12 +1590,12 @@ if (toggleIcon) {
         const sectionId = toggleIcon.dataset.sectionId;
         
         // 3. Check the icon's class to decide whether to expand or collapse.
-        if (toggleIcon.classList.contains('fa-chevron-right')) {
+        if (toggleIcon.classList.contains('fa-chevron-down')) {
             // If it's collapsed (showing right arrow), expand it.
             expandCollapsedSection(sectionId);
         } else {
             // If it's expanded (showing down arrow), collapse it.
-            expandCollapsedSection(sectionId);
+            collapseExpandedSection(sectionId);
         }
     });
 }
@@ -4034,6 +4034,38 @@ async function updateCustomOptionInFirebase(optionType, originalOption, newOptio
     }
 }
 
+/**
+ * Collapses an expanded section, removing its task rows and updating its state.
+ * @param {string} sectionId - The ID of the section to collapse.
+ */
+async function collapseExpandedSection(sectionId) {
+    console.log(`🚀 Collapsing section ${sectionId}...`);
+      // Note: We find the toggle icon inside the '.section-title-wrapper' as per your code
+    const sectionHeader = document.querySelector(`.section-title-wrapper[data-section-id="${sectionId}"]`);
+    const chevron = sectionHeader ? sectionHeader.querySelector('.section-toggle') : null;
+    
+    // --- 1. Update the UI immediately ---
+    chevron.classList.replace('fa-chevron-down', 'fa-chevron-right');
+    
+    // --- 2. Update Firestore in the background ---
+    try {
+        const user = auth.currentUser;
+        if (!user) throw new Error("User not authenticated.");
+        
+        const basePath = await _getSelectedProjectPath(db, user.uid);
+        const sectionRef = doc(db, `${basePath}/sections/${sectionId}`);
+        await updateDoc(sectionRef, { isCollapsed: false });
+        console.log(`✅ Section ${sectionId} marked as collapsed in Firestore.`);
+        
+        
+    } catch (error) {
+        console.error("❌ Error updating section collapse state:", error);
+        // Optional: Revert UI changes if Firestore update fails
+        chevron.classList.replace('fa-chevron-right', 'fa-chevron-down');
+        // You would also need to re-render the tasks here if you want a full revert.
+    }
+}
+
 async function expandCollapsedSection(sectionId) {
     console.log(`🚀 Collapsing section ${sectionId}...`);
     // Note: We find the toggle icon inside the '.section-title-wrapper' as per your code
@@ -4041,7 +4073,7 @@ async function expandCollapsedSection(sectionId) {
     const chevron = sectionHeader ? sectionHeader.querySelector('.section-toggle') : null;
     
     // --- 1. Update the UI immediately ---
-    chevron.classList.replace('fa-chevron-down', 'fa-chevron-right');
+    chevron.classList.replace('fa-chevron-right', 'fa-chevron-down');
     
     // --- 2. Update Firestore in the background ---
     try {
@@ -4056,7 +4088,7 @@ async function expandCollapsedSection(sectionId) {
     } catch (error) {
         console.error("❌ Error updating section collapse state:", error);
         // Optional: Revert UI changes if Firestore update fails
-        chevron.classList.replace('fa-chevron-right', 'fa-chevron-down');
+        chevron.classList.replace('fa-chevron-down', 'fa-chevron-right');
         // You would also need to re-render the tasks here if you want a full revert.
     }
 }
