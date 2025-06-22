@@ -410,21 +410,43 @@ export function init(params) {
 // --- Event Listener Setup ---
 
 function setupEventListeners() {
-    // Global click listener to handle menu logic
+
     document.addEventListener('click', (e) => {
         const optionsButton = e.target.closest('.section-options-btn');
         
-        // Check if the click is inside an open menu. If so, let the item handler work.
+
         if (e.target.closest('.options-dropdown-menu')) {
-            const dropdownItem = e.target.closest('.dropdown-item');
-            if (dropdownItem) {
-                const { action, sectionId } = dropdownItem.dataset;
-                console.log(`Action: ${action}, Section ID: ${sectionId || 'N/A'}`);
-                closeOpenMenu();
-            }
-            return; // Do nothing more if click is inside a menu
+    const dropdownItem = e.target.closest('.dropdown-item');
+    if (dropdownItem) {
+        const { action, sectionId } = dropdownItem.dataset;
+        console.log(`Action: ${action}, Section ID: ${sectionId || 'N/A'}`);
+        
+        // NEW: Handle the specific actions from the menu
+        switch (action) {
+            case 'addTask':
+                const section = project.sections.find(s => s.id === sectionId);
+                if (section) addNewTask(section);
+                break;
+                
+            case 'renameSection':
+                const sectionTitleEl = document.querySelector(`.section-title-wrapper[data-section-id="${sectionId}"] .section-title`);
+                if (sectionTitleEl) {
+                    sectionTitleEl.focus();
+                    document.execCommand('selectAll', false, null);
+                }
+                break;
+                
+            case 'deleteSection':
+                // This calls your new function
+                deleteSectionInFirebase(sectionId);
+                break;
         }
         
+        closeOpenMenu();
+    }
+    return; // Do nothing more if click is inside a menu
+}
+
         // If we clicked an options button...
         if (optionsButton) {
             // Check if its menu is already open. If so, this click should close it.
@@ -804,16 +826,16 @@ case 'custom-select': {
         handleAddSectionClick();
     };
     
-    // This is the corrected version:
-    windowClickListener = (e) => {
-        const clickedInsidePanel = e.target.closest('.context-dropdown, .datepicker');
-        const clickedOverlayOrDialog = e.target.closest('.dialog-overlay, .filterlistview-dialog-overlay');
-        const clickedTrigger = e.target.closest('[data-control="due-date"], [data-control="priority"], [data-control="status"], [data-control="custom"], [data-control="assignee"], #add-column-btn, #filter-btn, .delete-column-btn');
-        
-        if (!clickedInsidePanel && !clickedOverlayOrDialog && !clickedTrigger) {
-            closeFloatingPanels();
-        }
-    };
+windowClickListener = (e) => {
+
+    const clickedInsidePanel = e.target.closest('.context-dropdown, .datepicker, .options-dropdown-menu');
+    const clickedOverlayOrDialog = e.target.closest('.dialog-overlay, .filterlistview-dialog-overlay');
+    const clickedTrigger = e.target.closest('[data-control="due-date"], [data-control="priority"], [data-control="status"], [data-control="custom"], [data-control="assignee"], #add-column-btn, #filter-btn, .delete-column-btn');
+    
+    if (!clickedInsidePanel && !clickedOverlayOrDialog && !clickedTrigger) {
+        closeFloatingPanels();
+    }
+};
     
     
     filterBtnListener = () => {
@@ -834,7 +856,7 @@ case 'custom-select': {
     };
     
     // Attach all listeners
-    taskListBody.addEventListener('click', headerClickListener);
+    
     taskListBody.addEventListener('click', bodyClickListener);
     taskListBody.addEventListener('focusout', bodyFocusOutListener);
     addTaskHeaderBtn.addEventListener('click', addTaskHeaderBtnListener);
@@ -2783,37 +2805,93 @@ function closeOpenMenu() {
 function openOptionsMenu(buttonEl) {
     closeOpenMenu(); // Close any other menus first
     
-    const sectionId = buttonEl.dataset.sectionId;
+    // MODIFIED: We get the sectionId from the button that was clicked
+    const sectionWrapper = buttonEl.closest('.section-row-wrapper, .section-title-wrapper');
+    const sectionId = sectionWrapper ? sectionWrapper.dataset.sectionId : null;
+    
+    if (!sectionId) {
+        console.error("Could not find sectionId for the options menu.");
+        return;
+    }
     
     // Create menu element
     const menu = document.createElement('div');
     menu.className = 'options-dropdown-menu';
+    
+    // MODIFIED: Added `data-section-id` to all items that need it.
     menu.innerHTML = `
         <div class="dropdown-item" data-action="addTask" data-section-id="${sectionId}">
             <i class="fa-solid fa-plus dropdown-icon"></i>
             <span>Add task</span>
         </div>
-        <div class="dropdown-item" data-action="renameSection">
-             <i class="fa-solid fa-pen dropdown-icon"></i>
+        <div class="dropdown-item" data-action="renameSection" data-section-id="${sectionId}">
+            <i class="fa-solid fa-pen dropdown-icon"></i>
             <span>Rename section</span>
         </div>
-        <div class="dropdown-item" data-action="deleteSection">
-             <i class="fa-solid fa-trash dropdown-icon"></i>
-            <span>Delete section</span>
+        <div class="dropdown-item" data-action="deleteSection" data-section-id="${sectionId}">
+            <i class="fa-solid fa-trash dropdown-icon dropdown-item-danger"></i>
+            <span class="dropdown-item-danger">Delete section</span>
         </div>
     `;
     
-    // Append to body to ensure it's on top of everything
+    // ... (the rest of the function remains the same)
     document.body.appendChild(menu);
-    
-    // Set the button as the active one
     activeMenuButton = buttonEl;
-    
-    // Set initial position
     updateMenuPosition();
-    
-    // IMPORTANT: Add a temporary scroll listener
     taskListBody.addEventListener('scroll', updateMenuPosition, { passive: true });
+}
+
+/**
+ * Deletes a section and all of its tasks from Firestore after user confirmation.
+ * This operation is irreversible.
+ * @param {string} sectionId The ID of the section to delete.
+ */
+async function deleteSectionInFirebase(sectionId) {
+    
+    // Use the existing confirmation modal to warn the user
+    const confirmed = await showConfirmationModal(
+        'Are you sure you want to delete this section? All tasks within it will be permanently lost. This action cannot be undone.'
+    );
+    
+    // If the user clicks "Cancel", stop the function
+    if (!confirmed) {
+        console.log("Section deletion cancelled by user.");
+        return;
+    }
+    
+    console.log(`User confirmed deletion for section: ${sectionId}. Proceeding...`);
+    
+    const basePath = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}`;
+    const sectionPath = `${basePath}/sections/${sectionId}`;
+    const tasksPath = `${sectionPath}/tasks`;
+    
+    const batch = writeBatch(db);
+    
+    try {
+        // 1. Get all tasks in the section's subcollection
+        const tasksQuery = query(collection(db, tasksPath));
+        const tasksSnapshot = await getDocs(tasksQuery);
+        
+        // 2. Add each task to the batch for deletion
+        if (!tasksSnapshot.empty) {
+            console.log(`Found ${tasksSnapshot.size} tasks to delete.`);
+            tasksSnapshot.forEach(taskDoc => {
+                batch.delete(taskDoc.ref);
+            });
+        }
+        
+        // 3. Add the section document itself to the batch for deletion
+        const sectionRef = doc(db, sectionPath);
+        batch.delete(sectionRef);
+        
+        // 4. Commit the batch to delete everything at once
+        await batch.commit();
+        console.log(`Successfully deleted section ${sectionId} and all its tasks.`);
+        
+    } catch (error) {
+        console.error("Error deleting section and its tasks:", error);
+        alert("An error occurred while deleting the section. Please check the console.");
+    }
 }
 
 /**
@@ -3000,7 +3078,6 @@ async function updateProjectInFirebase(propertiesToUpdate) {
  */
 function showConfirmationModal(message) {
     // Ensure no other dialogs are open
-    closeFloatingPanels();
     return new Promise((resolve) => {
         const dialogOverlay = document.createElement('div');
         dialogOverlay.className = 'dialog-overlay'; // Use existing class for styling
@@ -3230,7 +3307,6 @@ function createDropdown(options, targetEl, callback, optionType = null, columnId
         item.addEventListener('click', (e) => {
             if (e.target.closest('.dropdown-item-edit-btn')) return;
             callback(option);
-            closeFloatingPanels();
         });
         
         if (isEditable && option.name) {
