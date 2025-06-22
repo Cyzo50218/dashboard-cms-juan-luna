@@ -2016,24 +2016,42 @@ allColumns.forEach((col, i) => {
     // --- END OF MODIFICATION ---
     
     // This is your existing logic to calculate and show the sum. It remains unchanged.
-    if (col.type === 'Costing') {
-        const sum = section.tasks.reduce((accumulator, task) => {
-            const value = task.customFields?.[col.id];
-            return typeof value === 'number' ? accumulator + value : accumulator;
-        }, 0);
+    // This is your existing logic to calculate and show the sum.
+if (col.type === 'Costing') {
+    const sum = section.tasks.reduce((accumulator, task) => {
+        const value = task.customFields?.[col.id];
+        return typeof value === 'number' ? accumulator + value : accumulator;
+    }, 0);
+    
+    if (sum > 0) {
+        let formattedSum;
         
-        if (sum > 0) {
-            const formattedSum = sum.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-            const currencySymbol = col.currency || '$';
-            
-            cell.innerHTML = `
-                <div style="font-size: 0.8rem; display: flex; justify-content: flex-end; align-items: center; height: 100%; padding-right: 8px;">
-                  <span style="color: #9ca3af; margin-right: 4px;">Sum:</span>
-                  <span style="font-weight: 600; color: #4b5563;">${currencySymbol}${formattedSum}</span>
-                </div>
-            `;
+        // Check if the sum is a whole number (e.g., 1250.00)
+        if (sum % 1 === 0) {
+            // If yes, format it with commas and NO decimal places.
+            formattedSum = sum.toLocaleString('en-US', {
+                maximumFractionDigits: 0
+            });
+        } else {
+            // If no, format it with commas and exactly TWO decimal places.
+            formattedSum = sum.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
         }
+
+        
+        // Note: The commented out currencySymbol line remains for future use.
+        // const currencySymbol = col.currency || '$';
+        
+        cell.innerHTML = `
+            <div style="font-size: 0.8rem; display: flex; justify-content: flex-start; align-items: center; height: 100%; padding-right: 8px;">
+              <span style="color: #9ca3af; margin-right: 4px;">Sum:</span>
+              <span style="font-weight: 600; color: #4b5563;">${formattedSum}</span>
+            </div>
+        `;
     }
+}
     
     rightAddCells.appendChild(cell);
 });
