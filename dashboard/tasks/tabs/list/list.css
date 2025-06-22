@@ -769,9 +769,9 @@ Custom class
 /* --- Tag Styles (Priority & Status) --- */
 .priority-tag,
 .status-tag {
-    padding: 2px 8px;
-    border-radius: 8px;
-    font-size: 0.675rem;
+    padding: 8px 8px;
+    border-radius: 40px;
+    font-size: 14px;
     font-weight: 500;
     display: inline-block;
     line-height: 1.1;
@@ -1901,3 +1901,5 @@ Custom class
     background: transparent !important;
     border-color: transparent !important;
 }
+
+

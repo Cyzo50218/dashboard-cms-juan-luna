@@ -69,7 +69,7 @@ let sourceContainer = null;
 let originalNextSibling = null;
 
 // --- Data ---
-let project = { customColumns: [], sections: [] };
+let project = { customColumns: [], sections: [], customPriorities: [], customStatuses: [] };
 let allTasksFromSnapshot = [];
 // --- Real-time Listener Management ---
 // This object will hold the unsubscribe functions for our active listeners.
@@ -328,7 +328,7 @@ function initializeListView(params) {
         console.error("List view could not initialize: Essential containers not found.");
         return () => {};
     }
-     render();
+    render();
     setupEventListeners();
 }
 
@@ -376,7 +376,7 @@ export function init(params) {
         } else {
             console.log("User signed out. Detaching listeners.");
             detachAllListeners();
-            project = { customColumns: [], sections: [] };
+            project = { customColumns: [], sections: [], customPriorities: [], customStatuses: []};
             render();
         }
     });
@@ -384,7 +384,7 @@ export function init(params) {
     // Initial view setup
     initializeListView(params);
     
-   
+    
     
     // Cleanup
     return function cleanup() {
@@ -602,14 +602,14 @@ function setupEventListeners() {
                     const taskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${section.id}/tasks/${taskId}`);
                     const liked = task.likedBy?.[currentUserId];
                     updateDoc(taskRef, liked ?
-                        {
-                            likedAmount: increment(-1),
-                            [`likedBy.${currentUserId}`]: deleteField()
-                        } :
-                        {
-                            likedAmount: increment(1),
-                            [`likedBy.${currentUserId}`]: true
-                        });
+                    {
+                        likedAmount: increment(-1),
+                        [`likedBy.${currentUserId}`]: deleteField()
+                    } :
+                    {
+                        likedAmount: increment(1),
+                        [`likedBy.${currentUserId}`]: true
+                    });
                     break;
                 }
                 
@@ -1228,147 +1228,279 @@ function renderVisibleRows(bodyContainer, bodyGrid) {
 }
 
 /**
- * Renders the entire task list, including headers and body, with a split-scrolling behavior.
- * - The header is in a non-scrolling container.
- * - The body is in a container that scrolls both vertically and horizontally.
- * - A JS event listener synchronizes the horizontal scroll of the header with the body.
+ * PART 1: A lenient input filter.
+ * Attaches an event listener to only allow characters used in numbers (including commas).
+ * @param {HTMLElement} cell The contenteditable cell element.
  */
+function allowNumericChars(cell) {
+    cell.addEventListener('input', (e) => {
+        const target = e.target;
+        const originalText = target.textContent;
+        
+        // Allow digits, one leading hyphen, one decimal, and commas
+        let sanitizedText = originalText
+            .replace(/[^-\d.,]/g, '') // 1. Remove all invalid characters
+            .replace(/(?!^)-/g, '') // 2. Remove hyphens unless they are the first character
+            .replace(/(\..*)\./g, '$1'); // 3. Remove any subsequent decimal points
+        
+        if (originalText !== sanitizedText) {
+            // Restore cursor position if text was changed
+            const selection = window.getSelection();
+            const originalOffset = selection.focusOffset;
+            const lengthDifference = originalText.length - sanitizedText.length;
+            const newOffset = Math.max(0, originalOffset - lengthDifference);
+            
+            target.textContent = sanitizedText;
+            
+            try {
+                const range = document.createRange();
+                const textNode = target.firstChild || target;
+                range.setStart(textNode, Math.min(newOffset, textNode.length));
+                range.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(range);
+            } catch (error) {
+                console.warn("Could not restore cursor position.", error);
+            }
+        }
+    });
+}
+
+/**
+ * PART 2: A smart formatter on 'blur' (when the user clicks away).
+ * Attaches an event listener that parses and formats the number correctly.
+ * @param {HTMLElement} cell The contenteditable cell element.
+ */
+function formatNumberOnBlur(cell) {
+    cell.addEventListener('blur', (e) => {
+        const target = e.target;
+        // Get the raw text and remove commas to prepare for parsing
+        const rawText = target.textContent.replace(/,/g, '');
+        
+        // If empty or not a valid number, clear the cell and stop
+        if (rawText.trim() === '' || isNaN(parseFloat(rawText))) {
+            target.textContent = '';
+            return;
+        }
+        
+        const numberValue = parseFloat(rawText);
+        
+        // Check if the number has decimals
+        if (numberValue % 1 !== 0) {
+            // If it has decimals, format with 2 decimal places
+            target.textContent = numberValue.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        } else {
+            // If it's a whole number, format with 0 decimal places (no .00)
+            target.textContent = numberValue.toLocaleString('en-US', {
+                maximumFractionDigits: 0
+            });
+        }
+    });
+}
 
 function render() {
-            if (!taskListBody) return;
-
-            // --- DATA ---
-            const defaultColumns = [
-                { id: 'priority', name: 'Priority' },
-                { id: 'status', name: 'Status' },
-                { id: 'date', name: 'Date' },
-                { id: 'assignee', name: 'Assignee' }
-            ];
-
-            const customColumns = [
-                 { id: 'custom_field_1', name: 'Team' },
-                 { id: 'custom_field_2', name: 'Effort' },
-                 { id: 'custom_field_3', name: 'Sprint' },
-                 { id: 'custom_field_4', name: 'Reviewer' }
+    if (!taskListBody) return;
+    
+    // --- DATA ---
+    
+    
+    const customColumns = [
+        { id: 'custom_field_1', name: 'Team' },
+        { id: 'custom_field_2', name: 'Effort' },
+        { id: 'custom_field_3', name: 'Sprint' },
+        { id: 'custom_field_4', name: 'Reviewer' }
+    ];
+    
+    const defaultColumnNames = [
+        { id: 'assignees', name: 'Assignee', control: 'assignee' },
+        { id: 'dueDate', name: 'Due Date', control: 'due-date' },
+        { id: 'priority', name: 'Priority', control: 'priority' },
+        { id: 'status', name: 'Status', control: 'status' }
+    ];
+    
+    const mappedCustomColumns = project.customColumns.map(col => ({
+        ...col,
+        control: 'custom',
+        isCustom: true
+    }));
+    
+    const allColumns = [...defaultColumnNames, ...mappedCustomColumns];
+    
+    const headerClickListener = (e) => {
+        const columnOptionsIcon = e.target.closest('.options-icon');
+        const addColumnBtn = e.target.closest('.add-column-cell');
+        
+        if (columnOptionsIcon) {
+            e.stopPropagation();
+            const columnEl = columnOptionsIcon.closest('[data-column-id]');
+            if (!columnEl) return;
+            
+            const columnId = Number(columnEl.dataset.columnId);
+            const dropdownOptions = [
+                { name: 'Rename column' },
+                { name: 'Delete column' }
             ];
             
-            const allColumns = [...defaultColumns, ...customColumns];
-
-            const sections = [
-                {
-                    name: 'To Do',
-                    isCollapsed: true,
-                    id: 1222333,
-                    tasks: [
-                        { name: 'Draft project brief for Q3 launch and initial stakeholder alignment', completed: false,  date: 'Jun 21', priority: 'High', status: 'Not started', assignee: 'Alex', custom_field_1: 'Marketing', custom_field_2: 'High', custom_field_3: 'Sprint 2', custom_field_4: 'Maria' },
-                        { name: 'Schedule kickoff meeting with all stakeholders and prepare presentation slides', completed: true, date: 'Jun 22', priority: 'Medium', status: 'Not started', assignee: 'Brenda', custom_field_1: 'Product', custom_field_2: 'Medium', custom_field_3: 'Sprint 2', custom_field_4: 'David'},
-                    ]
-                },
-                {
-                    name: 'In Progress',
-                    isCollapsed: false,
-                    id: 1222333,
-                    tasks: [
-                        { name: 'Design wireframes for the main dashboard and user profile pages', completed: false, status: 'Completed', date: 'Jun 25', priority: 'High', status: 'In progress', assignee: 'David', custom_field_1: 'Design', custom_field_2: 'High', custom_field_3: 'Sprint 2', custom_field_4: 'Maria' },
-                        { name: 'Develop reusable UI components for the new design system', completed: false, date: 'Jun 28', priority: 'Medium', status: 'In progress', assignee: 'Alex', custom_field_1: 'Engineering', custom_field_2: 'High', custom_field_3: 'Sprint 2', custom_field_4: 'John' },
-                        { name: 'Another task in progress for scrolling demonstration purposes', completed: true, date: 'Jun 29', priority: 'Low', status: 'In progress', assignee: 'Casey', custom_field_1: 'Design', custom_field_2: 'Low', custom_field_3: 'Sprint 3', custom_field_4: 'Emily' },
-                        { name: 'Final QA testing on the new feature before the code freeze deadline', completed: false, date: 'Jun 30', priority: 'High', status: 'In progress', assignee: 'Frank', custom_field_1: 'QA', custom_field_2: 'Medium', custom_field_3: 'Sprint 3', custom_field_4: 'Jane' } 
-                    ]
-                },
-                 {
-                    name: 'Completed',
-                    isCollapsed: true,
-                    id: 1222333,
-                    tasks: [
-                        { name: 'Deploy MVP to staging server for internal review', completed: true, date: 'Jun 10', priority: 'High', status: 'Done', assignee: 'Brenda', custom_field_1: 'Engineering', custom_field_2: 'Medium', custom_field_3: 'Sprint 1', custom_field_4: 'Chloe' },
-                    ]
-                },
-                 {
-                    name: 'Backlog',
-                    isCollapsed: true,
-                    id: 1222333,
-                    tasks: [
-                         { name: 'Integrate with third-party analytics service for event tracking', completed: false, data: { date: 'Jul 1', priority: 'Medium', status: 'Backlog', assignee: 'Unassigned', custom_field_1: 'Engineering', custom_field_2: 'High', custom_field_3: 'Sprint 4', custom_field_4: '' } },
-                         { name: 'Research new payment gateway options for international transactions', completed: false, data: { date: 'Jul 5', priority: 'Low', status: 'Backlog', assignee: 'Unassigned', custom_field_1: 'Product', custom_field_2: 'Medium', custom_field_3: 'Sprint 4', custom_field_4: '' } },
-                         { name: 'Plan the Q4 product development roadmap and feature prioritization', completed: false, data: { date: 'Jul 8', priority: 'High', status: 'Backlog', assignee: 'Brenda', custom_field_1: 'Product', custom_field_2: 'High', custom_field_3: 'Sprint 4', custom_field_4: '' } },
-                         { name: 'Update all front-end and back-end dependencies to their latest stable versions', completed: false, data: { date: 'Jul 10', priority: 'Medium', status: 'Backlog', assignee: 'Alex', custom_field_1: 'Engineering', custom_field_2: 'Low', custom_field_3: 'Sprint 4', custom_field_4: '' } },
-                    ]
+            createDropdown(dropdownOptions, columnOptionsIcon, (selected) => {
+                if (selected.name === 'Delete column') {
+                    deleteColumn(columnId);
+                } else if (selected.name === 'Rename column') {
+                    enableColumnRename(columnEl);
                 }
-            ];
-            
-            taskListBody.innerHTML = '';
-
-            // --- HTML STRUCTURE ---
-            const container = document.createElement('div');
-            container.className = 'w-full h-full bg-white overflow-auto juanlunacms-spreadsheetlist-custom-scrollbar border border-slate-200 rounded-lg shadow-sm';
-
-            const table = document.createElement('div');
-            table.className = 'min-w-max relative'; 
-            
-            // --- HEADER ---
-            const header = document.createElement('div');
-            header.className = 'flex sticky top-0 z-20 bg-white juanlunacms-spreadsheetlist-sticky-header';
-
-            const leftHeader = document.createElement('div');
-            leftHeader.className = 'sticky left-0 z-10 w-80 md:w-96 lg:w-[860px] flex-shrink-0 px-4 py-3 font-semibold text-slate-600 border-b border-r border-slate-200 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
-            leftHeader.textContent = 'Task Name';
-            
-            const rightHeaderContent = document.createElement('div');
-            rightHeaderContent.className = 'flex flex-grow border-b border-slate-200';
-            
-            allColumns.forEach(col => {
-                const isCustom = customColumns.some(customCol => customCol.id === col.id);
-                const cell = document.createElement('div');
-                cell.className = 'group w-44 flex-shrink-0 px-4 py-3 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center justify-between';
-                
-                const cellText = document.createElement('span');
-                cellText.textContent = col.name;
-                cell.appendChild(cellText);
-
-                if (isCustom) {
-                    const cellMenu = document.createElement('div');
-                    cellMenu.className = 'opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer';
-                    cellMenu.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>`;
-                    cell.appendChild(cellMenu);
-                }
-                rightHeaderContent.appendChild(cell);
             });
-
-            const addColumnBtn = document.createElement('div');
-            addColumnBtn.className = 'w-12 flex-shrink-0 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 cursor-pointer border-l border-slate-200 bg-white';
-            rightHeaderContent.appendChild(addColumnBtn);
-            addColumnBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
+            return;
+        }
+        
+        if (addColumnBtn) {
+            e.stopPropagation();
+            const existingTypes = new Set(project.customColumns.map(col => col.type));
+            const availableTypes = columnTypeOptions.filter(type => !existingTypes.has(type));
             
-            const headerSpacer = document.createElement('div');
-            headerSpacer.className = 'w-4 flex-shrink-0';
-            rightHeaderContent.appendChild(headerSpacer);
-
-            header.appendChild(leftHeader);
-            header.appendChild(rightHeaderContent);
+            if (availableTypes.length === 0) {
+                alert("All available column types have been added.");
+                return;
+            }
             
-            // --- BODY ---
-            const body = document.createElement('div');
+            createDropdown(
+                availableTypes.map(type => ({ name: type })),
+                addColumnBtn,
+                (selected) => openAddColumnDialog(selected.name)
+            );
+        }
+    };
+    
+    const sections = [
+    {
+        name: 'To Do',
+        isCollapsed: true,
+        id: 1222333,
+        tasks: [
+            { name: 'Draft project brief for Q3 launch and initial stakeholder alignment', completed: false, date: 'Jun 21', priority: 'High', status: 'Not started', assignee: 'Alex', custom_field_1: 'Marketing', custom_field_2: 'High', custom_field_3: 'Sprint 2', custom_field_4: 'Maria' },
+            { name: 'Schedule kickoff meeting with all stakeholders and prepare presentation slides', completed: true, date: 'Jun 22', priority: 'Medium', status: 'Not started', assignee: 'Brenda', custom_field_1: 'Product', custom_field_2: 'Medium', custom_field_3: 'Sprint 2', custom_field_4: 'David' },
+        ]
+    },
+    {
+        name: 'In Progress',
+        isCollapsed: false,
+        id: 1222333,
+        tasks: [
+            { name: 'Design wireframes for the main dashboard and user profile pages', completed: false, status: 'Completed', date: 'Jun 25', priority: 'High', status: 'In progress', assignee: 'David', custom_field_1: 'Design', custom_field_2: 'High', custom_field_3: 'Sprint 2', custom_field_4: 'Maria' },
+            { name: 'Develop reusable UI components for the new design system', completed: false, date: 'Jun 28', priority: 'Medium', status: 'In progress', assignee: 'Alex', custom_field_1: 'Engineering', custom_field_2: 'High', custom_field_3: 'Sprint 2', custom_field_4: 'John' },
+            { name: 'Another task in progress for scrolling demonstration purposes', completed: true, date: 'Jun 29', priority: 'Low', status: 'In progress', assignee: 'Casey', custom_field_1: 'Design', custom_field_2: 'Low', custom_field_3: 'Sprint 3', custom_field_4: 'Emily' },
+            { name: 'Final QA testing on the new feature before the code freeze deadline', completed: false, date: 'Jun 30', priority: 'High', status: 'In progress', assignee: 'Frank', custom_field_1: 'QA', custom_field_2: 'Medium', custom_field_3: 'Sprint 3', custom_field_4: 'Jane' }
+        ]
+    },
+    {
+        name: 'Completed',
+        isCollapsed: true,
+        id: 1222333,
+        tasks: [
+            { name: 'Deploy MVP to staging server for internal review', completed: true, date: 'Jun 10', priority: 'High', status: 'Done', assignee: 'Brenda', custom_field_1: 'Engineering', custom_field_2: 'Medium', custom_field_3: 'Sprint 1', custom_field_4: 'Chloe' },
+        ]
+    },
+    {
+        name: 'Backlog',
+        isCollapsed: true,
+        id: 1222333,
+        tasks: [
+            { name: 'Integrate with third-party analytics service for event tracking', completed: false, data: { date: 'Jul 1', priority: 'Medium', status: 'Backlog', assignee: 'Unassigned', custom_field_1: 'Engineering', custom_field_2: 'High', custom_field_3: 'Sprint 4', custom_field_4: '' } },
+            { name: 'Research new payment gateway options for international transactions', completed: false, data: { date: 'Jul 5', priority: 'Low', status: 'Backlog', assignee: 'Unassigned', custom_field_1: 'Product', custom_field_2: 'Medium', custom_field_3: 'Sprint 4', custom_field_4: '' } },
+            { name: 'Plan the Q4 product development roadmap and feature prioritization', completed: false, data: { date: 'Jul 8', priority: 'High', status: 'Backlog', assignee: 'Brenda', custom_field_1: 'Product', custom_field_2: 'High', custom_field_3: 'Sprint 4', custom_field_4: '' } },
+            { name: 'Update all front-end and back-end dependencies to their latest stable versions', completed: false, data: { date: 'Jul 10', priority: 'Medium', status: 'Backlog', assignee: 'Alex', custom_field_1: 'Engineering', custom_field_2: 'Low', custom_field_3: 'Sprint 4', custom_field_4: '' } },
+        ]
+    }];
+    
+    taskListBody.innerHTML = '';
+    
+    // --- HTML STRUCTURE ---
+    const container = document.createElement('div');
+    container.className = 'w-full h-full bg-white overflow-auto juanlunacms-spreadsheetlist-custom-scrollbar border border-slate-200 rounded-lg shadow-sm';
+    
+    const table = document.createElement('div');
+    table.className = 'min-w-max relative';
+    
+    // --- HEADER ---
+    const header = document.createElement('div');
+    header.className = 'flex sticky top-0 z-20 bg-white juanlunacms-spreadsheetlist-sticky-header';
+    
+    const leftHeader = document.createElement('div');
+    leftHeader.className = 'sticky left-0 z-10 w-80 md:w-96 lg:w-[860px] flex-shrink-0 px-4 py-3 font-semibold text-slate-600 border-b border-r border-slate-200 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
+    leftHeader.textContent = 'Name';
+    
+    const rightHeaderContent = document.createElement('div');
+    rightHeaderContent.className = 'flex flex-grow border-b border-slate-200';
+    
+    allColumns.forEach(col => {
+        const cell = document.createElement('div');
+        cell.className = 'group w-44 flex-shrink-0 px-4 py-3 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center justify-between';
+        
+        // *** CHANGE 1: Set data-column-id on the parent cell ***
+        // The listener uses .closest('[data-column-id]'), so the ID must be here.
+        if (col.isCustom) {
+            cell.dataset.columnId = col.id;
+        }
+        
+        const cellText = document.createElement('span');
+        cellText.textContent = col.name;
+        cell.appendChild(cellText);
+        
+        if (col.isCustom) {
+            const cellMenu = document.createElement('div');
             
-            const sectionGroupsContainer = document.createElement('div');
-sectionGroupsContainer.className = 'section-groups-container flex flex-col gap-0';
-
+            // *** CHANGE 2: Add the 'options-icon' class for the listener to find ***
+            // This is the icon that triggers the dropdown.
+            cellMenu.className = 'options-icon opacity-1 group-hover:opacity-100 transition-opacity cursor-pointer p-1'; // Added p-1 for a bigger click area
+            cellMenu.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400 pointer-events-none"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>`;
             
-            sections.forEach(section => {
-    const sectionRow = document.createElement('div');
-    sectionRow.className = 'flex border-b border-slate-200';
-
-    const leftSectionCell = document.createElement('div');
-    leftSectionCell.className = 'group sticky left-0 w-80 md:w-96 lg:w-[860px] flex-shrink-0 flex items-center px-1 py-1.5 font-semibold text-slate-800 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg hover:bg-slate-50';
-    if (section.id) leftSectionCell.dataset.sectionId = section.id;
-
-    leftSectionCell.innerHTML = `
+            // No need for dataset here, it's on the parent `cell`.
+            cell.appendChild(cellMenu);
+        }
+        rightHeaderContent.appendChild(cell);
+    });
+    
+    const addColumnBtn = document.createElement('div');
+    addColumnBtn.className = 'add-column-cell w-12 flex-shrink-0 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 cursor-pointer border-l border-slate-200 bg-white';
+    rightHeaderContent.appendChild(addColumnBtn);
+    addColumnBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
+    
+    const headerSpacer = document.createElement('div');
+    headerSpacer.className = 'w-4 flex-shrink-0';
+    rightHeaderContent.appendChild(headerSpacer);
+    
+    header.appendChild(leftHeader);
+    header.appendChild(rightHeaderContent);
+    rightHeaderContent.addEventListener('click', headerClickListener);
+    
+    // --- BODY ---
+    const body = document.createElement('div');
+    
+    const sectionGroupsContainer = document.createElement('div');
+    sectionGroupsContainer.className = 'section-groups-container flex flex-col gap-0';
+    
+    console.log(project);
+    console.log(project.customColumns);
+    console.log(project.sections);
+    
+    project.sections.forEach(section => {
+        
+        const sectionRow = document.createElement('div');
+        sectionRow.className = 'flex border-b border-slate-200';
+        
+        const leftSectionCell = document.createElement('div');
+        leftSectionCell.className = 'group sticky left-0 w-80 md:w-96 lg:w-[860px] flex-shrink-0 flex items-center px-1 py-1.5 font-semibold text-slate-800 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg hover:bg-slate-50';
+        if (section.id) leftSectionCell.dataset.sectionId = section.id;
+        
+        leftSectionCell.innerHTML = `
         <div class="drag-handle group-hover:opacity-100 transition-opacity cursor-grab mr-2 p-1 rounded flex items-center justify-center hover:bg-slate-200 user-select-none">
             <span class="material-icons text-slate-500 select-none" style="font-size: 20px;" draggable="false">drag_indicator</span>
         </div>
 
         <span class="section-toggle fas ${section.isCollapsed ? 'fa-chevron-down' : 'fa-chevron-right'} text-slate-500 mr-2 cursor-pointer" data-section-id="${section.id}"></span>
 
-        <div contenteditable="true" class="truncate max-w-[460px] outline-none bg-transparent focus:bg-white focus:ring-1 focus:ring-slate-300 rounded px-1">${section.name}</div>
+        <div contenteditable="true" class="truncate max-w-[460px] outline-none bg-transparent focus:bg-white focus:ring-1 focus:ring-slate-300 rounded px-1">${section.title}</div>
 
         <div class="flex-grow"></div> 
 
@@ -1376,82 +1508,81 @@ sectionGroupsContainer.className = 'section-groups-container flex flex-col gap-0
             <span class="material-icons text-slate-500">more_horiz</span>
         </div>
     `;
-
-    const rightSectionCell = document.createElement('div');
-    rightSectionCell.className = 'flex-grow flex';
-    allColumns.forEach((col, i) => {
-        const cell = document.createElement('div');
-        const borderClass = i === 0 ? 'border-l border-slate-200' : '';
-        cell.className = `w-44 flex-shrink-0 h-full hover:bg-slate-50 ${borderClass}`;
-        rightSectionCell.appendChild(cell);
-    });
-    const emptyAddCell = document.createElement('div');
-    emptyAddCell.className = 'w-12 flex-shrink-0 h-full hover:bg-slate-50';
-    rightSectionCell.appendChild(emptyAddCell);
-    const emptyEndSpacer = document.createElement('div');
-    emptyEndSpacer.className = 'w-4 flex-shrink-0 h-full hover:bg-slate-50';
-    rightSectionCell.appendChild(emptyEndSpacer);
-
-    sectionRow.appendChild(leftSectionCell);
-    sectionRow.appendChild(rightSectionCell);
-   const sectionGroup = document.createElement('div');
-sectionGroup.className = 'section-group';
-sectionGroup.dataset.sectionId = section.id;
-
-sectionGroup.appendChild(sectionRow);
-sectionGroupsContainer.appendChild(sectionGroup);
-
-    // Create sectionWrapper container and append to body
-    const sectionWrapper = document.createElement('div');
-    sectionWrapper.className = 'section-wrapper w-full';
-    sectionWrapper.dataset.sectionId = section.id;
-
-    
-sectionGroup.appendChild(sectionWrapper);
-
-    // ⛔️ Skip rendering tasks and add row if collapsed
-    if (section.isCollapsed) return;
-
-    // Render task rows`
-    section.tasks.forEach(task => {
-        const taskRow = document.createElement('div');
-        taskRow.className = 'task-row-wrapper flex group border-b border-slate-200';
-        taskRow.dataset.taskId = task.id;
-        taskRow.dataset.sectionId = section.id;
-
-        const likeCount = task.likedAmount || 0;
-        const likeCountHTML = likeCount > 0 ? `<span class="like-count">${likeCount}</span>` : '';
-        const commentCount = task.commentCount || 0;
-        const commountCountHTML = commentCount > 0 ? `<span class="comment-count">${commentCount }</span>` : '';
-
-        const leftTaskCell = document.createElement('div');
-        leftTaskCell.className = 'sticky left-0 w-[860px] flex-shrink-0 flex items-center gap-1 px-2 py-1.5 border-r border-transparent group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg juanlunacms-spreadsheetlist-dynamic-border';
-       const isCompleted = task.status === 'Completed';
-
-const taskNameClass = isCompleted ? 'task-name task-name-completed' : 'task-name';
-
-leftTaskCell.innerHTML = `
+        
+        const rightSectionCell = document.createElement('div');
+        rightSectionCell.className = 'flex-grow flex';
+        allColumns.forEach((col, i) => {
+            const cell = document.createElement('div');
+            const borderClass = i === 0 ? 'border-l border-slate-200' : '';
+            cell.className = `w-44 flex-shrink-0 h-full hover:bg-slate-50 ${borderClass}`;
+            rightSectionCell.appendChild(cell);
+        });
+        const emptyAddCell = document.createElement('div');
+        emptyAddCell.className = 'w-12 flex-shrink-0 h-full hover:bg-slate-50';
+        rightSectionCell.appendChild(emptyAddCell);
+        const emptyEndSpacer = document.createElement('div');
+        emptyEndSpacer.className = 'w-4 flex-shrink-0 h-full hover:bg-slate-50';
+        rightSectionCell.appendChild(emptyEndSpacer);
+        
+        sectionRow.appendChild(leftSectionCell);
+        sectionRow.appendChild(rightSectionCell);
+        const sectionGroup = document.createElement('div');
+        sectionGroup.className = 'section-group';
+        sectionGroup.dataset.sectionId = section.id;
+        
+        sectionGroup.appendChild(sectionRow);
+        sectionGroupsContainer.appendChild(sectionGroup);
+        
+        // Create sectionWrapper container and append to body
+        const sectionWrapper = document.createElement('div');
+        sectionWrapper.className = 'section-wrapper w-full';
+        sectionWrapper.dataset.sectionId = section.id;
+        
+        sectionGroup.appendChild(sectionWrapper);
+        
+        // ⛔️ Skip rendering tasks and add row if collapsed
+        if (section.isCollapsed) return;
+        
+        // Render task rows`
+        section.tasks.forEach(task => {
+            const taskRow = document.createElement('div');
+            taskRow.className = 'task-row-wrapper flex group border-b border-slate-200';
+            taskRow.dataset.taskId = task.id;
+            taskRow.dataset.sectionId = section.id;
+            
+            const likeCount = task.likedAmount || 0;
+            const likeCountHTML = likeCount > 0 ? `<span class="like-count">${likeCount}</span>` : '';
+            const commentCount = task.commentCount || 0;
+            const commountCountHTML = commentCount > 0 ? `<span class="comment-count">${commentCount }</span>` : '';
+            
+            
+            const leftTaskCell = document.createElement('div');
+            leftTaskCell.className = 'group sticky left-0 w-80 md:w-96 lg:w-[860px] flex-shrink-0 flex items-center gap-1 px-2 py-1.5 border-r border-transparent group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg juanlunacms-spreadsheetlist-dynamic-border';
+            
+            const isCompleted = task.status === 'Completed';
+            
+            const taskNameClass = isCompleted ? 'task-name task-name-completed' : 'task-name';
+            
+            leftTaskCell.innerHTML = `
     <div class="drag-handle cursor-grab rounded flex items-center justify-center hover:bg-slate-200 user-select-none">
         <span class="material-icons text-slate-400 select-none opacity-1 group-hover:opacity-100 transition-opacity" style="font-size: 20px;" draggable="false">drag_indicator</span>
     </div>
 
     <label class="juanlunacms-spreadsheetlist-custom-checkbox-container" data-control="check">
-        <input type="checkbox" ${task.status === 'Completed' ? 'checked' : ''}>
+        <input type="checkbox" ${isCompleted ? 'checked' : ''}>
         <span class="juanlunacms-spreadsheetlist-custom-checkbox"></span>
     </label>
 
     <div class="flex items-start flex-grow min-w-0">
-      <span 
-  class="${taskNameClass} truncate whitespace-nowrap overflow-hidden text-ellipsis text-[18px] block outline-none bg-transparent focus:bg-white focus:ring-1 focus:ring-slate-300 rounded px-1 transition-all duration-150"
-  style="max-width: 100%;" 
-  contenteditable="true"
-  data-task-id="${task.id}"
-  data-control="task-name"
->
-  ${task.name}
-</span>
-
-
+        <span
+            class="${taskNameClass} truncate whitespace-nowrap overflow-hidden text-ellipsis text-[18px] block outline-none bg-transparent focus:bg-white focus:ring-1 focus:ring-slate-300 rounded px-1 transition-all duration-150"
+            style="max-width: 100%;"
+            contenteditable="true"
+            data-task-id="${task.id}"
+            data-control="task-name"
+        >
+            ${task.name}
+        </span>
         <div class="task-controls flex items-center gap-1 ml-1 transition-opacity duration-150 group-hover:opacity-100">
             <span class="material-icons text-[18px] text-slate-400 cursor-pointer hover:text-red-500 transition" data-control="like" data-task-id="${task.id}">
                 favorite_border
@@ -1471,231 +1602,281 @@ leftTaskCell.innerHTML = `
         </span>
     </div>
 `;
-
-
-
-
-        const rightTaskCells = document.createElement('div');
-        rightTaskCells.className = 'flex-grow flex group-hover:bg-slate-50';
-        allColumns.forEach((col, i) => {
-            const cell = document.createElement('div');
-            const borderClass = 'border-r';
-            const leftBorderClass = i === 0 ? 'border-l' : '';
-            cell.className = `w-44 flex-shrink-0 px-3 py-1.5 ${borderClass} ${leftBorderClass} border-slate-200 truncate`;
-            cell.textContent = task[col.id] || '';
-            rightTaskCells.appendChild(cell);
-        });
-
-        const emptyAddCellTask = document.createElement('div');
-        emptyAddCellTask.className = 'w-12 flex-shrink-0 h-full border-l border-slate-200';
-        rightTaskCells.appendChild(emptyAddCellTask);
-        const emptyEndSpacerTask = document.createElement('div');
-        emptyEndSpacerTask.className = 'w-4 flex-shrink-0 h-full';
-        rightTaskCells.appendChild(emptyEndSpacerTask);
-
-        taskRow.appendChild(leftTaskCell);
-        taskRow.appendChild(rightTaskCells);
-        sectionWrapper.appendChild(taskRow);
-
-// Inside your sections.forEach loop...
-
-Sortable.create(sectionWrapper, {
-    group: 'tasks',
-    handle: '.drag-handle',
-    animation: 150,
-    draggable: '.task-row-wrapper',
-    ghostClass: 'custom-ghost-hidden', // This is for the placeholder, keep it if you use it
-    dragClass: 'item-is-dragging', // This will hide the original item
+            
+            const rightTaskCells = document.createElement('div');
+            rightTaskCells.className = 'flex-grow flex group-hover:bg-slate-50';
+            
+            
+// This loop creates the cells for a single task row.
+allColumns.forEach((col, i) => {
+    const cell = document.createElement('div');
     
-    // ... inside Sortable.create for tasks ...
-onStart(evt) {
-        const taskRow = evt.item;
-        const taskName = taskRow.querySelector('[data-control="task-name"]')?.textContent.trim() || 'Untitled';
-        
-        // Create the custom ghost element
-        const ghost = document.createElement('div');
-        ghost.className = 'task-drag-ghost';
-        ghost.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-          <path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/>
-        </svg>
-        <span>${taskName}</span>
-    `;
-        
-        // Position it off-screen and add to body
-        ghost.style.position = 'absolute';
-        ghost.style.top = '-9999px';
-        ghost.style.left = '-9999px';
-        document.body.appendChild(ghost);
-        
-        // Store reference for cleanup
-        taskRow._dragGhostEl = ghost;
-        
-        // *** THE KEY FIX ***
-        // Defer the setDragImage call to allow the browser to render the ghost.
-        setTimeout(() => {
-            if (evt.originalEvent.dataTransfer) {
-                // Adjust the offset (e.g., 20, 20) to position the ghost
-                // relative to the cursor.
-                evt.originalEvent.dataTransfer.setDragImage(ghost, 20, 20);
-            }
-        }, 0);
-    },
-    // onEnd remains the same...
-    onEnd(evt) {
-        // Clean up the ghost element
-        if (evt.item._dragGhostEl) {
-            document.body.removeChild(evt.item._dragGhostEl);
-            delete evt.item._dragGhostEl;
-        }
+    // --- Base Styling ---
+    const borderClass = 'border-r';
+    const leftBorderClass = i === 0 ? 'border-l' : '';
+    cell.className = `w-44 h-10 flex-shrink-0 px-3 py-1.5 flex items-center ${borderClass} ${leftBorderClass} border-slate-200 truncate`;
+    if (isCompleted) {
+        cell.classList.add('is-completed');
     }
+    
+    // --- Set Inner HTML and Data Controls based on column type ---
+let content = '';
+cell.dataset.control = col.control;
+
+switch (col.id) {
+    case 'assignees':
+        content = createAssigneeHTML(task.assignees);
+        break;
+    case 'dueDate':
+        // This cell correctly uses a <span>
+        content = `<span>${task.dueDate || 'Set date'}</span>`;
+        break;
+    case 'priority':
+cell.contentEditable = true;
+if (task.priority) {
+    // Find the matching priority setting in our new project.customPriorities array
+    const prioritySetting = project.customPriorities.find(p => p.name === task.priority);
+    
+    if (prioritySetting) {
+        // If found, use its color to create a styled tag
+        const style = `background-color: ${prioritySetting.color}40; color: ${prioritySetting.color}; `;
+        content = `<div class="priority-tag" style="${style}">${task.priority}</div>`;
+    } else {
+        // Fallback for priorities not in the custom list
+        content = `<span>${task.priority}</span>`;
+    }
+}
+break;
+    case 'status':
+cell.contentEditable = true;
+if (task.status) {
+    // Find the matching status setting in our new project.customStatuses array
+    const statusSetting = project.customStatuses.find(s => s.name === task.status);
+    
+    if (statusSetting) {
+        // If found, use its color to create a styled tag
+        const style = `background-color: ${statusSetting.color}20; color: ${statusSetting.color}; border: 1px solid ${statusSetting.color}80;`;
+        content = `<div class="status-tag" style="${style}">${task.status}</div>`;
+    } else {
+        // Fallback for statuses not in the custom list
+        content = `<span>${task.status}</span>`;
+    }
+}
+break;
+    default:
+        const rawValue = task.customFields ? task.customFields[col.id] : undefined;
+        
+        if (col.options && col.options[0]?.hasOwnProperty('color')) {
+            cell.dataset.control = 'custom-select'; // It behaves like a select
+            const selectedOption = col.options.find(opt => opt.name === rawValue);
+
+            if (selectedOption && selectedOption.color) {
+                // Use the color from the data to create a styled tag
+                // We make the background a transparent version of the main color
+                const style = `background-color: ${selectedOption.color}20; color: ${selectedOption.color}; `;
+                content = `<div class="status-tag" style="${style}">${selectedOption.name}</div>`;
+            } else {
+                content = '<span class="add-value">+ Select Type</span>';
+            }
+        } else if (col.options && Array.isArray(col.options)) {
+    cell.dataset.control = 'custom-select';
+    const selectedOption = col.options.find(opt => opt.name === rawValue);
+    
+    if (selectedOption) {
+        const sanitizedName = (selectedOption.name || '').toLowerCase().replace(/\s+/g, '-');
+        content = `<div class="status-tag status-${sanitizedName}">${selectedOption.name}</div>`;
+    } else {
+        content = '<span class="add-value">+ Select</span>';
+    }
+}
+        // --- Logic for other column types (Text, Costing, etc.) ---
+        else {
+            cell.contentEditable = true;
+            let displayValue = (rawValue !== null && typeof rawValue !== 'undefined') ? rawValue : '';
+            
+            if ((col.type === 'Costing' || col.type === 'Numbers') && typeof rawValue === 'number') {
+    // For the INITIAL display, format the number correctly
+    if (rawValue % 1 !== 0) {
+        displayValue = rawValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    } else {
+        displayValue = rawValue.toLocaleString('en-US', { maximumFractionDigits: 0 });
+    }
+}
+            
+            // *** THE FIX IS HERE ***
+            // We now wrap the plain text value in a <span> for consistent HTML structure.
+            content = `<span>${displayValue}</span>`;
+            
+            // The numeric input enforcer is attached to the parent cell, so it still works correctly.
+            if (col.type === 'Costing' || col.type === 'Numbers') {
+    allowNumericChars(cell); // Allows typing numbers, commas, etc.
+    formatNumberOnBlur(cell); // Formats the number when the user is done
+}
+        }
+        break;
+}
+    
+    cell.innerHTML = content;
+    rightTaskCells.appendChild(cell);
 });
-
-    });
-
-    // Add task row
-    const addRow = document.createElement('div');
-    addRow.className = 'add-task-row-wrapper flex group';
-    addRow.dataset.sectionId = section.id;
-
-    const leftAddCell = document.createElement('div');
-    leftAddCell.className = 'sticky left-0 w-80 md:w-96 lg:w-[860px] flex-shrink-0 flex items-center px-3 py-1.5 group-hover:bg-slate-100 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
-
-    const indentedText = document.createElement('div');
-    indentedText.className = 'flex items-center gap-2 ml-8 text-slate-500 cursor-pointer hover:bg-slate-200 px-2 py-1 rounded transition';
-    indentedText.dataset.sectionId = section.id;
-    indentedText.innerHTML = `
+ 
+ // These lines append the empty cells and assemble the row
+ const emptyAddCellTask = document.createElement('div');
+ emptyAddCellTask.className = 'w-12 flex-shrink-0 h-full border-l border-slate-200';
+ rightTaskCells.appendChild(emptyAddCellTask);
+ 
+ const emptyEndSpacerTask = document.createElement('div');
+ emptyEndSpacerTask.className = 'w-4 flex-shrink-0 h-full';
+ rightTaskCells.appendChild(emptyEndSpacerTask);
+ 
+ taskRow.appendChild(leftTaskCell);
+ taskRow.appendChild(rightTaskCells);
+ sectionWrapper.appendChild(taskRow);
+ });
+        
+        // Add task row
+        const addRow = document.createElement('div');
+        addRow.className = 'add-task-row-wrapper flex group';
+        addRow.dataset.sectionId = section.id;
+        
+        const leftAddCell = document.createElement('div');
+        leftAddCell.className = 'sticky left-0 w-80 md:w-96 lg:w-[860px] flex-shrink-0 flex items-center px-3 py-1.5 group-hover:bg-slate-100 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
+        
+        const indentedText = document.createElement('div');
+        indentedText.className = 'flex items-center gap-2 ml-8 text-slate-500 cursor-pointer hover:bg-slate-200 px-2 py-1 rounded transition';
+        indentedText.dataset.sectionId = section.id;
+        indentedText.innerHTML = `
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
         </svg>
         <span>Add task</span>
     `;
-    leftAddCell.appendChild(indentedText);
-
-    const rightAddCells = document.createElement('div');
-    rightAddCells.className = 'flex-grow flex group-hover:bg-slate-100';
-    allColumns.forEach((col, i) => {
-        const cell = document.createElement('div');
-        const leftBorderClass = i === 0 ? 'border-l border-slate-200' : '';
-        cell.className = `w-44 flex-shrink-0 h-full ${leftBorderClass}`;
-        rightAddCells.appendChild(cell);
+        leftAddCell.appendChild(indentedText);
+        
+        const rightAddCells = document.createElement('div');
+        rightAddCells.className = 'flex-grow flex group-hover:bg-slate-100';
+        allColumns.forEach((col, i) => {
+            const cell = document.createElement('div');
+            const leftBorderClass = i === 0 ? 'border-l border-slate-200' : '';
+            cell.className = `w-44 flex-shrink-0 h-full ${leftBorderClass}`;
+            rightAddCells.appendChild(cell);
+        });
+        
+        const emptyAddCellLast = document.createElement('div');
+        emptyAddCellLast.className = 'w-12 flex-shrink-0 h-full';
+        rightAddCells.appendChild(emptyAddCellLast);
+        const emptyEndSpacerLast = document.createElement('div');
+        emptyEndSpacerLast.className = 'w-4 flex-shrink-0 h-full';
+        rightAddCells.appendChild(emptyEndSpacerLast);
+        
+        addRow.appendChild(leftAddCell);
+        addRow.appendChild(rightAddCells);
+        sectionWrapper.appendChild(addRow);
+        
     });
-
-    const emptyAddCellLast = document.createElement('div');
-    emptyAddCellLast.className = 'w-12 flex-shrink-0 h-full';
-    rightAddCells.appendChild(emptyAddCellLast);
-    const emptyEndSpacerLast = document.createElement('div');
-    emptyEndSpacerLast.className = 'w-4 flex-shrink-0 h-full';
-    rightAddCells.appendChild(emptyEndSpacerLast);
-
-    addRow.appendChild(leftAddCell);
-    addRow.appendChild(rightAddCells);
-    sectionWrapper.appendChild(addRow);
-
-});
-
-    body.appendChild(sectionGroupsContainer);
-
-            table.appendChild(header);
-            table.appendChild(body);
-            container.appendChild(table);
-            taskListBody.appendChild(container);
-
-            // --- DYNAMIC SHADOWS SCRIPT ---
-            const stickyHeader = container.querySelector('.juanlunacms-spreadsheetlist-sticky-header');
-            const dynamicBorders = container.querySelectorAll('.juanlunacms-spreadsheetlist-dynamic-border');
-            const leftHeaderPane = container.querySelector('.juanlunacms-spreadsheetlist-left-sticky-pane');
-            const allStickyPanes = container.querySelectorAll('.juanlunacms-spreadsheetlist-left-sticky-pane');
-
-
-            container.addEventListener('scroll', () => {
-                const scrolled = container.scrollLeft > 0;
-                // Shadow for main header
-                if (container.scrollTop > 0) {
-                    stickyHeader.classList.add('shadow-md');
-                } else {
-                    stickyHeader.classList.remove('shadow-md');
-                }
-                // Shadow and border for left task pane cells
-                if (scrolled) {
-                    allStickyPanes.forEach(pane => {
-                        pane.classList.add('juanlunacms-spreadsheetlist-shadow-right-custom');
-                    });
-                    dynamicBorders.forEach(pane => {
-                        pane.classList.remove('border-transparent');
-                        pane.classList.add('border-slate-200');
-                    });
-                } else {
-                     allStickyPanes.forEach(pane => {
-                        pane.classList.remove('juanlunacms-spreadsheetlist-shadow-right-custom');
-                    });
-                    dynamicBorders.forEach(pane => {
-                        pane.classList.add('border-transparent');
-                        pane.classList.remove('border-slate-200');
-                    });
-                }
-            });
-
-           // Outside the forEach loop, for the section container...
-
-Sortable.create(sectionGroupsContainer, {
-    handle: '.drag-handle',
-    animation: 150,
-    dragClass: 'item-is-dragging', // Re-use the class to hide the original section
     
-    // ... inside Sortable.create for sections ...
-onStart(evt) {
-        const sectionGroup = evt.item;
-        const sectionName = sectionGroup.querySelector('[contenteditable]')?.textContent.trim() || 'Untitled';
+    body.appendChild(sectionGroupsContainer);
+    
+    table.appendChild(header);
+    table.appendChild(body);
+    container.appendChild(table);
+    taskListBody.appendChild(container);
+    
+    // --- DYNAMIC SHADOWS SCRIPT ---
+    const stickyHeader = container.querySelector('.juanlunacms-spreadsheetlist-sticky-header');
+    const dynamicBorders = container.querySelectorAll('.juanlunacms-spreadsheetlist-dynamic-border');
+    const leftHeaderPane = container.querySelector('.juanlunacms-spreadsheetlist-left-sticky-pane');
+    const allStickyPanes = container.querySelectorAll('.juanlunacms-spreadsheetlist-left-sticky-pane');
+    
+    
+    container.addEventListener('scroll', () => {
+        const scrolled = container.scrollLeft > 0;
+        // Shadow for main header
+        if (container.scrollTop > 0) {
+            stickyHeader.classList.add('shadow-md');
+        } else {
+            stickyHeader.classList.remove('shadow-md');
+        }
+        // Shadow and border for left task pane cells
+        if (scrolled) {
+            allStickyPanes.forEach(pane => {
+                pane.classList.add('juanlunacms-spreadsheetlist-shadow-right-custom');
+            });
+            dynamicBorders.forEach(pane => {
+                pane.classList.remove('border-transparent');
+                pane.classList.add('border-slate-200');
+            });
+        } else {
+            allStickyPanes.forEach(pane => {
+                pane.classList.remove('juanlunacms-spreadsheetlist-shadow-right-custom');
+            });
+            dynamicBorders.forEach(pane => {
+                pane.classList.add('border-transparent');
+                pane.classList.remove('border-slate-200');
+            });
+        }
+    });
+    
+    // Outside the forEach loop, for the section container...
+    
+    Sortable.create(sectionGroupsContainer, {
+        handle: '.drag-handle',
+        animation: 150,
+        dragClass: 'item-is-dragging', // Re-use the class to hide the original section
         
-        const wrapper = sectionGroup.querySelector('.section-wrapper');
-        if (wrapper) wrapper.style.display = 'none';
-        
-        // Create the custom ghost element for the section
-        const ghost = document.createElement('div');
-        ghost.className = 'section-drag-ghost';
-        ghost.innerHTML = `
+        // ... inside Sortable.create for sections ...
+        onStart(evt) {
+            const sectionGroup = evt.item;
+            const sectionName = sectionGroup.querySelector('[contenteditable]')?.textContent.trim() || 'Untitled';
+            
+            const wrapper = sectionGroup.querySelector('.section-wrapper');
+            if (wrapper) wrapper.style.display = 'none';
+            
+            // Create the custom ghost element for the section
+            const ghost = document.createElement('div');
+            ghost.className = 'section-drag-ghost';
+            ghost.innerHTML = `
         <span class="fas fa-chevron-down"></span>
         <span>${sectionName}</span>
     `;
-        
-        // Position off-screen and add to body
-        ghost.style.position = 'absolute';
-        ghost.style.top = '-9999px';
-        ghost.style.left = '-9999px';
-        document.body.appendChild(ghost);
-        
-        // Store reference for cleanup
-        sectionGroup._dragGhostEl = ghost;
-        
-        // *** THE KEY FIX ***
-        // Defer the setDragImage call.
-        setTimeout(() => {
-            if (evt.originalEvent.dataTransfer) {
-                evt.originalEvent.dataTransfer.setDragImage(ghost, 20, 20);
+            
+            // Position off-screen and add to body
+            ghost.style.position = 'absolute';
+            ghost.style.top = '-9999px';
+            ghost.style.left = '-9999px';
+            document.body.appendChild(ghost);
+            
+            // Store reference for cleanup
+            sectionGroup._dragGhostEl = ghost;
+            
+            // *** THE KEY FIX ***
+            // Defer the setDragImage call.
+            setTimeout(() => {
+                if (evt.originalEvent.dataTransfer) {
+                    evt.originalEvent.dataTransfer.setDragImage(ghost, 20, 20);
+                }
+            }, 0);
+        },
+        // onEnd remains the same...
+        onEnd(evt) {
+            const sectionGroup = evt.item;
+            const wrapper = sectionGroup.querySelector('.section-wrapper');
+            if (wrapper) wrapper.style.display = '';
+            
+            if (sectionGroup._dragGhostEl) {
+                document.body.removeChild(sectionGroup._dragGhostEl);
+                delete sectionGroup._dragGhostEl;
             }
-        }, 0);
-    },
-    // onEnd remains the same...
-    onEnd(evt) {
-        const sectionGroup = evt.item;
-        const wrapper = sectionGroup.querySelector('.section-wrapper');
-        if (wrapper) wrapper.style.display = '';
-        
-        if (sectionGroup._dragGhostEl) {
-            document.body.removeChild(sectionGroup._dragGhostEl);
-            delete sectionGroup._dragGhostEl;
         }
-    }
-});
+    });
+    
+}
 
-        }
-
-        function handleMouseMoveDragGhost(e) {
-  if (!window._currentGhost) return;
-  window._currentGhost.style.left = `${e.clientX}px`;
-  window._currentGhost.style.top = `${e.clientY}px`;
+function handleMouseMoveDragGhost(e) {
+    if (!window._currentGhost) return;
+    window._currentGhost.style.left = `${e.clientX}px`;
+    window._currentGhost.style.top = `${e.clientY}px`;
 }
 
 /*
@@ -2228,9 +2409,6 @@ function createTaskRow(task, customColumns) {
             
         }
     ];
-    
-    
-    
     baseColumns.forEach(col => {
         
         const cell = document.createElement('div');
@@ -2281,10 +2459,7 @@ function createTaskRow(task, customColumns) {
         
     });
     
-    
-    
     // --- Custom Columns ---
-    
     (customColumns || []).forEach(col => {
         
         const cell = document.createElement('div');
