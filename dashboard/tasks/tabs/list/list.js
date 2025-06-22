@@ -1351,52 +1351,77 @@ function formatNumberOnBlur(cell) {
     });
 }
 
-/**
- * Analyzes a due date string and returns the correct display text and color code.
- * @param {string | null} dueDateString - The due date, e.g., "2025-06-26".
- * @returns {{text: string, color: string}} An object with the text and color.
- */
 function formatDueDate(dueDateString) {
     // --- Setup ---
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Normalize today to the beginning of the day
+    today.setHours(0, 0, 0, 0); // Normalize today to the start of the day for accurate comparisons.
     
     // Handle empty or invalid dates
     if (!dueDateString) {
-        return { text: 'Set date', color: 'default' };
+        return { text: '', color: 'default' }; // Return empty text as requested
     }
     
-    const dueDate = new Date(dueDateString + 'T00:00:00');
+    const dueDate = new Date(dueDateString); // Directly parse the string
     if (isNaN(dueDate.getTime())) {
         return { text: 'Invalid date', color: 'red' };
     }
+    dueDate.setHours(0, 0, 0, 0); // Also normalize the due date
     
-    const dayDifference = Math.round((dueDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
+    // --- Calculations ---
+    const todayYear = today.getFullYear();
+    const todayMonth = today.getMonth();
+    const dueYear = dueDate.getFullYear();
+    const dueMonth = dueDate.getMonth();
     
-    // --- LOGIC FOR PAST DUE DATES (MODIFIED) ---
+    // Calculate the difference in milliseconds and convert to days
+    const dayDifference = (dueDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
+    
+    // --- 1. Handle Past Dates ---
     if (dayDifference < 0) {
         if (dayDifference === -1) {
             return { text: 'Yesterday', color: 'red' };
         }
-        // For any other date in the past, it's now explicitly "Overdue"
-        const MmmDddFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
-        return { text: `Overdue (${MmmDddFormat.format(dueDate)})`, color: 'red' };
+        // "Last Week" is considered any day within the last 7 days (but not yesterday)
+        if (dayDifference > -7) {
+            return { text: 'Last Week', color: 'red' };
+        }
+        // Check if it was last calendar month in the same year
+        if (todayYear === dueYear && todayMonth === dueMonth + 1) {
+            return { text: 'Last Month', color: 'red' };
+        }
+        // Check if it was December last year when it's January this year
+        if (todayYear === dueYear + 1 && todayMonth === 0 && dueMonth === 11) {
+            return { text: 'Last Month', color: 'red' };
+        }
+        // Check if it was last year
+        if (todayYear === dueYear + 1) {
+            return { text: 'Last Year', color: 'red' };
+        }
+        // Fallback for all other past dates (e.g., "Over a year ago")
+        const MmmDddYyyyFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        return { text: MmmDddYyyyFormat.format(dueDate), color: 'red' };
     }
     
-    // --- Logic for Today and Future Dates (No change here) ---
-    switch (dayDifference) {
-        case 0:
-            return { text: 'Today', color: 'green' };
-        case 1:
-            return { text: 'Tomorrow', color: 'red' };
-        default:
-            const endOfWeek = new Date(today);
-            endOfWeek.setDate(today.getDate() + (6 - today.getDay()));
-            if (dueDate <= endOfWeek) {
-                return { text: 'This Week', color: 'yellow' };
-            }
-            const MmmDddFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
-            return { text: MmmDddFormat.format(dueDate), color: 'default' };
+    // --- 2. Handle Present and Immediate Future ---
+    if (dayDifference === 0) {
+        return { text: 'Today', color: 'green' };
+    }
+    if (dayDifference === 1) {
+        return { text: 'Tomorrow', color: 'yellow' }; // Changed to yellow for "approaching"
+    }
+    
+    // --- 3. Handle Future Dates ---
+    
+    // If the due date is in the current year
+    if (dueYear === todayYear) {
+        const MmmDddFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+        return { text: MmmDddFormat.format(dueDate), color: 'default' }; // e.g., "30 Jun"
+    }
+    
+    // If the due date is in a future year
+    else {
+        const MmmDddYyyyFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        return { text: MmmDddYyyyFormat.format(dueDate), color: 'default' }; // e.g., "30 Jun 2026"
     }
 }
 
@@ -1531,13 +1556,21 @@ function render() {
     
     allColumns.forEach(col => {
         const cell = document.createElement('div');
-        cell.className = 'group w-44 flex-shrink-0 px-4 py-3 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center justify-between';
-        
-        // *** CHANGE 1: Set data-column-id on the parent cell ***
-        // The listener uses .closest('[data-column-id]'), so the ID must be here.
-        if (col.isCustom) {
-            cell.dataset.columnId = col.id;
-        }
+        let cellClasses = 'group px-4 py-3 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center justify-between';
+
+if (
+    col.type === 'Text' || col.type === 'Numbers' || col.type === 'Type' ||
+    col.id === 'priority' || col.id === 'status'
+) {
+    // ADD a marker class for our JS function to find
+    cellClasses += ' js-flexible-col';
+} else {
+    cellClasses += ' w-44'; // Keep fixed width for others
+}
+
+cell.className = cellClasses;
+
+        cell.dataset.columnId = col.id;
         
         const cellText = document.createElement('span');
         cellText.textContent = col.name;
@@ -1568,7 +1601,7 @@ function render() {
     
     header.appendChild(leftHeader);
     header.appendChild(rightHeaderContent);
-   // rightHeaderContent.addEventListener('click', headerClickListener);
+   rightHeaderContent.addEventListener('click', headerClickListener);
     
     // --- BODY ---
     const body = document.createElement('div');
@@ -1622,14 +1655,40 @@ if (toggleIcon) {
     });
 }
         
-        const rightSectionCell = document.createElement('div');
-        rightSectionCell.className = 'flex-grow flex';
-        allColumns.forEach((col, i) => {
-            const cell = document.createElement('div');
-            const borderClass = i === 0 ? 'border-l border-slate-200' : '';
-            cell.className = `w-44 flex-shrink-0 h-full hover:bg-slate-50 ${borderClass}`;
-            rightSectionCell.appendChild(cell);
-        });
+const rightSectionCell = document.createElement('div');
+rightSectionCell.className = 'flex-grow flex';
+
+allColumns.forEach((col, i) => {
+    const cell = document.createElement('div');
+    const borderClass = i === 0 ? 'border-l border-slate-200' : '';
+    
+    // --- MODIFICATION FOR SECTION ROW CELLS ---
+    // Start with the base classes that all cells share.
+    let cellClasses = `flex-shrink-0 h-full hover:bg-slate-50 ${borderClass}`;
+    
+    // Apply the SAME conditional logic as the header and task rows.
+    if (
+        col.type === 'Text' ||
+        col.type === 'Numbers' ||
+        col.type === 'Type' ||
+        col.id === 'priority' ||
+        col.id === 'status'
+    ) {
+        // Apply flexible width classes
+        cellClasses += ' min-w-[176px] flex-1';
+    } else {
+        // Apply fixed width classes
+        cellClasses += ' w-44';
+    }
+    
+    // Set the final, correct classes on the cell
+    cell.className = cellClasses;
+    // --- END OF MODIFICATION ---
+    cell.dataset.columnId = col.id;
+    
+    rightSectionCell.appendChild(cell);
+});
+
         const emptyAddCell = document.createElement('div');
         emptyAddCell.className = 'w-12 flex-shrink-0 h-full hover:bg-slate-50';
         rightSectionCell.appendChild(emptyAddCell);
@@ -1726,78 +1785,89 @@ allColumns.forEach((col, i) => {
     // --- Base Styling ---
     const borderClass = 'border-r';
     const leftBorderClass = i === 0 ? 'border-l' : '';
-    cell.className = `w-44 h-10 flex-shrink-0 px-3 py-1.5 flex items-center ${borderClass} ${leftBorderClass} border-slate-200 truncate`;
-    if (isCompleted) {
+    let cellClasses = `h-10 px-3 py-1.5 flex items-center ${borderClass} ${leftBorderClass} border-slate-200`;
+
+if (
+    col.type === 'Text' || col.type === 'Numbers' || col.type === 'Type' ||
+    col.id === 'priority' || col.id === 'status'
+) {
+    // ADD the same marker class here
+    cellClasses += ' js-flexible-col';
+    // Make sure text can wrap if the column grows
+    cell.style.whiteSpace = 'normal';
+} else {
+    cellClasses += ' w-44 truncate'; // Keep fixed width for others
+}
+
+cell.className = cellClasses;
+
+
+if (isCompleted) {
         cell.classList.add('is-completed');
     }
     
-    // --- Set Inner HTML and Data Controls based on column type ---
 let content = '';
 
+const COMPLETED_TEXT_COLOR = '#6b7280'; 
+const COMPLETED_BG_COLOR = '#f3f4f6';
 
 switch (col.id) {
     case 'assignees':
         cell.dataset.control = 'assignee';
         content = createAssigneeHTML(task.assignees);
         break;
-case 'dueDate':
-    cell.dataset.control = 'due-date';
-const dueDateInfo = formatDueDate(task.dueDate);
-
-const className = `date-tag date-${dueDateInfo.color}`;
-content = `<span class="${className}">${dueDateInfo.text}</span>`;
-break;
-    case 'priority':
-        cell.dataset.control = 'priority';
-if (task.priority) {
-    // --- NEW LOGIC: Find color in two steps ---
-    let color = null;
-    
-    // Step 1: Check for a custom color first.
-    // The ?. (optional chaining) safely handles if customPriorities doesn't exist.
-    color = project.customPriorities?.find(p => p.name === task.priority)?.color;
-    
-    // Step 2: If no custom color was found, check the default colors object.
-    if (!color) {
-        color = defaultPriorityColors[task.priority];
-    }
-    
-    // --- RENDER ---
-    // Now, render based on whether we found a color in either step.
-    if (color) {
-        const style = `background-color: ${color}20; color: ${color};`;
-        content = `<div class="priority-tag" style="${style}">${task.priority}</div>`;
-    } else {
-        // Step 3: Fallback to plain text only if no color was found anywhere.
-        content = `<span>${task.priority}</span>`;
-    }
-}
-break;
-    case 'status':
-        cell.dataset.control = 'status';
-if (task.status) {
-    // --- NEW LOGIC: Find color in two steps ---
-    let color = null;
-    
-    // Step 1: Check for a custom status color first.
-    color = project.customStatuses?.find(s => s.name === task.status)?.color;
-    
-    // Step 2: If no custom color, check for a default color.
-    if (!color) {
-        color = defaultStatusColors[task.status];
-    }
-    
-    // --- RENDER ---
-    // Now, render based on the result.
-    if (color) {
-        const style = `background-color: ${color}20; color: ${color};`;
-        content = `<div class="status-tag" style="${style}">${task.status}</div>`;
-    } else {
-        // Step 3: Fallback to plain text if no color was found.
-        content = `<span>${task.status}</span>`;
-    }
-}
-break;
+ case 'dueDate':
+ cell.dataset.control = 'due-date';
+ // For due date, we can use a simpler check
+ if (isCompleted) {
+     content = `<span class="date-tag">${formatDueDate(task.dueDate).text}</span>`;
+ } else {
+     const dueDateInfo = formatDueDate(task.dueDate);
+     const className = `date-tag date-${dueDateInfo.color}`;
+     content = `<span class="${className}">${dueDateInfo.text}</span>`;
+ }
+ break;
+ 
+ case 'priority':
+ cell.dataset.control = 'priority';
+ if (task.priority) {
+     // MODIFIED: Check if the task is completed FIRST
+     if (isCompleted) {
+         const grayStyle = `background-color: ${COMPLETED_BG_COLOR}; color: ${COMPLETED_TEXT_COLOR};`;
+         content = `<div class="priority-tag" style="${grayStyle}">${task.priority}</div>`;
+     } else {
+         // This is the original logic for non-completed tasks
+         let color = project.customPriorities?.find(p => p.name === task.priority)?.color || defaultPriorityColors[task.priority];
+         if (color) {
+             const style = `background-color: ${color}20; color: ${color};`;
+             content = `<div class="priority-tag" style="${style}">${task.priority}</div>`;
+         } else {
+             content = `<span>${task.priority}</span>`;
+         }
+     }
+ }
+ break;
+ 
+ case 'status':
+ cell.dataset.control = 'status';
+ if (task.status) {
+     // MODIFIED: Check if the task is completed FIRST
+     if (isCompleted) {
+         const grayStyle = `background-color: ${COMPLETED_BG_COLOR}; color: ${COMPLETED_TEXT_COLOR};`;
+         // When completed, the text should always be "Completed"
+         content = `<div class="status-tag" style="${grayStyle}">Completed</div>`;
+     } else {
+         // This is the original logic for non-completed tasks
+         let color = project.customStatuses?.find(s => s.name === task.status)?.color || defaultStatusColors[task.status];
+         if (color) {
+             const style = `background-color: ${color}20; color: ${color};`;
+             content = `<div class="status-tag" style="${style}">${task.status}</div>`;
+         } else {
+             content = `<span>${task.status}</span>`;
+         }
+     }
+ }
+ break;
 // This is the updated 'default' case for handling all custom columns.
 default:
     // --- FIX: Set the columnId for ALL custom columns right away. ---
@@ -1806,59 +1876,88 @@ default:
     const rawValue = task.customFields ? task.customFields[col.id] : undefined;
 
     // --- Logic for ALL 'Select' type columns (with options) ---
-    if (col.options && Array.isArray(col.options)) {
-        // It's a select/dropdown type.
-        cell.dataset.control = 'custom-select';
+     if (col.options && Array.isArray(col.options)) {
         
-        const selectedOption = col.options.find(opt => opt.name === rawValue);
-
-        if (selectedOption) {
-            if (selectedOption.color) {
-                const style = `background-color: ${selectedOption.color}20; color: ${selectedOption.color}; border: 1px solid ${selectedOption.color}80;`;
-                content = `<div class="status-tag" style="${style}">${selectedOption.name}</div>`;
+        // If the task is completed, render a gray version of the tag.
+        if (isCompleted) {
+            const grayStyle = `background-color: ${COMPLETED_BG_COLOR}; color: ${COMPLETED_TEXT_COLOR};`;
+            // Only show the tag if there's a value to display
+            if (rawValue) {
+                content = `<div class="status-tag" style="${grayStyle}">${rawValue}</div>`;
             } else {
-                const sanitizedName = (selectedOption.name || '').toLowerCase().replace(/\s+/g, '-');
-                content = `<div class="status-tag status-${sanitizedName}">${selectedOption.name}</div>`;
+                content = ''; // Render empty if no value in a completed task
             }
-        } else {
-            content = '<span class="add-value">+ Select</span>';
+        } 
+        // If the task is NOT completed, use the normal color logic.
+        else {
+            cell.dataset.control = 'custom-select';
+            const selectedOption = col.options.find(opt => opt.name === rawValue);
+
+            if (selectedOption) {
+                if (selectedOption.color) {
+                    const style = `background-color: ${selectedOption.color}20; color: ${selectedOption.color}; border: 1px solid ${selectedOption.color}80;`;
+                    content = `<div class="status-tag" style="${style}">${selectedOption.name}</div>`;
+                } else {
+                    const sanitizedName = (selectedOption.name || '').toLowerCase().replace(/\s+/g, '-');
+                    content = `<div class="status-tag status-${sanitizedName}">${selectedOption.name}</div>`;
+                }
+            } else {
+                content = '<span class="add-value">+</span>';
+            }
         }
 
-        // *** NEW: Add the click listener directly to the cell ***
+        // The click listener should be active regardless of completion status.
         cell.addEventListener('click', (e) => {
-            e.stopPropagation(); // Prevent the event from bubbling up
-
-            // We use 'col' directly from the loop's scope. No need to find it again.
+            e.stopPropagation();
             if (col && col.options) {
                 createDropdown(col.options, cell, (selectedValue) => {
-                    // This assumes 'taskId' and 'sectionId' are available from the parent loops
                     updateTask(task.id, section.id, { [`customFields.${col.id}`]: selectedValue.name });
                 }, 'CustomColumn', col.id);
             }
         });
-    }
     // --- Logic for other column types (Text, Costing, etc.) ---
-    else {
-        cell.dataset.control = 'custom';
-        cell.contentEditable = true;
-        
-        let displayValue = (rawValue !== null && typeof rawValue !== 'undefined') ? rawValue : '';
+} else { // This "else" is for columns that are NOT "Select" type
+    cell.dataset.control = 'custom';
+    cell.contentEditable = true;
+    
+    let displayValue;
+    // NEW: A variable to hold our placeholder class
+    let placeholderClass = '';
+    
+    const valueExists = rawValue !== null && typeof rawValue !== 'undefined' && rawValue !== '';
+    
+    if (valueExists) {
+        // If a value exists, use the original formatting logic
         if ((col.type === 'Costing' || col.type === 'Numbers') && typeof rawValue === 'number') {
-            if (rawValue % 1 !== 0) {
-                displayValue = rawValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            } else {
-                displayValue = rawValue.toLocaleString('en-US', { maximumFractionDigits: 0 });
-            }
+            displayValue = rawValue.toLocaleString('en-US', {
+                minimumFractionDigits: (rawValue % 1 !== 0) ? 2 : 0,
+                maximumFractionDigits: 2
+            });
+        } else {
+            displayValue = rawValue;
         }
-        
-        content = `<span>${displayValue}</span>`;
-
-        if (col.type === 'Costing' || col.type === 'Numbers') {
-            allowNumericChars(cell);
-            formatNumberOnBlur(cell);
+    } else {
+        // If the value is empty, apply the new placeholder rules
+        if (col.type === 'Text') {
+            displayValue = ''; // Still blank for Text type
+        } else if (col.type === 'Costing' || col.type === 'Numbers') {
+            // MODIFIED: The content is empty, but we add a class
+            displayValue = '';
+            placeholderClass = 'numeric-placeholder';
+        } else {
+            displayValue = '';
         }
+    }
+    
+    // MODIFIED: The span now includes the placeholderClass if one was set
+    content = `<span class="${placeholderClass}">${displayValue}</span>`;
+    
+    if (col.type === 'Costing' || col.type === 'Numbers') {
+        allowNumericChars(cell);
+        formatNumberOnBlur(cell);
     }
     break;
+}
 }
     
     cell.innerHTML = content;
@@ -1880,44 +1979,76 @@ default:
  });
         
         // Add task row
-        const addRow = document.createElement('div');
-        addRow.className = 'add-task-row-wrapper flex group';
-        addRow.dataset.sectionId = section.id;
+const addRow = document.createElement('div');
+addRow.className = 'add-task-row-wrapper flex group';
+addRow.dataset.sectionId = section.id;
+
+const leftAddCell = document.createElement('div');
+leftAddCell.className = 'sticky left-0 w-80 md:w-96 lg:w-[860px] flex-shrink-0 flex items-center px-3 py-1.5 group-hover:bg-slate-100 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
+
+const indentedText = document.createElement('div');
+indentedText.className = 'add-task-btn flex items-center gap-2 ml-8 text-slate-500 cursor-pointer hover:bg-slate-200 px-2 py-1 rounded transition';
+indentedText.dataset.sectionId = section.id;
+indentedText.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+    </svg>
+    <span>Add task</span>
+`;
+leftAddCell.appendChild(indentedText);
+
+const rightAddCells = document.createElement('div');
+rightAddCells.className = 'flex-grow flex group-hover:bg-slate-100';
+
+// This loop creates the footer cells (including the "Sum:" cell)
+allColumns.forEach((col, i) => {
+    const cell = document.createElement('div');
+    const leftBorderClass = i === 0 ? 'border-l border-slate-200' : '';
+    
+    // --- MODIFICATION FOR FOOTER CELLS ---
+    // 1. REMOVE the hardcoded width class 'w-44' and 'flex-shrink-0'.
+    // The sync function will now control the width.
+    cell.className = `h-full ${leftBorderClass}`;
+    
+    // 2. ADD the data-column-id so the sync function can find this cell.
+    cell.dataset.columnId = col.id;
+    // --- END OF MODIFICATION ---
+    
+    // This is your existing logic to calculate and show the sum. It remains unchanged.
+    if (col.type === 'Costing') {
+        const sum = section.tasks.reduce((accumulator, task) => {
+            const value = task.customFields?.[col.id];
+            return typeof value === 'number' ? accumulator + value : accumulator;
+        }, 0);
         
-        const leftAddCell = document.createElement('div');
-        leftAddCell.className = 'sticky left-0 w-80 md:w-96 lg:w-[860px] flex-shrink-0 flex items-center px-3 py-1.5 group-hover:bg-slate-100 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
-        
-        const indentedText = document.createElement('div');
-        indentedText.className = 'add-task-btn flex items-center gap-2 ml-8 text-slate-500 cursor-pointer hover:bg-slate-200 px-2 py-1 rounded transition';
-        indentedText.dataset.sectionId = section.id;
-        indentedText.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-        <span>Add task</span>
-    `;
-        leftAddCell.appendChild(indentedText);
-        
-        const rightAddCells = document.createElement('div');
-        rightAddCells.className = 'flex-grow flex group-hover:bg-slate-100';
-        allColumns.forEach((col, i) => {
-            const cell = document.createElement('div');
-            const leftBorderClass = i === 0 ? 'border-l border-slate-200' : '';
-            cell.className = `w-44 flex-shrink-0 h-full ${leftBorderClass}`;
-            rightAddCells.appendChild(cell);
-        });
-        
-        const emptyAddCellLast = document.createElement('div');
-        emptyAddCellLast.className = 'w-12 flex-shrink-0 h-full';
-        rightAddCells.appendChild(emptyAddCellLast);
-        const emptyEndSpacerLast = document.createElement('div');
-        emptyEndSpacerLast.className = 'w-4 flex-shrink-0 h-full';
-        rightAddCells.appendChild(emptyEndSpacerLast);
-        
-        addRow.appendChild(leftAddCell);
-        addRow.appendChild(rightAddCells);
-        sectionWrapper.appendChild(addRow);
+        if (sum > 0) {
+            const formattedSum = sum.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            const currencySymbol = col.currency || '$';
+            
+            cell.innerHTML = `
+                <div style="font-size: 0.8rem; display: flex; justify-content: flex-end; align-items: center; height: 100%; padding-right: 8px;">
+                  <span style="color: #9ca3af; margin-right: 4px;">Sum:</span>
+                  <span style="font-weight: 600; color: #4b5563;">${currencySymbol}${formattedSum}</span>
+                </div>
+            `;
+        }
+    }
+    
+    rightAddCells.appendChild(cell);
+});
+
+const emptyAddCellLast = document.createElement('div');
+emptyAddCellLast.className = 'w-12 flex-shrink-0 h-full';
+rightAddCells.appendChild(emptyAddCellLast);
+
+const emptyEndSpacerLast = document.createElement('div');
+emptyEndSpacerLast.className = 'w-4 flex-shrink-0 h-full';
+rightAddCells.appendChild(emptyEndSpacerLast);
+
+addRow.appendChild(leftAddCell);
+addRow.appendChild(rightAddCells);
+sectionWrapper.appendChild(addRow);
         
     });
     
@@ -2015,8 +2146,68 @@ default:
             }
         }
     });
-    
+    syncColumnWidths();
 }
+
+/**
+ * A robust function to synchronize column widths.
+ * UPDATED to make Priority and Status columns a fixed width.
+ */
+function syncColumnWidths() {
+    const table = document.querySelector('.min-w-max.relative');
+    if (!table) return;
+    const defaultColumnNames = [
+    { id: 'assignees', name: 'Assignee', control: 'assignee' },
+    { id: 'dueDate', name: 'Due Date', control: 'due-date' },
+    { id: 'priority', name: 'Priority', control: 'priority' },
+    { id: 'status', name: 'Status', control: 'status' }
+];
+
+    const allColumnIds = [
+        'assignees', 'dueDate', 'priority', 'status',
+        ...project.customColumns.map(c => c.id)
+    ];
+    
+    allColumnIds.forEach(columnId => {
+        const cellsInColumn = table.querySelectorAll(`[data-column-id="${columnId}"]`);
+        if (cellsInColumn.length === 0) return;
+        
+        const columnDef = [...defaultColumnNames, ...project.customColumns].find(c => c.id == columnId);
+        
+        // MODIFICATION 1: 'priority' and 'status' are removed from this condition.
+        const isFlexible = columnDef && (
+            columnDef.type === 'Text' || columnDef.type === 'Numbers' ||
+            columnDef.type === 'Type'
+        );
+        
+        if (isFlexible) {
+            // This logic now only runs for Text, Numbers, and Type columns.
+            let maxWidth = 176;
+            cellsInColumn.forEach(cell => {
+                maxWidth = Math.max(maxWidth, cell.scrollWidth);
+            });
+            cellsInColumn.forEach(cell => {
+                cell.style.flex = `0 0 ${maxWidth + 2}px`;
+            });
+            
+        } else {
+            // MODIFICATION 2: Handle fixed-width columns here.
+            let fixedWidthClass = 'w-44'; // Default for Assignee, Due Date etc.
+            
+            if (columnId === 'priority' || columnId === 'status') {
+                // Set a smaller, specific fixed width for these tag columns.
+                fixedWidthClass = 'w-32'; // 128px or 8rem
+            }
+            
+            cellsInColumn.forEach(cell => {
+                // We add the class instead of setting the style directly
+                // to keep using Tailwind's utility classes.
+                cell.classList.add(fixedWidthClass);
+            });
+        }
+    });
+}
+
 
 function handleMouseMoveDragGhost(e) {
     if (!window._currentGhost) return;

@@ -386,7 +386,7 @@ button {
 }
 
 .is-completed {
-    color: #9ca3af;
+    color: #767B84;
     /* Muted gray text */
 }
 
@@ -424,6 +424,11 @@ button {
     color: var(--text-color, #111827);
     /* default dark text */
     font-size: 13px;
+}
+
+.numeric-placeholder:empty::before {
+  content: '-';
+  color: #9ca3af; 
 }
 
 .add-task-wrapper {
@@ -777,6 +782,7 @@ Custom class
     display: inline-block;
     line-height: 1.1;
     text-align: center;
+    min-width: 90px;
     vertical-align: middle;
 }
 
