@@ -1558,3 +1558,19 @@ task-fields-table .field-value {
 .sidebareditimage-container .change-image-btn:hover {
     background-color: #e0e2e5;
 }
+
+#delete-task-btn {
+  /* Sets the default color to red */
+  color: #DC2626; /* A common, slightly modern red */
+  
+  /* Changes the mouse cursor to a hand icon on hover */
+  cursor: pointer;
+
+  /* Optional: Smooth transition for the color change */
+  transition: color 0.2s ease-in-out;
+}
+
+#delete-task-btn:hover {
+  /* Makes the icon a darker red when hovered over */
+  color: #B91C1C; 
+}

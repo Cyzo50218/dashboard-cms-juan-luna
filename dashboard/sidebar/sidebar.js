@@ -80,7 +80,7 @@ window.TaskSidebar = (function() {
     const statusOptions = ['On track', 'At risk', 'Off track', 'Completed'];
     
     // DOM Elements
-    let sidebar, taskNameEl, taskDescriptionEl, taskFieldsContainer, closeBtn,
+    let sidebar, taskNameEl, taskDescriptionEl, taskFieldsContainer, closeBtn, expandBtn, deleteTaskBtn
         tabsContainer, activityLogContainer, commentInput, sendCommentBtn,
         imagePreviewContainer, currentUserAvatarEl, taskCompleteText, taskCompleteBtn, fileUploadInput, commentInputWrapper;
     
@@ -95,6 +95,8 @@ window.TaskSidebar = (function() {
         taskCompleteBtn = document.getElementById('task-complete-btn');
         taskCompleteText = document.getElementById('task-complete-text');
         closeBtn = document.getElementById('close-sidebar-btn');
+        expandBtn = document.getElementById('toggle-full-view-btn');
+        deleteTaskBtn = document.getElementById('delete-task-btn');
         tabsContainer = document.getElementById('comment-tabs-container');
         currentUserAvatarEl = document.getElementById('current-user-avatar');
         activityLogContainer = document.getElementById('activity-log-container');
@@ -374,6 +376,74 @@ window.TaskSidebar = (function() {
         } catch (error) { console.error(`Failed to update field ${fieldKey}:`, error); }
     }
     
+    /**
+ * Permanently deletes the currently open task from Firestore after user confirmation.
+ */
+async function deleteCurrentTask() {
+    
+    // Use a confirmation modal to warn the user
+    const confirmed = confirm(
+    'Are you sure you want to permanently delete this task? This action cannot be undone.'
+);
+
+// If the user clicks "Cancel", stop the function
+if (!confirmed) {
+    console.log("Task deletion cancelled by user.");
+    return;
+}
+    
+    try {
+        // Perform the delete operation on the current task's document reference
+        await deleteDoc(currentTaskRef);
+        
+        console.log(`Task "${currentTask.name}" (${currentTask.id}) was successfully deleted.`);
+        
+        // Optional: Log this activity
+        if (typeof logActivity === 'function') {
+            logActivity({
+                action: 'deleted',
+                field: 'Task',
+                from: currentTask.name, // The name of the task that was deleted
+                to: ''
+            });
+        }
+        
+        // After deleting, close the sidebar since the task no longer exists
+        const sidebar = document.getElementById('task-sidebar');
+        if (sidebar) {
+            // Assuming the class 'is-active' or similar controls visibility
+            sidebar.classList.remove('is-active');
+        }
+        
+    } catch (error) {
+        console.error("Failed to delete task:", error);
+        alert("An error occurred while trying to delete the task. Please check the console for details.");
+    }
+}
+
+
+/**
+ * Toggles the sidebar between its default and full-screen width.
+ * Also toggles the icon between 'expand' and 'compress'.
+ */
+function toggleSidebarView() {
+    // Toggle the class on the sidebar element
+    sidebar.classList.toggle('is-full-view');
+    
+    // Check if the sidebar is now in full view to update the icon
+    if (sidebar.classList.contains('is-full-view')) {
+        // It's expanded, so show the 'compress' icon
+        expandBtn.classList.remove('fa-expand');
+        expandBtn.classList.add('fa-compress');
+        expandBtn.title = "Exit full view";
+    } else {
+        // It's collapsed, so show the 'expand' icon
+        expandBtn.classList.remove('fa-compress');
+        expandBtn.classList.add('fa-expand');
+        expandBtn.title = "Toggle full view";
+    }
+}
+
     async function updateCustomField(columnId, newValue, column) {
         if (!currentTaskRef || !currentTask) return;
         const fieldKey = `customFields.${columnId}`;
@@ -838,6 +908,9 @@ window.TaskSidebar = (function() {
     function attachEventListeners() {
         if (!sidebar) return;
         
+    expandBtn.addEventListener('click', toggleSidebarView);
+    deleteTaskBtn.addEventListener('click', deleteCurrentTask);
+
         activityLogContainer.addEventListener('click', (e) => {
             const messageItem = e.target.closest('.comment-item');
             if (!messageItem) return;
