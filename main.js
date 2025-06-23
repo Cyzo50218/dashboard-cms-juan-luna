@@ -122,46 +122,34 @@ async function loadSection(routeParams) {
     updateActiveNav(section);
 }
 
-function updateActiveNav(sectionName) {
+/**
+ * Updates the active navigation item based on the current browser URL.
+ */
+function updateActiveNav() {
     const drawer = document.getElementById("dashboardDrawer");
     if (!drawer) return;
     
-    // First, clear the 'active' class from all nav items
+    const currentPath = window.location.pathname;
+    
+    // First, clear the 'active' class from all navigation items
     drawer.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
     
-    // --- NEW, SMARTER LOGIC ---
+    let linkToActivate = null;
     
-    // 1. Handle static links like '/home' or '/inbox' first.
-    if (sectionName && sectionName !== 'tasks') {
-        const staticLink = drawer.querySelector(`.nav-item a[href="/${sectionName}"]`);
-        if (staticLink) {
-            staticLink.closest('.nav-item').classList.add('active');
-            return; // Exit the function since we found our active link
-        }
+    // --- THIS IS THE NEW, SIMPLIFIED LOGIC ---
+    
+    // 1. Check if the current URL is any kind of tasks page.
+    if (currentPath.startsWith('/tasks/')) {
+        // If it is, find the "My Tasks" link by its unique ID.
+        linkToActivate = drawer.querySelector('#my-tasks-link');
+    } else {
+        // 2. For any other page (e.g., "/home", "/inbox"), find the link with an exact href match.
+        linkToActivate = drawer.querySelector(`.nav-item a[href="${currentPath}"]`);
     }
     
-    // 2. If it's a tasks page, find the project ID from the URL.
-    // The URL is structured like: /tasks/.../list/PROJECT_ID
-    const pathSegments = window.location.pathname.split('/');
-    const listIndex = pathSegments.indexOf('list');
-    
-    // Check if 'list' and a project ID exist in the URL
-    if (listIndex > -1 && pathSegments.length > listIndex + 1) {
-        const numericProjectId = pathSegments[listIndex + 1];
-        
-        // Find the project in our local data that matches this numeric ID
-        const activeProject = projectsData.find(p => {
-            // We must convert the project's real ID to the numeric one to find a match
-            return stringToNumericString(p.id) === numericProjectId;
-        });
-        
-        if (activeProject) {
-            // 3. Find the corresponding <li> element using its dataset attribute.
-            const projectNavItem = drawer.querySelector(`.project-item[data-project-id="${activeProject.id}"]`);
-            if (projectNavItem) {
-                projectNavItem.classList.add('active');
-            }
-        }
+    // 3. If we found a link to activate, add the 'active' class to its parent <li>.
+    if (linkToActivate) {
+        linkToActivate.closest('.nav-item').classList.add('active');
     }
 }
 
