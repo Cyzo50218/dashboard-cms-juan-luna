@@ -59,7 +59,7 @@ import { firebaseConfig } from "/services/firebase-config.js";
         }
 
         projectsData.forEach(project => {
-            const isActive = project.isSelected === true; // Highlight is now data-driven
+            
             const projectLi = document.createElement('li');
             
             if (project.isSelected === true) {
@@ -67,7 +67,6 @@ import { firebaseConfig } from "/services/firebase-config.js";
     projectLi.style.setProperty('--project-highlight-color', project.color);
 }
 
-            projectLi.className = `nav-item project-item ${isActive ? 'active' : ''}`;
             projectLi.dataset.projectId = project.id;
             const numericUserId = stringToNumericString(currentUser?.uid);
             const numericProjectId = stringToNumericString(project.id);
@@ -166,59 +165,38 @@ import { firebaseConfig } from "/services/firebase-config.js";
      * Main event listener for the drawer. Handles toggling sections and selecting projects.
      */
     sidebar.addEventListener('click', async (e) => {
-        // Handle expanding/collapsing sections
-        const sectionHeader = e.target.closest('.section-header');
-        if (sectionHeader) {
-            sectionHeader.closest('.nav-section')?.classList.toggle('open');
-            return;
-        }
-
-        // Handle selecting a project
-        const projectLink = e.target.closest('.project-item a');
-        if (projectLink) {
-          e.preventDefault(); // Stop native navigation
-
-const projectItem = projectLink.closest('.project-item');
-const projectId = projectItem.dataset.projectId;
-
-if (!projectId || projectItem.classList.contains('active')) return;
-
-try {
-    const batch = writeBatch(db);
-    const projectsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects`);
-
-    const currentlySelected = projectsData.find(p => p.isSelected === true);
-    if (currentlySelected) {
-        const oldProjectRef = doc(projectsColRef, currentlySelected.id);
-        batch.update(oldProjectRef, { isSelected: false });
+    // Handle expanding/collapsing sections
+    const sectionHeader = e.target.closest('.section-header');
+    if (sectionHeader) {
+        sectionHeader.closest('.nav-section')?.classList.toggle('open');
+        return;
     }
-
-    const newProjectRef = doc(projectsColRef, projectId);
-    batch.update(newProjectRef, { isSelected: true });
-
-    await batch.commit();
-
-    // 🔁 Push new route and re-run router manually
-    const numericUserId = stringToNumericString(currentUser?.uid);
-    const numericProjectId = stringToNumericString(projectId);
-    const newRoute = `/tasks/${numericUserId}/list/${numericProjectId}`;
-    history.pushState(null, '', newRoute);
-    window.router();
-
-
-} catch (error) {
-    console.error("Error selecting project:", error);
-}
-
+    
+    // --- NEW: Handle the 'Add Project' button click ---
+    if (e.target.closest('.add-project-action')) {
+        // We stop the event here to be safe
+        e.stopPropagation();
+        handleAddProject();
+        // Assuming the dropdown should close after clicking
+        document.querySelector('.drawerprojects-dropdown')?.remove();
+        return; // Stop further execution
+    }
+    // --- END OF NEW LOGIC ---
+    
+    // Handle selecting a project
+    const projectLink = e.target.closest('.project-item a');
+    if (projectLink) {
+        e.preventDefault(); // Stop native navigation
+        
+        const projectItem = projectLink.closest('.project-item');
+        const projectId = projectItem.dataset.projectId;
+        
+        // The logic to call selectProject() is better here
+        if (projectId) {
+            selectProject(projectId); // Use your reusable function
         }
-    });
-
-    document.body.addEventListener('click', e => {
-        if (e.target.closest('.add-project-action')) {
-            handleAddProject();
-            document.querySelector('.drawerprojects-dropdown')?.remove();
-        }
-    });
+    }
+});
 
     // --- Auth State Change Listener (Unchanged) ---
     onAuthStateChanged(auth, (user) => {

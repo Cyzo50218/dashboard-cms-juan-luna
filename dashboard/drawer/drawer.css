@@ -277,8 +277,9 @@
 .drawerprojects-dropdown li {
   display: flex;
   align-items: center;
+  font-size: 14px;
   gap: 12px; /* Space between icon and text */
-  padding: 10px 12px; /* Vertical and horizontal padding */
+  padding: 3px 6px; /* Vertical and horizontal padding */
   border-radius: 6px;
   cursor: pointer;
   color: #212529; /* Darker text for readability on a light background */

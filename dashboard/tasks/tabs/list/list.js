@@ -1659,7 +1659,7 @@ cell.appendChild(cellMenu);
         sectionRow.className = 'flex border-b border-slate-200';
         
         const leftSectionCell = document.createElement('div');
-        leftSectionCell.className = 'section-title-wrapper group sticky left-0 w-80 md:w-96 lg:w-[560px] flex-shrink-0 flex items-center px-1 py-1.5 font-semibold text-slate-800 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg hover:bg-slate-50';
+        leftSectionCell.className = 'section-title-wrapper group sticky left-0 w-80 md:w-96 lg:w-[560px] flex-shrink-0 flex items-center pr-1 pl-[3px] py-0.5 font-semibold text-slate-800 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg hover:bg-slate-50';
         if (section.id) leftSectionCell.dataset.sectionId = section.id;
         
         leftSectionCell.innerHTML = `
@@ -1762,7 +1762,7 @@ cell.appendChild(cellMenu);
         addRow.dataset.sectionId = section.id;
         
         const leftAddCell = document.createElement('div');
-        leftAddCell.className = 'sticky left-0 w-80 md:w-96 lg:w-[560px] flex-shrink-0 flex items-center px-3 py-1.5 group-hover:bg-slate-100 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
+        leftAddCell.className = 'sticky left-0 w-80 md:w-96 lg:w-[560px] flex-shrink-0 flex items-center px-3 py-1 group-hover:bg-slate-100 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
         
         const indentedText = document.createElement('div');
         indentedText.className = 'add-task-btn flex items-center gap-2 ml-8 text-slate-500 cursor-pointer hover:bg-slate-200 px-2 py-1 rounded transition';
@@ -1772,7 +1772,7 @@ cell.appendChild(cellMenu);
         <line x1="12" y1="5" x2="12" y2="19"></line>
         <line x1="5" y1="12" x2="19" y2="12"></line>
     </svg>
-    <span>Add task</span>
+    <span class="text-sm">Add task...</span>
 `;
         leftAddCell.appendChild(indentedText);
         
@@ -2160,7 +2160,7 @@ if (!addTaskAtTop) {
         <line x1="12" y1="5" x2="12" y2="19"></line>
         <line x1="5" y1="12" x2="19" y2="12"></line>
     </svg>
-    <span>Add task</span>
+    <span class="text-sm">Add task...</span>
 `;
         leftAddCell.appendChild(indentedText);
         
