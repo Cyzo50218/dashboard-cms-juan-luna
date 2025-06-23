@@ -69,7 +69,7 @@ let sourceContainer = null;
 let originalNextSibling = null;
 
 // --- Data ---
-let project = { customColumns: [], sections: [], customPriorities: [], customStatuses: [] };
+let project = { defaultColumn[], customColumns: [], sections: [], customPriorities: [], customStatuses: [] };
 let allTasksFromSnapshot = [];
 // --- Real-time Listener Management ---
 // This object will hold the unsubscribe functions for our active listeners.
@@ -730,10 +730,6 @@ function setupEventListeners() {
             const section = project.sections.find(s => s.id === sectionId);
             
             if (!section) return;
-            if (['Completed', 'Todo', 'Doing'].includes(section.title)) {
-                focusedOutElement.innerText = section.title;
-                return;
-            }
             
             if (section.title !== newTitle) {
                 console.log(`Updated section title: ${newTitle}`);
@@ -838,6 +834,20 @@ function setupEventListeners() {
         if (!clickedInsidePanel && !clickedOverlayOrDialog && !clickedTrigger) {
             closeFloatingPanels();
         }
+        
+        const clickedInsideRightSidebar = e.target.closest('#right-sidebar');
+const clickedInsideLeftSidebar = e.target.closest('#drawer');
+const clickedOnTaskLink = e.target.closest('[data-control="open-sidebar"]');
+
+// 2. Get a reference to the header element you want to show.
+// Make sure this selector is correct for your HTML.
+const headerRight = document.querySelector('.header-right');
+
+// 3. If a click happens OUTSIDE all the safe areas, then show the header.
+if (headerRight && !clickedInsideRightSidebar && !clickedInsideLeftSidebar && !clickedOnTaskLink) {
+    headerRight.classList.remove('hide');
+}
+
     };
     
     
@@ -1146,63 +1156,80 @@ async function handleTaskMoved(evt) {
     }
 }
 
+/**
+ * Makes a header cell editable and saves the new name to the correct
+ * array in Firestore (either defaultColumns or customColumns).
+ * This version is improved to prevent deleting the menu icon.
+ */
 function enableColumnRename(columnEl) {
-    const originalName = columnEl.textContent.trim();
-    columnEl.setAttribute('contenteditable', 'true');
-    columnEl.focus();
-    document.execCommand('selectAll', false, null); // Selects the text for immediate editing
+    closeFloatingPanels();
     
-    const columnId = Number(columnEl.dataset.columnId);
+    // FIX 1: Target the inner <span> for editing to protect the menu icon.
+    const cellText = columnEl.querySelector('span');
+    const originalName = cellText.textContent.trim();
+    
+    // Make only the text span editable, not the whole div.
+    cellText.contentEditable = 'true';
+    cellText.focus();
+    document.execCommand('selectAll', false, null);
+    
+    // Get the ID. It can be a string ('status') or a number (for custom columns).
+    const columnId = columnEl.dataset.columnId;
     
     const finishEditing = async (saveChanges) => {
-        columnEl.removeEventListener('blur', onBlur);
-        columnEl.removeEventListener('keydown', onKeyDown);
-        columnEl.setAttribute('contenteditable', 'false');
+        // Remove listeners from the text span.
+        cellText.removeEventListener('blur', onBlur);
+        cellText.removeEventListener('keydown', onKeyDown);
+        cellText.contentEditable = 'false';
         
-        const newName = columnEl.textContent.trim();
+        const newName = cellText.textContent.trim();
         
         if (saveChanges && newName && newName !== originalName) {
-            // Find the column and update its name
-            const newColumns = project.customColumns.map(col => {
-                if (col.id === columnId) {
-                    return { ...col, name: newName };
+            // --- THIS IS THE NEW UNIFIED SAVE LOGIC ---
+            
+            // Create mutable copies of the arrays from our project data.
+            let defaultCols = [...(project.defaultColumns || [])];
+            let customCols = [...(project.customColumns || [])];
+            
+            // Try to find and update the column in the default list first.
+            const defaultIndex = defaultCols.findIndex(c => String(c.id) === String(columnId));
+            
+            if (defaultIndex > -1) {
+                // It's a default column. Update its name.
+                console.log(`Renaming default column: ${columnId}`);
+                defaultCols[defaultIndex] = { ...defaultCols[defaultIndex], name: newName };
+            } else {
+                // If not found, it must be a custom column.
+                const customIndex = customCols.findIndex(c => String(c.id) === String(columnId));
+                if (customIndex > -1) {
+                    console.log(`Renaming custom column: ${columnId}`);
+                    customCols[customIndex] = { ...customCols[customIndex], name: newName };
                 }
-                return col;
+            }
+            
+            // Save both arrays back to Firestore in a single, safe operation.
+            await updateProjectInFirebase({
+                defaultColumns: defaultCols,
+                customColumns: customCols
             });
-            // Update the entire array in Firebase
-            await updateProjectInFirebase({ customColumns: newColumns });
+            
         } else {
-            // If cancelled or name is empty/unchanged, revert to original
-            columnEl.textContent = originalName;
-            // Re-append the menu button which gets wiped by textContent manipulation
-            const menuBtn = document.createElement('button');
-            menuBtn.className = 'delete-column-btn';
-            menuBtn.title = 'Column options';
-            menuBtn.innerHTML = `<i class="fas fa-ellipsis-h"></i>`;
-            columnEl.appendChild(menuBtn);
+            // If editing was cancelled or the name is empty, revert to the original text.
+            cellText.textContent = originalName;
         }
     };
     
-    const onBlur = () => {
-        finishEditing(true);
-    };
-    
+    const onBlur = () => finishEditing(true);
     const onKeyDown = (e) => {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' || e.key === 'Escape') {
             e.preventDefault();
-            finishEditing(true);
-        } else if (e.key === 'Escape') {
-            e.preventDefault();
-            finishEditing(false);
+            finishEditing(e.key === 'Enter');
         }
     };
     
-    columnEl.addEventListener('blur', onBlur);
-    columnEl.addEventListener('keydown', onKeyDown);
+    cellText.addEventListener('blur', onBlur);
+    cellText.addEventListener('keydown', onKeyDown);
 }
-
-
-
 
 /*
 ==================
@@ -1450,33 +1477,53 @@ function render() {
         isCustom: true
     }));
     
-    const allColumns = [...defaultColumnNames, ...mappedCustomColumns];
+    const allColumns = [...project.defaultColumn, ...mappedCustomColumns];
     
     const headerClickListener = (e) => {
         
         const columnOptionsIcon = e.target.closest('.options-icon');
         const addColumnBtn = e.target.closest('.add-column-cell');
         
-        if (columnOptionsIcon) {
-            e.stopPropagation();
-            const columnEl = columnOptionsIcon.closest('[data-column-id]');
-            if (!columnEl) return;
-            
-            const columnId = Number(columnEl.dataset.columnId);
-            const dropdownOptions = [
-                { name: 'Rename column' },
-                { name: 'Delete column' }
-            ];
-            
-            createDropdown(dropdownOptions, columnOptionsIcon, (selected) => {
-                if (selected.name === 'Delete column') {
-                    deleteColumn(columnId);
-                } else if (selected.name === 'Rename column') {
-                    enableColumnRename(columnEl);
-                }
-            });
-            return;
+      if (columnOptionsIcon) {
+    e.stopPropagation();
+    const columnEl = columnOptionsIcon.closest('[data-column-id]');
+    if (!columnEl) return;
+    
+    // FIX: Get columnId as a string to handle names like 'priority' as well as numbers
+    const columnId = columnEl.dataset.columnId;
+    
+    // --- NEW LOGIC: Conditionally build the dropdown options ---
+    
+    // 1. Start with the 'Rename' option, which is always available.
+    const dropdownOptions = [
+        { name: 'Rename column' }
+    ];
+    
+    // 2. Define the IDs of the non-deletable default columns.
+    const defaultColumnIds = ['assignees', 'dueDate', 'priority', 'status'];
+    
+    // 3. Check if the current column's ID is in our list of default IDs.
+    const isDefaultColumn = defaultColumnIds.includes(columnId);
+    
+    // 4. If it's NOT a default column, then it's a custom one and can be deleted.
+    if (!isDefaultColumn) {
+        dropdownOptions.push({ name: 'Delete column' });
+    }
+    
+    // --- END OF NEW LOGIC ---
+    
+    createDropdown(dropdownOptions, columnOptionsIcon, (selected) => {
+        if (selected.name === 'Delete column') {
+            // Since we're converting to a number here, make sure it's not a default ID
+            if (!isDefaultColumn) {
+                deleteColumn(Number(columnId));
+            }
+        } else if (selected.name === 'Rename column') {
+            enableColumnRename(columnEl);
         }
+    });
+    return;
+}
         
         if (addColumnBtn) {
             e.stopPropagation();
@@ -1548,15 +1595,14 @@ function render() {
     header.className = 'flex sticky top-0 z-20 bg-white juanlunacms-spreadsheetlist-sticky-header';
     
     const leftHeader = document.createElement('div');
-    leftHeader.className = 'sticky left-0 z-10 w-80 md:w-96 lg:w-[860px] flex-shrink-0 px-4 py-3 font-semibold text-slate-600 border-b border-r border-slate-200 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
-    leftHeader.textContent = 'Name';
+    leftHeader.className = 'sticky left-0 z-10 w-80 md:w-96 lg:w-[560px] flex-shrink-0 px-4 py-1 font-semibold text-slate-600 border-b border-r border-slate-200 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';  leftHeader.textContent = 'Name';
     
     const rightHeaderContent = document.createElement('div');
     rightHeaderContent.className = 'flex flex-grow border-b border-slate-200';
     
     allColumns.forEach(col => {
         const cell = document.createElement('div');
-        let cellClasses = 'group px-4 py-3 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center justify-between';
+        let cellClasses = 'group px-4 py-1 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center justify-between';
         
         if (
             col.type === 'Text' || col.type === 'Numbers' || col.type === 'Type' ||
@@ -1576,17 +1622,11 @@ function render() {
         cellText.textContent = col.name;
         cell.appendChild(cellText);
         
-        if (col.isCustom) {
-            const cellMenu = document.createElement('div');
-            
-            // *** CHANGE 2: Add the 'options-icon' class for the listener to find ***
-            // This is the icon that triggers the dropdown.
-            cellMenu.className = 'options-icon opacity-1 group-hover:opacity-100 transition-opacity cursor-pointer p-1'; // Added p-1 for a bigger click area
-            cellMenu.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400 pointer-events-none"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>`;
-            
-            // No need for dataset here, it's on the parent `cell`.
-            cell.appendChild(cellMenu);
-        }
+        const cellMenu = document.createElement('div');
+cellMenu.className = 'options-icon opacity-1 group-hover:opacity-100 transition-opacity cursor-pointer p-1';
+cellMenu.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400 pointer-events-none"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>`;
+cell.appendChild(cellMenu);
+
         rightHeaderContent.appendChild(cell);
     });
     
@@ -1619,7 +1659,7 @@ function render() {
         sectionRow.className = 'flex border-b border-slate-200';
         
         const leftSectionCell = document.createElement('div');
-        leftSectionCell.className = 'section-title-wrapper group sticky left-0 w-80 md:w-96 lg:w-[860px] flex-shrink-0 flex items-center px-1 py-1.5 font-semibold text-slate-800 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg hover:bg-slate-50';
+        leftSectionCell.className = 'section-title-wrapper group sticky left-0 w-80 md:w-96 lg:w-[560px] flex-shrink-0 flex items-center px-1 py-1.5 font-semibold text-slate-800 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg hover:bg-slate-50';
         if (section.id) leftSectionCell.dataset.sectionId = section.id;
         
         leftSectionCell.innerHTML = `
@@ -1722,7 +1762,7 @@ function render() {
         addRow.dataset.sectionId = section.id;
         
         const leftAddCell = document.createElement('div');
-        leftAddCell.className = 'sticky left-0 w-80 md:w-96 lg:w-[860px] flex-shrink-0 flex items-center px-3 py-1.5 group-hover:bg-slate-100 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
+        leftAddCell.className = 'sticky left-0 w-80 md:w-96 lg:w-[560px] flex-shrink-0 flex items-center px-3 py-1.5 group-hover:bg-slate-100 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
         
         const indentedText = document.createElement('div');
         indentedText.className = 'add-task-btn flex items-center gap-2 ml-8 text-slate-500 cursor-pointer hover:bg-slate-200 px-2 py-1 rounded transition';
@@ -1822,7 +1862,7 @@ function render() {
             
             
             const leftTaskCell = document.createElement('div');
-            leftTaskCell.className = 'group sticky left-0 w-80 md:w-96 lg:w-[860px] flex-shrink-0 flex items-center gap-1 px-2 py-1.5 border-r border-transparent group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg juanlunacms-spreadsheetlist-dynamic-border';
+            leftTaskCell.className = 'group sticky left-0 w-80 md:w-96 lg:w-[560px] flex-shrink-0 flex items-center gap-1 px-2 py-1.5 border-r border-transparent group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg juanlunacms-spreadsheetlist-dynamic-border';
             
             const isCompleted = task.status === 'Completed';
             
@@ -2110,7 +2150,7 @@ if (!addTaskAtTop) {
         addRow.dataset.sectionId = section.id;
         
         const leftAddCell = document.createElement('div');
-        leftAddCell.className = 'sticky left-0 w-80 md:w-96 lg:w-[860px] flex-shrink-0 flex items-center px-3 py-1.5 group-hover:bg-slate-100 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
+        leftAddCell.className = 'sticky left-0 w-80 md:w-96 lg:w-[560px] flex-shrink-0 flex items-center px-3 py-1.5 group-hover:bg-slate-100 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
         
         const indentedText = document.createElement('div');
         indentedText.className = 'add-task-btn flex items-center gap-2 ml-8 text-slate-500 cursor-pointer hover:bg-slate-200 px-2 py-1 rounded transition';
@@ -2263,6 +2303,25 @@ Sortable.create(sectionGroupsContainer, {
 });
 
     syncColumnWidths();
+    if (taskIdToFocus) {
+    // Find the new task row's editable name field using the ID we saved
+    const taskToFocusEl = taskListBody.querySelector(`[data-task-id="${taskIdToFocus}"] .task-name`);
+    
+    if (taskToFocusEl) {
+        taskToFocusEl.focus(); // Set the browser's focus on the element
+        
+        // This places the cursor correctly inside the contenteditable span
+        const range = document.createRange();
+        const sel = window.getSelection();
+        range.selectNodeContents(taskToFocusEl);
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }
+    
+    // Reset the variable so it doesn't try to focus again on the next render
+    taskIdToFocus = null;
+}
+
 }
 
 /**
@@ -2288,7 +2347,7 @@ function syncColumnWidths() {
         const cellsInColumn = table.querySelectorAll(`[data-column-id="${columnId}"]`);
         if (cellsInColumn.length === 0) return;
         
-        const columnDef = [...defaultColumnNames, ...project.customColumns].find(c => c.id == columnId);
+        const columnDef = [...project.defaultColumn, ...project.customColumns].find(c => c.id == columnId);
         
         // MODIFICATION 1: 'priority' and 'status' are removed from this condition.
         const isFlexible = columnDef && (
@@ -3112,7 +3171,6 @@ function closeOpenMenu() {
 function openOptionsMenu(buttonEl) {
     closeOpenMenu(); // Close any other menus first
     
-    // MODIFIED: We get the sectionId from the button that was clicked
     const sectionWrapper = buttonEl.closest('.section-row-wrapper, .section-title-wrapper');
     const sectionId = sectionWrapper ? sectionWrapper.dataset.sectionId : null;
     
@@ -3121,12 +3179,26 @@ function openOptionsMenu(buttonEl) {
         return;
     }
     
-    // Create menu element
+    // --- NEW LOGIC TO CHECK SECTION TYPE ---
+    
+    // 1. Find the full section object from our project data using the sectionId.
+    const section = project.sections.find(s => s.id === sectionId);
+    
+    // 2. Define the list of protected section types that cannot be deleted.
+    const protectedTypes = ['completed', 'todo', 'doing'];
+    
+    // 3. Check if the current section is a protected type.
+    //    We check if `section` exists and if its `sectionType` is in our list.
+    const isProtected = section && protectedTypes.includes(section.sectionType);
+    
+    // --- END OF NEW LOGIC ---
+    
     const menu = document.createElement('div');
     menu.className = 'options-dropdown-menu';
     
-    // MODIFIED: Added `data-section-id` to all items that need it.
-    menu.innerHTML = `
+    // 4. Conditionally build the menu's HTML.
+    // Start with the options that are always available.
+    let menuHTML = `
         <div class="dropdown-item" data-action="addTask" data-section-id="${sectionId}">
             <i class="fa-solid fa-plus dropdown-icon"></i>
             <span>Add task</span>
@@ -3135,13 +3207,20 @@ function openOptionsMenu(buttonEl) {
             <i class="fa-solid fa-pen dropdown-icon"></i>
             <span>Rename section</span>
         </div>
-        <div class="dropdown-item" data-action="deleteSection" data-section-id="${sectionId}">
-            <i class="fa-solid fa-trash dropdown-icon dropdown-item-danger"></i>
-            <span class="dropdown-item-danger">Delete section</span>
-        </div>
     `;
     
-    // ... (the rest of the function remains the same)
+    // ONLY if the section is NOT protected, add the "Delete" option.
+    if (!isProtected) {
+        menuHTML += `
+            <div class="dropdown-item" data-action="deleteSection" data-section-id="${sectionId}">
+                <i class="fa-solid fa-trash dropdown-icon dropdown-item-danger"></i>
+                <span class="dropdown-item-danger">Delete section</span>
+            </div>
+        `;
+    }
+    
+    menu.innerHTML = menuHTML;
+    
     document.body.appendChild(menu);
     activeMenuButton = buttonEl;
     updateMenuPosition();

@@ -92,7 +92,6 @@ window.TaskSidebar = (function() {
     function init() {
         if (isInitialized) return;
         rightSidebarContainer = document.getElementById('right-sidebar');
-        listviewHeaderRight = document.getElementById('header-right');
         
         sidebar = document.getElementById('task-sidebar');
         taskNameEl = document.getElementById('task-name');
@@ -241,8 +240,7 @@ window.TaskSidebar = (function() {
     
     function close() {
         if (sidebar) sidebar.classList.remove('is-visible', 'is-loading');
-        listviewHeaderRight.classList.remove('hide');
-        if (rightSidebarContainer) rightSidebarContainer.classList.remove('sidebar-open');
+        rightSidebarContainer.classList.remove('sidebar-open');
         detachAllListeners();
         closePopovers();
         currentTask = currentTaskRef = currentProject = null;
