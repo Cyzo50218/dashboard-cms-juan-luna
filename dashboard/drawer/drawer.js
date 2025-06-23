@@ -214,7 +214,7 @@ try {
     });
 
     document.body.addEventListener('click', e => {
-        if (e.target.closest('#add-project-action')) {
+        if (e.target.closest('.add-project-action')) {
             handleAddProject();
             document.querySelector('.drawerprojects-dropdown')?.remove();
         }

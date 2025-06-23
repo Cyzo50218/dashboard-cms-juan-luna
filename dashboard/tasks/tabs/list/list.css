@@ -1673,22 +1673,28 @@ Custom class
 
 /* Custom scrollbar for a cleaner look */
 .juanlunacms-spreadsheetlist-custom-scrollbar::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+  width: 14px;
+  height: 14px;
 }
-
 .juanlunacms-spreadsheetlist-custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+.juanlunacms-spreadsheetlist-custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+  border: 2px solid #f1f5f9;
+}
+.juanlunacms-spreadsheetlist-custom-scrollbar::-webkit-scrollbar-track:vertical {
+    margin-top: 35px;
     background: #f1f5f9;
 }
-
-.juanlunacms-spreadsheetlist-custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 10px;
-    border: 2px solid #f1f5f9;
+.juanlunacms-spreadsheetlist-custom-scrollbar::-webkit-scrollbar-thumb:vertical {
+    margin-top: 35px;
 }
 
+/* The hover effect applies to both scrollbars, which is good. */
 .juanlunacms-spreadsheetlist-custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #8595ac;
+  background: #8595ac;
 }
 
 .juanlunacms-spreadsheetlist-sticky-header,

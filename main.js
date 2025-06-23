@@ -122,23 +122,46 @@ async function loadSection(routeParams) {
     updateActiveNav(section);
 }
 
-
-/**
- * Sets the 'active' class on a static navigation link (like Home or Inbox).
- * Project link highlighting is now handled entirely by renderProjectsList.
- */
 function updateActiveNav(sectionName) {
     const drawer = document.getElementById("dashboardDrawer");
     if (!drawer) return;
     
+    // First, clear the 'active' class from all nav items
     drawer.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
     
-    const activeLink = drawer.querySelector(`.nav-item a[href="/${sectionName}"]`);
+    // --- NEW, SMARTER LOGIC ---
     
-    if (activeLink) {
-        // If it finds a direct match (e.g., /home, /inbox), it makes it active.
-        // If not, it does nothing, allowing the project list to control the active state.
-        activeLink.closest('.nav-item').classList.add('active');
+    // 1. Handle static links like '/home' or '/inbox' first.
+    if (sectionName && sectionName !== 'tasks') {
+        const staticLink = drawer.querySelector(`.nav-item a[href="/${sectionName}"]`);
+        if (staticLink) {
+            staticLink.closest('.nav-item').classList.add('active');
+            return; // Exit the function since we found our active link
+        }
+    }
+    
+    // 2. If it's a tasks page, find the project ID from the URL.
+    // The URL is structured like: /tasks/.../list/PROJECT_ID
+    const pathSegments = window.location.pathname.split('/');
+    const listIndex = pathSegments.indexOf('list');
+    
+    // Check if 'list' and a project ID exist in the URL
+    if (listIndex > -1 && pathSegments.length > listIndex + 1) {
+        const numericProjectId = pathSegments[listIndex + 1];
+        
+        // Find the project in our local data that matches this numeric ID
+        const activeProject = projectsData.find(p => {
+            // We must convert the project's real ID to the numeric one to find a match
+            return stringToNumericString(p.id) === numericProjectId;
+        });
+        
+        if (activeProject) {
+            // 3. Find the corresponding <li> element using its dataset attribute.
+            const projectNavItem = drawer.querySelector(`.project-item[data-project-id="${activeProject.id}"]`);
+            if (projectNavItem) {
+                projectNavItem.classList.add('active');
+            }
+        }
     }
 }
 
