@@ -107,49 +107,119 @@ export function init(params) {
   });
 
   async function handleProjectCreate() {
-    const name = prompt("Enter new project name:");
-    if (!name?.trim()) return;
-    if (!currentUser) return alert("User not available.");
-
-    const wsQuery = query(collection(db, `users/${currentUser.uid}/myworkspace`), where("isSelected", "==", true));
-    const wsSnap = await getDocs(wsQuery);
-    if (wsSnap.empty) return alert("No workspace selected.");
-    const wsId = wsSnap.docs[0].id;
-
-    const projectsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${wsId}/projects`);
-    const newRef = doc(projectsColRef);
-
-    try {
-      await runTransaction(db, async txn => {
-        const allProj = await getDocs(projectsColRef);
-        allProj.docs.forEach(d => {
-          if (d.data().isSelected)
-            txn.update(d.ref, { isSelected: false });
-        });
-
-        txn.set(newRef, {
-          title: name.trim(),
-          color: generateColorForName(name.trim()),
-          starred: false,
-          isSelected: true,
-          createdAt: serverTimestamp(),
-          accessLevel: "workspace",
-          workspaceRole: "Viewer",
-          project_super_admin_uid: currentUser.uid,
-          project_admin_user: '',
-          members: [{ uid: currentUser.uid, role: "Project admin" }],
-          pendingInvites: []
-        });
-
-        const secRef = doc(collection(newRef, "sections"));
-        txn.set(secRef, { title: "General", createdAt: serverTimestamp() });
+  const name = prompt("Enter new project name:");
+  if (!name?.trim()) return;
+  if (!currentUser) return alert("User not available.");
+  
+  const wsQuery = query(collection(db, `users/${currentUser.uid}/myworkspace`), where("isSelected", "==", true));
+  const wsSnap = await getDocs(wsQuery);
+  if (wsSnap.empty) return alert("No workspace selected.");
+  const wsId = wsSnap.docs[0].id;
+  
+  // --- 1. Define the Default Structures ---
+  const INITIAL_DEFAULT_COLUMNS = [
+    { id: 'assignees', name: 'Assignee', control: 'assignee' },
+    { id: 'dueDate', name: 'Due Date', control: 'due-date' },
+    { id: 'priority', name: 'Priority', control: 'priority' },
+    { id: 'status', name: 'Status', control: 'status' }
+  ];
+  
+  const INITIAL_DEFAULT_SECTIONS = [
+    { title: 'Todo', order: 0, sectionType: 'todo', isCollapsed: false },
+    { title: 'Doing', order: 1, sectionType: 'doing', isCollapsed: false },
+    { title: 'Completed', order: 2, sectionType: 'completed', isCollapsed: true }
+  ];
+  // --- End of Definitions ---
+  
+  const projectsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${wsId}/projects`);
+  const newRef = doc(projectsColRef);
+  
+  try {
+    await runTransaction(db, async txn => {
+      const currentlySelected = projectsData.find(p => p.isSelected === true);
+      if (currentlySelected) {
+        const oldProjectRef = doc(projectsColRef, currentlySelected.id);
+        txn.update(oldProjectRef, { isSelected: false });
+      }
+      
+      // --- 2. Add default and custom columns to the new project ---
+      txn.set(newRef, {
+        title: name.trim(),
+        color: generateColorForName(name.trim()),
+        starred: false,
+        isSelected: true,
+        createdAt: serverTimestamp(),
+        accessLevel: "workspace",
+        workspaceRole: "Viewer",
+        project_super_admin_uid: currentUser.uid,
+        project_admin_user: '',
+        members: [{ uid: currentUser.uid, role: "Project admin" }],
+        pendingInvites: [],
+        defaultColumns: INITIAL_DEFAULT_COLUMNS, // <-- ADDED
+        customColumns: [] // <-- ADDED
       });
-
-      selectProject(newRef.id);
-    } catch (err) {
-      console.error("Create failed:", err);
-    }
+      
+      // --- 3. Create the three default sections ---
+      // This replaces the old "General" section logic.
+      const sectionsColRef = collection(newRef, "sections");
+      INITIAL_DEFAULT_SECTIONS.forEach(sectionData => {
+        const sectionRef = doc(sectionsColRef);
+        txn.set(sectionRef, {
+          ...sectionData,
+          createdAt: serverTimestamp()
+        });
+      });
+    });
+    
+    // This call will now work because we define the function below.
+    selectProject(newRef.id);
+    
+  } catch (err) {
+    console.error("Create failed:", err);
   }
+}
+
+/**
+ * Handles the logic for selecting a project.
+ * It updates the 'isSelected' flags in Firestore and navigates the page.
+ * @param {string} projectId The ID of the project to select.
+ */
+async function selectProject(projectId) {
+  // Guard against missing data or clicking the already active project
+  if (!projectId || !currentUser || !activeWorkspaceId) return;
+  const currentlySelected = projectsData.find(p => p.isSelected === true);
+  if (currentlySelected && currentlySelected.id === projectId) return;
+  
+  try {
+    const batch = writeBatch(db);
+    const projectsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects`);
+    
+    // Deselect the old project if one was selected
+    if (currentlySelected) {
+      const oldProjectRef = doc(projectsColRef, currentlySelected.id);
+      batch.update(oldProjectRef, { isSelected: false });
+    }
+    
+    // Select the new project
+    const newProjectRef = doc(projectsColRef, projectId);
+    batch.update(newProjectRef, { isSelected: true });
+    
+    // Commit both changes at once
+    await batch.commit();
+    
+    // After the data is saved, navigate to the new project's URL
+    // (This assumes your stringToNumericString and router functions are available)
+    const numericUserId = stringToNumericString(currentUser.uid);
+    const numericProjectId = stringToNumericString(projectId);
+    const newRoute = `/tasks/${numericUserId}/list/${numericProjectId}`;
+    
+    history.pushState(null, '', newRoute);
+    window.router(); // Manually trigger the router to load the new page content
+    
+  } catch (error) {
+    console.error("Error selecting project:", error);
+  }
+}
 
   if (createWorkBtn) {
     createWorkBtn.addEventListener("click", handleProjectCreate, { signal: controller.signal });
