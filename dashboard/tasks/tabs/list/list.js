@@ -376,7 +376,7 @@ export function init(params) {
         } else {
             console.log("User signed out. Detaching listeners.");
             detachAllListeners();
-            project = { customColumns: [], sections: [], customPriorities: [], customStatuses: []};
+            project = { customColumns: [], sections: [], customPriorities: [], customStatuses: [] };
             render();
         }
     });
@@ -410,43 +410,43 @@ export function init(params) {
 // --- Event Listener Setup ---
 
 function setupEventListeners() {
-
+    
     document.addEventListener('click', (e) => {
         const optionsButton = e.target.closest('.section-options-btn');
         
-
-        if (e.target.closest('.options-dropdown-menu')) {
-    const dropdownItem = e.target.closest('.dropdown-item');
-    if (dropdownItem) {
-        const { action, sectionId } = dropdownItem.dataset;
-        console.log(`Action: ${action}, Section ID: ${sectionId || 'N/A'}`);
         
-        // NEW: Handle the specific actions from the menu
-        switch (action) {
-            case 'addTask':
-                const section = project.sections.find(s => s.id === sectionId);
-                if (section) addNewTask(section);
-                break;
+        if (e.target.closest('.options-dropdown-menu')) {
+            const dropdownItem = e.target.closest('.dropdown-item');
+            if (dropdownItem) {
+                const { action, sectionId } = dropdownItem.dataset;
+                console.log(`Action: ${action}, Section ID: ${sectionId || 'N/A'}`);
                 
-            case 'renameSection':
-                const sectionTitleEl = document.querySelector(`.section-title-wrapper[data-section-id="${sectionId}"] .section-title`);
-                if (sectionTitleEl) {
-                    sectionTitleEl.focus();
-                    document.execCommand('selectAll', false, null);
+                // NEW: Handle the specific actions from the menu
+                switch (action) {
+                    case 'addTask':
+                        const section = project.sections.find(s => s.id === sectionId);
+                        if (section) addNewTask(section);
+                        break;
+                        
+                    case 'renameSection':
+                        const sectionTitleEl = document.querySelector(`.section-title-wrapper[data-section-id="${sectionId}"] .section-title`);
+                        if (sectionTitleEl) {
+                            sectionTitleEl.focus();
+                            document.execCommand('selectAll', false, null);
+                        }
+                        break;
+                        
+                    case 'deleteSection':
+                        // This calls your new function
+                        deleteSectionInFirebase(sectionId);
+                        break;
                 }
-                break;
                 
-            case 'deleteSection':
-                // This calls your new function
-                deleteSectionInFirebase(sectionId);
-                break;
+                closeOpenMenu();
+            }
+            return; // Do nothing more if click is inside a menu
         }
         
-        closeOpenMenu();
-    }
-    return; // Do nothing more if click is inside a menu
-}
-
         // If we clicked an options button...
         if (optionsButton) {
             // Check if its menu is already open. If so, this click should close it.
@@ -498,7 +498,7 @@ function setupEventListeners() {
             
             const existingTypes = new Set(project.customColumns.map(col => col.type));
             const availableTypes = columnTypeOptions.filter(type => !existingTypes.has(type) || type === 'Custom');
-
+            
             createDropdown(
                 availableTypes.map(type => ({ name: type })),
                 addColumnButton,
@@ -633,48 +633,49 @@ function setupEventListeners() {
                     });
                     break;
                 }
-// Replace your existing 'custom-select' case with this more robust version.
-case 'custom-select': {
-    // 1. Get the column ID from the element.
-    const columnIdFromElement = controlElement.dataset.columnId;
-
-    if (!columnIdFromElement) {
-        console.error("Clicked custom-select cell is missing a data-column-id attribute.");
-        break;
-    }
-
-    // 2. Find the column definition.
-    const column = project.customColumns.find(c => String(c.id) === columnIdFromElement);
-
-    // 3. Check if the column and its options exist.
-    if (column && column.options) {
-
-        // 4. THE FIX: Use .map() to ensure the options are in the correct format.
-        // This makes sure every item is an object like { name: '...', color: '...' }
-        const dropdownOptions = column.options.map(opt => {
-            // If the option is already a well-formed object, return it as is.
-            if (typeof opt === 'object' && opt !== null && opt.name) {
-                return opt;
-            }
-            // If the option is just a string, convert it into the object format.
-            if (typeof opt === 'string') {
-                return { name: opt, color: null };
-            }
-            // Handle any other unexpected format.
-            return { name: 'Invalid Option', color: null };
-        });
-
-        // 5. Call createDropdown with the clean, guaranteed-to-be-correct options.
-        createDropdown(dropdownOptions, controlElement, (selectedValue) => {
-            const originalColumnId = column.id;
-            updateTask(taskId, sectionId, { [`customFields.${originalColumnId}`]: selectedValue.name });
-        }, 'CustomColumn', column.id); // Pass 'CustomColumn' and the ID for the "Add/Edit" logic
-
-    } else {
-        console.error(`Could not find a column or options for ID: ${columnIdFromElement}`);
-    }
-    break;
-}
+                // Replace your existing 'custom-select' case with this more robust version.
+                case 'custom-select': {
+                    // 1. Get the column ID from the element.
+                    const columnIdFromElement = controlElement.dataset.columnId;
+                    
+                    if (!columnIdFromElement) {
+                        console.error("Clicked custom-select cell is missing a data-column-id attribute.");
+                        break;
+                    }
+                    
+                    // 2. Find the column definition.
+                    const column = project.customColumns.find(c => String(c.id) === columnIdFromElement);
+                    
+                    // 3. Check if the column and its options exist.
+                    if (column && column.options) {
+                        
+                        // 4. THE FIX: Use .map() to ensure the options are in the correct format.
+                        // This makes sure every item is an object like { name: '...', color: '...' }
+                        const dropdownOptions = column.options.map(opt => {
+                            // If the option is already a well-formed object, return it as is.
+                            if (typeof opt === 'object' && opt !== null && opt.name) {
+                                return opt;
+                            }
+                            // If the option is just a string, convert it into the object format.
+                            if (typeof opt === 'string') {
+                                return { name: opt, color: null };
+                            }
+                            // Handle any other unexpected format.
+                            return { name: 'Invalid Option', color: null };
+                        });
+                        
+                        // 5. Call createDropdown with the clean, guaranteed-to-be-correct options.
+                        createDropdown(dropdownOptions, controlElement, (selectedValue) => {
+                            const originalColumnId = column.id;
+                            updateTask(taskId, sectionId, {
+                                [`customFields.${originalColumnId}`]: selectedValue.name });
+                        }, 'CustomColumn', column.id); // Pass 'CustomColumn' and the ID for the "Add/Edit" logic
+                        
+                    } else {
+                        console.error(`Could not find a column or options for ID: ${columnIdFromElement}`);
+                    }
+                    break;
+                }
                 
                 case 'move-task': {
                     e.stopPropagation();
@@ -826,16 +827,16 @@ case 'custom-select': {
         handleAddSectionClick();
     };
     
-windowClickListener = (e) => {
-
-    const clickedInsidePanel = e.target.closest('.context-dropdown, .datepicker, .options-dropdown-menu');
-    const clickedOverlayOrDialog = e.target.closest('.dialog-overlay, .filterlistview-dialog-overlay');
-    const clickedTrigger = e.target.closest('[data-control="due-date"], [data-control="priority"], [data-control="status"], [data-control="custom"], [data-control="assignee"], #add-column-btn, #filter-btn, .delete-column-btn');
-    
-    if (!clickedInsidePanel && !clickedOverlayOrDialog && !clickedTrigger) {
-        closeFloatingPanels();
-    }
-};
+    windowClickListener = (e) => {
+        
+        const clickedInsidePanel = e.target.closest('.context-dropdown, .datepicker, .options-dropdown-menu');
+        const clickedOverlayOrDialog = e.target.closest('.dialog-overlay, .filterlistview-dialog-overlay');
+        const clickedTrigger = e.target.closest('[data-control="due-date"], [data-control="priority"], [data-control="status"], [data-control="custom"], [data-control="assignee"], #add-column-btn, #filter-btn, .delete-column-btn');
+        
+        if (!clickedInsidePanel && !clickedOverlayOrDialog && !clickedTrigger) {
+            closeFloatingPanels();
+        }
+    };
     
     
     filterBtnListener = () => {
@@ -1052,98 +1053,94 @@ function _getTasksForSectionFromDOM(sectionHeaderEl) {
     return tasks;
 }
 
-async function handleTaskMoved(draggedTaskEl, gridWrapper, basePath) {
-    console.group(`🚀 Handling Task Move: "${draggedTaskEl.querySelector('.task-name')?.textContent}"`);
+async function handleTaskMoved(evt) {
+    console.log("🧪 Drag Event Details:", evt);
     
+    const user = auth.currentUser;
+    if (!user) {
+        console.error("❌ User not authenticated.");
+        return;
+    }
+    
+    // --- 1. Get DOM elements and their IDs ---
+    const taskEl = evt.item;
+    const taskId = taskEl.dataset.taskId;
+    
+    // FIX: Use the correct class '.section-wrapper' to find the container
+    const newSectionEl = evt.to.closest(".section-wrapper");
+    const oldSectionEl = evt.from.closest(".section-wrapper");
+    const newSectionId = newSectionEl?.dataset.sectionId;
+    const oldSectionId = oldSectionEl?.dataset.sectionId;
+    
+    if (!taskId || !newSectionId || !oldSectionId) {
+        console.error("❌ Critical ID missing.", { taskId, newSectionId, oldSectionId });
+        return;
+    }
+    
+    // The rest of your function logic is great and remains unchanged.
     try {
-        const taskId = draggedTaskEl.dataset.taskId;
-        if (!taskId) throw new Error("CRITICAL: Dragged element is missing a task ID.");
+        const workspaceSnap = await getDocs(query(collection(db, `users/${user.uid}/myworkspace`), where("isSelected", "==", true)));
+        if (workspaceSnap.empty) return;
+        const workspaceId = workspaceSnap.docs[0].id;
         
-        const oldSectionId = draggedTaskEl.dataset.sectionId;
-        const newSectionWrapper = draggedTaskEl.closest('.section-wrapper');
-        const newSectionHeader = newSectionWrapper ? newSectionWrapper.querySelector('.section-row-wrapper') : null;
-        
-        if (!newSectionHeader || !newSectionWrapper) {
-            throw new Error("Could not determine the new section for the dropped task.");
-        }
-        const newSectionId = newSectionHeader.dataset.sectionId;
+        const projectSnap = await getDocs(query(collection(db, `users/${user.uid}/myworkspace/${workspaceId}/projects`), where("isSelected", "==", true)));
+        if (projectSnap.empty) return;
+        const projectId = projectSnap.docs[0].id;
+        const basePath = `users/${user.uid}/myworkspace/${workspaceId}/projects/${projectId}`;
         
         const batch = writeBatch(db);
         
-        if (oldSectionId === newSectionId) {
-            console.log(`➡️ [Decision]: Reordering task WITHIN section ${newSectionId}.`);
-            const tasksToUpdate = Array.from(newSectionWrapper.querySelectorAll('.task-row-wrapper[data-task-id]'));
+        if (newSectionId === oldSectionId) {
+            console.log(`Reordering task "${taskId}" in section "${newSectionId}"`);
+            const tasksToUpdate = Array.from(newSectionEl.querySelectorAll(".task-row-wrapper"));
             
-            tasksToUpdate.forEach((taskEl, index) => {
-                const currentTaskId = taskEl.dataset.taskId;
+            tasksToUpdate.forEach((el, index) => {
+                const currentTaskId = el.dataset.taskId;
+                if (!currentTaskId) return;
                 const taskRef = doc(db, `${basePath}/sections/${newSectionId}/tasks/${currentTaskId}`);
-                
-                // [FIX] Use set with merge to prevent "not-found" errors.
-                batch.set(taskRef, { order: index }, { merge: true });
+                batch.update(taskRef, { order: index });
             });
             
         } else {
-            console.log(`➡️ [Decision]: MOVING task from ${oldSectionId} to ${newSectionId}.`);
+            console.log(`Moving task "${taskId}" from section "${oldSectionId}" to "${newSectionId}"`);
             
-            // Step A: Get original task data
-            const originalTaskRef = doc(db, `${basePath}/sections/${oldSectionId}/tasks/${taskId}`);
-            const taskSnap = await getDoc(originalTaskRef);
-            if (!taskSnap.exists()) {
-                // The task we are dragging doesn't exist in the source. This is a critical data issue.
-                // We will stop here to prevent further errors. The UI will revert.
-                throw new Error(`Dragged task with ID ${taskId} not found in source section ${oldSectionId}.`);
-            }
-            const taskData = taskSnap.data();
-            
-            // Step B: Delete from old section
-            batch.delete(originalTaskRef);
-            
-            // Step C: Re-order tasks in the OLD section
-            const oldSectionHeader = gridWrapper.querySelector(`.section-row-wrapper[data-section-id="${oldSectionId}"]`);
-            if (oldSectionHeader) {
-                const oldSectionWrapper = oldSectionHeader.closest('.section-wrapper');
-                if (oldSectionWrapper) {
-                    const tasksInOldSection = Array.from(oldSectionWrapper.querySelectorAll('.task-row-wrapper[data-task-id]'));
-                    tasksInOldSection.forEach((taskEl, index) => {
-                        const taskRef = doc(db, `${basePath}/sections/${oldSectionId}/tasks/${taskEl.dataset.taskId}`);
-                        // [FIX] Use set with merge
-                        batch.set(taskRef, { order: index }, { merge: true });
-                    });
-                }
+            const sourceRef = doc(db, `${basePath}/sections/${oldSectionId}/tasks/${taskId}`);
+            const sourceSnap = await getDoc(sourceRef);
+            if (!sourceSnap.exists()) {
+                console.error("❌ Task not found in the source section. Cannot move.");
+                return;
             }
             
-            // Step D: Re-order tasks in the NEW section
-            const tasksInNewSection = Array.from(newSectionWrapper.querySelectorAll('.task-row-wrapper[data-task-id]'));
-            tasksInNewSection.forEach((taskEl, index) => {
-                const currentTaskId = taskEl.dataset.taskId;
+            const newDocRef = doc(collection(db, `${basePath}/sections/${newSectionId}/tasks`));
+            const taskData = { ...sourceSnap.data(), sectionId: newSectionId, id: newDocRef.id };
+            
+            batch.delete(sourceRef);
+            batch.set(newDocRef, taskData);
+            
+            taskEl.dataset.taskId = newDocRef.id;
+            
+            const newSectionTasks = Array.from(newSectionEl.querySelectorAll(".task-row-wrapper"));
+            newSectionTasks.forEach((el, index) => {
+                const currentTaskId = el.dataset.taskId;
+                if (!currentTaskId) return;
                 const taskRef = doc(db, `${basePath}/sections/${newSectionId}/tasks/${currentTaskId}`);
-                
-                if (currentTaskId === taskId) {
-                    // This is the moved task. Use SET to create it fully in the new location.
-                    const newData = { ...taskData, order: index, sectionId: newSectionId };
-                    batch.set(taskRef, newData);
-                } else {
-                    // [FIX] For existing tasks, use set with merge.
-                    // This will update the order if the task exists, or create a placeholder if it's a phantom.
-                    const fallbackData = {
-                        name: taskEl.querySelector('.task-name')?.textContent || "Unnamed Task",
-                        status: "High risk",
-                        sectionId: newSectionId
-                    };
-                    batch.set(taskRef, { ...fallbackData, order: index }, { merge: true });
-                }
+                batch.update(taskRef, { order: index, sectionId: newSectionId });
+            });
+            
+            const oldSectionTasks = Array.from(oldSectionEl.querySelectorAll(".task-row-wrapper"));
+            oldSectionTasks.forEach((el, index) => {
+                const currentTaskId = el.dataset.taskId;
+                if (!currentTaskId) return;
+                const taskRef = doc(db, `${basePath}/sections/${oldSectionId}/tasks/${currentTaskId}`);
+                batch.update(taskRef, { order: index });
             });
         }
         
-        console.log("📌 Committing batch to Firestore...");
         await batch.commit();
-        console.log("✅ Batch commit successful.");
+        console.log("✅ Batch commit successful. Task positions updated.");
         
-    } catch (error) {
-        console.error("❌ Error in handleTaskMoved. Reverting UI.", error);
-        throw error;
-    } finally {
-        console.groupEnd();
+    } catch (err) {
+        console.error("❌ Error handling task move:", err);
     }
 }
 
@@ -1492,6 +1489,7 @@ function render() {
             );
         }
     };
+    const addTaskAtTop = false;
     
     const sections = [
     {
@@ -1557,19 +1555,19 @@ function render() {
     allColumns.forEach(col => {
         const cell = document.createElement('div');
         let cellClasses = 'group px-4 py-3 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center justify-between';
-
-if (
-    col.type === 'Text' || col.type === 'Numbers' || col.type === 'Type' ||
-    col.id === 'priority' || col.id === 'status'
-) {
-    // ADD a marker class for our JS function to find
-    cellClasses += ' js-flexible-col';
-} else {
-    cellClasses += ' w-44'; // Keep fixed width for others
-}
-
-cell.className = cellClasses;
-
+        
+        if (
+            col.type === 'Text' || col.type === 'Numbers' || col.type === 'Type' ||
+            col.id === 'priority' || col.id === 'status'
+        ) {
+            // ADD a marker class for our JS function to find
+            cellClasses += ' js-flexible-col';
+        } else {
+            cellClasses += ' w-44'; // Keep fixed width for others
+        }
+        
+        cell.className = cellClasses;
+        
         cell.dataset.columnId = col.id;
         
         const cellText = document.createElement('span');
@@ -1601,7 +1599,7 @@ cell.className = cellClasses;
     
     header.appendChild(leftHeader);
     header.appendChild(rightHeaderContent);
-   rightHeaderContent.addEventListener('click', headerClickListener);
+    rightHeaderContent.addEventListener('click', headerClickListener);
     
     // --- BODY ---
     const body = document.createElement('div');
@@ -1637,58 +1635,58 @@ cell.className = cellClasses;
             <span class="material-icons text-slate-500">more_horiz</span>
         </div>
     `;
-    const toggleIcon = leftSectionCell.querySelector('.section-toggle');
-
-// 2. Add a click listener to it.
-if (toggleIcon) {
-    toggleIcon.addEventListener('click', () => {
-        const sectionId = toggleIcon.dataset.sectionId;
+        const toggleIcon = leftSectionCell.querySelector('.section-toggle');
         
-        // 3. Check the icon's class to decide whether to expand or collapse.
-        if (toggleIcon.classList.contains('fa-chevron-down')) {
-            // If it's collapsed (showing right arrow), expand it.
-            expandCollapsedSection(sectionId);
-        } else {
-            // If it's expanded (showing down arrow), collapse it.
-            collapseExpandedSection(sectionId);
+        // 2. Add a click listener to it.
+        if (toggleIcon) {
+            toggleIcon.addEventListener('click', () => {
+                const sectionId = toggleIcon.dataset.sectionId;
+                
+                // 3. Check the icon's class to decide whether to expand or collapse.
+                if (toggleIcon.classList.contains('fa-chevron-down')) {
+                    // If it's collapsed (showing right arrow), expand it.
+                    expandCollapsedSection(sectionId);
+                } else {
+                    // If it's expanded (showing down arrow), collapse it.
+                    collapseExpandedSection(sectionId);
+                }
+            });
         }
-    });
-}
         
-const rightSectionCell = document.createElement('div');
-rightSectionCell.className = 'flex-grow flex';
-
-allColumns.forEach((col, i) => {
-    const cell = document.createElement('div');
-    const borderClass = i === 0 ? 'border-l border-slate-200' : '';
-    
-    // --- MODIFICATION FOR SECTION ROW CELLS ---
-    // Start with the base classes that all cells share.
-    let cellClasses = `flex-shrink-0 h-full hover:bg-slate-50 ${borderClass}`;
-    
-    // Apply the SAME conditional logic as the header and task rows.
-    if (
-        col.type === 'Text' ||
-        col.type === 'Numbers' ||
-        col.type === 'Type' ||
-        col.id === 'priority' ||
-        col.id === 'status'
-    ) {
-        // Apply flexible width classes
-        cellClasses += ' min-w-[176px] flex-1';
-    } else {
-        // Apply fixed width classes
-        cellClasses += ' w-44';
-    }
-    
-    // Set the final, correct classes on the cell
-    cell.className = cellClasses;
-    // --- END OF MODIFICATION ---
-    cell.dataset.columnId = col.id;
-    
-    rightSectionCell.appendChild(cell);
-});
-
+        const rightSectionCell = document.createElement('div');
+        rightSectionCell.className = 'flex-grow flex';
+        
+        allColumns.forEach((col, i) => {
+            const cell = document.createElement('div');
+            const borderClass = i === 0 ? 'border-l border-slate-200' : '';
+            
+            // --- MODIFICATION FOR SECTION ROW CELLS ---
+            // Start with the base classes that all cells share.
+            let cellClasses = `flex-shrink-0 h-full hover:bg-slate-50 ${borderClass}`;
+            
+            // Apply the SAME conditional logic as the header and task rows.
+            if (
+                col.type === 'Text' ||
+                col.type === 'Numbers' ||
+                col.type === 'Type' ||
+                col.id === 'priority' ||
+                col.id === 'status'
+            ) {
+                // Apply flexible width classes
+                cellClasses += ' min-w-[176px] flex-1';
+            } else {
+                // Apply fixed width classes
+                cellClasses += ' w-44';
+            }
+            
+            // Set the final, correct classes on the cell
+            cell.className = cellClasses;
+            // --- END OF MODIFICATION ---
+            cell.dataset.columnId = col.id;
+            
+            rightSectionCell.appendChild(cell);
+        });
+        
         const emptyAddCell = document.createElement('div');
         emptyAddCell.className = 'w-12 flex-shrink-0 h-full hover:bg-slate-50';
         rightSectionCell.appendChild(emptyAddCell);
@@ -1714,6 +1712,99 @@ allColumns.forEach((col, i) => {
         
         // ⛔️ Skip rendering tasks and add row if collapsed
         if (section.isCollapsed) return;
+        
+        if (addTaskAtTop) {
+                    // Add task row
+        const addRow = document.createElement('div');
+        addRow.className = 'add-task-row-wrapper flex group';
+        addRow.dataset.sectionId = section.id;
+        
+        const leftAddCell = document.createElement('div');
+        leftAddCell.className = 'sticky left-0 w-80 md:w-96 lg:w-[860px] flex-shrink-0 flex items-center px-3 py-1.5 group-hover:bg-slate-100 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
+        
+        const indentedText = document.createElement('div');
+        indentedText.className = 'add-task-btn flex items-center gap-2 ml-8 text-slate-500 cursor-pointer hover:bg-slate-200 px-2 py-1 rounded transition';
+        indentedText.dataset.sectionId = section.id;
+        indentedText.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+    </svg>
+    <span>Add task</span>
+`;
+        leftAddCell.appendChild(indentedText);
+        
+        const rightAddCells = document.createElement('div');
+        rightAddCells.className = 'flex-grow flex group-hover:bg-slate-100';
+        
+        // This loop creates the footer cells (including the "Sum:" cell)
+        allColumns.forEach((col, i) => {
+            const cell = document.createElement('div');
+            const leftBorderClass = i === 0 ? 'border-l border-slate-200' : '';
+            
+            // --- MODIFICATION FOR FOOTER CELLS ---
+            // 1. REMOVE the hardcoded width class 'w-44' and 'flex-shrink-0'.
+            // The sync function will now control the width.
+            cell.className = `h-full ${leftBorderClass}`;
+            
+            // 2. ADD the data-column-id so the sync function can find this cell.
+            cell.dataset.columnId = col.id;
+            // --- END OF MODIFICATION ---
+            
+            // This is your existing logic to calculate and show the sum. It remains unchanged.
+            // This is your existing logic to calculate and show the sum.
+            if (col.type === 'Costing') {
+                const sum = section.tasks.reduce((accumulator, task) => {
+                    const value = task.customFields?.[col.id];
+                    return typeof value === 'number' ? accumulator + value : accumulator;
+                }, 0);
+                
+                if (sum > 0) {
+                    let formattedSum;
+                    
+                    // Check if the sum is a whole number (e.g., 1250.00)
+                    if (sum % 1 === 0) {
+                        // If yes, format it with commas and NO decimal places.
+                        formattedSum = sum.toLocaleString('en-US', {
+                            maximumFractionDigits: 0
+                        });
+                    } else {
+                        // If no, format it with commas and exactly TWO decimal places.
+                        formattedSum = sum.toLocaleString('en-US', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        });
+                    }
+                    
+                    
+                    // Note: The commented out currencySymbol line remains for future use.
+                    // const currencySymbol = col.currency || '$';
+                    
+                    cell.innerHTML = `
+            <div style="font-size: 0.8rem; display: flex; justify-content: flex-start; align-items: center; height: 100%; padding-right: 8px;">
+              <span style="color: #9ca3af; margin-right: 4px;">Sum:</span>
+              <span style="font-weight: 600; color: #4b5563;">${formattedSum}</span>
+            </div>
+        `;
+                }
+            }
+            
+            rightAddCells.appendChild(cell);
+        });
+        
+        const emptyAddCellLast = document.createElement('div');
+        emptyAddCellLast.className = 'w-12 flex-shrink-0 h-full';
+        rightAddCells.appendChild(emptyAddCellLast);
+        
+        const emptyEndSpacerLast = document.createElement('div');
+        emptyEndSpacerLast.className = 'w-4 flex-shrink-0 h-full';
+        rightAddCells.appendChild(emptyEndSpacerLast);
+        
+        addRow.appendChild(leftAddCell);
+        addRow.appendChild(rightAddCells);
+        sectionWrapper.appendChild(addRow);
+        }
+        
         
         // Render task rows`
         section.tasks.forEach(task => {
@@ -1778,298 +1869,334 @@ allColumns.forEach((col, i) => {
             const rightTaskCells = document.createElement('div');
             rightTaskCells.className = 'flex-grow flex group-hover:bg-slate-50';
             
-// This loop creates the cells for a single task row.
-allColumns.forEach((col, i) => {
-    const cell = document.createElement('div');
-    
-    // --- Base Styling ---
-    const borderClass = 'border-r';
-    const leftBorderClass = i === 0 ? 'border-l' : '';
-    let cellClasses = `h-10 px-3 py-1.5 flex items-center ${borderClass} ${leftBorderClass} border-slate-200`;
-
-if (
-    col.type === 'Text' || col.type === 'Numbers' || col.type === 'Type' ||
-    col.id === 'priority' || col.id === 'status'
-) {
-    // ADD the same marker class here
-    cellClasses += ' js-flexible-col';
-    // Make sure text can wrap if the column grows
-    cell.style.whiteSpace = 'normal';
-} else {
-    cellClasses += ' w-44 truncate'; // Keep fixed width for others
-}
-
-cell.className = cellClasses;
-
-
-if (isCompleted) {
-        cell.classList.add('is-completed');
-    }
-    
-let content = '';
-
-const COMPLETED_TEXT_COLOR = '#6b7280'; 
-const COMPLETED_BG_COLOR = '#f3f4f6';
-
-switch (col.id) {
-    case 'assignees':
-        cell.dataset.control = 'assignee';
-        content = createAssigneeHTML(task.assignees);
-        break;
- case 'dueDate':
- cell.dataset.control = 'due-date';
- // For due date, we can use a simpler check
- if (isCompleted) {
-     content = `<span class="date-tag">${formatDueDate(task.dueDate).text}</span>`;
- } else {
-     const dueDateInfo = formatDueDate(task.dueDate);
-     const className = `date-tag date-${dueDateInfo.color}`;
-     content = `<span class="${className}">${dueDateInfo.text}</span>`;
- }
- break;
- 
- case 'priority':
- cell.dataset.control = 'priority';
- if (task.priority) {
-     // MODIFIED: Check if the task is completed FIRST
-     if (isCompleted) {
-         const grayStyle = `background-color: ${COMPLETED_BG_COLOR}; color: ${COMPLETED_TEXT_COLOR};`;
-         content = `<div class="priority-tag" style="${grayStyle}">${task.priority}</div>`;
-     } else {
-         // This is the original logic for non-completed tasks
-         let color = project.customPriorities?.find(p => p.name === task.priority)?.color || defaultPriorityColors[task.priority];
-         if (color) {
-             const style = `background-color: ${color}20; color: ${color};`;
-             content = `<div class="priority-tag" style="${style}">${task.priority}</div>`;
-         } else {
-             content = `<span>${task.priority}</span>`;
-         }
-     }
- }
- break;
- 
- case 'status':
- cell.dataset.control = 'status';
- if (task.status) {
-     // MODIFIED: Check if the task is completed FIRST
-     if (isCompleted) {
-         const grayStyle = `background-color: ${COMPLETED_BG_COLOR}; color: ${COMPLETED_TEXT_COLOR};`;
-         // When completed, the text should always be "Completed"
-         content = `<div class="status-tag" style="${grayStyle}">Completed</div>`;
-     } else {
-         // This is the original logic for non-completed tasks
-         let color = project.customStatuses?.find(s => s.name === task.status)?.color || defaultStatusColors[task.status];
-         if (color) {
-             const style = `background-color: ${color}20; color: ${color};`;
-             content = `<div class="status-tag" style="${style}">${task.status}</div>`;
-         } else {
-             content = `<span>${task.status}</span>`;
-         }
-     }
- }
- break;
-// This is the updated 'default' case for handling all custom columns.
-default:
-    // --- FIX: Set the columnId for ALL custom columns right away. ---
-    cell.dataset.columnId = col.id;
-
-    const rawValue = task.customFields ? task.customFields[col.id] : undefined;
-
-    // --- Logic for ALL 'Select' type columns (with options) ---
-     if (col.options && Array.isArray(col.options)) {
-        
-        // If the task is completed, render a gray version of the tag.
-        if (isCompleted) {
-            const grayStyle = `background-color: ${COMPLETED_BG_COLOR}; color: ${COMPLETED_TEXT_COLOR};`;
-            // Only show the tag if there's a value to display
-            if (rawValue) {
-                content = `<div class="status-tag" style="${grayStyle}">${rawValue}</div>`;
-            } else {
-                content = ''; // Render empty if no value in a completed task
-            }
-        } 
-        // If the task is NOT completed, use the normal color logic.
-        else {
-            cell.dataset.control = 'custom-select';
-            const selectedOption = col.options.find(opt => opt.name === rawValue);
-
-            if (selectedOption) {
-                if (selectedOption.color) {
-                    const style = `background-color: ${selectedOption.color}20; color: ${selectedOption.color}; border: 1px solid ${selectedOption.color}80;`;
-                    content = `<div class="status-tag" style="${style}">${selectedOption.name}</div>`;
+            // This loop creates the cells for a single task row.
+            allColumns.forEach((col, i) => {
+                const cell = document.createElement('div');
+                
+                // --- Base Styling ---
+                const borderClass = 'border-r';
+                const leftBorderClass = i === 0 ? 'border-l' : '';
+                let cellClasses = `h-10 px-3 py-1.5 flex items-center ${borderClass} ${leftBorderClass} border-slate-200`;
+                
+                if (
+                    col.type === 'Text' || col.type === 'Numbers' || col.type === 'Type' ||
+                    col.id === 'priority' || col.id === 'status'
+                ) {
+                    // ADD the same marker class here
+                    cellClasses += ' js-flexible-col';
+                    // Make sure text can wrap if the column grows
+                    cell.style.whiteSpace = 'normal';
                 } else {
-                    const sanitizedName = (selectedOption.name || '').toLowerCase().replace(/\s+/g, '-');
-                    content = `<div class="status-tag status-${sanitizedName}">${selectedOption.name}</div>`;
+                    cellClasses += ' w-44 truncate'; // Keep fixed width for others
                 }
-            } else {
-                content = '<span class="add-value">+</span>';
-            }
-        }
-
-        // The click listener should be active regardless of completion status.
-        cell.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (col && col.options) {
-                createDropdown(col.options, cell, (selectedValue) => {
-                    updateTask(task.id, section.id, { [`customFields.${col.id}`]: selectedValue.name });
-                }, 'CustomColumn', col.id);
-            }
-        });
-    // --- Logic for other column types (Text, Costing, etc.) ---
-} else { // This "else" is for columns that are NOT "Select" type
-    cell.dataset.control = 'custom';
-    cell.contentEditable = true;
-    
-    let displayValue;
-    // NEW: A variable to hold our placeholder class
-    let placeholderClass = '';
-    
-    const valueExists = rawValue !== null && typeof rawValue !== 'undefined' && rawValue !== '';
-    
-    if (valueExists) {
-        // If a value exists, use the original formatting logic
-        if ((col.type === 'Costing' || col.type === 'Numbers') && typeof rawValue === 'number') {
-            displayValue = rawValue.toLocaleString('en-US', {
-                minimumFractionDigits: (rawValue % 1 !== 0) ? 2 : 0,
-                maximumFractionDigits: 2
+                
+                cell.className = cellClasses;
+                
+                
+                if (isCompleted) {
+                    cell.classList.add('is-completed');
+                }
+                
+                let content = '';
+                
+                const COMPLETED_TEXT_COLOR = '#6b7280';
+                const COMPLETED_BG_COLOR = '#f3f4f6';
+                
+                switch (col.id) {
+                    case 'assignees':
+                        cell.dataset.control = 'assignee';
+                        content = createAssigneeHTML(task.assignees);
+                        break;
+                    case 'dueDate':
+                        cell.dataset.control = 'due-date';
+                        // For due date, we can use a simpler check
+                        if (isCompleted) {
+                            content = `<span class="date-tag">${formatDueDate(task.dueDate).text}</span>`;
+                        } else {
+                            const dueDateInfo = formatDueDate(task.dueDate);
+                            const className = `date-tag date-${dueDateInfo.color}`;
+                            content = `<span class="${className}">${dueDateInfo.text}</span>`;
+                        }
+                        break;
+                        
+                    case 'priority':
+                        cell.dataset.control = 'priority';
+                        if (task.priority) {
+                            // MODIFIED: Check if the task is completed FIRST
+                            if (isCompleted) {
+                                const grayStyle = `background-color: ${COMPLETED_BG_COLOR}; color: ${COMPLETED_TEXT_COLOR};`;
+                                content = `<div class="priority-tag" style="${grayStyle}">${task.priority}</div>`;
+                            } else {
+                                // This is the original logic for non-completed tasks
+                                let color = project.customPriorities?.find(p => p.name === task.priority)?.color || defaultPriorityColors[task.priority];
+                                if (color) {
+                                    const style = `background-color: ${color}20; color: ${color};`;
+                                    content = `<div class="priority-tag" style="${style}">${task.priority}</div>`;
+                                } else {
+                                    content = `<span>${task.priority}</span>`;
+                                }
+                            }
+                        }
+                        break;
+                        
+                    case 'status':
+                        cell.dataset.control = 'status';
+                        if (task.status) {
+                            // MODIFIED: Check if the task is completed FIRST
+                            if (isCompleted) {
+                                const grayStyle = `background-color: ${COMPLETED_BG_COLOR}; color: ${COMPLETED_TEXT_COLOR};`;
+                                // When completed, the text should always be "Completed"
+                                content = `<div class="status-tag" style="${grayStyle}">Completed</div>`;
+                            } else {
+                                // This is the original logic for non-completed tasks
+                                let color = project.customStatuses?.find(s => s.name === task.status)?.color || defaultStatusColors[task.status];
+                                if (color) {
+                                    const style = `background-color: ${color}20; color: ${color};`;
+                                    content = `<div class="status-tag" style="${style}">${task.status}</div>`;
+                                } else {
+                                    content = `<span>${task.status}</span>`;
+                                }
+                            }
+                        }
+                        break;
+                        // This is the updated 'default' case for handling all custom columns.
+                    default:
+                        // --- FIX: Set the columnId for ALL custom columns right away. ---
+                        cell.dataset.columnId = col.id;
+                        
+                        const rawValue = task.customFields ? task.customFields[col.id] : undefined;
+                        
+                        // --- Logic for ALL 'Select' type columns (with options) ---
+                        if (col.options && Array.isArray(col.options)) {
+                            
+                            // If the task is completed, render a gray version of the tag.
+                            if (isCompleted) {
+                                const grayStyle = `background-color: ${COMPLETED_BG_COLOR}; color: ${COMPLETED_TEXT_COLOR};`;
+                                // Only show the tag if there's a value to display
+                                if (rawValue) {
+                                    content = `<div class="status-tag" style="${grayStyle}">${rawValue}</div>`;
+                                } else {
+                                    content = ''; // Render empty if no value in a completed task
+                                }
+                            }
+                            // If the task is NOT completed, use the normal color logic.
+                            else {
+                                cell.dataset.control = 'custom-select';
+                                const selectedOption = col.options.find(opt => opt.name === rawValue);
+                                
+                                if (selectedOption) {
+                                    if (selectedOption.color) {
+                                        const style = `background-color: ${selectedOption.color}20; color: ${selectedOption.color}; border: 1px solid ${selectedOption.color}80;`;
+                                        content = `<div class="status-tag" style="${style}">${selectedOption.name}</div>`;
+                                    } else {
+                                        const sanitizedName = (selectedOption.name || '').toLowerCase().replace(/\s+/g, '-');
+                                        content = `<div class="status-tag status-${sanitizedName}">${selectedOption.name}</div>`;
+                                    }
+                                } else {
+                                    content = '<span class="add-value">+</span>';
+                                }
+                            }
+                            
+                            // The click listener should be active regardless of completion status.
+                            cell.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                if (col && col.options) {
+                                    createDropdown(col.options, cell, (selectedValue) => {
+                                        updateTask(task.id, section.id, {
+                                            [`customFields.${col.id}`]: selectedValue.name });
+                                    }, 'CustomColumn', col.id);
+                                }
+                            });
+                            // --- Logic for other column types (Text, Costing, etc.) ---
+                        } else { // This "else" is for columns that are NOT "Select" type
+                            cell.dataset.control = 'custom';
+                            cell.contentEditable = true;
+                            
+                            let displayValue;
+                            // NEW: A variable to hold our placeholder class
+                            let placeholderClass = '';
+                            
+                            const valueExists = rawValue !== null && typeof rawValue !== 'undefined' && rawValue !== '';
+                            
+                            if (valueExists) {
+                                // If a value exists, use the original formatting logic
+                                if ((col.type === 'Costing' || col.type === 'Numbers') && typeof rawValue === 'number') {
+                                    displayValue = rawValue.toLocaleString('en-US', {
+                                        minimumFractionDigits: (rawValue % 1 !== 0) ? 2 : 0,
+                                        maximumFractionDigits: 2
+                                    });
+                                } else {
+                                    displayValue = rawValue;
+                                }
+                            } else {
+                                // If the value is empty, apply the new placeholder rules
+                                if (col.type === 'Text') {
+                                    displayValue = ''; // Still blank for Text type
+                                } else if (col.type === 'Costing' || col.type === 'Numbers') {
+                                    // MODIFIED: The content is empty, but we add a class
+                                    displayValue = '';
+                                    placeholderClass = 'numeric-placeholder';
+                                } else {
+                                    displayValue = '';
+                                }
+                            }
+                            
+                            // MODIFIED: The span now includes the placeholderClass if one was set
+                            content = `<span class="${placeholderClass}">${displayValue}</span>`;
+                            
+                            if (col.type === 'Costing' || col.type === 'Numbers') {
+                                allowNumericChars(cell);
+                                formatNumberOnBlur(cell);
+                            }
+                            break;
+                        }
+                }
+                
+                cell.innerHTML = content;
+                rightTaskCells.appendChild(cell);
             });
-        } else {
-            displayValue = rawValue;
-        }
-    } else {
-        // If the value is empty, apply the new placeholder rules
-        if (col.type === 'Text') {
-            displayValue = ''; // Still blank for Text type
-        } else if (col.type === 'Costing' || col.type === 'Numbers') {
-            // MODIFIED: The content is empty, but we add a class
-            displayValue = '';
-            placeholderClass = 'numeric-placeholder';
-        } else {
-            displayValue = '';
-        }
-    }
-    
-    // MODIFIED: The span now includes the placeholderClass if one was set
-    content = `<span class="${placeholderClass}">${displayValue}</span>`;
-    
-    if (col.type === 'Costing' || col.type === 'Numbers') {
-        allowNumericChars(cell);
-        formatNumberOnBlur(cell);
-    }
-    break;
-}
-}
-    
-    cell.innerHTML = content;
-    rightTaskCells.appendChild(cell);
-});
- 
- // These lines append the empty cells and assemble the row
- const emptyAddCellTask = document.createElement('div');
- emptyAddCellTask.className = 'w-12 flex-shrink-0 h-full border-l border-slate-200';
- rightTaskCells.appendChild(emptyAddCellTask);
- 
- const emptyEndSpacerTask = document.createElement('div');
- emptyEndSpacerTask.className = 'w-4 flex-shrink-0 h-full';
- rightTaskCells.appendChild(emptyEndSpacerTask);
- 
- taskRow.appendChild(leftTaskCell);
- taskRow.appendChild(rightTaskCells);
- sectionWrapper.appendChild(taskRow);
- });
+            
+            // These lines append the empty cells and assemble the row
+            const emptyAddCellTask = document.createElement('div');
+            emptyAddCellTask.className = 'w-12 flex-shrink-0 h-full border-l border-slate-200';
+            rightTaskCells.appendChild(emptyAddCellTask);
+            
+            const emptyEndSpacerTask = document.createElement('div');
+            emptyEndSpacerTask.className = 'w-4 flex-shrink-0 h-full';
+            rightTaskCells.appendChild(emptyEndSpacerTask);
+            
+            taskRow.appendChild(leftTaskCell);
+            taskRow.appendChild(rightTaskCells);
+            sectionWrapper.appendChild(taskRow);
+        });
         
+        Sortable.create(sectionWrapper, {
+    group: 'tasks', // This is the key: allows dragging between sections
+    handle: '.drag-handle', // Drag is initiated by the handle on a task row
+    animation: 300,
+    onMove: function(evt) {
+    // This logic ONLY runs if the button is at the bottom.
+    // It prevents dropping tasks below the "Add task" button.
+    if (!addTaskAtTop && evt.related.classList.contains('add-task-row-wrapper')) {
+        return true;
+    }
+},
+    onStart(evt) {
+        // Add the dark overlay for a consistent UI
+        const table = document.querySelector('.min-w-max.relative');
+        if (table) {
+            table.classList.add('is-dragging-active');
+        }
+    },
+    
+    async onEnd(evt) {
+        // Remove the dark overlay
+        const table = document.querySelector('.min-w-max.relative');
+        if (table) {
+            table.classList.remove('is-dragging-active');
+        }
+        
+        // Call your function to handle reordering and saving to Firestore
+        await handleTaskMoved(evt);
+    }
+});
+
+if (!addTaskAtTop) {
         // Add task row
-const addRow = document.createElement('div');
-addRow.className = 'add-task-row-wrapper flex group';
-addRow.dataset.sectionId = section.id;
-
-const leftAddCell = document.createElement('div');
-leftAddCell.className = 'sticky left-0 w-80 md:w-96 lg:w-[860px] flex-shrink-0 flex items-center px-3 py-1.5 group-hover:bg-slate-100 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
-
-const indentedText = document.createElement('div');
-indentedText.className = 'add-task-btn flex items-center gap-2 ml-8 text-slate-500 cursor-pointer hover:bg-slate-200 px-2 py-1 rounded transition';
-indentedText.dataset.sectionId = section.id;
-indentedText.innerHTML = `
+        const addRow = document.createElement('div');
+        addRow.className = 'add-task-row-wrapper flex group';
+        addRow.dataset.sectionId = section.id;
+        
+        const leftAddCell = document.createElement('div');
+        leftAddCell.className = 'sticky left-0 w-80 md:w-96 lg:w-[860px] flex-shrink-0 flex items-center px-3 py-1.5 group-hover:bg-slate-100 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
+        
+        const indentedText = document.createElement('div');
+        indentedText.className = 'add-task-btn flex items-center gap-2 ml-8 text-slate-500 cursor-pointer hover:bg-slate-200 px-2 py-1 rounded transition';
+        indentedText.dataset.sectionId = section.id;
+        indentedText.innerHTML = `
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400">
         <line x1="12" y1="5" x2="12" y2="19"></line>
         <line x1="5" y1="12" x2="19" y2="12"></line>
     </svg>
     <span>Add task</span>
 `;
-leftAddCell.appendChild(indentedText);
-
-const rightAddCells = document.createElement('div');
-rightAddCells.className = 'flex-grow flex group-hover:bg-slate-100';
-
-// This loop creates the footer cells (including the "Sum:" cell)
-allColumns.forEach((col, i) => {
-    const cell = document.createElement('div');
-    const leftBorderClass = i === 0 ? 'border-l border-slate-200' : '';
-    
-    // --- MODIFICATION FOR FOOTER CELLS ---
-    // 1. REMOVE the hardcoded width class 'w-44' and 'flex-shrink-0'.
-    // The sync function will now control the width.
-    cell.className = `h-full ${leftBorderClass}`;
-    
-    // 2. ADD the data-column-id so the sync function can find this cell.
-    cell.dataset.columnId = col.id;
-    // --- END OF MODIFICATION ---
-    
-    // This is your existing logic to calculate and show the sum. It remains unchanged.
-    // This is your existing logic to calculate and show the sum.
-if (col.type === 'Costing') {
-    const sum = section.tasks.reduce((accumulator, task) => {
-        const value = task.customFields?.[col.id];
-        return typeof value === 'number' ? accumulator + value : accumulator;
-    }, 0);
-    
-    if (sum > 0) {
-        let formattedSum;
+        leftAddCell.appendChild(indentedText);
         
-        // Check if the sum is a whole number (e.g., 1250.00)
-        if (sum % 1 === 0) {
-            // If yes, format it with commas and NO decimal places.
-            formattedSum = sum.toLocaleString('en-US', {
-                maximumFractionDigits: 0
-            });
-        } else {
-            // If no, format it with commas and exactly TWO decimal places.
-            formattedSum = sum.toLocaleString('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            });
-        }
-
+        const rightAddCells = document.createElement('div');
+        rightAddCells.className = 'flex-grow flex group-hover:bg-slate-100';
         
-        // Note: The commented out currencySymbol line remains for future use.
-        // const currencySymbol = col.currency || '$';
-        
-        cell.innerHTML = `
+        // This loop creates the footer cells (including the "Sum:" cell)
+        allColumns.forEach((col, i) => {
+            const cell = document.createElement('div');
+            const leftBorderClass = i === 0 ? 'border-l border-slate-200' : '';
+            
+            // --- MODIFICATION FOR FOOTER CELLS ---
+            // 1. REMOVE the hardcoded width class 'w-44' and 'flex-shrink-0'.
+            // The sync function will now control the width.
+            cell.className = `h-full ${leftBorderClass}`;
+            
+            // 2. ADD the data-column-id so the sync function can find this cell.
+            cell.dataset.columnId = col.id;
+            // --- END OF MODIFICATION ---
+            
+            // This is your existing logic to calculate and show the sum. It remains unchanged.
+            // This is your existing logic to calculate and show the sum.
+            if (col.type === 'Costing') {
+                const sum = section.tasks.reduce((accumulator, task) => {
+                    const value = task.customFields?.[col.id];
+                    return typeof value === 'number' ? accumulator + value : accumulator;
+                }, 0);
+                
+                if (sum > 0) {
+                    let formattedSum;
+                    
+                    // Check if the sum is a whole number (e.g., 1250.00)
+                    if (sum % 1 === 0) {
+                        // If yes, format it with commas and NO decimal places.
+                        formattedSum = sum.toLocaleString('en-US', {
+                            maximumFractionDigits: 0
+                        });
+                    } else {
+                        // If no, format it with commas and exactly TWO decimal places.
+                        formattedSum = sum.toLocaleString('en-US', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        });
+                    }
+                    
+                    
+                    // Note: The commented out currencySymbol line remains for future use.
+                    // const currencySymbol = col.currency || '$';
+                    
+                    cell.innerHTML = `
             <div style="font-size: 0.8rem; display: flex; justify-content: flex-start; align-items: center; height: 100%; padding-right: 8px;">
               <span style="color: #9ca3af; margin-right: 4px;">Sum:</span>
               <span style="font-weight: 600; color: #4b5563;">${formattedSum}</span>
             </div>
         `;
-    }
-}
-    
-    rightAddCells.appendChild(cell);
-});
-
-const emptyAddCellLast = document.createElement('div');
-emptyAddCellLast.className = 'w-12 flex-shrink-0 h-full';
-rightAddCells.appendChild(emptyAddCellLast);
-
-const emptyEndSpacerLast = document.createElement('div');
-emptyEndSpacerLast.className = 'w-4 flex-shrink-0 h-full';
-rightAddCells.appendChild(emptyEndSpacerLast);
-
-addRow.appendChild(leftAddCell);
-addRow.appendChild(rightAddCells);
-sectionWrapper.appendChild(addRow);
+                }
+            }
+            
+            rightAddCells.appendChild(cell);
+        });
         
+        const emptyAddCellLast = document.createElement('div');
+        emptyAddCellLast.className = 'w-12 flex-shrink-0 h-full';
+        rightAddCells.appendChild(emptyAddCellLast);
+        
+        const emptyEndSpacerLast = document.createElement('div');
+        emptyEndSpacerLast.className = 'w-4 flex-shrink-0 h-full';
+        rightAddCells.appendChild(emptyEndSpacerLast);
+        
+        addRow.appendChild(leftAddCell);
+        addRow.appendChild(rightAddCells);
+        sectionWrapper.appendChild(addRow); 
+}
+
     });
     
+    
+
     body.appendChild(sectionGroupsContainer);
     
     table.appendChild(header);
@@ -2111,59 +2238,28 @@ sectionWrapper.appendChild(addRow);
             });
         }
     });
+
+Sortable.create(sectionGroupsContainer, {
+    handle: '.drag-handle',
+    animation: 300,
     
-    // Outside the forEach loop, for the section container...
+    // The onStart handler is no longer needed for any visual changes.
+    // The CSS handles it automatically.
+    onStart(evt) {
+        console.log(`Started dragging section: ${evt.item.dataset.sectionId}`);
+    },
     
-    Sortable.create(sectionGroupsContainer, {
-        handle: '.drag-handle',
-        animation: 150,
-        dragClass: 'item-is-dragging', // Re-use the class to hide the original section
-        
-        // ... inside Sortable.create for sections ...
-        onStart(evt) {
-            const sectionGroup = evt.item;
-            const sectionName = sectionGroup.querySelector('[contenteditable]')?.textContent.trim() || 'Untitled';
-            
-            const wrapper = sectionGroup.querySelector('.section-wrapper');
-            if (wrapper) wrapper.style.display = 'none';
-            
-            // Create the custom ghost element for the section
-            const ghost = document.createElement('div');
-            ghost.className = 'section-drag-ghost';
-            ghost.innerHTML = `
-        <span class="fas fa-chevron-down"></span>
-        <span>${sectionName}</span>
-    `;
-            
-            // Position off-screen and add to body
-            ghost.style.position = 'absolute';
-            ghost.style.top = '-9999px';
-            ghost.style.left = '-9999px';
-            document.body.appendChild(ghost);
-            
-            // Store reference for cleanup
-            sectionGroup._dragGhostEl = ghost;
-            
-            // *** THE KEY FIX ***
-            // Defer the setDragImage call.
-            setTimeout(() => {
-                if (evt.originalEvent.dataTransfer) {
-                    evt.originalEvent.dataTransfer.setDragImage(ghost, 20, 20);
-                }
-            }, 0);
-        },
-        // onEnd remains the same...
-        onEnd(evt) {
-            const sectionGroup = evt.item;
-            const wrapper = sectionGroup.querySelector('.section-wrapper');
-            if (wrapper) wrapper.style.display = '';
-            
-            if (sectionGroup._dragGhostEl) {
-                document.body.removeChild(sectionGroup._dragGhostEl);
-                delete sectionGroup._dragGhostEl;
-            }
+    // The onEnd handler is now only responsible for saving the new order.
+    async onEnd(evt) {
+        try {
+            console.log("Drag ended. Saving new section order...");
+            await handleSectionReorder(evt);
+        } catch (error) {
+            console.error("Failed to save new section order after drag.", error);
         }
-    });
+    }
+});
+
     syncColumnWidths();
 }
 
@@ -2175,12 +2271,12 @@ function syncColumnWidths() {
     const table = document.querySelector('.min-w-max.relative');
     if (!table) return;
     const defaultColumnNames = [
-    { id: 'assignees', name: 'Assignee', control: 'assignee' },
-    { id: 'dueDate', name: 'Due Date', control: 'due-date' },
-    { id: 'priority', name: 'Priority', control: 'priority' },
-    { id: 'status', name: 'Status', control: 'status' }
-];
-
+        { id: 'assignees', name: 'Assignee', control: 'assignee' },
+        { id: 'dueDate', name: 'Due Date', control: 'due-date' },
+        { id: 'priority', name: 'Priority', control: 'priority' },
+        { id: 'status', name: 'Status', control: 'status' }
+    ];
+    
     const allColumnIds = [
         'assignees', 'dueDate', 'priority', 'status',
         ...project.customColumns.map(c => c.id)
@@ -3493,12 +3589,12 @@ function createDropdown(options, targetEl, callback, optionType = null, columnId
     if (!targetEl) return console.error("createDropdown was called with a null target element.");
     
     closeFloatingPanels(); // Your function to close other panels
-
+    
     const dropdown = document.createElement('div');
     dropdown.className = 'context-dropdown';
     
     // --- The rest of your logic for building the items is good ---
-    const isEditable = optionType === 'Priority' || optionType === 'Status' ||  optionType === 'Type' ||  optionType === 'CustomColumn';
+    const isEditable = optionType === 'Priority' || optionType === 'Status' || optionType === 'Type' || optionType === 'CustomColumn';
     
     options.forEach(option => {
         const item = document.createElement('div');
@@ -4325,7 +4421,7 @@ async function updateCustomOptionInFirebase(optionType, originalOption, newOptio
  */
 async function collapseExpandedSection(sectionId) {
     console.log(`🚀 Collapsing section ${sectionId}...`);
-      // Note: We find the toggle icon inside the '.section-title-wrapper' as per your code
+    // Note: We find the toggle icon inside the '.section-title-wrapper' as per your code
     const sectionHeader = document.querySelector(`.section-title-wrapper[data-section-id="${sectionId}"]`);
     const chevron = sectionHeader ? sectionHeader.querySelector('.section-toggle') : null;
     

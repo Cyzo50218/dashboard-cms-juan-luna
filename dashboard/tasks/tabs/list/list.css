@@ -603,7 +603,7 @@ button {
 */
 body.is-dragging>* .grid-row-wrapper:not(.dragging):not(.drag-placeholder-ghost),
 body.is-dragging>* .section-wrapper:not(.dragging):not(.drag-placeholder-ghost) {
-    opacity: 0.6;
+    opacity: 0.80;
 }
 
 
@@ -1985,4 +1985,61 @@ Custom class
     border-radius: 8px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
     border: 1px solid #e0e0e0;
+}
+
+.section-group.sortable-drag .section-wrapper {
+    display: none !important;
+}
+
+/* 1. Hides the default blue placeholder ghost */
+.sortable-ghost {
+  opacity: 0 !important;
+}
+
+/* 2. Creates the dark background overlay */
+/* We target the main table container when it has the 'is-dragging-active' class */
+.min-w-max.relative.is-dragging-active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  
+  /* The dark overlay color */
+  background-color: rgba(0, 0, 0, 0.14); /* A semi-transparent dark blue-gray */
+  
+  /* Ensure it's on top of the grid but below the dragged item */
+  z-index: 100; 
+  
+  /* Allows mouse events to pass through the overlay */
+  pointer-events: none; 
+}
+
+/*
+  Step 1: Style the main placeholder row.
+  This gives it the dashed border and light background.
+*/
+.task-row-wrapper.sortable-chosen {
+  background-color: #f8fafc;  /* e.g., slate-50 */
+  border: 1px dashed #cbd5e1;  /* e.g., slate-300 */
+}
+
+/*
+  Step 2: Hide EVERYTHING (*) inside the placeholder row.
+  We use `visibility: hidden` because it hides elements while preserving
+  the space they occupy, which keeps the layout stable.
+*/
+.task-row-wrapper.sortable-chosen * {
+  visibility: hidden;
+}
+
+/*
+  Step 3: Make an EXCEPTION.
+  This more specific rule finds the .task-name INSIDE the placeholder
+  and makes it visible again, overriding the rule above.
+*/
+.task-row-wrapper.sortable-chosen .task-name {
+  visibility: visible;
+  color: #9ca3af; /* Muted gray text to look like a placeholder */
 }
