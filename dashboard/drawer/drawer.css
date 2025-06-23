@@ -86,6 +86,23 @@
   font-weight: 500;
 }
 
+.nav-item.is-selected-project > a {
+  font-weight: 600; /* Make the text bold */
+  position: relative; /* Needed for the pseudo-element */
+}
+
+.nav-item.is-selected-project > a::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 20px;
+  background-color: var(--project-highlight-color, #4A90E2); /* Uses the color from JS */
+  border-radius: 4px;
+}
+
 .nav-item-main-content {
   display: flex;
   align-items: center;

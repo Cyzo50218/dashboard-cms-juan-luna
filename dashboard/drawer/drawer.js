@@ -61,6 +61,12 @@ import { firebaseConfig } from "/services/firebase-config.js";
         projectsData.forEach(project => {
             const isActive = project.isSelected === true; // Highlight is now data-driven
             const projectLi = document.createElement('li');
+            
+            if (project.isSelected === true) {
+    projectLi.classList.add('is-selected-project');
+    projectLi.style.setProperty('--project-highlight-color', project.color);
+}
+
             projectLi.className = `nav-item project-item ${isActive ? 'active' : ''}`;
             projectLi.dataset.projectId = project.id;
             const numericUserId = stringToNumericString(currentUser?.uid);
@@ -91,35 +97,70 @@ import { firebaseConfig } from "/services/firebase-config.js";
      * Creates a new project and sets it as the active one.
      */
     async function handleAddProject() {
-        if (!currentUser || !activeWorkspaceId) return alert("Cannot add project: No workspace is selected.");
-        
-        const newProjectName = prompt("Enter the name for the new project:");
-        if (!newProjectName || !newProjectName.trim()) return;
-
-        const projectsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects`);
-        try {
-            await runTransaction(db, async (transaction) => {
-                // Find the currently selected project from our local data
-                const currentlySelected = projectsData.find(p => p.isSelected === true);
-                // If one exists, deselect it
-                if (currentlySelected) {
-                    const oldProjectRef = doc(projectsColRef, currentlySelected.id);
-                    transaction.update(oldProjectRef, { isSelected: false });
-                }
-                
-                // Create the new project and mark it as selected
-                const newProjectRef = doc(projectsColRef);
-                transaction.set(newProjectRef, {
-                    title: newProjectName.trim(),
-                    color: '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0'),
-                    createdAt: serverTimestamp(),
-                    isSelected: true // The new project is now active
+    if (!currentUser || !activeWorkspaceId) return alert("Cannot add project: No workspace is selected.");
+    
+    const newProjectName = prompt("Enter the name for the new project:");
+    if (!newProjectName || !newProjectName.trim()) return;
+    
+    // --- 1. Define the Default Structures ---
+    // This data will be added to the new project.
+    const INITIAL_DEFAULT_COLUMNS = [
+        { id: 'assignees', name: 'Assignee', control: 'assignee' },
+        { id: 'dueDate', name: 'Due Date', control: 'due-date' },
+        { id: 'priority', name: 'Priority', control: 'priority' },
+        { id: 'status', name: 'Status', control: 'status' }
+    ];
+    
+    const INITIAL_DEFAULT_SECTIONS = [
+        { title: 'Todo', order: 0, sectionType: 'todo', isCollapsed: false },
+        { title: 'Doing', order: 1, sectionType: 'doing', isCollapsed: false },
+        { title: 'Completed', order: 2, sectionType: 'completed', isCollapsed: true }
+    ];
+    // --- End of Definitions ---
+    
+    const projectsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects`);
+    
+    try {
+        await runTransaction(db, async (transaction) => {
+            const currentlySelected = projectsData.find(p => p.isSelected === true);
+            if (currentlySelected) {
+                const oldProjectRef = doc(projectsColRef, currentlySelected.id);
+                transaction.update(oldProjectRef, { isSelected: false });
+            }
+            
+            const newProjectRef = doc(projectsColRef);
+            
+            // --- 2. Update the new project data ---
+            // Add the default columns and other standard fields.
+            transaction.set(newProjectRef, {
+                title: newProjectName.trim(),
+                color: '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0'),
+                createdAt: serverTimestamp(),
+                isSelected: true,
+                accessLevel: "private", // You may want to default to private or workspace
+                members: [{ uid: currentUser.uid, role: "Owner" }],
+                defaultColumns: INITIAL_DEFAULT_COLUMNS, // <-- ADDED
+                customColumns: [] // <-- ADDED
+            });
+            
+            // --- 3. Create the three default sections ---
+            const sectionsColRef = collection(newProjectRef, "sections");
+            INITIAL_DEFAULT_SECTIONS.forEach(sectionData => {
+                const sectionRef = doc(sectionsColRef);
+                transaction.set(sectionRef, {
+                    ...sectionData,
+                    createdAt: serverTimestamp()
                 });
             });
-        } catch (error) {
-            console.error("Error adding project:", error);
-        }
+        });
+        
+        // The UI should refresh automatically via your real-time listener
+        console.log("Project created successfully!");
+        
+    } catch (error) {
+        console.error("Error adding project:", error);
     }
+}
 
     /**
      * Main event listener for the drawer. Handles toggling sections and selecting projects.

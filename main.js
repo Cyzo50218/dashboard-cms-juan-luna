@@ -124,26 +124,23 @@ async function loadSection(routeParams) {
 
 
 /**
- * Updates the visual 'active' state of the main navigation links in the drawer.
- * @param {string} sectionName - The name of the currently active section.
+ * Sets the 'active' class on a static navigation link (like Home or Inbox).
+ * Project link highlighting is now handled entirely by renderProjectsList.
  */
 function updateActiveNav(sectionName) {
-    // This function will be called by the router after a section loads.
-    // It assumes the drawer's HTML is already loaded.
     const drawer = document.getElementById("dashboardDrawer");
     if (!drawer) return;
     
     drawer.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
     
-    // The 'tasks' section should highlight the 'Home' link in the drawer.
-    const navKey = sectionName === 'tasks' ? 'home' : sectionName;
+    const activeLink = drawer.querySelector(`.nav-item a[href="/${sectionName}"]`);
     
-    const activeLink = drawer.querySelector(`.nav-item a[href="/${navKey}"]`);
     if (activeLink) {
+        // If it finds a direct match (e.g., /home, /inbox), it makes it active.
+        // If not, it does nothing, allowing the project list to control the active state.
         activeLink.closest('.nav-item').classList.add('active');
     }
 }
-
 
 /**
  * Asynchronously loads persistent HTML components like the header and drawer.

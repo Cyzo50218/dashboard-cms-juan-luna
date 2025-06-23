@@ -387,74 +387,78 @@ export function init(params) {
     }
     
     async function handleProjectCreate() {
-        if (!currentUser || !activeWorkspaceId) {
-            alert("Cannot create project. User or workspace not identified.");
-            return;
-        }
-        const name = prompt("Enter new project name:");
-        if (!name || !name.trim()) return;
-        
-        const projectsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects`);
-        
-        // Create the reference for the new project BEFORE the transaction,
-        // so we have its ID available after the transaction succeeds.
-        const newProjectRef = doc(projectsColRef);
-        
-        try {
-            // This transaction will now only perform writes, avoiding the buggy 'get' operation.
-            await runTransaction(db, async (transaction) => {
-                // --- THE FIX ---
-                // 1. Find the currently selected project using the up-to-date local data
-                //    instead of using transaction.get().
-                const currentlySelectedProject = projectsData.find(p => p.isSelected === true);
-                
-                // 2. If a selected project exists in our local data, deselect it.
-                if (currentlySelectedProject) {
-                    const oldSelectedRef = doc(projectsColRef, currentlySelectedProject.id);
-                    transaction.update(oldSelectedRef, { isSelected: false });
-                }
-                // --- END OF FIX ---
-                
-                // 3. Set the data for the new project using the pre-made reference.
-                transaction.set(newProjectRef, {
+    if (!currentUser || !activeWorkspaceId) {
+        alert("Cannot create project. User or workspace not identified.");
+        return;
+    }
+    const name = prompt("Enter new project name:");
+    if (!name || !name.trim()) return;
+    
+    // --- 1. Define the Default Structures ---
+    // This data will be added to the new project.
+    const INITIAL_DEFAULT_COLUMNS = [
+        { id: 'assignees', name: 'Assignee', control: 'assignee' },
+        { id: 'dueDate', name: 'Due Date', control: 'due-date' },
+        { id: 'priority', name: 'Priority', control: 'priority' },
+        { id: 'status', name: 'Status', control: 'status' }
+    ];
+    
+    const INITIAL_DEFAULT_SECTIONS = [
+        { title: 'Todo', order: 0, sectionType: 'todo', isCollapsed: false },
+        { title: 'Doing', order: 1, sectionType: 'doing', isCollapsed: false },
+        { title: 'Completed', order: 2, sectionType: 'completed', isCollapsed: true }
+    ];
+    // --- End of Definitions ---
+    
+    const projectsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects`);
+    const newProjectRef = doc(projectsColRef);
+    
+    try {
+        await runTransaction(db, async (transaction) => {
+            const currentlySelectedProject = projectsData.find(p => p.isSelected === true);
+            
+            if (currentlySelectedProject) {
+                const oldSelectedRef = doc(projectsColRef, currentlySelectedProject.id);
+                transaction.update(oldSelectedRef, { isSelected: false });
+            }
+            
+            // --- 2. Add the defaultColumns array to the new project document ---
+            transaction.set(newProjectRef, {
                 title: name.trim(),
                 color: generateColorForName(name.trim()),
                 starred: false,
                 isSelected: true,
                 createdAt: serverTimestamp(),
-
-                // New fields:
                 accessLevel: "workspace",
                 workspaceRole: "Viewer",
                 project_super_admin_uid: currentUser.uid,
                 project_admin_user: '',
-                members: [
-                    {
-                        uid: currentUser.uid,
-                        role: "Project admin"
-                    }
-                ],
-                pendingInvites: []
+                members: [{ uid: currentUser.uid, role: "Project admin" }],
+                pendingInvites: [],
+                defaultColumns: INITIAL_DEFAULT_COLUMNS, // <-- ADDED
+                customColumns: [] // Start with an empty array
             });
-                
-                // 4. Create the default "General" section.
-                const sectionsColRef = collection(newProjectRef, "sections");
-                const generalSectionRef = doc(sectionsColRef);
-                transaction.set(generalSectionRef, {
-                    title: 'General',
+            
+            // --- 3. Create the three default sections in a loop ---
+            // This replaces the old single "General" section creation.
+            const sectionsColRef = collection(newProjectRef, "sections");
+            INITIAL_DEFAULT_SECTIONS.forEach(sectionData => {
+                const sectionRef = doc(sectionsColRef); // Create a new doc ref for each section
+                transaction.set(sectionRef, {
+                    ...sectionData,
                     createdAt: serverTimestamp()
                 });
             });
-            
-            showNotification('Project created!', 'success');
-            // Use the ID from the reference we created before the transaction.
-            selectProject(newProjectRef.id);
-            
-        } catch (error) {
-            console.error("Full error object in handleProjectCreate:", error);
-            showNotification("Failed to create project due to a database error.", "error");
-        }
+        });
+        
+        showNotification('Project created!', 'success');
+        selectProject(newProjectRef.id);
+        
+    } catch (error) {
+        console.error("Full error object in handleProjectCreate:", error);
+        showNotification("Failed to create project due to a database error.", "error");
     }
+}
     
     async function handleTaskCompletion(taskId, isCompleted) {
         if (!currentUser || !activeWorkspaceId || !activeProjectId) return;
