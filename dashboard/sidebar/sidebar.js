@@ -85,9 +85,12 @@ window.TaskSidebar = (function() {
         tabsContainer, activityLogContainer, commentInput, sendCommentBtn,
         imagePreviewContainer, currentUserAvatarEl, taskCompleteText, taskCompleteBtn, fileUploadInput, commentInputWrapper;
     
+    let rightSidebarContainer;
+    
     // --- 3. CORE LOGIC ---
     function init() {
         if (isInitialized) return;
+        rightSidebarContainer = document.getElementById('right-sidebar');
         
         sidebar = document.getElementById('task-sidebar');
         taskNameEl = document.getElementById('task-name');
@@ -217,6 +220,8 @@ window.TaskSidebar = (function() {
                     
                     allUsers = await fetchProjectMembers(ownerId, workspaceId, currentTask.projectId);
                     sidebar.classList.add('is-visible');
+                    if (rightSidebarContainer) rightSidebarContainer.classList.add('sidebar-open');
+                    
                     renderSidebar(currentTask);
                     
                     listenToActivity();
@@ -234,6 +239,7 @@ window.TaskSidebar = (function() {
     
     function close() {
         if (sidebar) sidebar.classList.remove('is-visible', 'is-loading');
+        if (rightSidebarContainer) rightSidebarContainer.classList.remove('sidebar-open');
         detachAllListeners();
         closePopovers();
         currentTask = currentTaskRef = currentProject = null;
@@ -471,10 +477,12 @@ window.TaskSidebar = (function() {
         const fieldPath = `reactions.${reactionType}`;
         if (reactions.includes(currentUser.id)) {
             await updateDoc(messageRef, {
-                [fieldPath]: arrayRemove(currentUser.id) });
+                [fieldPath]: arrayRemove(currentUser.id)
+            });
         } else {
             await updateDoc(messageRef, {
-                [fieldPath]: arrayUnion(currentUser.id) });
+                [fieldPath]: arrayUnion(currentUser.id)
+            });
             logActivity({ action: 'liked', field: 'a comment' });
         }
     }
@@ -685,87 +693,87 @@ window.TaskSidebar = (function() {
     }
     
     // Add this new function inside your TaskSidebar module
-
-/**
- * Creates and shows a dropdown with a search input for assigning users.
- * This version is specifically for the Task Sidebar.
- * @param {HTMLElement} targetEl The element that was clicked to open the dropdown.
- */
-function showSidebarAssigneeDropdown(targetEl) {
-    closePopovers(); // Use the sidebar's own popover closer
     
-    if (!currentTask) return; // Guard clause
-    
-    const dropdown = document.createElement('div');
-    dropdown.className = 'context-dropdown';
-    dropdown.style.visibility = 'hidden';
-    
-    // --- Search Input ---
-    const searchInput = document.createElement('input');
-    searchInput.className = 'dropdown-search-input';
-    searchInput.type = 'text';
-    searchInput.placeholder = 'Search teammates...';
-    dropdown.appendChild(searchInput);
-    
-    // --- List Container ---
-    const listContainer = document.createElement('div');
-    listContainer.className = 'dropdown-list';
-    dropdown.appendChild(listContainer);
-    
-    // --- Add "Unassigned" Option ---
-    const unassignedItem = document.createElement('div');
-    unassignedItem.className = 'dropdown-item';
-    unassignedItem.innerHTML = `<div class="user-info"><span>Unassigned</span></div>`;
-    unassignedItem.addEventListener('click', () => {
-        updateTaskField('assignees', []); // Set assignees to empty array
-        closePopovers();
-    });
-    listContainer.appendChild(unassignedItem);
-    
-    
-    // --- Render Filtered User List ---
-    const renderList = (searchTerm = '') => {
-        // Clear previous user list (but keep "Unassigned")
-        listContainer.querySelectorAll('.user-list-item').forEach(el => el.remove());
+    /**
+     * Creates and shows a dropdown with a search input for assigning users.
+     * This version is specifically for the Task Sidebar.
+     * @param {HTMLElement} targetEl The element that was clicked to open the dropdown.
+     */
+    function showSidebarAssigneeDropdown(targetEl) {
+        closePopovers(); // Use the sidebar's own popover closer
         
-        const lower = searchTerm.toLowerCase();
-        const filtered = allUsers.filter(u => u.name.toLowerCase().includes(lower));
+        if (!currentTask) return; // Guard clause
         
-        filtered.forEach(user => {
-            const isAssigned = currentTask.assignees && currentTask.assignees.includes(user.id);
-            const item = document.createElement('div');
-            // Add a class to differentiate from the "Unassigned" item
-            item.className = 'dropdown-item user-list-item';
-            item.innerHTML = `
+        const dropdown = document.createElement('div');
+        dropdown.className = 'context-dropdown';
+        dropdown.style.visibility = 'hidden';
+        
+        // --- Search Input ---
+        const searchInput = document.createElement('input');
+        searchInput.className = 'dropdown-search-input';
+        searchInput.type = 'text';
+        searchInput.placeholder = 'Search teammates...';
+        dropdown.appendChild(searchInput);
+        
+        // --- List Container ---
+        const listContainer = document.createElement('div');
+        listContainer.className = 'dropdown-list';
+        dropdown.appendChild(listContainer);
+        
+        // --- Add "Unassigned" Option ---
+        const unassignedItem = document.createElement('div');
+        unassignedItem.className = 'dropdown-item';
+        unassignedItem.innerHTML = `<div class="user-info"><span>Unassigned</span></div>`;
+        unassignedItem.addEventListener('click', () => {
+            updateTaskField('assignees', []); // Set assignees to empty array
+            closePopovers();
+        });
+        listContainer.appendChild(unassignedItem);
+        
+        
+        // --- Render Filtered User List ---
+        const renderList = (searchTerm = '') => {
+            // Clear previous user list (but keep "Unassigned")
+            listContainer.querySelectorAll('.user-list-item').forEach(el => el.remove());
+            
+            const lower = searchTerm.toLowerCase();
+            const filtered = allUsers.filter(u => u.name.toLowerCase().includes(lower));
+            
+            filtered.forEach(user => {
+                const isAssigned = currentTask.assignees && currentTask.assignees.includes(user.id);
+                const item = document.createElement('div');
+                // Add a class to differentiate from the "Unassigned" item
+                item.className = 'dropdown-item user-list-item';
+                item.innerHTML = `
                 <div class="user-info">
                     <div class="avatar" style="background-image: url(${user.avatar})"></div>
                     <span>${user.name}</span>
                 </div>
                 ${isAssigned ? '<i class="fas fa-check assigned-check"></i>' : ''}
             `;
-            item.addEventListener('click', () => {
-                // When a user is clicked, we call the sidebar's own update function
-                updateTaskField('assignees', [user.id]);
-                closePopovers();
+                item.addEventListener('click', () => {
+                    // When a user is clicked, we call the sidebar's own update function
+                    updateTaskField('assignees', [user.id]);
+                    closePopovers();
+                });
+                listContainer.appendChild(item);
             });
-            listContainer.appendChild(item);
-        });
-    };
-    
-    renderList();
-    searchInput.addEventListener('input', () => renderList(searchInput.value));
-    
-    document.body.appendChild(dropdown);
-    
-    // Position the dropdown relative to the clicked element
-    const rect = targetEl.getBoundingClientRect();
-    dropdown.style.top = `${rect.bottom + 4}px`;
-    dropdown.style.left = `${rect.left}px`;
-    dropdown.style.minWidth = `${rect.width}px`;
-    dropdown.style.visibility = 'visible';
-    
-    searchInput.focus();
-}
+        };
+        
+        renderList();
+        searchInput.addEventListener('input', () => renderList(searchInput.value));
+        
+        document.body.appendChild(dropdown);
+        
+        // Position the dropdown relative to the clicked element
+        const rect = targetEl.getBoundingClientRect();
+        dropdown.style.top = `${rect.bottom + 4}px`;
+        dropdown.style.left = `${rect.left}px`;
+        dropdown.style.minWidth = `${rect.width}px`;
+        dropdown.style.visibility = 'visible';
+        
+        searchInput.focus();
+    }
     
     function createTag(text, color = '#e0e0e0') {
         if (!text) return '<span>Not set</span>';
@@ -780,44 +788,44 @@ function showSidebarAssigneeDropdown(targetEl) {
      * Renders the HTML for the assignee field with the correct design.
      * Shows the assigned user's avatar and name, or a circular plus button if unassigned.
      */
-     
-    function renderAssigneeValue(assignees) {
-    console.log('--- renderAssigneeValue called ---');
-    console.log('Received assignees array:', assignees);
     
-    // If an assignee exists (and the array isn't empty), show their avatar and name.
-    if (assignees && assignees.length > 0) {
-        const assigneeId = assignees[0];
-        console.log(`Processing assignee UID: "${assigneeId}"`);
+    function renderAssigneeValue(assignees) {
+        console.log('--- renderAssigneeValue called ---');
+        console.log('Received assignees array:', assignees);
         
-        // Log the state of allUsers right before you search it. This is the most important check.
-        console.log('Searching for user in `allUsers` array. Current `allUsers`:', allUsers);
-        
-        const user = allUsers.find(u => u.id === assigneeId);
-        
-        // Log the result of the find operation.
-        console.log('Result of find operation (user object):', user);
-        
-        if (user) {
-            // This is the HTML for an assigned user
-            console.log(`SUCCESS: Found user "${user.name}". Rendering their details.`);
-            return `<div class="assignee-list-wrapper">
+        // If an assignee exists (and the array isn't empty), show their avatar and name.
+        if (assignees && assignees.length > 0) {
+            const assigneeId = assignees[0];
+            console.log(`Processing assignee UID: "${assigneeId}"`);
+            
+            // Log the state of allUsers right before you search it. This is the most important check.
+            console.log('Searching for user in `allUsers` array. Current `allUsers`:', allUsers);
+            
+            const user = allUsers.find(u => u.id === assigneeId);
+            
+            // Log the result of the find operation.
+            console.log('Result of find operation (user object):', user);
+            
+            if (user) {
+                // This is the HTML for an assigned user
+                console.log(`SUCCESS: Found user "${user.name}". Rendering their details.`);
+                return `<div class="assignee-list-wrapper">
                         <div class="avatar" style="background-image: url(${user.avatar})"></div>
                         <span>${user.name}</span>
                     </div>`;
+            }
+            
+            // This block runs if the user ID was in the array, but not found in allUsers
+            console.error(`FAILURE: User with UID "${assigneeId}" could not be found in the allUsers array.`);
+            return '<span>Unknown User</span>';
         }
         
-        // This block runs if the user ID was in the array, but not found in allUsers
-        console.error(`FAILURE: User with UID "${assigneeId}" could not be found in the allUsers array.`);
-        return '<span>Unknown User</span>';
-    }
-    
-    // This block runs if the assignees array was empty or null
-    console.log('No assignees found. Rendering the "add assignee" button.');
-    return `<button class="assignee-add-btn" title="Assign task">
+        // This block runs if the assignees array was empty or null
+        console.log('No assignees found. Rendering the "add assignee" button.');
+        return `<button class="assignee-add-btn" title="Assign task">
                 <i class="fa-solid fa-plus"></i>
             </button>`;
-}
+    }
     
     /**
      * Renders the content for the currently active tab (Chat or Activity).
@@ -1024,8 +1032,8 @@ function showSidebarAssigneeDropdown(targetEl) {
         // Standard listeners
         closeBtn.addEventListener('click', close);
         expandBtn.addEventListener('click', toggleSidebarView);
-    deleteTaskBtn.addEventListener('click', deleteCurrentTask);
-
+        deleteTaskBtn.addEventListener('click', deleteCurrentTask);
+        
         sendCommentBtn.addEventListener('click', handleCommentSubmit);
         commentInput.addEventListener('keydown', e => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -1115,10 +1123,10 @@ function showSidebarAssigneeDropdown(targetEl) {
                     break;
                 }
                 case 'assignee': {
-    // It now makes a single, clean call to our new function.
-    showSidebarAssigneeDropdown(control);
-    break;
-}
+                    // It now makes a single, clean call to our new function.
+                    showSidebarAssigneeDropdown(control);
+                    break;
+                }
                 case 'date': {
                     // Initialize flatpickr on the input inside the clicked control
                     const input = control.querySelector('.flatpickr-input');
@@ -1672,58 +1680,58 @@ function showSidebarAssigneeDropdown(targetEl) {
     }
     
     async function deleteCurrentTask() {
-    
-    // Use a confirmation modal to warn the user
-    const confirmed = confirm(
-        'Are you sure you want to permanently delete this task? This action cannot be undone.'
-    );
-    
-    // If the user clicks "Cancel", stop the function
-    if (!confirmed) {
-        console.log("Task deletion cancelled by user.");
-        return;
-    }
-    
-    try {
-        // Perform the delete operation on the current task's document reference
-        await deleteDoc(currentTaskRef);
         
-        console.log(`Task "${currentTask.name}" (${currentTask.id}) was successfully deleted.`);
+        // Use a confirmation modal to warn the user
+        const confirmed = confirm(
+            'Are you sure you want to permanently delete this task? This action cannot be undone.'
+        );
         
-        // Optional: Log this activity
-        if (typeof logActivity === 'function') {
-            logActivity({
-                action: 'deleted',
-                field: 'Task',
-                from: currentTask.name, // The name of the task that was deleted
-                to: ''
-            });
+        // If the user clicks "Cancel", stop the function
+        if (!confirmed) {
+            console.log("Task deletion cancelled by user.");
+            return;
         }
-    
+        
+        try {
+            // Perform the delete operation on the current task's document reference
+            await deleteDoc(currentTaskRef);
+            
+            console.log(`Task "${currentTask.name}" (${currentTask.id}) was successfully deleted.`);
+            
+            // Optional: Log this activity
+            if (typeof logActivity === 'function') {
+                logActivity({
+                    action: 'deleted',
+                    field: 'Task',
+                    from: currentTask.name, // The name of the task that was deleted
+                    to: ''
+                });
+            }
+            
             sidebar.classList.remove('is-active');
-    } catch (error) {
-        console.error("Failed to delete task:", error);
-        alert("An error occurred while trying to delete the task. Please check the console for details.");
+        } catch (error) {
+            console.error("Failed to delete task:", error);
+            alert("An error occurred while trying to delete the task. Please check the console for details.");
+        }
     }
-}
-
-function toggleSidebarView() {
-    // Toggle the class on the sidebar element
-    sidebar.classList.toggle('is-full-view');
     
-    // Check if the sidebar is now in full view to update the icon
-    if (sidebar.classList.contains('is-full-view')) {
-        // It's expanded, so show the 'compress' icon
-        expandBtn.classList.remove('fa-expand');
-        expandBtn.classList.add('fa-compress');
-        expandBtn.title = "Exit full view";
-    } else {
-        // It's collapsed, so show the 'expand' icon
-        expandBtn.classList.remove('fa-compress');
-        expandBtn.classList.add('fa-expand');
-        expandBtn.title = "Toggle full view";
+    function toggleSidebarView() {
+        // Toggle the class on the sidebar element
+        sidebar.classList.toggle('is-full-view');
+        
+        // Check if the sidebar is now in full view to update the icon
+        if (sidebar.classList.contains('is-full-view')) {
+            // It's expanded, so show the 'compress' icon
+            expandBtn.classList.remove('fa-expand');
+            expandBtn.classList.add('fa-compress');
+            expandBtn.title = "Exit full view";
+        } else {
+            // It's collapsed, so show the 'expand' icon
+            expandBtn.classList.remove('fa-compress');
+            expandBtn.classList.add('fa-expand');
+            expandBtn.title = "Toggle full view";
+        }
     }
-}
     // --- 10. PUBLIC INTERFACE ---
     return { init, open };
 })();
@@ -1733,5 +1741,3 @@ document.addEventListener('DOMContentLoaded', () => {
         window.TaskSidebar.init();
     }
 });
-
-

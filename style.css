@@ -62,9 +62,16 @@ body {
 
 /* Optional Right Sidebar */
 #right-sidebar {
-    width: 0;
-    
-    z-index: 1000;
+  width: 0;
+  flex-shrink: 0; /* Prevents the container from being squeezed */
+  overflow: hidden; /* Hides content and scrollbars when closed */
+  transition: width 0.3s ease; /* Smooth animation for opening/closing */
+  z-index: 1000;
+}
+
+#right-sidebar.sidebar-open {
+  width: 600px;
+  overflow: auto; /* Show scrollbar only when open */
 }
 
 /* Add this to your main stylesheet, e.g., style.css */
