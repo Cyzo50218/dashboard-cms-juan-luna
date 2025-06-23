@@ -215,7 +215,7 @@ window.TaskSidebar = (function() {
                     // Load workspace data using the owner's ID and correct workspaceId
                     await loadWorkspaceData(ownerId, workspaceId, currentTask.projectId);
                     
-                    
+                    allUsers = await fetchProjectMembers(ownerId, workspaceId, currentTask.projectId);
                     sidebar.classList.add('is-visible');
                     renderSidebar(currentTask);
                     
@@ -312,7 +312,7 @@ window.TaskSidebar = (function() {
         if (!memberUids.includes(userId)) memberUids.push(userId);
         if (memberUids.length === 0) return [];
         const userDocs = await Promise.all([...new Set(memberUids)].map(uid => getDoc(doc(db, `users/${uid}`))));
-        return userDocs.filter(d => d.exists()).map(d => ({ id: d.id, name: d.data().displayName, avatar: d.data().photoURL }));
+        return userDocs.filter(d => d.exists()).map(d => ({ id: d.id, name: d.data().name, avatar: d.data().avatar }));
     }
     
     async function updateCustomField(columnId, newValue, column) {
@@ -697,26 +697,44 @@ window.TaskSidebar = (function() {
      * Renders the HTML for the assignee field with the correct design.
      * Shows the assigned user's avatar and name, or a circular plus button if unassigned.
      */
+     
     function renderAssigneeValue(assignees) {
-        // If an assignee exists (and the array isn't empty), show their avatar and name.
-        if (assignees && assignees.length > 0) {
-            const user = allUsers.find(u => u.id === assignees[0]);
-            if (user) {
-                // This is the HTML for an assigned user
-                return `<div class="assignee-value">
+    console.log('--- renderAssigneeValue called ---');
+    console.log('Received assignees array:', assignees);
+    
+    // If an assignee exists (and the array isn't empty), show their avatar and name.
+    if (assignees && assignees.length > 0) {
+        const assigneeId = assignees[0];
+        console.log(`Processing assignee UID: "${assigneeId}"`);
+        
+        // Log the state of allUsers right before you search it. This is the most important check.
+        console.log('Searching for user in `allUsers` array. Current `allUsers`:', allUsers);
+        
+        const user = allUsers.find(u => u.id === assigneeId);
+        
+        // Log the result of the find operation.
+        console.log('Result of find operation (user object):', user);
+        
+        if (user) {
+            // This is the HTML for an assigned user
+            console.log(`SUCCESS: Found user "${user.name}". Rendering their details.`);
+            return `<div class="assignee-list-wrapper">
                         <div class="avatar" style="background-image: url(${user.avatar})"></div>
                         <span>${user.name}</span>
                     </div>`;
-            }
-            return '<span>Unknown User</span>';
         }
         
-        // --- THIS IS THE FIX ---
-        // If no assignee, return the HTML for the dashed circle plus button.
-        return `<button class="assignee-add-btn" title="Assign task">
+        // This block runs if the user ID was in the array, but not found in allUsers
+        console.error(`FAILURE: User with UID "${assigneeId}" could not be found in the allUsers array.`);
+        return '<span>Unknown User</span>';
+    }
+    
+    // This block runs if the assignees array was empty or null
+    console.log('No assignees found. Rendering the "add assignee" button.');
+    return `<button class="assignee-add-btn" title="Assign task">
                 <i class="fa-solid fa-plus"></i>
             </button>`;
-    }
+}
     
     /**
      * Renders the content for the currently active tab (Chat or Activity).
