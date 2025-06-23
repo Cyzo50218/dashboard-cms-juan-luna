@@ -220,7 +220,7 @@ window.TaskSidebar = (function() {
                     
                     allUsers = await fetchProjectMembers(ownerId, workspaceId, currentTask.projectId);
                     sidebar.classList.add('is-visible');
-                    if (rightSidebarContainer) rightSidebarContainer.classList.add('sidebar-open');
+                    rightSidebarContainer.classList.add('sidebar-open');
                     
                     renderSidebar(currentTask);
                     
