@@ -49,6 +49,7 @@
 .header-controls-right {
     display: flex;
     gap: 0.5rem;
+    margin-right: 8px;
     /* Increased gap slightly for better visuals */
     /* This is the key change: an auto left margin will push this
        element all the way to the right of the flex container. */
