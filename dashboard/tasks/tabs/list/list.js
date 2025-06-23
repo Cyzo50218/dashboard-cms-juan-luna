@@ -1126,6 +1126,12 @@ async function handleTaskMoved(evt) {
             const newDocRef = doc(collection(db, `${basePath}/sections/${newSectionId}/tasks`));
             const taskData = { ...sourceSnap.data(), sectionId: newSectionId, id: newDocRef.id };
             
+            const targetSection = project.sections.find(s => s.id === newSectionId);
+if (targetSection && targetSection.sectionType === 'completed') {
+    console.log(`Destination is a 'completed' section. Updating task status.`);
+    taskData.status = 'Completed';
+}
+
             batch.delete(sourceRef);
             batch.set(newDocRef, taskData);
             
@@ -3316,6 +3322,16 @@ async function moveTaskToSection(taskId, targetSectionId) {
         id: preservedTaskId // Ensure the 'id' field is still the preserved ID
     };
     
+    if (targetSection.sectionType === 'completed') {
+    console.log(`Moving to a 'completed' section. Updating status for task: ${taskId}`);
+    newTaskData.status = 'Completed'; // Set the new status
+}
+else if (sourceSection.sectionType === 'completed' && targetSection.sectionType !== 'completed') {
+    console.log(`Moving out of 'completed' section. Reverting status for task: ${taskId}`);
+    // Revert status to its previous state, or a fallback if none is stored.
+    newTaskData.status = taskToMove.previousStatus || 'On track';
+}
+
     try {
         // 6. Atomically delete the old document and create the new one.
         const batch = writeBatch(db);
@@ -3555,6 +3571,8 @@ async function deleteColumnInFirebase(columnId) {
     }
 }
 
+// ... all code before handleTaskCompletion ...
+
 async function handleTaskCompletion(taskId, taskRowEl) {
     if (!taskRowEl) return;
     
@@ -3564,65 +3582,64 @@ async function handleTaskCompletion(taskId, taskRowEl) {
         return;
     }
     
-    const statusCell = taskRowEl.querySelector('[data-control="status"] span');
-    const checkIcon = taskRowEl.querySelector('.check-icon i');
-    
     const isCurrentlyCompleted = task.status === 'Completed';
     
     if (isCurrentlyCompleted) {
-        // --- UNCHECK ---
+        // --- UNCHECKING A COMPLETED TASK ---
         console.log(`Un-completing task: "${task.name}"`);
         
-        const previousStatus = task.previousStatus || 'On track';
-        task.status = previousStatus;
-        
+        // Perform optimistic UI updates immediately for responsiveness
         taskRowEl.classList.remove('is-completed');
-        if (checkIcon) {
-            checkIcon.classList.remove('fa-solid');
-            checkIcon.classList.add('fa-regular');
-            checkIcon.style.color = ''; // reset color if needed
-        }
-        if (statusCell) statusCell.textContent = previousStatus;
         
-        updateTask(taskId, sourceSection.id, { status: previousStatus });
+        // Handle background data operations
+        setTimeout(async () => {
+            // Determine the status and section to revert to.
+            const newStatus = task.previousStatus || 'On track'; // Fallback to 'On track'
+            const targetSectionId = task.previousSectionId || sourceSection.id; // Fallback to current section
+            
+            // 1. First, update the task's status back to what it was.
+            // This update happens on the document in its current "Completed" section location.
+            await updateTask(taskId, sourceSection.id, { status: newStatus });
+            
+            // 2. If its original section is different from the current section, move it back.
+            if (targetSectionId !== sourceSection.id) {
+                console.log(`Moving task back to its original section: ${targetSectionId}`);
+                await moveTaskToSection(taskId, targetSectionId);
+            }
+        }, 300); // A short delay for the UI to feel smooth
+        
     } else {
-        // --- COMPLETE ---
+        // --- COMPLETING AN UNCHECKED TASK ---
         console.log(`Completing task: "${task.name}"`);
         
-        task.previousStatus = task.status;
-        task.status = 'Completed';
-        
+        // Perform optimistic UI updates immediately
         taskRowEl.classList.add('is-completed');
-        if (checkIcon) {
-            checkIcon.classList.remove('fa-regular');
-            checkIcon.classList.add('fa-solid');
-        }
-        if (statusCell) statusCell.textContent = 'Completed';
         
+        // Handle background data operations
         setTimeout(async () => {
-            const completedSection = project.sections.find(s => s.title.toLowerCase() === 'completed');
+            // Find the dedicated "Completed" section by its type, not its title.
+            const completedSection = project.sections.find(s => s.sectionType === 'completed');
             
-            await updateTask(taskId, sourceSection.id, { status: 'Completed' });
+            // 1. Prepare all data that needs to be saved.
+            const updatePayload = {
+                status: 'Completed',
+                previousStatus: task.status, // Save the status it had before completion
+                previousSectionId: sourceSection.id // ✅ SAVE THE PREVIOUS SECTION ID
+            };
             
+            // 2. Update the task with the new status and backup fields.
+            await updateTask(taskId, sourceSection.id, updatePayload);
+            
+            // 3. If a "Completed" section exists and it's not the current one, move the task there.
             if (completedSection && completedSection.id !== sourceSection.id) {
                 console.log(`Moving task to "${completedSection.title}" section.`);
-                
-                await moveTaskToSection(taskId, sourceSection.id, completedSection.id);
-                
-                const taskToMove = sourceSection.tasks.find(t => t.id === taskId);
-                if (taskToMove) {
-                    sourceSection.tasks = sourceSection.tasks.filter(t => t.id !== taskId);
-                    completedSection.tasks.push(taskToMove);
-                }
-                
-                render();
+                await moveTaskToSection(taskId, completedSection.id);
             }
-        }, 400);
+        }, 400); // A slightly longer delay to allow the user to see the checkmark animation
     }
 }
 
-
-
+// ... rest of the file ...
 function createTag(text, type, pClass) {
     return `<div class="${type}-tag ${pClass}">${text}</div>`;
 }
