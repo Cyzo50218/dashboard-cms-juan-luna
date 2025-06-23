@@ -55,6 +55,10 @@
     margin-left: auto;
 }
 
+.header-controls-right.hide {
+    display: none;
+}
+
 button {
     background-color: transparent;
     border: 1px solid var(--text-secondary-color);

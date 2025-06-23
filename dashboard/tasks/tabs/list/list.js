@@ -43,7 +43,7 @@ console.log("Initialized Firebase on Dashboard.");
 
 // --- Module-Scoped Variables ---
 // DOM Element Holders
-let taskListHeaderEl, taskListBody, taskListFooter, addSectionBtn, addTaskHeaderBtn, mainContainer, assigneeDropdownTemplate, filterBtn, sortBtn;
+let taskListHeaderEl, headerRight, taskListBody, taskListFooter, addSectionBtn, addTaskHeaderBtn, mainContainer, assigneeDropdownTemplate, filterBtn, sortBtn;
 
 // Event Handler References
 let headerClickListener, bodyClickListener, bodyFocusOutListener, addTaskHeaderBtnListener, addSectionBtnListener, windowClickListener, filterBtnListener, sortBtnListener;
@@ -315,6 +315,7 @@ async function loadProjectUsers(currentUserId) {
 
 function initializeListView(params) {
     taskListHeaderEl = document.getElementById('task-list-header');
+    headerRight = document.getElementById('header-right');
     taskListBody = document.getElementById('task-list-body');
     taskListFooter = document.getElementById('task-list-footer');
     addSectionBtn = document.getElementById('add-section-btn');
@@ -578,6 +579,7 @@ function setupEventListeners() {
                 case 'open-sidebar':
                 case 'comment':
                     displaySideBarTasks(taskId);
+                    headerRight.classList.add('hide');
                     break;
                     
                 case 'check':

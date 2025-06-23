@@ -86,11 +86,13 @@ window.TaskSidebar = (function() {
         imagePreviewContainer, currentUserAvatarEl, taskCompleteText, taskCompleteBtn, fileUploadInput, commentInputWrapper;
     
     let rightSidebarContainer;
+    let listviewHeaderRight;
     
     // --- 3. CORE LOGIC ---
     function init() {
         if (isInitialized) return;
         rightSidebarContainer = document.getElementById('right-sidebar');
+        listviewHeaderRight = document.getElementById('header-right');
         
         sidebar = document.getElementById('task-sidebar');
         taskNameEl = document.getElementById('task-name');
@@ -239,6 +241,7 @@ window.TaskSidebar = (function() {
     
     function close() {
         if (sidebar) sidebar.classList.remove('is-visible', 'is-loading');
+        listviewHeaderRight.classList.remove('hide');
         if (rightSidebarContainer) rightSidebarContainer.classList.remove('sidebar-open');
         detachAllListeners();
         closePopovers();
