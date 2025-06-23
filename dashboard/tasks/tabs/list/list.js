@@ -69,7 +69,7 @@ let sourceContainer = null;
 let originalNextSibling = null;
 
 // --- Data ---
-let project = { defaultColumn[], customColumns: [], sections: [], customPriorities: [], customStatuses: [] };
+let project = { defaultColumn: [], customColumns: [], sections: [], customPriorities: [], customStatuses: [] };
 let allTasksFromSnapshot = [];
 // --- Real-time Listener Management ---
 // This object will hold the unsubscribe functions for our active listeners.

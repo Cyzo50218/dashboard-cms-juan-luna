@@ -107,77 +107,49 @@ export function init(params) {
   });
 
   async function handleProjectCreate() {
-  const name = prompt("Enter new project name:");
-  if (!name?.trim()) return;
-  if (!currentUser) return alert("User not available.");
-  
-  // --- 1. Define the Default Structures ---
-  // This array will be saved as a field in the new project document.
-  const INITIAL_DEFAULT_COLUMNS = [
-    { id: 'assignees', name: 'Assignee', control: 'assignee' },
-    { id: 'dueDate', name: 'Due Date', control: 'due-date' },
-    { id: 'priority', name: 'Priority', control: 'priority' },
-    { id: 'status', name: 'Status', control: 'status' }
-  ];
-  
-  // This array defines the sections that will be created in the "sections" subcollection.
-  const INITIAL_DEFAULT_SECTIONS = [
-    { title: 'Todo', order: 0, sectionType: 'todo', isCollapsed: false },
-    { title: 'Doing', order: 1, sectionType: 'doing', isCollapsed: false },
-    { title: 'Completed', order: 2, sectionType: 'completed', isCollapsed: true }
-  ];
-  // --- End of Definitions ---
-  
-  const wsQuery = query(collection(db, `users/${currentUser.uid}/myworkspace`), where("isSelected", "==", true));
-  const wsSnap = await getDocs(wsQuery);
-  if (wsSnap.empty) return alert("No workspace selected.");
-  const wsId = wsSnap.docs[0].id;
-  
-  const projectsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${wsId}/projects`);
-  const newRef = doc(projectsColRef);
-  
-  try {
-    await runTransaction(db, async txn => {
-      const allProj = await getDocs(projectsColRef);
-      allProj.docs.forEach(d => {
-        if (d.data().isSelected)
-          txn.update(d.ref, { isSelected: false });
-      });
-      
-      // --- 2. Add the defaultColumns array to the new project document ---
-      txn.set(newRef, {
-        title: name.trim(),
-        color: generateColorForName(name.trim()),
-        starred: false,
-        isSelected: true,
-        createdAt: serverTimestamp(),
-        accessLevel: "workspace",
-        workspaceRole: "Viewer",
-        project_super_admin_uid: currentUser.uid,
-        project_admin_user: '',
-        members: [{ uid: currentUser.uid, role: "Project admin" }],
-        pendingInvites: [],
-        defaultColumns: INITIAL_DEFAULT_COLUMNS, // <-- ADDED
-        customColumns: [] // Start with an empty array for custom columns
-      });
-      
-      // --- 3. Create the three default sections in a loop ---
-      // This replaces the old single "General" section creation.
-      INITIAL_DEFAULT_SECTIONS.forEach(sectionData => {
-        const sectionRef = doc(collection(newRef, "sections"));
-        txn.set(sectionRef, {
-          ...sectionData, // Spreads title, order, sectionType, etc.
-          createdAt: serverTimestamp()
+    const name = prompt("Enter new project name:");
+    if (!name?.trim()) return;
+    if (!currentUser) return alert("User not available.");
+
+    const wsQuery = query(collection(db, `users/${currentUser.uid}/myworkspace`), where("isSelected", "==", true));
+    const wsSnap = await getDocs(wsQuery);
+    if (wsSnap.empty) return alert("No workspace selected.");
+    const wsId = wsSnap.docs[0].id;
+
+    const projectsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${wsId}/projects`);
+    const newRef = doc(projectsColRef);
+
+    try {
+      await runTransaction(db, async txn => {
+        const allProj = await getDocs(projectsColRef);
+        allProj.docs.forEach(d => {
+          if (d.data().isSelected)
+            txn.update(d.ref, { isSelected: false });
         });
+
+        txn.set(newRef, {
+          title: name.trim(),
+          color: generateColorForName(name.trim()),
+          starred: false,
+          isSelected: true,
+          createdAt: serverTimestamp(),
+          accessLevel: "workspace",
+          workspaceRole: "Viewer",
+          project_super_admin_uid: currentUser.uid,
+          project_admin_user: '',
+          members: [{ uid: currentUser.uid, role: "Project admin" }],
+          pendingInvites: []
+        });
+
+        const secRef = doc(collection(newRef, "sections"));
+        txn.set(secRef, { title: "General", createdAt: serverTimestamp() });
       });
-    });
-    
-    selectProject(newRef.id);
-  } catch (err) {
-    console.error("Create project failed:", err);
-    alert("Failed to create the new project. Please try again.");
+
+      selectProject(newRef.id);
+    } catch (err) {
+      console.error("Create failed:", err);
+    }
   }
-}
 
   if (createWorkBtn) {
     createWorkBtn.addEventListener("click", handleProjectCreate, { signal: controller.signal });
