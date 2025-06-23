@@ -69,7 +69,7 @@ let sourceContainer = null;
 let originalNextSibling = null;
 
 // --- Data ---
-let project = { defaultColumn: [], customColumns: [], sections: [], customPriorities: [], customStatuses: [] };
+let project = { defaultColumns: [], customColumns: [], sections: [], customPriorities: [], customStatuses: [] };
 let allTasksFromSnapshot = [];
 // --- Real-time Listener Management ---
 // This object will hold the unsubscribe functions for our active listeners.
@@ -1188,7 +1188,7 @@ function enableColumnRename(columnEl) {
             // --- THIS IS THE NEW UNIFIED SAVE LOGIC ---
             
             // Create mutable copies of the arrays from our project data.
-            let defaultCols = [...(project.defaultColumns || [])];
+            let defaultCols = [...(projectdefaultColumns || [])];
             let customCols = [...(project.customColumns || [])];
             
             // Try to find and update the column in the default list first.
@@ -1477,7 +1477,7 @@ function render() {
         isCustom: true
     }));
     
-    const allColumns = [...project.defaultColumn, ...mappedCustomColumns];
+    const allColumns = [...project.defaultColumns, ...mappedCustomColumns];
     
     const headerClickListener = (e) => {
         
@@ -2347,7 +2347,7 @@ function syncColumnWidths() {
         const cellsInColumn = table.querySelectorAll(`[data-column-id="${columnId}"]`);
         if (cellsInColumn.length === 0) return;
         
-        const columnDef = [...project.defaultColumn, ...project.customColumns].find(c => c.id == columnId);
+        const columnDef = [...project.defaultColumns, ...project.customColumns].find(c => c.id == columnId);
         
         // MODIFICATION 1: 'priority' and 'status' are removed from this condition.
         const isFlexible = columnDef && (
