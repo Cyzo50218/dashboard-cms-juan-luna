@@ -1171,7 +1171,7 @@ task-fields-table .field-value {
   display: flex;
   align-items: center;
   gap: 8px;
-  justify-content: flex-end; /* This new line pushes all items to the right */
+  justify-content: flex-start; /* This new line pushes all items to the right */
 }
 
 .assignee-list-wrapper .avatar {

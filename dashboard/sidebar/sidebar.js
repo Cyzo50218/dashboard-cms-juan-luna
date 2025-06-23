@@ -684,6 +684,89 @@ window.TaskSidebar = (function() {
     `;
     }
     
+    // Add this new function inside your TaskSidebar module
+
+/**
+ * Creates and shows a dropdown with a search input for assigning users.
+ * This version is specifically for the Task Sidebar.
+ * @param {HTMLElement} targetEl The element that was clicked to open the dropdown.
+ */
+function showSidebarAssigneeDropdown(targetEl) {
+    closePopovers(); // Use the sidebar's own popover closer
+    
+    if (!currentTask) return; // Guard clause
+    
+    const dropdown = document.createElement('div');
+    dropdown.className = 'context-dropdown';
+    dropdown.style.visibility = 'hidden';
+    
+    // --- Search Input ---
+    const searchInput = document.createElement('input');
+    searchInput.className = 'dropdown-search-input';
+    searchInput.type = 'text';
+    searchInput.placeholder = 'Search teammates...';
+    dropdown.appendChild(searchInput);
+    
+    // --- List Container ---
+    const listContainer = document.createElement('div');
+    listContainer.className = 'dropdown-list';
+    dropdown.appendChild(listContainer);
+    
+    // --- Add "Unassigned" Option ---
+    const unassignedItem = document.createElement('div');
+    unassignedItem.className = 'dropdown-item';
+    unassignedItem.innerHTML = `<div class="user-info"><span>Unassigned</span></div>`;
+    unassignedItem.addEventListener('click', () => {
+        updateTaskField('assignees', []); // Set assignees to empty array
+        closePopovers();
+    });
+    listContainer.appendChild(unassignedItem);
+    
+    
+    // --- Render Filtered User List ---
+    const renderList = (searchTerm = '') => {
+        // Clear previous user list (but keep "Unassigned")
+        listContainer.querySelectorAll('.user-list-item').forEach(el => el.remove());
+        
+        const lower = searchTerm.toLowerCase();
+        const filtered = allUsers.filter(u => u.name.toLowerCase().includes(lower));
+        
+        filtered.forEach(user => {
+            const isAssigned = currentTask.assignees && currentTask.assignees.includes(user.id);
+            const item = document.createElement('div');
+            // Add a class to differentiate from the "Unassigned" item
+            item.className = 'dropdown-item user-list-item';
+            item.innerHTML = `
+                <div class="user-info">
+                    <div class="avatar" style="background-image: url(${user.avatar})"></div>
+                    <span>${user.name}</span>
+                </div>
+                ${isAssigned ? '<i class="fas fa-check assigned-check"></i>' : ''}
+            `;
+            item.addEventListener('click', () => {
+                // When a user is clicked, we call the sidebar's own update function
+                updateTaskField('assignees', [user.id]);
+                closePopovers();
+            });
+            listContainer.appendChild(item);
+        });
+    };
+    
+    renderList();
+    searchInput.addEventListener('input', () => renderList(searchInput.value));
+    
+    document.body.appendChild(dropdown);
+    
+    // Position the dropdown relative to the clicked element
+    const rect = targetEl.getBoundingClientRect();
+    dropdown.style.top = `${rect.bottom + 4}px`;
+    dropdown.style.left = `${rect.left}px`;
+    dropdown.style.minWidth = `${rect.width}px`;
+    dropdown.style.visibility = 'visible';
+    
+    searchInput.focus();
+}
+    
     function createTag(text, color = '#e0e0e0') {
         if (!text) return '<span>Not set</span>';
         const hex = color.replace('#', '');
@@ -1031,6 +1114,11 @@ window.TaskSidebar = (function() {
                     createGenericDropdown(control, options, (newProjectId) => moveTask(newProjectId));
                     break;
                 }
+                case 'assignee': {
+    // It now makes a single, clean call to our new function.
+    showSidebarAssigneeDropdown(control);
+    break;
+}
                 case 'date': {
                     // Initialize flatpickr on the input inside the clicked control
                     const input = control.querySelector('.flatpickr-input');
