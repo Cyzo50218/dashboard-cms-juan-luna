@@ -86,23 +86,6 @@
   font-weight: 500;
 }
 
-.nav-item.is-selected-project > a {
-  font-weight: 600; /* Make the text bold */
-  position: relative; /* Needed for the pseudo-element */
-}
-
-.nav-item.is-selected-project > a::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 4px;
-  height: 20px;
-  background-color: var(--project-highlight-color, #4A90E2); /* Uses the color from JS */
-  border-radius: 4px;
-}
-
 .nav-item-main-content {
   display: flex;
   align-items: center;
@@ -228,6 +211,18 @@
   max-height: 500px;
 }
 
+.sidebar .section-items .nav-item span {
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ADDED: Explicit hover effect for items within a section to ensure consistency. */
+.sidebar .section-items .nav-item:hover {
+  background-color: var(--drawer-hover-bg);
+}
+
 .sidebar .section-header .fa-chevron-right {
   transition: transform 0.3s ease-in-out;
 }
@@ -235,6 +230,7 @@
 .sidebar .nav-section.open .section-header .fa-chevron-right {
   transform: rotate(90deg);
 }
+
 
 /* === Project Item Styling === */
 .sidebar .project-item a {
@@ -277,9 +273,8 @@
 .drawerprojects-dropdown li {
   display: flex;
   align-items: center;
-  font-size: 14px;
   gap: 12px; /* Space between icon and text */
-  padding: 3px 6px; /* Vertical and horizontal padding */
+  padding: 10px 12px; /* Vertical and horizontal padding */
   border-radius: 6px;
   cursor: pointer;
   color: #212529; /* Darker text for readability on a light background */

@@ -1659,11 +1659,11 @@ cell.appendChild(cellMenu);
         sectionRow.className = 'flex border-b border-slate-200';
         
         const leftSectionCell = document.createElement('div');
-        leftSectionCell.className = 'section-title-wrapper group sticky left-0 w-80 md:w-96 lg:w-[560px] flex-shrink-0 flex items-center pr-1 pl-[3px] py-0.5 font-semibold text-slate-800 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg hover:bg-slate-50';
+        leftSectionCell.className = 'section-title-wrapper group sticky left-0 w-80 md:w-96 lg:w-[560px] flex-shrink-0 flex items-start py-0.5 font-semibold text-slate-800 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg hover:bg-slate-50';
         if (section.id) leftSectionCell.dataset.sectionId = section.id;
         
         leftSectionCell.innerHTML = `
-        <div class="drag-handle group-hover:opacity-100 transition-opacity cursor-grab mr-2 p-1 rounded flex items-center justify-center hover:bg-slate-200 user-select-none">
+        <div class="drag-handle group-hover:opacity-100 transition-opacity cursor-grab rounded flex items-start justify-center hover:bg-slate-200 user-select-none">
             <span class="material-icons text-slate-500 select-none" style="font-size: 20px;" draggable="false">drag_indicator</span>
         </div>
 
@@ -1862,25 +1862,28 @@ cell.appendChild(cellMenu);
             
             
             const leftTaskCell = document.createElement('div');
-            leftTaskCell.className = 'group sticky left-0 w-80 md:w-96 lg:w-[560px] flex-shrink-0 flex items-center gap-1 px-2 py-1.5 border-r border-transparent group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg juanlunacms-spreadsheetlist-dynamic-border';
-            
-            const isCompleted = task.status === 'Completed';
-            
-            const taskNameClass = isCompleted ? 'task-name task-name-completed' : 'task-name';
-            
-            leftTaskCell.innerHTML = `
+leftTaskCell.className = 'group sticky left-0 w-80 md:w-96 lg:w-[560px] flex-shrink-0 flex items-center border-r border-transparent group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg juanlunacms-spreadsheetlist-dynamic-border';
+
+// --- FIX 1: Reduce the top and bottom padding of the entire cell ---
+leftTaskCell.style.paddingTop = '0px';
+leftTaskCell.style.paddingBottom = '0px';
+
+const isCompleted = task.status === 'Completed';
+const taskNameClass = isCompleted ? 'task-name task-name-completed' : 'task-name';
+
+leftTaskCell.innerHTML = `
     <div class="drag-handle cursor-grab rounded flex items-center justify-center hover:bg-slate-200 user-select-none">
         <span class="material-icons text-slate-400 select-none opacity-1 group-hover:opacity-100 transition-opacity" style="font-size: 20px;" draggable="false">drag_indicator</span>
     </div>
 
-    <label class="juanlunacms-spreadsheetlist-custom-checkbox-container" data-control="check">
+    <label class="juanlunacms-spreadsheetlist-custom-checkbox-container ml-4" data-control="check">
         <input type="checkbox" ${isCompleted ? 'checked' : ''}>
         <span class="juanlunacms-spreadsheetlist-custom-checkbox"></span>
     </label>
 
     <div class="flex items-start flex-grow min-w-0">
         <span
-            class="${taskNameClass} truncate whitespace-nowrap overflow-hidden text-ellipsis text-[18px] block outline-none bg-transparent focus:bg-white focus:ring-1 focus:ring-slate-300 rounded px-1 transition-all duration-150"
+            class="${taskNameClass} truncate whitespace-nowrap overflow-hidden text-ellipsis text-[13px] block outline-none bg-transparent focus:bg-white focus:ring-1 focus:ring-slate-300 rounded px-1 transition-all duration-150"
             style="max-width: 100%;"
             contenteditable="true"
             data-task-id="${task.id}"

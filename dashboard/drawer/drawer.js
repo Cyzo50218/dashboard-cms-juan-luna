@@ -49,48 +49,73 @@ import { firebaseConfig } from "/services/firebase-config.js";
     /**
      * Renders the project list. The active highlight is now driven by `project.isSelected`.
      */
-    function renderProjectsList() {
-        const projectsListContainer = sidebar.querySelector('#projects-section .section-items');
-        if (!projectsListContainer) return;
-
-        projectsListContainer.innerHTML = '';
-        if (projectsData.length === 0) {
-            projectsListContainer.innerHTML = `<li class="nav-item-empty">No projects yet.</li>`;
-        }
-
-        projectsData.forEach(project => {
-            
-            const projectLi = document.createElement('li');
-            
-            if (project.isSelected === true) {
-    projectLi.classList.add('is-selected-project');
-    projectLi.style.setProperty('--project-highlight-color', project.color);
-}
-
-            projectLi.dataset.projectId = project.id;
-            const numericUserId = stringToNumericString(currentUser?.uid);
-            const numericProjectId = stringToNumericString(project.id);
-            const href = `/tasks/${numericUserId}/list/${numericProjectId}`;
-            projectLi.innerHTML = `<a href="${href}" data-link><div class="project-color" style="background-color: ${project.color};"></div><span>${project.title}</span></a>`;
-            projectsListContainer.appendChild(projectLi);
-        });
-        
+   function renderProjectsList() {
+    const projectsListContainer = sidebar.querySelector('#projects-section .section-items');
+    if (!projectsListContainer) return;
+    
+    projectsListContainer.innerHTML = '';
+    if (projectsData.length === 0) {
+        projectsListContainer.innerHTML = `<li class="nav-item-empty">No projects yet.</li>`;
+        // Also handle the "My Tasks" link when there are no projects
         const myTasksLink = sidebar.querySelector('#my-tasks-link');
         if (myTasksLink) {
-            const selectedProject = projectsData.find(p => p.isSelected === true);
-            const firstProjectId = projectsData[0]?.id;
-            const targetProjectId = selectedProject ? selectedProject.id : firstProjectId;
-            if (targetProjectId) {
-                const numericUserId = stringToNumericString(currentUser?.uid);
-                const numericProjectId = stringToNumericString(targetProjectId);
-                myTasksLink.href = `/tasks/${currentUser?.uid}/list/${targetProjectId}`;
-                myTasksLink.setAttribute('data-link', '');
-            } else {
-                myTasksLink.href = '#';
-                myTasksLink.removeAttribute('data-link');
-            }
+            myTasksLink.href = '#';
+            myTasksLink.removeAttribute('data-link');
+        }
+        return; // Exit the function early
+    }
+    
+    projectsData.forEach(project => {
+        const projectLi = document.createElement('li');
+        
+        // --- FIX 1: Add the required CSS classes to the <li> element ---
+        projectLi.classList.add('nav-item', 'project-item');
+        
+        if (project.isSelected === true) {
+            projectLi.classList.add('is-selected-project');
+            projectLi.style.setProperty('--project-highlight-color', project.color);
+        }
+        
+        projectLi.dataset.projectId = project.id;
+        const numericUserId = stringToNumericString(currentUser?.uid);
+        const numericProjectId = stringToNumericString(project.id);
+        const href = `/tasks/${numericUserId}/list/${numericProjectId}`;
+        
+        // --- FIX 2: Add the missing .nav-item-main-content wrapper div ---
+        projectLi.innerHTML = `
+            <a href="${href}" data-link>
+                <div class="nav-item-main-content">
+                    <div class="project-color" style="background-color: ${project.color};"></div>
+                    <span>${project.title}</span>
+                </div>
+            </a>
+        `;
+        
+        projectsListContainer.appendChild(projectLi);
+    });
+    
+    // This logic for My Tasks remains the same, but it's good practice
+    // to place it after the loop that determines the selected project.
+    const myTasksLink = sidebar.querySelector('#my-tasks-link');
+    if (myTasksLink) {
+        const selectedProject = projectsData.find(p => p.isSelected === true);
+        const firstProjectId = projectsData[0]?.id; // Use optional chaining
+        
+        // Use the selected project's ID, or fall back to the first project's ID
+        const targetProjectId = selectedProject ? selectedProject.id : firstProjectId;
+        
+        if (targetProjectId) {
+            const numericUserId = stringToNumericString(currentUser?.uid);
+            const numericProjectId = stringToNumericString(targetProjectId);
+            myTasksLink.href = `/tasks/${numericUserId}/list/${numericProjectId}`;
+            myTasksLink.setAttribute('data-link', '');
+        } else {
+            // This case now only happens if projectsData is empty, which is handled above.
+            myTasksLink.href = '#';
+            myTasksLink.removeAttribute('data-link');
         }
     }
+}
 
     /**
      * Creates a new project and sets it as the active one.
@@ -235,6 +260,48 @@ import { firebaseConfig } from "/services/firebase-config.js";
         }
     });
     
+    /**
+ * Handles the logic for selecting a project.
+ * It updates the 'isSelected' flags in Firestore and navigates the page.
+ * @param {string} projectId The ID of the project to select.
+ */
+async function selectProject(projectId) {
+    // Guard against missing data or clicking the already active project
+    if (!projectId || !currentUser || !activeWorkspaceId) return;
+    const currentlySelected = projectsData.find(p => p.isSelected === true);
+    if (currentlySelected && currentlySelected.id === projectId) return;
+    
+    try {
+        const batch = writeBatch(db);
+        const projectsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects`);
+        
+        // Deselect the old project if one was selected
+        if (currentlySelected) {
+            const oldProjectRef = doc(projectsColRef, currentlySelected.id);
+            batch.update(oldProjectRef, { isSelected: false });
+        }
+        
+        // Select the new project
+        const newProjectRef = doc(projectsColRef, projectId);
+        batch.update(newProjectRef, { isSelected: true });
+        
+        // Commit both changes at once
+        await batch.commit();
+        
+        // After the data is saved, navigate to the new project's URL
+        // (This assumes your stringToNumericString and router functions are available)
+        const numericUserId = stringToNumericString(currentUser.uid);
+        const numericProjectId = stringToNumericString(projectId);
+        const newRoute = `/tasks/${numericUserId}/list/${numericProjectId}`;
+        
+        history.pushState(null, '', newRoute);
+        window.router(); // Manually trigger the router to load the new page content
+        
+    } catch (error) {
+        console.error("Error selecting project:", error);
+    }
+}
+
     window.addEventListener('popstate', renderProjectsList);
     
     window.drawerLogicInitialized = true;
