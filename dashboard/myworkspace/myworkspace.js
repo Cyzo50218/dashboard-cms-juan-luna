@@ -21,6 +21,8 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app, "juanluna-cms-01");
 
+  let projectsData = [];
+  
 export function init(params) {
   const controller = new AbortController();
   const workspaceSection = document.querySelector('div[data-section="myworkspace"]');
