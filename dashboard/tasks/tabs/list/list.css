@@ -799,7 +799,7 @@ Custom class
     /* --- Your other styles remain the same --- */
     border-radius: 40px; /* This creates the pill shape */
     font-weight: 500;
-    
+    min-width: 100px;
 }
 
 .priority-High {

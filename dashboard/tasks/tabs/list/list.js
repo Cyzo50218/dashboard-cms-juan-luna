@@ -2381,7 +2381,7 @@ function syncColumnWidths() {
             
             if (columnId === 'priority' || columnId === 'status') {
                 // Set a smaller, specific fixed width for these tag columns.
-                fixedWidthClass = 'w-32'; // 128px or 8rem
+                fixedWidthClass = 'w-44'; // 128px or 8rem
             }
             
             cellsInColumn.forEach(cell => {
