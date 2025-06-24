@@ -1858,7 +1858,7 @@ cell.appendChild(cellMenu);
         // Render task rows`
         section.tasks.forEach(task => {
             const taskRow = document.createElement('div');
-            taskRow.className = 'task-row-wrapper h-9 flex group border-b border-slate-200';
+            taskRow.className = 'task-row-wrapper h-8 flex group border-b border-slate-200';
             taskRow.dataset.taskId = task.id;
             taskRow.dataset.sectionId = section.id;
             
