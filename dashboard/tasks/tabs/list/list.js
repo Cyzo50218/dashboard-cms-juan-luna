@@ -21,7 +21,7 @@ import {
     getDoc,
     getDocs,
     addDoc,
-    
+    documentId,
     setDoc,
     updateDoc,
     deleteDoc,
@@ -134,68 +134,122 @@ function detachAllListeners() {
     Object.keys(activeListeners).forEach(key => activeListeners[key] = null);
 }
 
+function detachProjectSpecificListeners() {
+    console.log("[DEBUG] Detaching project-specific listeners (project, sections, tasks)...");
+    
+    // Check for and unsubscribe from the project details listener
+    if (activeListeners.project) {
+        activeListeners.project(); // This executes the unsubscribe function returned by onSnapshot
+        activeListeners.project = null; // Reset the state to clean up
+    }
+    
+    // Check for and unsubscribe from the sections listener
+    if (activeListeners.sections) {
+        activeListeners.sections();
+        activeListeners.sections = null;
+    }
+    
+    // Check for and unsubscribe from the tasks listener
+    if (activeListeners.tasks) {
+        activeListeners.tasks();
+        activeListeners.tasks = null;
+    }
+}
+
 function attachRealtimeListeners(userId) {
-    detachAllListeners();
+    detachAllListeners(); // A helper function to clean up old listeners
     currentUserId = userId;
     console.log(`[DEBUG] Attaching listeners for user: ${userId}`);
     
+    // STEP 1: Find the user's active workspace to know where to find the selected project ID.
     const workspaceQuery = query(collection(db, `users/${userId}/myworkspace`), where("isSelected", "==", true));
+    
     activeListeners.workspace = onSnapshot(workspaceQuery, async (workspaceSnapshot) => {
+        // When the active workspace changes, we must clean up listeners for the previous project.
+        detachProjectSpecificListeners();
+        
         if (workspaceSnapshot.empty) {
-            console.warn("[DEBUG] No selected workspace.");
+            console.warn("[DEBUG] No selected workspace. Clearing UI.");
+            project = {}; // Clear all project data
+            render(); // Render the empty state
             return;
         }
         
-        currentWorkspaceId = workspaceSnapshot.docs[0].id;
-        console.log(`[DEBUG] Found workspaceId: ${currentWorkspaceId}`);
+        const workspaceDoc = workspaceSnapshot.docs[0];
+        currentWorkspaceId = workspaceDoc.id;
+        const workspaceData = workspaceDoc.data();
         
-        const projectsPath = `users/${userId}/myworkspace/${currentWorkspaceId}/projects`;
-        const projectQuery = query(collection(db, projectsPath), where("isSelected", "==", true));
+        // STEP 2: Read the 'selectedProjectId' from the active workspace document. This is our target.
+        const selectedProjectId = workspaceData.selectedProjectId || null;
+        console.log(`[DEBUG] Found workspace '${currentWorkspaceId}'. It points to selectedProjectId: '${selectedProjectId}'`);
         
-        if (activeListeners.project) activeListeners.project();
-        activeListeners.project = onSnapshot(projectQuery, async (projectSnapshot) => {
+        if (!selectedProjectId) {
+            console.warn("[DEBUG] The active workspace does not point to a selected project.");
+            project = {};
+            render();
+            return;
+        }
+        
+        // STEP 3: Use the ID to find the actual project document, no matter where it's nested.
+        // We use a one-time `getDocs` with `collectionGroup` to find its full path.
+        try {
+const projectQuery = query(
+    collectionGroup(db, 'projects'),
+    where('projectId', '==', selectedProjectId),
+    where('memberUIDs', 'array-contains', currentUserId) 
+);
+            const projectSnapshot = await getDocs(projectQuery);
+            
             if (projectSnapshot.empty) {
-                console.warn("[DEBUG] No selected project.");
+                console.error(`[DEBUG] CRITICAL: Could not find any project with the ID '${selectedProjectId}'.`);
+                project = {};
+                render();
                 return;
             }
             
             const projectDoc = projectSnapshot.docs[0];
+            const projectRef = projectDoc.ref; // This is the full, correct path to the document
             currentProjectId = projectDoc.id;
-            console.log(`[DEBUG] Found projectId: ${currentProjectId}`);
+            console.log(`[DEBUG] Successfully found project at path: ${projectRef.path}`);
             
-            project = { ...project, ...projectDoc.data(), id: currentProjectId };
-            
-            // ✅ NOW call loadProjectUsers once project is confirmed
-            await loadProjectUsers(currentUserId);
-            
-            // Then continue with sections and tasks
-            const sectionsPath = `${projectsPath}/${currentProjectId}/sections`;
-            const sectionsQuery = query(collection(db, sectionsPath), orderBy("order"));
-            
-            if (activeListeners.sections) activeListeners.sections();
-            activeListeners.sections = onSnapshot(sectionsQuery, (sectionsSnapshot) => {
-                console.log(`[DEBUG] Sections snapshot fired. Found ${sectionsSnapshot.size} sections.`);
-                project.sections = sectionsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, tasks: [] }));
+            // STEP 4: Now that we have the correct project, attach real-time listeners to it.
+            activeListeners.project = onSnapshot(projectRef, async (projectDetailSnap) => {
+                if (!projectDetailSnap.exists()) {
+                    console.error("[DEBUG] The selected project was deleted.");
+                    project = { customColumns: [], sections: [], customPriorities: [], customStatuses: [] };
+                    render();
+                    return;
+                }
                 
-                distributeTasksToSections(allTasksFromSnapshot);
-                render();
+                console.log(`[DEBUG] Project details listener fired for ${projectDetailSnap.id}`);
+                project = { ...project, ...projectDetailSnap.data(), id: projectDetailSnap.id };
+                
+                // Fetch members once and then attach other listeners
+                await loadProjectUsers(currentUserId, currentWorkspaceId, currentProjectId);
+                
+                // Attach listener for Sections
+                const sectionsQuery = query(collection(projectRef, 'sections'), orderBy("order"));
+                if (activeListeners.sections) activeListeners.sections();
+                activeListeners.sections = onSnapshot(sectionsQuery, (sectionsSnapshot) => {
+                    project.sections = sectionsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, tasks: [] }));
+                    distributeTasksToSections(allTasksFromSnapshot);
+                    render();
+                });
+                
+                // Attach listener for Tasks (using collectionGroup is still powerful here)
+                const tasksGroupQuery = query(collectionGroup(db, 'tasks'), where('projectId', '==', currentProjectId), orderBy('createdAt', 'desc'));
+                if (activeListeners.tasks) activeListeners.tasks();
+                activeListeners.tasks = onSnapshot(tasksGroupQuery, (tasksSnapshot) => {
+                    allTasksFromSnapshot = tasksSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+                    distributeTasksToSections(allTasksFromSnapshot);
+                    render();
+                });
             });
             
-            const tasksGroupQuery = query(
-                collectionGroup(db, 'tasks'),
-                where('projectId', '==', currentProjectId),
-                orderBy('createdAt', 'desc')
-            );
-            
-            if (activeListeners.tasks) activeListeners.tasks();
-            activeListeners.tasks = onSnapshot(tasksGroupQuery, (tasksSnapshot) => {
-                console.log(`[DEBUG] Tasks CollectionGroup snapshot fired. Found ${tasksSnapshot.size} tasks.`);
-                allTasksFromSnapshot = tasksSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-                distributeTasksToSections(allTasksFromSnapshot);
-                render();
-            });
-        });
-    }, (error) => console.error("[DEBUG] FATAL ERROR in listeners:", error));
+        } catch (error) {
+            console.error("[DEBUG] Error finding project via collectionGroup query:", error);
+        }
+    });
 }
 
 

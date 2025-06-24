@@ -34,16 +34,17 @@ svg {
     /* Reduced */
     height: 28px;
     /* Reduced */
-    background-color: #cdeae3;
+    
     border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
-
-.project-icon .custom-icon {
-    color: #2c7762;
-    stroke-width: 1.5;
+.project-icon-glyph {
+    width: 16px;  /* Slightly larger for better visibility */
+    height: 16px;
+    color: #FFFFFF;
+    stroke-width: 2.5; /* Lucide icons look great with a thicker stroke */
 }
 
 h1 {

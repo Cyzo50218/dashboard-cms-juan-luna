@@ -14,6 +14,7 @@ import {
   getDocs,
   doc,
   runTransaction,
+  collectionGroup
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "/services/firebase-config.js";
 
@@ -59,38 +60,133 @@ const tabs = document.querySelectorAll('.tab-link');
     
     const customizeButton = document.querySelector('.customize-btn');
 
+/**
+ * Sets a random Lucide icon on a specified icon element.
+ * @param {HTMLElement} iconContainer - The parent element that holds the icon glyph.
+ */
+function setRandomProjectIcon(iconContainer) {
+    // 1. Define a list of miscellaneous Lucide icon names you like.
+    // You can find more at https://lucide.dev/
+    const miscellaneousIcons = [
+        'anchor', 'archive', 'award', 'axe', 'banknote', 'beaker', 'bell',
+        'bomb', 'book', 'box', 'briefcase', 'building', 'camera', 'candy',
+        'clapperboard', 'clipboard', 'cloud', 'compass', 'cpu', 'crown',
+        'diamond', 'dice-5', 'drafting-compass', 'feather', 'flag', 'flame',
+        'folder', 'gem', 'gift', 'graduation-cap', 'hammer', 'hard-hat',
+        'heart-pulse', 'key-round', 'landmark', 'layers', 'leaf', 'lightbulb',
+        'map', 'medal', 'mouse-pointer', 'package', 'palette', 'plane',
+        'puzzle', 'rocket', 'shield', 'ship', 'sprout', 'star', 'swords',
+        'ticket', 'tractor', 'trophy', 'umbrella', 'wallet', 'wrench'
+    ];
+    
+    // 2. Find the icon element within the provided container.
+    // This makes the function reusable for any icon you want to randomize.
+    const iconGlyph = iconContainer.querySelector('.project-icon-glyph');
+    if (!iconGlyph) {
+        console.error("Could not find the '.project-icon-glyph' element inside the container.");
+        return;
+    }
+    
+    // 3. Pick a random icon name from the list.
+    const randomIndex = Math.floor(Math.random() * miscellaneousIcons.length);
+    const randomIconName = miscellaneousIcons[randomIndex];
+    
+    // 4. Update the data-lucide attribute on the icon element.
+    iconGlyph.setAttribute('data-lucide', randomIconName);
+    
+    // 5. Tell the Lucide library to render the new icon.
+    // This is a crucial step.
+    lucide.createIcons();
+}
+
+/**
+ * Converts an HSL color string to a HEX color string.
+ * Example: "hsl(210, 40%, 96%)" will be converted to "#f0f5f9"
+ * @param {string} hslString The HSL color string.
+ * @returns {string} The equivalent HEX color string.
+ */
+function hslStringToHex(hslString) {
+    // Use a regular expression to extract the H, S, L values.
+    const hslValues = hslString.match(/\d+/g);
+    if (!hslValues || hslValues.length < 3) {
+        console.error("Invalid HSL string format:", hslString);
+        return null; // Return null or a default color
+    }
+    
+    let h = parseInt(hslValues[0]);
+    let s = parseInt(hslValues[1]);
+    let l = parseInt(hslValues[2]);
+    
+    // The conversion formula
+    l /= 100;
+    const a = s * Math.min(l, 1 - l) / 100;
+    const f = n => {
+        const k = (n + h / 30) % 12;
+        const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+        // Convert to 0-255 range, then to a 2-digit hex string
+        return Math.round(255 * color).toString(16).padStart(2, '0');
+    };
+    
+    return `#${f(0)}${f(8)}${f(4)}`;
+}
+
+/**
+ * Fetches the data for the currently selected project in a single, one-time read.
+ * uses the robust 'selectedProjectId' method.
+ */
 async function fetchCurrentProjectData() {
     const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated.");
-
-    // 1. Find the user's selected workspace
+    if (!user) {
+        console.error("fetchCurrentProjectData failed: User not authenticated.");
+        throw new Error("User not authenticated.");
+    }
+    
+    // 1. Find the user's selected workspace to get the selectedProjectId from it.
     const workspaceQuery = query(
         collection(db, `users/${user.uid}/myworkspace`),
         where("isSelected", "==", true)
     );
     const workspaceSnapshot = await getDocs(workspaceQuery);
+    
     if (workspaceSnapshot.empty) {
+        console.warn("fetchCurrentProjectData: No selected workspace found for this user.");
         throw new Error("No selected workspace found.");
     }
-    const workspaceId = workspaceSnapshot.docs[0].id;
-
-    // 2. Find the selected project within that workspace
-    const projectPath = `users/${user.uid}/myworkspace/${workspaceId}/projects`;
+    
+    const workspaceDoc = workspaceSnapshot.docs[0];
+    const workspaceId = workspaceDoc.id;
+    const workspaceData = workspaceDoc.data();
+    
+    // 2. Get the target project ID from the workspace data.
+    const selectedProjectId = workspaceData.selectedProjectId;
+    if (!selectedProjectId) {
+        console.warn("fetchCurrentProjectData: The active workspace does not have a selected project.");
+        throw new Error("No selected project found.");
+    }
+    
+    // 3. Find the project document using a secure collectionGroup query.
+    // This query works because it aligns with your security rules.
     const projectQuery = query(
-        collection(db, projectPath),
-        where("isSelected", "==", true)
+        collectionGroup(db, 'projects'),
+        where('projectId', '==', selectedProjectId),
+        where('memberUIDs', 'array-contains', user.uid)
     );
     const projectSnapshot = await getDocs(projectQuery);
+    
     if (projectSnapshot.empty) {
-        throw new Error("No selected project found in the current workspace.");
+        console.error(`fetchCurrentProjectData: Could not find project with ID '${selectedProjectId}' or user lacks permission.`);
+        throw new Error("Selected project not found or permission denied.");
     }
-
+    
     const projectDoc = projectSnapshot.docs[0];
-
+    
+    // 4. Return all the necessary data.
+    console.log(`[fetchCurrentProjectData] Successfully fetched project: ${projectDoc.data().title}`);
     return {
         data: projectDoc.data(),
         projectId: projectDoc.id,
-        workspaceId,
+        workspaceId, // The ID of the user's active workspace
+        projectPath: projectDoc.ref.path // Returning the full path is very useful for subsequent writes
     };
 }
 
@@ -99,9 +195,6 @@ fetchCurrentProjectData()
         const user = auth.currentUser;
         if (!user) return;
 
-        // Editable h1
-        const projectName = document.getElementById("project-name"); // <h1 id="project-name"></h1>
-        const projectIconColor = document.getElementById("project-icon-color");
 
         if (projectName && data.title) {
             projectName.textContent = data.title;
@@ -142,10 +235,15 @@ fetchCurrentProjectData()
                 }
             });
         }
+            if (projectIconColor && data.color) {
+    // First, convert the HSL string from data.color to a HEX string
+    const hexColor = hslStringToHex(data.color);
+    
+    // Then, use the resulting HEX color
+    projectIconColor.style.backgroundColor = hexColor;
 
-        if (projectIconColor && data.color) {
-            projectIconColor.style.backgroundColor = data.color;
-        }
+    setRandomProjectIcon(projectIconColor);
+}
     })
     .catch((err) => {
         console.error("Failed to load project header data:", err);
