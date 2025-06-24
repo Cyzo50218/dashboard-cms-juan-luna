@@ -2341,13 +2341,8 @@ Sortable.create(sectionGroupsContainer, {
 function syncColumnWidths() {
     const table = document.querySelector('.min-w-max.relative');
     if (!table) return;
-    const defaultColumnNames = [
-        { id: 'assignees', name: 'Assignee', control: 'assignee' },
-        { id: 'dueDate', name: 'Due Date', control: 'due-date' },
-        { id: 'priority', name: 'Priority', control: 'priority' },
-        { id: 'status', name: 'Status', control: 'status' }
-    ];
     
+    // No changes needed to your column definitions
     const allColumnIds = [
         'assignees', 'dueDate', 'priority', 'status',
         ...project.customColumns.map(c => c.id)
@@ -2359,35 +2354,43 @@ function syncColumnWidths() {
         
         const columnDef = [...project.defaultColumns, ...project.customColumns].find(c => c.id == columnId);
         
-        // MODIFICATION 1: 'priority' and 'status' are removed from this condition.
         const isFlexible = columnDef && (
             columnDef.type === 'Text' || columnDef.type === 'Numbers' ||
             columnDef.type === 'Type'
         );
         
         if (isFlexible) {
-            // This logic now only runs for Text, Numbers, and Type columns.
-            let maxWidth = 176;
+            let maxWidth = 176; // Default minimum width (11rem or w-44)
             cellsInColumn.forEach(cell => {
+                // Ensure we only measure the content width, not padding/border
                 maxWidth = Math.max(maxWidth, cell.scrollWidth);
             });
             cellsInColumn.forEach(cell => {
+                // The +2 is a small buffer for padding/border discrepancies
                 cell.style.flex = `0 0 ${maxWidth + 2}px`;
             });
             
         } else {
-            // MODIFICATION 2: Handle fixed-width columns here.
-            let fixedWidthClass = 'w-44'; // Default for Assignee, Due Date etc.
+            // --- FIX: Use inline styles for fixed-width columns too ---
+            
+            let fixedWidthInPixels;
             
             if (columnId === 'priority' || columnId === 'status') {
-                // Set a smaller, specific fixed width for these tag columns.
-                fixedWidthClass = 'w-44'; // 128px or 8rem
+                // Corresponds to 'w-32' (8rem * 16px/rem = 128px)
+                fixedWidthInPixels = 128;
+            } else {
+                // Default for others like 'assignees' and 'dueDate'.
+                // Corresponds to 'w-44' (11rem * 16px/rem = 176px)
+                fixedWidthInPixels = 176;
             }
             
             cellsInColumn.forEach(cell => {
-                // We add the class instead of setting the style directly
-                // to keep using Tailwind's utility classes.
-                cell.classList.add(fixedWidthClass);
+                // By setting flex-basis directly, we ensure the column has a reliable
+                // fixed width inside its flex container. This is more robust.
+                cell.style.flex = `0 0 ${fixedWidthInPixels}px`;
+                
+                // As a good practice, remove any old width classes to prevent conflicts.
+                cell.classList.remove('w-32', 'w-44');
             });
         }
     });
