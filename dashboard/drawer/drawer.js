@@ -303,7 +303,7 @@ async function selectProject(projectIdToSelect) {
         const numericUserId = stringToNumericString(currentUser.uid);
         const numericProjectId = stringToNumericString(projectIdToSelect);
         const newRoute = `/tasks/${numericUserId}/list/${numericProjectId}`;
-        window.location.href = newRoute;
+       // window.location.href = newRoute;
         
     } catch (error) {
         console.error("Error during the read-then-write selectProject operation:", error);
