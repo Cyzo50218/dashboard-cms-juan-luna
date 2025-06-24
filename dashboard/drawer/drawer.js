@@ -13,16 +13,23 @@ import {
 import {
     getFirestore,
     collection,
-    where,
-    addDoc,
-    onSnapshot,
     query,
+    where,
+    or, // For complex queries
     orderBy,
-    doc,
-    getDocs,
-    writeBatch,
-    runTransaction,
-    serverTimestamp
+    limit, // For pagination
+    startAfter, // For pagination
+    getDoc, // To get a single document
+    getDocs, // To get multiple documents from a query
+    addDoc, // To add a new document with an auto-generated ID
+    setDoc, // To create or overwrite a document with a specific ID
+    updateDoc, // To update specific fields in a document
+    deleteDoc, // To delete a document
+    doc, // To get a reference to a document or collection
+    writeBatch, // For atomic batch operations
+    runTransaction, // For atomic read-then-write operations
+    serverTimestamp, // For consistent timestamps
+    deleteField // To remove a field from a document
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "/services/firebase-config.js";
 
@@ -233,7 +240,15 @@ import { firebaseConfig } from "/services/firebase-config.js";
                     activeWorkspaceId = workspaceDoc.id;
                     const projectsQuery = query(collection(db, `users/${user.uid}/myworkspace/${activeWorkspaceId}/projects`), orderBy("createdAt", "desc"));
                     unsubscribeProjects = onSnapshot(projectsQuery, (snapshot) => {
-                        projectsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        projectsData = snapshot.docs
+    .filter(doc => {
+        const data = doc.data();
+        if (Array.isArray(data.members)) {
+            return data.members.some(member => member.uid === user.uid);
+        }
+        return false;
+    })
+    .map(doc => ({ id: doc.id, ...doc.data() })); 
                         renderProjectsList();
                     }, (error) => {
                         console.error("Error fetching projects:", error);
