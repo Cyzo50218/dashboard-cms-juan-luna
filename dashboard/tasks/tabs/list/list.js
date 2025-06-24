@@ -1919,7 +1919,7 @@ leftTaskCell.innerHTML = `
 `;
             
             const rightTaskCells = document.createElement('div');
-            rightTaskCells.className = 'flex-grow flex group-hover:bg-slate-50';
+            rightTaskCells.className = 'flex-grow h-8 flex group-hover:bg-slate-50';
             
             // This loop creates the cells for a single task row.
             allColumns.forEach((col, i) => {
