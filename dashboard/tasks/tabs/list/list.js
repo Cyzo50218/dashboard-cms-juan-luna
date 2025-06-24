@@ -1858,7 +1858,7 @@ cell.appendChild(cellMenu);
         // Render task rows`
         section.tasks.forEach(task => {
             const taskRow = document.createElement('div');
-            taskRow.className = 'task-row-wrapper h-8 flex group border-b border-slate-200';
+            taskRow.className = 'task-row-wrapper flex group border-b border-slate-200';
             taskRow.dataset.taskId = task.id;
             taskRow.dataset.sectionId = section.id;
             
@@ -1869,7 +1869,7 @@ cell.appendChild(cellMenu);
             
             
             const leftTaskCell = document.createElement('div');
-leftTaskCell.className = 'group sticky left-0 w-80 md:w-96 lg:w-[560px] flex-shrink-0 flex items-center border-r border-transparent group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg juanlunacms-spreadsheetlist-dynamic-border';
+leftTaskCell.className = 'group sticky left-0 w-80 md:w-96 lg:w-[560px] flex-shrink-0 flex items-center border-r border-transparent group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg juanlunacms-spreadsheetlist-dynamic-border px-3 py-0.2';
 
 // --- FIX 1: Reduce the top and bottom padding of the entire cell ---
 leftTaskCell.style.paddingTop = '0px';
@@ -1919,8 +1919,8 @@ leftTaskCell.innerHTML = `
 `;
             
             const rightTaskCells = document.createElement('div');
-            rightTaskCells.className = 'flex-grow h-8 flex group-hover:bg-slate-50';
-            
+            rightTaskCells.className = 'flex-grow flex group-hover:bg-slate-50';
+
             // This loop creates the cells for a single task row.
             allColumns.forEach((col, i) => {
                 const cell = document.createElement('div');
@@ -1928,7 +1928,7 @@ leftTaskCell.innerHTML = `
                 // --- Base Styling ---
                 const borderClass = 'border-r';
                 const leftBorderClass = i === 0 ? 'border-l' : '';
-                let cellClasses = `h-10 px-3 py-1.5 flex items-center ${borderClass} ${leftBorderClass} border-slate-200`;
+                let cellClasses = `px-3 py-0.2 flex items-center ${borderClass} ${leftBorderClass} border-slate-200`;
                 
                 if (
                     col.type === 'Text' || col.type === 'Numbers' || col.type === 'Type' ||
@@ -2160,7 +2160,7 @@ if (!addTaskAtTop) {
         addRow.dataset.sectionId = section.id;
         
         const leftAddCell = document.createElement('div');
-        leftAddCell.className = 'sticky left-0 w-80 md:w-96 lg:w-[560px] flex-shrink-0 flex items-center px-3 py-1.5 group-hover:bg-slate-100 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
+        leftAddCell.className = 'sticky left-0 w-80 md:w-96 lg:w-[560px] flex-shrink-0 flex items-center px-3 py-0.5 group-hover:bg-slate-100 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
         
         const indentedText = document.createElement('div');
         indentedText.className = 'add-task-btn flex items-center gap-2 ml-8 text-slate-500 cursor-pointer hover:bg-slate-200 px-2 py-1 rounded transition';
