@@ -387,78 +387,94 @@ export function init(params) {
     }
     
     async function handleProjectCreate() {
-    if (!currentUser || !activeWorkspaceId) {
-        alert("Cannot create project. User or workspace not identified.");
-        return;
-    }
-    const name = prompt("Enter new project name:");
-    if (!name || !name.trim()) return;
-    
-    // --- 1. Define the Default Structures ---
-    // This data will be added to the new project.
-    const INITIAL_DEFAULT_COLUMNS = [
-        { id: 'assignees', name: 'Assignee', control: 'assignee' },
-        { id: 'dueDate', name: 'Due Date', control: 'due-date' },
-        { id: 'priority', name: 'Priority', control: 'priority' },
-        { id: 'status', name: 'Status', control: 'status' }
-    ];
-    
-    const INITIAL_DEFAULT_SECTIONS = [
-        { title: 'Todo', order: 0, sectionType: 'todo', isCollapsed: false },
-        { title: 'Doing', order: 1, sectionType: 'doing', isCollapsed: false },
-        { title: 'Completed', order: 2, sectionType: 'completed', isCollapsed: true }
-    ];
-    // --- End of Definitions ---
-    
-    const projectsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects`);
-    const newProjectRef = doc(projectsColRef);
-    
-    try {
-        await runTransaction(db, async (transaction) => {
-            const currentlySelectedProject = projectsData.find(p => p.isSelected === true);
-            
-            if (currentlySelectedProject) {
-                const oldSelectedRef = doc(projectsColRef, currentlySelectedProject.id);
-                transaction.update(oldSelectedRef, { isSelected: false });
-            }
-            
-            // --- 2. Add the defaultColumns array to the new project document ---
-            transaction.set(newProjectRef, {
-                title: name.trim(),
-                color: generateColorForName(name.trim()),
-                starred: false,
-                isSelected: true,
-                createdAt: serverTimestamp(),
-                accessLevel: "workspace",
-                workspaceRole: "Viewer",
-                project_super_admin_uid: currentUser.uid,
-                project_admin_user: '',
-                members: [{ uid: currentUser.uid, role: "Project admin" }],
-                pendingInvites: [],
-                defaultColumns: INITIAL_DEFAULT_COLUMNS, // <-- ADDED
-                customColumns: [] // Start with an empty array
-            });
-            
-            // --- 3. Create the three default sections in a loop ---
-            // This replaces the old single "General" section creation.
-            const sectionsColRef = collection(newProjectRef, "sections");
-            INITIAL_DEFAULT_SECTIONS.forEach(sectionData => {
-                const sectionRef = doc(sectionsColRef); // Create a new doc ref for each section
-                transaction.set(sectionRef, {
-                    ...sectionData,
-                    createdAt: serverTimestamp()
+        if (!currentUser || !activeWorkspaceId) {
+            alert("Cannot create project. User or workspace not identified.");
+            return;
+        }
+        const name = prompt("Enter new project name:");
+        if (!name || !name.trim()) return;
+        
+        // --- Default Structures (No changes here) ---
+        const INITIAL_DEFAULT_COLUMNS = [
+            { id: 'assignees', name: 'Assignee', control: 'assignee' },
+            { id: 'dueDate', name: 'Due Date', control: 'due-date' },
+            { id: 'priority', name: 'Priority', control: 'priority' },
+            { id: 'status', name: 'Status', control: 'status' }
+        ];
+        const INITIAL_DEFAULT_SECTIONS = [
+            { title: 'Todo', order: 0, sectionType: 'todo', isCollapsed: false },
+            { title: 'Doing', order: 1, sectionType: 'doing', isCollapsed: false },
+            { title: 'Completed', order: 2, sectionType: 'completed', isCollapsed: true }
+        ];
+        
+        // --- Define references needed for the transaction ---
+        const projectsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects`);
+        const newProjectRef = doc(projectsColRef); // Generate the new project's ID upfront
+        const workspaceRef = doc(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}`); // Get a reference to the parent workspace
+        
+        try {
+            await runTransaction(db, async (transaction) => {
+                /*
+                --- DEPRECATED METHOD (before June 24, 2025) ---
+                The old logic found the previously selected project in a local array and updated
+                its 'isSelected' flag to false, while setting the new project's flag to true.
+                This state is now managed entirely by the 'selectedProjectId' field on the
+                parent workspace document, making the transaction simpler and more reliable.
+
+                const currentlySelectedProject = projectsData.find(p => p.isSelected === true);
+                if (currentlySelectedProject) {
+                    const oldSelectedRef = doc(projectsColRef, currentlySelectedProject.id);
+                    transaction.update(oldSelectedRef, { isSelected: false });
+                }
+                // The old `transaction.set` for the new project also included `isSelected: true`.
+                */
+                
+                // --- NEW TRANSACTION LOGIC ---
+                
+                // 1. Set the data for the new project document.
+                // Note: `isSelected` is removed. `projectId` and `memberUIDs` are added for our queries.
+                transaction.set(newProjectRef, {
+                    title: name.trim(),
+                    projectId: newProjectRef.id, // Store the document's own ID as a queryable field
+                    memberUIDs: [currentUser.uid], // Add the creator to the members list for queries
+                    color: generateColorForName(name.trim()),
+                    starred: false,
+                    createdAt: serverTimestamp(),
+                    accessLevel: "workspace",
+                    workspaceRole: "Viewer",
+                    project_super_admin_uid: currentUser.uid,
+                    project_admin_user: '',
+                    members: [{ uid: currentUser.uid, role: "Project Admin" }], // Use "Project Admin" consistently
+                    pendingInvites: [],
+                    defaultColumns: INITIAL_DEFAULT_COLUMNS,
+                    customColumns: []
+                });
+                
+                // 2. Update the parent workspace to make this new project the selected one.
+                // This is the core of the new logic.
+                transaction.update(workspaceRef, { selectedProjectId: newProjectRef.id });
+                
+                // 3. Create the default sections for the new project (no change here).
+                const sectionsColRef = collection(newProjectRef, "sections");
+                INITIAL_DEFAULT_SECTIONS.forEach(sectionData => {
+                    const sectionRef = doc(sectionsColRef);
+                    transaction.set(sectionRef, {
+                        ...sectionData,
+                        createdAt: serverTimestamp()
+                    });
                 });
             });
-        });
-        
-        showNotification('Project created!', 'success');
-        selectProject(newProjectRef.id);
-        
-    } catch (error) {
-        console.error("Full error object in handleProjectCreate:", error);
-        showNotification("Failed to create project due to a database error.", "error");
+            
+            showNotification('Project created!', 'success');
+            
+            // The call to `selectProject()` is no longer needed. The real-time listener on the
+            // workspace will automatically detect the 'selectedProjectId' change and update the UI.
+            
+        } catch (error) {
+            console.error("Full error object in handleProjectCreate:", error);
+            showNotification("Failed to create project due to a database error.", "error");
+        }
     }
-}
     
     async function handleTaskCompletion(taskId, isCompleted) {
         if (!currentUser || !activeWorkspaceId || !activeProjectId) return;
@@ -468,8 +484,11 @@ export function init(params) {
         let sourceSection, taskData;
         for (const section of project.sections) {
             const task = section.tasks?.find(t => t.id === taskId);
-            if (task) { sourceSection = section;
-                taskData = task; break; }
+            if (task) {
+                sourceSection = section;
+                taskData = task;
+                break;
+            }
         }
         if (!sourceSection || !taskData) return;
         
@@ -534,9 +553,17 @@ export function init(params) {
             if (!snapshot.empty) {
                 const workspaceDoc = snapshot.docs[0];
                 activeWorkspaceId = workspaceDoc.id;
-                console.log(`Active workspace selected: ${activeWorkspaceId}`);
-                attachProjectListener(userId, activeWorkspaceId);
+                
+                // --- NEW ---
+                // Get the selected project ID from the workspace document's data.
+                const selectedProjectId = workspaceDoc.data().selectedProjectId || null;
+                
+                console.log(`Active workspace: ${activeWorkspaceId}, Selected Project ID from DB: ${selectedProjectId}`);
+                
+                // Pass the ID down to the project listener
+                attachProjectListener(userId, activeWorkspaceId, selectedProjectId);
                 attachPeopleListener(userId, activeWorkspaceId);
+                
             } else {
                 console.warn("No selected workspace found. Please select a workspace.");
                 activeWorkspaceId = null;
@@ -551,11 +578,30 @@ export function init(params) {
         });
     }
     
-    function attachProjectListener(userId, workspaceId) {
+    function attachProjectListener(userId, workspaceId, selectedProjectId) { // <-- Note the new parameter
+        
         const projectsQuery = query(collection(db, `users/${userId}/myworkspace/${workspaceId}/projects`), orderBy("createdAt", "desc"));
+        
         listeners.projects = onSnapshot(projectsQuery, (snapshot) => {
+            /*
+            --- DEPRECATED METHOD (before June 24, 2025) ---
+            The old logic searched the list of projects to find one with `isSelected: true`.
+            This was replaced because the selection state is now stored on the parent workspace
+            document (`selectedProjectId`) for better scalability and consistency.
+
+            // 1. Find the project that is marked as selected in the database.
+            const dbSelectedProject = projectsData.find(p => p.isSelected === true);
             
-            // --- Keep this intelligent update logic from before ---
+            // 2. Determine which project ID should be active.
+            const oldTargetId = dbSelectedProject ? dbSelectedProject.id : (projectsData[0]?.id || null);
+            
+            // 3. Only change the selected project in the UI if the target is different.
+            if (oldTargetId !== activeProjectId) {
+                selectProject(oldTargetId);
+            }
+            */
+            
+            // --- Intelligent update logic to preserve nested data ---
             const newProjects = snapshot.docs.map(doc => {
                 const data = { id: doc.id, ...doc.data() };
                 const existingProject = projectsData.find(p => p.id === doc.id);
@@ -563,27 +609,19 @@ export function init(params) {
                 return data;
             });
             projectsData = newProjects;
-            // --- End of existing logic ---
             
+            // --- NEW, SIMPLER SELECTION LOGIC ---
+            // The target ID is now directly provided by the parent workspace.
+            // If no project is selected in the workspace, we default to the first project in the list as a fallback.
+            const targetId = selectedProjectId || (projectsData[0]?.id || null);
             
-            // --- NEW, SMARTER SELECTION LOGIC ---
-            
-            // 1. Find the project that is marked as selected in the database.
-            const dbSelectedProject = projectsData.find(p => p.isSelected === true);
-            
-            // 2. Determine which project ID should be active.
-            //    Priority is: the project from the DB -> the first project -> null.
-            const targetId = dbSelectedProject ? dbSelectedProject.id : (projectsData[0]?.id || null);
-            
-            // 3. Only change the selected project in the UI if the target is different
-            //    from what's already active. This prevents unnecessary re-renders.
-            //    This single condition handles initial load, selection changes, and deletions.
-            if (targetId !== activeProjectId) {
+            // Only call the main 'selectProject' function if the active project needs to change.
+            // This prevents infinite loops.
+            if (targetId !== activeProjectId) { // `activeProjectId` here really means "currently active project ID in the UI"
                 selectProject(targetId);
             }
             
-            // Always re-render the projects list itself to reflect changes
-            // in project names, colors, etc.
+            // Always re-render the projects list itself to reflect UI changes
             renderProjects();
             updateProjectTaskCounts();
         });
@@ -732,9 +770,11 @@ export function init(params) {
                 config.items.forEach(item => { menu.innerHTML += `<a href="#" data-value="${item.value}">${item.text}</a>`; });
                 menu.addEventListener('click', (ev) => {
                     const target = ev.target.closest('a');
-                    if (target) { ev.preventDefault();
+                    if (target) {
+                        ev.preventDefault();
                         handleDropdownSelection(dropdownId, target.dataset.value, trigger);
-                        menu.remove(); }
+                        menu.remove();
+                    }
                 });
                 document.body.appendChild(menu);
                 const rect = trigger.getBoundingClientRect();
@@ -796,30 +836,41 @@ export function init(params) {
     // UTILITY & HELPER FUNCTIONS (Unchanged)
     const getInitials = (name) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : '';
     const generateColorForName = (name) => {
-    const hash = (name || '').split("").reduce((a, b) => {
-        a = ((a << 5) - a) + b.charCodeAt(0);
-        return a & a;
-    }, 0);
-
-    // Limit hue to a cooler range (e.g., 180–300: green-blue-purple)
-    const hue = 180 + (hash % 120); // values between 180 and 300
-    const saturation = 50; // softer saturation
-    const lightness = 60; // brighter but not glaring
-
-    return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-};
-const getDueDateInfo = (dueDate) => { if (!dueDate) return { text: '', color: '#aaa' }; const now = dayjs(); const date = dayjs(dueDate); if (date.isSame(now, 'day')) return { text: `Today`, color: 'red' }; if (date.isSame(now.add(1, 'day'), 'day')) return { text: 'Tomorrow', color: 'orange' }; if (date.isBefore(now, 'day')) return { text: date.format('MMM D'), color: 'red' }; return { text: date.format('MMM D'), color: '#666' }; };
+        const hash = (name || '').split("").reduce((a, b) => {
+            a = ((a << 5) - a) + b.charCodeAt(0);
+            return a & a;
+        }, 0);
+        
+        // Limit hue to a cooler range (e.g., 180–300: green-blue-purple)
+        const hue = 180 + (hash % 120); // values between 180 and 300
+        const saturation = 50; // softer saturation
+        const lightness = 60; // brighter but not glaring
+        
+        return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+    };
+    const getDueDateInfo = (dueDate) => { if (!dueDate) return { text: '', color: '#aaa' }; const now = dayjs(); const date = dayjs(dueDate); if (date.isSame(now, 'day')) return { text: `Today`, color: 'red' }; if (date.isSame(now.add(1, 'day'), 'day')) return { text: 'Tomorrow', color: 'orange' }; if (date.isBefore(now, 'day')) return { text: date.format('MMM D'), color: 'red' }; return { text: date.format('MMM D'), color: '#666' }; };
     const updateProjectTaskCounts = () => projectsData.forEach(p => { const count = p.sections?.reduce((sum, s) => sum + (s.tasks?.filter(t => !t.completed).length || 0), 0) || 0; const el = homeSection.querySelector(`.project-item[data-project-id="${p.id}"] .project-meta`); if (el) el.textContent = `${count} task${count !== 1 ? 's' : ''}`; });
-    const updateDateTime = () => { const dateEl = homeSection.querySelector('.date'); const greetEl = homeSection.querySelector('.greetings'); if (!dateEl || !greetEl) return; const now = dayjs();
-        dateEl.textContent = now.format('dddd, MMMM D, YYYY'); const hour = now.hour(); let greeting = 'Good evening'; if (hour < 12) greeting = 'Good morning';
-        else if (hour < 18) greeting = 'Good afternoon'; const userName = auth.currentUser?.displayName || 'there';
-        greetEl.textContent = `${greeting}, ${userName}!`; };
-    const showNotification = (message, type = 'info') => { const el = document.createElement('div');
+    const updateDateTime = () => {
+        const dateEl = homeSection.querySelector('.date');
+        const greetEl = homeSection.querySelector('.greetings');
+        if (!dateEl || !greetEl) return;
+        const now = dayjs();
+        dateEl.textContent = now.format('dddd, MMMM D, YYYY');
+        const hour = now.hour();
+        let greeting = 'Good evening';
+        if (hour < 12) greeting = 'Good morning';
+        else if (hour < 18) greeting = 'Good afternoon';
+        const userName = auth.currentUser?.displayName || 'there';
+        greetEl.textContent = `${greeting}, ${userName}!`;
+    };
+    const showNotification = (message, type = 'info') => {
+        const el = document.createElement('div');
         el.className = `notification ${type}`;
         el.textContent = message;
         document.body.appendChild(el);
         setTimeout(() => el.style.opacity = '0', 2500);
-        setTimeout(() => el.remove(), 3000); };
+        setTimeout(() => el.remove(), 3000);
+    };
     
     initializeAll();
     
