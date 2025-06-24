@@ -1591,18 +1591,18 @@ function render() {
     
     // --- HTML STRUCTURE ---
     const container = document.createElement('div');
-    container.className = 'w-full h-full bg-white overflow-auto juanlunacms-spreadsheetlist-custom-scrollbar border border-slate-200 rounded-lg shadow-sm';
+    container.className = 'w-full h-full bg-white overflow-auto juanlunacms-spreadsheetlist-custom-scrollbar border border-slate-200 rounded-none shadow-sm';
     
     const table = document.createElement('div');
     table.className = 'min-w-max relative';
     
     // --- HEADER ---
     const header = document.createElement('div');
-    header.className = 'flex sticky top-0 z-20 bg-white juanlunacms-spreadsheetlist-sticky-header';
+    header.className = 'flex sticky top-0 z-20 bg-white juanlunacms-spreadsheetlist-sticky-header h-8';
     
     const leftHeader = document.createElement('div');
-    leftHeader.className = 'sticky left-0 z-10 w-80 md:w-96 lg:w-[560px] flex-shrink-0 px-4 py-1 font-semibold text-slate-600 border-b border-r border-slate-200 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg text-xs rounded-none';
-    leftHeader.textContent = 'Name';
+    leftHeader.className = 'sticky left-0 z-10 w-80 md:w-96 lg:w-[560px] flex-shrink-0 px-4 font-semibold text-slate-600 border-b border-r border-slate-200 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg text-xs rounded-none flex items-center';
+leftHeader.textContent = 'Name';
     
     const rightHeaderContent = document.createElement('div');
     rightHeaderContent.className = 'flex flex-grow border-b border-slate-200';
@@ -1663,7 +1663,7 @@ cell.appendChild(cellMenu);
     project.sections.forEach(section => {
         
         const sectionRow = document.createElement('div');
-        sectionRow.className = 'flex border-b border-slate-200';
+        sectionRow.className = 'flex border-b h- border-slate-200';
         
         const leftSectionCell = document.createElement('div');
         leftSectionCell.className = 'section-title-wrapper group sticky left-0 w-80 md:w-96 lg:w-[560px] flex-shrink-0 flex items-start py-0.5 font-semibold text-slate-800 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg hover:bg-slate-50';
@@ -1858,7 +1858,7 @@ cell.appendChild(cellMenu);
         // Render task rows`
         section.tasks.forEach(task => {
             const taskRow = document.createElement('div');
-            taskRow.className = 'task-row-wrapper flex group border-b border-slate-200';
+            taskRow.className = 'task-row-wrapper h-9 flex group border-b border-slate-200';
             taskRow.dataset.taskId = task.id;
             taskRow.dataset.sectionId = section.id;
             
@@ -3297,52 +3297,156 @@ async function deleteSectionInFirebase(sectionId) {
  * @param {string} taskId The ID of the task to move.
  * @param {string} targetSectionId The ID of the destination section.
  */
-async function moveTaskToSection(taskId, targetSectionId) {
-    // 1. Find the full task object and its current section from our local data.
-    const { task: taskToMove, section: sourceSection } = findTaskAndSection(taskId);
-    
-    // 2. Validate that the task and its source section were found.
-    if (!taskToMove || !sourceSection || sourceSection.id === targetSectionId) {
-        console.error("Cannot move task. Source or target section is invalid.");
+ /**
+ * Handles the logic for completing or un-completing a task in a single, atomic operation.
+ * This function now builds a single Firestore batch to prevent race conditions.
+ *
+ * @param {string} taskId - The ID of the task being toggled.
+ * @param {HTMLElement} taskRowEl - The DOM element for the task row for UI updates.
+ */
+async function handleTaskCompletion(taskId, taskRowEl) {
+    if (!taskRowEl) return;
+
+    // --- 1. Get current state from local data ---
+    const { task, section: sourceSection } = findTaskAndSection(taskId);
+    if (!task || !sourceSection) {
+        console.error("Could not find task or its section to update completion status.");
         return;
     }
-    
-    // The ID of the task will be preserved. This is the same as the `taskId` passed in.
-    const preservedTaskId = taskToMove.id;
-    
-    // 3. Reference to the original document location in Firestore.
-    const sourceTaskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${sourceSection.id}/tasks/${preservedTaskId}`);
-    
-    // 4. Reference the NEW document location, but command Firestore to use the SAME ID.
-    const newTaskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${targetSectionId}/tasks/${preservedTaskId}`);
-    
-    // 5. Prepare the new data for the document.
-    const newTaskData = {
-        ...taskToMove,
-        sectionId: targetSectionId, // Update the sectionId field
-        id: preservedTaskId // Ensure the 'id' field is still the preserved ID
-    };
-    
-    if (targetSection.sectionType === 'completed') {
-    console.log(`Moving to a 'completed' section. Updating status for task: ${taskId}`);
-    newTaskData.status = 'Completed'; // Set the new status
-}
-else if (sourceSection.sectionType === 'completed' && targetSection.sectionType !== 'completed') {
-    console.log(`Moving out of 'completed' section. Reverting status for task: ${taskId}`);
-    // Revert status to its previous state, or a fallback if none is stored.
-    newTaskData.status = taskToMove.previousStatus || 'On track';
+
+    // A write batch will group all our database changes into one transaction.
+    const batch = writeBatch(db);
+    const isCurrentlyCompleted = task.status === 'Completed';
+
+    if (isCurrentlyCompleted) {
+        // --- LOGIC FOR UN-COMPLETING A TASK ---
+        console.log(`Un-completing task: "${task.name}"`);
+
+        // Determine the section to move the task back to.
+        // Fallback to the current section's ID if no previous one is stored.
+        const targetSectionId = task.previousSectionId || sourceSection.id;
+        const targetSection = findSectionById(targetSectionId); // You need this helper function
+
+        if (!targetSection) {
+            console.error(`Cannot un-complete task. Target section with ID "${targetSectionId}" not found.`);
+            return;
+        }
+
+        // Prepare the updated task data.
+        const updatedTaskData = {
+            ...task,
+            status: task.previousStatus || 'On track', // Revert to previous status or a default
+            sectionId: targetSection.id,
+            // Optionally, clear the 'previous' fields now that they've been used.
+            previousStatus: null,
+            previousSectionId: null,
+        };
+
+        // Define document references for the batch operation.
+        const sourceTaskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${sourceSection.id}/tasks/${taskId}`);
+        const targetTaskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${targetSection.id}/tasks/${taskId}`);
+
+        // Add operations to the batch: delete the old doc, create the new one.
+        batch.delete(sourceTaskRef);
+        batch.set(targetTaskRef, updatedTaskData);
+
+    } else {
+        // --- LOGIC FOR COMPLETING A TASK ---
+        console.log(`Completing task: "${task.name}"`);
+
+        // Find the dedicated "Completed" section.
+        const completedSection = project.sections.find(s => s.sectionType === 'completed');
+
+        if (!completedSection) {
+            console.error("Cannot complete task: A section with sectionType: 'completed' was not found.");
+            // As a fallback, you could just update the status without moving.
+            // For now, we'll just exit.
+            return;
+        }
+
+        // Prepare the updated task data, saving the current state for potential reversal.
+        const updatedTaskData = {
+            ...task,
+            status: 'Completed',
+            previousStatus: task.status, // Save current status
+            previousSectionId: sourceSection.id, // Save current section ID
+            sectionId: completedSection.id,
+        };
+
+        // Define document references.
+        const sourceTaskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${sourceSection.id}/tasks/${taskId}`);
+        const targetTaskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${completedSection.id}/tasks/${taskId}`);
+
+        // Add operations to the batch.
+        batch.delete(sourceTaskRef);
+        batch.set(targetTaskRef, updatedTaskData);
+    }
+
+    // --- 2. Execute the batch and then update the UI ---
+    try {
+        await batch.commit();
+        console.log(`Task ${taskId} completion status updated successfully in Firestore.`);
+
+        // Now that the data operation is confirmed, safely update the UI.
+        if (isCurrentlyCompleted) {
+            taskRowEl.classList.remove('is-completed');
+        } else {
+            taskRowEl.classList.add('is-completed');
+        }
+    } catch (error) {
+        console.error(`Error updating task completion for ${taskId}:`, error);
+        // Optionally, revert any optimistic UI changes here if you were to use them.
+    }
 }
 
+
+/**
+ * A corrected version of your moveTaskToSection function for OTHER use cases 
+ * (like drag-and-drop), but it is NO LONGER USED by handleTaskCompletion.
+ * * @param {string} taskId - ID of the task to move.
+ * @param {string} targetSectionId - ID of the destination section.
+ */
+async function moveTaskToSection(taskId, targetSectionId) {
+    // 1. Get all necessary data objects first.
+    const { task: taskToMove, section: sourceSection } = findTaskAndSection(taskId);
+    // FIX: Get the full target section object, not just the ID.
+    const targetSection = findSectionById(targetSectionId);
+
+    // 2. Improved validation.
+    if (!taskToMove || !sourceSection || !targetSection || sourceSection.id === targetSectionId) {
+        console.error("Cannot move task. Invalid source task, source section, or target section.");
+        return;
+    }
+
+    // 3. Prepare the data for the new document.
+    const newTaskData = {
+        ...taskToMove,
+        sectionId: targetSectionId,
+        id: taskId,
+    };
+    
+    // Note: If you need status-change logic during a generic move, you can add it here.
+    // This example keeps it a pure "move" operation.
+
+    // 4. Define document references.
+    const sourceTaskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${sourceSection.id}/tasks/${taskId}`);
+    const newTaskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${targetSectionId}/tasks/${taskId}`);
+
     try {
-        // 6. Atomically delete the old document and create the new one.
+        // 5. Atomically delete the old document and create the new one.
         const batch = writeBatch(db);
         batch.delete(sourceTaskRef);
         batch.set(newTaskRef, newTaskData);
         await batch.commit();
-        console.log(`Task ${preservedTaskId} moved successfully to section ${targetSectionId}.`);
+        console.log(`Task ${taskId} moved successfully to section ${targetSectionId}.`);
     } catch (error) {
         console.error("Error moving task:", error);
     }
+}
+
+function findSectionById(sectionId) {
+    // Example implementation:
+    return project.sections.find(section => section.id === sectionId);
 }
 
 function displaySideBarTasks(taskId) {
@@ -3572,73 +3676,6 @@ async function deleteColumnInFirebase(columnId) {
     }
 }
 
-// ... all code before handleTaskCompletion ...
-
-async function handleTaskCompletion(taskId, taskRowEl) {
-    if (!taskRowEl) return;
-    
-    const { task, section: sourceSection } = findTaskAndSection(taskId);
-    if (!task || !sourceSection) {
-        console.error("Could not find task or section to update completion status.");
-        return;
-    }
-    
-    const isCurrentlyCompleted = task.status === 'Completed';
-    
-    if (isCurrentlyCompleted) {
-        // --- UNCHECKING A COMPLETED TASK ---
-        console.log(`Un-completing task: "${task.name}"`);
-        
-        // Perform optimistic UI updates immediately for responsiveness
-        taskRowEl.classList.remove('is-completed');
-        
-        // Handle background data operations
-        setTimeout(async () => {
-            // Determine the status and section to revert to.
-            const newStatus = task.previousStatus || 'On track'; // Fallback to 'On track'
-            const targetSectionId = task.previousSectionId || sourceSection.id; // Fallback to current section
-            
-            // 1. First, update the task's status back to what it was.
-            // This update happens on the document in its current "Completed" section location.
-            await updateTask(taskId, sourceSection.id, { status: newStatus });
-            
-            // 2. If its original section is different from the current section, move it back.
-            if (targetSectionId !== sourceSection.id) {
-                console.log(`Moving task back to its original section: ${targetSectionId}`);
-                await moveTaskToSection(taskId, targetSectionId);
-            }
-        }, 300); // A short delay for the UI to feel smooth
-        
-    } else {
-        // --- COMPLETING AN UNCHECKED TASK ---
-        console.log(`Completing task: "${task.name}"`);
-        
-        // Perform optimistic UI updates immediately
-        taskRowEl.classList.add('is-completed');
-        
-        // Handle background data operations
-        setTimeout(async () => {
-            // Find the dedicated "Completed" section by its type, not its title.
-            const completedSection = project.sections.find(s => s.sectionType === 'completed');
-            
-            // 1. Prepare all data that needs to be saved.
-            const updatePayload = {
-                status: 'Completed',
-                previousStatus: task.status, // Save the status it had before completion
-                previousSectionId: sourceSection.id // ✅ SAVE THE PREVIOUS SECTION ID
-            };
-            
-            // 2. Update the task with the new status and backup fields.
-            await updateTask(taskId, sourceSection.id, updatePayload);
-            
-            // 3. If a "Completed" section exists and it's not the current one, move the task there.
-            if (completedSection && completedSection.id !== sourceSection.id) {
-                console.log(`Moving task to "${completedSection.title}" section.`);
-                await moveTaskToSection(taskId, completedSection.id);
-            }
-        }, 400); // A slightly longer delay to allow the user to see the checkmark animation
-    }
-}
 
 // ... rest of the file ...
 function createTag(text, type, pClass) {

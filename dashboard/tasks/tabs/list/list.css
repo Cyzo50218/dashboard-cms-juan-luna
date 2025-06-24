@@ -301,6 +301,7 @@ button {
     font-size: 14px;
     align-items: center;
     border-top: none;
+    
     gap: 8px;
 }
 
