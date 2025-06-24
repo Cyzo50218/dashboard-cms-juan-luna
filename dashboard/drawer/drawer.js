@@ -13,23 +13,16 @@ import {
 import {
     getFirestore,
     collection,
-    query,
     where,
-    or, // For complex queries
+    addDoc,
+    onSnapshot,
+    query,
     orderBy,
-    limit, // For pagination
-    startAfter, // For pagination
-    getDoc, // To get a single document
-    getDocs, // To get multiple documents from a query
-    addDoc, // To add a new document with an auto-generated ID
-    setDoc, // To create or overwrite a document with a specific ID
-    updateDoc, // To update specific fields in a document
-    deleteDoc, // To delete a document
-    doc, // To get a reference to a document or collection
-    writeBatch, // For atomic batch operations
-    runTransaction, // For atomic read-then-write operations
-    serverTimestamp, // For consistent timestamps
-    deleteField // To remove a field from a document
+    doc,
+    getDocs,
+    writeBatch,
+    runTransaction,
+    serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "/services/firebase-config.js";
 
