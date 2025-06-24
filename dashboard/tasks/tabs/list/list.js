@@ -1601,15 +1601,16 @@ function render() {
     header.className = 'flex sticky top-0 z-20 bg-white juanlunacms-spreadsheetlist-sticky-header';
     
     const leftHeader = document.createElement('div');
-    leftHeader.className = 'sticky left-0 z-10 w-80 md:w-96 lg:w-[560px] flex-shrink-0 px-4 py-1 font-semibold text-slate-600 border-b border-r border-slate-200 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';  leftHeader.textContent = 'Name';
+    leftHeader.className = 'sticky left-0 z-10 w-80 md:w-96 lg:w-[560px] flex-shrink-0 px-4 py-1 font-semibold text-slate-600 border-b border-r border-slate-200 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg text-xs rounded-none';
+    leftHeader.textContent = 'Name';
     
     const rightHeaderContent = document.createElement('div');
     rightHeaderContent.className = 'flex flex-grow border-b border-slate-200';
     
     allColumns.forEach(col => {
         const cell = document.createElement('div');
-        let cellClasses = 'group px-4 py-1 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center justify-between';
-        
+        let cellClasses = 'group px-4 py-1 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center justify-between text-xs rounded-none';
+
         if (
             col.type === 'Text' || col.type === 'Numbers' || col.type === 'Type' ||
             col.id === 'priority' || col.id === 'status'
