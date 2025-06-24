@@ -794,16 +794,12 @@ Custom class
     display: inline-flex;
     align-items: center;
     justify-content: center;
-
+    margin-top: 2px;
+    margin-bottom: 2px;
     /* --- Your other styles remain the same --- */
     border-radius: 40px; /* This creates the pill shape */
     font-weight: 500;
-    min-width: 128px; /* Adjusted min-width slightly */
-
-    /* These are no longer necessary when using inline-flex */
-    /* line-height: 1.1; */
-    /* text-align: center; */
-    /* vertical-align: middle; */
+    
 }
 
 .priority-High {
