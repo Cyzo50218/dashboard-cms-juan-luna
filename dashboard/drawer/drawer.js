@@ -223,45 +223,76 @@ import { firebaseConfig } from "/services/firebase-config.js";
         if (unsubscribeWorkspace) unsubscribeWorkspace();
         if (unsubscribeProjects) unsubscribeProjects();
 
-        if (user) {
-            currentUser = user;
-            const workspaceQuery = query(collection(db, `users/${user.uid}/myworkspace`), where("isSelected", "==", true));
-            unsubscribeWorkspace = onSnapshot(workspaceQuery, (workspaceSnapshot) => {
-                if (unsubscribeProjects) unsubscribeProjects();
-                if (!workspaceSnapshot.empty) {
-                    const workspaceDoc = workspaceSnapshot.docs[0];
-                    activeWorkspaceId = workspaceDoc.id;
-                    const projectsQuery = query(collection(db, `users/${user.uid}/myworkspace/${activeWorkspaceId}/projects`), orderBy("createdAt", "desc"));
-                    unsubscribeProjects = onSnapshot(projectsQuery, (snapshot) => {
-                        projectsData = snapshot.docs
-    .filter(doc => {
-        const data = doc.data();
-        if (Array.isArray(data.members)) {
-            return data.members.some(member => member.uid === user.uid);
-        }
-        return false;
-    })
-    .map(doc => ({ id: doc.id, ...doc.data() })); 
-                        renderProjectsList();
-                    }, (error) => {
-                        console.error("Error fetching projects:", error);
-                        projectsData = [];
-                        renderProjectsList();
-                    });
-                } else {
-                    console.warn("No workspace selected for this user.");
-                    activeWorkspaceId = null;
-                    projectsData = [];
+        // Add a log right before the workspace query to ensure the user object is valid
+console.log("DEBUG: Auth state changed. User:", user ? user.uid : "No User");
+
+onAuthStateChanged(auth, (user) => {
+    // Clean up any existing listeners when auth state changes
+    if (unsubscribeWorkspace) unsubscribeWorkspace();
+    if (unsubscribeProjects) unsubscribeProjects();
+    
+    // Define a variable to hold the active workspace ID
+    let activeWorkspaceId = null;
+    
+    if (user) {
+        currentUser = user;
+        
+        // --- LISTENER 1: Find the user's "active" workspace ---
+        // This listener just identifies which workspace the user has selected as their main one.
+        const workspaceQuery = query(collection(db, `users/${user.uid}/myworkspace`), where("isSelected", "==", true));
+        
+        unsubscribeWorkspace = onSnapshot(workspaceQuery, (workspaceSnapshot) => {
+            if (!workspaceSnapshot.empty) {
+                activeWorkspaceId = workspaceSnapshot.docs[0].id;
+                console.log("DEBUG: User's active workspace is:", activeWorkspaceId);
+                
+                // We have the active workspace ID. Now, re-render the list so it can
+                // potentially use this information (e.g., to highlight projects).
+                if (projectsData.length > 0) {
                     renderProjectsList();
                 }
-            });
-        } else {
-            currentUser = null;
-            activeWorkspaceId = null;
+            } else {
+                activeWorkspaceId = null;
+                console.log("DEBUG: User has no active workspace selected.");
+            }
+        });
+        
+        
+        // --- LISTENER 2: Find ALL projects the user is a member of ---
+        // This is the main query that populates our project list.
+        const projectsQuery = query(
+            collection(db, 'projects'),
+            where('memberUIDs', 'array-contains', user.uid),
+            orderBy("createdAt", "desc")
+        );
+        
+        unsubscribeProjects = onSnapshot(projectsQuery, (snapshot) => {
+            console.log(`DEBUG: Found ${snapshot.size} total projects for this user.`);
+            projectsData = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            
+            // Now that we have the full list of projects, we render it.
+            // The render function can check the 'activeWorkspaceId' variable
+            // to decide how to display the projects.
+            renderProjectsList();
+            
+        }, (error) => {
+            console.error("Error fetching all projects:", error);
+            console.warn("This may require an index on 'projects': memberUIDs (Array), createdAt (Descending).");
             projectsData = [];
             renderProjectsList();
-        }
-    });
+        });
+        
+    } else {
+        // Handle user being logged out
+        currentUser = null;
+        activeWorkspaceId = null;
+        projectsData = [];
+        renderProjectsList();
+    }
+});
     
 /**
  * Handles the logic for selecting a project.
