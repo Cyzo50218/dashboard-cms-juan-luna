@@ -19,6 +19,7 @@ import {
     query,
     orderBy,
     doc,
+    getDocs,
     writeBatch,
     runTransaction,
     serverTimestamp
@@ -56,20 +57,19 @@ import { firebaseConfig } from "/services/firebase-config.js";
     projectsListContainer.innerHTML = '';
     if (projectsData.length === 0) {
         projectsListContainer.innerHTML = `<li class="nav-item-empty">No projects yet.</li>`;
-        // Also handle the "My Tasks" link when there are no projects
         const myTasksLink = sidebar.querySelector('#my-tasks-link');
         if (myTasksLink) {
             myTasksLink.href = '#';
             myTasksLink.removeAttribute('data-link');
         }
-        return; // Exit the function early
+        return;
     }
     
     projectsData.forEach(project => {
         const projectLi = document.createElement('li');
         
-        // --- FIX 1: Add the required CSS classes to the <li> element ---
-        projectLi.classList.add('nav-item', 'project-item');
+        // This class is essential for the click listener to find the project ID.
+        projectLi.classList.add('nav-item', 'projects-item');
         
         if (project.isSelected === true) {
             projectLi.classList.add('is-selected-project');
@@ -81,7 +81,6 @@ import { firebaseConfig } from "/services/firebase-config.js";
         const numericProjectId = stringToNumericString(project.id);
         const href = `/tasks/${numericUserId}/list/${numericProjectId}`;
         
-        // --- FIX 2: Add the missing .nav-item-main-content wrapper div ---
         projectLi.innerHTML = `
             <a href="${href}" data-link>
                 <div class="nav-item-main-content">
@@ -94,14 +93,11 @@ import { firebaseConfig } from "/services/firebase-config.js";
         projectsListContainer.appendChild(projectLi);
     });
     
-    // This logic for My Tasks remains the same, but it's good practice
-    // to place it after the loop that determines the selected project.
+    // Logic to correctly update the "My Tasks" link
     const myTasksLink = sidebar.querySelector('#my-tasks-link');
     if (myTasksLink) {
         const selectedProject = projectsData.find(p => p.isSelected === true);
-        const firstProjectId = projectsData[0]?.id; // Use optional chaining
-        
-        // Use the selected project's ID, or fall back to the first project's ID
+        const firstProjectId = projectsData[0]?.id;
         const targetProjectId = selectedProject ? selectedProject.id : firstProjectId;
         
         if (targetProjectId) {
@@ -110,7 +106,6 @@ import { firebaseConfig } from "/services/firebase-config.js";
             myTasksLink.href = `/tasks/${numericUserId}/list/${numericProjectId}`;
             myTasksLink.setAttribute('data-link', '');
         } else {
-            // This case now only happens if projectsData is empty, which is handled above.
             myTasksLink.href = '#';
             myTasksLink.removeAttribute('data-link');
         }
@@ -209,11 +204,11 @@ import { firebaseConfig } from "/services/firebase-config.js";
     // --- END OF NEW LOGIC ---
     
     // Handle selecting a project
-    const projectLink = e.target.closest('.project-item a');
+    const projectLink = e.target.closest('.projects-item a');
     if (projectLink) {
         e.preventDefault(); // Stop native navigation
         
-        const projectItem = projectLink.closest('.project-item');
+        const projectItem = projectLink.closest('.projects-item');
         const projectId = projectItem.dataset.projectId;
         
         // The logic to call selectProject() is better here
@@ -260,45 +255,58 @@ import { firebaseConfig } from "/services/firebase-config.js";
         }
     });
     
-    /**
+/**
  * Handles the logic for selecting a project.
- * It updates the 'isSelected' flags in Firestore and navigates the page.
- * @param {string} projectId The ID of the project to select.
+ * [DEFINITIVE FIX] - This version reads the true state from the database
+ * before writing a batch update, making it robust against race conditions.
  */
-async function selectProject(projectId) {
-    // Guard against missing data or clicking the already active project
-    if (!projectId || !currentUser || !activeWorkspaceId) return;
-    const currentlySelected = projectsData.find(p => p.isSelected === true);
-    if (currentlySelected && currentlySelected.id === projectId) return;
+async function selectProject(projectIdToSelect) {
+    // Guard against missing data
+    if (!projectIdToSelect || !currentUser || !activeWorkspaceId) return;
+    
+    console.log(`Starting selection process for project: ${projectIdToSelect}`);
+    const projectsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects`);
     
     try {
+        // 1. Get a fresh, real-time snapshot of ALL projects from the database.
+        // This IGNORES the potentially stale local 'projectsData' array.
+        const querySnapshot = await getDocs(projectsColRef);
+        
+        // 2. Prepare a batch operation to perform all writes at once.
         const batch = writeBatch(db);
-        const projectsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects`);
         
-        // Deselect the old project if one was selected
-        if (currentlySelected) {
-            const oldProjectRef = doc(projectsColRef, currentlySelected.id);
-            batch.update(oldProjectRef, { isSelected: false });
-        }
+        // 3. Loop through the REAL documents that just came from the database.
+        querySnapshot.forEach((doc) => {
+            const projectRef = doc.ref;
+            const projectData = doc.data();
+            
+            if (doc.id === projectIdToSelect) {
+                // For the project we just clicked, ensure it is set to TRUE.
+                if (projectData.isSelected !== true) {
+                    batch.update(projectRef, { isSelected: true });
+                    console.log(`Queueing update: ${doc.id} -> isSelected: true`);
+                }
+            } else {
+                // For ALL OTHER projects, if they are currently TRUE, set them to FALSE.
+                if (projectData.isSelected === true) {
+                    batch.update(projectRef, { isSelected: false });
+                    console.log(`Queueing update: ${doc.id} -> isSelected: false`);
+                }
+            }
+        });
         
-        // Select the new project
-        const newProjectRef = doc(projectsColRef, projectId);
-        batch.update(newProjectRef, { isSelected: true });
-        
-        // Commit both changes at once
+        // 5. Commit the batch. This is an atomic operation.
         await batch.commit();
+        console.log("Batch commit successful. Database is now consistent.");
         
-        // After the data is saved, navigate to the new project's URL
-        // (This assumes your stringToNumericString and router functions are available)
+        // 6. Navigate the page (using the reliable reload for now).
         const numericUserId = stringToNumericString(currentUser.uid);
-        const numericProjectId = stringToNumericString(projectId);
+        const numericProjectId = stringToNumericString(projectIdToSelect);
         const newRoute = `/tasks/${numericUserId}/list/${numericProjectId}`;
-        
-        history.pushState(null, '', newRoute);
-        window.router(); // Manually trigger the router to load the new page content
+        window.location.href = newRoute;
         
     } catch (error) {
-        console.error("Error selecting project:", error);
+        console.error("Error during the read-then-write selectProject operation:", error);
     }
 }
 
