@@ -1137,6 +1137,8 @@ window.TaskSidebar = (function() {
         // It's a text/number-style custom field
         makeTextFieldEditable(control, columnId, column);
     }
+    break;
+                }
                 case 'project': {
                     const options = workspaceProjects.map(p => ({ label: p.title, value: p.id }));
                     createGenericDropdown(control, options, (newProjectId) => moveTask(newProjectId));

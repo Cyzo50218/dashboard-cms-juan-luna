@@ -28,6 +28,8 @@ export function init(params) {
   const workspaceSection = document.querySelector('div[data-section="myworkspace"]');
   if (!workspaceSection) return () => {};
   
+  const inviteButtonMembers = workspaceSection.querySelector("#invite-btn");
+  const invitePlusMembers = workspaceSection.querySelector("#add-staff-btn");
   const staffListContainer = workspaceSection.querySelector("#staff-list");
   const staffCountLink = workspaceSection.querySelector("#staff-count-link");
   const createWorkBtn = workspaceSection.querySelector("#create-work-btn");
@@ -316,6 +318,16 @@ async function handleProjectCreate() {
     createWorkBtn.addEventListener("click", handleProjectCreate, { signal: controller.signal });
   }
   
+  inviteButtonMembers.addEventListener("click", async () => {
+  const result = await showInviteModal();
+  if (result) console.log("Invite result", result);
+}, { signal: controller.signal });
+
+invitePlusMembers.addEventListener("click", async () => {
+  const result = await showInviteModal();
+  if (result) console.log("Invite result", result);
+}, { signal: controller.signal });
+
   return () => {
     controller.abort();
     if (unsubscribeWorkspace) unsubscribeWorkspace();

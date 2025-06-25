@@ -25,7 +25,7 @@ import {
     getDocs,
     writeBatch,
     runTransaction,
-    serverTimestamp
+    serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "/services/firebase-config.js";
 
