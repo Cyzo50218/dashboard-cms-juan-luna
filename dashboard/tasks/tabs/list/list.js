@@ -1731,7 +1731,7 @@ rightHeaderContent.appendChild(addColumnBtn);
 
         <span class="section-toggle fas ${section.isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'} text-slate-500 mr-2 cursor-pointer" data-section-id="${section.id}"></span>
 
-        <div contenteditable="true" class="section-title truncate max-w-[460px] outline-none bg-transparent focus:bg-white focus:ring-1 focus:ring-slate-300 rounded px-1">${section.title}</div>
+        <div contenteditable="true" class="section-title truncate max-w-[360px] outline-none bg-transparent focus:bg-white focus:ring-1 focus:ring-slate-300 rounded px-1">${section.title}</div>
 
         <div class="flex-grow"></div> 
 
