@@ -527,49 +527,6 @@ function setupEventListeners() {``
         }
     });
     
-    headerClickListener = (e) => {
-        
-        
-        // Match the options icon in the custom header column
-        const optionsIcon = e.target.closest('.options-icon');
-        if (optionsIcon) {
-            e.stopPropagation();
-            const columnEl = optionsIcon.closest('[data-column-id]');
-            if (columnEl) {
-                const columnId = Number(columnEl.dataset.columnId);
-                
-                const dropdownOptions = [
-                    { name: 'Rename column' },
-                    { name: 'Delete column' }
-                ];
-                
-                createDropdown(dropdownOptions, optionsIcon, (selected) => {
-                    if (selected.name === 'Delete column') {
-                        deleteColumn(columnId);
-                    } else if (selected.name === 'Rename column') {
-                        enableColumnRename(columnEl);
-                    }
-                });
-            }
-            return;
-        }
-        
-        // Match the "Add Column" button in header
-        const addColumnButton = e.target.closest('.add-column-cell');
-        if (addColumnButton) {
-            e.stopPropagation();
-            
-            const existingTypes = new Set(project.customColumns.map(col => col.type));
-            const availableTypes = columnTypeOptions.filter(type => !existingTypes.has(type) || type === 'Custom');
-            
-            createDropdown(
-                availableTypes.map(type => ({ name: type })),
-                addColumnButton,
-                (selected) => openAddColumnDialog(selected.name)
-            );
-        }
-    };
-    
     bodyClickListener = (e) => {
         console.log('%cbodyClickListener Triggered', 'color: #888;', 'Clicked on:', e.target);
         
@@ -619,164 +576,118 @@ function setupEventListeners() {``
             return;
         }
         
-        // --- 3. Interaction in a task row ---
-        const taskRow = e.target.closest('.task-row-wrapper');
-        if (taskRow) {
-            console.log('%cEVENT: Task Row Interaction', 'color: green;', taskRow);
-            const taskId = taskRow.dataset.taskId;
-            const sectionId = taskRow.dataset.sectionId;
-            
-            const controlElement = e.target.closest('[data-control], .task-name');
-            if (!controlElement) return console.log('Click was inside task row, but not on a control.');
-            
-            const controlType = controlElement.matches('.task-name') ? 'open-sidebar' : controlElement.dataset.control;
-            
-            // If it's a temp_ task and not clicking task name — ignore
-            if (taskId.startsWith('temp_') && controlType !== 'open-sidebar') {
-                console.log('Blocked: Cannot interact with task controls while temp task is blank.');
-                return;
-            }
-            
-            switch (controlType) {
-                case 'open-sidebar':
-                case 'comment':
-                    displaySideBarTasks(taskId);
-                    headerRight.classList.add('hide');
-                    break;
-                    
-                case 'check':
-                    e.stopPropagation();
-                    handleTaskCompletion(taskId, taskRow);
-                    break;
-                    
-                case 'due-date':
-                    console.log('due date opening');
-                    showDatePicker(controlElement, sectionId, taskId);
-                    break;
-                    
-                case 'priority': {
-                    console.log('priority opening');
-                    let allPriorityOptions = priorityOptions.map(p => ({
-                        name: p,
-                        color: defaultPriorityColors[p] || null
-                    }));
-                    if (project.customPriorities) {
-                        allPriorityOptions = allPriorityOptions.concat(project.customPriorities);
-                    }
-                    createDropdown(allPriorityOptions, controlElement, (selected) => {
-                        updateTask(taskId, sectionId, { priority: selected.name });
-                    }, 'Priority');
-                    break;
-                }
-                
-                case 'status': {
-                    console.log('status opening');
-                    let allStatusOptions = statusOptions.map(s => ({
-                        name: s,
-                        color: defaultStatusColors[s] || null
-                    }));
-                    if (project.customStatuses) {
-                        allStatusOptions = allStatusOptions.concat(project.customStatuses);
-                    }
-                    createDropdown(allStatusOptions, controlElement, (selected) => {
-                        updateTask(taskId, sectionId, { status: selected.name });
-                    }, 'Status');
-                    break;
-                }
-                
-                case 'like': {
-                    const { task, section } = findTaskAndSection(taskId);
-                    if (!task || !section || !currentUserId) return;
-                    const taskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${section.id}/tasks/${taskId}`);
-                    const liked = task.likedBy?.[currentUserId];
-                    updateDoc(taskRef, liked ?
-                    {
-                        likedAmount: increment(-1),
-                        [`likedBy.${currentUserId}`]: deleteField()
-                    } :
-                    {
-                        likedAmount: increment(1),
-                        [`likedBy.${currentUserId}`]: true
-                    });
-                    break;
-                }
-                // Replace your existing 'custom-select' case with this more robust version.
-                case 'custom-select': {
-                    // 1. Get the column ID from the element.
-                    const columnIdFromElement = controlElement.dataset.columnId;
-                    
-                    if (!columnIdFromElement) {
-                        console.error("Clicked custom-select cell is missing a data-column-id attribute.");
-                        break;
-                    }
-                    
-                    // 2. Find the column definition.
-                    const column = project.customColumns.find(c => String(c.id) === columnIdFromElement);
-                    
-                    // 3. Check if the column and its options exist.
-                    if (column && column.options) {
-                        
-                        // 4. THE FIX: Use .map() to ensure the options are in the correct format.
-                        // This makes sure every item is an object like { name: '...', color: '...' }
-                        const dropdownOptions = column.options.map(opt => {
-                            // If the option is already a well-formed object, return it as is.
-                            if (typeof opt === 'object' && opt !== null && opt.name) {
-                                return opt;
-                            }
-                            // If the option is just a string, convert it into the object format.
-                            if (typeof opt === 'string') {
-                                return { name: opt, color: null };
-                            }
-                            // Handle any other unexpected format.
-                            return { name: 'Invalid Option', color: null };
-                        });
-                        
-                        // 5. Call createDropdown with the clean, guaranteed-to-be-correct options.
-                        createDropdown(dropdownOptions, controlElement, (selectedValue) => {
-                            const originalColumnId = column.id;
-                            updateTask(taskId, sectionId, {
-                                [`customFields.${originalColumnId}`]: selectedValue.name
-                            });
-                        }, 'CustomColumn', column.id); // Pass 'CustomColumn' and the ID for the "Add/Edit" logic
-                        
-                    } else {
-                        console.error(`Could not find a column or options for ID: ${columnIdFromElement}`);
-                    }
-                    break;
-                }
-                
-                case 'move-task': {
-                    e.stopPropagation();
-                    const { section: currentSection } = findTaskAndSection(taskId);
-                    const otherSections = project.sections.filter(s => s.id !== currentSection?.id);
-                    if (otherSections.length > 0) {
-                        createDropdown(
-                            otherSections.map(s => ({ name: s.title })),
-                            controlElement,
-                            (selected) => {
-                                const targetSection = project.sections.find(s => s.title === selected.name);
-                                if (targetSection) moveTaskToSection(taskId, targetSection.id);
-                            }
-                        );
-                    } else {
-                        alert("There are no other sections to move this task to.");
-                    }
-                    break;
-                }
-                
-                case 'assignee':
-                    showAssigneeDropdown(controlElement, taskId);
-                    break;
-                    
-                case 'remove-assignee': {
-                    e.stopPropagation();
-                    const { section } = findTaskAndSection(taskId);
-                    if (section) updateTask(taskId, section.id, { assignees: [] });
-                    break;
-                }
-            }
-            return;
+    const taskRow = e.target.closest('.task-row-wrapper');
+    if (!taskRow) return; // Exit if the click was not on a task row
+
+    const taskId = taskRow.dataset.taskId;
+    const sectionId = taskRow.dataset.sectionId;
+
+    // Find the specific control element that was clicked (e.g., the due date button, task name, etc.)
+    const controlElement = e.target.closest('[data-control], .task-name');
+    if (!controlElement) return; // Exit if not a specific interactive element
+
+    const controlType = controlElement.matches('.task-name') ? 'open-sidebar' : controlElement.dataset.control;
+
+    // Block interaction with temp tasks (this logic remains the same)
+    if (taskId.startsWith('temp_') && controlType !== 'open-sidebar') {
+        return;
+    }
+
+    switch (controlType) {
+        case 'open-sidebar':
+        case 'comment':
+            displaySideBarTasks(taskId); // Assumes this function is defined elsewhere
+            headerRight.classList.add('hide'); // Your existing UI logic
+            break;
+
+        case 'check':
+            e.stopPropagation();
+            handleTaskCompletion(taskId, taskRow); // Your existing function
+            break;
+
+        case 'due-date':
+            // CORRECT: This already uses our new, robust date picker function
+            showDatePicker(controlElement, taskId, sectionId);
+            break;
+
+        case 'assignee':
+            // CORRECT: This already uses our new, robust assignee dropdown function
+            showAssigneeDropdown(controlElement, taskId, sectionId);
+            break;
+
+        case 'priority':
+        case 'status': {
+            // REFACTORED: Both priority and status now use our new helper function
+            const optionType = (controlType === 'priority') ? 'Priority' : 'Status';
+            showStatusDropdown(controlElement, taskId, sectionId, optionType);
+            break;
         }
+            
+        case 'custom-select': {
+            // REFACTORED: Custom fields now use the universal advanced dropdown
+            const columnId = controlElement.dataset.columnId;
+            const column = project.customColumns.find(c => String(c.id) === columnId);
+
+            if (column && column.options) {
+                createAdvancedDropdown(controlElement, {
+                    options: column.options,
+                    itemRenderer: (option) => `<div class="dropdown-color-swatch" style="background-color: ${option.color || '#ccc'}"></div><span>${option.name}</span>`,
+                    onSelect: (selected) => {
+                        updateTask(taskId, sectionId, { [`customFields.${column.id}`]: selected.name });
+                    },
+                    onEdit: (option) => openEditOptionDialog('CustomColumn', option, column.id), // Your existing dialog
+                    onAdd: () => openCustomColumnOptionDialog(column.id) // Your existing dialog
+                });
+            }
+            break;
+        }
+
+        case 'move-task': {
+            // REFACTORED: Moving tasks also uses the universal advanced dropdown
+            const { section: currentSection } = findTaskAndSection(taskId);
+            const otherSections = project.sections.filter(s => s.id !== currentSection?.id);
+
+            if (otherSections.length > 0) {
+                createAdvancedDropdown(controlElement, {
+                    options: otherSections,
+                    searchable: true,
+                    searchPlaceholder: "Move to section...",
+                    itemRenderer: (section) => `<span>${section.title}</span>`,
+                    onSelect: (selectedSection) => {
+                        moveTaskToSection(taskId, selectedSection.id);
+                    }
+                });
+            } else {
+                // Consider replacing alert with a less intrusive notification
+                console.warn("No other sections available to move the task.");
+            }
+            break;
+        }
+        
+        // --- These cases remain unchanged ---
+        case 'like': {
+            const { task, section } = findTaskAndSection(taskId);
+            if (!task || !section || !currentUserId) return;
+            const taskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${section.id}/tasks/${taskId}`);
+            const liked = task.likedBy?.[currentUserId];
+            updateDoc(taskRef, liked ?
+            {
+                likedAmount: increment(-1),
+                [`likedBy.${currentUserId}`]: deleteField()
+            } :
+            {
+                likedAmount: increment(1),
+                [`likedBy.${currentUserId}`]: true
+            });
+            break;
+        }
+        case 'remove-assignee': {
+            e.stopPropagation();
+            const { section } = findTaskAndSection(taskId);
+            if (section) updateTask(taskId, section.id, { assignees: [] });
+            break;
+        }
+    }
         
         console.log('No specific interactive element was clicked.');
     };
@@ -891,28 +802,6 @@ function setupEventListeners() {``
         handleAddSectionClick();
     };
     
-    windowClickListener = (e) => {
-        
-        const clickedInsidePanel = e.target.closest('.context-dropdown, .datepicker, .options-dropdown-menu');
-        const clickedOverlayOrDialog = e.target.closest('.dialog-overlay, .filterlistview-dialog-overlay');
-        const clickedTrigger = e.target.closest('[data-control="due-date"], [data-control="priority"], [data-control="status"], [data-control="custom"], [data-control="assignee"], #add-column-btn, #filter-btn, .delete-column-btn');
-        
-        if (!clickedInsidePanel && !clickedOverlayOrDialog && !clickedTrigger) {
-            closeFloatingPanels();
-        }
-        
-        const clickedInsideRightSidebar = e.target.closest('#right-sidebar');
-        const clickedInsideLeftSidebar = e.target.closest('#drawer');
-        const clickedOnTaskLink = e.target.closest('[data-control="open-sidebar"]');
-        
-        // 3. If a click happens OUTSIDE all the safe areas, then show the header.
-        if (!drawer) {
-            headerRight.classList.remove('hide');
-        }
-        
-    };
-    
-    
     filterBtnListener = () => {
         // DEBUG: Confirm the listener is firing
         console.log("Filter button clicked. Opening section filter panel...");
@@ -936,7 +825,7 @@ function setupEventListeners() {``
     taskListBody.addEventListener('focusout', bodyFocusOutListener);
     addTaskHeaderBtn.addEventListener('click', addTaskHeaderBtnListener);
     addSectionBtn.addEventListener('click', addSectionBtnListener);
-    window.addEventListener('click', windowClickListener);
+    window.addEventListener('click', setupGlobalClickListeners);
     if (filterBtn) filterBtn.addEventListener('click', filterBtnListener);
     if (sortBtn) sortBtn.addEventListener('click', sortBtnListener);
     
@@ -946,6 +835,59 @@ function setupEventListeners() {``
         }
     });
     
+}
+function setupGlobalClickListeners() {
+    
+    // Use 'true' for the capture phase. This lets our listener inspect the click
+    // before it reaches the target element, which is ideal for "click outside" logic.
+    document.addEventListener('click', (e) => {
+        
+        // --- 1. Handle Closing the Main Task Sidebar ---
+        // Find the sidebar element. This assumes TaskSidebar is a separate module.
+        const taskSidebar = document.getElementById('task-sidebar');
+        
+        // Only run this check if the sidebar is actually visible.
+        if (taskSidebar && taskSidebar.classList.contains('is-visible')) {
+            // Define all the areas that are "safe" to click without closing the sidebar.
+            // This includes the sidebar itself AND any floating panels it may have opened.
+            const safeAreas = '#task-sidebar, .advanced-dropdown, .floating-panel, .flatpickr-calendar';
+            
+            // If the click was NOT inside any of the safe areas...
+            if (!e.target.closest(safeAreas)) {
+                // ...then call the public 'close' method for the sidebar.
+                // This assumes your TaskSidebar module has a global close method.
+                // If not, you would call the relevant close function directly.
+                if (window.TaskSidebar && typeof window.TaskSidebar.close === 'function') {
+                    window.TaskSidebar.close();
+                }
+            }
+        }
+        
+        // --- 2. Handle Closing Modals/Dialogs ---
+        // Find the top-most dialog overlay.
+        const dialogOverlay = e.target.closest('.dialog-overlay, .filterlistview-dialog-overlay');
+        
+        // If a dialog was clicked...
+        if (dialogOverlay) {
+            // ...and the click was on the overlay background itself (not its children)...
+            if (e.target === dialogOverlay) {
+                // ...then remove it.
+                dialogOverlay.remove();
+            }
+        }
+        
+        // --- 3. Handle Your Other UI Logic (e.g., headerRight) ---
+        // This logic can remain if it's still needed. It checks if the left drawer is closed.
+        const drawer = document.getElementById('drawer'); // Assuming 'drawer' is the ID of the left sidebar
+        const headerRight = document.getElementById('listview-header-right'); // Make sure this has a specific ID
+        
+        // This condition is a bit confusing. A clearer way to write this might be:
+        // if the left sidebar is closed or doesn't exist, show the header right controls.
+        if (headerRight && (!drawer || !drawer.classList.contains('is-open'))) {
+            headerRight.classList.remove('hide');
+        }
+        
+    }, true);
 }
 
 // --- Core Logic & UI Functions ---
@@ -1042,10 +984,6 @@ function getSortedProject(project) {
         ...project,
         sections: [...project.sections].sort((a, b) => a.order - b.order)
     };
-}
-
-function closeFloatingPanels() {
-    document.querySelectorAll('.context-dropdown, .datepicker, .dialog-overlay, .filterlistview-dialog-overlay').forEach(p => p.remove());
 }
 
 /**
@@ -1580,65 +1518,82 @@ const allColumns = orderedIds
     .map(id => columnDefinitions.get(String(id))) // Ensure we look up by string
     .filter(Boolean); // Safely filter out any columns that might have been deleted
 
-   const headerClickListener = (e) => {
+/**
+ * Handles all clicks on the table header, using the new advanced dropdown
+ * for both column options and adding new columns.
+ */
+const headerClickListener = (e) => {
+    
+    const columnOptionsIcon = e.target.closest('.options-icon');
+    const addColumnBtn = e.target.closest('.add-column-cell');
+    
+    // --- 1. HANDLE COLUMN OPTIONS DROPDOWN (Rename/Delete) ---
+    if (columnOptionsIcon) {
+        e.stopPropagation();
+        const columnEl = columnOptionsIcon.closest('[data-column-id]');
+        if (!columnEl) return;
         
-        const columnOptionsIcon = e.target.closest('.options-icon');
-        const addColumnBtn = e.target.closest('.add-column-cell');
+        const columnId = columnEl.dataset.columnId;
         
-        if (columnOptionsIcon) {
-            e.stopPropagation();
-            const columnEl = columnOptionsIcon.closest('[data-column-id]');
-            if (!columnEl) return;
-            
-            // FIX: Get columnId as a string to handle names like 'priority' as well as numbers
-            const columnId = columnEl.dataset.columnId;
-            
-            // --- NEW LOGIC: Conditionally build the dropdown options ---
-            
-            // 1. Start with the 'Rename' option, which is always available.
-            const dropdownOptions = [
-                { name: 'Rename column' }
-            ];
-            
-            // 2. Define the IDs of the non-deletable default columns.
-            const defaultColumnIds = ['assignees', 'dueDate', 'priority', 'status'];
-            
-            // 3. Check if the current column's ID is in our list of default IDs.
-            const isDefaultColumn = defaultColumnIds.includes(columnId);
-            
-            // 4. If it's NOT a default column, then it's a custom one and can be deleted.
-            if (!isDefaultColumn) {
-                dropdownOptions.push({ name: 'Delete column' });
-            }
-            
-            // --- END OF NEW LOGIC ---
-            
-            createDropdown(dropdownOptions, columnOptionsIcon, (selected) => {
+        // This logic to build the options array is perfect and remains the same.
+        const dropdownOptions = [{ name: 'Rename column' }];
+        const defaultColumnIds = ['assignees', 'dueDate', 'priority', 'status'];
+        const isDefaultColumn = defaultColumnIds.includes(columnId);
+        if (!isDefaultColumn) {
+            dropdownOptions.push({ name: 'Delete column' });
+        }
+        
+        // REFACTORED: Call the new universal dropdown function
+        createAdvancedDropdown(columnOptionsIcon, {
+            options: dropdownOptions,
+            // A simple renderer that adds an icon for a better user experience
+            itemRenderer: (option) => {
+                const isDelete = option.name === 'Delete column';
+                const iconClass = isDelete ? 'fa-trash-alt' : 'fa-pencil-alt';
+                const colorStyle = isDelete ? 'style="color: #d9534f;"' : ''; // Make delete red
+                return `<i class="fas ${iconClass}" ${colorStyle}></i><span ${colorStyle}>${option.name}</span>`;
+            },
+            // The onSelect logic remains the same, just placed inside the config object
+            onSelect: (selected) => {
                 if (selected.name === 'Delete column') {
-                    // Since we're converting to a number here, make sure it's not a default ID
                     if (!isDefaultColumn) {
                         deleteColumn(Number(columnId));
                     }
                 } else if (selected.name === 'Rename column') {
                     enableColumnRename(columnEl);
                 }
-            });
-            return;
-        }
+            }
+        });
+        return; // Exit after handling the click
+    }
+    
+    // --- 2. HANDLE "ADD COLUMN" DROPDOWN ---
+    if (addColumnBtn) {
+        e.stopPropagation();
         
-        if (addColumnBtn) {
-            e.stopPropagation();
-            const existingTypes = new Set(project.customColumns.map(col => col.type));
-            const availableTypes = columnTypeOptions.filter(type => !existingTypes.has(type));
+        // REFACTORED: Call the new universal dropdown for adding a column
+        createAdvancedDropdown(addColumnBtn, {
+            // Assumes 'columnTypeOptions' is an array of strings like ['Text', 'Numbers', ...]
+            options: columnTypeOptions.map(type => ({ name: type })), 
             
-            
-            createDropdown(
-                columnTypeOptions.map(type => ({ name: type })),
-                addColumnBtn,
-                (selected) => openAddColumnDialog(selected.name)
-            );
-        }
-    };
+            // A renderer that provides a specific icon for each column type
+            itemRenderer: (type) => {
+                let icon = 'fa-font'; // Default icon for 'Text'
+                switch (type.name) {
+                    case 'Numbers': icon = 'fa-hashtag'; break;
+                    case 'Costing': icon = 'fa-dollar-sign'; break;
+                    case 'Type': icon = 'fa-tags'; break;
+                    case 'Date': icon = 'fa-calendar-alt'; break;
+                }
+                return `<i class="fas ${icon}"></i><span>${type.name}</span>`;
+            },
+            // The onSelect logic is now cleaner
+            onSelect: (selected) => {
+                openAddColumnDialog(selected.name); // Your existing dialog function
+            }
+        });
+    }
+};
     const addTaskAtTop = false;
     
     
@@ -2112,16 +2067,48 @@ rightHeaderContent.appendChild(addColumnBtn);
                             }
                             
                             // The click listener should be active regardless of completion status.
-                            cell.addEventListener('click', (e) => {
-                                e.stopPropagation();
-                                if (col && col.options) {
-                                    createDropdown(col.options, cell, (selectedValue) => {
-                                        updateTask(task.id, section.id, {
-                                            [`customFields.${col.id}`]: selectedValue.name
-                                        });
-                                    }, 'CustomColumn', col.id);
-                                }
-                            });
+                            // This listener is attached to each custom field cell in your list view
+cell.addEventListener('click', (e) => {
+    // Stop the click from propagating to the task row listener, which would open the sidebar
+    e.stopPropagation();
+    
+    // Ensure the column definition and its options exist before proceeding
+    if (col && col.options) {
+        
+        // --- REFACTORED: Call the new universal dropdown function ---
+        createAdvancedDropdown(cell, {
+            // targetEl: The cell that was clicked
+            
+            // config.options: The list of choices for this specific custom field
+            options: col.options,
+            
+            // config.itemRenderer: Defines how each choice should look in the dropdown
+            itemRenderer: (option) => {
+                const color = option.color || '#ccc'; // Use a default color if none is provided
+                return `<div class="dropdown-color-swatch" style="background-color: ${color}"></div><span>${option.name}</span>`;
+            },
+            
+            // config.onSelect: The action to perform when a choice is clicked
+            onSelect: (selectedValue) => {
+                updateTask(task.id, section.id, {
+                    [`customFields.${col.id}`]: selectedValue.name
+                });
+            },
+            
+            // config.onEdit: Enables the 'edit' pencil icon next to each option
+            onEdit: (optionToEdit) => {
+                // This calls your existing dialog for editing an option
+                openEditOptionDialog('CustomColumn', optionToEdit, col.id);
+            },
+            
+            // config.onAdd: Enables the 'Add New...' button in the dropdown footer
+            onAdd: () => {
+                // This calls your existing dialog for adding a new option
+                openCustomColumnOptionDialog(col.id);
+            }
+        });
+    }
+});
                             // --- Logic for other column types (Text, Costing, etc.) ---
                         } else { // This "else" is for columns that are NOT "Select" type
                             cell.dataset.control = col.type;
@@ -2802,13 +2789,6 @@ async function handleTaskCompletion(taskId, taskRowEl) {
     }
 }
 
-
-/**
- * A corrected version of your moveTaskToSection function for OTHER use cases 
- * (like drag-and-drop), but it is NO LONGER USED by handleTaskCompletion.
- * * @param {string} taskId - ID of the task to move.
- * @param {string} targetSectionId - ID of the destination section.
- */
 async function moveTaskToSection(taskId, targetSectionId) {
     // 1. Get all necessary data objects first.
     const { task: taskToMove, section: sourceSection } = findTaskAndSection(taskId);
@@ -3125,269 +3105,183 @@ function createStatusTag(s) {
     return '';
 }
 
-function createDropdown(options, targetEl, callback, optionType = null, columnId = null) {
-    if (!targetEl) return console.error("createDropdown was called with a null target element.");
-    
-    closeFloatingPanels(); // Your function to close other panels
+function closeFloatingPanels() {
+    document.querySelectorAll('.advanced-dropdown, .floating-panel').forEach(p => p.remove());
+}
+
+function createAdvancedDropdown(targetEl, config) {
+    closeFloatingPanels();
     
     const dropdown = document.createElement('div');
-    dropdown.className = 'context-dropdown';
-    
-    // --- The rest of your logic for building the items is good ---
-    const isEditable = optionType === 'Priority' || optionType === 'Status' || optionType === 'Type' || optionType === 'CustomColumn';
-    
-    options.forEach(option => {
-        const item = document.createElement('div');
-        item.className = 'dropdown-item';
-        
-        let itemHTML = '';
-        if (option.color) {
-            itemHTML += `<span class="dropdown-color-swatch" style="background-color: ${option.color};"></span>`;
-        } else {
-            itemHTML += `<span class="dropdown-color-swatch-placeholder"></span>`;
-        }
-        itemHTML += `<span class="dropdown-item-name">${option.name}</span>`;
-        item.innerHTML = itemHTML;
-        
-        item.addEventListener('click', (e) => {
-            if (e.target.closest('.dropdown-item-edit-btn')) return;
-            callback(option);
-        });
-        
-        if (isEditable && option.name) {
-            const editBtn = document.createElement('button');
-            editBtn.className = 'dropdown-item-edit-btn';
-            editBtn.innerHTML = `<i class="fas fa-pencil-alt fa-xs"></i>`; // Assumes Font Awesome is loaded
-            editBtn.title = 'Edit Option';
-            editBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                closeFloatingPanels();
-                openEditOptionDialog(optionType, option, columnId);
-            });
-            item.appendChild(editBtn);
-        }
-        
-        dropdown.appendChild(item);
-    });
-    
-    if (isEditable) { // Simplified the check here
-        const separator = document.createElement('hr');
-        separator.className = 'dropdown-separator';
-        dropdown.appendChild(separator);
-        
-        const addNewItem = document.createElement('div');
-        addNewItem.className = 'dropdown-item';
-        addNewItem.innerHTML = `<span class="dropdown-color-swatch-placeholder"><i class="fas fa-plus fa-xs"></i></span><span>Add New...</span>`;
-        
-        if (optionType === 'CustomColumn') {
-            addNewItem.addEventListener('click', () => openCustomColumnOptionDialog(columnId));
-        } else if (optionType === 'Priority' || optionType === 'Status') {
-            addNewItem.addEventListener('click', () => openCustomOptionDialog(optionType));
-        }
-        
-        dropdown.appendChild(addNewItem);
-    }
-    
+    dropdown.className = 'advanced-dropdown';
     document.body.appendChild(dropdown);
-
-// 2. Get all the measurements we need.
-const rect = targetEl.getBoundingClientRect(); // The position of the element that was clicked
-const dropdownWidth = dropdown.offsetWidth; // The full width of our new dropdown
-const viewportWidth = window.innerWidth; // The width of the browser window
-
-// 3. Set the vertical position (this is always the same).
-dropdown.style.top = `${rect.bottom + window.scrollY + 5}px`;
-
-// 4. Check if the dropdown will overflow the right side of the screen.
-if ((rect.left + dropdownWidth) > viewportWidth) {
-    // --- Mirroring Logic ---
-    // It overflows! Align its RIGHT edge with the target's RIGHT edge.
-    console.log("Dropdown overflow detected. Mirroring position.");
-    dropdown.style.left = `${rect.right + window.scrollX - dropdownWidth}px`;
-} else {
-    // --- Default Alignment ---
-    // It fits perfectly. Align its LEFT edge with the target's LEFT edge.
-    dropdown.style.left = `${rect.left + window.scrollX}px`;
-}
-
-// 5. Now that it's positioned correctly, make it visible.
-dropdown.style.visibility = 'visible';
-
-}
-
-function showDatePicker(targetEl, sectionId, taskId) {
-    closeFloatingPanels();
     
-    const dropdownPanel = document.createElement('div');
-    dropdownPanel.className = 'context-dropdown datepicker-panel';
-    dropdownPanel.style.position = 'absolute';
-    dropdownPanel.style.visibility = 'hidden';
-    dropdownPanel.style.zIndex = '9999'; // Ensure it's on top
-    
-    const datepickerContainer = document.createElement('div');
-    dropdownPanel.appendChild(datepickerContainer);
-    document.body.appendChild(dropdownPanel); // Use body instead of mainContainer
-    
-    requestAnimationFrame(() => {
-        const targetRect = targetEl.getBoundingClientRect();
-        const panelRect = dropdownPanel.getBoundingClientRect();
-        const viewportHeight = window.innerHeight;
-        const viewportWidth = window.innerWidth;
-        
-        // Vertical positioning: prefer below, fallback above if no space
-        let top = targetRect.bottom + 4;
-        if (top + panelRect.height > viewportHeight) {
-            top = targetRect.top - panelRect.height - 4;
+    // --- Event listener for closing the dropdown ---
+    const clickOutsideHandler = (event) => {
+        if (!dropdown.contains(event.target) && !targetEl.contains(event.target)) {
+            closeFloatingPanels();
+            document.removeEventListener('click', clickOutsideHandler, true);
         }
-        
-        // Horizontal positioning: align left with target
-        let left = targetRect.left;
-        if (left + panelRect.width > viewportWidth) {
-            left = viewportWidth - panelRect.width - 8; // 8px margin from right
-        }
-        
-        dropdownPanel.style.top = `${top}px`;
-        dropdownPanel.style.left = `${left}px`;
-        dropdownPanel.style.visibility = 'visible';
-        
-        // Initialize datepicker
-        const datepicker = new Datepicker(datepickerContainer, {
-            autohide: true,
-            format: 'yyyy-mm-dd',
-            todayHighlight: true,
-        });
-        
-        const { task } = findTaskAndSection(taskId);
-        if (task && task.dueDate) {
-            datepicker.setDate(task.dueDate);
-        }
-        
-        datepickerContainer.addEventListener(
-            'changeDate',
-            (e) => {
-                const formattedDate = Datepicker.formatDate(e.detail.date, 'yyyy-mm-dd');
-                updateTask(taskId, sectionId, { dueDate: formattedDate });
-                targetEl.querySelector('span').textContent = formattedDate;
-                closeFloatingPanels();
-            }, { once: true }
-        );
-    });
-}
-
-function showAssigneeDropdown(targetEl, taskId) {
-    closeFloatingPanels();
-    
-    const { task, section } = findTaskAndSection(taskId);
-    if (!task || !section) return;
-    
-    const dropdown = document.createElement('div');
-    dropdown.className = 'context-dropdown';
-    dropdown.style.visibility = 'hidden'; // measure after append
+    };
+    // Use a timeout to attach the listener, preventing it from firing on the same click that opened it
+    setTimeout(() => document.addEventListener('click', clickOutsideHandler, true), 0);
     
     // --- Search Input ---
-    const searchInput = document.createElement('input');
-    searchInput.className = 'dropdown-search-input';
-    searchInput.type = 'text';
-    searchInput.placeholder = 'Search teammates...';
-    dropdown.appendChild(searchInput);
+    if (config.searchable) {
+        const searchInput = document.createElement('input');
+searchInput.className = 'dropdown-search-input';
+searchInput.type = 'text';
+searchInput.placeholder = 'Search teammates...';
+dropdown.appendChild(searchInput);
+    }
     
     // --- List Container ---
-    const listContainer = document.createElement('div');
+    const listContainer = document.createElement('ul');
     listContainer.className = 'dropdown-list';
     dropdown.appendChild(listContainer);
     
-    // --- Invite Container (for email) ---
-    const inviteContainer = document.createElement('div');
-    inviteContainer.className = 'email-container hidden';
-    inviteContainer.id = 'email-container-id-people';
-    inviteContainer.innerHTML = `
-        <span class="material-icons-outlined email">email</span>
-        <h1 class="email-text">Invite teammates via Email</h1>
-    `;
-    inviteContainer.addEventListener('click', () => {
-        const email = searchInput.value.trim();
-        if (!validateEmail(email)) return;
-        
-        // Check if there are members in the project
-        if (allUsers.length <= 1) {
-            openShareModal(); // Example: open invite teammates modal
-        } else {
-            openAssignModal(email); // Optional: your modal to confirm assign
-        }
-        
-        closeFloatingPanels();
-    });
-    dropdown.appendChild(inviteContainer);
-    
-    // --- Render user list based on input ---
-    const renderList = (searchTerm = '') => {
-        const lower = searchTerm.toLowerCase();
-        const filtered = allUsers.filter(u => u.name.toLowerCase().includes(lower));
-        
+    // --- Render Items Function ---
+    const renderItems = (filter = '') => {
         listContainer.innerHTML = '';
-        filtered.forEach(user => {
-            const isAssigned = task.assignees[0] === user.id;
-            const item = document.createElement('div');
-            item.className = 'dropdown-item';
-            item.innerHTML = `
-                <div class="user-info">
-                    <div class="profile-picture" style="background-image: url(${user.avatar})"></div>
-                    <span>${user.name}</span>
-                </div>
-                ${isAssigned ? '<i class="fas fa-check assigned-check"></i>' : ''}
-            `;
-            item.addEventListener('click', () => {
-                const newAssignees = isAssigned ? [] : [user.id];
-                updateTask(taskId, section.id, { assignees: newAssignees });
+        const lowerFilter = filter.toLowerCase();
+        const filteredOptions = config.options.filter(opt =>
+            (opt.name || opt.label || '').toLowerCase().includes(lowerFilter)
+        );
+        
+        filteredOptions.forEach(option => {
+            const li = document.createElement('li');
+            li.className = 'dropdown-item';
+            
+            const content = document.createElement('div');
+            content.className = 'dropdown-item-content';
+            content.innerHTML = config.itemRenderer(option);
+            li.appendChild(content);
+            
+            // Handle main item click
+            content.addEventListener('click', (e) => {
+                e.stopPropagation();
+                config.onSelect(option);
                 closeFloatingPanels();
             });
-            listContainer.appendChild(item);
+            
+            // Add optional edit button
+            if (config.onEdit) {
+                const editBtn = document.createElement('button');
+                editBtn.className = 'dropdown-item-edit-btn';
+                editBtn.innerHTML = `<i class="fas fa-pencil-alt fa-xs"></i>`;
+                editBtn.title = 'Edit Option';
+                editBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    config.onEdit(option);
+                    closeFloatingPanels();
+                });
+                li.appendChild(editBtn);
+            }
+            listContainer.appendChild(li);
         });
-        
-        // Show invite option if valid email
-        if (validateEmail(searchTerm)) {
-            inviteContainer.classList.remove('hidden');
-        } else {
-            inviteContainer.classList.add('hidden');
-        }
     };
     
-    function validateEmail(email) {
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    // --- Footer for "Add New" action ---
+    if (config.onAdd) {
+        const footer = document.createElement('div');
+        footer.className = 'dropdown-footer';
+        footer.innerHTML = `<span><i class="fas fa-plus fa-xs"></i> Add New...</span>`;
+        footer.addEventListener('click', () => {
+            config.onAdd();
+            closeFloatingPanels();
+        });
+        dropdown.appendChild(footer);
     }
     
-    renderList();
-    searchInput.addEventListener('input', () => renderList(searchInput.value));
+    // --- Initial Render & Positioning ---
+    renderItems();
+    // Use the same robust positioning logic from the sidebar answer
+    const rect = targetEl.getBoundingClientRect();
+    dropdown.style.left = `${rect.left}px`;
+    dropdown.style.minWidth = `${rect.width}px`;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    if (spaceBelow < dropdown.offsetHeight && rect.top > dropdown.offsetHeight) {
+        dropdown.style.top = `${rect.top - dropdown.offsetHeight - 4}px`;
+    } else {
+        dropdown.style.top = `${rect.bottom + 4}px`;
+    }
     
-    document.body.appendChild(dropdown);
-    
-    requestAnimationFrame(() => {
-        positionFloatingPanel(targetEl, dropdown);
-        searchInput.focus();
+    setTimeout(() => dropdown.classList.add('visible'), 10);
+}
+
+/**
+ * Shows the status or priority dropdown for a task in the list view.
+ */
+function showStatusDropdown(targetEl, taskId, sectionId, optionType) {
+    const isPriority = optionType === 'Priority';
+    const options = isPriority ? priorityOptions : statusOptions; // Your existing options arrays
+    const customOptions = isPriority ? project.customPriorities : project.customStatuses;
+    const allOptions = [...options.map(o => ({name: o})), ...(customOptions || [])];
+
+    createAdvancedDropdown(targetEl, {
+        options: allOptions,
+        itemRenderer: (option) => {
+            const color = option.color || (isPriority ? defaultPriorityColors[option.name] : defaultStatusColors[option.name]) || '#ccc';
+            return `<div class="dropdown-color-swatch" style="background-color: ${color}"></div><span>${option.name}</span>`;
+        },
+        onSelect: (option) => {
+            updateTask(taskId, sectionId, { [optionType.toLowerCase()]: option.name });
+        },
+        onEdit: (option) => {
+            openEditOptionDialog(optionType, option); // Your existing dialog function
+        },
+        onAdd: () => {
+            openCustomOptionDialog(optionType); // Your existing dialog function
+        }
     });
 }
 
-function showAssignModal(email, taskId, sectionId) {
-    const modal = document.createElement('div');
-    modal.className = 'custom-modal';
-    modal.innerHTML = `
-        <div class="modal-content">
-            <h2>Assign this email?</h2>
-            <p>You're about to assign <strong>${email}</strong> to this task.</p>
-            <button id="confirm-assignee">Confirm</button>
-            <button id="cancel-assignee">Cancel</button>
-        </div>
-    `;
-    document.body.appendChild(modal);
-    
-    modal.querySelector('#confirm-assignee').addEventListener('click', () => {
-        //sendInviteEmail(email); // ✅ invite logic
-        modal.remove();
+/**
+ * Shows the assignee dropdown for a task in the list view.
+ */
+function showAssigneeDropdown(targetEl, taskId, sectionId) {
+    const { task } = findTaskAndSection(taskId);
+    if (!task) return;
+
+    createAdvancedDropdown(targetEl, {
+        options: allUsers, // Your array of user objects
+        searchable: true,
+        searchPlaceholder: "Assign or invite...",
+        itemRenderer: (user) => `<div class="avatar" style="background-image: url(${user.avatar})"></div><span>${user.name}</span>`,
+        onSelect: (user) => {
+            const isAssigned = task.assignees && task.assignees.includes(user.id);
+            const newAssignees = isAssigned ? [] : [user.id];
+            updateTask(taskId, sectionId, { assignees: newAssignees });
+        },
+        // You can add footer actions for inviting here if needed
     });
-    
-    modal.querySelector('#cancel-assignee').addEventListener('click', () => {
-        modal.remove();
+}
+
+/**
+ * Shows the date picker for a task in the list view.
+ */
+function showDatePicker(targetEl, taskId, sectionId) {
+    // 1. Create a perfectly positioned, empty panel.
+    const panel = createFloatingPanel(targetEl);
+
+    // 2. Initialize the Datepicker library inside our new panel.
+    const datepicker = new Datepicker(panel, {
+        autohide: true,
+        format: 'yyyy-mm-dd',
+        todayHighlight: true,
     });
+
+    const { task } = findTaskAndSection(taskId);
+    if (task && task.dueDate) {
+        datepicker.setDate(task.dueDate);
+    }
+    
+    // 3. Add the event listener to handle date changes.
+    panel.addEventListener('changeDate', (e) => {
+        const formattedDate = Datepicker.formatDate(e.detail.date, 'yyyy-mm-dd');
+        updateTask(taskId, sectionId, { dueDate: formattedDate });
+        closeFloatingPanels();
+    }, { once: true });
 }
 
 function createAssigneeHTML(assignees) {

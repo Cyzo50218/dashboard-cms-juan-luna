@@ -62,11 +62,27 @@
     background: #f5f5f5;
 }
 
-/* Makes the calendar fit the modern UI */
-.flatpickr-calendar {
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-    border: 1px solid #e0e0e0;
+/* Style for overdue dates */
+.flatpickr-wrapper.date-color-red .flatpickr-input {
+    color: #d9534f; /* A clear, standard red */
+    font-weight: 500;
+}
+
+/* Style for tasks due today */
+.flatpickr-wrapper.date-color-green .flatpickr-input {
+    color: #5cb85c; /* A standard success green */
+    font-weight: 500;
+}
+
+/* Style for tasks due tomorrow */
+.flatpickr-wrapper.date-color-yellow .flatpickr-input {
+    color: #f0ad4e; /* A standard warning orange/yellow */
+    font-weight: 500;
+}
+
+/* Style for default/future dates */
+.flatpickr-wrapper.date-color-default .flatpickr-input {
+    color: inherit; /* Use the default text color */
 }
 
 /* Sidebar Container */
@@ -1574,4 +1590,83 @@ task-fields-table .field-value {
 #delete-task-btn:hover {
   /* Makes the icon a darker red when hovered over */
   color: #B91C1C; 
+}
+
+
+/* ============================================= */
+/* ==       NEW ADVANCED DROPDOWN STYLES      == */
+/* ============================================= */
+
+.advanced-dropdown {
+    position: fixed; /* Use fixed positioning to place relative to viewport */
+    z-index: 1000;   /* High z-index to appear above everything */
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e0e0e0;
+    overflow: hidden;
+    min-width: 220px;
+    opacity: 0; /* Start invisible for transition */
+    transform: translateY(-10px);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.advanced-dropdown.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.advanced-dropdown .dropdown-search-input {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-bottom: 1px solid #eee;
+    font-size: 14px;
+    outline: none;
+}
+
+.advanced-dropdown .dropdown-list {
+    list-style: none;
+    margin: 0;
+    padding: 6px;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.advanced-dropdown .dropdown-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s ease;
+}
+
+.advanced-dropdown .dropdown-item:hover {
+    background-color: #f5f5f5;
+}
+
+.advanced-dropdown .dropdown-item .avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    margin-right: 10px;
+    background-size: cover;
+    background-position: center;
+}
+
+.advanced-dropdown .dropdown-item .dropdown-color-swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    margin-right: 10px;
+    border: 1px solid rgba(0,0,0,0.1);
+}
+
+.advanced-dropdown .dropdown-item-empty {
+    padding: 12px;
+    color: #888;
+    text-align: center;
+    list-style: none;
 }

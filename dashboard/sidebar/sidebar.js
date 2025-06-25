@@ -42,6 +42,7 @@ import {
 import {
     firebaseConfig
 } from "/services/firebase-config.js";
+import { getHeaderRight } from '/dashboard/tasks/tabs/list/list.js';
 
 window.TaskSidebar = (function() {
     // --- 1. FIREBASE & INITIALIZATION ---
@@ -243,7 +244,8 @@ window.TaskSidebar = (function() {
     function close() {
         if (sidebar) sidebar.classList.remove('is-visible', 'is-loading');
         rightSidebarContainer.classList.remove('sidebar-open');
-        headerRight.classList.remove('hide');
+        const headerRight = getHeaderRight();
+        headerRight.classList.add('new-class');
         detachAllListeners();
         closePopovers();
         currentTask = currentTaskRef = currentProject = null;
@@ -599,11 +601,8 @@ window.TaskSidebar = (function() {
     }
     
     /**
-     * Renders all fields into a two-column table with custom controls.
-     */
-    /**
-     * Renders all fields, now correctly handling empty values for ALL field types
-     * to ensure they always display "Not set" and remain clickable.
+     * Renders all task fields and attaches necessary click listeners using the new advanced dropdown.
+     * @param {object} task The task object to render fields for.
      */
     function renderTaskFields(task) {
         taskFieldsContainer.innerHTML = '';
@@ -613,35 +612,32 @@ window.TaskSidebar = (function() {
         table.className = 'task-fields-table';
         const tbody = document.createElement('tbody');
         
-        // --- Render Standard Fields ---
+        // --- Field Rendering (no changes here) ---
         const currentProjectTitle = workspaceProjects.find(p => p.id === task.projectId)?.title || '...';
         appendFieldToTable(tbody, 'project', 'Project', `<span>${currentProjectTitle}</span>`, 'project');
         appendFieldToTable(tbody, 'assignees', 'Assignee', renderAssigneeValue(task.assignees), 'assignee');
         appendFieldToTable(tbody, 'dueDate', 'Due Date', renderDateValue(task.dueDate), 'date');
         
-        // --- PRIORITY FIELD LOGIC ---
         const priorityValue = task.priority;
-        let priorityHTML = '<span>Not set</span>'; // Default to "Not set"
+        let priorityHTML = '<span>Not set</span>';
         if (priorityValue) {
             let priorityColor = currentProject.customPriorities?.find(p => p.name === priorityValue)?.color || defaultPriorityColors[priorityValue];
             priorityHTML = createTag(priorityValue, priorityColor);
         }
         appendFieldToTable(tbody, 'priority', 'Priority', priorityHTML, 'priority');
         
-        // --- STATUS FIELD LOGIC ---
         const statusValue = task.status;
-        let statusHTML = '<span>Not set</span>'; // Default to "Not set"
+        let statusHTML = '<span>Not set</span>';
         if (statusValue) {
             let statusColor = currentProject.customStatuses?.find(s => s.name === statusValue)?.color || defaultStatusColors[statusValue];
             statusHTML = createTag(statusValue, statusColor);
         }
         appendFieldToTable(tbody, 'status', 'Status', statusHTML, 'status');
         
-        // --- Render Custom Fields ---
         currentProject.customColumns?.forEach(col => {
             const value = task.customFields ? task.customFields[col.id] : null;
-            let displayHTML = '<span>Not set</span>'; // Default to "Not set"
-            if (value != null && value !== '') { // Explicitly check for non-empty string
+            let displayHTML = '<span>Not set</span>';
+            if (value != null && value !== '') {
                 if (col.type === 'Type' && col.options) {
                     const option = col.options.find(opt => opt.name === value);
                     displayHTML = createTag(value, option ? option.color : '#ccc');
@@ -656,10 +652,118 @@ window.TaskSidebar = (function() {
         
         table.appendChild(tbody);
         taskFieldsContainer.appendChild(table);
+        
+        // --- UPDATED AND SIMPLIFIED EVENT LISTENER ---
+        table.addEventListener('click', (e) => {
+            const control = e.target.closest('.field-control');
+            if (!control) return;
+            
+            const key = control.dataset.key;
+            const controlType = control.dataset.control;
+            
+            switch (controlType) {
+                case 'assignee': {
+                    // Add an "Unassigned" option to the list of all users
+                    const options = [{ id: null, name: 'Unassigned', avatar: '' }, ...allUsers];
+                    createAdvancedDropdown(control, {
+                        options: options,
+                        searchable: true,
+                        searchPlaceholder: 'Search teammates...',
+                        itemRenderer: (user) => {
+                            if (!user.id) return `<span>Unassigned</span>`; // Special case for unassigned
+                            return `<div class="avatar" style="background-image: url(${user.avatar})"></div><span>${user.name}</span>`;
+                        },
+                        onSelect: (user) => {
+                            updateTaskField('assignees', user.id ? [user.id] : []);
+                        }
+                    });
+                    break;
+                }
+                case 'project': { 
+    createAdvancedDropdown(control, {
+        options: workspaceProjects, // The list of all projects
+        searchable: true,
+        searchPlaceholder: 'Move to project...',
+        // Each item in the dropdown will just show the project's title
+        itemRenderer: (project) => `<span>${project.title}</span>`,
+        // When a project is selected...
+        onSelect: (project) => {
+            // ...check if it's different from the current one...
+            if (project.id !== currentTask.projectId) {
+                // ...and call the function to move the task.
+                moveTask(project.id);
+            }
+        }
+    });
+    break;
+}
+                case 'status':
+                case 'priority':
+                case 'custom-field': {
+                    let options = [];
+                    let onSelectCallback = (selected) => {};
+                    const isCustom = controlType === 'custom-field';
+                    
+                    if (isCustom) {
+                        const columnId = key.split('-')[1];
+                        const column = currentProject.customColumns.find(c => c.id == columnId);
+                        if (!column || !column.options) { // If it's a text field, make it editable instead
+                            makeTextFieldEditable(control, columnId, column);
+                            return;
+                        }
+                        options = column.options;
+                        onSelectCallback = (selected) => updateCustomField(columnId, selected.name, column);
+                        
+                    } else { // It's a priority or status field
+                        const baseOptions = (controlType === 'priority') ? priorityOptions : statusOptions;
+                        const defaultColors = (controlType === 'priority') ? defaultPriorityColors : defaultStatusColors;
+                        const customOptions = (controlType === 'priority') ? currentProject.customPriorities : currentProject.customStatuses;
+                        
+                        options = baseOptions.map(name => ({ name, color: defaultColors[name] }));
+                        if (customOptions) options = [...options, ...customOptions];
+                        
+                        onSelectCallback = (selected) => updateTaskField(controlType, selected.name);
+                    }
+                    
+                    createAdvancedDropdown(control, {
+                        options: options,
+                        searchable: false, // Can be set to true if lists are long
+                        itemRenderer: (option) => `
+                        <div class="dropdown-color-swatch" style="background-color: ${option.color}"></div>
+                        <span>${option.name}</span>`,
+                        onSelect: onSelectCallback
+                    });
+                    break;
+                }
+                case 'Numbers':
+case 'Costing':
+case 'Text': {
+    const columnId = key.split('-')[1];
+    const column = currentProject.customColumns.find(c => c.id == columnId);
+    if (column) makeTextFieldEditable(control, columnId, column);
+    break;
+}
+                case 'date': {
+                    const input = control.querySelector('.flatpickr-input');
+                    const fp = flatpickr(input, {
+                        defaultDate: currentTask.dueDate || 'today',
+                        dateFormat: "Y-m-d",
+                        onClose: function(selectedDates) {
+                            const newDate = selectedDates[0] ? flatpickr.formatDate(selectedDates[0], 'Y-m-d') : '';
+                            updateTaskField('dueDate', newDate);
+                            fp.destroy();
+                        }
+                    });
+                    fp.open();
+                    break;
+                }
+            }
+        });
     }
     
     /**
      * Creates and appends a styled table row.
+     * (This helper function remains unchanged)
      */
     function appendFieldToTable(tbody, key, label, controlHTML, controlType, customClass = '') {
         const row = tbody.insertRow();
@@ -672,7 +776,6 @@ window.TaskSidebar = (function() {
         const valueCell = row.insertCell();
         valueCell.className = `sidebarprojectfield-value ${customClass}`;
         
-        // The control div wrapper is essential for event handling and styling
         const controlDiv = document.createElement('div');
         controlDiv.className = 'field-control';
         controlDiv.dataset.key = key;
@@ -682,21 +785,98 @@ window.TaskSidebar = (function() {
         valueCell.appendChild(controlDiv);
     }
     
-    /**
-     * Renders the Due Date field with the flatpickr structure.
-     */
-    function renderDateValue(dateString) {
-        const displayDate = dateString ? new Date(dateString + 'T00:00:00').toLocaleDateString() : 'No due date';
-        // This structure is specifically for flatpickr to attach to
-        return `
-        <div class="flatpickr-wrapper">
+/**
+ * Renders the Due Date field using the advanced formatDueDate function
+ * to display relative, color-coded dates like "Today" or "Yesterday".
+ * @param {string} dateString The ISO date string (e.g., "2025-06-26").
+ */
+function renderDateValue(dateString) {
+    // 1. Call your formatter to get the display text and color object.
+    const dueDateInfo = formatDueDate(dateString);
+    
+    // 2. Set the display text. If the formatter returns an empty string, show "No due date".
+    const displayDate = dueDateInfo.text || 'No due date';
+    
+    // 3. Create a CSS class based on the color returned by the formatter.
+    const colorClass = `date-color-${dueDateInfo.color}`; // e.g., "date-color-red"
+    
+    // 4. Return the final HTML. The wrapper div now includes the color class,
+    //    and the input's value is the user-friendly text.
+    return `
+        <div class="flatpickr-wrapper ${colorClass}">
             <input type="text" class="flatpickr-input" value="${displayDate}" readonly="readonly" placeholder="No due date">
             <i class="fa-solid fa-calendar-days input-button"></i>
         </div>
     `;
+}
+
+/**
+ * Your provided function to calculate the display format for a due date.
+ * (This function does not need any changes)
+ */
+function formatDueDate(dueDateString) {
+    // --- Setup ---
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Normalize today for accurate comparisons.
+    
+    // Handle empty or invalid dates
+    if (!dueDateString) {
+        return { text: '', color: 'default' };
     }
     
-    // Add this new function inside your TaskSidebar module
+    const dueDate = new Date(dueDateString);
+    if (isNaN(dueDate.getTime())) {
+        return { text: 'Invalid date', color: 'red' };
+    }
+    dueDate.setHours(0, 0, 0, 0); // Also normalize the due date
+    
+    // --- Calculations ---
+    const todayYear = today.getFullYear();
+    const todayMonth = today.getMonth();
+    const dueYear = dueDate.getFullYear();
+    const dueMonth = dueDate.getMonth();
+    
+    const dayDifference = (dueDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
+    
+    // --- 1. Handle Past Dates ---
+    if (dayDifference < 0) {
+        if (dayDifference === -1) {
+            return { text: 'Yesterday', color: 'red' };
+        }
+        if (dayDifference > -7) {
+            return { text: 'Last Week', color: 'red' };
+        }
+        if (todayYear === dueYear && todayMonth === dueMonth + 1) {
+            return { text: 'Last Month', color: 'red' };
+        }
+        if (todayYear === dueYear + 1 && todayMonth === 0 && dueMonth === 11) {
+            return { text: 'Last Month', color: 'red' };
+        }
+        if (todayYear === dueYear + 1) {
+            return { text: 'Last Year', color: 'red' };
+        }
+        const MmmDddYyyyFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        return { text: MmmDddYyyyFormat.format(dueDate), color: 'red' };
+    }
+    
+    // --- 2. Handle Present and Immediate Future ---
+    if (dayDifference === 0) {
+        return { text: 'Today', color: 'green' };
+    }
+    if (dayDifference === 1) {
+        return { text: 'Tomorrow', color: 'yellow' };
+    }
+    
+    // --- 3. Handle Future Dates ---
+    if (dueYear === todayYear) {
+        const MmmDddFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+        return { text: MmmDddFormat.format(dueDate), color: 'default' };
+    } else {
+        const MmmDddYyyyFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        return { text: MmmDddYyyyFormat.format(dueDate), color: 'default' };
+    }
+}
+
     
     /**
      * Creates and shows a dropdown with a search input for assigning users.
@@ -1112,135 +1292,17 @@ window.TaskSidebar = (function() {
         taskNameEl.addEventListener('blur', () => updateTaskField('name', taskNameEl.textContent.trim()));
         taskDescriptionEl.addEventListener('blur', () => updateTaskField('description', taskDescriptionEl.textContent.trim()));
         
-        // --- Event Delegation for all interactive fields ---
-        taskFieldsContainer.addEventListener('click', (e) => {
-            const control = e.target.closest('.field-control');
-            if (!control) return;
-            
-            const key = control.dataset.key;
-            const controlType = control.dataset.control;
-            
-            switch (controlType) {
-                case 'custom-field': {
-    // The key still tells us which column it is (e.g., "custom-12345")
-    const columnId = key.split('-')[1];
-    const column = currentProject.customColumns.find(c => c.id == columnId);
-    
-    if (!column) return; // Safety check
-    
-    // Now, we check the column's type to decide what kind of editor to open.
-    if (column.type === 'Type' && column.options) {
-        // It's a dropdown-style custom field
-        createGenericDropdown(control, column.options, (opt) => updateCustomField(columnId, opt.name, column));
-        
-    } else if (['Text', 'Numbers', 'Costing'].includes(column.type)) {
-        // It's a text/number-style custom field
-        makeTextFieldEditable(control, columnId, column);
-    }
-    break;
-                }
-                case 'project': {
-                    const options = workspaceProjects.map(p => ({ label: p.title, value: p.id }));
-                    createGenericDropdown(control, options, (newProjectId) => moveTask(newProjectId));
-                    break;
-                }
-                case 'assignee': {
-                    // It now makes a single, clean call to our new function.
-                    showSidebarAssigneeDropdown(control);
-                    break;
-                }
-                case 'date': {
-                    // Initialize flatpickr on the input inside the clicked control
-                    const input = control.querySelector('.flatpickr-input');
-                    const fp = flatpickr(input, {
-                        defaultDate: currentTask.dueDate || 'today',
-                        dateFormat: "Y-m-d",
-                        onClose: function(selectedDates) {
-                            const newDate = selectedDates[0] ? flatpickr.formatDate(selectedDates[0], 'Y-m-d') : '';
-                            updateTaskField('dueDate', newDate);
-                            fp.destroy(); // Important to clean up the instance
-                        }
-                    });
-                    fp.open();
-                    break;
-                }
-                case 'priority': {
-                    let allPriorityOptions = priorityOptions.map(p => ({
-                        name: p,
-                        color: defaultPriorityColors[p]
-                    }));
-                    
-                    if (currentProject.customPriorities && currentProject.customPriorities.length > 0) {
-                        allPriorityOptions = [...allPriorityOptions, ...currentProject.customPriorities];
-                    }
-                    
-                    console.log("Final options for Priority dropdown:", allPriorityOptions);
-                    
-                    createGenericDropdown(control, allPriorityOptions, (selectedOption) => {
-                        updateTaskField('priority', selectedOption.name);
-                    }, 'Priority');
-                    break;
-                }
-                
-                case 'status': {
-                    let allStatusOptions = statusOptions.map(s => ({
-                        name: s,
-                        color: defaultStatusColors[s]
-                    }));
-                    
-                    if (currentProject.customStatuses && currentProject.customStatuses.length > 0) {
-                        allStatusOptions = [...allStatusOptions, ...currentProject.customStatuses];
-                    }
-                    
-                    console.log("Final options for Status dropdown:", allStatusOptions);
-                    
-                    createGenericDropdown(control, allStatusOptions, (selectedOption) => {
-                        updateTaskField('status', selectedOption.name);
-                    }, 'Status');
-                    break;
-                }
-                case 'Type': {
-                    const columnId = key.split('-')[1];
-                    const column = currentProject.customColumns.find(c => c.id == columnId);
-                    if (column?.options) {
-                        createGenericDropdown(control, column.options, (opt) => updateCustomField(columnId, opt.name, column), 'CustomColumn', columnId);
-                    }
-                    break;
-                }
-                case 'Numbers':
-                case 'Costing':
-                case 'Text': {
-                    const columnId = key.split('-')[1];
-                    const column = currentProject.customColumns.find(c => c.id == columnId);
-                    if (column) makeTextFieldEditable(control, columnId, column);
-                    break;
-                }
-                
-            }
-        });
-        
+        // In the attachEventListeners function...
         
         document.body.addEventListener('click', (e) => {
-            // First, if any popovers are open, just close them and do nothing else.
-            if (document.querySelector('.context-dropdown')) {
-                if (!e.target.closest('.context-dropdown, .field-control')) {
-                    closePopovers();
-                }
-                return;
-            }
-            
-            // If no popovers were open, then check if we should close the sidebar.
-            // The sidebar should only close if it's currently visible.
             if (sidebar.classList.contains('is-visible')) {
-                // Define all elements that should NOT trigger a close.
-                const safeSelectors = '#task-sidebar, .task-name, .flatpickr-calendar, .task-reactions';
-                
-                // If the clicked element is NOT inside any of the safe areas, close the sidebar.
+                const safeSelectors = '#task-sidebar, .advanced-dropdown, .flatpickr-calendar, .task-reactions';
                 if (!e.target.closest(safeSelectors)) {
                     close();
                 }
             }
         }, { capture: true });
+        
     }
     
     // --- 9. UI HELPERS ---
@@ -1250,6 +1312,111 @@ window.TaskSidebar = (function() {
     
     function closeFloatingPanels() {
         document.querySelectorAll('.dialog-overlay, .context-dropdown').forEach(el => el.remove());
+    }
+    
+    /**
+     * Creates a robust, self-managing dropdown menu.
+     * @param {HTMLElement} targetEl The element to position the dropdown relative to.
+     * @param {object} config Configuration for the dropdown.
+     * @param {array} config.options The array of data to display.
+     * @param {function} config.onSelect The callback function when an item is chosen.
+     * @param {function} config.itemRenderer A function that returns the HTML for a single item.
+     * @param {boolean} [config.searchable=false] Whether to include a search input.
+     * @param {string} [config.searchPlaceholder='Search...'] Placeholder for the search input.
+     */
+    function createAdvancedDropdown(targetEl, config) {
+        // 1. Cleanup any existing dropdowns to prevent duplicates
+        document.querySelector('.advanced-dropdown')?.remove();
+        
+        // 2. Create main container and append to body
+        const dropdown = document.createElement('div');
+        dropdown.className = 'advanced-dropdown';
+        document.body.appendChild(dropdown);
+        
+        // 3. Add an optional search input
+        if (config.searchable) {
+            const searchInput = document.createElement('input');
+            searchInput.type = 'text';
+            searchInput.placeholder = config.searchPlaceholder || 'Search...';
+            searchInput.className = 'dropdown-search-input';
+            dropdown.appendChild(searchInput);
+            // Add event listener to re-render the list on input
+            searchInput.addEventListener('input', () => renderItems(searchInput.value));
+        }
+        
+        // 4. Create the list container
+        const listContainer = document.createElement('ul');
+        listContainer.className = 'dropdown-list';
+        dropdown.appendChild(listContainer);
+        
+        // 5. Create the function that renders/re-renders the items
+        const renderItems = (filter = '') => {
+            listContainer.innerHTML = '';
+            const lowerFilter = filter.toLowerCase();
+            
+            // Filter the options based on the search term
+            const filteredOptions = config.options.filter(opt =>
+                (opt.name || opt.label || '').toLowerCase().includes(lowerFilter)
+            );
+            
+            if (filteredOptions.length === 0) {
+                listContainer.innerHTML = `<li class="dropdown-item-empty">No results found</li>`;
+                return;
+            }
+            
+            filteredOptions.forEach(option => {
+                const li = document.createElement('li');
+                li.className = 'dropdown-item';
+                
+                // Use the provided renderer function to create the item's inner HTML
+                li.innerHTML = config.itemRenderer(option);
+                
+                li.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    config.onSelect(option);
+                    dropdown.remove(); // Close dropdown after selection
+                });
+                listContainer.appendChild(li);
+            });
+        };
+        
+        // 6. Perform the initial rendering of all items
+        renderItems();
+        
+        // 7. Position the dropdown intelligently
+        const rect = targetEl.getBoundingClientRect();
+        dropdown.style.left = `${rect.left}px`;
+        dropdown.style.minWidth = `${rect.width}px`;
+        
+        // Decide whether to show the dropdown above or below the target element
+        const spaceBelow = window.innerHeight - rect.bottom;
+        if (spaceBelow < dropdown.offsetHeight && rect.top > dropdown.offsetHeight) {
+            // Not enough space below, plenty of space above: render on top
+            dropdown.style.top = `${rect.top - dropdown.offsetHeight - 4}px`;
+        } else {
+            // Default: render below
+            dropdown.style.top = `${rect.bottom + 4}px`;
+        }
+        
+        // Use a short timeout to prevent flicker and allow CSS transitions
+        setTimeout(() => {
+            dropdown.classList.add('visible');
+            if (config.searchable) {
+                dropdown.querySelector('.dropdown-search-input').focus();
+            }
+        }, 10);
+        
+        // 8. Add a "click outside" listener to close the dropdown
+        const clickOutsideHandler = (event) => {
+            // If the click is outside the dropdown and not on the original target, close it
+            if (!dropdown.contains(event.target) && !targetEl.contains(event.target)) {
+                dropdown.remove();
+                document.removeEventListener('click', clickOutsideHandler, { capture: true });
+            }
+        };
+        
+        // Use capture phase to catch the click before anything else
+        document.addEventListener('click', clickOutsideHandler, { capture: true });
     }
     
     /**
@@ -1647,21 +1814,21 @@ window.TaskSidebar = (function() {
         }
     }
     
-async function updateProjectInFirebase(propertiesToUpdate) {
-    // Use the direct reference we saved when the sidebar opened.
-    if (!currentProjectRef) {
-        return console.error("Cannot update project: The reference to the current project is not available.");
+    async function updateProjectInFirebase(propertiesToUpdate) {
+        // Use the direct reference we saved when the sidebar opened.
+        if (!currentProjectRef) {
+            return console.error("Cannot update project: The reference to the current project is not available.");
+        }
+        
+        try {
+            // This now uses the guaranteed-correct reference.
+            await updateDoc(currentProjectRef, propertiesToUpdate);
+            console.log("✅ Project properties updated successfully in Firestore.");
+        } catch (error) {
+            console.error("Error updating project properties:", error);
+            alert("Error: Could not update project settings.");
+        }
     }
-    
-    try {
-        // This now uses the guaranteed-correct reference.
-        await updateDoc(currentProjectRef, propertiesToUpdate);
-        console.log("✅ Project properties updated successfully in Firestore.");
-    } catch (error) {
-        console.error("Error updating project properties:", error);
-        alert("Error: Could not update project settings.");
-    }
-}
     
     function addImagePreview(file) {
         const reader = new FileReader();
