@@ -1721,7 +1721,7 @@ rightHeaderContent.appendChild(addColumnBtn);
         sectionRow.className = 'flex border-b h- border-slate-200';
         
         const leftSectionCell = document.createElement('div');
-        leftSectionCell.className = 'section-title-wrapper group sticky left-0 w-80 md:w-96 lg:w-[360px] flex-shrink-0 flex items-start py-0.5 font-semibold text-slate-800 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg hover:bg-slate-50';
+        leftSectionCell.className = 'section-title-wrapper group sticky left-0 w-80 md:w-96 lg:w-[400px] flex-shrink-0 flex items-start py-0.5 font-semibold text-slate-800 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg hover:bg-slate-50';
         if (section.id) leftSectionCell.dataset.sectionId = section.id;
         
         leftSectionCell.innerHTML = `
@@ -1731,7 +1731,7 @@ rightHeaderContent.appendChild(addColumnBtn);
 
         <span class="section-toggle fas ${section.isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'} text-slate-500 mr-2 cursor-pointer" data-section-id="${section.id}"></span>
 
-        <div contenteditable="true" class="section-title truncate max-w-[360px] outline-none bg-transparent focus:bg-white focus:ring-1 focus:ring-slate-300 rounded px-1">${section.title}</div>
+        <div contenteditable="true" class="section-title truncate max-w-[400px] outline-none bg-transparent focus:bg-white focus:ring-1 focus:ring-slate-300 rounded px-1">${section.title}</div>
 
         <div class="flex-grow"></div> 
 
@@ -1924,7 +1924,7 @@ rightHeaderContent.appendChild(addColumnBtn);
             
             
             const leftTaskCell = document.createElement('div');
-            leftTaskCell.className = 'group sticky left-0 w-80 md:w-96 lg:w-[400px] flex-shrink-0 flex items-center border-r border-transparent group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg juanlunacms-spreadsheetlist-dynamic-border px-3 py-0.2';
+            leftTaskCell.className = 'group sticky left-0 w-80 md:w-96 lg:w-[400px] flex-shrink-0 flex items-center border-r border-transparent group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg juanlunacms-spreadsheetlist-dynamic-border py-0.2';
             
             // --- FIX 1: Reduce the top and bottom padding of the entire cell ---
             leftTaskCell.style.paddingTop = '0px';
@@ -1938,7 +1938,7 @@ rightHeaderContent.appendChild(addColumnBtn);
         <span class="material-icons text-slate-400 select-none opacity-1 group-hover:opacity-100 transition-opacity" style="font-size: 20px;" draggable="false">drag_indicator</span>
     </div>
 
-    <label class="juanlunacms-spreadsheetlist-custom-checkbox-container ml-4" data-control="check">
+    <label class="juanlunacms-spreadsheetlist-custom-checkbox-container px-2 ml-4" data-control="check">
         <input type="checkbox" ${isCompleted ? 'checked' : ''}>
         <span class="juanlunacms-spreadsheetlist-custom-checkbox"></span>
     </label>
