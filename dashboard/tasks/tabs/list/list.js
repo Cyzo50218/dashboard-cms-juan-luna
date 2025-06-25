@@ -2481,7 +2481,7 @@ function initColumnResizing() {
             columnSpecificMinWidth = 100;
         } else if (columnId === 'dueDate') {
             columnSpecificMinWidth = 120;
-        } else if (columnId === 'assignee') {
+        } else if (columnId === 'assignees') {
             columnSpecificMinWidth = 120;
         } else {
             columnSpecificMinWidth = 150; // Default minimum width
@@ -2528,7 +2528,7 @@ function syncColumnWidths() {
             minWidth = 100;
         } else if (columnId === 'dueDate') {
             minWidth = 120;
-        } else if (columnId === 'assignee') {
+        } else if (columnId === 'assignees') {
             minWidth = 80;
         }
         
@@ -3438,6 +3438,7 @@ function addNewColumn(config) {
         id: Date.now(),
         name: config.name,
         type: config.type,
+        isCustom: true,
         currency: config.currency || null,
         aggregation: (config.type === 'Costing' || config.type === 'Numbers') ? 'Sum' : null,
         // FIX: The options are now correctly assigned as an array of objects.
