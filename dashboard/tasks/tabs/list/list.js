@@ -2478,11 +2478,13 @@ function initColumnResizing() {
         // --- MIRRORED LOGIC FROM syncColumnWidths ---
         // Here, we determine the correct minimum width for THIS specific column.
         if (columnId === 'priority' || columnId === 'status') {
-            columnSpecificMinWidth = 80;
+            columnSpecificMinWidth = 100;
         } else if (columnId === 'dueDate') {
-            columnSpecificMinWidth = 80;
+            columnSpecificMinWidth = 120;
+        } else if (columnId === 'assignee') {
+            columnSpecificMinWidth = 120;
         } else {
-            columnSpecificMinWidth = 200; // Default minimum width
+            columnSpecificMinWidth = 150; // Default minimum width
         }
         console.log(`[DEBUG] Resizing column '${columnId}' with a minimum width of ${columnSpecificMinWidth}px.`);
         // --- END MIRRORED LOGIC ---
@@ -2521,10 +2523,12 @@ function syncColumnWidths() {
         const headerContentWidth = textElement ? textElement.scrollWidth : 0;
         
         // 3. Define the minimum width for this column type.
-        let minWidth = 100; // Default minimum width
+        let minWidth = 150; // Default minimum width
         if (columnId === 'priority' || columnId === 'status') {
-            minWidth = 80;
+            minWidth = 100;
         } else if (columnId === 'dueDate') {
+            minWidth = 120;
+        } else if (columnId === 'assignee') {
             minWidth = 80;
         }
         
