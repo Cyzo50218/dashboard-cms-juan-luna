@@ -1823,23 +1823,38 @@ Custom class
     border-color: #ccc;
 }
 
+/*
+  This styles the main dropdown popover itself.
+*/
 .context-dropdown {
     position: absolute;
     background-color: white;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     z-index: 1000;
-    min-width: 220px;
-    padding: 8px;
+    padding: 6px; /* A little padding around the list of items */
+    
+    /* --- FIX for Width --- */
+    /* By NOT setting a min-width or width, it will automatically size to its content. */
 }
 
+/*
+  This styles each clickable row inside the dropdown.
+*/
 .dropdown-item {
+    /* --- FIX for Alignment --- */
     display: flex;
-    align-items: center;
-    padding: 8px 12px;
-    border-radius: 6px;
+    align-items: center;     /* Vertically centers everything in the row (e.g., icons and text) */
+    justify-content: flex-start; /* Aligns all content to the LEFT */
+    text-align: left;          /* Ensures the text itself is left-aligned */
+    
+    /* --- Recommended styles for better UX --- */
+    padding: 8px;
     cursor: pointer;
-    justify-content: space-between;
+    border-radius: 4px;      /* A slight radius for each item on hover */
+    white-space: nowrap;     /* Prevents long item names from wrapping */
+    font-size: 14px;
+    color: #333;
 }
 
 .dropdown-item:hover {

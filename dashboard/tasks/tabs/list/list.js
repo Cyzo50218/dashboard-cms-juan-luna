@@ -2013,10 +2013,11 @@ rightHeaderContent.appendChild(addColumnBtn);
                 
                 switch (col.id) {
                     case 'assignees':
+                        cell.dataset.control = 'assignee';
                         content = createAssigneeHTML(task.assignees);
                         break;
                     case 'dueDate':
-                        
+                        cell.dataset.control = 'due-date';
                         // For due date, we can use a simpler check
                         if (isCompleted) {
                             content = `<span class="date-tag">${formatDueDate(task.dueDate).text}</span>`;
@@ -2028,7 +2029,7 @@ rightHeaderContent.appendChild(addColumnBtn);
                         break;
                         
                     case 'priority':
-                        
+                        cell.dataset.control = 'priority';
                         if (task.priority) {
                             // MODIFIED: Check if the task is completed FIRST
                             if (isCompleted) {
@@ -2048,7 +2049,7 @@ rightHeaderContent.appendChild(addColumnBtn);
                         break;
                         
                     case 'status':
-                        
+                        cell.dataset.control = 'status';
                         if (task.status) {
                             // MODIFIED: Check if the task is completed FIRST
                             if (isCompleted) {
@@ -3179,13 +3180,31 @@ function createDropdown(options, targetEl, callback, optionType = null, columnId
         dropdown.appendChild(addNewItem);
     }
     
-    const rect = targetEl.getBoundingClientRect();
-    
-    // 2. Set the dropdown's position.
-    dropdown.style.top = `${rect.bottom + window.scrollY + 5}px`;
-    dropdown.style.left = `${rect.left + window.scrollX}px`;
-    
     document.body.appendChild(dropdown);
+
+// 2. Get all the measurements we need.
+const rect = targetEl.getBoundingClientRect(); // The position of the element that was clicked
+const dropdownWidth = dropdown.offsetWidth; // The full width of our new dropdown
+const viewportWidth = window.innerWidth; // The width of the browser window
+
+// 3. Set the vertical position (this is always the same).
+dropdown.style.top = `${rect.bottom + window.scrollY + 5}px`;
+
+// 4. Check if the dropdown will overflow the right side of the screen.
+if ((rect.left + dropdownWidth) > viewportWidth) {
+    // --- Mirroring Logic ---
+    // It overflows! Align its RIGHT edge with the target's RIGHT edge.
+    console.log("Dropdown overflow detected. Mirroring position.");
+    dropdown.style.left = `${rect.right + window.scrollX - dropdownWidth}px`;
+} else {
+    // --- Default Alignment ---
+    // It fits perfectly. Align its LEFT edge with the target's LEFT edge.
+    dropdown.style.left = `${rect.left + window.scrollX}px`;
+}
+
+// 5. Now that it's positioned correctly, make it visible.
+dropdown.style.visibility = 'visible';
+
 }
 
 function showDatePicker(targetEl, sectionId, taskId) {
