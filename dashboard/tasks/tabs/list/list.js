@@ -2478,11 +2478,11 @@ function initColumnResizing() {
         // --- MIRRORED LOGIC FROM syncColumnWidths ---
         // Here, we determine the correct minimum width for THIS specific column.
         if (columnId === 'priority' || columnId === 'status') {
-            columnSpecificMinWidth = 60;
+            columnSpecificMinWidth = 150;
         } else if (columnId === 'dueDate') {
             columnSpecificMinWidth = 120;
         } else {
-            columnSpecificMinWidth = 100; // Default minimum width
+            columnSpecificMinWidth = 200; // Default minimum width
         }
         console.log(`[DEBUG] Resizing column '${columnId}' with a minimum width of ${columnSpecificMinWidth}px.`);
         // --- END MIRRORED LOGIC ---
