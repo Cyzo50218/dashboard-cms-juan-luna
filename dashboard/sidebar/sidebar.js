@@ -63,6 +63,7 @@ window.TaskSidebar = (function() {
     let currentUserId = null;
     let currentTaskRef = null;
     let currentProject = null;
+    let currentProjectRef = null;
     let currentWorkspaceId = null;
     let workspaceProjects = [];
     let allUsers = [];
@@ -205,6 +206,8 @@ window.TaskSidebar = (function() {
             
             // Get the full, correct reference to the found document
             currentTaskRef = querySnapshot.docs[0].ref;
+            
+            currentProjectRef = currentTaskRef.parent.parent.parent;
             
             // The task's path contains the owner's userId and workspaceId.
             const pathSegments = currentTaskRef.path.split('/');
@@ -648,7 +651,7 @@ window.TaskSidebar = (function() {
                     displayHTML = `<span>${value}</span>`;
                 }
             }
-            appendFieldToTable(tbody, `custom-${col.id}`, col.name, displayHTML, col.type, 'custom-field-value');
+            appendFieldToTable(tbody, `custom-${col.id}`, col.name, displayHTML, 'custom-field', 'custom-field-value');
         });
         
         table.appendChild(tbody);
@@ -1118,6 +1121,22 @@ window.TaskSidebar = (function() {
             const controlType = control.dataset.control;
             
             switch (controlType) {
+                case 'custom-field': {
+    // The key still tells us which column it is (e.g., "custom-12345")
+    const columnId = key.split('-')[1];
+    const column = currentProject.customColumns.find(c => c.id == columnId);
+    
+    if (!column) return; // Safety check
+    
+    // Now, we check the column's type to decide what kind of editor to open.
+    if (column.type === 'Type' && column.options) {
+        // It's a dropdown-style custom field
+        createGenericDropdown(control, column.options, (opt) => updateCustomField(columnId, opt.name, column));
+        
+    } else if (['Text', 'Numbers', 'Costing'].includes(column.type)) {
+        // It's a text/number-style custom field
+        makeTextFieldEditable(control, columnId, column);
+    }
                 case 'project': {
                     const options = workspaceProjects.map(p => ({ label: p.title, value: p.id }));
                     createGenericDropdown(control, options, (newProjectId) => moveTask(newProjectId));
@@ -1626,22 +1645,21 @@ window.TaskSidebar = (function() {
         }
     }
     
-    async function updateProjectInFirebase(propertiesToUpdate) {
-        if (!currentUserId || !currentWorkspaceId || !currentProjectId) {
-            return console.error("Cannot update project: Missing IDs.");
-        }
-        
-        // FIX: Build the full, nested path to the project document.
-        const projectPath = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}`;
-        const projectRef = doc(db, projectPath);
-        
-        try {
-            await updateDoc(projectRef, propertiesToUpdate);
-        } catch (error) {
-            console.error("Error updating project properties:", error);
-            alert("Error: Could not update project settings.");
-        }
+async function updateProjectInFirebase(propertiesToUpdate) {
+    // Use the direct reference we saved when the sidebar opened.
+    if (!currentProjectRef) {
+        return console.error("Cannot update project: The reference to the current project is not available.");
     }
+    
+    try {
+        // This now uses the guaranteed-correct reference.
+        await updateDoc(currentProjectRef, propertiesToUpdate);
+        console.log("✅ Project properties updated successfully in Firestore.");
+    } catch (error) {
+        console.error("Error updating project properties:", error);
+        alert("Error: Could not update project settings.");
+    }
+}
     
     function addImagePreview(file) {
         const reader = new FileReader();
