@@ -2478,9 +2478,9 @@ function initColumnResizing() {
         // --- MIRRORED LOGIC FROM syncColumnWidths ---
         // Here, we determine the correct minimum width for THIS specific column.
         if (columnId === 'priority' || columnId === 'status') {
-            columnSpecificMinWidth = 150;
+            columnSpecificMinWidth = 80;
         } else if (columnId === 'dueDate') {
-            columnSpecificMinWidth = 120;
+            columnSpecificMinWidth = 80;
         } else {
             columnSpecificMinWidth = 200; // Default minimum width
         }
@@ -2523,9 +2523,9 @@ function syncColumnWidths() {
         // 3. Define the minimum width for this column type.
         let minWidth = 100; // Default minimum width
         if (columnId === 'priority' || columnId === 'status') {
-            minWidth = 60;
+            minWidth = 80;
         } else if (columnId === 'dueDate') {
-            minWidth = 120;
+            minWidth = 80;
         }
         
         // 4. The final width is the LARGER of the minimum width or the actual header text width.
