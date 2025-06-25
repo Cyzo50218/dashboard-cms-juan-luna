@@ -642,10 +642,12 @@ function setupEventListeners() {
                     break;
                     
                 case 'due-date':
+                    console.log('due date opening');
                     showDatePicker(controlElement, sectionId, taskId);
                     break;
                     
                 case 'priority': {
+                    console.log('priority opening');
                     let allPriorityOptions = priorityOptions.map(p => ({
                         name: p,
                         color: defaultPriorityColors[p] || null
@@ -660,6 +662,7 @@ function setupEventListeners() {
                 }
                 
                 case 'status': {
+                    console.log('status opening');
                     let allStatusOptions = statusOptions.map(s => ({
                         name: s,
                         color: defaultStatusColors[s] || null
@@ -1276,7 +1279,7 @@ function enableColumnRename(columnEl) {
             // --- THIS IS THE NEW UNIFIED SAVE LOGIC ---
             
             // Create mutable copies of the arrays from our project data.
-            let defaultCols = [...(projectdefaultColumns || [])];
+            let defaultCols = [...(project.defaultColumns || [])];
             let customCols = [...(project.customColumns || [])];
             
             // Try to find and update the column in the default list first.
@@ -1542,31 +1545,38 @@ if (oldContainer) {
 }
 
     // --- DATA ---
+    // At the top of your render() function...
+
+// 1. Create a lookup map of all column definitions for easy access.
+const columnDefinitions = new Map();
+project.defaultColumns.forEach(col => columnDefinitions.set(String(col.id), col));
+project.customColumns.forEach(col => columnDefinitions.set(String(col.id), { ...col, isCustom: true }));
+
+// --- THIS IS THE CORRECTED LOGIC ---
+let orderedIds;
+
+// First, check if a valid columnOrder array exists on the project document.
+if (project.columnOrder && project.columnOrder.length > 0) {
+    // If yes, use it as the single source of truth.
+    orderedIds = project.columnOrder;
+} else {
+    // FALLBACK: If columnOrder is missing, create a default order dynamically.
+    console.warn("Project is missing the 'columnOrder' field. Building a default order.");
     
+    // Get the IDs from the columns we do have.
+    const defaultIds = project.defaultColumns.map(c => c.id);
+    const customIds = project.customColumns.map(c => c.id);
     
-    const customColumns = [
-        { id: 'custom_field_1', name: 'Team' },
-        { id: 'custom_field_2', name: 'Effort' },
-        { id: 'custom_field_3', name: 'Sprint' },
-        { id: 'custom_field_4', name: 'Reviewer' }
-    ];
-    
-    const defaultColumnNames = [
-        { id: 'assignees', name: 'Assignee', control: 'assignee' },
-        { id: 'dueDate', name: 'Due Date', control: 'due-date' },
-        { id: 'priority', name: 'Priority', control: 'priority' },
-        { id: 'status', name: 'Status', control: 'status' }
-    ];
-    
-    const mappedCustomColumns = project.customColumns.map(col => ({
-        ...col,
-        control: 'custom',
-        isCustom: true
-    }));
-    
-    const allColumns = [...project.defaultColumns, ...mappedCustomColumns];
-    
-    const headerClickListener = (e) => {
+    // Combine them to create a complete, albeit default, order.
+    orderedIds = [...defaultIds, ...customIds];
+}
+
+// 2. Build the final `allColumns` array using the correct order.
+const allColumns = orderedIds
+    .map(id => columnDefinitions.get(String(id))) // Ensure we look up by string
+    .filter(Boolean); // Safely filter out any columns that might have been deleted
+
+   const headerClickListener = (e) => {
         
         const columnOptionsIcon = e.target.closest('.options-icon');
         const addColumnBtn = e.target.closest('.add-column-cell');
@@ -1627,46 +1637,7 @@ if (oldContainer) {
     };
     const addTaskAtTop = false;
     
-    const sections = [
-    {
-        name: 'To Do',
-        isCollapsed: true,
-        id: 1222333,
-        tasks: [
-            { name: 'Draft project brief for Q3 launch and initial stakeholder alignment', completed: false, date: 'Jun 21', priority: 'High', status: 'Not started', assignee: 'Alex', custom_field_1: 'Marketing', custom_field_2: 'High', custom_field_3: 'Sprint 2', custom_field_4: 'Maria' },
-            { name: 'Schedule kickoff meeting with all stakeholders and prepare presentation slides', completed: true, date: 'Jun 22', priority: 'Medium', status: 'Not started', assignee: 'Brenda', custom_field_1: 'Product', custom_field_2: 'Medium', custom_field_3: 'Sprint 2', custom_field_4: 'David' },
-        ]
-    },
-    {
-        name: 'In Progress',
-        isCollapsed: false,
-        id: 1222333,
-        tasks: [
-            { name: 'Design wireframes for the main dashboard and user profile pages', completed: false, status: 'Completed', date: 'Jun 25', priority: 'High', status: 'In progress', assignee: 'David', custom_field_1: 'Design', custom_field_2: 'High', custom_field_3: 'Sprint 2', custom_field_4: 'Maria' },
-            { name: 'Develop reusable UI components for the new design system', completed: false, date: 'Jun 28', priority: 'Medium', status: 'In progress', assignee: 'Alex', custom_field_1: 'Engineering', custom_field_2: 'High', custom_field_3: 'Sprint 2', custom_field_4: 'John' },
-            { name: 'Another task in progress for scrolling demonstration purposes', completed: true, date: 'Jun 29', priority: 'Low', status: 'In progress', assignee: 'Casey', custom_field_1: 'Design', custom_field_2: 'Low', custom_field_3: 'Sprint 3', custom_field_4: 'Emily' },
-            { name: 'Final QA testing on the new feature before the code freeze deadline', completed: false, date: 'Jun 30', priority: 'High', status: 'In progress', assignee: 'Frank', custom_field_1: 'QA', custom_field_2: 'Medium', custom_field_3: 'Sprint 3', custom_field_4: 'Jane' }
-        ]
-    },
-    {
-        name: 'Completed',
-        isCollapsed: true,
-        id: 1222333,
-        tasks: [
-            { name: 'Deploy MVP to staging server for internal review', completed: true, date: 'Jun 10', priority: 'High', status: 'Done', assignee: 'Brenda', custom_field_1: 'Engineering', custom_field_2: 'Medium', custom_field_3: 'Sprint 1', custom_field_4: 'Chloe' },
-        ]
-    },
-    {
-        name: 'Backlog',
-        isCollapsed: true,
-        id: 1222333,
-        tasks: [
-            { name: 'Integrate with third-party analytics service for event tracking', completed: false, data: { date: 'Jul 1', priority: 'Medium', status: 'Backlog', assignee: 'Unassigned', custom_field_1: 'Engineering', custom_field_2: 'High', custom_field_3: 'Sprint 4', custom_field_4: '' } },
-            { name: 'Research new payment gateway options for international transactions', completed: false, data: { date: 'Jul 5', priority: 'Low', status: 'Backlog', assignee: 'Unassigned', custom_field_1: 'Product', custom_field_2: 'Medium', custom_field_3: 'Sprint 4', custom_field_4: '' } },
-            { name: 'Plan the Q4 product development roadmap and feature prioritization', completed: false, data: { date: 'Jul 8', priority: 'High', status: 'Backlog', assignee: 'Brenda', custom_field_1: 'Product', custom_field_2: 'High', custom_field_3: 'Sprint 4', custom_field_4: '' } },
-            { name: 'Update all front-end and back-end dependencies to their latest stable versions', completed: false, data: { date: 'Jul 10', priority: 'Medium', status: 'Backlog', assignee: 'Alex', custom_field_1: 'Engineering', custom_field_2: 'Low', custom_field_3: 'Sprint 4', custom_field_4: '' } },
-        ]
-    }];
+    
     
     taskListBody.innerHTML = '';
     
@@ -1682,47 +1653,50 @@ if (oldContainer) {
     header.className = 'flex sticky top-0 z-20 bg-white juanlunacms-spreadsheetlist-sticky-header h-8';
     
     const leftHeader = document.createElement('div');
-    leftHeader.className = 'sticky left-0 z-10 w-80 md:w-96 lg:w-[560px] flex-shrink-0 px-4 font-semibold text-slate-600 border-b border-r border-slate-200 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg text-xs rounded-none flex items-center';
+    leftHeader.className = 'sticky left-0 z-10 w-80 md:w-96 lg:w-[400px] flex-shrink-0 px-4 font-semibold text-slate-600 border-b border-r border-slate-200 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg text-xs rounded-none flex items-center';
     leftHeader.textContent = 'Name';
     
     const rightHeaderContent = document.createElement('div');
-    rightHeaderContent.className = 'flex flex-grow border-b border-slate-200';
+rightHeaderContent.className = 'flex flex-grow border-b border-slate-200';
+
+allColumns.forEach(col => {
+    const cell = document.createElement('div');
+    // The main cell is a flex container with relative positioning for the handle
+    let cellClasses = 'group relative px-2 py-1 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center text-xs rounded-none';
+    cell.className = cellClasses;
+    cell.dataset.columnId = col.id;
     
-    allColumns.forEach(col => {
-        const cell = document.createElement('div');
-        let cellClasses = 'group px-4 py-1 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center justify-between text-xs rounded-none';
-        
-        if (
-            col.type === 'Text' || col.type === 'Numbers' || col.type === 'Type' ||
-            col.id === 'priority' || col.id === 'status'
-        ) {
-            // ADD a marker class for our JS function to find
-            cellClasses += ' js-flexible-col';
-        } else {
-            cellClasses += ' w-44'; // Keep fixed width for others
-        }
-        
-        cell.className = cellClasses;
-        
-        cell.dataset.columnId = col.id;
-        
-        const cellText = document.createElement('span');
-        cellText.textContent = col.name;
-        cell.appendChild(cellText);
-        
-        const cellMenu = document.createElement('div');
-        cellMenu.className = 'options-icon opacity-1 group-hover:opacity-100 transition-opacity cursor-pointer p-1';
-        cellMenu.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400 pointer-events-none"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>`;
-        cell.appendChild(cellMenu);
-        
-        rightHeaderContent.appendChild(cell);
-    });
+    // This inner wrapper will hold the text and menu icon
+    const innerWrapper = document.createElement('div');
+    innerWrapper.className = 'flex flex-grow items-center min-w-0'; // min-w-0 is crucial for flex truncation
     
-    const addColumnBtn = document.createElement('div');
-    addColumnBtn.className = 'add-column-cell w-12 flex-shrink-0 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 cursor-pointer border-l border-slate-200 bg-white';
-    rightHeaderContent.appendChild(addColumnBtn);
-    addColumnBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
+    const cellText = document.createElement('span');
+    // --- FIX #1: The text now grows to push the icon to the end ---
+    cellText.className = 'header-cell-content flex-grow';
+    cellText.textContent = col.name;
+    innerWrapper.appendChild(cellText);
     
+    const cellMenu = document.createElement('div');
+    // --- FIX #2: The icon is now invisible by default and appears on group-hover ---
+    cellMenu.className = 'options-icon flex-shrink-0 opacity-1 group-hover:opacity-100 transition-opacity cursor-pointer p-1 ml-2';
+    cellMenu.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400 pointer-events-none"><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg>`;
+    innerWrapper.appendChild(cellMenu);
+    
+    // Add the inner wrapper and resize handle to the cell
+    cell.appendChild(innerWrapper);
+    const resizeHandle = document.createElement('div');
+    resizeHandle.className = 'resize-handle';
+    cell.appendChild(resizeHandle);
+    
+    rightHeaderContent.appendChild(cell);
+});
+
+const addColumnBtn = document.createElement('div');
+// --- FIX #3: Ensured button is always visible and has a sensible width ---
+addColumnBtn.className = 'add-column-cell w-8 opacity-100 flex-shrink-0 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 cursor-pointer border-l border-slate-200 bg-white';
+addColumnBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
+rightHeaderContent.appendChild(addColumnBtn);
+
     const headerSpacer = document.createElement('div');
     headerSpacer.className = 'w-4 flex-shrink-0';
     rightHeaderContent.appendChild(headerSpacer);
@@ -1747,7 +1721,7 @@ if (oldContainer) {
         sectionRow.className = 'flex border-b h- border-slate-200';
         
         const leftSectionCell = document.createElement('div');
-        leftSectionCell.className = 'section-title-wrapper group sticky left-0 w-80 md:w-96 lg:w-[560px] flex-shrink-0 flex items-start py-0.5 font-semibold text-slate-800 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg hover:bg-slate-50';
+        leftSectionCell.className = 'section-title-wrapper group sticky left-0 w-80 md:w-96 lg:w-[360px] flex-shrink-0 flex items-start py-0.5 font-semibold text-slate-800 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg hover:bg-slate-50';
         if (section.id) leftSectionCell.dataset.sectionId = section.id;
         
         leftSectionCell.innerHTML = `
@@ -1850,7 +1824,7 @@ if (oldContainer) {
             addRow.dataset.sectionId = section.id;
             
             const leftAddCell = document.createElement('div');
-            leftAddCell.className = 'sticky left-0 w-80 md:w-96 lg:w-[560px] flex-shrink-0 flex items-center px-3 py-1 group-hover:bg-slate-100 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
+            leftAddCell.className = 'sticky left-0 w-80 md:w-96 lg:w-[400px] flex-shrink-0 flex items-center px-3 py-1 group-hover:bg-slate-100 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
             
             const indentedText = document.createElement('div');
             indentedText.className = 'add-task-btn flex items-center gap-2 ml-8 text-slate-500 cursor-pointer hover:bg-slate-200 px-2 py-1 rounded transition';
@@ -1950,7 +1924,7 @@ if (oldContainer) {
             
             
             const leftTaskCell = document.createElement('div');
-            leftTaskCell.className = 'group sticky left-0 w-80 md:w-96 lg:w-[560px] flex-shrink-0 flex items-center border-r border-transparent group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg juanlunacms-spreadsheetlist-dynamic-border px-3 py-0.2';
+            leftTaskCell.className = 'group sticky left-0 w-80 md:w-96 lg:w-[400px] flex-shrink-0 flex items-center border-r border-transparent group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg juanlunacms-spreadsheetlist-dynamic-border px-3 py-0.2';
             
             // --- FIX 1: Reduce the top and bottom padding of the entire cell ---
             leftTaskCell.style.paddingTop = '0px';
@@ -2006,10 +1980,12 @@ if (oldContainer) {
             allColumns.forEach((col, i) => {
                 const cell = document.createElement('div');
                 
+                const contentWrapper = document.createElement('div');
+                contentWrapper.className = 'cell-content';
                 // --- Base Styling ---
                 const borderClass = 'border-r';
                 const leftBorderClass = i === 0 ? 'border-l' : '';
-                let cellClasses = `px-3 py-0.2 flex items-center ${borderClass} ${leftBorderClass} border-slate-200`;
+                let cellClasses = `table-cell px-1 py-0.2 flex items-center ${borderClass} ${leftBorderClass} border-slate-200`;
                 
                 if (
                     col.type === 'Text' || col.type === 'Numbers' || col.type === 'Type' ||
@@ -2024,7 +2000,7 @@ if (oldContainer) {
                 }
                 
                 cell.className = cellClasses;
-                
+                cell.dataset.columnId = col.id;
                 
                 if (isCompleted) {
                     cell.classList.add('is-completed');
@@ -2037,11 +2013,10 @@ if (oldContainer) {
                 
                 switch (col.id) {
                     case 'assignees':
-                        cell.dataset.control = 'assignee';
                         content = createAssigneeHTML(task.assignees);
                         break;
                     case 'dueDate':
-                        cell.dataset.control = 'due-date';
+                        
                         // For due date, we can use a simpler check
                         if (isCompleted) {
                             content = `<span class="date-tag">${formatDueDate(task.dueDate).text}</span>`;
@@ -2053,7 +2028,7 @@ if (oldContainer) {
                         break;
                         
                     case 'priority':
-                        cell.dataset.control = 'priority';
+                        
                         if (task.priority) {
                             // MODIFIED: Check if the task is completed FIRST
                             if (isCompleted) {
@@ -2073,7 +2048,7 @@ if (oldContainer) {
                         break;
                         
                     case 'status':
-                        cell.dataset.control = 'status';
+                        
                         if (task.status) {
                             // MODIFIED: Check if the task is completed FIRST
                             if (isCompleted) {
@@ -2095,7 +2070,7 @@ if (oldContainer) {
                         // This is the updated 'default' case for handling all custom columns.
                     default:
                         // --- FIX: Set the columnId for ALL custom columns right away. ---
-                        cell.dataset.columnId = col.id;
+                        cell.dataset.control = col.type;
                         
                         const rawValue = task.customFields ? task.customFields[col.id] : undefined;
                         
@@ -2114,6 +2089,7 @@ if (oldContainer) {
                             }
                             // If the task is NOT completed, use the normal color logic.
                             else {
+                                
                                 cell.dataset.control = 'custom-select';
                                 const selectedOption = col.options.find(opt => opt.name === rawValue);
                                 
@@ -2143,7 +2119,7 @@ if (oldContainer) {
                             });
                             // --- Logic for other column types (Text, Costing, etc.) ---
                         } else { // This "else" is for columns that are NOT "Select" type
-                            cell.dataset.control = 'custom';
+                            cell.dataset.control = col.type;
                             cell.contentEditable = true;
                             
                             let displayValue;
@@ -2186,8 +2162,10 @@ if (oldContainer) {
                         }
                 }
                 
-                cell.innerHTML = content;
-                rightTaskCells.appendChild(cell);
+                contentWrapper.innerHTML = content;
+cell.appendChild(contentWrapper);
+
+rightTaskCells.appendChild(cell);
             });
             
             // These lines append the empty cells and assemble the row
@@ -2242,7 +2220,7 @@ if (oldContainer) {
             addRow.dataset.sectionId = section.id;
             
             const leftAddCell = document.createElement('div');
-            leftAddCell.className = 'sticky left-0 w-80 md:w-96 lg:w-[560px] flex-shrink-0 flex items-center px-3 py-0.5 group-hover:bg-slate-100 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
+            leftAddCell.className = 'sticky left-0 w-80 md:w-96 lg:w-[400px] flex-shrink-0 flex items-center px-3 py-0.5 group-hover:bg-slate-100 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
             
             const indentedText = document.createElement('div');
             indentedText.className = 'add-task-btn flex items-center gap-2 ml-8 text-slate-500 cursor-pointer hover:bg-slate-200 px-2 py-1 rounded transition';
@@ -2397,6 +2375,8 @@ if (oldContainer) {
     });
     
     syncColumnWidths();
+    initColumnResizing();
+    initColumnDragging();
     if (taskIdToFocus) {
         // Find the new task row's editable name field using the ID we saved
         const taskToFocusEl = taskListBody.querySelector(`[data-task-id="${taskIdToFocus}"] .task-name`);
@@ -2418,62 +2398,147 @@ if (oldContainer) {
     
 }
 
+function initColumnDragging() {
+const headerContainer = document.querySelector('.juanlunacms-spreadsheetlist-sticky-header .flex-grow');
+if (!headerContainer) return;
+    
+    Sortable.create(headerContainer, {
+        animation: 150,
+        handle: '.group',
+        filter: '.resize-handle',
+        onEnd: async (evt) => {
+            if (evt.oldIndex === evt.newIndex) return;
+            
+            // --- SIMPLIFIED LOGIC ---
+            
+            // 1. Get the new order of column IDs directly from the DOM after the drop.
+            const newColumnOrder = Array.from(evt.to.children)
+                .map(el => el.dataset.columnId)
+                .filter(id => id); // Filter out any non-column elements
+            
+            // 2. Optimistically update the local state.
+            project.columnOrder = newColumnOrder;
+            
+            // 3. Trigger a re-render immediately for a snappy UI.
+            render();
+            
+            // 4. Save the new array directly to Firestore in the background.
+            try {
+                await updateProjectInFirebase({
+                    columnOrder: newColumnOrder // Just save the one new field
+                });
+                console.log("Column order saved to Firestore successfully.");
+            } catch (error) {
+                console.error("Failed to save new column order:", error);
+            }
+        }
+    });
+}
+
+function initColumnResizing() {
+    const table = document.querySelector('.min-w-max.relative');
+    if (!table) return;
+    
+    // These variables will be set when a drag operation starts.
+    let initialX, initialWidth, columnId;
+    let columnSpecificMinWidth; // This will hold the minimum width for the column being dragged.
+    
+    const onDragMove = (e) => {
+        const currentX = e.touches ? e.touches[0].clientX : e.clientX;
+        const deltaX = currentX - initialX;
+        
+        // Use the dynamically set minimum width from the onDragStart event.
+        const newWidth = Math.max(columnSpecificMinWidth, initialWidth + deltaX);
+        
+        const cellsToResize = table.querySelectorAll(`[data-column-id="${columnId}"]`);
+        cellsToResize.forEach(cell => {
+            cell.style.width = `${newWidth}px`;
+            cell.style.minWidth = `${newWidth}px`;
+        });
+    };
+    
+    const onDragEnd = () => {
+        document.removeEventListener('mousemove', onDragMove);
+        document.removeEventListener('mouseup', onDragEnd);
+        document.removeEventListener('touchmove', onDragMove);
+        document.removeEventListener('touchend', onDragEnd);
+    };
+    
+    const onDragStart = (e) => {
+        if (!e.target.classList.contains('resize-handle')) return;
+        
+        e.preventDefault();
+        
+        const headerCell = e.target.parentElement;
+        columnId = headerCell.dataset.columnId;
+        initialX = e.touches ? e.touches[0].clientX : e.clientX;
+        initialWidth = headerCell.offsetWidth;
+        
+        // --- MIRRORED LOGIC FROM syncColumnWidths ---
+        // Here, we determine the correct minimum width for THIS specific column.
+        if (columnId === 'priority' || columnId === 'status') {
+            columnSpecificMinWidth = 60;
+        } else if (columnId === 'dueDate') {
+            columnSpecificMinWidth = 120;
+        } else {
+            columnSpecificMinWidth = 100; // Default minimum width
+        }
+        console.log(`[DEBUG] Resizing column '${columnId}' with a minimum width of ${columnSpecificMinWidth}px.`);
+        // --- END MIRRORED LOGIC ---
+        
+        document.addEventListener('mousemove', onDragMove);
+        document.addEventListener('mouseup', onDragEnd);
+        document.addEventListener('touchmove', onDragMove);
+        document.addEventListener('touchend', onDragEnd);
+    };
+    
+    // Attach the starting event listeners
+    table.addEventListener('mousedown', onDragStart);
+    table.addEventListener('touchstart', onDragStart, { passive: false });
+}
+
 function syncColumnWidths() {
     const table = document.querySelector('.min-w-max.relative');
     if (!table) return;
     
-
+    // Get the header container specifically
+    const headerContainer = table.querySelector('.juanlunacms-spreadsheetlist-sticky-header');
+    if (!headerContainer) return;
+    
     const allColumnIds = [
         'assignees', 'dueDate', 'priority', 'status',
         ...project.customColumns.map(c => c.id)
     ];
     
     allColumnIds.forEach(columnId => {
-        const cellsInColumn = table.querySelectorAll(`[data-column-id="${columnId}"]`);
-        if (cellsInColumn.length === 0) return;
+        // 1. Find the HEADER cell ONLY for this column.
+        const headerCell = headerContainer.querySelector(`[data-column-id="${columnId}"]`);
+        if (!headerCell) return;
         
-        const columnDef = [...project.defaultColumns, ...project.customColumns].find(c => c.id == columnId);
+        // 2. Measure the full, untruncated width of the header's text content.
+        const textElement = headerCell.querySelector('.header-cell-content');
+        const headerContentWidth = textElement ? textElement.scrollWidth : 0;
         
-        const isFlexible = columnDef && (
-            columnDef.type === 'Text' || columnDef.type === 'Numbers' ||
-            columnDef.type === 'Type'
-        );
-        
-        if (isFlexible) {
-            let maxWidth = 176; // Default minimum width (11rem or w-44)
-            cellsInColumn.forEach(cell => {
-                // Ensure we only measure the content width, not padding/border
-                maxWidth = Math.max(maxWidth, cell.scrollWidth);
-            });
-            cellsInColumn.forEach(cell => {
-                // The +2 is a small buffer for padding/border discrepancies
-                cell.style.flex = `0 0 ${maxWidth + 2}px`;
-            });
-            
-        } else {
-
-            let fixedWidthInPixels;
-            
-            if (columnId === 'priority' || columnId === 'status') {
-                // Corresponds to 'w-32' (8rem * 16px/rem = 128px)
-                fixedWidthInPixels = 128;
-            } else {
-                // Default width column like 'assignees' and 'dueDate'.
-                fixedWidthInPixels = 176;
-            }
-            
-            cellsInColumn.forEach(cell => {
-                // By setting flex-basis directly, we ensure the column has a reliable
-                // fixed width inside its flex container. This is more robust.
-                cell.style.flex = `0 0 ${fixedWidthInPixels}px`;
-                
-                // As a good practice, remove any old width classes to prevent conflicts.
-                cell.classList.remove('w-32', 'w-44');
-            });
+        // 3. Define the minimum width for this column type.
+        let minWidth = 100; // Default minimum width
+        if (columnId === 'priority' || columnId === 'status') {
+            minWidth = 60;
+        } else if (columnId === 'dueDate') {
+            minWidth = 120;
         }
+        
+        // 4. The final width is the LARGER of the minimum width or the actual header text width.
+        // We add a buffer to account for padding, icons, etc.
+        const finalWidth = Math.max(minWidth, headerContentWidth) + 32;
+        
+        // 5. Apply this final, calculated width to ALL cells in the column (header and body).
+        const allCellsInColumn = table.querySelectorAll(`[data-column-id="${columnId}"]`);
+        allCellsInColumn.forEach(cell => {
+            cell.style.width = `${finalWidth}px`;
+            cell.style.minWidth = `${finalWidth}px`;
+        });
     });
 }
-
 
 function handleMouseMoveDragGhost(e) {
     if (!window._currentGhost) return;

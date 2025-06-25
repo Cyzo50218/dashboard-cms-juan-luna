@@ -779,27 +779,31 @@ Custom class
 ======================
 */
 /* --- Tag Styles (Priority & Status) --- */
+/*
+  This single rule should apply to ALL tags in your table,
+  including Priority, Status, and your custom 'Type' columns.
+*/
 .priority-tag,
 .status-tag {
-    /* REMOVED the fixed height property that was causing issues. */
-    /* height: 12px; */
-
-    /* REDUCED vertical padding for a smaller height. Adjusted horizontal for balance. */
-    padding: 3px 12px;
-
-    /* OPTIONAL: A slightly smaller font size helps with a more compact look. */
-    font-size: 13px;
-    
-    /* Use inline-flex for perfect text centering, which is more reliable. */
+    /* For centering text inside the tag */
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    margin-top: 2px;
-    margin-bottom: 2px;
-    /* --- Your other styles remain the same --- */
-    border-radius: 40px; /* This creates the pill shape */
+    
+    /* Appearance */
+    padding: 3px 8px;
+    font-size: 13px;
     font-weight: 500;
-    min-width: 90px;
+    border-radius: 40px;
+    
+    /* --- THIS IS THE FIX FOR TEXT OVERFLOWING THE TAG --- */
+    
+    /* This is required to prevent the tag from growing wider than the cell content wrapper */
+    max-width: 100%;
+    
+    /* These three properties ensure long text inside the tag shows "..." */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .priority-High {
@@ -2064,4 +2068,52 @@ Custom class
 .task-row-wrapper.sortable-chosen .task-name {
   visibility: visible;
   color: #9ca3af; /* Muted gray text to look like a placeholder */
+}
+.cell-content {
+    width: 100%;
+    
+    /* This creates the 10px space on the right */
+    padding-right: 10px;
+    
+    /* These three properties work together to create the "..." effect */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.resize-handle {
+    position: absolute;
+    top: 0;
+    right: -3px; /* Position it slightly over the border */
+    width: 6px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 10;
+}
+.resize-handle:hover {
+    background-color: rgba(59, 130, 246, 0.5); /* A blue indicator on hover */
+}
+
+/* This is for the main cell (the direct child of the flex row) */
+.table-cell {
+    display: flex;       /* Aligns content vertically */
+    align-items: center;
+    padding: 0 4px;      /* Give the cell itself a little padding */
+    /* The width/flex-basis is set by your syncColumnWidths() JavaScript */
+}
+
+/* For content that should NEVER truncate (like your column headers) */
+.header-cell-content {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap; /* Forces text onto one line so we can measure its full width */
+}
+
+/* For content that SHOULD truncate if it's too long (like task data) */
+.cell-content {
+    width: 100%;
+    min-width: 0; /* This is critical for truncation inside a flex container */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
