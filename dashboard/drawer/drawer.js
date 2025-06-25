@@ -94,11 +94,13 @@ import { firebaseConfig } from "/services/firebase-config.js";
         };
 
         if (activeProjects.length > 0) {
+            projectsListContainer.innerHTML += `<li class="nav-item-header">Active Workspace</li>`;
             activeProjects.forEach(renderProjectItem);
         }
 
         if (otherProjects.length > 0) {
             if(activeProjects.length > 0) {
+                 projectsListContainer.innerHTML += `<li class="nav-item-header">Other Projects</li>`;
             }
             otherProjects.forEach(renderProjectItem);
         }
@@ -295,26 +297,35 @@ async function selectProject(projectIdToSelect) {
         });
         
 // --- LISTENER 2: Find ALL projects where user is in members array ---
-console.log("DEBUG: Attaching listener for top-level 'projects' collection.");
-
-// --- REFACTORED QUERY ---
-// We now use collection() to target ONLY the top-level 'projects' collection.
-// This is more efficient than collectionGroup().
+console.log("DEBUG: Attaching listener for ALL PROJECTS (manual filtering by user UID inside members[].uid).");
 const projectsQuery = query(
-    collection(db, 'projects'), 
+    collectionGroup(db, 'projects'), 
     where('memberUIDs', 'array-contains', user.uid),
     orderBy("createdAt", "desc")
 );
 
 unsubscribeProjects = onSnapshot(projectsQuery, (snapshot) => {
-    console.log(`DEBUG: [Projects Listener] Snapshot received with ${snapshot.size} project(s) from the top-level collection.`);
+    console.log(`DEBUG: [Projects Listener] Snapshot received. Total projects in DB: ${snapshot.size}`);
     
-    // --- SIMPLIFIED MAPPING ---
-    // No need for client-side filtering anymore. If the query returns a document,
-    // we know it's a valid project from the correct location that the user is a member of.
-    projectsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    projectsData = snapshot.docs
+        .map((doc, index) => {
+            const data = doc.data();
+            const isMember = Array.isArray(data.members) && data.members.some(member => member.uid === user.uid);
 
-    console.log("DEBUG: [Projects Listener] Mapped projectsData:", projectsData);
+            if (isMember) {
+                console.log(`   --- Doc ${index} MATCH ---`);
+                console.log(`     - Project ID: ${doc.id}`);
+                console.log(`     - workspaceId:`, data.workspaceId);
+                console.log(`     - members (filtered):`, data.members);
+                return { id: doc.id, ...data };
+            } else {
+                console.log(`   --- Doc ${index} SKIPPED (user not in members) ---`);
+                return null;
+            }
+        })
+        .filter(Boolean); // Remove nulls
+
+    console.log("DEBUG: [Projects Listener] Filtered projectsData (only projects where user is in members):", projectsData);
     console.log("DEBUG: [Projects Listener] Calling renderProjectsList() with new project data.");
     renderProjectsList();
 

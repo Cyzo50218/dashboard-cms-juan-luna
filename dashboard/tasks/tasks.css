@@ -47,6 +47,10 @@ svg {
     stroke-width: 2.5; /* Lucide icons look great with a thicker stroke */
 }
 
+.display-none {
+    display: none;
+}
+
 h1 {
     font-size: 18px;
     /* Reduced */
