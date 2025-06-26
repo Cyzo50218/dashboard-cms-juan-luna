@@ -203,7 +203,7 @@ const members = data.members || [];
 const isMemberWithEditPermission = members.some(
     (member) =>
     member.uid === user.uid &&
-    (member.role === "Project Admin" || member.role === "Editor")
+    (member.role === "Project admin" || member.role === "Editor")
 );
 
 const isSuperAdmin = data.project_super_admin_uid === user.uid;
@@ -218,14 +218,15 @@ const userCanEdit = isMemberWithEditPermission || isSuperAdmin || isAdminUser;
 projectName.textContent = data.title;
 
 // Conditionally set editable properties based on the permission check.
-projectName.contentEditable = userCanEdit;
-projectName.style.cursor = userCanEdit ? "text" : "default"; // Change cursor to indicate editability
+
 projectName.title = userCanEdit ? "" : ""; // Set tooltip only if editable
 
 
 // --- Event Handling ---
 // Only attach event listeners if the user is authorized to edit.
 if (userCanEdit) {
+    projectName.contentEditable = userCanEdit;
+projectName.style.cursor = userCanEdit ? "text" : "default"; // Change cursor to indicate editability
     // If the user has permission, ensure the button is visible
     // by removing the 'display-none' class (in case it was there).
     shareButton.classList.remove('display-none');
