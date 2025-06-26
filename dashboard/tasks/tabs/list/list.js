@@ -223,6 +223,7 @@ function attachRealtimeListeners(userId) {
                 }
                 project = { ...project, ...projectDetailSnap.data(), id: projectDetailSnap.id };
                 
+                console.log(`[STEP 3] ATTEMPT: Attaching real-time listener to project document: /projects/${projectRef}`);
                 // --- STEP 4: Attach listener for Sections ---
                 const sectionsQuery = query(collection(projectRef, 'sections'), orderBy("order"));
                 console.log(`[STEP 4] ATTEMPT: Attaching real-time listener to sections subcollection for project ${currentProjectId}.`);
