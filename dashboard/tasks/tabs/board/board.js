@@ -444,15 +444,14 @@ const renderColumn = (section) => {
     const columnEl = document.createElement('div');
     columnEl.className = 'boardtasks-kanban-column';
     columnEl.dataset.sectionId = section.id;
-    const canEdit = userCanEditProject ? 'true' : 'false';
     
     columnEl.innerHTML = `
         <div class="boardtasks-column-header">
-            <h3 contenteditable="${canEdit}" class="boardtasks-section-title-editable">${section.title}</h3>
+            <h3 contenteditable="${userCanEditProject}" class="boardtasks-section-title-editable">${section.title}</h3>
             <span class="boardtasks-task-count">${section.tasks.filter(t => !t.isNew).length}</span>
         </div>
         <div class="boardtasks-tasks-container">${section.tasks.map(renderTask).join('')}</div>
-        <button class="boardtasks-add-task-btn" style="display: ${canEdit ? 'none' : 'flex'};"><i class="fas fa-plus"></i> Add task</button>`; 
+        <button class="boardtasks-add-task-btn" style="display: ${userCanEditProject ? 'flex' : 'none'};"><i class="fas fa-plus"></i> Add task</button>`; 
     kanbanBoard.appendChild(columnEl);
 };
 
