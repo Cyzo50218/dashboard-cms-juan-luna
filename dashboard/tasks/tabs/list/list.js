@@ -897,10 +897,13 @@ function setupEventListeners() {``
         const clickedInsideLeftSidebar = e.target.closest('#drawer');
         const clickedOnTaskLink = e.target.closest('[data-control="open-sidebar"]');
         
+        // 2. Get a reference to the header element you want to show.
+        // Make sure this selector is correct for your HTML.
+        const headerRight = document.querySelector('.header-right');
         
         // 3. If a click happens OUTSIDE all the safe areas, then show the header.
-        if (headerRight && !clickedInsideRightSidebar && !clickedOnTaskLink) {
-            
+        if (headerRight && !clickedInsideRightSidebar && !clickedInsideLeftSidebar && !clickedOnTaskLink) {
+            headerRight.classList.remove('hide');
         }
         
     };
