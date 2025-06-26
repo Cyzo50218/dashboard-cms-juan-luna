@@ -1670,3 +1670,41 @@ task-fields-table .field-value {
     text-align: center;
     list-style: none;
 }
+
+/* --- Custom Datepicker Styles --- */
+
+/* 1. Remove the default border from the datepicker library's container. */
+/* This makes it fit seamlessly inside our own .floating-panel. */
+.floating-panel .datepicker {
+    border: none;
+    box-shadow: none;
+    width: 280px; /* Give it a consistent width */
+}
+
+/* 2. Style for the currently SELECTED date. */
+/* This is the main part of your request. */
+.datepicker .day.selected {
+    background-color: #f0fdf4 !important; /* light green background (green-50) */
+    border: 1px solid #22c55e !important; /* strong green border (green-500) */
+    color: #15803d !important; /* dark green text (green-700) */
+    font-weight: 600;
+}
+
+/* 3. Style for TODAY's date (when it is NOT selected). */
+/* We make it subtle to avoid confusion with the selected date. */
+.datepicker .day.today {
+    border-radius: 0.375rem; /* rounded-md */
+    color: #16a34a; /* A slightly lighter green for the text */
+    font-weight: 600;
+}
+
+/* 4. (Optional but Recommended) Add a nice hover effect for all day cells. */
+.datepicker .day:not(.disabled):not(.selected):hover {
+    background-color: #f1f5f9; /* light gray background (slate-100) */
+    cursor: pointer;
+}
+
+/* 5. (Optional) Slightly increase the font size for better readability. */
+.datepicker .datepicker-cell {
+    font-size: 14px;
+}

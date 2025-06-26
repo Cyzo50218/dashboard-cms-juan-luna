@@ -3445,6 +3445,56 @@ function showDatePicker(targetEl, taskId, sectionId) {
     }, { once: true });
 }
 
+/**
+ * Creates a generic, empty, floating panel positioned relative to a target element.
+ * This is used as a container for more complex widgets like a date picker.
+ * @param {HTMLElement} targetEl - The element that the panel should be positioned next to.
+ * @returns {HTMLElement} The created (but empty) panel element.
+ */
+function createFloatingPanel(targetEl) {
+    // 1. Clean up any existing panels first.
+    closeFloatingPanels();
+    
+    // 2. Create the panel element and add it to the body.
+    const panel = document.createElement('div');
+    panel.className = 'floating-panel'; // Use this class for styling
+    document.body.appendChild(panel);
+    
+    // 3. Add a "click outside" listener to close the panel.
+    const clickOutsideHandler = (event) => {
+        if (!panel.contains(event.target) && !targetEl.contains(event.target)) {
+            closeFloatingPanels();
+            document.removeEventListener('click', clickOutsideHandler, true);
+        }
+    };
+    setTimeout(() => document.addEventListener('click', clickOutsideHandler, true), 0);
+    
+    // 4. Calculate the correct position on the screen.
+    const rect = targetEl.getBoundingClientRect();
+    panel.style.left = `${rect.left}px`;
+    
+    // Wait a moment for the panel to be rendered to get its height,
+    // then decide whether to show it above or below the target.
+    setTimeout(() => {
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const panelHeight = panel.offsetHeight;
+        
+        if (spaceBelow < panelHeight && rect.top > panelHeight) {
+            // Not enough space below, plenty of space above: Position it above the target.
+            panel.style.top = `${rect.top - panelHeight - 4}px`;
+        } else {
+            // Default behavior: Position it below the target.
+            panel.style.top = `${rect.bottom + 4}px`;
+        }
+        
+        // 5. Make the panel visible with a smooth transition.
+        panel.classList.add('visible');
+    }, 10);
+    
+    // 6. Return the created panel so it can be used.
+    return panel;
+}
+
 function createAssigneeHTML(assignees) {
     // If no one is assigned, show the 'add' button.
     if (!assignees || assignees.length === 0) {
