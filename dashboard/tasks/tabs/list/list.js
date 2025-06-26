@@ -1532,6 +1532,9 @@ function render() {
     if (!userCanEditProject) {
     addTaskHeaderBtn.classList.add('hide');
     addSectionClassBtn.classList.add('hide');
+    }else {
+        addTaskHeaderBtn.classList.remove('hide');
+addSectionClassBtn.classList.remove('hide');
     }
     
     let scrollState = { top: 0, left: 0 };
@@ -2817,9 +2820,9 @@ async function handleTaskCompletion(task, taskRowEl) {
         };
         // *** END OF FIX ***
         
-        const sourceTaskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${sourceSection.id}/tasks/${taskId}`);
-        const targetTaskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${targetSection.id}/tasks/${taskId}`);
-        
+        const sourceTaskRef = doc(currentProjectRef, `sections/${sourceSection.id}/tasks/${taskId}`);
+const targetTaskRef = doc(currentProjectRef, `sections/${targetSection.id}/tasks/${taskId}`);
+
         batch.delete(sourceTaskRef);
         // Now, this `set` operation works because `updatedTaskData` is a clean object without any `deleteField()` instructions.
         batch.set(targetTaskRef, updatedTaskData);
@@ -2843,8 +2846,8 @@ async function handleTaskCompletion(task, taskRowEl) {
         };
         
         const sourceTaskRef = doc(currentProjectRef, `sections/${sourceSection.id}/tasks/${taskId}`);
-        const targetTaskRef = doc(currentProjectRef, `sections/${targetSection.id}/tasks/${taskId}`);
-
+        const targetTaskRef = doc(currentProjectRef, `sections/${completedSection.id}/tasks/${taskId}`);
+        
         batch.delete(sourceTaskRef);
         batch.set(targetTaskRef, updatedTaskData);
     }
