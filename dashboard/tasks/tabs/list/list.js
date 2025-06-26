@@ -899,7 +899,7 @@ function setupEventListeners() {``
         const clickedOnTaskLink = e.target.closest('[data-control="open-sidebar"]');
         
         // 3. If a click happens OUTSIDE all the safe areas, then show the header.
-        if (headerRight && !drawer) {
+        if (!drawer) {
             headerRight.classList.remove('hide');
         }
         
