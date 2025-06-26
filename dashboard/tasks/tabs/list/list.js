@@ -2540,22 +2540,23 @@ function isCellEditable(column) {
         return true;
     }
 
-    // Hardcoded default restricted columns for non-admins
-    const defaultRestrictedColumnNames = ['Assignee', 'Due Date', 'Priority', 'Status'];
-    if (defaultRestrictedColumnNames.includes(column.name)) {
+    // Assigned users (Viewer/Commentator) can edit some fields,
+    // BUT never allowed to modify the "Assignee" column
+    if (column.name === 'Assignee') {
         return false;
     }
 
-    // Respect dynamic project.columnRules restrictions
+    // Respect per-project column restrictions
     const rules = project.columnRules || [];
     const columnRule = rules.find(rule => rule.name === column.name);
     if (columnRule?.isRestricted) {
         return false;
     }
 
-    // If no restriction found, allow edit
+    // All other custom fields allowed
     return true;
 }
+
 
 
 function initColumnDragging() {
