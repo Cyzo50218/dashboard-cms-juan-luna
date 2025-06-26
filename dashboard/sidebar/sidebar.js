@@ -42,7 +42,6 @@ import {
 import {
     firebaseConfig
 } from "/services/firebase-config.js";
-import { getHeaderRight } from '/dashboard/tasks/tabs/list/list.js';
 
 window.TaskSidebar = (function() {
     // --- 1. FIREBASE & INITIALIZATION ---
@@ -244,7 +243,6 @@ window.TaskSidebar = (function() {
     function close() {
         if (sidebar) sidebar.classList.remove('is-visible', 'is-loading');
         rightSidebarContainer.classList.remove('sidebar-open');
-        const headerRight = getHeaderRight();
         headerRight.classList.remove('hide');
         detachAllListeners();
         closePopovers();
@@ -1224,8 +1222,7 @@ window.TaskSidebar = (function() {
         
         document.body.addEventListener('click', (e) => {
             // First, if any popovers are open, just close them and do nothing else.
-           
-             if (document.querySelector('.context-dropdown')) {
+            if (document.querySelector('.context-dropdown')) {
                 if (!e.target.closest('.context-dropdown, .field-control')) {
                     closePopovers();
                 }
