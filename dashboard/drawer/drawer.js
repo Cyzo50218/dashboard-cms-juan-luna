@@ -297,35 +297,26 @@ async function selectProject(projectIdToSelect) {
         });
         
 // --- LISTENER 2: Find ALL projects where user is in members array ---
-console.log("DEBUG: Attaching listener for ALL PROJECTS (manual filtering by user UID inside members[].uid).");
+console.log("DEBUG: Attaching listener for top-level 'projects' collection.");
+
+// --- REFACTORED QUERY ---
+// We now use collection() to target ONLY the top-level 'projects' collection.
+// This is more efficient than collectionGroup().
 const projectsQuery = query(
-    collectionGroup(db, 'projects'), 
+    collection(db, 'projects'), 
     where('memberUIDs', 'array-contains', user.uid),
     orderBy("createdAt", "desc")
 );
 
 unsubscribeProjects = onSnapshot(projectsQuery, (snapshot) => {
-    console.log(`DEBUG: [Projects Listener] Snapshot received. Total projects in DB: ${snapshot.size}`);
+    console.log(`DEBUG: [Projects Listener] Snapshot received with ${snapshot.size} project(s) from the top-level collection.`);
     
-    projectsData = snapshot.docs
-        .map((doc, index) => {
-            const data = doc.data();
-            const isMember = Array.isArray(data.members) && data.members.some(member => member.uid === user.uid);
+    // --- SIMPLIFIED MAPPING ---
+    // No need for client-side filtering anymore. If the query returns a document,
+    // we know it's a valid project from the correct location that the user is a member of.
+    projectsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-            if (isMember) {
-                console.log(`   --- Doc ${index} MATCH ---`);
-                console.log(`     - Project ID: ${doc.id}`);
-                console.log(`     - workspaceId:`, data.workspaceId);
-                console.log(`     - members (filtered):`, data.members);
-                return { id: doc.id, ...data };
-            } else {
-                console.log(`   --- Doc ${index} SKIPPED (user not in members) ---`);
-                return null;
-            }
-        })
-        .filter(Boolean); // Remove nulls
-
-    console.log("DEBUG: [Projects Listener] Filtered projectsData (only projects where user is in members):", projectsData);
+    console.log("DEBUG: [Projects Listener] Mapped projectsData:", projectsData);
     console.log("DEBUG: [Projects Listener] Calling renderProjectsList() with new project data.");
     renderProjectsList();
 
