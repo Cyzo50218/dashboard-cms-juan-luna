@@ -212,28 +212,21 @@ const isAdminUser = data.project_admin_user === user.uid;
 // Role Checker.
 const userCanEdit = isMemberWithEditPermission || isSuperAdmin || isAdminUser;
 
-
-// --- UI Configuration ---
-// Set the title regardless of permission.
 projectName.textContent = data.title;
 
-// Conditionally set editable properties based on the permission check.
-
-projectName.title = userCanEdit ? "" : ""; // Set tooltip only if editable
-
-
-// --- Event Handling ---
-// Only attach event listeners if the user is authorized to edit.
+// Conditionally set UI properties based on the permission check.
 if (userCanEdit) {
-    projectName.contentEditable = userCanEdit;
-projectName.style.cursor = userCanEdit ? "text" : "default"; // Change cursor to indicate editability
-    // If the user has permission, ensure the button is visible
-    // by removing the 'display-none' class (in case it was there).
-    shareButton.classList.remove('display-none');
+    // --- USER CAN EDIT ---
+    projectName.contentEditable = true;
+    projectName.style.cursor = "text";
+    projectName.title = "Click to edit the project name"; // Helpful tooltip
+    shareButton.classList.remove('display-none'); // Show button
 } else {
-    // If the user does NOT have permission, hide the button
-    // by adding the 'display-none' class.
-    shareButton.classList.add('display-none');
+    // --- USER CANNOT EDIT (Viewer, etc.) ---
+    projectName.contentEditable = false;
+    projectName.style.cursor = "default";
+    projectName.title = ""; // No tooltip needed
+    shareButton.classList.add('display-none'); // Hide button
 }
 
 if (userCanEdit) {
