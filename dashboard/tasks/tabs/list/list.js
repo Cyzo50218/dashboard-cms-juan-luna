@@ -73,6 +73,8 @@ let project = { defaultColumns: [], customColumns: [], sections: [], customPrior
 let allTasksFromSnapshot = [];
 let userCanEditProject = false;
 let currentUserRole = null;
+let currentProjectRef = null;
+
 // --- Real-time Listener Management ---
 // This object will hold the unsubscribe functions for our active listeners.
 let activeListeners = {
@@ -212,6 +214,7 @@ function attachRealtimeListeners(userId) {
             const projectDoc = projectSnapshot.docs[0];
             const projectRef = projectDoc.ref; // This is the full, correct path to the document
             currentProjectId = projectDoc.id;
+            currentProjectRef = projectDoc.ref;
             console.log(`[DEBUG] Successfully found project at path: ${projectRef.path}`);
             
             // STEP 4: Now that we have the correct project, attach real-time listeners to it.
@@ -2839,9 +2842,9 @@ async function handleTaskCompletion(task, taskRowEl) {
             sectionId: completedSection.id,
         };
         
-        const sourceTaskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${sourceSection.id}/tasks/${taskId}`);
-        const targetTaskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${completedSection.id}/tasks/${taskId}`);
-        
+        const sourceTaskRef = doc(currentProjectRef, `sections/${sourceSection.id}/tasks/${taskId}`);
+        const targetTaskRef = doc(currentProjectRef, `sections/${targetSection.id}/tasks/${taskId}`);
+
         batch.delete(sourceTaskRef);
         batch.set(targetTaskRef, updatedTaskData);
     }
