@@ -136,12 +136,27 @@ function canUserEditTask(task) {
     if (userCanEditProject) {
         return true;
     }
+    return false;
+}
+
+function canUserEditSpecifcTask(task) {
+    // Rule 1: Admins and Editors can always edit.
+    if (userCanEditProject) {
+        return true;
+    }
+    
+    // Rule 2: Check for the special case for assigned users.
     if (currentUserRole === 'Viewer' || currentUserRole === 'Commentator') {
+        // Ensure task.assignees is an array before checking.
         const isAssigned = Array.isArray(task.assignees) && task.assignees.includes(currentUserId);
+        
         if (isAssigned) {
+            console.log(`[Permissions] Granting FULL task edit for assigned ${currentUserRole}.`);
             return true;
         }
     }
+    
+    // Otherwise, the user has no permission to edit this task.
     return false;
 }
 
@@ -442,7 +457,7 @@ const renderColumn = (section) => {
 };
 
 const renderTask = (task) => {
-    const canEditThisTask = canUserEditTask(task);
+    const canEditThisTask = canUserEditSpecifcTask(task);
     const isEditable = canEditThisTask ? 'true' : 'false';
     
     if (task.isNew) {
