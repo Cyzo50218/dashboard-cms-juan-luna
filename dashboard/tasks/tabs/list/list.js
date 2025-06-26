@@ -369,7 +369,6 @@ async function loadProjectUsers(currentUserId) {
 
 function initializeListView(params) {
     taskListHeaderEl = document.getElementById('task-list-header');
-    
     headerRight = document.getElementById('header-right');
     taskListBody = document.getElementById('task-list-body');
     taskListFooter = document.getElementById('task-list-footer');
@@ -900,7 +899,7 @@ function setupEventListeners() {``
         
         
         // 3. If a click happens OUTSIDE all the safe areas, then show the header.
-        if (headerRight && !clickedInsideRightSidebar && !clickedInsideLeftSidebar && !clickedOnTaskLink) {
+        if (headerRight && !clickedInsideRightSidebar && !clickedOnTaskLink) {
             headerRight.classList.remove('hide');
         }
         
