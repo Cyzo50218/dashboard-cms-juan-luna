@@ -82,7 +82,7 @@ window.TaskSidebar = (function() {
     
     // DOM Elements
     let sidebar, taskNameEl, taskDescriptionEl, taskFieldsContainer, closeBtn,
-        expandBtn, deleteTaskBtn,
+        expandBtn, deleteTaskBtn, headerRight,
         tabsContainer, activityLogContainer, commentInput, sendCommentBtn,
         imagePreviewContainer, currentUserAvatarEl, taskCompleteText, taskCompleteBtn, fileUploadInput, commentInputWrapper;
     
@@ -93,7 +93,7 @@ window.TaskSidebar = (function() {
     function init() {
         if (isInitialized) return;
         rightSidebarContainer = document.getElementById('right-sidebar');
-        
+        headerRight = document.getElementById('header-right');
         sidebar = document.getElementById('task-sidebar');
         taskNameEl = document.getElementById('task-name');
         taskDescriptionEl = document.getElementById('task-description-text');
@@ -244,6 +244,7 @@ window.TaskSidebar = (function() {
     function close() {
         if (sidebar) sidebar.classList.remove('is-visible', 'is-loading');
         rightSidebarContainer.classList.remove('sidebar-open');
+        headerRight.classList.remove('hide');
         detachAllListeners();
         closePopovers();
         currentTask = currentTaskRef = currentProject = null;
