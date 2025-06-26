@@ -43,7 +43,7 @@ console.log("Initialized Firebase on Dashboard.");
 
 // --- Module-Scoped Variables ---
 // DOM Element Holders
-let taskListHeaderEl, headerRight, taskListBody, taskListFooter, addSectionBtn, addTaskHeaderBtn, mainContainer, assigneeDropdownTemplate, filterBtn, sortBtn;
+let taskListHeaderEl, drawer, headerRight, taskListBody, taskListFooter, addSectionBtn, addTaskHeaderBtn, mainContainer, assigneeDropdownTemplate, filterBtn, sortBtn;
 
 // Event Handler References
 let headerClickListener, bodyClickListener, bodyFocusOutListener, addTaskHeaderBtnListener, addSectionBtnListener, windowClickListener, filterBtnListener, sortBtnListener;
@@ -369,6 +369,7 @@ async function loadProjectUsers(currentUserId) {
 
 function initializeListView(params) {
     taskListHeaderEl = document.getElementById('task-list-header');
+    drawer = document.getElementById('right-sidebar');
     headerRight = document.getElementById('header-right');
     taskListBody = document.getElementById('task-list-body');
     taskListFooter = document.getElementById('task-list-footer');
@@ -902,7 +903,7 @@ function setupEventListeners() {``
         const headerRight = document.querySelector('.header-right');
         
         // 3. If a click happens OUTSIDE all the safe areas, then show the header.
-        if (headerRight && !clickedInsideRightSidebar && !clickedInsideLeftSidebar && !clickedOnTaskLink) {
+        if (headerRight && !drawer && !clickedInsideLeftSidebar && !clickedOnTaskLink) {
             headerRight.classList.remove('hide');
         }
         
