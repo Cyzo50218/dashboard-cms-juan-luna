@@ -374,46 +374,50 @@ function attachRealtimeListeners(userId) {
                 });
                 
                 // Listener for Messages (Cover Images)
-                const messagesQuery = query(collectionGroup(db, 'Messages'), where('projectId', '==', currentProjectId), where('imageUrl', '!=', null));
-                activeListeners.messages = onSnapshot(messagesQuery, (snapshot) => {
-                    console.log(`[Messages Listener] Snapshot check. Found ${snapshot.size} documents with an imageUrl.`);
+                const messagesQuery = query(collectionGroup(db, 'Messages'), where('imageUrl', '!=', null));
+
+activeListeners.messages = onSnapshot(messagesQuery, (snapshot) => {
     const newImageMap = {};
     
     snapshot.forEach(doc => {
         const data = doc.data();
-        const taskId = data.taskId;
+        const pathSegments = doc.ref.path.split('/');
         
-        // THE FIX: Check that all required fields, especially the timestamp, exist and are valid.
-        if (taskId && data.imageUrl && data.timestamp && typeof data.timestamp.toMillis === 'function') {
-            
-            const existing = newImageMap[taskId];
-            
-            // This logic to find the oldest image is correct.
-            if (!existing || data.timestamp.toMillis() < existing.timestamp.toMillis()) {
-                newImageMap[taskId] = {
-                    imageUrl: data.imageUrl,
-                    timestamp: data.timestamp
-                };
+        // 2. We extract the projectId from the path (e.g., from 'globalChatProjects/{projectId}/...')
+        const projectsIndex = pathSegments.indexOf('globalChatProjects');
+        if (projectsIndex === -1 || pathSegments.length <= projectsIndex + 1) return; // Malformed path
+        
+        const messageProjectId = pathSegments[projectsIndex + 1];
+        
+        // 3. IMPORTANT: We only process messages that belong to the CURRENTLY active project.
+        if (messageProjectId === project.projectId) {
+            const tasksIndex = pathSegments.indexOf('tasks');
+            if (tasksIndex > -1 && pathSegments.length > tasksIndex + 1) {
+                const taskId = pathSegments[tasksIndex + 1];
+                
+                if (taskId && data.imageUrl && data.timestamp) {
+                    const existing = newImageMap[taskId];
+                    
+                    // This logic correctly finds the OLDEST image for each taskId
+                    if (!existing || data.timestamp.toMillis() < existing.timestamp.toMillis()) {
+                        newImageMap[taskId] = {
+                            imageUrl: data.imageUrl,
+                            timestamp: data.timestamp
+                        };
+                    }
+                }
             }
-        } else {
-            // This log helps you find documents with bad data.
-            console.warn("Skipping message document due to missing fields (taskId, imageUrl, or valid timestamp):", data);
         }
     });
     
-    // This part is correct. It transforms the map to the final format.
+    // This map now correctly links taskId to the oldest imageUrl
     taskImageMap = Object.fromEntries(
         Object.entries(newImageMap).map(([key, value]) => [key, value.imageUrl])
     );
     
-    // Add this log to see the final result before rendering.
-    console.log("[Messages Listener] Final taskImageMap created:", taskImageMap);
+    renderBoard();
     
-    // renderBoard(); // This should be called here to update the UI
-}, (error) => {
-    // Also, add an error handler to your listener to catch query problems
-    console.error("[Messages Listener] Query failed:", error);
-});
+}, err => console.error("Message listener error:", err));
 
             });
         } catch (error) {
