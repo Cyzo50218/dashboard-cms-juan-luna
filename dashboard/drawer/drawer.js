@@ -94,13 +94,11 @@ import { firebaseConfig } from "/services/firebase-config.js";
         };
 
         if (activeProjects.length > 0) {
-            projectsListContainer.innerHTML += `<li class="nav-item-header">Active Workspace</li>`;
             activeProjects.forEach(renderProjectItem);
         }
 
         if (otherProjects.length > 0) {
             if(activeProjects.length > 0) {
-                 projectsListContainer.innerHTML += `<li class="nav-item-header">Other Projects</li>`;
             }
             otherProjects.forEach(renderProjectItem);
         }

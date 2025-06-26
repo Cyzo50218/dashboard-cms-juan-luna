@@ -12,6 +12,7 @@ import {
   query,
   where,
   getDocs,
+  getDoc,
   doc,
   runTransaction,
   collectionGroup
