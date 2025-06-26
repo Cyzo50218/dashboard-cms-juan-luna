@@ -192,7 +192,8 @@ async function handleProjectCreate() {
             txn.set(sectionRef, {
                 ...sectionData,
                 projectId: newProjectId,
-                createdAt: serverTimestamp()
+                createdAt: serverTimestamp(),
+                memberUIDs: newProjectData.memberUIDs
             });
         });
 
