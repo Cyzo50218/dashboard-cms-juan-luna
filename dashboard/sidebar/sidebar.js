@@ -42,6 +42,7 @@ import {
 import {
     firebaseConfig
 } from "/services/firebase-config.js";
+import { getHeaderRight } from '../dashboard/tasks/tabs/list/list.js';
 
 window.TaskSidebar = (function() {
     // --- 1. FIREBASE & INITIALIZATION ---
@@ -82,7 +83,7 @@ window.TaskSidebar = (function() {
     
     // DOM Elements
     let sidebar, taskNameEl, taskDescriptionEl, taskFieldsContainer, closeBtn,
-        expandBtn, deleteTaskBtn, headerRight,
+        expandBtn, deleteTaskBtn,
         tabsContainer, activityLogContainer, commentInput, sendCommentBtn,
         imagePreviewContainer, currentUserAvatarEl, taskCompleteText, taskCompleteBtn, fileUploadInput, commentInputWrapper;
     
@@ -93,7 +94,6 @@ window.TaskSidebar = (function() {
     function init() {
         if (isInitialized) return;
         rightSidebarContainer = document.getElementById('right-sidebar');
-        headerRight = document.getElementById('header-right');
         sidebar = document.getElementById('task-sidebar');
         taskNameEl = document.getElementById('task-name');
         taskDescriptionEl = document.getElementById('task-description-text');
@@ -244,6 +244,7 @@ window.TaskSidebar = (function() {
     function close() {
         if (sidebar) sidebar.classList.remove('is-visible', 'is-loading');
         rightSidebarContainer.classList.remove('sidebar-open');
+        const headerRight = getHeaderRight();
         headerRight.classList.remove('hide');
         detachAllListeners();
         closePopovers();

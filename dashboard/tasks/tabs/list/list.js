@@ -388,6 +388,13 @@ function initializeListView(params) {
     setupEventListeners();
 }
 
+export function getHeaderRight() {
+    if (!headerRight) {
+        headerRight = document.getElementById('header-right');
+    }
+    return headerRight;
+}
+
 function distributeTasksToSections(tasks) {
     console.log("--- Running Task Distribution ---");
     
