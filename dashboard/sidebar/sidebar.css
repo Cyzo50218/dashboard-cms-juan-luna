@@ -625,7 +625,7 @@
 .context-dropdown {
     position: absolute;
     display: none;
-    z-index: 110;
+    z-index: 99999;
     background: var(--primary-bg);
     border: 1px solid var(--border-color);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
