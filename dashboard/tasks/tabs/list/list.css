@@ -98,8 +98,12 @@ button {
     gap: 0.4rem;
     /* Reduced gap inside buttons */
 }
-
-
+.add-task-header-btn .hide{
+    display: none;
+}
+.add-section-header-btn .hide {
+    display: none;
+}
 .add-section-btn {
     background-color: transparent;
     border: 1px solid transparent;
