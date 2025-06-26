@@ -1147,40 +1147,7 @@ window.TaskSidebar = (function() {
     console.log("========================================");
             
             switch (controlType) {
-                case 'custom-field': {
-    console.log("--- Click detected on a Custom Field ---");
-    console.log("1. The key from the element's data-key is:", key);
-    
-    const columnId = key.split('-')[1];
-    console.log("2. Extracted columnId:", columnId);
-    
-    console.log("3. Searching for this columnId in currentProject.customColumns:", currentProject.customColumns);
-    const column = currentProject.customColumns.find(c => c.id == columnId);
-    
-    if (!column) {
-        console.error("4. CRITICAL: No column object found for this ID. Stopping execution for this field.");
-        return; // Safety check
-    }
-    
-    console.log("4. SUCCESS: Found the matching column object:", column);
-    console.log("5. Checking the column's type. The type is:", column.type);
-
-    // Now, we check the column's type to decide what kind of editor to open.
-    if (column.type === 'Type' && column.options) {
-        console.log("6. Condition MET: The column.type is 'Type' and it has options. Opening the generic dropdown.");
-        // It's a dropdown-style custom field
-        createGenericDropdown(control, column.options, (opt) => updateCustomField(columnId, opt.name, column));
-        
-    } else if (['Text', 'Numbers', 'Costing'].includes(column.type)) {
-        console.log("6. Condition MET: The column.type is Text, Numbers, or Costing. Making the field editable.");
-        // It's a text/number-style custom field
-        makeTextFieldEditable(control, columnId, column);
-
-    } else {
-         console.error("6. Condition FAILED: The column.type ('" + column.type + "') is not one of the recognized types ('Type', 'Text', 'Numbers', 'Costing'). No action will be taken.");
-    }
-    break;
-}
+                
 case 'project': {
     console.log("--- Click detected on Project field ---");
     const options = workspaceProjects.map(p => ({ label: p.title, value: p.id }));
