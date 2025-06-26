@@ -2377,8 +2377,7 @@ if (!(userCanEditProject && (project.project_super_admin_uid === currentUserId |
                 }
             });
         }
-        
-        if (userCanEditProject && !addTaskAtTop) {
+
             // Add task row
             const addRow = document.createElement('div');
             addRow.className = 'add-task-row-wrapper flex group';
@@ -2404,58 +2403,39 @@ if (!(userCanEditProject && (project.project_super_admin_uid === currentUserId |
             
             // This loop creates the footer cells (including the "Sum:" cell)
             allColumns.forEach((col, i) => {
-                const cell = document.createElement('div');
-                const leftBorderClass = i === 0 ? 'border-l border-slate-200' : '';
-                
-                // --- MODIFICATION FOR FOOTER CELLS ---
-                // 1. REMOVE the hardcoded width class 'w-44' and 'flex-shrink-0'.
-                // The sync function will now control the width.
-                cell.className = `h-full ${leftBorderClass}`;
-                
-                // 2. ADD the data-column-id so the sync function can find this cell.
-                cell.dataset.columnId = col.id;
-                // --- END OF MODIFICATION ---
-                
-                // This is your existing logic to calculate and show the sum. It remains unchanged.
-                // This is your existing logic to calculate and show the sum.
-                if (col.type === 'Costing') {
-                    const sum = section.tasks.reduce((accumulator, task) => {
-                        const value = task.customFields?.[col.id];
-                        return typeof value === 'number' ? accumulator + value : accumulator;
-                    }, 0);
-                    
-                    if (sum > 0) {
-                        let formattedSum;
-                        
-                        // Check if the sum is a whole number (e.g., 1250.00)
-                        if (sum % 1 === 0) {
-                            // If yes, format it with commas and NO decimal places.
-                            formattedSum = sum.toLocaleString('en-US', {
-                                maximumFractionDigits: 0
-                            });
-                        } else {
-                            // If no, format it with commas and exactly TWO decimal places.
-                            formattedSum = sum.toLocaleString('en-US', {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2
-                            });
-                        }
-                        
-                        
-                        // Note: The commented out currencySymbol line remains for future use.
-                        // const currencySymbol = col.currency || '$';
-                        
-                        cell.innerHTML = `
-            <div style="font-size: 0.8rem; display: flex; justify-content: flex-start; align-items: center; height: 100%; padding-right: 8px;">
-              <span style="color: #9ca3af; margin-right: 4px;">Sum:</span>
-              <span style="font-weight: 600; color: #4b5563;">${formattedSum}</span>
-            </div>
-        `;
-                    }
-                }
-                
-                rightAddCells.appendChild(cell);
-            });
+    const cell = document.createElement('div');
+    const leftBorderClass = i === 0 ? 'border-l border-slate-200' : '';
+    cell.className = `h-full ${leftBorderClass}`;
+    cell.dataset.columnId = col.id;
+
+    // Show Costing column sum only for non-admin users
+    if (col.type === 'Costing') {
+        const sum = section.tasks.reduce((acc, task) => {
+            const val = task.customFields?.[col.id];
+            return typeof val === 'number' ? acc + val : acc;
+        }, 0);
+
+        const isProjectAdmin = (project.project_super_admin_uid === currentUserId || project.project_admin_user === currentUserId);
+
+        // Only show sum if:
+        // - The user is NOT a project admin
+        // - AND the sum has a value > 0
+        if (!isProjectAdmin && sum > 0) {
+            const formatted = sum % 1 === 0
+                ? sum.toLocaleString('en-US', { maximumFractionDigits: 0 })
+                : sum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+            cell.innerHTML = `
+                <div style="font-size: 0.8rem; display: flex; justify-content: flex-start; align-items: center; height: 100%; padding-right: 8px;">
+                  <span style="color: #9ca3af; margin-right: 4px;">Sum:</span>
+                  <span style="font-weight: 600; color: #4b5563;">${formatted}</span>
+                </div>
+            `;
+        }
+    }
+
+    rightAddCells.appendChild(cell);
+});
             
             const emptyAddCellLast = document.createElement('div');
             emptyAddCellLast.className = 'w-12 flex-shrink-0 h-full';
@@ -2468,7 +2448,6 @@ if (!(userCanEditProject && (project.project_super_admin_uid === currentUserId |
             addRow.appendChild(leftAddCell);
             addRow.appendChild(rightAddCells);
             sectionWrapper.appendChild(addRow);
-        }
         
     });
     
