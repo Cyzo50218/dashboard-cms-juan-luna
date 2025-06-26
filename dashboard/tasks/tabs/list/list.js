@@ -2535,28 +2535,28 @@ onSelect: (selected) => {
 }
 
 function isCellEditable(column) {
-    // Admins or Owners can edit any column.
+    // Admins/Owners can always edit any column.
     if (userCanEditProject) {
         return true;
     }
 
-    // Default non-editable columns for non-admins
-    const defaultRestrictedColumns = ['assignees', 'dueDate', 'priority', 'status'];
-    if (defaultRestrictedColumns.includes(column.id)) {
+    // Hardcoded default restricted columns for non-admins
+    const defaultRestrictedColumnNames = ['Assignee', 'Due Date', 'Priority', 'Status'];
+    if (defaultRestrictedColumnNames.includes(column.name)) {
         return false;
     }
 
+    // Respect dynamic project.columnRules restrictions
     const rules = project.columnRules || [];
     const columnRule = rules.find(rule => rule.name === column.name);
-
-    // Respect column-specific restrictions
-    if (columnRule && columnRule.isRestricted) {
+    if (columnRule?.isRestricted) {
         return false;
     }
 
-    // Otherwise, editable by default
+    // If no restriction found, allow edit
     return true;
 }
+
 
 function initColumnDragging() {
     const headerContainer = document.querySelector('.juanlunacms-spreadsheetlist-sticky-header .flex-grow');
