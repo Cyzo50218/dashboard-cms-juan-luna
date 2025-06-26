@@ -161,56 +161,76 @@ function detachProjectSpecificListeners() {
  * It discovers the active project and loads all necessary data in the correct order.
  */
 function attachRealtimeListeners(userId) {
+    console.group(`---- STARTING LISTENER ATTACHMENT for user: ${userId} ----`);
+
+    // First, let's see if the detach function is working
+    console.log("[DEBUG] Detaching all previous listeners...");
     detachAllListeners();
     currentUserId = userId;
-    console.log(`[LIST DEBUG] Attaching listeners for user: ${userId}`);
     
+    // --- STEP 1: Listen to the user's active workspace ---
     const workspaceQuery = query(collection(db, `users/${userId}/myworkspace`), where("isSelected", "==", true));
+    console.log("[STEP 1] ATTEMPT: Attaching listener to user's workspace collection.");
     
     activeListeners.workspace = onSnapshot(workspaceQuery, async (workspaceSnapshot) => {
+        console.log("[STEP 1] SUCCESS: Workspace listener fired.");
+        
+        // Detach listeners for the PREVIOUS project before we load the new one.
+        console.log("[DEBUG] Detaching project-specific listeners...");
         detachProjectSpecificListeners();
         
         if (workspaceSnapshot.empty) {
-            console.warn("[LIST DEBUG] No selected workspace.");
-            project = {}; render(); return;
+            console.warn("[STEP 1] FAILURE: No selected workspace found for this user. Halting.");
+            project = {}; render(); console.groupEnd(); return;
         }
         
         const workspaceDoc = workspaceSnapshot.docs[0];
         const selectedProjectId = workspaceDoc.data().selectedProjectId;
         
         if (!selectedProjectId) {
-            console.warn("[LIST DEBUG] No selected project in workspace.");
-            project = {}; render(); return;
+            console.warn("[STEP 1] FAILURE: Active workspace has no selectedProjectId. Halting.");
+            project = {}; render(); console.groupEnd(); return;
         }
 
         currentProjectId = selectedProjectId;
-        console.log(`[LIST DEBUG] Active project ID is: '${currentProjectId}'`);
+        console.log(`[DATA] Active Project ID is now: '${currentProjectId}'`);
 
+        // --- STEP 2: Directly get the project from the top-level collection ---
         try {
             const projectRef = doc(db, 'projects', currentProjectId);
+            console.log(`[STEP 2] ATTEMPT: Getting single project document at path: /projects/${currentProjectId}`);
             const projectDoc = await getDoc(projectRef);
+            console.log("[STEP 2] SUCCESS: getDoc() call completed.");
 
-            if (!projectDoc.exists() || !projectDoc.data().memberUIDs?.includes(currentUserId)) {
-                console.error(`[LIST DEBUG] Project '${currentProjectId}' not found or user not a member.`);
-                project = {}; render(); return;
+            if (!projectDoc.exists()) {
+                console.error(`[STEP 2] FAILURE: Project document does not exist at /projects/${currentProjectId}. Halting.`);
+                project = {}; render(); console.groupEnd(); return;
             }
+            if (!projectDoc.data().memberUIDs?.includes(currentUserId)) {
+                console.error(`[STEP 2] FAILURE: User ${currentUserId} is NOT in memberUIDs for project ${currentProjectId}. Halting.`);
+                project = {}; render(); console.groupEnd(); return;
+            }
+            console.log("[STEP 2] VALIDATION PASSED: Project exists and user is a member.");
 
-            const projectData = projectDoc.data();
-            allUsers = await fetchProjectMembers(projectData);
-
-            // --- REWRITTEN LISTENER LOGIC ---
-
+            // --- STEP 3: Attach listener to the specific project document ---
+            console.log(`[STEP 3] ATTEMPT: Attaching real-time listener to project document: /projects/${currentProjectId}`);
             activeListeners.project = onSnapshot(projectRef, (projectDetailSnap) => {
+                console.log("[STEP 3] SUCCESS: Project document listener fired.");
+
                 if (!projectDetailSnap.exists()) {
-                    console.error("[LIST DEBUG] Project deleted.");
-                    project = {}; render(); return;
+                    console.error("[STEP 3] FAILURE: Project was deleted while listening. Halting.");
+                    project = {}; render(); console.groupEnd(); return;
                 }
                 project = { ...project, ...projectDetailSnap.data(), id: projectDetailSnap.id };
                 
-                // Attach listener for Sections
+                // --- STEP 4: Attach listener for Sections ---
                 const sectionsQuery = query(collection(projectRef, 'sections'), orderBy("order"));
-                if (activeListeners.sections) activeListeners.sections();
+                console.log(`[STEP 4] ATTEMPT: Attaching real-time listener to sections subcollection for project ${currentProjectId}.`);
+                if (activeListeners.sections) activeListeners.sections(); // Detach previous sections listener
+                
                 activeListeners.sections = onSnapshot(sectionsQuery, (sectionsSnapshot) => {
+                    console.log("[STEP 4] SUCCESS: Sections listener fired.");
+
                     // Detach all old task listeners before creating new ones
                     if (activeListeners.tasks && activeListeners.tasks.length > 0) {
                         activeListeners.tasks.forEach(unsub => unsub());
@@ -220,36 +240,49 @@ function attachRealtimeListeners(userId) {
                     const sections = sectionsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, tasks: [] }));
                     project.sections = sections;
                     
-                    let allTasks = {}; // Use an object to handle updates from multiple listeners
+                    let allTasks = {}; 
 
-                    // If there are no sections, render immediately.
                     if (sections.length === 0) {
                         distributeTasksToSections([]);
                         render();
                         return;
                     }
 
-                    // For each section, create a dedicated task listener
+                    // --- STEP 5: For each section, create a dedicated task listener ---
                     sections.forEach(section => {
                         const tasksQuery = query(collection(db, `projects/${currentProjectId}/sections/${section.id}/tasks`), orderBy('createdAt', 'desc'));
+                        console.log(`[STEP 5] ATTEMPT: Attaching real-time listener to tasks subcollection for section ${section.id}.`);
+                        
                         const taskListener = onSnapshot(tasksQuery, (tasksSnapshot) => {
+                            console.log(`[STEP 5] SUCCESS: Tasks listener for section ${section.id} fired.`);
                             tasksSnapshot.docs.forEach(taskDoc => {
                                 allTasks[taskDoc.id] = { ...taskDoc.data(), id: taskDoc.id };
                             });
-                            // After each listener update, redistribute all known tasks and render
                             distributeTasksToSections(Object.values(allTasks));
                             render();
+                        }, (error) => {
+                            // This is a specific error handler for the task listener
+                            console.error(`[STEP 5] FATAL ERROR in tasks listener for section ${section.id}:`, error);
                         });
                         activeListeners.tasks.push(taskListener);
                     });
+                }, (error) => {
+                    console.error(`[STEP 4] FATAL ERROR in sections listener for project ${currentProjectId}:`, error);
                 });
+            }, (error) => {
+                console.error(`[STEP 3] FATAL ERROR in project listener for project ${currentProjectId}:`, error);
             });
             
         } catch (error) {
-            console.error("[LIST DEBUG] Error attaching listeners:", error);
+            console.error("[STEP 2] FATAL ERROR during getDoc() call for project:", error);
         }
+    }, (error) => {
+        console.error("[STEP 1] FATAL ERROR in workspace listener:", error);
     });
+
+    console.groupEnd();
 }
+
 
 async function fetchActiveIds(userId) {
     console.log(`[DEBUG] [fetchActiveIds] Fetching for user: ${userId}`);
