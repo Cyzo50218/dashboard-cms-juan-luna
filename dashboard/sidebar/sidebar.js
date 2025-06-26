@@ -1115,12 +1115,36 @@ window.TaskSidebar = (function() {
         taskDescriptionEl.addEventListener('blur', () => updateTaskField('description', taskDescriptionEl.textContent.trim()));
         
         // --- Event Delegation for all interactive fields ---
-        taskFieldsContainer.addEventListener('click', (e) => {
-            const control = e.target.closest('.field-control');
-            if (!control) return;
-            
-            const key = control.dataset.key;
-            const controlType = control.dataset.control;
+       taskFieldsContainer.addEventListener('click', (e) => {
+    // --- NEW CONSOLE LOGS START HERE ---
+
+    console.log("========================================");
+    console.log("Field Click Detected inside taskFieldsContainer");
+
+    // Log the exact HTML element that was clicked
+    console.log("1. The original clicked element (e.target) is:", e.target);
+
+    // Find the closest parent element with the class '.field-control'
+    // This is the interactive area we want to inspect.
+    const control = e.target.closest('.field-control');
+
+    // Check if an interactive area was found. If not, the click was on something else (like empty space).
+    if (!control) {
+        console.log("2. No parent with class '.field-control' was found. Click was non-interactive. Stopping.");
+        return;
+    }
+
+    // If a '.field-control' element was found, log it to the console.
+    // You can hover over this in the browser console to highlight it on the page.
+    console.log("2. Found the interactive control element:", control);
+    
+    // Now, let's inspect its data attributes.
+    const key = control.dataset.key;
+    const controlType = control.dataset.control;
+
+    console.log("3. The 'data-key' attribute is:", key);
+    console.log("4. The 'data-control' attribute is:", controlType);
+    console.log("========================================");
             
             switch (controlType) {
                 case 'custom-field': {
