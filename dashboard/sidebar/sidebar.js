@@ -1320,7 +1320,7 @@ case 'Text': {
      * Creates a generic dropdown with color swatches.
      */
     function createGenericDropdown(targetEl, options, onSelect, optionType = null, columnId = null) {
-        closePopovers();
+       
         const dropdown = document.createElement('div');
         dropdown.className = 'context-dropdown';
         
