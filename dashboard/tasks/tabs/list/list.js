@@ -786,12 +786,6 @@ function setupEventListeners() {
             const { task, section } = findTaskAndSection(taskId);
             const column = project.customColumns.find(c => c.id == columnId);
             
-            if (!canUserEditTask(task)) {
-    console.warn("[Permissions] Blocked custom field edit. User cannot edit this task.");
-    render(); // Re-render to discard change.
-    return;
-}
-
             if (!task || !section || !column) return;
             
             let rawValue = customFieldCell.innerText.trim();
@@ -1084,36 +1078,7 @@ async function _getSelectedProjectPath(db, userId) {
     return projectPath;
 }
 
-async function handleSectionReorder(evt) {
-    console.log("🔄 Section reorder triggered.");
-    
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated.");
-    
-    try {
-        const basePath = await _getSelectedProjectPath(db, user.uid);
-        const sectionEls = [...taskListBody.querySelectorAll('.section-wrapper')];
-        console.log(`🧱 Found ${sectionEls.length} section elements to reorder.`);
-        
-        const batch = writeBatch(db);
-        sectionEls.forEach((el, index) => {
-            const sectionId = el.dataset.sectionId;
-            if (sectionId) {
-                const sectionRef = doc(db, `${basePath}/sections/${sectionId}`);
-                batch.update(sectionRef, { order: index });
-                console.log(`🔢 Set order ${index} for section ${sectionId}`);
-            }
-        });
-        
-        await batch.commit();
-        console.log("✅ Sections reordered and saved to Firestore.");
-        
-    } catch (err) {
-        console.error("❌ Error committing section reordering batch:", err);
-        // Re-throw to allow the calling function to revert the UI.
-        throw err;
-    }
-}
+
 
 function findTaskAndSection(taskId) {
     for (const section of project.sections) {
@@ -1142,102 +1107,127 @@ function _getTasksForSectionFromDOM(sectionHeaderEl) {
     return tasks;
 }
 
+async function handleSectionReorder(evt) {
+    console.log("🔄 Section reorder triggered.");
+    
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated.");
+    
+    try {
+        const sectionRef = doc(collection(currentProjectRef, 'sections'), sectionId);
+       
+        const batch = writeBatch(db);
+        sectionEls.forEach((el, index) => {
+            const sectionId = el.dataset.sectionId;
+            if (sectionId) {
+                const sectionRef = doc(db, `${basePath}/sections/${sectionId}`);
+                batch.update(sectionRef, { order: index });
+                console.log(`🔢 Set order ${index} for section ${sectionId}`);
+            }
+        });
+        
+        await batch.commit();
+        console.log("✅ Sections reordered and saved to Firestore.");
+        
+    } catch (err) {
+        console.error("❌ Error committing section reordering batch:", err);
+        // Re-throw to allow the calling function to revert the UI.
+        throw err;
+    }
+}
+
 async function handleTaskMoved(evt) {
     console.log("🧪 Drag Event Details:", evt);
-    
+
     const user = auth.currentUser;
     if (!user) {
         console.error("❌ User not authenticated.");
         return;
     }
-    
-    // --- 1. Get DOM elements and their IDs ---
+
     const taskEl = evt.item;
     const taskId = taskEl.dataset.taskId;
-    
-    // FIX: Use the correct class '.section-wrapper' to find the container
+
     const newSectionEl = evt.to.closest(".section-wrapper");
     const oldSectionEl = evt.from.closest(".section-wrapper");
     const newSectionId = newSectionEl?.dataset.sectionId;
     const oldSectionId = oldSectionEl?.dataset.sectionId;
-    
+
     if (!taskId || !newSectionId || !oldSectionId) {
         console.error("❌ Critical ID missing.", { taskId, newSectionId, oldSectionId });
         return;
     }
-    
-    // The rest of your function logic is great and remains unchanged.
+
     try {
-        const workspaceSnap = await getDocs(query(collection(db, `users/${user.uid}/myworkspace`), where("isSelected", "==", true)));
-        if (workspaceSnap.empty) return;
-        const workspaceId = workspaceSnap.docs[0].id;
-        
-        const projectSnap = await getDocs(query(collection(db, `users/${user.uid}/myworkspace/${workspaceId}/projects`), where("isSelected", "==", true)));
-        if (projectSnap.empty) return;
-        const projectId = projectSnap.docs[0].id;
-        const basePath = `users/${user.uid}/myworkspace/${workspaceId}/projects/${projectId}`;
-        
         const batch = writeBatch(db);
-        
+
         if (newSectionId === oldSectionId) {
             console.log(`Reordering task "${taskId}" in section "${newSectionId}"`);
             const tasksToUpdate = Array.from(newSectionEl.querySelectorAll(".task-row-wrapper"));
-            
+
             tasksToUpdate.forEach((el, index) => {
                 const currentTaskId = el.dataset.taskId;
                 if (!currentTaskId) return;
-                const taskRef = doc(db, `${basePath}/sections/${newSectionId}/tasks/${currentTaskId}`);
+
+                const taskRef = doc(db, `${currentProjectRef.path}/sections/${newSectionId}/tasks/${currentTaskId}`);
                 batch.update(taskRef, { order: index });
             });
-            
+
         } else {
             console.log(`Moving task "${taskId}" from section "${oldSectionId}" to "${newSectionId}"`);
-            
-            const sourceRef = doc(db, `${basePath}/sections/${oldSectionId}/tasks/${taskId}`);
+
+            const sourceRef = doc(db, `${currentProjectRef.path}/sections/${oldSectionId}/tasks/${taskId}`);
             const sourceSnap = await getDoc(sourceRef);
             if (!sourceSnap.exists()) {
                 console.error("❌ Task not found in the source section. Cannot move.");
                 return;
             }
-            
-            const newDocRef = doc(collection(db, `${basePath}/sections/${newSectionId}/tasks`));
-            const taskData = { ...sourceSnap.data(), sectionId: newSectionId, id: newDocRef.id };
-            
+
+            const newDocRef = doc(collection(db, `${currentProjectRef.path}/sections/${newSectionId}/tasks`));
+            const taskData = {
+                ...sourceSnap.data(),
+                sectionId: newSectionId,
+                id: newDocRef.id
+            };
+
             const targetSection = project.sections.find(s => s.id === newSectionId);
-            if (targetSection && targetSection.sectionType === 'completed') {
+            if (targetSection?.sectionType === 'completed') {
                 console.log(`Destination is a 'completed' section. Updating task status.`);
                 taskData.status = 'Completed';
             }
-            
+
             batch.delete(sourceRef);
             batch.set(newDocRef, taskData);
-            
+
             taskEl.dataset.taskId = newDocRef.id;
-            
+
             const newSectionTasks = Array.from(newSectionEl.querySelectorAll(".task-row-wrapper"));
             newSectionTasks.forEach((el, index) => {
                 const currentTaskId = el.dataset.taskId;
                 if (!currentTaskId) return;
-                const taskRef = doc(db, `${basePath}/sections/${newSectionId}/tasks/${currentTaskId}`);
+
+                const taskRef = doc(db, `${currentProjectRef.path}/sections/${newSectionId}/tasks/${currentTaskId}`);
                 batch.update(taskRef, { order: index, sectionId: newSectionId });
             });
-            
+
             const oldSectionTasks = Array.from(oldSectionEl.querySelectorAll(".task-row-wrapper"));
             oldSectionTasks.forEach((el, index) => {
                 const currentTaskId = el.dataset.taskId;
                 if (!currentTaskId) return;
-                const taskRef = doc(db, `${basePath}/sections/${oldSectionId}/tasks/${currentTaskId}`);
+
+                const taskRef = doc(db, `${currentProjectRef.path}/sections/${oldSectionId}/tasks/${currentTaskId}`);
                 batch.update(taskRef, { order: index });
             });
         }
-        
+
         await batch.commit();
         console.log("✅ Batch commit successful. Task positions updated.");
-        
+
     } catch (err) {
         console.error("❌ Error handling task move:", err);
     }
 }
+
 
 /**
  * Makes a header cell editable and saves the new name to the correct
@@ -1689,16 +1679,16 @@ onSelect: (selected) => {
             let icon = 'fa-font'; // Default icon for 'Text'
             switch (type.name) {
                 case 'Numbers':
-                    icon = 'fa-hashtag';
+                   // icon = 'fa-hashtag';
                     break;
                 case 'Costing':
-                    icon = 'fa-dollar-sign';
+                   // icon = 'fa-dollar-sign';
                     break;
                 case 'Type':
-                    icon = 'fa-tags';
+                 //   icon = 'fa-tags';
                     break;
                 case 'Date':
-                    icon = 'fa-calendar-alt';
+               //     icon = 'fa-calendar-alt';
                     break;
             }
             return `<i class="fas ${icon}"></i><span>${type.name}</span>`;
@@ -1769,12 +1759,20 @@ onSelect: (selected) => {
         rightHeaderContent.appendChild(cell);
     });
     
-    if (userCanEditProject && project.project_super_admin_uid === currentUserId || project.project_admin_user === currentUserId) {
-        const addColumnBtn = document.createElement('div');
-        addColumnBtn.className = 'add-column-cell w-8 opacity-100 flex-shrink-0 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 cursor-pointer border-l border-slate-200 bg-white';
-        addColumnBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
-        rightHeaderContent.appendChild(addColumnBtn);
-    }
+    const addColumnBtn = document.createElement('div');
+addColumnBtn.className = 'add-column-cell w-8 opacity-100 flex-shrink-0 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 cursor-pointer border-l border-slate-200 bg-white';
+
+// Always append the button (even for viewers)
+rightHeaderContent.appendChild(addColumnBtn);
+
+// Conditionally hide only the icon inside
+if (!(userCanEditProject && (project.project_super_admin_uid === currentUserId || project.project_admin_user === currentUserId))) {
+    addColumnBtn.style.pointerEvents = 'none'; // disable interaction
+    addColumnBtn.innerHTML = ''; // hide the icon/text
+} else {
+    addColumnBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
+}
+
     
     const headerSpacer = document.createElement('div');
     headerSpacer.className = 'w-4 flex-shrink-0';
@@ -1782,17 +1780,16 @@ onSelect: (selected) => {
     
     header.appendChild(leftHeader);
     header.appendChild(rightHeaderContent);
-    rightHeaderContent.addEventListener('click', headerClickListener);
+    if (!(userCanEditProject && (project.project_super_admin_uid === currentUserId || project.project_admin_user === currentUserId))) {
+    }else{
+        rightHeaderContent.addEventListener('click', headerClickListener);
+    }
     
     // --- BODY ---
     const body = document.createElement('div');
     
     const sectionGroupsContainer = document.createElement('div');
     sectionGroupsContainer.className = 'section-groups-container flex flex-col gap-0';
-    
-    console.log(project);
-    console.log(project.customColumns);
-    console.log(project.sections);
     
     project.sections.forEach(section => {
         
@@ -2254,6 +2251,31 @@ onSelect: (selected) => {
                         } else { // This "else" is for columns that are NOT "Select" type
                             
                             cell.contentEditable = canEditThisCell;
+                            if (canEditThisCell) {
+    cell.addEventListener('blur', () => {
+        const newValue = cell.innerText.trim();
+        const fieldPath = `customFields.${col.id}`;
+        const oldValue = rawValue ?? '';
+
+        // Only update if value actually changed
+        if (newValue !== String(oldValue).trim()) {
+            updateTask(task.id, section.id, {
+                [fieldPath]: (col.type === 'Costing' || col.type === 'Numbers')
+                    ? parseFloat(newValue.replace(/,/g, '')) || 0
+                    : newValue
+            });
+        }
+    });
+
+    // Optional: allow pressing "Enter" to save
+    cell.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault(); // prevent new line
+            cell.blur(); // trigger blur handler
+        }
+    });
+}
+
                             if (!canEditThisCell) {
                                  cell.classList.add('cell-restricted'); // Add a class for styling
                             }
@@ -3013,6 +3035,7 @@ async function updateTaskInFirebase(taskId, sectionId, propertiesToUpdate) {
     if (!currentProjectRef || !sectionId || !taskId) {
     return console.error("Missing IDs or project reference, cannot update task.");
 }
+console.log('updating task');
     const taskRef = doc(currentProjectRef, `sections/${sectionId}/tasks/${taskId}`);
 try {
     await updateDoc(taskRef, propertiesToUpdate);
@@ -3540,20 +3563,31 @@ function syncScroll(scrollStates = new Map()) {
 }
 
 function addNewColumn(config) {
+    const newId = Date.now();
+
     const newColumn = {
-        id: Date.now(),
+        id: newId,
         name: config.name,
         type: config.type,
         isCustom: true,
         currency: config.currency || null,
         aggregation: (config.type === 'Costing' || config.type === 'Numbers') ? 'Sum' : null,
-        // FIX: The options are now correctly assigned as an array of objects.
-        // When type is 'Type', assign the array. For all other types that need options, start with an empty array.
-        options: (config.type === 'Type' || config.type === 'Custom') ? (config.type === 'Type' ? typeColumnOptions : []) : null
+        options: (config.type === 'Type' || config.type === 'Custom') 
+            ? (config.type === 'Type' ? typeColumnOptions : []) 
+            : null
     };
-    
+
+    // Step 1: Update customColumns with the new column
     updateProjectInFirebase({
         customColumns: arrayUnion(newColumn)
+    });
+
+    // Step 2: Update columnOrder with the new column ID
+    const currentOrder = project.columnOrder || [];
+    const newOrder = [...currentOrder, String(newId)];
+
+    updateProjectInFirebase({
+        columnOrder: newOrder
     });
 }
 
