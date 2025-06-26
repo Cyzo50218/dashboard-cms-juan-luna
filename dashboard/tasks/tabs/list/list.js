@@ -43,7 +43,7 @@ console.log("Initialized Firebase on Dashboard.");
 
 // --- Module-Scoped Variables ---
 // DOM Element Holders
-let taskListHeaderEl, drawer, headerRight, taskListBody, taskListFooter, addSectionBtn, addTaskHeaderBtn, mainContainer, assigneeDropdownTemplate, filterBtn, sortBtn;
+let taskListHeaderEl, drawer, addSectionClassBtn, headerRight, taskListBody, taskListFooter, addSectionBtn, addTaskHeaderBtn, mainContainer, assigneeDropdownTemplate, filterBtn, sortBtn;
 
 // Event Handler References
 let headerClickListener, bodyClickListener, bodyFocusOutListener, addTaskHeaderBtnListener, addSectionBtnListener, windowClickListener, filterBtnListener, sortBtnListener;
@@ -345,6 +345,7 @@ function initializeListView(params) {
     headerRight = document.getElementById('header-right');
     taskListBody = document.getElementById('task-list-body');
     taskListFooter = document.getElementById('task-list-footer');
+    addSectionClassBtn = document.querySelector('.add-section-btn');
     addSectionBtn = document.getElementById('add-section-btn');
     addTaskHeaderBtn = document.querySelector('.add-task-header-btn');
     mainContainer = document.querySelector('.list-view-container');
@@ -1527,7 +1528,7 @@ function render() {
     
     if (!userCanEditProject) {
     addTaskHeaderBtn.classList.add('hide');
-    addSectionBtn.classList.add('hide');
+    addSectionClassBtn.classList.add('hide');
     }
     
     let scrollState = { top: 0, left: 0 };
