@@ -174,37 +174,40 @@ async function handleProjectCreate() {
     };
 
     try {
-        await runTransaction(db, async (txn) => {
-            // --- UPDATED TRANSACTION LOGIC ---
-            
-            // 1. Create the project document in the NEW, top-level collection.
-            txn.set(topLevelProjectRef, newProjectData);
+    await runTransaction(db, async (txn) => {
+        // These are all NEW documents, so we must use txn.set()
+        
+        // 1. Create the top-level project document.
+        const topLevelProjectRef = doc(db, 'projects', newProjectId);
+        txn.set(topLevelProjectRef, newProjectData);
 
-            // 2. Create a copy in the ORIGINAL, nested collection for backward compatibility.
-            txn.set(nestedProjectRef, newProjectData);
-
-            // 3. Update the parent workspace to make this new project the selected one.
-            txn.update(workspaceRef, { selectedProjectId: newProjectId });
-            
-            // 4. IMPORTANT: Create the default sections inside the NEW, TOP-LEVEL project.
-            //    All sections and tasks should belong to the shared project document.
-            const sectionsColRef = collection(topLevelProjectRef, "sections");
-            INITIAL_DEFAULT_SECTIONS.forEach(sectionData => {
-                const sectionRef = doc(sectionsColRef);
-                txn.set(sectionRef, {
-                    ...sectionData,
-                    projectId: newProjectId, // Add projectId for security rules
-                    createdAt: serverTimestamp()
-                });
+        // 2. Create the nested project document.
+        const nestedProjectRef = doc(db, `users/${currentUser.uid}/myworkspace/${wsId}/projects`, newProjectId);
+        txn.set(nestedProjectRef, newProjectData);
+        
+        // 3. Create the default sections inside the TOP-LEVEL project.
+        const sectionsColRef = collection(topLevelProjectRef, "sections");
+        INITIAL_DEFAULT_SECTIONS.forEach(sectionData => {
+            const sectionRef = doc(sectionsColRef); // Create a new ref for each section
+            txn.set(sectionRef, {
+                ...sectionData,
+                projectId: newProjectId,
+                createdAt: serverTimestamp()
             });
         });
 
-        console.log("Project created in both locations and set as active successfully!");
+        // 4. The workspace document ALREADY EXISTS, so here we use txn.update().
+        const workspaceRef = doc(db, `users/${currentUser.uid}/myworkspace`, wsId);
+        txn.update(workspaceRef, { selectedProjectId: newProjectId });
+    });
 
-    } catch (err) {
-        console.error("Project creation failed:", err);
-        alert("Failed to create the project. Please try again.");
-    }
+    console.log("Project created successfully!");
+
+} catch (err) {
+    console.error("Project creation failed:", err);
+    alert("Failed to create the project. There might be a permission issue.");
+}
+
 }
 
   /**
