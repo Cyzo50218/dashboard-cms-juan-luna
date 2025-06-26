@@ -71,6 +71,8 @@ let originalNextSibling = null;
 // --- Data ---
 let project = { defaultColumns: [], customColumns: [], sections: [], customPriorities: [], customStatuses: [] };
 let allTasksFromSnapshot = [];
+let userCanEditProject = false;
+let currentUserRole = null;
 // --- Real-time Listener Management ---
 // This object will hold the unsubscribe functions for our active listeners.
 let activeListeners = {
@@ -224,6 +226,7 @@ function attachRealtimeListeners(userId) {
                 console.log(`[DEBUG] Project details listener fired for ${projectDetailSnap.id}`);
                 project = { ...project, ...projectDetailSnap.data(), id: projectDetailSnap.id };
                 
+                updateUserPermissions(project, currentUserId);
                 // Fetch members once and then attach other listeners
                 await loadProjectUsers(currentUserId, currentWorkspaceId, currentProjectId);
                 
@@ -364,6 +367,59 @@ async function loadProjectUsers(currentUserId) {
     }
 }
 
+// --- Permission Helper Functions ---
+
+/**
+ * Sets the global permission flags based on the user's role in the current project.
+ * This should be called whenever the project data is loaded or updated.
+ * @param {object} projectData - The full project document data.
+ * @param {string} userId - The UID of the currently authenticated user.
+ */
+function updateUserPermissions(projectData, userId) {
+    if (!projectData || !userId) {
+        userCanEditProject = false;
+        currentUserRole = null;
+        console.warn("[Permissions] Cannot set permissions. Missing project data or user ID.");
+        return;
+    }
+    
+    const members = projectData.members || [];
+    const userMemberInfo = members.find(member => member.uid === userId);
+    
+    currentUserRole = userMemberInfo ? userMemberInfo.role : null;
+    
+    const isMemberWithEditPermission = userMemberInfo && (userMemberInfo.role === "Project Admin" || userMemberInfo.role === "Editor");
+    const isSuperAdmin = projectData.project_super_admin_uid === userId;
+    const isAdminUser = projectData.project_admin_user === userId;
+    
+    userCanEditProject = isMemberWithEditPermission || isSuperAdmin || isAdminUser;
+    
+    console.log(`[Permissions] User: ${userId}, Role: ${currentUserRole}, Can Edit Project: ${userCanEditProject}`);
+}
+
+/**
+ * Checks if the current user has permission to edit a specific task.
+ * Viewers/Commentators can edit a task ONLY IF they are assigned to it.
+ * @param {object} task - The task object.
+ * @returns {boolean} - True if the user can edit the task.
+ */
+function canUserEditTask(task) {
+    if (userCanEditProject) {
+        return true;
+    }
+    
+    // Check for the special case: Viewers or Commentators who are assigned to the task.
+    if (currentUserRole === 'Viewer' || currentUserRole === 'Commentator') {
+        const isAssigned = task.assignees && task.assignees.some(assignee => assignee.uid === currentUserId);
+        if (isAssigned) {
+            console.log(`[Permissions] Granting task edit for assigned ${currentUserRole}.`);
+            return true;
+        }
+    }
+    
+    // Otherwise, no permission.
+    return false;
+}
 
 // --- Main Initialization and Cleanup ---
 
@@ -469,20 +525,26 @@ export function init(params) {
     };
 }
 
-
 // --- Event Listener Setup ---
 
-function setupEventListeners() {``
+function setupEventListeners() {
+    ``
     
     document.addEventListener('click', (e) => {
         const optionsButton = e.target.closest('.section-options-btn');
         
+        if (!userCanEditProject) {
+            console.warn("[Permissions] Blocked dropdown menu action. User cannot edit project.");
+            closeOpenMenu();
+            return;
+        }
         
         if (e.target.closest('.options-dropdown-menu')) {
             const dropdownItem = e.target.closest('.dropdown-item');
             if (dropdownItem) {
                 const { action, sectionId } = dropdownItem.dataset;
                 console.log(`Action: ${action}, Section ID: ${sectionId || 'N/A'}`);
+                
                 
                 // NEW: Handle the specific actions from the menu
                 switch (action) {
@@ -504,6 +566,7 @@ function setupEventListeners() {``
                         deleteSectionInFirebase(sectionId);
                         break;
                 }
+                
                 
                 closeOpenMenu();
             }
@@ -555,6 +618,11 @@ function setupEventListeners() {``
         // --- 2. "Add Task" Button inside section ---
         const addTaskBtn = e.target.closest('.add-task-btn');
         if (addTaskBtn) {
+            
+            if (!userCanEditProject) {
+                console.warn("[Permissions] Blocked 'Add Task'. User cannot edit project.");
+                return;
+            }
             console.log('%cACTION: Add Task in Section', 'color: blue; font-weight: bold;');
             const sectionEl = addTaskBtn.closest('.section-wrapper');
             const section = project.sections.find(s => s.id == sectionEl?.dataset.sectionId);
@@ -567,6 +635,13 @@ function setupEventListeners() {``
         // --- 2.5: Add task row clicked ---
         const addTaskRow = e.target.closest('.add-task-row-wrapper');
         if (addTaskRow) {
+            
+            // *** PERMISSION CHECK ***
+            if (!userCanEditProject) {
+                console.warn("[Permissions] Blocked 'Add Task Row'. User cannot edit project.");
+                return;
+            }
+            
             console.log('%cACTION: Add Task Row clicked', 'color: blue; font-weight: bold;');
             const sectionId = addTaskRow.dataset.sectionId;
             const section = project.sections.find(s => s.id == sectionId);
@@ -576,118 +651,143 @@ function setupEventListeners() {``
             return;
         }
         
-    const taskRow = e.target.closest('.task-row-wrapper');
-    if (!taskRow) return; // Exit if the click was not on a task row
-
-    const taskId = taskRow.dataset.taskId;
-    const sectionId = taskRow.dataset.sectionId;
-
-    // Find the specific control element that was clicked (e.g., the due date button, task name, etc.)
-    const controlElement = e.target.closest('[data-control], .task-name');
-    if (!controlElement) return; // Exit if not a specific interactive element
-
-    const controlType = controlElement.matches('.task-name') ? 'open-sidebar' : controlElement.dataset.control;
-
-    // Block interaction with temp tasks (this logic remains the same)
-    if (taskId.startsWith('temp_') && controlType !== 'open-sidebar') {
-        return;
-    }
-
-    switch (controlType) {
-        case 'open-sidebar':
-        case 'comment':
-            displaySideBarTasks(taskId); // Assumes this function is defined elsewhere
-            headerRight.classList.add('hide'); // Your existing UI logic
-            break;
-
-        case 'check':
-            e.stopPropagation();
-            handleTaskCompletion(taskId, taskRow); // Your existing function
-            break;
-
-        case 'due-date':
-            // CORRECT: This already uses our new, robust date picker function
-            showDatePicker(controlElement, taskId, sectionId);
-            break;
-
-        case 'assignee':
-            // CORRECT: This already uses our new, robust assignee dropdown function
-            showAssigneeDropdown(controlElement, taskId, sectionId);
-            break;
-
-        case 'priority':
-        case 'status': {
-            // REFACTORED: Both priority and status now use our new helper function
-            const optionType = (controlType === 'priority') ? 'Priority' : 'Status';
-            showStatusDropdown(controlElement, taskId, sectionId, optionType);
-            break;
-        }
-            
-        case 'custom-select': {
-            // REFACTORED: Custom fields now use the universal advanced dropdown
-            const columnId = controlElement.dataset.columnId;
-            const column = project.customColumns.find(c => String(c.id) === columnId);
-
-            if (column && column.options) {
-                createAdvancedDropdown(controlElement, {
-                    options: column.options,
-                    itemRenderer: (option) => `<div class="dropdown-color-swatch" style="background-color: ${option.color || '#ccc'}"></div><span>${option.name}</span>`,
-                    onSelect: (selected) => {
-                        updateTask(taskId, sectionId, { [`customFields.${column.id}`]: selected.name });
-                    },
-                    onEdit: (option) => openEditOptionDialog('CustomColumn', option, column.id), // Your existing dialog
-                    onAdd: () => openCustomColumnOptionDialog(column.id) // Your existing dialog
-                });
-            }
-            break;
-        }
-
-        case 'move-task': {
-            // REFACTORED: Moving tasks also uses the universal advanced dropdown
-            const { section: currentSection } = findTaskAndSection(taskId);
-            const otherSections = project.sections.filter(s => s.id !== currentSection?.id);
-
-            if (otherSections.length > 0) {
-                createAdvancedDropdown(controlElement, {
-                    options: otherSections,
-                    searchable: true,
-                    searchPlaceholder: "Move to section...",
-                    itemRenderer: (section) => `<span>${section.title}</span>`,
-                    onSelect: (selectedSection) => {
-                        moveTaskToSection(taskId, selectedSection.id);
-                    }
-                });
-            } else {
-                // Consider replacing alert with a less intrusive notification
-                console.warn("No other sections available to move the task.");
-            }
-            break;
+        const taskRow = e.target.closest('.task-row-wrapper');
+        if (!taskRow) return; // Exit if the click was not on a task row
+        
+        const taskId = taskRow.dataset.taskId;
+        const sectionId = taskRow.dataset.sectionId;
+        
+        // Find the specific control element that was clicked (e.g., the due date button, task name, etc.)
+        const controlElement = e.target.closest('[data-control], .task-name');
+        if (!controlElement) return; // Exit if not a specific interactive element
+        
+        const controlType = controlElement.matches('.task-name') ? 'open-sidebar' : controlElement.dataset.control;
+        
+        // Block interaction with temp tasks (this logic remains the same)
+        if (taskId.startsWith('temp_') && controlType !== 'open-sidebar') {
+            return;
         }
         
-        // --- These cases remain unchanged ---
-        case 'like': {
-            const { task, section } = findTaskAndSection(taskId);
-            if (!task || !section || !currentUserId) return;
-            const taskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${section.id}/tasks/${taskId}`);
-            const liked = task.likedBy?.[currentUserId];
-            updateDoc(taskRef, liked ?
-            {
-                likedAmount: increment(-1),
-                [`likedBy.${currentUserId}`]: deleteField()
-            } :
-            {
-                likedAmount: increment(1),
-                [`likedBy.${currentUserId}`]: true
-            });
-            break;
+        switch (controlType) {
+            case 'open-sidebar':
+            case 'comment':
+                displaySideBarTasks(taskId); // Assumes this function is defined elsewhere
+                headerRight.classList.add('hide'); // Your existing UI logic
+                break;
+                
+            case 'check':
+                e.stopPropagation();
+                if (!canUserEditTask(task)) {
+                    console.warn(`[Permissions] Blocked 'move-task' action. User cannot edit project.`);
+                    return;
+                }
+                handleTaskCompletion(taskId, taskRow); // Your existing function
+                break;
+                
+            case 'due-date':
+                if (!canUserEditTask(task)) {
+                    console.warn(`[Permissions] Blocked 'move-task' action. User cannot edit project.`);
+                    return;
+                }
+                showDatePicker(controlElement, taskId, sectionId);
+                break;
+                
+            case 'assignee':
+                if (!canUserEditTask(task)) {
+                    console.warn(`[Permissions] Blocked 'move-task' action. User cannot edit project.`);
+                    return;
+                }
+                showAssigneeDropdown(controlElement, taskId, sectionId);
+                break;
+                
+            case 'priority':
+            case 'status': {
+                if (!canUserEditTask(task)) {
+                    console.warn(`[Permissions] Blocked 'move-task' action. User cannot edit project.`);
+                    return;
+                }
+                const optionType = (controlType === 'priority') ? 'Priority' : 'Status';
+                showStatusDropdown(controlElement, taskId, sectionId, optionType);
+                break;
+            }
+            
+            case 'custom-select': {
+                if (!canUserEditTask(task)) {
+                    console.warn(`[Permissions] Blocked 'move-task' action. User cannot edit project.`);
+                    return;
+                }
+                const columnId = controlElement.dataset.columnId;
+                const column = project.customColumns.find(c => String(c.id) === columnId);
+                
+                if (column && column.options) {
+                    createAdvancedDropdown(controlElement, {
+                        options: column.options,
+                        itemRenderer: (option) => `<div class="dropdown-color-swatch" style="background-color: ${option.color || '#ccc'}"></div><span>${option.name}</span>`,
+                        onSelect: (selected) => {
+                            updateTask(taskId, sectionId, {
+                                [`customFields.${column.id}`]: selected.name });
+                        },
+                        onEdit: (option) => openEditOptionDialog('CustomColumn', option, column.id), // Your existing dialog
+                        onAdd: () => openCustomColumnOptionDialog(column.id) // Your existing dialog
+                    });
+                }
+                break;
+            }
+            
+            case 'move-task': {
+                if (!canUserEditTask(task)) {
+                    console.warn(`[Permissions] Blocked 'move-task' action. User cannot edit project.`);
+                    return;
+                }
+                // REFACTORED: Moving tasks also uses the universal advanced dropdown
+                const { section: currentSection } = findTaskAndSection(taskId);
+                const otherSections = project.sections.filter(s => s.id !== currentSection?.id);
+                
+                if (otherSections.length > 0) {
+                    createAdvancedDropdown(controlElement, {
+                        options: otherSections,
+                        searchable: true,
+                        searchPlaceholder: "Move to section...",
+                        itemRenderer: (section) => `<span>${section.title}</span>`,
+                        onSelect: (selectedSection) => {
+                            moveTaskToSection(taskId, selectedSection.id);
+                        }
+                    });
+                } else {
+                    // Consider replacing alert with a less intrusive notification
+                    console.warn("No other sections available to move the task.");
+                }
+                break;
+            }
+            
+            // --- These cases remain unchanged ---
+            case 'like': {
+                const { task, section } = findTaskAndSection(taskId);
+                if (!task || !section || !currentUserId) return;
+                const taskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${section.id}/tasks/${taskId}`);
+                const liked = task.likedBy?.[currentUserId];
+                updateDoc(taskRef, liked ?
+                {
+                    likedAmount: increment(-1),
+                    [`likedBy.${currentUserId}`]: deleteField()
+                } :
+                {
+                    likedAmount: increment(1),
+                    [`likedBy.${currentUserId}`]: true
+                });
+                break;
+            }
+            case 'remove-assignee': {
+                e.stopPropagation();
+                if (!canUserEditTask(task)) {
+                    console.warn(`[Permissions] Blocked 'move-task' action. User cannot edit project.`);
+                    return;
+                }
+                const { section } = findTaskAndSection(taskId);
+                if (section) updateTask(taskId, section.id, { assignees: [] });
+                break;
+            }
         }
-        case 'remove-assignee': {
-            e.stopPropagation();
-            const { section } = findTaskAndSection(taskId);
-            if (section) updateTask(taskId, section.id, { assignees: [] });
-            break;
-        }
-    }
         
         console.log('No specific interactive element was clicked.');
     };
@@ -699,6 +799,11 @@ function setupEventListeners() {``
         
         // --- Section Title Save ---
         if (focusedOutElement.matches('.section-title')) {
+            if (!userCanEditProject) {
+                console.warn("[Permissions] Blocked section rename. User cannot edit project.");
+                render(); // Re-render to discard the user's change
+                return;
+            }
             const sectionEl = focusedOutElement.closest('.section-title-wrapper');
             if (!sectionEl) return;
             
@@ -719,6 +824,12 @@ function setupEventListeners() {``
         if (focusedOutElement.matches('.task-name')) {
             const taskRow = focusedOutElement.closest('.task-row-wrapper');
             if (!taskRow) return;
+            
+            if (!userCanEditProject) {
+                console.warn("[Permissions] Blocked task rename. User role is insufficient.");
+                render(); // Re-render to discard change.
+                return;
+            }
             
             const taskId = taskRow.dataset.taskId;
             const { task, section } = findTaskAndSection(taskId);
@@ -746,6 +857,12 @@ function setupEventListeners() {``
         // --- Custom Field Save ---
         const customFieldCell = focusedOutElement.closest('[data-control="custom"]');
         if (customFieldCell) {
+            
+            if (!canUserEditTask(task)) {
+                console.warn("[Permissions] Blocked custom field edit. User cannot edit this task.");
+                render(); // Re-render to discard change.
+                return;
+            }
             const taskRow = customFieldCell.closest('.task-row-wrapper');
             const taskId = taskRow?.dataset.taskId;
             const columnId = customFieldCell.dataset.columnId;
@@ -790,6 +907,12 @@ function setupEventListeners() {``
     
     
     addTaskHeaderBtnListener = () => {
+        
+        if (!userCanEditProject) {
+            console.warn("[Permissions] Blocked 'Add Task' from header. User cannot edit project.");
+            return;
+        }
+        
         if (!currentlyFocusedSectionId && project.sections.length > 0) {
             currentlyFocusedSectionId = project.sections[0].id;
         }
@@ -799,6 +922,10 @@ function setupEventListeners() {``
     };
     
     addSectionBtnListener = () => {
+        if (!userCanEditProject) {
+            console.warn("[Permissions] Blocked 'Add Section'. User cannot edit project.");
+            return;
+        }
         handleAddSectionClick();
     };
     
@@ -836,6 +963,7 @@ function setupEventListeners() {``
     });
     
 }
+
 function setupGlobalClickListeners() {
     
     // Use 'true' for the capture phase. This lets our listener inspect the click
@@ -1479,121 +1607,133 @@ function formatDueDate(dueDateString) {
 function render() {
     if (!taskListBody) return;
     
-let scrollState = { top: 0, left: 0 };
-const oldContainer = taskListBody.querySelector('.juanlunacms-spreadsheetlist-custom-scrollbar');
-if (oldContainer) {
-    scrollState.top = oldContainer.scrollTop;
-    scrollState.left = oldContainer.scrollLeft;
-}
-
+    let scrollState = { top: 0, left: 0 };
+    const oldContainer = taskListBody.querySelector('.juanlunacms-spreadsheetlist-custom-scrollbar');
+    if (oldContainer) {
+        scrollState.top = oldContainer.scrollTop;
+        scrollState.left = oldContainer.scrollLeft;
+    }
+    
     // --- DATA ---
     // At the top of your render() function...
-
-// 1. Create a lookup map of all column definitions for easy access.
-const columnDefinitions = new Map();
-project.defaultColumns.forEach(col => columnDefinitions.set(String(col.id), col));
-project.customColumns.forEach(col => columnDefinitions.set(String(col.id), { ...col, isCustom: true }));
-
-// --- THIS IS THE CORRECTED LOGIC ---
-let orderedIds;
-
-// First, check if a valid columnOrder array exists on the project document.
-if (project.columnOrder && project.columnOrder.length > 0) {
-    // If yes, use it as the single source of truth.
-    orderedIds = project.columnOrder;
-} else {
-    // FALLBACK: If columnOrder is missing, create a default order dynamically.
-    console.warn("Project is missing the 'columnOrder' field. Building a default order.");
     
-    // Get the IDs from the columns we do have.
-    const defaultIds = project.defaultColumns.map(c => c.id);
-    const customIds = project.customColumns.map(c => c.id);
+    // 1. Create a lookup map of all column definitions for easy access.
+    const columnDefinitions = new Map();
+    project.defaultColumns.forEach(col => columnDefinitions.set(String(col.id), col));
+    project.customColumns.forEach(col => columnDefinitions.set(String(col.id), { ...col, isCustom: true }));
     
-    // Combine them to create a complete, albeit default, order.
-    orderedIds = [...defaultIds, ...customIds];
-}
-
-// 2. Build the final `allColumns` array using the correct order.
-const allColumns = orderedIds
-    .map(id => columnDefinitions.get(String(id))) // Ensure we look up by string
-    .filter(Boolean); // Safely filter out any columns that might have been deleted
-
-/**
- * Handles all clicks on the table header, using the new advanced dropdown
- * for both column options and adding new columns.
- */
-const headerClickListener = (e) => {
+    // --- THIS IS THE CORRECTED LOGIC ---
+    let orderedIds;
     
-    const columnOptionsIcon = e.target.closest('.options-icon');
-    const addColumnBtn = e.target.closest('.add-column-cell');
-    
-    // --- 1. HANDLE COLUMN OPTIONS DROPDOWN (Rename/Delete) ---
-    if (columnOptionsIcon) {
-        e.stopPropagation();
-        const columnEl = columnOptionsIcon.closest('[data-column-id]');
-        if (!columnEl) return;
+    // First, check if a valid columnOrder array exists on the project document.
+    if (project.columnOrder && project.columnOrder.length > 0) {
+        // If yes, use it as the single source of truth.
+        orderedIds = project.columnOrder;
+    } else {
+        // FALLBACK: If columnOrder is missing, create a default order dynamically.
+        console.warn("Project is missing the 'columnOrder' field. Building a default order.");
         
-        const columnId = columnEl.dataset.columnId;
+        // Get the IDs from the columns we do have.
+        const defaultIds = project.defaultColumns.map(c => c.id);
+        const customIds = project.customColumns.map(c => c.id);
         
-        // This logic to build the options array is perfect and remains the same.
-        const dropdownOptions = [{ name: 'Rename column' }];
-        const defaultColumnIds = ['assignees', 'dueDate', 'priority', 'status'];
-        const isDefaultColumn = defaultColumnIds.includes(columnId);
-        if (!isDefaultColumn) {
-            dropdownOptions.push({ name: 'Delete column' });
+        // Combine them to create a complete, albeit default, order.
+        orderedIds = [...defaultIds, ...customIds];
+    }
+    
+    // 2. Build the final `allColumns` array using the correct order.
+    const allColumns = orderedIds
+        .map(id => columnDefinitions.get(String(id))) // Ensure we look up by string
+        .filter(Boolean); // Safely filter out any columns that might have been deleted
+    
+    /**
+     * Handles all clicks on the table header, using the new advanced dropdown
+     * for both column options and adding new columns.
+     */
+    const headerClickListener = (e) => {
+        // *** PERMISSION: Block ALL header actions if user cannot edit the project. ***
+        if (!userCanEditProject) {
+            console.warn("[Permissions] Blocked header action. User cannot edit project.");
+            return;
+        }
+        const columnOptionsIcon = e.target.closest('.options-icon');
+        const addColumnBtn = e.target.closest('.add-column-cell');
+        
+        // --- 1. HANDLE COLUMN OPTIONS DROPDOWN (Rename/Delete) ---
+        if (columnOptionsIcon) {
+            e.stopPropagation();
+            const columnEl = columnOptionsIcon.closest('[data-column-id]');
+            if (!columnEl) return;
+            
+            const columnId = columnEl.dataset.columnId;
+            
+            // This logic to build the options array is perfect and remains the same.
+            const dropdownOptions = [{ name: 'Rename column' }];
+            const defaultColumnIds = ['assignees', 'dueDate', 'priority', 'status'];
+            const isDefaultColumn = defaultColumnIds.includes(columnId);
+            if (!isDefaultColumn) {
+                dropdownOptions.push({ name: 'Delete column' });
+            }
+            
+            // REFACTORED: Call the new universal dropdown function
+            createAdvancedDropdown(columnOptionsIcon, {
+                options: dropdownOptions,
+                // A simple renderer that adds an icon for a better user experience
+                itemRenderer: (option) => {
+                    const isDelete = option.name === 'Delete column';
+                    const iconClass = isDelete ? 'fa-trash-alt' : 'fa-pencil-alt';
+                    const colorStyle = isDelete ? 'style="color: #d9534f;"' : ''; // Make delete red
+                    return `<i class="fas ${iconClass}" ${colorStyle}></i><span ${colorStyle}>${option.name}</span>`;
+                },
+                // The onSelect logic remains the same, just placed inside the config object
+                onSelect: (selected) => {
+                    if (selected.name === 'Delete column') {
+                        if (!isDefaultColumn) {
+                            deleteColumn(Number(columnId));
+                        }
+                    } else if (selected.name === 'Rename column') {
+                        enableColumnRename(columnEl);
+                    }
+                }
+            });
+            return; // Exit after handling the click
         }
         
-        // REFACTORED: Call the new universal dropdown function
-        createAdvancedDropdown(columnOptionsIcon, {
-            options: dropdownOptions,
-            // A simple renderer that adds an icon for a better user experience
-            itemRenderer: (option) => {
-                const isDelete = option.name === 'Delete column';
-                const iconClass = isDelete ? 'fa-trash-alt' : 'fa-pencil-alt';
-                const colorStyle = isDelete ? 'style="color: #d9534f;"' : ''; // Make delete red
-                return `<i class="fas ${iconClass}" ${colorStyle}></i><span ${colorStyle}>${option.name}</span>`;
-            },
-            // The onSelect logic remains the same, just placed inside the config object
-            onSelect: (selected) => {
-                if (selected.name === 'Delete column') {
-                    if (!isDefaultColumn) {
-                        deleteColumn(Number(columnId));
-                    }
-                } else if (selected.name === 'Rename column') {
-                    enableColumnRename(columnEl);
-                }
-            }
-        });
-        return; // Exit after handling the click
-    }
-    
-    // --- 2. HANDLE "ADD COLUMN" DROPDOWN ---
-    if (addColumnBtn) {
-        e.stopPropagation();
-        
-        // REFACTORED: Call the new universal dropdown for adding a column
-        createAdvancedDropdown(addColumnBtn, {
-            // Assumes 'columnTypeOptions' is an array of strings like ['Text', 'Numbers', ...]
-            options: columnTypeOptions.map(type => ({ name: type })), 
+        // --- 2. HANDLE "ADD COLUMN" DROPDOWN ---
+        if (addColumnBtn) {
+            e.stopPropagation();
             
-            // A renderer that provides a specific icon for each column type
-            itemRenderer: (type) => {
-                let icon = 'fa-font'; // Default icon for 'Text'
-                switch (type.name) {
-                    case 'Numbers': icon = 'fa-hashtag'; break;
-                    case 'Costing': icon = 'fa-dollar-sign'; break;
-                    case 'Type': icon = 'fa-tags'; break;
-                    case 'Date': icon = 'fa-calendar-alt'; break;
+            // REFACTORED: Call the new universal dropdown for adding a column
+            createAdvancedDropdown(addColumnBtn, {
+                // Assumes 'columnTypeOptions' is an array of strings like ['Text', 'Numbers', ...]
+                options: columnTypeOptions.map(type => ({ name: type })),
+                
+                // A renderer that provides a specific icon for each column type
+                itemRenderer: (type) => {
+                    let icon = 'fa-font'; // Default icon for 'Text'
+                    switch (type.name) {
+                        case 'Numbers':
+                            icon = 'fa-hashtag';
+                            break;
+                        case 'Costing':
+                            icon = 'fa-dollar-sign';
+                            break;
+                        case 'Type':
+                            icon = 'fa-tags';
+                            break;
+                        case 'Date':
+                            icon = 'fa-calendar-alt';
+                            break;
+                    }
+                    return `<i class="fas ${icon}"></i><span>${type.name}</span>`;
+                },
+                // The onSelect logic is now cleaner
+                onSelect: (selected) => {
+                    openAddColumnDialog(selected.name); // Your existing dialog function
                 }
-                return `<i class="fas ${icon}"></i><span>${type.name}</span>`;
-            },
-            // The onSelect logic is now cleaner
-            onSelect: (selected) => {
-                openAddColumnDialog(selected.name); // Your existing dialog function
-            }
-        });
-    }
-};
+            });
+        }
+    };
     const addTaskAtTop = false;
     
     
@@ -1616,46 +1756,49 @@ const headerClickListener = (e) => {
     leftHeader.textContent = 'Name';
     
     const rightHeaderContent = document.createElement('div');
-rightHeaderContent.className = 'flex flex-grow border-b border-slate-200';
-
-allColumns.forEach(col => {
-    const cell = document.createElement('div');
-    // The main cell is a flex container with relative positioning for the handle
-    let cellClasses = 'group relative px-2 py-1 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center text-xs rounded-none';
-    cell.className = cellClasses;
-    cell.dataset.columnId = col.id;
+    rightHeaderContent.className = 'flex flex-grow border-b border-slate-200';
     
-    // This inner wrapper will hold the text and menu icon
-    const innerWrapper = document.createElement('div');
-    innerWrapper.className = 'flex flex-grow items-center min-w-0'; // min-w-0 is crucial for flex truncation
+    allColumns.forEach(col => {
+        const cell = document.createElement('div');
+        // The main cell is a flex container with relative positioning for the handle
+        let cellClasses = 'group relative px-2 py-1 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center text-xs rounded-none';
+        cell.className = cellClasses;
+        cell.dataset.columnId = col.id;
+        
+        // This inner wrapper will hold the text and menu icon
+        const innerWrapper = document.createElement('div');
+        innerWrapper.className = 'flex flex-grow items-center min-w-0'; // min-w-0 is crucial for flex truncation
+        
+        const cellText = document.createElement('span');
+        // --- FIX #1: The text now grows to push the icon to the end ---
+        cellText.className = 'header-cell-content flex-grow';
+        cellText.textContent = col.name;
+        innerWrapper.appendChild(cellText);
+        
+        // *** PERMISSION: Only show column options icon if user can edit the project. ***
+        if (userCanEditProject) {
+            const cellMenu = document.createElement('div');
+            cellMenu.className = 'options-icon flex-shrink-0 opacity-1 group-hover:opacity-100 transition-opacity cursor-pointer p-1 ml-2';
+            cellMenu.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400 pointer-events-none"><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg>`;
+            innerWrapper.appendChild(cellMenu);
+        }
+        
+        // Add the inner wrapper and resize handle to the cell
+        cell.appendChild(innerWrapper);
+        const resizeHandle = document.createElement('div');
+        resizeHandle.className = 'resize-handle';
+        cell.appendChild(resizeHandle);
+        
+        rightHeaderContent.appendChild(cell);
+    });
     
-    const cellText = document.createElement('span');
-    // --- FIX #1: The text now grows to push the icon to the end ---
-    cellText.className = 'header-cell-content flex-grow';
-    cellText.textContent = col.name;
-    innerWrapper.appendChild(cellText);
+    if (userCanEditProject) {
+        const addColumnBtn = document.createElement('div');
+        addColumnBtn.className = 'add-column-cell w-8 opacity-100 flex-shrink-0 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 cursor-pointer border-l border-slate-200 bg-white';
+        addColumnBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
+        rightHeaderContent.appendChild(addColumnBtn);
+    }
     
-    const cellMenu = document.createElement('div');
-    // --- FIX #2: The icon is now invisible by default and appears on group-hover ---
-    cellMenu.className = 'options-icon flex-shrink-0 opacity-1 group-hover:opacity-100 transition-opacity cursor-pointer p-1 ml-2';
-    cellMenu.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400 pointer-events-none"><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg>`;
-    innerWrapper.appendChild(cellMenu);
-    
-    // Add the inner wrapper and resize handle to the cell
-    cell.appendChild(innerWrapper);
-    const resizeHandle = document.createElement('div');
-    resizeHandle.className = 'resize-handle';
-    cell.appendChild(resizeHandle);
-    
-    rightHeaderContent.appendChild(cell);
-});
-
-const addColumnBtn = document.createElement('div');
-// --- FIX #3: Ensured button is always visible and has a sensible width ---
-addColumnBtn.className = 'add-column-cell w-8 opacity-100 flex-shrink-0 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 cursor-pointer border-l border-slate-200 bg-white';
-addColumnBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
-rightHeaderContent.appendChild(addColumnBtn);
-
     const headerSpacer = document.createElement('div');
     headerSpacer.className = 'w-4 flex-shrink-0';
     rightHeaderContent.appendChild(headerSpacer);
@@ -1683,21 +1826,20 @@ rightHeaderContent.appendChild(addColumnBtn);
         leftSectionCell.className = 'section-title-wrapper group sticky left-0 w-80 md:w-96 lg:w-[400px] flex-shrink-0 flex items-start py-0.5 font-semibold text-slate-800 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg hover:bg-slate-50';
         if (section.id) leftSectionCell.dataset.sectionId = section.id;
         
+        const isEditable = userCanEditProject;
+        const sectionTitleEditableClass = isEditable ? 'focus:bg-white focus:ring-1 focus:ring-slate-300' : 'cursor-default';
+        
         leftSectionCell.innerHTML = `
-        <div class="drag-handle group-hover:opacity-100 transition-opacity cursor-grab rounded flex items-start justify-center hover:bg-slate-200 user-select-none">
-            <span class="material-icons text-slate-500 select-none" style="font-size: 20px;" draggable="false">drag_indicator</span>
-        </div>
-
-        <span class="section-toggle fas ${section.isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'} text-slate-500 mr-2 cursor-pointer" data-section-id="${section.id}"></span>
-
-        <div contenteditable="true" class="section-title truncate max-w-[400px] outline-none bg-transparent focus:bg-white focus:ring-1 focus:ring-slate-300 rounded px-1">${section.title}</div>
-
-        <div class="flex-grow"></div> 
-
-        <div class="section-options-btn opacity-1 group-hover:opacity-100 transition-opacity cursor-pointer p-1 rounded hover:bg-slate-200 flex items-center justify-center">
-            <span class="material-icons text-slate-500">more_horiz</span>
-        </div>
-    `;
+            <div class="drag-handle ${!isEditable ? 'hidden' : ''} group-hover:opacity-100 transition-opacity cursor-grab rounded flex items-start justify-center hover:bg-slate-200 user-select-none">
+                <span class="material-icons text-slate-500 select-none" style="font-size: 20px;" draggable="false">drag_indicator</span>
+            </div>
+            <span class="section-toggle fas ${section.isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'} text-slate-500 mr-2 cursor-pointer" data-section-id="${section.id}"></span>
+            <div contenteditable="${isEditable}" class="section-title truncate max-w-[400px] outline-none bg-transparent ${sectionTitleEditableClass} rounded px-1">${section.title}</div>
+            <div class="flex-grow"></div>
+            <div class="section-options-btn ${!isEditable ? 'hidden' : ''} opacity-1 group-hover:opacity-100 transition-opacity cursor-pointer p-1 rounded hover:bg-slate-200 flex items-center justify-center">
+                <span class="material-icons text-slate-500">more_horiz</span>
+            </div>
+        `;
         const toggleIcon = leftSectionCell.querySelector('.section-toggle');
         
         // 2. Add a click listener to it.
@@ -1776,7 +1918,7 @@ rightHeaderContent.appendChild(addColumnBtn);
         // ⛔️ Skip rendering tasks and add row if collapsed
         if (section.isCollapsed) return;
         
-        if (addTaskAtTop) {
+        if (userCanEditProject && addTaskAtTop) {
             // Add task row
             const addRow = document.createElement('div');
             addRow.className = 'add-task-row-wrapper flex group';
@@ -1876,6 +2018,9 @@ rightHeaderContent.appendChild(addColumnBtn);
             taskRow.dataset.taskId = task.id;
             taskRow.dataset.sectionId = section.id;
             
+            const canEditThisTask = canUserEditTask(task);
+            const taskNameEditableClass = canEditThisTask ? 'focus:bg-white focus:ring-1 focus:ring-slate-300' : 'cursor-text';
+            
             const likeCount = task.likedAmount || 0;
             const likeCountHTML = likeCount > 0 ? `<span class="like-count">${likeCount}</span>` : '';
             const commentCount = task.commentCount || 0;
@@ -1893,44 +2038,32 @@ rightHeaderContent.appendChild(addColumnBtn);
             const taskNameClass = isCompleted ? 'task-name task-name-completed' : 'task-name';
             
             leftTaskCell.innerHTML = `
-    <div class="drag-handle cursor-grab rounded flex items-center justify-center hover:bg-slate-200 user-select-none">
-        <span class="material-icons text-slate-400 select-none opacity-1 group-hover:opacity-100 transition-opacity" style="font-size: 20px;" draggable="false">drag_indicator</span>
-    </div>
-
-    <label class="juanlunacms-spreadsheetlist-custom-checkbox-container px-2 ml-4" data-control="check">
-        <input type="checkbox" ${isCompleted ? 'checked' : ''}>
-        <span class="juanlunacms-spreadsheetlist-custom-checkbox"></span>
-    </label>
-
-    <div class="flex items-start flex-grow min-w-0">
-        <span
-            class="${taskNameClass} truncate whitespace-nowrap overflow-hidden text-ellipsis text-[13px] block outline-none bg-transparent focus:bg-white focus:ring-1 focus:ring-slate-300 rounded px-1 transition-all duration-150"
-            style="max-width: 100%;"
-            contenteditable="true"
-            data-task-id="${task.id}"
-            data-control="task-name"
-        >
-            ${task.name}
-        </span>
-        <div class="task-controls flex items-center gap-1 ml-1 transition-opacity duration-150 group-hover:opacity-100">
-            <span class="material-icons text-[18px] text-slate-400 cursor-pointer hover:text-red-500 transition" data-control="like" data-task-id="${task.id}">
-                favorite_border
-            </span>
-            ${likeCount > 0 ? `<span class="like-count text-sm text-slate-500">${likeCount}</span>` : ''}
-
-            <span class="material-icons text-[18px] text-slate-400 cursor-pointer hover:text-blue-500 transition" data-control="comment" data-task-id="${task.id}">
-                chat_bubble_outline
-            </span>
-            ${commentCount > 0 ? `<span class="comment-count text-sm text-slate-500">${commentCount}</span>` : ''}
-        </div>
-    </div>
-
-    <div class="flex-shrink-0 ml-auto pr-2">
-        <span class="material-icons text-sm text-slate-400 cursor-pointer hover:text-slate-600 transition" data-control="move-task" data-task-id="${task.id}">
-            swap_vert
-        </span>
-    </div>
-`;
+                <div class="drag-handle ${!userCanEditProject ? 'hidden' : ''} cursor-grab rounded flex items-center justify-center hover:bg-slate-200 user-select-none">
+                    <span class="material-icons text-slate-400 select-none opacity-1 group-hover:opacity-100 transition-opacity" style="font-size: 20px;" draggable="false">drag_indicator</span>
+                </div>
+                <label class="juanlunacms-spreadsheetlist-custom-checkbox-container px-2 ml-4" data-control="check">
+                    <input type="checkbox" ${isCompleted ? 'checked' : ''} ${!canEditThisTask ? 'disabled' : ''}>
+                    <span class="juanlunacms-spreadsheetlist-custom-checkbox"></span>
+                </label>
+                <div class="flex items-start flex-grow min-w-0">
+                    <span
+                        class="${taskNameClass} ${taskNameEditableClass} truncate whitespace-nowrap overflow-hidden text-ellipsis text-[13px] block outline-none bg-transparent rounded px-1 transition-all duration-150"
+                        style="max-width: 100%;"
+                        contenteditable="${canEditThisTask}"
+                        data-task-id="${task.id}"
+                        data-control="task-name"
+                    >
+                        ${task.name}
+                    </span>
+                    <div class="task-controls flex items-center gap-1 ml-1 transition-opacity duration-150 group-hover:opacity-100">
+                        </div>
+                </div>
+                <div class="flex-shrink-0 ml-auto pr-2">
+                    <span class="material-icons text-sm text-slate-400 ${!canEditThisTask ? 'hidden' : 'cursor-pointer hover:text-slate-600 transition'}" data-control="move-task" data-task-id="${task.id}">
+                        swap_vert
+                    </span>
+                </div>
+            `;
             
             const rightTaskCells = document.createElement('div');
             rightTaskCells.className = 'flex-grow flex group-hover:bg-slate-50';
@@ -1938,6 +2071,13 @@ rightHeaderContent.appendChild(addColumnBtn);
             // This loop creates the cells for a single task row.
             allColumns.forEach((col, i) => {
                 const cell = document.createElement('div');
+                
+                if (!canEditThisTask) {
+                    // For viewers, allow clicking Assignee and Due Date to see popups, but not others.
+                    if (col.id !== 'assignees' && col.id !== 'dueDate') {
+                        cell.style.pointerEvents = 'none';
+                    }
+                }
                 
                 const contentWrapper = document.createElement('div');
                 contentWrapper.className = 'cell-content';
@@ -2033,7 +2173,6 @@ rightHeaderContent.appendChild(addColumnBtn);
                         cell.dataset.control = col.type;
                         
                         const rawValue = task.customFields ? task.customFields[col.id] : undefined;
-                        
                         // --- Logic for ALL 'Select' type columns (with options) ---
                         if (col.options && Array.isArray(col.options)) {
                             
@@ -2068,51 +2207,61 @@ rightHeaderContent.appendChild(addColumnBtn);
                             
                             // The click listener should be active regardless of completion status.
                             // This listener is attached to each custom field cell in your list view
-cell.addEventListener('click', (e) => {
-    // Stop the click from propagating to the task row listener, which would open the sidebar
-    e.stopPropagation();
-    
-    // Ensure the column definition and its options exist before proceeding
-    if (col && col.options) {
-        
-        // --- REFACTORED: Call the new universal dropdown function ---
-        createAdvancedDropdown(cell, {
-            // targetEl: The cell that was clicked
-            
-            // config.options: The list of choices for this specific custom field
-            options: col.options,
-            
-            // config.itemRenderer: Defines how each choice should look in the dropdown
-            itemRenderer: (option) => {
-                const color = option.color || '#ccc'; // Use a default color if none is provided
-                return `<div class="dropdown-color-swatch" style="background-color: ${color}"></div><span>${option.name}</span>`;
-            },
-            
-            // config.onSelect: The action to perform when a choice is clicked
-            onSelect: (selectedValue) => {
-                updateTask(task.id, section.id, {
-                    [`customFields.${col.id}`]: selectedValue.name
-                });
-            },
-            
-            // config.onEdit: Enables the 'edit' pencil icon next to each option
-            onEdit: (optionToEdit) => {
-                // This calls your existing dialog for editing an option
-                openEditOptionDialog('CustomColumn', optionToEdit, col.id);
-            },
-            
-            // config.onAdd: Enables the 'Add New...' button in the dropdown footer
-            onAdd: () => {
-                // This calls your existing dialog for adding a new option
-                openCustomColumnOptionDialog(col.id);
-            }
-        });
-    }
-});
+                            if (canEditThisTask) {
+                                cell.addEventListener('click', (e) => {
+                                    // Stop the click from propagating to the task row listener, which would open the sidebar
+                                    e.stopPropagation();
+                                    
+                                    // Ensure the column definition and its options exist before proceeding
+                                    if (col && col.options) {
+                                        
+                                        // --- REFACTORED: Call the new universal dropdown function ---
+                                        createAdvancedDropdown(cell, {
+                                            // targetEl: The cell that was clicked
+                                            
+                                            // config.options: The list of choices for this specific custom field
+                                            options: col.options,
+                                            
+                                            // config.itemRenderer: Defines how each choice should look in the dropdown
+                                            itemRenderer: (option) => {
+                                                const color = option.color || '#ccc'; // Use a default color if none is provided
+                                                return `<div class="dropdown-color-swatch" style="background-color: ${color}"></div><span>${option.name}</span>`;
+                                            },
+                                            
+                                            // config.onSelect: The action to perform when a choice is clicked
+                                            onSelect: (selectedValue) => {
+                                                updateTask(task.id, section.id, {
+                                                    [`customFields.${col.id}`]: selectedValue.name
+                                                });
+                                            },
+                                            
+                                            // config.onEdit: Enables the 'edit' pencil icon next to each option
+                                            onEdit: (optionToEdit) => {
+                                                // This calls your existing dialog for editing an option
+                                                openEditOptionDialog('CustomColumn', optionToEdit, col.id);
+                                            },
+                                            
+                                            // config.onAdd: Enables the 'Add New...' button in the dropdown footer
+                                            onAdd: () => {
+                                                // This calls your existing dialog for adding a new option
+                                                openCustomColumnOptionDialog(col.id);
+                                            }
+                                        });
+                                    }
+                                });
+                            }
                             // --- Logic for other column types (Text, Costing, etc.) ---
                         } else { // This "else" is for columns that are NOT "Select" type
+                            
+                            if (!canEditThisTask) {
+                                cell.classList.add('cursor-default');
+                                cell.contentEditable = false;
+                            } else {
+                                cell.contentEditable = true;
+                            }
                             cell.dataset.control = col.type;
-                            cell.contentEditable = true;
+                            
+                            
                             
                             let displayValue;
                             // NEW: A variable to hold our placeholder class
@@ -2150,14 +2299,16 @@ cell.addEventListener('click', (e) => {
                                 allowNumericChars(cell);
                                 formatNumberOnBlur(cell);
                             }
+                            
+                            
                             break;
                         }
                 }
                 
                 contentWrapper.innerHTML = content;
-cell.appendChild(contentWrapper);
-
-rightTaskCells.appendChild(cell);
+                cell.appendChild(contentWrapper);
+                
+                rightTaskCells.appendChild(cell);
             });
             
             // These lines append the empty cells and assemble the row
@@ -2174,38 +2325,40 @@ rightTaskCells.appendChild(cell);
             sectionWrapper.appendChild(taskRow);
         });
         
-        Sortable.create(sectionWrapper, {
-            group: 'tasks', // This is the key: allows dragging between sections
-            handle: '.drag-handle', // Drag is initiated by the handle on a task row
-            animation: 300,
-            onMove: function(evt) {
-                // This logic ONLY runs if the button is at the bottom.
-                // It prevents dropping tasks below the "Add task" button.
-                if (!addTaskAtTop && evt.related.classList.contains('add-task-row-wrapper')) {
-                    return true;
-                }
-            },
-            onStart(evt) {
-                // Add the dark overlay for a consistent UI
-                const table = document.querySelector('.min-w-max.relative');
-                if (table) {
-                    table.classList.add('is-dragging-active');
-                }
-            },
-            
-            async onEnd(evt) {
-                // Remove the dark overlay
-                const table = document.querySelector('.min-w-max.relative');
-                if (table) {
-                    table.classList.remove('is-dragging-active');
-                }
+        if (userCanEditProject) {
+            Sortable.create(sectionWrapper, {
+                group: 'tasks', // This is the key: allows dragging between sections
+                handle: '.drag-handle', // Drag is initiated by the handle on a task row
+                animation: 300,
+                onMove: function(evt) {
+                    // This logic ONLY runs if the button is at the bottom.
+                    // It prevents dropping tasks below the "Add task" button.
+                    if (!addTaskAtTop && evt.related.classList.contains('add-task-row-wrapper')) {
+                        return true;
+                    }
+                },
+                onStart(evt) {
+                    // Add the dark overlay for a consistent UI
+                    const table = document.querySelector('.min-w-max.relative');
+                    if (table) {
+                        table.classList.add('is-dragging-active');
+                    }
+                },
                 
-                // Call your function to handle reordering and saving to Firestore
-                await handleTaskMoved(evt);
-            }
-        });
+                async onEnd(evt) {
+                    // Remove the dark overlay
+                    const table = document.querySelector('.min-w-max.relative');
+                    if (table) {
+                        table.classList.remove('is-dragging-active');
+                    }
+                    
+                    // Call your function to handle reordering and saving to Firestore
+                    await handleTaskMoved(evt);
+                }
+            });
+        }
         
-        if (!addTaskAtTop) {
+        if (userCanEditProject && !addTaskAtTop) {
             // Add task row
             const addRow = document.createElement('div');
             addRow.className = 'add-task-row-wrapper flex group';
@@ -2345,30 +2498,35 @@ rightTaskCells.appendChild(cell);
         }
     });
     
-    Sortable.create(sectionGroupsContainer, {
-        handle: '.drag-handle',
-        animation: 300,
-        
-        // The onStart handler is no longer needed for any visual changes.
-        // The CSS handles it automatically.
-        onStart(evt) {
-            console.log(`Started dragging section: ${evt.item.dataset.sectionId}`);
-        },
-        
-        // The onEnd handler is now only responsible for saving the new order.
-        async onEnd(evt) {
-            try {
-                console.log("Drag ended. Saving new section order...");
-                await handleSectionReorder(evt);
-            } catch (error) {
-                console.error("Failed to save new section order after drag.", error);
+    if (userCanEditProject) {
+        Sortable.create(sectionGroupsContainer, {
+            handle: '.drag-handle',
+            animation: 300,
+            
+            // The onStart handler is no longer needed for any visual changes.
+            // The CSS handles it automatically.
+            onStart(evt) {
+                console.log(`Started dragging section: ${evt.item.dataset.sectionId}`);
+            },
+            
+            // The onEnd handler is now only responsible for saving the new order.
+            async onEnd(evt) {
+                try {
+                    console.log("Drag ended. Saving new section order...");
+                    await handleSectionReorder(evt);
+                } catch (error) {
+                    console.error("Failed to save new section order after drag.", error);
+                }
             }
-        }
-    });
+        });
+    }
+    
+    if (userCanEditProject) {
+        initColumnDragging();
+    }
     
     syncColumnWidths();
     initColumnResizing();
-    initColumnDragging();
     if (taskIdToFocus) {
         // Find the new task row's editable name field using the ID we saved
         const taskToFocusEl = taskListBody.querySelector(`[data-task-id="${taskIdToFocus}"] .task-name`);
@@ -2391,8 +2549,8 @@ rightTaskCells.appendChild(cell);
 }
 
 function initColumnDragging() {
-const headerContainer = document.querySelector('.juanlunacms-spreadsheetlist-sticky-header .flex-grow');
-if (!headerContainer) return;
+    const headerContainer = document.querySelector('.juanlunacms-spreadsheetlist-sticky-header .flex-grow');
+    if (!headerContainer) return;
     
     Sortable.create(headerContainer, {
         animation: 150,
@@ -3129,10 +3287,10 @@ function createAdvancedDropdown(targetEl, config) {
     // --- Search Input ---
     if (config.searchable) {
         const searchInput = document.createElement('input');
-searchInput.className = 'dropdown-search-input';
-searchInput.type = 'text';
-searchInput.placeholder = 'Search teammates...';
-dropdown.appendChild(searchInput);
+        searchInput.className = 'dropdown-search-input';
+        searchInput.type = 'text';
+        searchInput.placeholder = 'Search teammates...';
+        dropdown.appendChild(searchInput);
     }
     
     // --- List Container ---
@@ -3216,8 +3374,8 @@ function showStatusDropdown(targetEl, taskId, sectionId, optionType) {
     const isPriority = optionType === 'Priority';
     const options = isPriority ? priorityOptions : statusOptions; // Your existing options arrays
     const customOptions = isPriority ? project.customPriorities : project.customStatuses;
-    const allOptions = [...options.map(o => ({name: o})), ...(customOptions || [])];
-
+    const allOptions = [...options.map(o => ({ name: o })), ...(customOptions || [])];
+    
     createAdvancedDropdown(targetEl, {
         options: allOptions,
         itemRenderer: (option) => {
@@ -3225,7 +3383,8 @@ function showStatusDropdown(targetEl, taskId, sectionId, optionType) {
             return `<div class="dropdown-color-swatch" style="background-color: ${color}"></div><span>${option.name}</span>`;
         },
         onSelect: (option) => {
-            updateTask(taskId, sectionId, { [optionType.toLowerCase()]: option.name });
+            updateTask(taskId, sectionId, {
+                [optionType.toLowerCase()]: option.name });
         },
         onEdit: (option) => {
             openEditOptionDialog(optionType, option); // Your existing dialog function
@@ -3242,7 +3401,7 @@ function showStatusDropdown(targetEl, taskId, sectionId, optionType) {
 function showAssigneeDropdown(targetEl, taskId, sectionId) {
     const { task } = findTaskAndSection(taskId);
     if (!task) return;
-
+    
     createAdvancedDropdown(targetEl, {
         options: allUsers, // Your array of user objects
         searchable: true,
@@ -3263,14 +3422,14 @@ function showAssigneeDropdown(targetEl, taskId, sectionId) {
 function showDatePicker(targetEl, taskId, sectionId) {
     // 1. Create a perfectly positioned, empty panel.
     const panel = createFloatingPanel(targetEl);
-
+    
     // 2. Initialize the Datepicker library inside our new panel.
     const datepicker = new Datepicker(panel, {
         autohide: true,
         format: 'yyyy-mm-dd',
         todayHighlight: true,
     });
-
+    
     const { task } = findTaskAndSection(taskId);
     if (task && task.dueDate) {
         datepicker.setDate(task.dueDate);

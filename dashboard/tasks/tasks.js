@@ -199,16 +199,17 @@ fetchCurrentProjectData()
 
         if (projectName && data.title) {
 const members = data.members || [];
+
 const isMemberWithEditPermission = members.some(
     (member) =>
     member.uid === user.uid &&
-    (member.role === "Project admin" || member.role === "Editor")
+    (member.role === "Project Admin" || member.role === "Editor")
 );
 
 const isSuperAdmin = data.project_super_admin_uid === user.uid;
 const isAdminUser = data.project_admin_user === user.uid;
 
-// This boolean will control the UI and the save logic.
+// Role Checker.
 const userCanEdit = isMemberWithEditPermission || isSuperAdmin || isAdminUser;
 
 
