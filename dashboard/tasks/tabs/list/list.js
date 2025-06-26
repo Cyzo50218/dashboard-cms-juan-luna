@@ -900,7 +900,7 @@ function setupEventListeners() {``
         
         // 3. If a click happens OUTSIDE all the safe areas, then show the header.
         if (headerRight && !clickedInsideRightSidebar && !clickedOnTaskLink) {
-            headerRight.classList.remove('hide');
+            
         }
         
     };
