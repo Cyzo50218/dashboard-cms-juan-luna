@@ -42,7 +42,7 @@ import {
 import {
     firebaseConfig
 } from "/services/firebase-config.js";
-import { getHeaderRight } from '../dashboard/tasks/tabs/list/list.js';
+import { getHeaderRight } from '/dashboard/tasks/tabs/list/list.js';
 
 window.TaskSidebar = (function() {
     // --- 1. FIREBASE & INITIALIZATION ---
