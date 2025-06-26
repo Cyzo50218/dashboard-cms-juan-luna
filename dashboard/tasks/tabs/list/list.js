@@ -224,11 +224,14 @@ function attachRealtimeListeners(userId) {
                 }
                 
                 console.log(`[DEBUG] Project details listener fired for ${projectDetailSnap.id}`);
+                const projectData = projectDetailSnap.data();
                 project = { ...project, ...projectDetailSnap.data(), id: projectDetailSnap.id };
                 
-                updateUserPermissions(project, currentUserId);
-                // Fetch members once and then attach other listeners
-                await loadProjectUsers(currentUserId, currentWorkspaceId, currentProjectId);
+                updateUserPermissions(projectData, currentUserId);
+                const memberUIDs = projectData.members?.map(m => m.uid) || [];
+
+                // Fetch all user profiles using the new helper function
+                allUsers = await fetchMemberProfiles(memberUIDs);
                 
                 // Attach listener for Sections
                 const sectionsQuery = query(collection(projectRef, 'sections'), orderBy("order"));
@@ -255,115 +258,28 @@ function attachRealtimeListeners(userId) {
     });
 }
 
-
-async function fetchActiveIds(userId) {
-    console.log(`[DEBUG] [fetchActiveIds] Fetching for user: ${userId}`);
-    
-    try {
-        // Fetch the selected workspace
-        const workspaceQuery = query(
-            collection(db, `users/${userId}/myworkspace`),
-            where("isSelected", "==", true),
-            limit(1)
-        );
-        const workspaceSnapshot = await getDocs(workspaceQuery);
-        
-        if (workspaceSnapshot.empty) {
-            console.warn("[DEBUG] No selected workspace found.");
-            return { workspaceId: null, projectId: null };
-        }
-        
-        const workspaceId = workspaceSnapshot.docs[0].id;
-        console.log(`[DEBUG] Found workspaceId: ${workspaceId}`);
-        
-        // Fetch the selected project
-        const projectQuery = query(
-            collection(db, `users/${userId}/myworkspace/${workspaceId}/projects`),
-            where("isSelected", "==", true),
-            limit(1)
-        );
-        const projectSnapshot = await getDocs(projectQuery);
-        
-        if (projectSnapshot.empty) {
-            console.warn("[DEBUG] No selected project found.");
-            return { workspaceId, projectId: null };
-        }
-        
-        const projectId = projectSnapshot.docs[0].id;
-        console.log(`[DEBUG] Found projectId: ${projectId}`);
-        
-        return { workspaceId, projectId };
-    } catch (error) {
-        console.error("[DEBUG] Error fetching active IDs:", error);
-        return { workspaceId: null, projectId: null };
-    }
-}
-
-
-async function fetchProjectMembers(userId, workspaceId, projectId) {
-    console.log("[fetchProjectMembers] Called with:", { userId, workspaceId, projectId });
-    if (!userId || !workspaceId || !projectId) {
-        console.warn("[fetchProjectMembers] Missing parameters. Returning empty array.");
-        return [];
+async function fetchMemberProfiles(uids) {
+    if (!uids || uids.length === 0) {
+        return []; // Return empty if no UIDs are provided
     }
     
     try {
-        const projectRef = doc(db, `users/${userId}/myworkspace/${workspaceId}/projects/${projectId}`);
-        const projectSnap = await getDoc(projectRef);
-        console.log("[fetchProjectMembers] Project exists:", projectSnap.exists());
+        // Create an array of promises, where each promise fetches one user document
+        const userPromises = uids.map(uid => getDoc(doc(db, `users/${uid}`)));
         
-        if (!projectSnap.exists()) {
-            console.warn("[fetchProjectMembers] Project doc not found:", projectRef.path);
-            return [];
-        }
-        
-        const projectData = projectSnap.data();
-        console.log("[fetchProjectMembers] Project data loaded:", projectData);
-        
-        let memberUids;
-        if (projectData.workspaceRole === 'workspace') {
-            const workspaceDoc = await getDoc(doc(db, `users/${userId}/myworkspace/${workspaceId}`));
-            console.log("[fetchProjectMembers] Workspace data:", workspaceDoc.data());
-            memberUids = workspaceDoc.data()?.members || [];
-        } else {
-            memberUids = projectData.members?.map(m => m.uid) || [];
-        }
-        
-        console.log("[fetchProjectMembers] Member UIDs:", memberUids);
-        
-        if (memberUids.length === 0) {
-            console.warn("[fetchProjectMembers] No member UIDs found.");
-            return [];
-        }
-        
-        const userPromises = memberUids.map(uid => getDoc(doc(db, `users/${uid}`)));
+        // Wait for all promises to resolve
         const userDocs = await Promise.all(userPromises);
         
-        const validUsers = userDocs.filter(d => d.exists()).map(d => ({ uid: d.id, ...d.data() }));
-        console.log("[fetchProjectMembers] Valid member profiles fetched:", validUsers);
+        // Filter out any users that might not exist and format the data
+        const validUsers = userDocs
+            .filter(d => d.exists())
+            .map(d => ({ uid: d.id, ...d.data() }));
         
+        console.log("[DEBUG] Fetched member profiles:", validUsers);
         return validUsers;
     } catch (error) {
-        console.error("[fetchProjectMembers] Error fetching members:", error);
-        return [];
-    }
-}
-
-async function loadProjectUsers(currentUserId) {
-    console.log("[loadProjectUsers] Starting with userId:", currentUserId);
-    try {
-        const { workspaceId, projectId } = await fetchActiveIds(currentUserId);
-        console.log("[loadProjectUsers] Active IDs fetched:", { workspaceId, projectId });
-        
-        if (!workspaceId || !projectId) {
-            console.warn("[loadProjectUsers] Missing workspaceId or projectId");
-            return;
-        }
-        
-        allUsers = await fetchProjectMembers(currentUserId, workspaceId, projectId);
-        console.log("[loadProjectUsers] Project members loaded:", allUsers);
-    } catch (error) {
-        console.error("[loadProjectUsers] Failed to load project users:", error);
+        console.error("[DEBUG] Error fetching member profiles:", error);
+        return []; // Return empty array on error
     }
 }
 
@@ -528,8 +444,6 @@ export function init(params) {
 // --- Event Listener Setup ---
 
 function setupEventListeners() {
-    ``
-    
     document.addEventListener('click', (e) => {
         const optionsButton = e.target.closest('.section-options-btn');
         
