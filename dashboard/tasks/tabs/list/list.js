@@ -464,7 +464,7 @@ export function init(params) {
 
 // --- Event Listener Setup ---
 
-function setupEventListeners() {
+function setupEventListeners() {``
     
     document.addEventListener('click', (e) => {
         const optionsButton = e.target.closest('.section-options-btn');
@@ -901,10 +901,7 @@ function setupEventListeners() {
         // Make sure this selector is correct for your HTML.
         const headerRight = document.querySelector('.header-right');
         
-        // 3. If a click happens OUTSIDE all the safe areas, then show the header.
-        if (headerRight && !clickedInsideRightSidebar && !clickedInsideLeftSidebar && !clickedOnTaskLink) {
-            headerRight.classList.remove('hide');
-        }
+        headerRight.classList.remove('hide');
         
     };
     
