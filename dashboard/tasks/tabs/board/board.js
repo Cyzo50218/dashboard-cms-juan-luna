@@ -452,7 +452,7 @@ const renderColumn = (section) => {
             <span class="boardtasks-task-count">${section.tasks.filter(t => !t.isNew).length}</span>
         </div>
         <div class="boardtasks-tasks-container">${section.tasks.map(renderTask).join('')}</div>
-        <button class="boardtasks-add-task-btn" style="display: ${canEdit ? 'flex' : 'none'};"><i class="fas fa-plus"></i> Add task</button>`; 
+        <button class="boardtasks-add-task-btn" style="display: ${canEdit ? 'none' : 'flex'};"><i class="fas fa-plus"></i> Add task</button>`; 
     kanbanBoard.appendChild(columnEl);
 };
 
