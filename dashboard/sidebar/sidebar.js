@@ -1124,99 +1124,137 @@ window.TaskSidebar = (function() {
             
             switch (controlType) {
                 case 'custom-field': {
-    // The key still tells us which column it is (e.g., "custom-12345")
+    console.log("--- Click detected on a Custom Field ---");
+    console.log("1. The key from the element's data-key is:", key);
+    
     const columnId = key.split('-')[1];
+    console.log("2. Extracted columnId:", columnId);
+    
+    console.log("3. Searching for this columnId in currentProject.customColumns:", currentProject.customColumns);
     const column = currentProject.customColumns.find(c => c.id == columnId);
     
-    if (!column) return; // Safety check
+    if (!column) {
+        console.error("4. CRITICAL: No column object found for this ID. Stopping execution for this field.");
+        return; // Safety check
+    }
     
+    console.log("4. SUCCESS: Found the matching column object:", column);
+    console.log("5. Checking the column's type. The type is:", column.type);
+
     // Now, we check the column's type to decide what kind of editor to open.
     if (column.type === 'Type' && column.options) {
+        console.log("6. Condition MET: The column.type is 'Type' and it has options. Opening the generic dropdown.");
         // It's a dropdown-style custom field
         createGenericDropdown(control, column.options, (opt) => updateCustomField(columnId, opt.name, column));
         
     } else if (['Text', 'Numbers', 'Costing'].includes(column.type)) {
+        console.log("6. Condition MET: The column.type is Text, Numbers, or Costing. Making the field editable.");
         // It's a text/number-style custom field
+        makeTextFieldEditable(control, columnId, column);
+
+    } else {
+         console.error("6. Condition FAILED: The column.type ('" + column.type + "') is not one of the recognized types ('Type', 'Text', 'Numbers', 'Costing'). No action will be taken.");
+    }
+    break;
+}
+case 'project': {
+    console.log("--- Click detected on Project field ---");
+    const options = workspaceProjects.map(p => ({ label: p.title, value: p.id }));
+    console.log("Opening project dropdown with these options:", options);
+    createGenericDropdown(control, options, (newProjectId) => moveTask(newProjectId));
+    break;
+}
+case 'assignee': {
+    console.log("--- Click detected on Assignee field ---");
+    console.log("Calling the assignee dropdown function.");
+    // It now makes a single, clean call to our new function.
+    showSidebarAssigneeDropdown(control);
+    break;
+}
+case 'date': {
+    console.log("--- Click detected on Due Date field ---");
+    // Initialize flatpickr on the input inside the clicked control
+    const input = control.querySelector('.flatpickr-input');
+    console.log("Initializing flatpickr date picker on input:", input);
+    const fp = flatpickr(input, {
+        defaultDate: currentTask.dueDate || 'today',
+        dateFormat: "Y-m-d",
+        onClose: function(selectedDates) {
+            console.log("Flatpickr closed. Selected dates:", selectedDates);
+            const newDate = selectedDates[0] ? flatpickr.formatDate(selectedDates[0], 'Y-m-d') : '';
+            console.log("Formatted new date:", newDate, ". Calling updateTaskField.");
+            updateTaskField('dueDate', newDate);
+            fp.destroy(); // Important to clean up the instance
+        }
+    });
+    fp.open();
+    break;
+}
+case 'priority': {
+    console.log("--- Click detected on Priority field ---");
+    let allPriorityOptions = priorityOptions.map(p => ({
+        name: p,
+        color: defaultPriorityColors[p]
+    }));
+    
+    if (currentProject.customPriorities && currentProject.customPriorities.length > 0) {
+        console.log("Found custom priorities. Merging with default options.");
+        allPriorityOptions = [...allPriorityOptions, ...currentProject.customPriorities];
+    }
+    
+    console.log("Final options for Priority dropdown:", allPriorityOptions);
+    
+    createGenericDropdown(control, allPriorityOptions, (selectedOption) => {
+        console.log("Priority selected:", selectedOption, ". Calling updateTaskField.");
+        updateTaskField('priority', selectedOption.name);
+    }, 'Priority');
+    break;
+}
+
+case 'status': {
+    console.log("--- Click detected on Status field ---");
+    let allStatusOptions = statusOptions.map(s => ({
+        name: s,
+        color: defaultStatusColors[s]
+    }));
+    
+    if (currentProject.customStatuses && currentProject.customStatuses.length > 0) {
+        console.log("Found custom statuses. Merging with default options.");
+        allStatusOptions = [...allStatusOptions, ...currentProject.customStatuses];
+    }
+    
+    console.log("Final options for Status dropdown:", allStatusOptions);
+    
+    createGenericDropdown(control, allStatusOptions, (selectedOption) => {
+        console.log("Status selected:", selectedOption, ". Calling updateTaskField.");
+        updateTaskField('status', selectedOption.name);
+    }, 'Status');
+    break;
+}
+// NOTE: The individual 'Type', 'Numbers', etc. cases below are likely redundant if 'custom-field' is working correctly,
+// but adding logs here for complete coverage in case your data-control attributes are different.
+case 'Type': {
+    console.warn("--- Click handled by DEPRECATED 'Type' case. Consider relying on 'custom-field' case. ---");
+    const columnId = key.split('-')[1];
+    const column = currentProject.customColumns.find(c => c.id == columnId);
+    if (column?.options) {
+        console.log("Opening dropdown for custom column (Type):", column);
+        createGenericDropdown(control, column.options, (opt) => updateCustomField(columnId, opt.name, column), 'CustomColumn', columnId);
+    }
+    break;
+}
+case 'Numbers':
+case 'Costing':
+case 'Text': {
+    console.warn("--- Click handled by DEPRECATED 'Text'/'Numbers'/'Costing' case. Consider relying on 'custom-field' case. ---");
+    const columnId = key.split('-')[1];
+    const column = currentProject.customColumns.find(c => c.id == columnId);
+    if (column) {
+        console.log("Making field editable for custom column:", column);
         makeTextFieldEditable(control, columnId, column);
     }
     break;
-                }
-                case 'project': {
-                    const options = workspaceProjects.map(p => ({ label: p.title, value: p.id }));
-                    createGenericDropdown(control, options, (newProjectId) => moveTask(newProjectId));
-                    break;
-                }
-                case 'assignee': {
-                    // It now makes a single, clean call to our new function.
-                    showSidebarAssigneeDropdown(control);
-                    break;
-                }
-                case 'date': {
-                    // Initialize flatpickr on the input inside the clicked control
-                    const input = control.querySelector('.flatpickr-input');
-                    const fp = flatpickr(input, {
-                        defaultDate: currentTask.dueDate || 'today',
-                        dateFormat: "Y-m-d",
-                        onClose: function(selectedDates) {
-                            const newDate = selectedDates[0] ? flatpickr.formatDate(selectedDates[0], 'Y-m-d') : '';
-                            updateTaskField('dueDate', newDate);
-                            fp.destroy(); // Important to clean up the instance
-                        }
-                    });
-                    fp.open();
-                    break;
-                }
-                case 'priority': {
-                    let allPriorityOptions = priorityOptions.map(p => ({
-                        name: p,
-                        color: defaultPriorityColors[p]
-                    }));
-                    
-                    if (currentProject.customPriorities && currentProject.customPriorities.length > 0) {
-                        allPriorityOptions = [...allPriorityOptions, ...currentProject.customPriorities];
-                    }
-                    
-                    console.log("Final options for Priority dropdown:", allPriorityOptions);
-                    
-                    createGenericDropdown(control, allPriorityOptions, (selectedOption) => {
-                        updateTaskField('priority', selectedOption.name);
-                    }, 'Priority');
-                    break;
-                }
-                
-                case 'status': {
-                    let allStatusOptions = statusOptions.map(s => ({
-                        name: s,
-                        color: defaultStatusColors[s]
-                    }));
-                    
-                    if (currentProject.customStatuses && currentProject.customStatuses.length > 0) {
-                        allStatusOptions = [...allStatusOptions, ...currentProject.customStatuses];
-                    }
-                    
-                    console.log("Final options for Status dropdown:", allStatusOptions);
-                    
-                    createGenericDropdown(control, allStatusOptions, (selectedOption) => {
-                        updateTaskField('status', selectedOption.name);
-                    }, 'Status');
-                    break;
-                }
-                case 'Type': {
-                    const columnId = key.split('-')[1];
-                    const column = currentProject.customColumns.find(c => c.id == columnId);
-                    if (column?.options) {
-                        createGenericDropdown(control, column.options, (opt) => updateCustomField(columnId, opt.name, column), 'CustomColumn', columnId);
-                    }
-                    break;
-                }
-                case 'Numbers':
-                case 'Costing':
-                case 'Text': {
-                    const columnId = key.split('-')[1];
-                    const column = currentProject.customColumns.find(c => c.id == columnId);
-                    if (column) makeTextFieldEditable(control, columnId, column);
-                    break;
-                }
+}
                 
             }
         });
