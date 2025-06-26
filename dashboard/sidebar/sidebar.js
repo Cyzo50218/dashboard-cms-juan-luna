@@ -1224,13 +1224,13 @@ window.TaskSidebar = (function() {
         
         document.body.addEventListener('click', (e) => {
             // First, if any popovers are open, just close them and do nothing else.
-           if (document.querySelector('.context-dropdown')) {
-    // This condition checks if the click was truly "outside"
-    if (!e.target.closest('.context-dropdown, .field-control')) {
-        closePopovers();
-        return; 
-    }
-}
+           
+             if (document.querySelector('.context-dropdown')) {
+                if (!e.target.closest('.context-dropdown, .field-control')) {
+                    closePopovers();
+                }
+                return;
+            }
             
             // If no popovers were open, then check if we should close the sidebar.
             // The sidebar should only close if it's currently visible.
