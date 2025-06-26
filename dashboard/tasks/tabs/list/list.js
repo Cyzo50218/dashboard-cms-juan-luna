@@ -2396,6 +2396,17 @@ if (!(userCanEditProject && (project.project_super_admin_uid === currentUserId |
     </svg>
     <span class="text-sm">Add task...</span>
 `;
+
+const isProjectAdmin = (
+    project.project_super_admin_uid === currentUserId ||
+    project.project_admin_user === currentUserId
+);
+
+if (!isProjectAdmin) {
+    indentedText.innerHTML = ''; 
+    indentedText.classList.remove('cursor-pointer', 'hover:bg-slate-200');
+}
+
             leftAddCell.appendChild(indentedText);
             
             const rightAddCells = document.createElement('div');
