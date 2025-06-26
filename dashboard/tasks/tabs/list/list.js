@@ -2057,8 +2057,17 @@ function render() {
                     >
                         ${task.name}
                     </span>
-                    <div class="task-controls flex items-center gap-1 ml-1 transition-opacity duration-150 group-hover:opacity-100">
-                        </div>
+        <div class="task-controls flex items-center gap-1 ml-1 transition-opacity duration-150 group-hover:opacity-100">
+            <span class="material-icons text-[18px] text-slate-400 cursor-pointer hover:text-red-500 transition" data-control="like" data-task-id="${task.id}">
+                favorite_border
+            </span>
+            ${likeCount > 0 ? `<span class="like-count text-sm text-slate-500">${likeCount}</span>` : ''}
+
+            <span class="material-icons text-[18px] text-slate-400 cursor-pointer hover:text-blue-500 transition" data-control="comment" data-task-id="${task.id}">
+                chat_bubble_outline
+            </span>
+            ${commentCount > 0 ? `<span class="comment-count text-sm text-slate-500">${commentCount}</span>` : ''}
+        </div>
                 </div>
                 <div class="flex-shrink-0 ml-auto pr-2">
                     <span class="material-icons text-sm text-slate-400 ${!canEditThisTask ? 'hidden' : 'cursor-pointer hover:text-slate-600 transition'}" data-control="move-task" data-task-id="${task.id}">
