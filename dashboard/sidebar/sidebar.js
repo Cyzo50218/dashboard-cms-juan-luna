@@ -1355,6 +1355,8 @@ case 'Text': {
         
         document.body.appendChild(dropdown);
         const rect = targetEl.getBoundingClientRect();
+        dropdown.style.display = 'block'; 
+        dropdown.style.visibility = 'visible';
         dropdown.style.top = `${rect.bottom + 4}px`;
         dropdown.style.left = `${rect.left}px`;
         dropdown.style.minWidth = `${rect.width}px`;
