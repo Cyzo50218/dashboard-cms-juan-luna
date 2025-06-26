@@ -141,7 +141,7 @@ async function fetchCurrentProjectData() {
         throw new Error("User not authenticated.");
     }
     
-    // 1. Find the user's selected workspace to get the selectedProjectId from it.
+    // 1. Find the user's selected workspace (No changes here, this is correct).
     const workspaceQuery = query(
         collection(db, `users/${user.uid}/myworkspace`),
         where("isSelected", "==", true)
@@ -157,28 +157,24 @@ async function fetchCurrentProjectData() {
     const workspaceId = workspaceDoc.id;
     const workspaceData = workspaceDoc.data();
     
-    // 2. Get the target project ID from the workspace data.
+    // 2. Get the target project ID from the workspace data (No changes here).
     const selectedProjectId = workspaceData.selectedProjectId;
     if (!selectedProjectId) {
         console.warn("fetchCurrentProjectData: The active workspace does not have a selected project.");
         throw new Error("No selected project found.");
     }
     
-    // 3. Find the project document using a secure collectionGroup query.
-    // This query works because it aligns with your security rules.
-    const projectQuery = query(
-        collectionGroup(db, 'projects'),
-        where('projectId', '==', selectedProjectId),
-        where('memberUIDs', 'array-contains', user.uid)
-    );
-    const projectSnapshot = await getDocs(projectQuery);
-    
-    if (projectSnapshot.empty) {
-        console.error(`fetchCurrentProjectData: Could not find project with ID '${selectedProjectId}' or user lacks permission.`);
+    // --- REFACTORED LOGIC ---
+    // 3. Directly get the project from the TOP-LEVEL 'projects' collection.
+    // This is more efficient than a collectionGroup query.
+    const projectRef = doc(db, 'projects', selectedProjectId);
+    const projectDoc = await getDoc(projectRef);
+
+    // IMPORTANT: Manually verify existence and membership, since we are not using a query's 'where' clause.
+    if (!projectDoc.exists() || !projectDoc.data().memberUIDs?.includes(user.uid)) {
+        console.error(`fetchCurrentProjectData: Could not find project with ID '${selectedProjectId}' in the top-level collection, or user lacks permission.`);
         throw new Error("Selected project not found or permission denied.");
     }
-    
-    const projectDoc = projectSnapshot.docs[0];
     
     // 4. Return all the necessary data.
     console.log(`[fetchCurrentProjectData] Successfully fetched project: ${projectDoc.data().title}`);
@@ -186,7 +182,7 @@ async function fetchCurrentProjectData() {
         data: projectDoc.data(),
         projectId: projectDoc.id,
         workspaceId, // The ID of the user's active workspace
-        projectPath: projectDoc.ref.path // Returning the full path is very useful for subsequent writes
+        projectPath: projectDoc.ref.path // Returning the full path is very useful
     };
 }
 
@@ -197,32 +193,68 @@ fetchCurrentProjectData()
 
 
         if (projectName && data.title) {
-            projectName.textContent = data.title;
-            projectName.contentEditable = true;
-            projectName.style.cursor = "text";
-            projectName.title = "Click to edit project name";
+           const currentUserRoleInfo = data.members.find(member => member.uid === user.uid);
+const userRole = currentUserRoleInfo ? currentUserRoleInfo.role : null;
+const canEditTitle = (data.project_super_admin_uid === user.uid) || (data.project_super_admin_uid === user.uid) || (userRole === 'Project admin');
+
+projectName.textContent = data.title;
+
+if (canEditTitle) {
+    // --- UI for Admins ---
+    // If the user has permission, make the element editable.
+    console.log("User has permission to edit title. Enabling editor.");
+    projectName.contentEditable = true;
+    projectName.style.cursor = "text";
+
+} else {
+    // --- UI for Other Members (Editors, Viewers, etc.) ---
+    // If the user does NOT have permission, ensure it is read-only.
+    console.log("User does not have permission to edit title. Setting as read-only.");
+    projectName.contentEditable = false;
+    projectName.style.cursor = "default";
+    projectName.title = data.title; // Tooltip just shows the full title
+}
 
             // Event listener to save on blur or Enter key
             const saveTitle = async () => {
-                const newTitle = projectName.textContent.trim();
-                if (!newTitle || newTitle === data.title) return; // Don't update if unchanged
+    const newTitle = projectName.textContent.trim();
 
-                try {
-                    const projectDocRef = doc(
-                        db,
-                        `users/${user.uid}/myworkspace/${workspaceId}/projects`,
-                        projectId
-                    );
-                    await runTransaction(db, async (transaction) => {
-                        transaction.update(projectDocRef, {
-                            title: newTitle,
-                        });
-                    });
-                    console.log("Project title updated successfully.");
-                } catch (err) {
-                    console.error("Failed to update project title:", err);
-                }
-            };
+    // Don't update if title is empty or unchanged
+    if (!newTitle || newTitle === data.title) {
+        return; 
+    }
+
+    // --- 1. Define references to BOTH document locations ---
+
+    // Reference to the shared, TOP-LEVEL project (the source of truth)
+    const topLevelProjectRef = doc(db, 'projects', projectId);
+
+    // Reference to the private, NESTED project (for backward compatibility)
+    const nestedProjectRef = doc(
+        db,
+        `users/${user.uid}/myworkspace/${workspaceId}/projects`,
+        projectId
+    );
+
+    try {
+        // --- 2. Use a transaction to update both documents atomically ---
+        await runTransaction(db, async (transaction) => {
+            
+            // First, update the top-level document. Your security rules will check this action.
+            transaction.update(topLevelProjectRef, { title: newTitle });
+
+            // Second, also update the nested copy to keep everything in sync.
+            transaction.update(nestedProjectRef, { title: newTitle });
+        });
+
+        console.log("Project title updated successfully in both locations.");
+
+    } catch (err) {
+        // --- 3. Catch errors, including permission denied from security rules ---
+        console.error("Failed to update project title:", err);
+        alert("Update failed. You may not have permission to rename this project.");
+    }
+};
 
             // Save on blur
             projectName.addEventListener("blur", saveTitle);

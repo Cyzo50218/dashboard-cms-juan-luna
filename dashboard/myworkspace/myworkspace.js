@@ -160,12 +160,12 @@ async function handleProjectCreate() {
         ownerId: currentUser.uid,     // The UID of the user who created it
         workspaceId: wsId,            // The workspace it belongs to
         memberUIDs: [currentUser.uid], // For efficient queries
-        members: [{ uid: currentUser.uid, role: "Project Admin" }], // For detailed roles
+        members: [{ uid: currentUser.uid, role: "Project admin" }], // For detailed roles
         color: generateColorForName(name.trim()),
         starred: false,
         createdAt: serverTimestamp(),
         accessLevel: "workspace",
-        workspaceRole: "Viewer",
+        workspaceRole: "Private",
         project_super_admin_uid: currentUser.uid,
         project_admin_user: '',
         pendingInvites: [],
