@@ -329,12 +329,12 @@ function canUserEditTask(task) {
     
     // Check for the special case: Viewers or Commentators who are assigned to the task.
     if (currentUserRole === 'Viewer' || currentUserRole === 'Commentator') {
-        const isAssigned = task.assignees && task.assignees.some(assignee => assignee.uid === currentUserId);
-        if (isAssigned) {
-            console.log(`[Permissions] Granting task edit for assigned ${currentUserRole}.`);
-            return true;
-        }
+    const isAssigned = Array.isArray(task.assignees) && task.assignees.includes(currentUserId);
+    if (isAssigned) {
+        console.log(`[Permissions] Granting task edit for assigned ${currentUserRole}.`);
+        return true;
     }
+}
     
     // Otherwise, no permission.
     return false;
@@ -1416,6 +1416,36 @@ function allowNumericChars(cell) {
 }
 
 /**
+ * Toggles the 'isRestricted' property for a specific column rule in Firestore.
+ * @param {object} column - The column object to toggle the rule for.
+ */
+async function toggleColumnRestriction(column) {
+    if (!userCanEditProject) {
+        return console.error("PERMISSION DENIED: Only project admins can change column rules.");
+    }
+    
+    // Get a mutable copy of the rules, or an empty array if none exist.
+    const currentRules = project.columnRules ? JSON.parse(JSON.stringify(project.columnRules)) : [];
+    
+    const ruleIndex = currentRules.findIndex(rule => rule.name === column.name);
+    
+    if (ruleIndex > -1) {
+        // If a rule exists, flip its 'isRestricted' property.
+        currentRules[ruleIndex].isRestricted = !currentRules[ruleIndex].isRestricted;
+        console.log(`Rule for "${column.name}" updated to isRestricted: ${currentRules[ruleIndex].isRestricted}`);
+    } else {
+        // If no rule exists, create a new one, defaulting to restricted.
+        currentRules.push({ name: column.name, isRestricted: true });
+        console.log(`Rule for "${column.name}" created with isRestricted: true`);
+    }
+    
+    // Save the entire updated array back to Firestore.
+    await updateProjectInFirebase({
+        columnRules: currentRules
+    });
+}
+
+/**
  * PART 2: A smart formatter on 'blur' (when the user clicks away).
  * Attaches an event listener that parses and formats the number correctly.
  * @param {HTMLElement} cell The contenteditable cell element.
@@ -1575,95 +1605,110 @@ addSectionClassBtn.classList.remove('hide');
     const allColumns = orderedIds
         .map(id => columnDefinitions.get(String(id))) // Ensure we look up by string
         .filter(Boolean); // Safely filter out any columns that might have been deleted
+
+const headerClickListener = (e) => {
+    // This top-level permission check for general editing is still correct.
+    if (!userCanEditProject) {
+        console.warn("[Permissions] Blocked header action. User cannot edit project.");
+        return;
+    }
     
-    /**
-     * Handles all clicks on the table header, using the new advanced dropdown
-     * for both column options and adding new columns.
-     */
-    const headerClickListener = (e) => {
-        // *** PERMISSION: Block ALL header actions if user cannot edit the project. ***
-        if (!userCanEditProject) {
-            console.warn("[Permissions] Blocked header action. User cannot edit project.");
-            return;
-        }
-        const columnOptionsIcon = e.target.closest('.options-icon');
-        const addColumnBtn = e.target.closest('.add-column-cell');
+    const columnOptionsIcon = e.target.closest('.options-icon');
+    const addColumnBtn = e.target.closest('.add-column-cell');
+    
+    // --- 1. HANDLE COLUMN OPTIONS DROPDOWN ---
+    if (columnOptionsIcon) {
+        e.stopPropagation();
+        const columnEl = columnOptionsIcon.closest('[data-column-id]');
+        if (!columnEl) return;
         
-        // --- 1. HANDLE COLUMN OPTIONS DROPDOWN (Rename/Delete) ---
-        if (columnOptionsIcon) {
-            e.stopPropagation();
-            const columnEl = columnOptionsIcon.closest('[data-column-id]');
-            if (!columnEl) return;
+        const columnId = columnEl.dataset.columnId;
+        const column = allColumns.find(c => String(c.id) === String(columnId));
+        if (!column) return;
+        
+        // Base options available to all editors
+        const dropdownOptions = [{ name: 'Rename column' }];
+        
+        // --- ADDED: COLUMN RULE LOGIC ---
+        // Only Project Admins/Owners can see restriction options.
+        if (userCanEditProject) {
+            const rules = project.columnRules || [];
+            const existingRule = rules.find(rule => rule.name === column.name);
+            const isCurrentlyRestricted = existingRule && existingRule.isRestricted;
             
-            const columnId = columnEl.dataset.columnId;
-            
-            // This logic to build the options array is perfect and remains the same.
-            const dropdownOptions = [{ name: 'Rename column' }];
-            const defaultColumnIds = ['assignees', 'dueDate', 'priority', 'status'];
-            const isDefaultColumn = defaultColumnIds.includes(columnId);
-            if (!isDefaultColumn) {
-                dropdownOptions.push({ name: 'Delete column' });
+            if (isCurrentlyRestricted) {
+                dropdownOptions.push({ name: 'Unrestrict Column' });
+            } else {
+                dropdownOptions.push({ name: 'Restrict Column' });
             }
-            
-            // REFACTORED: Call the new universal dropdown function
-            createAdvancedDropdown(columnOptionsIcon, {
-                options: dropdownOptions,
-                // A simple renderer that adds an icon for a better user experience
-                itemRenderer: (option) => {
-                    const isDelete = option.name === 'Delete column';
-                    const iconClass = isDelete ? 'fa-trash-alt' : 'fa-pencil-alt';
-                    const colorStyle = isDelete ? 'style="color: #d9534f;"' : ''; // Make delete red
-                    return `<i class="fas ${iconClass}" ${colorStyle}></i><span ${colorStyle}>${option.name}</span>`;
-                },
-                // The onSelect logic remains the same, just placed inside the config object
-                onSelect: (selected) => {
-                    if (selected.name === 'Delete column') {
-                        if (!isDefaultColumn) {
-                            deleteColumn(Number(columnId));
-                        }
-                    } else if (selected.name === 'Rename column') {
-                        enableColumnRename(columnEl);
-                    }
-                }
-            });
-            return; // Exit after handling the click
+        }
+        // --- END OF COLUMN RULE LOGIC ---
+        
+        const defaultColumnIds = ['assignees', 'dueDate', 'priority', 'status'];
+        const isDefaultColumn = defaultColumnIds.includes(columnId);
+        
+        // Only the project owner can see the delete option.
+        if (!isDefaultColumn && project.project_super_admin_uid === currentUserId || project.project_admin_user === currentUserId) {
+            dropdownOptions.push({ name: 'Delete column' });
         }
         
-        // --- 2. HANDLE "ADD COLUMN" DROPDOWN ---
-        if (addColumnBtn) {
-            e.stopPropagation();
-            
-            // REFACTORED: Call the new universal dropdown for adding a column
-            createAdvancedDropdown(addColumnBtn, {
-                // Assumes 'columnTypeOptions' is an array of strings like ['Text', 'Numbers', ...]
-                options: columnTypeOptions.map(type => ({ name: type })),
-                
-                // A renderer that provides a specific icon for each column type
-                itemRenderer: (type) => {
-                    let icon = 'fa-font'; // Default icon for 'Text'
-                    switch (type.name) {
-                        case 'Numbers':
-                            icon = 'fa-hashtag';
-                            break;
-                        case 'Costing':
-                            icon = 'fa-dollar-sign';
-                            break;
-                        case 'Type':
-                            icon = 'fa-tags';
-                            break;
-                        case 'Date':
-                            icon = 'fa-calendar-alt';
-                            break;
-                    }
-                    return `<i class="fas ${icon}"></i><span>${type.name}</span>`;
-                },
-                // The onSelect logic is now cleaner
-                onSelect: (selected) => {
-                    openAddColumnDialog(selected.name); // Your existing dialog function
+        createAdvancedDropdown(columnOptionsIcon, {
+            options: dropdownOptions,
+            itemRenderer: (option) => {
+    const isDelete = option.name === 'Delete column';
+    const iconClass = isDelete ? 'fa-trash-alt' : '';
+    const colorStyle = isDelete ? 'style="color: #d9534f;"' : ''; // Make delete red
+    return `<i class="fas ${iconClass}" ${colorStyle}></i><span ${colorStyle}>${option.name}</span>`;
+},
+onSelect: (selected) => {
+                // --- ADDED: Handle new actions ---
+                if (selected.name === 'Restrict Column' || selected.name === 'Unrestrict Column') {
+                    toggleColumnRestriction(column);
+                } else if (selected.name === 'Delete column') {
+                    deleteColumnInFirebase(column.id);
+                } else if (selected.name === 'Rename column') {
+                    enableColumnRename(columnEl);
                 }
-            });
+            }
+        });
+        return;
+    }
+    
+    if (addColumnBtn) {
+    e.stopPropagation();
+    
+    // REFACTORED: Call the new universal dropdown for adding a column
+    createAdvancedDropdown(addColumnBtn, {
+        // Assumes 'columnTypeOptions' is an array of strings like ['Text', 'Numbers', ...]
+        options: columnTypeOptions.map(type => ({ name: type })),
+        
+        // A renderer that provides a specific icon for each column type
+        itemRenderer: (type) => {
+            let icon = 'fa-font'; // Default icon for 'Text'
+            switch (type.name) {
+                case 'Numbers':
+                    icon = 'fa-hashtag';
+                    break;
+                case 'Costing':
+                    icon = 'fa-dollar-sign';
+                    break;
+                case 'Type':
+                    icon = 'fa-tags';
+                    break;
+                case 'Date':
+                    icon = 'fa-calendar-alt';
+                    break;
+            }
+            return `<i class="fas ${icon}"></i><span>${type.name}</span>`;
+        },
+        // The onSelect logic is now cleaner
+        onSelect: (selected) => {
+            openAddColumnDialog(selected.name); // Your existing dialog function
         }
-    };
+    });
+}
+};
+
     const addTaskAtTop = false;
     
     
@@ -1722,7 +1767,7 @@ addSectionClassBtn.classList.remove('hide');
         rightHeaderContent.appendChild(cell);
     });
     
-    if (userCanEditProject) {
+    if (userCanEditProject && project.project_super_admin_uid === currentUserId || project.project_admin_user === currentUserId) {
         const addColumnBtn = document.createElement('div');
         addColumnBtn.className = 'add-column-cell w-8 opacity-100 flex-shrink-0 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 cursor-pointer border-l border-slate-200 bg-white';
         addColumnBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
@@ -2011,12 +2056,14 @@ addSectionClassBtn.classList.remove('hide');
             allColumns.forEach((col, i) => {
                 const cell = document.createElement('div');
                 
+                const canEditThisCell = canEditThisTask && isCellEditable(col);
                 if (!canEditThisTask) {
                     // For viewers, allow clicking Assignee and Due Date to see popups, but not others.
                     if (col.id !== 'assignees' && col.id !== 'dueDate') {
                         cell.style.pointerEvents = 'none';
                     }
                 }
+                
                 
                 const contentWrapper = document.createElement('div');
                 contentWrapper.className = 'cell-content';
@@ -2146,7 +2193,7 @@ addSectionClassBtn.classList.remove('hide');
                             
                             // The click listener should be active regardless of completion status.
                             // This listener is attached to each custom field cell in your list view
-                            if (canEditThisTask) {
+                            if (canEditThisTask && canEditThisCell) {
                                 cell.addEventListener('click', (e) => {
                                     // Stop the click from propagating to the task row listener, which would open the sidebar
                                     e.stopPropagation();
@@ -2189,14 +2236,14 @@ addSectionClassBtn.classList.remove('hide');
                                     }
                                 });
                             }
+                            
+                            
                             // --- Logic for other column types (Text, Costing, etc.) ---
                         } else { // This "else" is for columns that are NOT "Select" type
                             
-                            if (!canEditThisTask) {
-                                cell.classList.add('cursor-default');
-                                cell.contentEditable = false;
-                            } else {
-                                cell.contentEditable = true;
+                            cell.contentEditable = canEditThisCell;
+                            if (!canEditThisCell) {
+                                 cell.classList.add('cell-restricted'); // Add a class for styling
                             }
                             cell.dataset.control = col.type;
                             
@@ -2485,6 +2532,29 @@ addSectionClassBtn.classList.remove('hide');
         taskIdToFocus = null;
     }
     
+}
+
+/**
+ * Checks if a specific column is editable for the current user, considering column rules.
+ * @param {object} column The column object to check.
+ * @returns {boolean} True if the cell for this column can be edited.
+ */
+function isCellEditable(column) {
+    // Project Admins/Owners can always edit any column.
+    if (userCanEditProject) {
+        return true;
+    }
+    
+    const rules = project.columnRules || [];
+    const columnRule = rules.find(rule => rule.name === column.name);
+    
+    // If a rule exists and it is set to 'restricted', the cell is NOT editable.
+    if (columnRule && columnRule.isRestricted) {
+        return false;
+    }
+    
+    // If no rule exists for this column, it is editable by default (for non-admins).
+    return true;
 }
 
 function initColumnDragging() {
@@ -2926,16 +2996,16 @@ function updateTask(taskId, sectionId, newProperties) {
  * @param {object} propertiesToUpdate An object with the fields to update.
  */
 async function updateTaskInFirebase(taskId, sectionId, propertiesToUpdate) {
-    if (!currentUserId || !currentWorkspaceId || !currentProjectId || !sectionId) {
-        return console.error("Missing IDs, cannot build path to update task.", { taskId, sectionId });
-    }
-    const taskPath = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${sectionId}/tasks/${taskId}`;
-    try {
-        await updateDoc(doc(db, taskPath), propertiesToUpdate);
-        console.log(`Task ${taskId} in section ${sectionId} updated successfully.`);
-    } catch (error) {
-        console.error(`Error updating task ${taskId}:`, error);
-    }
+    if (!currentProjectRef || !sectionId || !taskId) {
+    return console.error("Missing IDs or project reference, cannot update task.");
+}
+    const taskRef = doc(currentProjectRef, `sections/${sectionId}/tasks/${taskId}`);
+try {
+    await updateDoc(taskRef, propertiesToUpdate);
+    console.log(`Task ${taskId} updated successfully.`);
+} catch (error) {
+    console.error(`Error updating task ${taskId}:`, error);
+}
 }
 
 /**
@@ -2948,55 +3018,55 @@ async function updateTaskInFirebase(taskId, sectionId, propertiesToUpdate) {
  */
 async function addTaskToFirebase(sectionId, taskData) {
     // 1. Ensure we have the necessary context to build the path.
-    if (!currentUserId || !currentWorkspaceId || !currentProjectId) {
-        return console.error("Cannot add task: Missing current user, workspace, or project ID.");
-    }
-    const tasksPath = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${sectionId}/tasks`;
-    
+    if (!currentProjectRef || !sectionId) {
+    return console.error("Cannot add task: Missing section ID or project reference.");
+}
+const sectionRef = doc(currentProjectRef, 'sections', sectionId);
+const tasksCollectionRef = collection(sectionRef, 'tasks');
+
     try {
-        // --- MODIFICATION START ---
-        
-        // 2. Instead of addDoc, first create a reference to a new, empty document.
-        // This generates the unique ID for us *before* we save any data.
-        const newTaskRef = doc(collection(db, tasksPath));
-        
-        // 3. Prepare the complete data object, including the new ID.
-        const fullTaskData = {
-            ...taskData,
-            id: newTaskRef.id, // <-- Here is the new document's ID
-            projectId: currentProjectId,
-            userId: currentUserId,
-            sectionId: sectionId,
-            createdAt: serverTimestamp()
-            // Add any other default fields here (e.g., status: 'To Do', assignees: [])
-        };
-        
-        // 4. Use setDoc() to save the document with the complete data to the exact reference we created.
-        await setDoc(newTaskRef, fullTaskData);
-        
-        console.log("Successfully added task with ID: ", newTaskRef.id);
-        
-        // --- MODIFICATION END ---
-        
-    } catch (error) {
-        console.error("Error adding task:", error);
-    }
+    const newTaskRef = doc(tasksCollectionRef); // Create a reference to get the ID
+    const fullTaskData = {
+        ...taskData,
+        id: newTaskRef.id,
+        projectId: currentProjectId, // Keep projectId for collectionGroup queries
+        userId: currentUserId,
+        sectionId: sectionId,
+        createdAt: serverTimestamp()
+    };
+    await setDoc(newTaskRef, fullTaskData);
+    console.log("Successfully added task with ID: ", newTaskRef.id);
+} catch (error) {
+    console.error("Error adding task:", error);
+}
 }
 
 /**
  * Creates a new section document in a project's subcollection.
- * @param {object} sectionData The data for the new section (e.g., {title, order}).
+ * This version is collaboration-ready and uses the correct project reference.
  */
 async function addSectionToFirebase() {
-    if (!currentUserId || !currentWorkspaceId || !currentProjectId) return console.error("Missing IDs.");
-    const sectionsPath = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections`;
+    // THE FIX: Check for the global project reference first.
+    if (!currentProjectRef) {
+        return console.error("Cannot add section: Project reference is missing.");
+    }
+    
+    // This logic remains the same.
     const newOrder = project.sections ? project.sections.length : 0;
+    
     try {
-        await addDoc(collection(db, sectionsPath), {
+        // THE FIX: Get a reference to the 'sections' subcollection from the correct project reference.
+        const sectionsCollectionRef = collection(currentProjectRef, 'sections');
+        
+        // Use the correct reference to add the new document.
+        await addDoc(sectionsCollectionRef, {
             title: 'New Section',
             isCollapsed: false,
             order: newOrder
         });
+        
+        console.log("Section added successfully to the correct project.");
+        
     } catch (error) {
         console.error("Error adding section:", error);
     }
@@ -3008,13 +3078,14 @@ async function addSectionToFirebase() {
  * @param {object} propertiesToUpdate An object with the fields to update.
  */
 async function updateSectionInFirebase(sectionId, propertiesToUpdate) {
-    if (!currentUserId || !currentWorkspaceId || !currentProjectId) return console.error("Missing IDs.");
-    const sectionPath = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${sectionId}`;
-    try {
-        await updateDoc(doc(db, sectionPath), propertiesToUpdate);
-    } catch (error) {
-        console.error(`Error updating section ${sectionId}:`, error);
-    }
+    if (!currentProjectRef || !sectionId) return console.error("Missing IDs or project reference.");
+
+const sectionRef = doc(currentProjectRef, `sections/${sectionId}`);
+try {
+    await updateDoc(sectionRef, propertiesToUpdate);
+} catch (error) {
+    console.error(`Error updating section ${sectionId}:`, error);
+}
 }
 
 /**
@@ -3022,20 +3093,14 @@ async function updateSectionInFirebase(sectionId, propertiesToUpdate) {
  * @param {object} propertiesToUpdate An object with fields to update on the project.
  */
 async function updateProjectInFirebase(propertiesToUpdate) {
-    if (!currentUserId || !currentWorkspaceId || !currentProjectId) {
-        return console.error("Cannot update project: Missing IDs.");
-    }
-    
-    // FIX: Build the full, nested path to the project document.
-    const projectPath = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}`;
-    const projectRef = doc(db, projectPath);
-    
-    try {
-        await updateDoc(projectRef, propertiesToUpdate);
-    } catch (error) {
-        console.error("Error updating project properties:", error);
-        alert("Error: Could not update project settings.");
-    }
+    if (!currentProjectRef) {
+    return console.error("Cannot update project: Project reference is missing.");
+}
+try {
+    await updateDoc(currentProjectRef, propertiesToUpdate);
+} catch (error) {
+    console.error("Error updating project properties:", error);
+}
 }
 
 /**
@@ -3087,11 +3152,18 @@ function showConfirmationModal(message) {
  * @param {string} columnId The ID of the column to delete.
  */
 async function deleteColumnInFirebase(columnId) {
-    if (!currentUserId || !currentWorkspaceId || !currentProjectId) {
-        return console.error("Cannot delete column: Missing IDs.");
+    // --- PERMISSION CHECK: Only the project owner can delete a column ---
+    if (!project || project.project_super_admin_uid !== currentUserId) {
+        console.error("PERMISSION DENIED: Only the project owner can delete columns.");
+        // Optionally show a user-facing error message
+        alert("You do not have permission to perform this action.");
+        return;
     }
     
-    // Use the new, non-blocking confirmation modal
+    if (!currentProjectRef) {
+        return console.error("Cannot delete column: Project reference is missing.");
+    }
+    
     const confirmed = await showConfirmationModal(
         'Are you sure you want to delete this column and all its data? This action cannot be undone.'
     );
@@ -3101,32 +3173,28 @@ async function deleteColumnInFirebase(columnId) {
     
     const batch = writeBatch(db);
     
-    // 1. Update the project document to remove the column from the array
-    const projectPath = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}`;
-    const projectRef = doc(db, projectPath);
-    const newColumnsArray = project.customColumns.filter(col => col.id != columnId);
-    batch.update(projectRef, { customColumns: newColumnsArray });
+    // 1. Update the project document using the correct reference
+    const newColumnsArray = project.customColumns.filter(col => String(col.id) !== String(columnId));
+    batch.update(currentProjectRef, { customColumns: newColumnsArray });
     
-    // 2. Query for ONLY the tasks the current user owns within the project
+    // 2. Query for ALL tasks within the project to remove the field data
     const tasksQuery = query(
         collectionGroup(db, "tasks"),
-        where("projectId", "==", currentProjectId),
-        where("userId", "==", currentUserId) // <-- THE CRUCIAL FIX
+        where("projectId", "==", currentProjectId)
     );
     
     try {
         const tasksSnapshot = await getDocs(tasksQuery);
+        console.log(`Found ${tasksSnapshot.size} tasks in project to update.`);
         
         tasksSnapshot.forEach(taskDoc => {
-            // 3. Queue an update for each task to remove the custom field
             batch.update(taskDoc.ref, {
                 [`customFields.${columnId}`]: deleteField()
             });
         });
         
-        // 4. Commit all the changes at once
         await batch.commit();
-        console.log("Column and its data were deleted successfully.");
+        console.log("Column and its data were deleted successfully from all relevant tasks.");
         
     } catch (error) {
         console.error("Error deleting column and its data:", error);

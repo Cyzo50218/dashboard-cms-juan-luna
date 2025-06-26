@@ -202,7 +202,7 @@ const members = data.members || [];
 const isMemberWithEditPermission = members.some(
     (member) =>
     member.uid === user.uid &&
-    (member.role === "Project admin" || member.role === "Editor")
+    (member.role === "Project admin")
 );
 
 const isSuperAdmin = data.project_super_admin_uid === user.uid;

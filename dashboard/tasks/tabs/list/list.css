@@ -104,6 +104,11 @@ button {
 .add-section-btn-btn.hide {
     display: none;
 }
+.cell-restricted {
+    background-color: #f8fafc; /* very light gray (slate-50) */
+    color: #64748b; /* medium gray text (slate-500) */
+    cursor: not-allowed !important;
+}
 .add-section-btn {
     background-color: transparent;
     border: 1px solid transparent;
