@@ -596,7 +596,7 @@ function setupEventListeners() {
                     console.warn(`[Permissions] Blocked 'move-task' action. User cannot edit project.`);
                     return;
                 }
-                handleTaskCompletion(taskId, taskRow); // Your existing function
+                handleTaskCompletion(task, taskRow); // Your existing function
                 break;
                 
             case 'due-date':
@@ -2764,30 +2764,20 @@ async function deleteSectionInFirebase(sectionId) {
 }
 
 /**
- * Moves a task to a different section using only the task's ID and the target section's ID.
- * This function preserves the task's original document ID during the move.
- *
- * @param {string} taskId The ID of the task to move.
- * @param {string} targetSectionId The ID of the destination section.
- */
-/**
  * Handles the logic for completing or un-completing a task in a single, atomic operation.
- * This function now builds a single Firestore batch to prevent race conditions.
- *
- * @param {string} taskId - The ID of the task being toggled.
+ * @param {object} task - The task object being toggled.
  * @param {HTMLElement} taskRowEl - The DOM element for the task row for UI updates.
  */
-async function handleTaskCompletion(taskId, taskRowEl) {
-    if (!taskRowEl) return;
+async function handleTaskCompletion(task, taskRowEl) {
+    if (!task || !taskRowEl) return;
     
-    // --- 1. Get current state from local data ---
-    const { task, section: sourceSection } = findTaskAndSection(taskId);
-    if (!task || !sourceSection) {
-        console.error("Could not find task or its section to update completion status.");
+    const sourceSection = findSectionById(task.sectionId);
+    if (!sourceSection) {
+        console.error("Could not find the source section for the task.");
         return;
     }
     
-    // A write batch will group all our database changes into one transaction.
+    const taskId = task.id;
     const batch = writeBatch(db);
     const isCurrentlyCompleted = task.status === 'Completed';
     
@@ -2795,80 +2785,68 @@ async function handleTaskCompletion(taskId, taskRowEl) {
         // --- LOGIC FOR UN-COMPLETING A TASK ---
         console.log(`Un-completing task: "${task.name}"`);
         
-        // Determine the section to move the task back to.
-        // Fallback to the current section's ID if no previous one is stored.
         const targetSectionId = task.previousSectionId || sourceSection.id;
-        const targetSection = findSectionById(targetSectionId); // You need this helper function
+        const targetSection = findSectionById(targetSectionId);
         
         if (!targetSection) {
             console.error(`Cannot un-complete task. Target section with ID "${targetSectionId}" not found.`);
             return;
         }
         
-        // Prepare the updated task data.
-        const updatedTaskData = {
-            ...task,
-            status: task.previousStatus || 'On track', // Revert to previous status or a default
-            sectionId: targetSection.id,
-            // Optionally, clear the 'previous' fields now that they've been used.
-            previousStatus: null,
-            previousSectionId: null,
-        };
+        // *** THE FIX IS HERE ***
+        // 1. Use destructuring to pull out the fields we want to discard (`previousStatus`, `previousSectionId`).
+        //    The `...restOfTask` variable will contain all other properties from the original task object.
+        const { previousStatus, previousSectionId, ...restOfTask } = task;
         
-        // Define document references for the batch operation.
+        // 2. Build the new data object from the `restOfTask`, ensuring the unwanted fields are gone.
+        const updatedTaskData = {
+            ...restOfTask,
+            status: previousStatus || 'On track', // Use the value we extracted
+            sectionId: targetSection.id,
+        };
+        // *** END OF FIX ***
+        
         const sourceTaskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${sourceSection.id}/tasks/${taskId}`);
         const targetTaskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${targetSection.id}/tasks/${taskId}`);
         
-        // Add operations to the batch: delete the old doc, create the new one.
         batch.delete(sourceTaskRef);
+        // Now, this `set` operation works because `updatedTaskData` is a clean object without any `deleteField()` instructions.
         batch.set(targetTaskRef, updatedTaskData);
         
     } else {
-        // --- LOGIC FOR COMPLETING A TASK ---
+        // --- LOGIC FOR COMPLETING A TASK (This part was already correct) ---
         console.log(`Completing task: "${task.name}"`);
-        
-        // Find the dedicated "Completed" section.
         const completedSection = project.sections.find(s => s.sectionType === 'completed');
         
         if (!completedSection) {
             console.error("Cannot complete task: A section with sectionType: 'completed' was not found.");
-            // As a fallback, you could just update the status without moving.
-            // For now, we'll just exit.
             return;
         }
         
-        // Prepare the updated task data, saving the current state for potential reversal.
         const updatedTaskData = {
             ...task,
             status: 'Completed',
-            previousStatus: task.status, // Save current status
-            previousSectionId: sourceSection.id, // Save current section ID
+            previousStatus: task.status,
+            previousSectionId: sourceSection.id,
             sectionId: completedSection.id,
         };
         
-        // Define document references.
         const sourceTaskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${sourceSection.id}/tasks/${taskId}`);
         const targetTaskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${completedSection.id}/tasks/${taskId}`);
         
-        // Add operations to the batch.
         batch.delete(sourceTaskRef);
         batch.set(targetTaskRef, updatedTaskData);
     }
     
-    // --- 2. Execute the batch and then update the UI ---
+    // --- Execute the batch and update the UI ---
     try {
         await batch.commit();
         console.log(`Task ${taskId} completion status updated successfully in Firestore.`);
+        taskRowEl.classList.toggle('is-completed', !isCurrentlyCompleted);
+        render();
         
-        // Now that the data operation is confirmed, safely update the UI.
-        if (isCurrentlyCompleted) {
-            taskRowEl.classList.remove('is-completed');
-        } else {
-            taskRowEl.classList.add('is-completed');
-        }
     } catch (error) {
         console.error(`Error updating task completion for ${taskId}:`, error);
-        // Optionally, revert any optimistic UI changes here if you were to use them.
     }
 }
 
