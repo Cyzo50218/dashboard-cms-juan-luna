@@ -165,94 +165,91 @@ function attachRealtimeListeners(userId) {
     currentUserId = userId;
     console.log(`[LIST DEBUG] Attaching listeners for user: ${userId}`);
     
-    // STEP 1: Listen to the user's active workspace (No changes here).
     const workspaceQuery = query(collection(db, `users/${userId}/myworkspace`), where("isSelected", "==", true));
     
     activeListeners.workspace = onSnapshot(workspaceQuery, async (workspaceSnapshot) => {
         detachProjectSpecificListeners();
         
         if (workspaceSnapshot.empty) {
-            console.warn("[LIST DEBUG] No selected workspace. Clearing UI.");
-            project = {};
-            render();
-            return;
+            console.warn("[LIST DEBUG] No selected workspace.");
+            project = {}; render(); return;
         }
         
         const workspaceDoc = workspaceSnapshot.docs[0];
-        currentWorkspaceId = workspaceDoc.id;
         const selectedProjectId = workspaceDoc.data().selectedProjectId;
         
         if (!selectedProjectId) {
-            console.warn("[LIST DEBUG] Active workspace does not point to a selected project.");
-            project = {};
-            render();
-            return;
+            console.warn("[LIST DEBUG] No selected project in workspace.");
+            project = {}; render(); return;
         }
 
         currentProjectId = selectedProjectId;
         console.log(`[LIST DEBUG] Active project ID is: '${currentProjectId}'`);
 
-        // --- REFACTORED LOGIC ---
-        // STEP 2: Directly get the project from the TOP-LEVEL 'projects' collection.
-        // This replaces the expensive collectionGroup query with a direct document lookup.
         try {
             const projectRef = doc(db, 'projects', currentProjectId);
             const projectDoc = await getDoc(projectRef);
 
-            // IMPORTANT: We must now manually verify that the user is a member of this project,
-            // since we are no longer using a query with a 'where' clause to check for us.
             if (!projectDoc.exists() || !projectDoc.data().memberUIDs?.includes(currentUserId)) {
-                console.error(`[LIST DEBUG] CRITICAL: Project with ID '${currentProjectId}' not found in the top-level collection, or you are not a member.`);
-                project = {};
-                render();
-                return;
+                console.error(`[LIST DEBUG] Project '${currentProjectId}' not found or user not a member.`);
+                project = {}; render(); return;
             }
 
             const projectData = projectDoc.data();
-            console.log(`[LIST DEBUG] Successfully found project at top-level path: ${projectRef.path}`);
-            
-            // --- CONSOLIDATED LOGIC (No changes from here on) ---
-            // STEP 3: Load the project's members.
             allUsers = await fetchProjectMembers(projectData);
-            console.log(`[LIST DEBUG] Project members loaded:`, allUsers);
 
-            // STEP 4: Attach the final real-time listeners for project details, sections, and tasks.
+            // --- REWRITTEN LISTENER LOGIC ---
+
             activeListeners.project = onSnapshot(projectRef, (projectDetailSnap) => {
                 if (!projectDetailSnap.exists()) {
-                    console.error("[LIST DEBUG] The selected project was deleted.");
-                    project = { customColumns: [], sections: [], customPriorities: [], customStatuses: [] };
-                    render();
-                    return;
+                    console.error("[LIST DEBUG] Project deleted.");
+                    project = {}; render(); return;
                 }
-                
                 project = { ...project, ...projectDetailSnap.data(), id: projectDetailSnap.id };
                 
                 // Attach listener for Sections
                 const sectionsQuery = query(collection(projectRef, 'sections'), orderBy("order"));
                 if (activeListeners.sections) activeListeners.sections();
                 activeListeners.sections = onSnapshot(sectionsQuery, (sectionsSnapshot) => {
-                    project.sections = sectionsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, tasks: [] }));
-                    distributeTasksToSections(allTasksFromSnapshot);
-                    render();
-                });
-                
-                // NOTE: The 'tasks' listener still uses collectionGroup. This is correct and intentional!
-                // We want to find all tasks with the matching projectId, regardless of which section they are in.
-                const tasksGroupQuery = query(collectionGroup(db, 'tasks'), where('projectId', '==', currentProjectId), orderBy('createdAt', 'desc'));
-                if (activeListeners.tasks) activeListeners.tasks();
-                activeListeners.tasks = onSnapshot(tasksGroupQuery, (tasksSnapshot) => {
-                    allTasksFromSnapshot = tasksSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-                    distributeTasksToSections(allTasksFromSnapshot);
-                    render();
+                    // Detach all old task listeners before creating new ones
+                    if (activeListeners.tasks && activeListeners.tasks.length > 0) {
+                        activeListeners.tasks.forEach(unsub => unsub());
+                    }
+                    activeListeners.tasks = [];
+                    
+                    const sections = sectionsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, tasks: [] }));
+                    project.sections = sections;
+                    
+                    let allTasks = {}; // Use an object to handle updates from multiple listeners
+
+                    // If there are no sections, render immediately.
+                    if (sections.length === 0) {
+                        distributeTasksToSections([]);
+                        render();
+                        return;
+                    }
+
+                    // For each section, create a dedicated task listener
+                    sections.forEach(section => {
+                        const tasksQuery = query(collection(db, `projects/${currentProjectId}/sections/${section.id}/tasks`), orderBy('createdAt', 'desc'));
+                        const taskListener = onSnapshot(tasksQuery, (tasksSnapshot) => {
+                            tasksSnapshot.docs.forEach(taskDoc => {
+                                allTasks[taskDoc.id] = { ...taskDoc.data(), id: taskDoc.id };
+                            });
+                            // After each listener update, redistribute all known tasks and render
+                            distributeTasksToSections(Object.values(allTasks));
+                            render();
+                        });
+                        activeListeners.tasks.push(taskListener);
+                    });
                 });
             });
             
         } catch (error) {
-            console.error("[LIST DEBUG] Permission denied or error finding project via direct getDoc:", error);
+            console.error("[LIST DEBUG] Error attaching listeners:", error);
         }
     });
 }
-
 
 async function fetchActiveIds(userId) {
     console.log(`[DEBUG] [fetchActiveIds] Fetching for user: ${userId}`);
