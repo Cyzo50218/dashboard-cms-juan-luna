@@ -2534,26 +2534,27 @@ onSelect: (selected) => {
     
 }
 
-/**
- * Checks if a specific column is editable for the current user, considering column rules.
- * @param {object} column The column object to check.
- * @returns {boolean} True if the cell for this column can be edited.
- */
 function isCellEditable(column) {
-    // Project Admins/Owners can always edit any column.
+    // Admins or Owners can edit any column.
     if (userCanEditProject) {
         return true;
     }
-    
+
+    // Default non-editable columns for non-admins
+    const defaultRestrictedColumns = ['assignees', 'dueDate', 'priority', 'status'];
+    if (defaultRestrictedColumns.includes(column.id)) {
+        return false;
+    }
+
     const rules = project.columnRules || [];
     const columnRule = rules.find(rule => rule.name === column.name);
-    
-    // If a rule exists and it is set to 'restricted', the cell is NOT editable.
+
+    // Respect column-specific restrictions
     if (columnRule && columnRule.isRestricted) {
         return false;
     }
-    
-    // If no rule exists for this column, it is editable by default (for non-admins).
+
+    // Otherwise, editable by default
     return true;
 }
 
