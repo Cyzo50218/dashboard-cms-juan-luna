@@ -637,7 +637,7 @@ function setupEventListeners() {
         if (addTaskRow) {
             
             // *** PERMISSION CHECK ***
-            if (!userCanEditProject) {
+                if (!userCanEditProject) {
                 console.warn("[Permissions] Blocked 'Add Task Row'. User cannot edit project.");
                 return;
             }
@@ -656,6 +656,7 @@ function setupEventListeners() {
         
         const taskId = taskRow.dataset.taskId;
         const sectionId = taskRow.dataset.sectionId;
+        const { task } = findTaskAndSection(taskId);
         
         // Find the specific control element that was clicked (e.g., the due date button, task name, etc.)
         const controlElement = e.target.closest('[data-control], .task-name');
@@ -858,11 +859,6 @@ function setupEventListeners() {
         const customFieldCell = focusedOutElement.closest('[data-control="custom"]');
         if (customFieldCell) {
             
-            if (!canUserEditTask(task)) {
-                console.warn("[Permissions] Blocked custom field edit. User cannot edit this task.");
-                render(); // Re-render to discard change.
-                return;
-            }
             const taskRow = customFieldCell.closest('.task-row-wrapper');
             const taskId = taskRow?.dataset.taskId;
             const columnId = customFieldCell.dataset.columnId;
@@ -870,6 +866,12 @@ function setupEventListeners() {
             const { task, section } = findTaskAndSection(taskId);
             const column = project.customColumns.find(c => c.id == columnId);
             
+            if (!canUserEditTask(task)) {
+    console.warn("[Permissions] Blocked custom field edit. User cannot edit this task.");
+    render(); // Re-render to discard change.
+    return;
+}
+
             if (!task || !section || !column) return;
             
             let rawValue = customFieldCell.innerText.trim();
