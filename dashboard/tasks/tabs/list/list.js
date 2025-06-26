@@ -369,6 +369,7 @@ async function loadProjectUsers(currentUserId) {
 
 function initializeListView(params) {
     taskListHeaderEl = document.getElementById('task-list-header');
+    
     headerRight = document.getElementById('header-right');
     taskListBody = document.getElementById('task-list-body');
     taskListFooter = document.getElementById('task-list-footer');
@@ -897,9 +898,6 @@ function setupEventListeners() {``
         const clickedInsideLeftSidebar = e.target.closest('#drawer');
         const clickedOnTaskLink = e.target.closest('[data-control="open-sidebar"]');
         
-        // 2. Get a reference to the header element you want to show.
-        // Make sure this selector is correct for your HTML.
-        const headerRight = document.getElementById('right-sidebar');
         
         // 3. If a click happens OUTSIDE all the safe areas, then show the header.
         if (headerRight && !clickedInsideRightSidebar && !clickedInsideLeftSidebar && !clickedOnTaskLink) {
