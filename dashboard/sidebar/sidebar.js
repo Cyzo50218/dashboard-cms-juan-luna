@@ -610,17 +610,17 @@ window.TaskSidebar = (function() {
     function renderTaskFields(task) {
         taskFieldsContainer.innerHTML = '';
         if (!currentProject) return;
-        
+
         const table = document.createElement('table');
         table.className = 'task-fields-table';
         const tbody = document.createElement('tbody');
-        
+
         // --- Render Standard Fields ---
         const currentProjectTitle = workspaceProjects.find(p => p.id === task.projectId)?.title || '...';
         appendFieldToTable(tbody, 'project', 'Project', `<span>${currentProjectTitle}</span>`, 'project');
         appendFieldToTable(tbody, 'assignees', 'Assignee', renderAssigneeValue(task.assignees), 'assignee');
         appendFieldToTable(tbody, 'dueDate', 'Due Date', renderDateValue(task.dueDate), 'date');
-        
+
         // --- PRIORITY FIELD LOGIC ---
         const priorityValue = task.priority;
         let priorityHTML = '<span>Not set</span>'; // Default to "Not set"
@@ -629,7 +629,7 @@ window.TaskSidebar = (function() {
             priorityHTML = createTag(priorityValue, priorityColor);
         }
         appendFieldToTable(tbody, 'priority', 'Priority', priorityHTML, 'priority');
-        
+
         // --- STATUS FIELD LOGIC ---
         const statusValue = task.status;
         let statusHTML = '<span>Not set</span>'; // Default to "Not set"
@@ -638,7 +638,7 @@ window.TaskSidebar = (function() {
             statusHTML = createTag(statusValue, statusColor);
         }
         appendFieldToTable(tbody, 'status', 'Status', statusHTML, 'status');
-        
+
         // --- Render Custom Fields ---
         currentProject.customColumns?.forEach(col => {
             const value = task.customFields ? task.customFields[col.id] : null;
@@ -653,9 +653,9 @@ window.TaskSidebar = (function() {
                     displayHTML = `<span>${value}</span>`;
                 }
             }
-            appendFieldToTable(tbody, `custom-${col.id}`, col.name, displayHTML, 'custom-field', 'custom-field-value');
+            appendFieldToTable(tbody, `custom-${col.id}`, col.name, displayHTML, col.type, 'custom-field-value');
         });
-        
+
         table.appendChild(tbody);
         taskFieldsContainer.appendChild(table);
     }
