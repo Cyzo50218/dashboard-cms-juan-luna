@@ -196,7 +196,6 @@ fetchCurrentProjectData()
         const user = auth.currentUser;
         if (!user) return;
 
-
         if (projectName && data.title) {
 const members = data.members || [];
 
