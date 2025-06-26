@@ -156,76 +156,79 @@ function detachProjectSpecificListeners() {
     }
 }
 
+/**
+ * The single source of truth for attaching all real-time listeners for the List View.
+ * It discovers the active project and loads all necessary data in the correct order.
+ */
 function attachRealtimeListeners(userId) {
-    detachAllListeners(); // A helper function to clean up old listeners
+    detachAllListeners();
     currentUserId = userId;
-    console.log(`[DEBUG] Attaching listeners for user: ${userId}`);
+    console.log(`[LIST DEBUG] Attaching listeners for user: ${userId}`);
     
-    // STEP 1: Find the user's active workspace to know where to find the selected project ID.
+    // STEP 1: Listen to the user's active workspace.
     const workspaceQuery = query(collection(db, `users/${userId}/myworkspace`), where("isSelected", "==", true));
     
     activeListeners.workspace = onSnapshot(workspaceQuery, async (workspaceSnapshot) => {
-        // When the active workspace changes, we must clean up listeners for the previous project.
         detachProjectSpecificListeners();
         
         if (workspaceSnapshot.empty) {
-            console.warn("[DEBUG] No selected workspace. Clearing UI.");
-            project = {}; // Clear all project data
-            render(); // Render the empty state
-            return;
-        }
-        
-        const workspaceDoc = workspaceSnapshot.docs[0];
-        currentWorkspaceId = workspaceDoc.id;
-        const workspaceData = workspaceDoc.data();
-        
-        // STEP 2: Read the 'selectedProjectId' from the active workspace document. This is our target.
-        const selectedProjectId = workspaceData.selectedProjectId || null;
-        console.log(`[DEBUG] Found workspace '${currentWorkspaceId}'. It points to selectedProjectId: '${selectedProjectId}'`);
-        
-        if (!selectedProjectId) {
-            console.warn("[DEBUG] The active workspace does not point to a selected project.");
+            console.warn("[LIST DEBUG] No selected workspace. Clearing UI.");
             project = {};
             render();
             return;
         }
         
-        // STEP 3: Use the ID to find the actual project document, no matter where it's nested.
-        // We use a one-time `getDocs` with `collectionGroup` to find its full path.
+        const workspaceDoc = workspaceSnapshot.docs[0];
+        currentWorkspaceId = workspaceDoc.id;
+        const selectedProjectId = workspaceDoc.data().selectedProjectId;
+        
+        if (!selectedProjectId) {
+            console.warn("[LIST DEBUG] Active workspace does not point to a selected project.");
+            project = {};
+            render();
+            return;
+        }
+
+        currentProjectId = selectedProjectId;
+        console.log(`[LIST DEBUG] Active project ID is: '${currentProjectId}'`);
+
+        // STEP 2: Find the full, correct path to this project document.
         try {
             const projectQuery = query(
                 collectionGroup(db, 'projects'),
-                where('projectId', '==', selectedProjectId),
+                where('projectId', '==', currentProjectId),
                 where('memberUIDs', 'array-contains', currentUserId)
             );
             const projectSnapshot = await getDocs(projectQuery);
             
             if (projectSnapshot.empty) {
-                console.error(`[DEBUG] CRITICAL: Could not find any project with the ID '${selectedProjectId}'.`);
+                console.error(`[LIST DEBUG] CRITICAL: Could not find project with ID '${currentProjectId}' or you are not a member.`);
                 project = {};
                 render();
                 return;
             }
             
             const projectDoc = projectSnapshot.docs[0];
-            const projectRef = projectDoc.ref; // This is the full, correct path to the document
-            currentProjectId = projectDoc.id;
-            console.log(`[DEBUG] Successfully found project at path: ${projectRef.path}`);
+            const projectRef = projectDoc.ref;
+            const projectData = projectDoc.data();
+            console.log(`[LIST DEBUG] Successfully found project at path: ${projectRef.path}`);
             
-            // STEP 4: Now that we have the correct project, attach real-time listeners to it.
-            activeListeners.project = onSnapshot(projectRef, async (projectDetailSnap) => {
+            // --- CONSOLIDATED LOGIC ---
+            // STEP 3: Load the project's members now that we have all the correct IDs.
+            // This replaces the old loadProjectUsers and fetchActiveIds functions.
+            allUsers = await fetchProjectMembers(projectData);
+            console.log(`[LIST DEBUG] Project members loaded:`, allUsers);
+
+            // STEP 4: Attach the final real-time listeners for project details, sections, and tasks.
+            activeListeners.project = onSnapshot(projectRef, (projectDetailSnap) => {
                 if (!projectDetailSnap.exists()) {
-                    console.error("[DEBUG] The selected project was deleted.");
+                    console.error("[LIST DEBUG] The selected project was deleted.");
                     project = { customColumns: [], sections: [], customPriorities: [], customStatuses: [] };
                     render();
                     return;
                 }
                 
-                console.log(`[DEBUG] Project details listener fired for ${projectDetailSnap.id}`);
                 project = { ...project, ...projectDetailSnap.data(), id: projectDetailSnap.id };
-                
-                // Fetch members once and then attach other listeners
-                await loadProjectUsers(currentUserId, currentWorkspaceId, currentProjectId);
                 
                 // Attach listener for Sections
                 const sectionsQuery = query(collection(projectRef, 'sections'), orderBy("order"));
@@ -236,7 +239,7 @@ function attachRealtimeListeners(userId) {
                     render();
                 });
                 
-                // Attach listener for Tasks (using collectionGroup is still powerful here)
+                // Attach listener for Tasks
                 const tasksGroupQuery = query(collectionGroup(db, 'tasks'), where('projectId', '==', currentProjectId), orderBy('createdAt', 'desc'));
                 if (activeListeners.tasks) activeListeners.tasks();
                 activeListeners.tasks = onSnapshot(tasksGroupQuery, (tasksSnapshot) => {
@@ -247,7 +250,7 @@ function attachRealtimeListeners(userId) {
             });
             
         } catch (error) {
-            console.error("[DEBUG] Error finding project via collectionGroup query:", error);
+            console.error("[LIST DEBUG] Permission denied or error finding project via collectionGroup query:", error);
         }
     });
 }
@@ -296,74 +299,30 @@ async function fetchActiveIds(userId) {
     }
 }
 
-
-async function fetchProjectMembers(userId, workspaceId, projectId) {
-    console.log("[fetchProjectMembers] Called with:", { userId, workspaceId, projectId });
-    if (!userId || !workspaceId || !projectId) {
-        console.warn("[fetchProjectMembers] Missing parameters. Returning empty array.");
+async function fetchProjectMembers(projectData) {
+    // 1. Check if the necessary data exists.
+    if (!projectData || !projectData.memberUIDs || projectData.memberUIDs.length === 0) {
+        console.warn("fetchProjectMembers was called with a project document that has no memberUIDs.");
         return [];
     }
-    
+
     try {
-        const projectRef = doc(db, `users/${userId}/myworkspace/${workspaceId}/projects/${projectId}`);
-        const projectSnap = await getDoc(projectRef);
-        console.log("[fetchProjectMembers] Project exists:", projectSnap.exists());
+        // 2. Get a unique list of member UIDs.
+        const memberUids = [...new Set(projectData.memberUIDs)];
         
-        if (!projectSnap.exists()) {
-            console.warn("[fetchProjectMembers] Project doc not found:", projectRef.path);
-            return [];
-        }
-        
-        const projectData = projectSnap.data();
-        console.log("[fetchProjectMembers] Project data loaded:", projectData);
-        
-        let memberUids;
-        if (projectData.workspaceRole === 'workspace') {
-            const workspaceDoc = await getDoc(doc(db, `users/${userId}/myworkspace/${workspaceId}`));
-            console.log("[fetchProjectMembers] Workspace data:", workspaceDoc.data());
-            memberUids = workspaceDoc.data()?.members || [];
-        } else {
-            memberUids = projectData.members?.map(m => m.uid) || [];
-        }
-        
-        console.log("[fetchProjectMembers] Member UIDs:", memberUids);
-        
-        if (memberUids.length === 0) {
-            console.warn("[fetchProjectMembers] No member UIDs found.");
-            return [];
-        }
-        
-        const userPromises = memberUids.map(uid => getDoc(doc(db, `users/${uid}`)));
+        // 3. Fetch each user document from the top-level 'users' collection.
+        const userPromises = memberUids.map(uid => getDoc(doc(db, "users", uid)));
         const userDocs = await Promise.all(userPromises);
         
-        const validUsers = userDocs.filter(d => d.exists()).map(d => ({ uid: d.id, ...d.data() }));
-        console.log("[fetchProjectMembers] Valid member profiles fetched:", validUsers);
-        
-        return validUsers;
+        // 4. Filter out any users that might not exist and format the data.
+        return userDocs
+            .filter(d => d.exists())
+            .map(d => ({ id: d.id, ...d.data() })); // Use 'id' for consistency
     } catch (error) {
-        console.error("[fetchProjectMembers] Error fetching members:", error);
+        console.error("Error fetching project member profiles:", error);
         return [];
     }
 }
-
-async function loadProjectUsers(currentUserId) {
-    console.log("[loadProjectUsers] Starting with userId:", currentUserId);
-    try {
-        const { workspaceId, projectId } = await fetchActiveIds(currentUserId);
-        console.log("[loadProjectUsers] Active IDs fetched:", { workspaceId, projectId });
-        
-        if (!workspaceId || !projectId) {
-            console.warn("[loadProjectUsers] Missing workspaceId or projectId");
-            return;
-        }
-        
-        allUsers = await fetchProjectMembers(currentUserId, workspaceId, projectId);
-        console.log("[loadProjectUsers] Project members loaded:", allUsers);
-    } catch (error) {
-        console.error("[loadProjectUsers] Failed to load project users:", error);
-    }
-}
-
 
 // --- Main Initialization and Cleanup ---
 
