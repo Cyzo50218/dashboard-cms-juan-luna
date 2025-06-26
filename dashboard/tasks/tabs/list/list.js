@@ -681,21 +681,23 @@ function setupEventListeners() {
             
             // --- These cases remain unchanged ---
             case 'like': {
-                const { task, section } = findTaskAndSection(taskId);
-                if (!task || !section || !currentUserId) return;
-                const taskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${section.id}/tasks/${taskId}`);
-                const liked = task.likedBy?.[currentUserId];
-                updateDoc(taskRef, liked ?
-                {
-                    likedAmount: increment(-1),
-                    [`likedBy.${currentUserId}`]: deleteField()
-                } :
-                {
-                    likedAmount: increment(1),
-                    [`likedBy.${currentUserId}`]: true
-                });
-                break;
-            }
+    const { task, section } = findTaskAndSection(taskId);
+    if (!task || !section || !currentUserId) return;
+
+    const sectionRef = collection(currentProjectRef, 'sections');
+    const taskRef = doc(sectionRef, section.id, 'tasks', taskId);
+
+    const liked = task.likedBy?.[currentUserId];
+
+    updateDoc(taskRef, liked ? {
+        likedAmount: increment(-1),
+        [`likedBy.${currentUserId}`]: deleteField()
+    } : {
+        likedAmount: increment(1),
+        [`likedBy.${currentUserId}`]: true
+    });
+    break;
+}
             case 'remove-assignee': {
                 e.stopPropagation();
                 if (!canUserEditTask(task)) {
