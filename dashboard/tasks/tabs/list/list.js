@@ -1526,8 +1526,8 @@ function render() {
     
     
     if (!userCanEditProject) {
-    addTaskHeaderBtn.class.add('hide');
-    addSectionBtn.class.add('hide');
+    addTaskHeaderBtn.classList.add('hide');
+    addSectionBtn.classList.add('hide');
     }
     
     let scrollState = { top: 0, left: 0 };
