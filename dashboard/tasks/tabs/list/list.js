@@ -232,7 +232,7 @@ function attachRealtimeListeners(userId) {
                 
                 updateUserPermissions(projectData, currentUserId);
                 const memberUIDs = projectData.members?.map(m => m.uid) || [];
-
+                
                 // Fetch all user profiles using the new helper function
                 allUsers = await fetchMemberProfiles(memberUIDs);
                 
@@ -329,12 +329,12 @@ function canUserEditTask(task) {
     
     // Check for the special case: Viewers or Commentators who are assigned to the task.
     if (currentUserRole === 'Viewer' || currentUserRole === 'Commentator') {
-    const isAssigned = Array.isArray(task.assignees) && task.assignees.includes(currentUserId);
-    if (isAssigned) {
-        console.log(`[Permissions] Granting task edit for assigned ${currentUserRole}.`);
-        return true;
+        const isAssigned = Array.isArray(task.assignees) && task.assignees.includes(currentUserId);
+        if (isAssigned) {
+            console.log(`[Permissions] Granting task edit for assigned ${currentUserRole}.`);
+            return true;
+        }
     }
-}
     
     // Otherwise, no permission.
     return false;
@@ -555,7 +555,7 @@ function setupEventListeners() {
         if (addTaskRow) {
             
             // *** PERMISSION CHECK ***
-                if (!userCanEditProject) {
+            if (!userCanEditProject) {
                 console.warn("[Permissions] Blocked 'Add Task Row'. User cannot edit project.");
                 return;
             }
@@ -644,7 +644,8 @@ function setupEventListeners() {
                         itemRenderer: (option) => `<div class="dropdown-color-swatch" style="background-color: ${option.color || '#ccc'}"></div><span>${option.name}</span>`,
                         onSelect: (selected) => {
                             updateTask(taskId, sectionId, {
-                                [`customFields.${column.id}`]: selected.name });
+                                [`customFields.${column.id}`]: selected.name
+                            });
                         },
                         onEdit: (option) => openEditOptionDialog('CustomColumn', option, column.id), // Your existing dialog
                         onAdd: () => openCustomColumnOptionDialog(column.id) // Your existing dialog
@@ -681,23 +682,23 @@ function setupEventListeners() {
             
             // --- These cases remain unchanged ---
             case 'like': {
-    const { task, section } = findTaskAndSection(taskId);
-    if (!task || !section || !currentUserId) return;
-
-    const sectionRef = collection(currentProjectRef, 'sections');
-    const taskRef = doc(sectionRef, section.id, 'tasks', taskId);
-
-    const liked = task.likedBy?.[currentUserId];
-
-    updateDoc(taskRef, liked ? {
-        likedAmount: increment(-1),
-        [`likedBy.${currentUserId}`]: deleteField()
-    } : {
-        likedAmount: increment(1),
-        [`likedBy.${currentUserId}`]: true
-    });
-    break;
-}
+                const { task, section } = findTaskAndSection(taskId);
+                if (!task || !section || !currentUserId) return;
+                
+                const sectionRef = collection(currentProjectRef, 'sections');
+                const taskRef = doc(sectionRef, section.id, 'tasks', taskId);
+                
+                const liked = task.likedBy?.[currentUserId];
+                
+                updateDoc(taskRef, liked ? {
+                    likedAmount: increment(-1),
+                    [`likedBy.${currentUserId}`]: deleteField()
+                } : {
+                    likedAmount: increment(1),
+                    [`likedBy.${currentUserId}`]: true
+                });
+                break;
+            }
             case 'remove-assignee': {
                 e.stopPropagation();
                 if (!canUserEditTask(task)) {
@@ -1115,7 +1116,7 @@ async function handleSectionReorder(evt) {
     
     try {
         const sectionRef = doc(collection(currentProjectRef, 'sections'), sectionId);
-       
+        
         const batch = writeBatch(db);
         sectionEls.forEach((el, index) => {
             const sectionId = el.dataset.sectionId;
@@ -1138,91 +1139,91 @@ async function handleSectionReorder(evt) {
 
 async function handleTaskMoved(evt) {
     console.log("🧪 Drag Event Details:", evt);
-
+    
     const user = auth.currentUser;
     if (!user) {
         console.error("❌ User not authenticated.");
         return;
     }
-
+    
     const taskEl = evt.item;
     const taskId = taskEl.dataset.taskId;
-
+    
     const newSectionEl = evt.to.closest(".section-wrapper");
     const oldSectionEl = evt.from.closest(".section-wrapper");
     const newSectionId = newSectionEl?.dataset.sectionId;
     const oldSectionId = oldSectionEl?.dataset.sectionId;
-
+    
     if (!taskId || !newSectionId || !oldSectionId) {
         console.error("❌ Critical ID missing.", { taskId, newSectionId, oldSectionId });
         return;
     }
-
+    
     try {
         const batch = writeBatch(db);
-
+        
         if (newSectionId === oldSectionId) {
             console.log(`Reordering task "${taskId}" in section "${newSectionId}"`);
             const tasksToUpdate = Array.from(newSectionEl.querySelectorAll(".task-row-wrapper"));
-
+            
             tasksToUpdate.forEach((el, index) => {
                 const currentTaskId = el.dataset.taskId;
                 if (!currentTaskId) return;
-
+                
                 const taskRef = doc(db, `${currentProjectRef.path}/sections/${newSectionId}/tasks/${currentTaskId}`);
                 batch.update(taskRef, { order: index });
             });
-
+            
         } else {
             console.log(`Moving task "${taskId}" from section "${oldSectionId}" to "${newSectionId}"`);
-
+            
             const sourceRef = doc(db, `${currentProjectRef.path}/sections/${oldSectionId}/tasks/${taskId}`);
             const sourceSnap = await getDoc(sourceRef);
             if (!sourceSnap.exists()) {
                 console.error("❌ Task not found in the source section. Cannot move.");
                 return;
             }
-
+            
             const newDocRef = doc(collection(db, `${currentProjectRef.path}/sections/${newSectionId}/tasks`));
             const taskData = {
                 ...sourceSnap.data(),
                 sectionId: newSectionId,
                 id: newDocRef.id
             };
-
+            
             const targetSection = project.sections.find(s => s.id === newSectionId);
             if (targetSection?.sectionType === 'completed') {
                 console.log(`Destination is a 'completed' section. Updating task status.`);
                 taskData.status = 'Completed';
             }
-
+            
             batch.delete(sourceRef);
             batch.set(newDocRef, taskData);
-
+            
             taskEl.dataset.taskId = newDocRef.id;
-
+            
             const newSectionTasks = Array.from(newSectionEl.querySelectorAll(".task-row-wrapper"));
             newSectionTasks.forEach((el, index) => {
                 const currentTaskId = el.dataset.taskId;
                 if (!currentTaskId) return;
-
+                
                 const taskRef = doc(db, `${currentProjectRef.path}/sections/${newSectionId}/tasks/${currentTaskId}`);
                 batch.update(taskRef, { order: index, sectionId: newSectionId });
             });
-
+            
             const oldSectionTasks = Array.from(oldSectionEl.querySelectorAll(".task-row-wrapper"));
             oldSectionTasks.forEach((el, index) => {
                 const currentTaskId = el.dataset.taskId;
                 if (!currentTaskId) return;
-
+                
                 const taskRef = doc(db, `${currentProjectRef.path}/sections/${oldSectionId}/tasks/${currentTaskId}`);
                 batch.update(taskRef, { order: index });
             });
         }
-
+        
         await batch.commit();
         console.log("✅ Batch commit successful. Task positions updated.");
-
+        
     } catch (err) {
         console.error("❌ Error handling task move:", err);
     }
@@ -1552,11 +1553,11 @@ function render() {
     
     
     if (!userCanEditProject) {
-    addTaskHeaderBtn.classList.add('hide');
-    addSectionClassBtn.classList.add('hide');
-    }else {
+        addTaskHeaderBtn.classList.add('hide');
+        addSectionClassBtn.classList.add('hide');
+    } else {
         addTaskHeaderBtn.classList.remove('hide');
-addSectionClassBtn.classList.remove('hide');
+        addSectionClassBtn.classList.remove('hide');
     }
     
     let scrollState = { top: 0, left: 0 };
@@ -1597,110 +1598,110 @@ addSectionClassBtn.classList.remove('hide');
     const allColumns = orderedIds
         .map(id => columnDefinitions.get(String(id))) // Ensure we look up by string
         .filter(Boolean); // Safely filter out any columns that might have been deleted
-
-const headerClickListener = (e) => {
-    // This top-level permission check for general editing is still correct.
-    if (!userCanEditProject) {
-        console.warn("[Permissions] Blocked header action. User cannot edit project.");
-        return;
-    }
     
-    const columnOptionsIcon = e.target.closest('.options-icon');
-    const addColumnBtn = e.target.closest('.add-column-cell');
-    
-    // --- 1. HANDLE COLUMN OPTIONS DROPDOWN ---
-    if (columnOptionsIcon) {
-        e.stopPropagation();
-        const columnEl = columnOptionsIcon.closest('[data-column-id]');
-        if (!columnEl) return;
+    const headerClickListener = (e) => {
+        // This top-level permission check for general editing is still correct.
+        if (!userCanEditProject) {
+            console.warn("[Permissions] Blocked header action. User cannot edit project.");
+            return;
+        }
         
-        const columnId = columnEl.dataset.columnId;
-        const column = allColumns.find(c => String(c.id) === String(columnId));
-        if (!column) return;
+        const columnOptionsIcon = e.target.closest('.options-icon');
+        const addColumnBtn = e.target.closest('.add-column-cell');
         
-        // Base options available to all editors
-        const dropdownOptions = [{ name: 'Rename column' }];
-        
-        // --- ADDED: COLUMN RULE LOGIC ---
-        // Only Project Admins/Owners can see restriction options.
-        if (userCanEditProject) {
-            const rules = project.columnRules || [];
-            const existingRule = rules.find(rule => rule.name === column.name);
-            const isCurrentlyRestricted = existingRule && existingRule.isRestricted;
+        // --- 1. HANDLE COLUMN OPTIONS DROPDOWN ---
+        if (columnOptionsIcon) {
+            e.stopPropagation();
+            const columnEl = columnOptionsIcon.closest('[data-column-id]');
+            if (!columnEl) return;
             
-            if (isCurrentlyRestricted) {
-                dropdownOptions.push({ name: 'Unrestrict Column' });
-            } else {
-                dropdownOptions.push({ name: 'Restrict Column' });
-            }
-        }
-        // --- END OF COLUMN RULE LOGIC ---
-        
-        const defaultColumnIds = ['assignees', 'dueDate', 'priority', 'status'];
-        const isDefaultColumn = defaultColumnIds.includes(columnId);
-        
-        // Only the project owner can see the delete option.
-        if (!isDefaultColumn && project.project_super_admin_uid === currentUserId || project.project_admin_user === currentUserId) {
-            dropdownOptions.push({ name: 'Delete column' });
-        }
-        
-        createAdvancedDropdown(columnOptionsIcon, {
-            options: dropdownOptions,
-            itemRenderer: (option) => {
-    const isDelete = option.name === 'Delete column';
-    const iconClass = isDelete ? 'fa-trash-alt' : '';
-    const colorStyle = isDelete ? 'style="color: #d9534f;"' : ''; // Make delete red
-    return `<i class="fas ${iconClass}" ${colorStyle}></i><span ${colorStyle}>${option.name}</span>`;
-},
-onSelect: (selected) => {
-                // --- ADDED: Handle new actions ---
-                if (selected.name === 'Restrict Column' || selected.name === 'Unrestrict Column') {
-                    toggleColumnRestriction(column);
-                } else if (selected.name === 'Delete column') {
-                    deleteColumnInFirebase(column.id);
-                } else if (selected.name === 'Rename column') {
-                    enableColumnRename(columnEl);
+            const columnId = columnEl.dataset.columnId;
+            const column = allColumns.find(c => String(c.id) === String(columnId));
+            if (!column) return;
+            
+            // Base options available to all editors
+            const dropdownOptions = [{ name: 'Rename column' }];
+            
+            // --- ADDED: COLUMN RULE LOGIC ---
+            // Only Project Admins/Owners can see restriction options.
+            if (userCanEditProject) {
+                const rules = project.columnRules || [];
+                const existingRule = rules.find(rule => rule.name === column.name);
+                const isCurrentlyRestricted = existingRule && existingRule.isRestricted;
+                
+                if (isCurrentlyRestricted) {
+                    dropdownOptions.push({ name: 'Unrestrict Column' });
+                } else {
+                    dropdownOptions.push({ name: 'Restrict Column' });
                 }
             }
-        });
-        return;
-    }
-    
-    if (addColumnBtn) {
-    e.stopPropagation();
-    
-    // REFACTORED: Call the new universal dropdown for adding a column
-    createAdvancedDropdown(addColumnBtn, {
-        // Assumes 'columnTypeOptions' is an array of strings like ['Text', 'Numbers', ...]
-        options: columnTypeOptions.map(type => ({ name: type })),
-        
-        // A renderer that provides a specific icon for each column type
-        itemRenderer: (type) => {
-            let icon = 'fa-font'; // Default icon for 'Text'
-            switch (type.name) {
-                case 'Numbers':
-                   // icon = 'fa-hashtag';
-                    break;
-                case 'Costing':
-                   // icon = 'fa-dollar-sign';
-                    break;
-                case 'Type':
-                 //   icon = 'fa-tags';
-                    break;
-                case 'Date':
-               //     icon = 'fa-calendar-alt';
-                    break;
+            // --- END OF COLUMN RULE LOGIC ---
+            
+            const defaultColumnIds = ['assignees', 'dueDate', 'priority', 'status'];
+            const isDefaultColumn = defaultColumnIds.includes(columnId);
+            
+            // Only the project owner can see the delete option.
+            if (!isDefaultColumn && project.project_super_admin_uid === currentUserId || project.project_admin_user === currentUserId) {
+                dropdownOptions.push({ name: 'Delete column' });
             }
-            return `<i class="fas ${icon}"></i><span>${type.name}</span>`;
-        },
-        // The onSelect logic is now cleaner
-        onSelect: (selected) => {
-            openAddColumnDialog(selected.name); // Your existing dialog function
+            
+            createAdvancedDropdown(columnOptionsIcon, {
+                options: dropdownOptions,
+                itemRenderer: (option) => {
+                    const isDelete = option.name === 'Delete column';
+                    const iconClass = isDelete ? 'fa-trash-alt' : '';
+                    const colorStyle = isDelete ? 'style="color: #d9534f;"' : ''; // Make delete red
+                    return `<i class="fas ${iconClass}" ${colorStyle}></i><span ${colorStyle}>${option.name}</span>`;
+                },
+                onSelect: (selected) => {
+                    // --- ADDED: Handle new actions ---
+                    if (selected.name === 'Restrict Column' || selected.name === 'Unrestrict Column') {
+                        toggleColumnRestriction(column);
+                    } else if (selected.name === 'Delete column') {
+                        deleteColumnInFirebase(column.id);
+                    } else if (selected.name === 'Rename column') {
+                        enableColumnRename(columnEl);
+                    }
+                }
+            });
+            return;
         }
-    });
-}
-};
-
+        
+        if (addColumnBtn) {
+            e.stopPropagation();
+            
+            // REFACTORED: Call the new universal dropdown for adding a column
+            createAdvancedDropdown(addColumnBtn, {
+                // Assumes 'columnTypeOptions' is an array of strings like ['Text', 'Numbers', ...]
+                options: columnTypeOptions.map(type => ({ name: type })),
+                
+                // A renderer that provides a specific icon for each column type
+                itemRenderer: (type) => {
+                    let icon = 'fa-font'; // Default icon for 'Text'
+                    switch (type.name) {
+                        case 'Numbers':
+                            // icon = 'fa-hashtag';
+                            break;
+                        case 'Costing':
+                            // icon = 'fa-dollar-sign';
+                            break;
+                        case 'Type':
+                            //   icon = 'fa-tags';
+                            break;
+                        case 'Date':
+                            //     icon = 'fa-calendar-alt';
+                            break;
+                    }
+                    return `<i class="fas ${icon}"></i><span>${type.name}</span>`;
+                },
+                // The onSelect logic is now cleaner
+                onSelect: (selected) => {
+                    openAddColumnDialog(selected.name); // Your existing dialog function
+                }
+            });
+        }
+    };
+    
     const addTaskAtTop = false;
     
     
@@ -1760,19 +1761,19 @@ onSelect: (selected) => {
     });
     
     const addColumnBtn = document.createElement('div');
-addColumnBtn.className = 'add-column-cell w-8 opacity-100 flex-shrink-0 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 cursor-pointer border-l border-slate-200 bg-white';
-
-// Always append the button (even for viewers)
-rightHeaderContent.appendChild(addColumnBtn);
-
-// Conditionally hide only the icon inside
-if (!(userCanEditProject && (project.project_super_admin_uid === currentUserId || project.project_admin_user === currentUserId))) {
-    addColumnBtn.style.pointerEvents = 'none'; // disable interaction
-    addColumnBtn.innerHTML = ''; // hide the icon/text
-} else {
-    addColumnBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
-}
-
+    addColumnBtn.className = 'add-column-cell w-8 opacity-100 flex-shrink-0 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 cursor-pointer border-l border-slate-200 bg-white';
+    
+    // Always append the button (even for viewers)
+    rightHeaderContent.appendChild(addColumnBtn);
+    
+    // Conditionally hide only the icon inside
+    if (!(userCanEditProject && (project.project_super_admin_uid === currentUserId || project.project_admin_user === currentUserId))) {
+        addColumnBtn.style.pointerEvents = 'none'; // disable interaction
+        addColumnBtn.innerHTML = ''; // hide the icon/text
+    } else {
+        addColumnBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
+    }
+    
     
     const headerSpacer = document.createElement('div');
     headerSpacer.className = 'w-4 flex-shrink-0';
@@ -1780,8 +1781,7 @@ if (!(userCanEditProject && (project.project_super_admin_uid === currentUserId |
     
     header.appendChild(leftHeader);
     header.appendChild(rightHeaderContent);
-    if (!(userCanEditProject && (project.project_super_admin_uid === currentUserId || project.project_admin_user === currentUserId))) {
-    }else{
+    if (!(userCanEditProject && (project.project_super_admin_uid === currentUserId || project.project_admin_user === currentUserId))) {} else {
         rightHeaderContent.addEventListener('click', headerClickListener);
     }
     
@@ -2097,19 +2097,19 @@ if (!(userCanEditProject && (project.project_super_admin_uid === currentUserId |
                 
                 switch (col.id) {
                     case 'assignees':
-    cell.dataset.control = 'assignee';
-    content = createAssigneeHTML(task.assignees);
-
-    const isViewerOrCommentator = currentUserRole === 'Viewer' || currentUserRole === 'Commentator';
-    const isAssigned = Array.isArray(task.assignees) && task.assignees.includes(currentUserId);
-    
-    if (!userCanEditProject && isViewerOrCommentator && isAssigned) {
-        // User is a restricted assignee — do not allow interaction
-        cell.style.pointerEvents = 'none';
-    }
-
-    break;
-
+                        cell.dataset.control = 'assignee';
+                        content = createAssigneeHTML(task.assignees);
+                        
+                        const isViewerOrCommentator = currentUserRole === 'Viewer' || currentUserRole === 'Commentator';
+                        const isAssigned = Array.isArray(task.assignees) && task.assignees.includes(currentUserId);
+                        
+                        if (!userCanEditProject && isViewerOrCommentator && isAssigned) {
+                            // User is a restricted assignee — do not allow interaction
+                            cell.style.pointerEvents = 'none';
+                        }
+                        
+                        break;
+                        
                     case 'dueDate':
                         cell.dataset.control = 'due-date';
                         // For due date, we can use a simpler check
@@ -2252,32 +2252,32 @@ if (!(userCanEditProject && (project.project_super_admin_uid === currentUserId |
                             
                             cell.contentEditable = canEditThisCell;
                             if (canEditThisCell) {
-    cell.addEventListener('blur', () => {
-        const newValue = cell.innerText.trim();
-        const fieldPath = `customFields.${col.id}`;
-        const oldValue = rawValue ?? '';
-
-        // Only update if value actually changed
-        if (newValue !== String(oldValue).trim()) {
-            updateTask(task.id, section.id, {
-                [fieldPath]: (col.type === 'Costing' || col.type === 'Numbers')
-                    ? parseFloat(newValue.replace(/,/g, '')) || 0
-                    : newValue
-            });
-        }
-    });
-
-    // Optional: allow pressing "Enter" to save
-    cell.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault(); // prevent new line
-            cell.blur(); // trigger blur handler
-        }
-    });
-}
-
+                                cell.addEventListener('blur', () => {
+                                    const newValue = cell.innerText.trim();
+                                    const fieldPath = `customFields.${col.id}`;
+                                    const oldValue = rawValue ?? '';
+                                    
+                                    // Only update if value actually changed
+                                    if (newValue !== String(oldValue).trim()) {
+                                        updateTask(task.id, section.id, {
+                                            [fieldPath]: (col.type === 'Costing' || col.type === 'Numbers') ?
+                                                parseFloat(newValue.replace(/,/g, '')) || 0 :
+                                                newValue
+                                        });
+                                    }
+                                });
+                                
+                                // Optional: allow pressing "Enter" to save
+                                cell.addEventListener('keydown', (e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault(); // prevent new line
+                                        cell.blur(); // trigger blur handler
+                                    }
+                                });
+                            }
+                            
                             if (!canEditThisCell) {
-                                 cell.classList.add('cell-restricted'); // Add a class for styling
+                                cell.classList.add('cell-restricted'); // Add a class for styling
                             }
                             cell.dataset.control = col.type;
                             
@@ -2377,88 +2377,88 @@ if (!(userCanEditProject && (project.project_super_admin_uid === currentUserId |
                 }
             });
         }
-
-            // Add task row
-            const addRow = document.createElement('div');
-            addRow.className = 'add-task-row-wrapper flex group';
-            addRow.dataset.sectionId = section.id;
-            
-            const leftAddCell = document.createElement('div');
-            leftAddCell.className = 'sticky left-0 w-80 md:w-96 lg:w-[400px] flex-shrink-0 flex items-center px-3 py-0.5 group-hover:bg-slate-100 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
-            
-            const indentedText = document.createElement('div');
-            indentedText.className = 'add-task-btn flex items-center gap-2 ml-8 text-slate-500 cursor-pointer hover:bg-slate-200 px-2 py-1 rounded transition';
-            indentedText.dataset.sectionId = section.id;
-            indentedText.innerHTML = `
+        
+        // Add task row
+        const addRow = document.createElement('div');
+        addRow.className = 'add-task-row-wrapper flex group';
+        addRow.dataset.sectionId = section.id;
+        
+        const leftAddCell = document.createElement('div');
+        leftAddCell.className = 'sticky left-0 w-80 md:w-96 lg:w-[400px] flex-shrink-0 flex items-center px-3 py-0.5 group-hover:bg-slate-100 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg';
+        
+        const indentedText = document.createElement('div');
+        indentedText.className = 'add-task-btn flex items-center gap-2 ml-8 text-slate-500 cursor-pointer hover:bg-slate-200 px-2 py-1 rounded transition';
+        indentedText.dataset.sectionId = section.id;
+        indentedText.innerHTML = `
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400">
         <line x1="12" y1="5" x2="12" y2="19"></line>
         <line x1="5" y1="12" x2="19" y2="12"></line>
     </svg>
     <span class="text-sm">Add task...</span>
 `;
-
-const isProjectAdmin = (
-    project.project_super_admin_uid === currentUserId ||
-    project.project_admin_user === currentUserId
-);
-
-if (!isProjectAdmin) {
-    indentedText.innerHTML = ''; 
-    indentedText.classList.remove('cursor-pointer', 'hover:bg-slate-200');
-}
-
-            leftAddCell.appendChild(indentedText);
+        
+        const isProjectAdmin = (
+            project.project_super_admin_uid === currentUserId ||
+            project.project_admin_user === currentUserId
+        );
+        
+        if (!isProjectAdmin) {
+            indentedText.innerHTML = '';
+            indentedText.classList.remove('cursor-pointer', 'hover:bg-slate-200');
+        }
+        
+        leftAddCell.appendChild(indentedText);
+        
+        const rightAddCells = document.createElement('div');
+        rightAddCells.className = 'flex-grow flex group-hover:bg-slate-100';
+        
+        // This loop creates the footer cells (including the "Sum:" cell)
+        allColumns.forEach((col, i) => {
+            const cell = document.createElement('div');
+            const leftBorderClass = i === 0 ? 'border-l border-slate-200' : '';
+            cell.className = `h-full ${leftBorderClass}`;
+            cell.dataset.columnId = col.id;
             
-            const rightAddCells = document.createElement('div');
-            rightAddCells.className = 'flex-grow flex group-hover:bg-slate-100';
-            
-            // This loop creates the footer cells (including the "Sum:" cell)
-            allColumns.forEach((col, i) => {
-    const cell = document.createElement('div');
-    const leftBorderClass = i === 0 ? 'border-l border-slate-200' : '';
-    cell.className = `h-full ${leftBorderClass}`;
-    cell.dataset.columnId = col.id;
-
-    // Show Costing column sum only for non-admin users
-    if (col.type === 'Costing') {
-        const sum = section.tasks.reduce((acc, task) => {
-            const val = task.customFields?.[col.id];
-            return typeof val === 'number' ? acc + val : acc;
-        }, 0);
-
-        const isProjectAdmin = (project.project_super_admin_uid === currentUserId || project.project_admin_user === currentUserId);
-
-        // Only show sum if:
-        // - The user is NOT a project admin
-        // - AND the sum has a value > 0
-        if (!isProjectAdmin && sum > 0) {
-            const formatted = sum % 1 === 0
-                ? sum.toLocaleString('en-US', { maximumFractionDigits: 0 })
-                : sum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-            cell.innerHTML = `
+            // Show Costing column sum only for non-admin users
+            if (col.type === 'Costing') {
+                const sum = section.tasks.reduce((acc, task) => {
+                    const val = task.customFields?.[col.id];
+                    return typeof val === 'number' ? acc + val : acc;
+                }, 0);
+                
+                const isProjectAdmin = (project.project_super_admin_uid === currentUserId || project.project_admin_user === currentUserId);
+                
+                // Only show sum if:
+                // - The user is NOT a project admin
+                // - AND the sum has a value > 0
+                if (!isProjectAdmin && sum > 0) {
+                    const formatted = sum % 1 === 0 ?
+                        sum.toLocaleString('en-US', { maximumFractionDigits: 0 }) :
+                        sum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    
+                    cell.innerHTML = `
                 <div style="font-size: 0.8rem; display: flex; justify-content: flex-start; align-items: center; height: 100%; padding-right: 8px;">
                   <span style="color: #9ca3af; margin-right: 4px;">Sum:</span>
                   <span style="font-weight: 600; color: #4b5563;">${formatted}</span>
                 </div>
             `;
-        }
-    }
-
-    rightAddCells.appendChild(cell);
-});
+                }
+            }
             
-            const emptyAddCellLast = document.createElement('div');
-            emptyAddCellLast.className = 'w-12 flex-shrink-0 h-full';
-            rightAddCells.appendChild(emptyAddCellLast);
-            
-            const emptyEndSpacerLast = document.createElement('div');
-            emptyEndSpacerLast.className = 'w-4 flex-shrink-0 h-full';
-            rightAddCells.appendChild(emptyEndSpacerLast);
-            
-            addRow.appendChild(leftAddCell);
-            addRow.appendChild(rightAddCells);
-            sectionWrapper.appendChild(addRow);
+            rightAddCells.appendChild(cell);
+        });
+        
+        const emptyAddCellLast = document.createElement('div');
+        emptyAddCellLast.className = 'w-12 flex-shrink-0 h-full';
+        rightAddCells.appendChild(emptyAddCellLast);
+        
+        const emptyEndSpacerLast = document.createElement('div');
+        emptyEndSpacerLast.className = 'w-4 flex-shrink-0 h-full';
+        rightAddCells.appendChild(emptyEndSpacerLast);
+        
+        addRow.appendChild(leftAddCell);
+        addRow.appendChild(rightAddCells);
+        sectionWrapper.appendChild(addRow);
         
     });
     
@@ -2563,20 +2563,20 @@ function isCellEditable(column) {
     if (userCanEditProject) {
         return true;
     }
-
+    
     // Assigned users (Viewer/Commentator) can edit some fields,
     // BUT never allowed to modify the "Assignee" column
     if (column.name === 'Assignee') {
         return false;
     }
-
+    
     // Respect per-project column restrictions
     const rules = project.columnRules || [];
     const columnRule = rules.find(rule => rule.name === column.name);
     if (columnRule?.isRestricted) {
         return false;
     }
-
+    
     // All other custom fields allowed
     return true;
 }
@@ -2917,8 +2917,8 @@ async function handleTaskCompletion(task, taskRowEl) {
         // *** END OF FIX ***
         
         const sourceTaskRef = doc(currentProjectRef, `sections/${sourceSection.id}/tasks/${taskId}`);
-const targetTaskRef = doc(currentProjectRef, `sections/${targetSection.id}/tasks/${taskId}`);
-
+        const targetTaskRef = doc(currentProjectRef, `sections/${targetSection.id}/tasks/${taskId}`);
+        
         batch.delete(sourceTaskRef);
         // Now, this `set` operation works because `updatedTaskData` is a clean object without any `deleteField()` instructions.
         batch.set(targetTaskRef, updatedTaskData);
@@ -3023,16 +3023,16 @@ function updateTask(taskId, sectionId, newProperties) {
  */
 async function updateTaskInFirebase(taskId, sectionId, propertiesToUpdate) {
     if (!currentProjectRef || !sectionId || !taskId) {
-    return console.error("Missing IDs or project reference, cannot update task.");
-}
-console.log('updating task');
+        return console.error("Missing IDs or project reference, cannot update task.");
+    }
+    console.log('updating task');
     const taskRef = doc(currentProjectRef, `sections/${sectionId}/tasks/${taskId}`);
-try {
-    await updateDoc(taskRef, propertiesToUpdate);
-    console.log(`Task ${taskId} updated successfully.`);
-} catch (error) {
-    console.error(`Error updating task ${taskId}:`, error);
-}
+    try {
+        await updateDoc(taskRef, propertiesToUpdate);
+        console.log(`Task ${taskId} updated successfully.`);
+    } catch (error) {
+        console.error(`Error updating task ${taskId}:`, error);
+    }
 }
 
 /**
@@ -3046,26 +3046,26 @@ try {
 async function addTaskToFirebase(sectionId, taskData) {
     // 1. Ensure we have the necessary context to build the path.
     if (!currentProjectRef || !sectionId) {
-    return console.error("Cannot add task: Missing section ID or project reference.");
-}
-const sectionRef = doc(currentProjectRef, 'sections', sectionId);
-const tasksCollectionRef = collection(sectionRef, 'tasks');
-
+        return console.error("Cannot add task: Missing section ID or project reference.");
+    }
+    const sectionRef = doc(currentProjectRef, 'sections', sectionId);
+    const tasksCollectionRef = collection(sectionRef, 'tasks');
+    
     try {
-    const newTaskRef = doc(tasksCollectionRef); // Create a reference to get the ID
-    const fullTaskData = {
-        ...taskData,
-        id: newTaskRef.id,
-        projectId: currentProjectId, // Keep projectId for collectionGroup queries
-        userId: currentUserId,
-        sectionId: sectionId,
-        createdAt: serverTimestamp()
-    };
-    await setDoc(newTaskRef, fullTaskData);
-    console.log("Successfully added task with ID: ", newTaskRef.id);
-} catch (error) {
-    console.error("Error adding task:", error);
-}
+        const newTaskRef = doc(tasksCollectionRef); // Create a reference to get the ID
+        const fullTaskData = {
+            ...taskData,
+            id: newTaskRef.id,
+            projectId: currentProjectId, // Keep projectId for collectionGroup queries
+            userId: currentUserId,
+            sectionId: sectionId,
+            createdAt: serverTimestamp()
+        };
+        await setDoc(newTaskRef, fullTaskData);
+        console.log("Successfully added task with ID: ", newTaskRef.id);
+    } catch (error) {
+        console.error("Error adding task:", error);
+    }
 }
 
 /**
@@ -3106,13 +3106,13 @@ async function addSectionToFirebase() {
  */
 async function updateSectionInFirebase(sectionId, propertiesToUpdate) {
     if (!currentProjectRef || !sectionId) return console.error("Missing IDs or project reference.");
-
-const sectionRef = doc(currentProjectRef, `sections/${sectionId}`);
-try {
-    await updateDoc(sectionRef, propertiesToUpdate);
-} catch (error) {
-    console.error(`Error updating section ${sectionId}:`, error);
-}
+    
+    const sectionRef = doc(currentProjectRef, `sections/${sectionId}`);
+    try {
+        await updateDoc(sectionRef, propertiesToUpdate);
+    } catch (error) {
+        console.error(`Error updating section ${sectionId}:`, error);
+    }
 }
 
 /**
@@ -3121,13 +3121,13 @@ try {
  */
 async function updateProjectInFirebase(propertiesToUpdate) {
     if (!currentProjectRef) {
-    return console.error("Cannot update project: Project reference is missing.");
-}
-try {
-    await updateDoc(currentProjectRef, propertiesToUpdate);
-} catch (error) {
-    console.error("Error updating project properties:", error);
-}
+        return console.error("Cannot update project: Project reference is missing.");
+    }
+    try {
+        await updateDoc(currentProjectRef, propertiesToUpdate);
+    } catch (error) {
+        console.error("Error updating project properties:", error);
+    }
 }
 
 /**
@@ -3396,7 +3396,8 @@ function showStatusDropdown(targetEl, taskId, sectionId, optionType) {
         },
         onSelect: (option) => {
             updateTask(taskId, sectionId, {
-                [optionType.toLowerCase()]: option.name });
+                [optionType.toLowerCase()]: option.name
+            });
         },
         onEdit: (option) => {
             openEditOptionDialog(optionType, option); // Your existing dialog function
@@ -3554,7 +3555,7 @@ function syncScroll(scrollStates = new Map()) {
 
 function addNewColumn(config) {
     const newId = Date.now();
-
+    
     const newColumn = {
         id: newId,
         name: config.name,
@@ -3562,20 +3563,20 @@ function addNewColumn(config) {
         isCustom: true,
         currency: config.currency || null,
         aggregation: (config.type === 'Costing' || config.type === 'Numbers') ? 'Sum' : null,
-        options: (config.type === 'Type' || config.type === 'Custom') 
-            ? (config.type === 'Type' ? typeColumnOptions : []) 
-            : null
+        options: (config.type === 'Type' || config.type === 'Custom') ?
+            (config.type === 'Type' ? typeColumnOptions : []) :
+            null
     };
-
+    
     // Step 1: Update customColumns with the new column
     updateProjectInFirebase({
         customColumns: arrayUnion(newColumn)
     });
-
+    
     // Step 2: Update columnOrder with the new column ID
     const currentOrder = project.columnOrder || [];
     const newOrder = [...currentOrder, String(newId)];
-
+    
     updateProjectInFirebase({
         columnOrder: newOrder
     });
