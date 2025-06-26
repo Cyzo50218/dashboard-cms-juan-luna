@@ -2098,9 +2098,19 @@ onSelect: (selected) => {
                 
                 switch (col.id) {
                     case 'assignees':
-                        cell.dataset.control = 'assignee';
-                        content = createAssigneeHTML(task.assignees);
-                        break;
+    cell.dataset.control = 'assignee';
+    content = createAssigneeHTML(task.assignees);
+
+    const isViewerOrCommentator = currentUserRole === 'Viewer' || currentUserRole === 'Commentator';
+    const isAssigned = Array.isArray(task.assignees) && task.assignees.includes(currentUserId);
+    
+    if (!userCanEditProject && isViewerOrCommentator && isAssigned) {
+        // User is a restricted assignee — do not allow interaction
+        cell.style.pointerEvents = 'none';
+    }
+
+    break;
+
                     case 'dueDate':
                         cell.dataset.control = 'due-date';
                         // For due date, we can use a simpler check
