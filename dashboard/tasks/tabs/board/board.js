@@ -376,26 +376,45 @@ function attachRealtimeListeners(userId) {
                 // Listener for Messages (Cover Images)
                 const messagesQuery = query(collectionGroup(db, 'Messages'), where('projectId', '==', currentProjectId), where('imageUrl', '!=', null));
                 activeListeners.messages = onSnapshot(messagesQuery, (snapshot) => {
+                    console.log(`[Messages Listener] Snapshot check. Found ${snapshot.size} documents with an imageUrl.`);
     const newImageMap = {};
+    
     snapshot.forEach(doc => {
         const data = doc.data();
-        const taskId = data.taskId; // Assumes taskId is stored on the message document
+        const taskId = data.taskId;
         
-        if (taskId && data.imageUrl && data.timestamp) {
+        // THE FIX: Check that all required fields, especially the timestamp, exist and are valid.
+        if (taskId && data.imageUrl && data.timestamp && typeof data.timestamp.toMillis === 'function') {
+            
             const existing = newImageMap[taskId];
-            // Find the oldest image for each task to use as the cover
+            
+            // This logic to find the oldest image is correct.
             if (!existing || data.timestamp.toMillis() < existing.timestamp.toMillis()) {
-                newImageMap[taskId] = { imageUrl: data.imageUrl, timestamp: data.timestamp };
+                newImageMap[taskId] = {
+                    imageUrl: data.imageUrl,
+                    timestamp: data.timestamp
+                };
             }
+        } else {
+            // This log helps you find documents with bad data.
+            console.warn("Skipping message document due to missing fields (taskId, imageUrl, or valid timestamp):", data);
         }
     });
     
-    // Update the global map and re-render
+    // This part is correct. It transforms the map to the final format.
     taskImageMap = Object.fromEntries(
         Object.entries(newImageMap).map(([key, value]) => [key, value.imageUrl])
     );
-    renderBoard();
-}, err => console.error("Board message listener error:", err));
+    
+    // Add this log to see the final result before rendering.
+    console.log("[Messages Listener] Final taskImageMap created:", taskImageMap);
+    
+    // renderBoard(); // This should be called here to update the UI
+}, (error) => {
+    // Also, add an error handler to your listener to catch query problems
+    console.error("[Messages Listener] Query failed:", error);
+});
+
             });
         } catch (error) {
             console.error("[Board.js DEBUG] Error attaching listeners:", error);
@@ -545,9 +564,9 @@ return `
                     <span class="boardtasks-task-check" style="pointer-events: ${isEditable ? 'auto' : 'none'};">
                         <i class="${isCompleted ? 'fa-solid fa-circle-check' : 'fa-regular fa-circle'}"></i>
                     </span>
-                    <div class="boardtasks-task-assignees">${assigneesHTML}</div>
                     <p contenteditable="${isEditable}" class="boardtasks-task-name-editable">${task.name}</p>
                 </div>
+                <div class="boardtasks-task-assignees">${assigneesHTML}</div>
                 <div class="boardtasks-task-tags">
                     ${priorityTagHTML}
                     ${statusTagHTML}
