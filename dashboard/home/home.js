@@ -386,95 +386,93 @@ export function init(params) {
         });
     }
     
-    async function handleProjectCreate() {
-        if (!currentUser || !activeWorkspaceId) {
-            alert("Cannot create project. User or workspace not identified.");
-            return;
-        }
-        const name = prompt("Enter new project name:");
-        if (!name || !name.trim()) return;
-        
-        // --- Default Structures (No changes here) ---
-        const INITIAL_DEFAULT_COLUMNS = [
-            { id: 'assignees', name: 'Assignee', control: 'assignee' },
-            { id: 'dueDate', name: 'Due Date', control: 'due-date' },
-            { id: 'priority', name: 'Priority', control: 'priority' },
-            { id: 'status', name: 'Status', control: 'status' }
-        ];
-        const INITIAL_DEFAULT_SECTIONS = [
-            { title: 'Todo', order: 0, sectionType: 'todo', isCollapsed: false },
-            { title: 'Doing', order: 1, sectionType: 'doing', isCollapsed: false },
-            { title: 'Completed', order: 2, sectionType: 'completed', isCollapsed: true }
-        ];
-        
-        // --- Define references needed for the transaction ---
-        const projectsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects`);
-        const newProjectRef = doc(projectsColRef); // Generate the new project's ID upfront
-        const workspaceRef = doc(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}`); // Get a reference to the parent workspace
-        
-        try {
-            await runTransaction(db, async (transaction) => {
-                /*
-                --- DEPRECATED METHOD (before June 24, 2025) ---
-                The old logic found the previously selected project in a local array and updated
-                its 'isSelected' flag to false, while setting the new project's flag to true.
-                This state is now managed entirely by the 'selectedProjectId' field on the
-                parent workspace document, making the transaction simpler and more reliable.
+   async function handleProjectCreate() {
+    if (!currentUser || !activeWorkspaceId) {
+        alert("Cannot create project. User or workspace not identified.");
+        return;
+    }
+    const name = prompt("Enter new project name:");
+    if (!name || !name.trim()) return;
+    
+    // --- Default Structures (No changes here) ---
+    const INITIAL_DEFAULT_COLUMNS = [
+        { id: 'assignees', name: 'Assignee', control: 'assignee' },
+        { id: 'dueDate', name: 'Due Date', control: 'due-date' },
+        { id: 'priority', name: 'Priority', control: 'priority' },
+        { id: 'status', name: 'Status', control: 'status' }
+    ];
+    const INITIAL_DEFAULT_SECTIONS = [
+        { title: 'Todo', order: 0, sectionType: 'todo', isCollapsed: false },
+        { title: 'Doing', order: 1, sectionType: 'doing', isCollapsed: false },
+        { title: 'Completed', order: 2, sectionType: 'completed', isCollapsed: true }
+    ];
+    
+    // --- NEW: Define references for BOTH locations ---
 
-                const currentlySelectedProject = projectsData.find(p => p.isSelected === true);
-                if (currentlySelectedProject) {
-                    const oldSelectedRef = doc(projectsColRef, currentlySelectedProject.id);
-                    transaction.update(oldSelectedRef, { isSelected: false });
-                }
-                // The old `transaction.set` for the new project also included `isSelected: true`.
-                */
-                
-                // --- NEW TRANSACTION LOGIC ---
-                
-                // 1. Set the data for the new project document.
-                // Note: `isSelected` is removed. `projectId` and `memberUIDs` are added for our queries.
-                transaction.set(newProjectRef, {
-                    title: name.trim(),
-                    projectId: newProjectRef.id, // Store the document's own ID as a queryable field
-                    memberUIDs: [currentUser.uid], // Add the creator to the members list for queries
-                    color: generateColorForName(name.trim()),
-                    starred: false,
-                    createdAt: serverTimestamp(),
-                    accessLevel: "workspace",
-                    workspaceRole: "Viewer",
-                    project_super_admin_uid: currentUser.uid,
-                    project_admin_user: '',
-                    members: [{ uid: currentUser.uid, role: "Project Admin" }], // Use "Project Admin" consistently
-                    pendingInvites: [],
-                    defaultColumns: INITIAL_DEFAULT_COLUMNS,
-                    customColumns: []
-                });
-                
-                // 2. Update the parent workspace to make this new project the selected one.
-                // This is the core of the new logic.
-                transaction.update(workspaceRef, { selectedProjectId: newProjectRef.id });
-                
-                // 3. Create the default sections for the new project (no change here).
-                const sectionsColRef = collection(newProjectRef, "sections");
-                INITIAL_DEFAULT_SECTIONS.forEach(sectionData => {
-                    const sectionRef = doc(sectionsColRef);
-                    transaction.set(sectionRef, {
-                        ...sectionData,
-                        createdAt: serverTimestamp()
-                    });
+    // 1. Generate one unique ID that will be used for both project documents.
+    const newProjectId = doc(collection(db, 'projects')).id; 
+    
+    // 2. Reference for the NEW, TOP-LEVEL project document. This is the primary one.
+    const topLevelProjectRef = doc(db, 'projects', newProjectId);
+    
+    // 3. Reference for the original, NESTED project document for backward compatibility.
+    const nestedProjectRef = doc(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects`, newProjectId);
+    
+    // 4. Reference to the parent workspace document.
+    const workspaceRef = doc(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}`);
+
+    // --- NEW: Define the complete project data object ONCE ---
+    const newProjectData = {
+        title: name.trim(),
+        projectId: newProjectId,
+        ownerId: currentUser.uid,
+        workspaceId: activeWorkspaceId,
+        memberUIDs: [currentUser.uid], // For efficient queries
+        members: [{ uid: currentUser.uid, role: "Project Admin" }], // For detailed roles
+        color: generateColorForName(name.trim()),
+        starred: false,
+        createdAt: serverTimestamp(),
+        accessLevel: "workspace",
+        workspaceRole: "Viewer",
+        project_super_admin_uid: currentUser.uid,
+        project_admin_user: '',
+        pendingInvites: [],
+        defaultColumns: INITIAL_DEFAULT_COLUMNS,
+        customColumns: []
+    };
+
+    try {
+        await runTransaction(db, async (transaction) => {
+            // --- UPDATED TRANSACTION LOGIC ---
+            
+            // 1. Create the project document in the NEW, top-level collection.
+            transaction.set(topLevelProjectRef, newProjectData);
+
+            // 2. Create a copy in the ORIGINAL, nested collection.
+            transaction.set(nestedProjectRef, newProjectData);
+
+            // 3. Update the parent workspace to point to this new project.
+            transaction.update(workspaceRef, { selectedProjectId: newProjectId });
+            
+            // 4. IMPORTANT: Create the default sections under the NEW, TOP-LEVEL project.
+            const sectionsColRef = collection(topLevelProjectRef, "sections");
+            INITIAL_DEFAULT_SECTIONS.forEach(sectionData => {
+                const sectionRef = doc(sectionsColRef);
+                transaction.set(sectionRef, {
+                    ...sectionData,
+                    projectId: newProjectId, // Add projectId for security rules
+                    createdAt: serverTimestamp()
                 });
             });
-            
-            showNotification('Project created!', 'success');
-            
-            // The call to `selectProject()` is no longer needed. The real-time listener on the
-            // workspace will automatically detect the 'selectedProjectId' change and update the UI.
-            
-        } catch (error) {
-            console.error("Full error object in handleProjectCreate:", error);
-            showNotification("Failed to create project due to a database error.", "error");
-        }
+        });
+        
+        showNotification('Project created!', 'success');
+        
+    } catch (error) {
+        console.error("Full error object in handleProjectCreate:", error);
+        showNotification("Failed to create project due to a database error.", "error");
     }
+}
     
     async function handleTaskCompletion(taskId, isCompleted) {
         if (!currentUser || !activeWorkspaceId || !activeProjectId) return;

@@ -110,100 +110,103 @@ export function init(params) {
     loadSelectedWorkspace(user.uid);
   });
   
+/**
+ * Handles the creation of a new project, writing it to both the new top-level
+ * '/projects' collection and the original nested location for migration purposes.
+ */
 async function handleProjectCreate() {
-  const name = prompt("Enter new project name:");
-  if (!name?.trim()) return;
-  if (!currentUser) return alert("User not available.");
-  
-  // Find the active workspace on-demand to ensure we have the correct ID.
-  const wsQuery = query(collection(db, `users/${currentUser.uid}/myworkspace`), where("isSelected", "==", true));
-  const wsSnap = await getDocs(wsQuery);
-  if (wsSnap.empty) return alert("No workspace selected.");
-  
-  const workspaceDoc = wsSnap.docs[0];
-  const wsId = workspaceDoc.id;
-  const workspaceRef = workspaceDoc.ref; // Get a reference to the workspace document for the transaction
-  
-  // --- Default Structures (No changes here) ---
-  const INITIAL_DEFAULT_COLUMNS = [
-    { id: 'assignees', name: 'Assignee', control: 'assignee' },
-    { id: 'dueDate', name: 'Due Date', control: 'due-date' },
-    { id: 'priority', name: 'Priority', control: 'priority' },
-    { id: 'status', name: 'Status', control: 'status' }
-  ];
-  const INITIAL_DEFAULT_SECTIONS = [
-    { title: 'Todo', order: 0, sectionType: 'todo', isCollapsed: false },
-    { title: 'Doing', order: 1, sectionType: 'doing', isCollapsed: false },
-    { title: 'Completed', order: 2, sectionType: 'completed', isCollapsed: true }
-  ];
-  
-  // --- Define references needed for the transaction ---
-  const projectsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${wsId}/projects`);
-  const newProjectRef = doc(projectsColRef); // Generate the new project's ID upfront
-  
-  try {
-    await runTransaction(db, async (txn) => {
-      /*
-      --- DEPRECATED METHOD (before June 24, 2025) ---
-      The old logic found the previously selected project in a local `projectsData` array and
-      updated its 'isSelected' flag to false, while setting the new project's flag to true.
-      This state is now managed entirely by the 'selectedProjectId' field on the
-      parent workspace document, making the transaction simpler and more reliable.
+    const name = prompt("Enter new project name:");
+    if (!name?.trim()) return;
+    if (!currentUser) return alert("User not available.");
 
-      const currentlySelected = projectsData.find(p => p.isSelected === true);
-      if (currentlySelected) {
-          const oldProjectRef = doc(projectsColRef, currentlySelected.id);
-          txn.update(oldProjectRef, { isSelected: false });
-      }
-      // The old `txn.set` for the new project also included `isSelected: true`.
-      */
-      
-      // --- NEW TRANSACTION LOGIC ---
-      
-      // 1. Set the data for the new project document.
-      // Note: `isSelected` is removed. `projectId` and `memberUIDs` are added.
-      txn.set(newProjectRef, {
+    // Find the active workspace (no changes here)
+    const wsQuery = query(collection(db, `users/${currentUser.uid}/myworkspace`), where("isSelected", "==", true));
+    const wsSnap = await getDocs(wsQuery);
+    if (wsSnap.empty) return alert("No workspace selected.");
+
+    const workspaceDoc = wsSnap.docs[0];
+    const wsId = workspaceDoc.id;
+    const workspaceRef = workspaceDoc.ref;
+
+    // Default Structures (no changes here)
+    const INITIAL_DEFAULT_COLUMNS = [
+        { id: 'assignees', name: 'Assignee', control: 'assignee' },
+        { id: 'dueDate', name: 'Due Date', control: 'due-date' },
+        { id: 'priority', name: 'Priority', control: 'priority' },
+        { id: 'status', name: 'Status', control: 'status' }
+    ];
+    const INITIAL_DEFAULT_SECTIONS = [
+        { title: 'Todo', order: 0, sectionType: 'todo', isCollapsed: false },
+        { title: 'Doing', order: 1, sectionType: 'doing', isCollapsed: false },
+        { title: 'Completed', order: 2, sectionType: 'completed', isCollapsed: true }
+    ];
+
+    // --- NEW: Define references for BOTH locations ---
+    
+    // Generate a unique ID that will be used for both project documents
+    const newProjectId = doc(collection(db, 'projects')).id; 
+    
+    // 1. Reference for the NEW, TOP-LEVEL project document
+    const topLevelProjectRef = doc(db, 'projects', newProjectId);
+    
+    // 2. Reference for the original, NESTED project document
+    const nestedProjectRef = doc(db, `users/${currentUser.uid}/myworkspace/${wsId}/projects`, newProjectId);
+    
+    // --- NEW: Define the project data object ONCE ---
+    // This object includes all the fields needed for the new collaborative model.
+    const newProjectData = {
         title: name.trim(),
-        projectId: newProjectRef.id, // <-- ADDED: Store the document's own ID
-        memberUIDs: [currentUser.uid], // <-- ADDED: For queries & security rules
+        projectId: newProjectId,      // The document's own ID
+        ownerId: currentUser.uid,     // The UID of the user who created it
+        workspaceId: wsId,            // The workspace it belongs to
+        memberUIDs: [currentUser.uid], // For efficient queries
+        members: [{ uid: currentUser.uid, role: "Project Admin" }], // For detailed roles
         color: generateColorForName(name.trim()),
         starred: false,
-        // isSelected: true, // <-- REMOVED
         createdAt: serverTimestamp(),
         accessLevel: "workspace",
         workspaceRole: "Viewer",
         project_super_admin_uid: currentUser.uid,
         project_admin_user: '',
-        members: [{ uid: currentUser.uid, role: "Project Admin" }], // Use "Project Admin"
         pendingInvites: [],
         defaultColumns: INITIAL_DEFAULT_COLUMNS,
         customColumns: []
-      });
-      
-      // 2. Update the parent workspace to make this new project the selected one.
-      txn.update(workspaceRef, { selectedProjectId: newProjectRef.id });
-      
-      // 3. Create the three default sections.
-      const sectionsColRef = collection(newProjectRef, "sections");
-      INITIAL_DEFAULT_SECTIONS.forEach(sectionData => {
-        const sectionRef = doc(sectionsColRef);
-        txn.set(sectionRef, {
-          ...sectionData,
-          createdAt: serverTimestamp()
+    };
+
+    try {
+        await runTransaction(db, async (txn) => {
+            // --- UPDATED TRANSACTION LOGIC ---
+            
+            // 1. Create the project document in the NEW, top-level collection.
+            txn.set(topLevelProjectRef, newProjectData);
+
+            // 2. Create a copy in the ORIGINAL, nested collection for backward compatibility.
+            txn.set(nestedProjectRef, newProjectData);
+
+            // 3. Update the parent workspace to make this new project the selected one.
+            txn.update(workspaceRef, { selectedProjectId: newProjectId });
+            
+            // 4. IMPORTANT: Create the default sections inside the NEW, TOP-LEVEL project.
+            //    All sections and tasks should belong to the shared project document.
+            const sectionsColRef = collection(topLevelProjectRef, "sections");
+            INITIAL_DEFAULT_SECTIONS.forEach(sectionData => {
+                const sectionRef = doc(sectionsColRef);
+                txn.set(sectionRef, {
+                    ...sectionData,
+                    projectId: newProjectId, // Add projectId for security rules
+                    createdAt: serverTimestamp()
+                });
+            });
         });
-      });
-    });
-    
-    // The call to `selectProject()` is no longer needed. The real-time listener on
-    // the workspace will automatically detect the 'selectedProjectId' change and update the UI.
-    console.log("Project created and set as active successfully!");
-    
-  } catch (err) {
-    console.error("Project creation failed:", err);
-    alert("Failed to create the project. Please try again.");
-  }
+
+        console.log("Project created in both locations and set as active successfully!");
+
+    } catch (err) {
+        console.error("Project creation failed:", err);
+        alert("Failed to create the project. Please try again.");
+    }
 }
-  
+
   /**
    * Handles the logic for selecting a project.
    * It finds the user's active workspace, updates the 'selectedProjectId' on it,

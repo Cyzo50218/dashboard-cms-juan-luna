@@ -165,7 +165,7 @@ function attachRealtimeListeners(userId) {
     currentUserId = userId;
     console.log(`[LIST DEBUG] Attaching listeners for user: ${userId}`);
     
-    // STEP 1: Listen to the user's active workspace.
+    // STEP 1: Listen to the user's active workspace (No changes here).
     const workspaceQuery = query(collection(db, `users/${userId}/myworkspace`), where("isSelected", "==", true));
     
     activeListeners.workspace = onSnapshot(workspaceQuery, async (workspaceSnapshot) => {
@@ -192,30 +192,27 @@ function attachRealtimeListeners(userId) {
         currentProjectId = selectedProjectId;
         console.log(`[LIST DEBUG] Active project ID is: '${currentProjectId}'`);
 
-        // STEP 2: Find the full, correct path to this project document.
+        // --- REFACTORED LOGIC ---
+        // STEP 2: Directly get the project from the TOP-LEVEL 'projects' collection.
+        // This replaces the expensive collectionGroup query with a direct document lookup.
         try {
-            const projectQuery = query(
-                collectionGroup(db, 'projects'),
-                where('projectId', '==', currentProjectId),
-                where('memberUIDs', 'array-contains', currentUserId)
-            );
-            const projectSnapshot = await getDocs(projectQuery);
-            
-            if (projectSnapshot.empty) {
-                console.error(`[LIST DEBUG] CRITICAL: Could not find project with ID '${currentProjectId}' or you are not a member.`);
+            const projectRef = doc(db, 'projects', currentProjectId);
+            const projectDoc = await getDoc(projectRef);
+
+            // IMPORTANT: We must now manually verify that the user is a member of this project,
+            // since we are no longer using a query with a 'where' clause to check for us.
+            if (!projectDoc.exists() || !projectDoc.data().memberUIDs?.includes(currentUserId)) {
+                console.error(`[LIST DEBUG] CRITICAL: Project with ID '${currentProjectId}' not found in the top-level collection, or you are not a member.`);
                 project = {};
                 render();
                 return;
             }
-            
-            const projectDoc = projectSnapshot.docs[0];
-            const projectRef = projectDoc.ref;
+
             const projectData = projectDoc.data();
-            console.log(`[LIST DEBUG] Successfully found project at path: ${projectRef.path}`);
+            console.log(`[LIST DEBUG] Successfully found project at top-level path: ${projectRef.path}`);
             
-            // --- CONSOLIDATED LOGIC ---
-            // STEP 3: Load the project's members now that we have all the correct IDs.
-            // This replaces the old loadProjectUsers and fetchActiveIds functions.
+            // --- CONSOLIDATED LOGIC (No changes from here on) ---
+            // STEP 3: Load the project's members.
             allUsers = await fetchProjectMembers(projectData);
             console.log(`[LIST DEBUG] Project members loaded:`, allUsers);
 
@@ -239,7 +236,8 @@ function attachRealtimeListeners(userId) {
                     render();
                 });
                 
-                // Attach listener for Tasks
+                // NOTE: The 'tasks' listener still uses collectionGroup. This is correct and intentional!
+                // We want to find all tasks with the matching projectId, regardless of which section they are in.
                 const tasksGroupQuery = query(collectionGroup(db, 'tasks'), where('projectId', '==', currentProjectId), orderBy('createdAt', 'desc'));
                 if (activeListeners.tasks) activeListeners.tasks();
                 activeListeners.tasks = onSnapshot(tasksGroupQuery, (tasksSnapshot) => {
@@ -250,7 +248,7 @@ function attachRealtimeListeners(userId) {
             });
             
         } catch (error) {
-            console.error("[LIST DEBUG] Permission denied or error finding project via collectionGroup query:", error);
+            console.error("[LIST DEBUG] Permission denied or error finding project via direct getDoc:", error);
         }
     });
 }
