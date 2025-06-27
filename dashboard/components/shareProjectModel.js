@@ -4,12 +4,11 @@
  */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFunctions, httpsCallable } from "firebase/functions";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, collection, query, where, getDocs, doc, updateDoc, arrayUnion, arrayRemove, getDoc, deleteField, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, query, where, getDocs, doc, updateDoc, arrayUnion, arrayRemove, getDoc, deleteField, onSnapshot, writeBatch, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "/services/firebase-config.js";
 
-window.ShareModal = (function() {
     // --- MODULE STATE ---
 // --- Module-level state ---
 const app = initializeApp(firebaseConfig);
@@ -17,12 +16,12 @@ const auth = getAuth(app);
 const db = getFirestore(app, "juanluna-cms-01");
 
 const functions = getFunctions(app); 
-
     const sendEmailInvitation = httpsCallable(functions, 'sendEmailInvitation');
 
 let isModalOpen = false;
 let modal = null;
 let unsubscribeProjectListener = null;
+let invitedEmails = [];
 
 function closeModal() {
     if (unsubscribeProjectListener) {
@@ -34,7 +33,16 @@ function closeModal() {
     document.getElementById('share-project-styles')?.remove();
 }
 
-async function openShareModal(projectRef) {
+function getSanitizedProjectEmails() {
+        const projectData = JSON.parse(modal.dataset.projectData || '{}');
+        const userProfilesMap = JSON.parse(modal.dataset.userProfilesMap || '{}');
+        const existingMemberEmails = (projectData.members || []).map(m => userProfilesMap[m.uid]?.email?.toLowerCase());
+        const pendingEmails = (projectData.pendingInvites || []).map(p => p.email?.toLowerCase());
+        const currentInviteTags = invitedEmails.map(e => e.toLowerCase());
+        return [...existingMemberEmails, ...pendingEmails, ...currentInviteTags].filter(Boolean);
+    }
+
+export async function openShareModal(projectRef) {
         if (!projectRef) {
             alert("Error: Project not specified.");
             return;
@@ -85,9 +93,36 @@ async function openShareModal(projectRef) {
             setupEventListeners(modal, projectRef);
 
         } catch (error) {
-            console.error("Error setting up share modal:", error);
-            if (modalBody) modalBody.innerHTML = `<p style="color: red;">Could not load sharing details.</p>`;
+    // 1. Log the full, detailed error object to the console for deep debugging.
+    console.error("Detailed error in openShareModal:", error);
+
+    // 2. Create a user-friendly but specific message for the UI.
+    // We safely get the message from the error object itself.
+    const userMessage = `Could not load sharing details. <br><small style="color:#666;">Reason: ${error.message}</small>`;
+    
+    // 3. Display this more informative message in the modal body.
+    if (modalBody) {
+        modalBody.innerHTML = `<p style="color: #d93025; font-family: sans-serif; text-align: center; padding: 20px;">${userMessage}</p>`;
+    }
+}
+    }
+
+    function addEmailTag(email) {
+        const emailToAdd = email.trim();
+        if (!emailToAdd) return;
+
+        const allProjectEmails = getSanitizedProjectEmails();
+        if (allProjectEmails.includes(emailToAdd.toLowerCase())) {
+            alert(`"${emailToAdd}" is already a member or has a pending invitation.`);
+            modal.querySelector('#shareproject-email-input').value = '';
+            return;
         }
+
+        if (!invitedEmails.map(e => e.toLowerCase()).includes(emailToAdd.toLowerCase())) {
+            invitedEmails.push(emailToAdd);
+            renderEmailTags();
+        }
+        modal.querySelector('#shareproject-email-input').value = '';
     }
 
 // FIX: Event listeners for search/invite are now case-insensitive and robust.
@@ -324,24 +359,6 @@ function setupEventListeners(modal, projectRef) {
         searchDropdown.innerHTML = `<div class="no-results">No matching users found.</div>`;
     }
 });
-
-    
-    const addEmailTag = (email) => {
-        const emailToAdd = email.trim();
-        const allProjectEmails = getSanitizedProjectEmails();
-        
-        if (allProjectEmails.includes(emailToAdd.toLowerCase())) {
-            alert(`"${emailToAdd}" is already a member of this project or has a pending invitation.`);
-            emailInput.value = '';
-            return;
-        }
-        
-        if (emailToAdd && !invitedEmails.map(e => e.toLowerCase()).includes(emailToAdd.toLowerCase())) {
-            invitedEmails.push(emailToAdd);
-            renderEmailTags();
-        }
-        emailInput.value = '';
-    };
     
     const renderEmailTags = () => {
         const container = modal.querySelector('#shareproject-email-tags');
@@ -499,7 +516,7 @@ async function handleInvite(modal, projectRef) {
 
     // --- 2. Get Data from the Modal ---
     const emailInput = modal.querySelector('#shareproject-email-input');
-    const invitedEmails = (modal.invitedEmails || []);
+     invitedEmails = (modal.invitedEmails || []);
     
     if (emailInput.value.trim()) {
         addEmailTag(emailInput.value.trim()); 
@@ -516,7 +533,7 @@ async function handleInvite(modal, projectRef) {
 
     // --- 3. Prepare a Firestore Batch and Tracking Arrays ---
     const batch = writeBatch(db);
-    const newPendingInvites = []; // <--- RE-ADDED: Array for the project document
+    const newPendingInvites = [];
     let successfulEmailSends = 0;
     let membersAdded = 0;
     const failedEmails = [];
@@ -537,20 +554,20 @@ async function handleInvite(modal, projectRef) {
         } else {
             // --- Logic for NEW users who need an email invitation ---
             try {
-                // a. FIRST, call the Cloud Function to send the email.
-                console.log(`Sending invitation to new user: ${lowerEmail}`);
-                const invitationUrl = `https://your-site-name.vercel.app/invitation/${invitationId}`;
-
-        // --- STEP 2: Call the Cloud Function with the Correct Data ---
-        console.log(`Sending invitation to new user: ${lowerEmail}`);
-        await sendEmailInvitation({
-            email: lowerEmail,
-            projectName: projectData.name,
-            invitationUrl: invitationUrl
-        });
-
-                // b. THEN, if successful, create a record in the top-level "InvitedProjects" collection.
+                // a. Generate a Unique ID and URL for the Invitation FIRST.
                 const newInvitationRef = doc(collection(db, "InvitedProjects"));
+                const invitationId = newInvitationRef.id;
+                const invitationUrl = `https://your-site-name.vercel.app/invitation/${invitationId}`; // Replace with your actual domain
+
+                // b. THEN, call the Cloud Function to send the email.
+                console.log(`Sending invitation to new user: ${lowerEmail}`);
+                await sendEmailInvitation({
+                    email: lowerEmail,
+                    projectName: projectData.name,
+                    invitationUrl: invitationUrl
+                });
+
+                // c. FINALLY, if successful, prepare the database writes.
                 batch.set(newInvitationRef, {
                     projectId: projectRef.id,
                     projectName: projectData.name,
@@ -565,8 +582,12 @@ async function handleInvite(modal, projectRef) {
                     }
                 });
 
-                // c. RE-ADDED: Add to the project document's own pending list as well.
-                newPendingInvites.push({ email: lowerEmail, role: role, invitedAt: serverTimestamp() });
+                newPendingInvites.push({ 
+                    email: lowerEmail, 
+                    role: role, 
+                    invitedAt: serverTimestamp(),
+                    invitationId: invitationId
+                });
                 
                 successfulEmailSends++;
 
@@ -578,7 +599,6 @@ async function handleInvite(modal, projectRef) {
     }
 
     // --- 5. Add the project's own pendingInvites array to the batch ---
-    // RE-ADDED: This block updates the project document itself.
     if (newPendingInvites.length > 0) {
         batch.update(projectRef, { pendingInvites: arrayUnion(...newPendingInvites) });
     }
@@ -588,7 +608,6 @@ async function handleInvite(modal, projectRef) {
         await batch.commit();
         console.log("Batch commit successful. Members and invitations updated.");
         
-        // --- 7. Provide Clear Feedback to the User ---
         let feedbackMessage = "";
         if (membersAdded > 0) feedbackMessage += `${membersAdded} member(s) added to the project.\n`;
         if (successfulEmailSends > 0) feedbackMessage += `${successfulEmailSends} invitation(s) sent successfully!\n`;
@@ -598,7 +617,6 @@ async function handleInvite(modal, projectRef) {
             alert(feedbackMessage.trim());
         }
 
-        // Reset the UI
         modal.invitedEmails = [];
         renderEmailTags(); 
         if (typeof closeModal === 'function') closeModal(modal);
@@ -609,6 +627,24 @@ async function handleInvite(modal, projectRef) {
     }
 }
 
+function renderEmailTags() {
+        if (!modal) return;
+        const container = modal.querySelector('#shareproject-email-tags');
+        container.innerHTML = '';
+        invitedEmails.forEach(email => {
+            const tag = document.createElement('div');
+            tag.className = 'shareproject-email-tag';
+            tag.innerHTML = `<span>${email}</span><span class="shareproject-remove-tag" data-email="${email}">&times;</span>`;
+            tag.querySelector('.shareproject-remove-tag').addEventListener('click', () => {
+                invitedEmails = invitedEmails.filter(e => e !== email);
+                renderEmailTags();
+            });
+            container.appendChild(tag);
+        });
+        // Store the state in the modal element itself
+        modal.invitedEmails = invitedEmails;
+    }
+    
 
 function createProfilePic(profile) {
     const profileColors = ['#4A148C', '#004D40', '#BF360C', '#0D47A1', '#4E342E', '#AD1457', '#006064'];
@@ -662,8 +698,3 @@ function createModalUI() {
     modalBackdrop.innerHTML = modalHTML;
     document.body.appendChild(modalBackdrop);
 }
-
-return {
-        open: openShareModal
-    };
-})();

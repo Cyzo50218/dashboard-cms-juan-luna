@@ -19,6 +19,7 @@ import {
     collectionGroup
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "/services/firebase-config.js";
+import { openShareModal } from '/dashboard/components/shareProjectModel.js';
 
 // [NEW] Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -327,9 +328,11 @@ function createAvatarStackHTML(assigneeIds, allUsers) {
 
     // Call the new, imported function and pass the event 'e'
     shareButton.addEventListener('click', () => {
-    // THE FIX: It now passes the stored reference directly to the modal function
     if (projectRef) {
-         window.ShareModal.open(projectRef);
+        // We call the imported function directly. It's guaranteed to exist.
+        openShareModal(projectRef);
+    } else {
+        console.error("Cannot open share modal: projectRef is not defined.");
     }
 });
 
