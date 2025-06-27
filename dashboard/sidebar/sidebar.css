@@ -1636,6 +1636,7 @@ task-fields-table .field-value {
 .advanced-dropdown .dropdown-item {
     display: flex;
     align-items: center;
+    text-align: left;
     padding: 8px 10px;
     border-radius: 4px;
     cursor: pointer;

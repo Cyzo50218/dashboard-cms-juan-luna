@@ -722,6 +722,7 @@ function renderTaskFields(task) {
                 
                 // If permission is granted, proceed to open the correct editor.
                 if (controlType === 'date') {
+                    const input = control.querySelector('.flatpickr-input');
                      const fp = flatpickr(input, {
      defaultDate: currentTask.dueDate || 'today',
      dateFormat: "Y-m-d",
@@ -1901,7 +1902,19 @@ function formatDueDate(dueDateString) {
             alert("An error occurred while trying to delete the task. Please check the console for details.");
         }
     }
-    
+
+function showStatusDropdown(targetEl, options, onSelectCallback) {
+    createAdvancedDropdown(targetEl, {
+        options: options,
+        searchable: false, // Typically not needed for these types of lists
+        itemRenderer: (option) => {
+            const color = option.color || defaultStatusColors[option.name] || defaultPriorityColors[option.name] || '#ccc';
+            return `<div class="dropdown-color-swatch" style="background-color: ${color}"></div><span>${option.name}</span>`;
+        },
+        onSelect: onSelectCallback
+    });
+}
+
     function toggleSidebarView() {
         // Toggle the class on the sidebar element
         sidebar.classList.toggle('is-full-view');
