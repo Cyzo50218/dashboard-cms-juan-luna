@@ -206,15 +206,15 @@
 
 /* 1. Adjusts the padding for ALL items in the project list */
 .sidebar .section-items .nav-item a {
-    padding-top: 2px;
-    padding-bottom: 2px;
+    padding-top: 0px;
+    padding-bottom: 0px;
     /* Horizontal padding (12px) is inherited from the main .nav-item rule */
     min-height: auto; /* Remove minimum height to let padding control the size */
 }
 
 /* 2. Sets a fixed height ONLY for the ACTIVE/SELECTED project item */
 .sidebar .section-items .nav-item.active a {
-    height: 20px;
+    height: 10px;
     /* The `display: flex` and `align-items: center` properties from the general
        .nav-item rule will ensure the content is vertically centered. */
 }
