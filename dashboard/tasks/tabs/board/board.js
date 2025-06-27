@@ -434,6 +434,15 @@ function distributeTasksToSections(tasks) {
     project.sections.forEach(s => s.tasks.sort((a, b) => (a.order || 0) - (b.order || 0)));
 }
 
+function displaySideBarTasks(taskId) {
+    console.log(`Task name clicked. Opening sidebar for task ID: ${taskId}`);
+    if (window.TaskSidebar) {
+        window.TaskSidebar.open(taskId, currentProjectRef);
+    } else {
+        console.error("TaskSidebar module is not available.");
+    }
+}
+
 // --- 8. RENDERING ---
 const renderBoard = () => {
     if (!kanbanBoard) return;
@@ -561,11 +570,11 @@ if (project.customColumns && task.customFields) {
 
 // --- FINAL HTML TEMPLATE ---
 return `
-        <div class="boardtasks-task-card ${cardCompletedClass}" id="task-${task.id}" data-task-id="${task.id}" draggable="${isEditable}">
+        <div class="boardtasks-task-card ${cardCompletedClass}" id="task-${task.id}" data-task-id="${task.id}" draggable="${isEditable}" data-control="open-sidebar">
             ${oldestImageUrl ? `<img src="${oldestImageUrl}" class="boardtasks-task-attachment">` : ''}
             <div class="boardtasks-task-content">
                 <div class="boardtasks-task-header">
-                    <span class="boardtasks-task-check" style="pointer-events: ${isEditable ? 'auto' : 'none'};">
+                    <span class="boardtasks-task-check" style="pointer-events: ${isEditable ? 'auto' : 'none'};" data-control="check">
                         <i class="${isCompleted ? 'fa-solid fa-circle-check' : 'fa-regular fa-circle'}"></i>
                     </span>
                     <p contenteditable="${isEditable}" class="boardtasks-task-name-editable">${task.name}</p>
@@ -579,8 +588,8 @@ return `
                 <div class="boardtasks-task-footer">
                     <span class="boardtasks-due-date" data-due-date="${task.dueDate}">${formatDueDate(task.dueDate)}</span>
                     <div class="boardtasks-task-actions">
-                        <i class="fa-regular fa-heart ${hasLiked ? 'liked' : ''}" title="Like"></i>
-                        <i class="fa-regular fa-comment" title="Comment"></i>
+                        <i class="fa-regular fa-heart ${hasLiked ? 'liked' : ''}" title="Like" data-control="like"></i>
+                        <i class="fa-regular fa-comment" title="Comment" data-control="open-sidebar"></i>
                     </div>
                 </div>
             </div>
@@ -686,37 +695,53 @@ const handleKanbanClick = (e) => {
         createTemporaryTask(findSection(e.target.closest('.boardtasks-kanban-column').dataset.sectionId));
         return;
     }
-    const taskCard = e.target.closest('.boardtasks-task-card:not(.is-new)');
-    if (!taskCard) return;
-    const { task, section } = findTaskAndSection(taskCard.dataset.taskId);
-    if (!task) return;
-    const taskRef = doc(currentProjectRef, `sections/${section.id}/tasks/${task.id}`);
 
+    const control = e.target.closest('[data-control]');
+if (!control) return; // If the click was not on a designated control, do nothing.
 
-    if (e.target.closest('.boardtasks-task-check')) {
-        e.preventDefault(); 
-        updateDoc(taskRef, { status: task.status === 'Completed' ? 'On track' : 'Completed' });
-    } else if (e.target.matches('.fa-heart')) {
-        const userHasLiked = task.likedBy && task.likedBy[currentUserId];
+// Find the parent task card to get the task's context.
+const taskCard = control.closest('.boardtasks-task-card');
+if (!taskCard) return;
+
+const taskId = taskCard.dataset.taskId;
+const { task, section } = findTaskAndSection(taskId);
+if (!task) return;
+
+// Get the specific action type from the data-control attribute.
+const controlType = control.dataset.control;
+
+// Use a switch statement to perform the correct action.
+switch (controlType) {
+    case 'open-sidebar':
+        // This is the default action for the card itself and the comment icon.
+        displaySideBarTasks(taskId, currentProjectRef);
+        break;
         
-        if (userHasLiked) {
-            // User is "unliking" the task
-            updateDoc(taskRef, {
-                likedAmount: increment(-1),
-                [`likedBy.${currentUserId}`]: deleteField() // Removes the user's UID from the map
-            });
-        } else {
-            // User is "liking" the task
-            updateDoc(taskRef, {
-                likedAmount: increment(1),
-                [`likedBy.${currentUserId}`]: true // Adds the user's UID to the map
-            });
+    case 'check':
+        // Stop the event from bubbling up to the card, which would also open the sidebar.
+        e.stopPropagation();
+        
+        // Check for permission before allowing the action.
+        if (canUserCheckTask(task)) {
+            handleTaskCompletion(task, taskCard);
         }
-    // --- FIX ENDS HERE ---
+        break;
+        
+    case 'like':
+        // Stop the event from bubbling up.
+        e.stopPropagation();
+        
+        // Liking is allowed for all roles.
+        const taskRef = doc(currentProjectRef, `sections/${section.id}/tasks/${task.id}`);
+        const hasLiked = task.likedBy && task.likedBy[currentUserId];
+        
+        updateDoc(taskRef, {
+            likedAmount: increment(hasLiked ? -1 : 1),
+            [`likedBy.${currentUserId}`]: hasLiked ? deleteField() : true
+        });
+        break;
+}
 
-    } else if (e.target.matches('.fa-comment')) {
-        console.log(`(Placeholder) Open comment panel for task ID: ${task.id}`);
-    }
 };
 
 const handleFilterInput = (e) => {

@@ -577,10 +577,10 @@ function setupEventListeners() {
         const { task } = findTaskAndSection(taskId);
         
         // Find the specific control element that was clicked (e.g., the due date button, task name, etc.)
-        const controlElement = e.target.closest('[data-control], .task-name');
+        const controlElement = e.target.closest('[data-control]');
         if (!controlElement) return; // Exit if not a specific interactive element
         
-        const controlType = controlElement.matches('.task-name') ? 'open-sidebar' : controlElement.dataset.control;
+        const controlType = controlElement.dataset.control;
         
         // Block interaction with temp tasks (this logic remains the same)
         if (taskId.startsWith('temp_') && controlType !== 'open-sidebar') {
@@ -2003,6 +2003,7 @@ function render() {
             
             const leftTaskCell = document.createElement('div');
             leftTaskCell.className = 'group sticky left-0 w-80 md:w-96 lg:w-[400px] flex-shrink-0 flex items-center border-r border-transparent group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg juanlunacms-spreadsheetlist-dynamic-border py-0.2';
+            leftTaskCell.dataset.control = 'open-sidebar'; 
             
             // --- FIX 1: Reduce the top and bottom padding of the entire cell ---
             leftTaskCell.style.paddingTop = '0px';
