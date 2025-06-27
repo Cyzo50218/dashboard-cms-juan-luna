@@ -61,13 +61,31 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 6px 12px;
-  min-height: 32px;
+  padding: 2px 12px;
+  min-height: 30px;
   border-radius: 8px;
   cursor: pointer;
   transition: background-color 0.25s ease, color 0.25s ease;
   margin-bottom: 4px;
   font-weight: 400;
+  color: var(--drawer-text-color);
+  text-decoration: none;
+}
+
+.sidebar .nav-item-project a,
+.sidebar .nav-item-project {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 12px;
+  font-size: 12px;
+  height: 20px;
+  border-radius: 30px;
+  cursor: pointer;
+  transition: background-color 0.25s ease, color 0.25s ease;
+  margin-bottom: 4px;
+  font-weight: 700;
   color: var(--drawer-text-color);
   text-decoration: none;
 }
@@ -87,7 +105,7 @@
 }
 
 .projects-item a {
-    height: 10px;
+    height: 2px;
 }
 
 .nav-item-main-content {
@@ -262,14 +280,15 @@
 .sidebar .project-item a {
   justify-content: flex-start;
   gap: 12px;
-  height: 3px;
+  padding: 0px;
+  
   width: 100%;
 }
 
 .sidebar .project-color {
   width: 12px;
   height: 12px;
-  border-radius: 50%;
+  border-radius: 30%;
   background-color: #3498db;
   flex-shrink: 0;
 }

@@ -73,7 +73,7 @@ import { firebaseConfig } from "/services/firebase-config.js";
 
         const renderProjectItem = (project) => {
             const projectLi = document.createElement('li');
-            projectLi.classList.add('nav-item', 'projects-item');
+            projectLi.classList.add('nav-item-project', 'projects-item');
             if (project.id === selectedProjectId) {
     projectLi.style.setProperty('--project-highlight-color', project.color);
 }
