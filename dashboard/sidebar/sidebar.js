@@ -704,6 +704,7 @@ function renderTaskFields(task) {
         
         const key = control.dataset.key;
         const controlType = control.dataset.control;
+        const label = control.closest('tr').querySelector('.sidebarprojectfield-label').textContent;
         
         if (!isSidebarFieldEditable(label)) {
          // Silently return, as the .is-readonly class already provides visual feedback.
