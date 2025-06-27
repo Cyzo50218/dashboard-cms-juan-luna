@@ -12,6 +12,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
     getFirestore,
+    increment,
     doc,
     collection,
     query,
@@ -142,6 +143,29 @@ function isSidebarFieldEditable(fieldName) {
     // If all checks pass, the assigned user is allowed to edit this field.
     return true;
 }
+
+/**
+ * Checks if the current user can edit the task's description.
+ * @returns {boolean} - True if the user is an admin/editor OR is assigned to the task.
+ */
+function canUserEditDescription() {
+    if (!currentTask) return false;
+    
+    // Rule 1: Admins and Editors can always edit the description.
+    if (userCanEditProject) {
+        return true;
+    }
+    
+    // Rule 2: A user can also edit if they are assigned to the task.
+    const isAssigned = Array.isArray(currentTask.assignees) && currentTask.assignees.includes(currentUserId);
+    if (isAssigned) {
+        return true;
+    }
+    
+    // Otherwise, they cannot.
+    return false;
+}
+
 function canUserEditCurrentTask() {
     if (!currentTask) return false;
     // Rule 1: Admins and Editors can always edit.
@@ -504,13 +528,23 @@ async function fetchActiveWorkspace(userId) {
     }
     
     async function deleteMessage(messageId, imageUrl, messageText) {
-        if (imageUrl) {
-            try { await deleteObject(ref(storage, imageUrl)); }
-            catch (error) { if (error.code !== 'storage/object-not-found') console.error("Failed to delete image:", error); }
+    if (imageUrl) {
+        try {
+            await deleteObject(ref(storage, imageUrl));
+        } catch (error) {
+            if (error.code !== 'storage/object-not-found') console.error("Failed to delete image:", error);
         }
-        await deleteDoc(doc(db, `globalChatProjects/${currentProject.id}/tasks/${currentTask.id}/Messages`, messageId));
-        logActivity({ action: 'deleted a comment', field: `"${messageText.substring(0, 30)}..."` });
     }
+    
+    const messageRef = doc(db, `globalChatProjects/${currentProject.id}/tasks/${currentTask.id}/Messages`, messageId);
+    const batch = writeBatch(db);
+    batch.delete(messageRef);
+    batch.update(currentTaskRef, { commentCount: increment(-1) });
+    
+    await batch.commit();
+    
+    logActivity({ action: 'deleted a comment', field: `"${messageText.substring(0, 30)}..."` });
+}
     
     async function toggleReaction(messageId, reactionType) {
         if (!currentUser) return;
@@ -540,6 +574,10 @@ async function fetchActiveWorkspace(userId) {
         // Create a reference for the new message document.
         const newMessageRef = doc(collection(db, messagesPath));
         
+        const adminUIDs = [
+    currentProject.project_super_admin_uid,
+    currentProject.project_admin_user
+].filter(Boolean);
         // --- THIS IS THE KEY FIX ---
         // Check if the parent task has a chatuuid field yet.
         if (!currentTask.chatuuid) {
@@ -550,7 +588,9 @@ async function fetchActiveWorkspace(userId) {
         // --- END FIX ---
         
         // Save the new message document.
-        await setDoc(newMessageRef, {
+        const batch = writeBatch(db);
+
+            batch.set(newMessageRef, {
             id: newMessageRef.id, // The message's own unique ID
             message: messageText,
             messageNote: messageNote,
@@ -559,9 +599,13 @@ async function fetchActiveWorkspace(userId) {
             senderName: currentUser.name,
             senderAvatar: currentUser.avatar,
             timestamp: serverTimestamp(),
-            reactions: { "like": [] }
+            reactions: { "like": [] },
+            projectAdmins: adminUIDs
         });
         
+        batch.update(currentTaskRef, { commentCount: increment(1) });
+        
+        await batch.commit();
         // The activity logging works perfectly.
         const logText = imageUrl ? 'attached an image' : `commented: "${messageText.substring(0, 20)}..."`;
         logActivity({ action: logText });
@@ -633,6 +677,9 @@ async function fetchActiveWorkspace(userId) {
         
         // Render the rest of the sidebar
         taskNameEl.textContent = task.name;
+        const isDescriptionEditable = canUserEditDescription();
+
+        taskDescriptionEl.contentEditable = isDescriptionEditable;
         taskDescriptionEl.textContent = task.description || "Add a description...";
         renderTaskFields(task);
         renderActiveTab();
@@ -1061,36 +1108,43 @@ function formatDueDate(dueDateString) {
     }
     
     function renderMessages() {
-        const activeTab = tabsContainer.querySelector('.active')?.dataset.tab || 'chat';
-        if (activeTab !== 'chat') return;
+    const activeTab = tabsContainer.querySelector('.active')?.dataset.tab || 'chat';
+    if (activeTab !== 'chat') return;
+    
+    const addCommentForm = document.getElementById('add-comment-form');
+    if (addCommentForm) addCommentForm.style.display = 'flex';
+    
+    activityLogContainer.innerHTML = '';
+    if (allMessages.length === 0) {
+        activityLogContainer.innerHTML = `<div class="placeholder-text">No messages yet. Start the conversation!</div>`;
+        return;
+    }
+    
+    allMessages.forEach(msg => {
+        const item = document.createElement('div');
+        item.className = 'comment-item';
+        item.dataset.messageId = msg.id;
         
-        const addCommentForm = document.getElementById('add-comment-form');
-        if (addCommentForm) addCommentForm.style.display = 'flex';
+        const isAuthor = msg.senderId === currentUser.id;
+        // *** THE FIX IS HERE ***
+        // A user can manage a message if they are the author OR if they have project edit rights.
+        const canManageMessage = isAuthor || userCanEditProject;
         
-        activityLogContainer.innerHTML = '';
-        if (allMessages.length === 0) {
-            activityLogContainer.innerHTML = `<div class="placeholder-text">No messages yet. Start the conversation!</div>`;
-            return;
-        }
+        const hasLiked = msg.reactions?.like?.includes(currentUser.id);
+        const likeCount = msg.reactions?.like?.length || 0;
+        const likeIconClass = hasLiked ? 'fa-solid fa-thumbs-up' : 'fa-regular fa-thumbs-up';
         
-        allMessages.forEach(msg => {
-            const item = document.createElement('div');
-            item.className = 'comment-item';
-            item.dataset.messageId = msg.id;
-            
-            // --- All the logic for icons (like, edit, delete) remains the same ---
-            const isAuthor = msg.senderId === currentUser.id;
-            const hasLiked = msg.reactions?.like?.includes(currentUser.id);
-            const likeCount = msg.reactions?.like?.length || 0;
-            const likeIconClass = hasLiked ? 'fa-solid fa-thumbs-up' : 'fa-regular fa-thumbs-up';
-            const reactionsHTML = `<button class="react-btn like-btn ${hasLiked ? 'reacted' : ''}" title="Like"><i class="${likeIconClass}"></i> <span class="like-count">${likeCount > 0 ? likeCount : ''}</span></button>`;
-            let authorActionsHTML = isAuthor ? `<button class="edit-comment-btn" title="Edit"><i class="fa-solid fa-pencil"></i></button><button class="delete-comment-btn" title="Delete"><i class="fa-solid fa-trash"></i></button>` : '';
-            const iconsHTML = `<div class="sidebarcommenticons">${reactionsHTML}${authorActionsHTML}</div>`;
-            const timestamp = msg.timestamp ? new Date(msg.timestamp.toDate()).toLocaleString() : 'Sending...';
-            
-            // --- THIS IS THE KEY CHANGE ---
-            // The HTML for the editing area has been simplified.
-            
+        const reactionsHTML = `<button class="react-btn like-btn ${hasLiked ? 'reacted' : ''}" title="Like"><i class="${likeIconClass}"></i> <span class="like-count">${likeCount > 0 ? likeCount : ''}</span></button>`;
+        
+        // Use the new `canManageMessage` variable to decide whether to show the buttons.
+        let authorActionsHTML = canManageMessage ? `
+            <button class="edit-comment-btn" title="Edit"><i class="fa-solid fa-pencil"></i></button>
+            <button class="delete-comment-btn" title="Delete"><i class="fa-solid fa-trash"></i></button>
+        ` : '';
+        
+        const iconsHTML = `<div class="sidebarcommenticons">${reactionsHTML}${authorActionsHTML}</div>`;
+        const timestamp = msg.timestamp ? new Date(msg.timestamp.toDate()).toLocaleString() : 'Sending...';
+        
             // This is the content that shows by default.
             const displayAreaHTML = `
             <div class="comment-display-area">
@@ -1134,9 +1188,11 @@ function formatDueDate(dueDateString) {
             </div>
         `;
             activityLogContainer.appendChild(item);
-        });
-        activityLogContainer.scrollTop = activityLogContainer.scrollHeight;
-    }
+    });
+    
+    activityLogContainer.scrollTop = activityLogContainer.scrollHeight;
+}
+
     
     /**
      * Renders all activity logs and ensures the comment form is HIDDEN.
@@ -1935,7 +1991,7 @@ function formatDueDate(dueDateString) {
             sidebar.classList.remove('is-active');
         } catch (error) {
             console.error("Failed to delete task:", error);
-            alert("An error occurred while trying to delete the task. Please check the console for details.");
+           // alert("An error occurred while trying to delete the task. Please check the console for details.");
         }
     }
 
