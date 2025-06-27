@@ -76,11 +76,11 @@
   justify-content: flex-start;
 }
 
-.sidebar .nav-item:hover {
+.sidebar .nav-section:first-child .nav-item:hover {
   background-color: var(--drawer-hover-bg);
 }
 
-.sidebar .nav-item.active {
+.sidebar .nav-section:first-child .nav-item.active {
   background-color: var(--drawer-active-bg);
   color: #fff;
   font-weight: 500;
@@ -89,8 +89,7 @@
 .nav-item-main-content {
   display: flex;
   align-items: center;
-  gap: 6px;
-  
+  gap: 12px;
   flex-shrink: 1;
   overflow: hidden;
 }
@@ -201,35 +200,25 @@
 }
 /* === END: CORRECTED ADD PROJECT BUTTON === */
 
-/* ======================================================= */
-/* ==   ADJUSTMENTS FOR PROJECT LIST & SELECTED ITEMS   == */
-/* ======================================================= */
 
-/* 1. Adjusts the padding for ALL items in the project list */
-.sidebar .section-items .nav-item a {
-    padding-top: 0px;
-    font-weight: 700;
-    padding-bottom: 0px;
-    /* Horizontal padding (12px) is inherited from the main .nav-item rule */
-    min-height: auto; /* Remove minimum height to let padding control the size */
-}
-
-/* 2. Sets a fixed height ONLY for the ACTIVE/SELECTED project item */
-.sidebar .section-items .nav-item.active a {
-    height: 0px;
-    /* The `display: flex` and `align-items: center` properties from the general
-       .nav-item rule will ensure the content is vertically centered. */
-}
-.sidebar .section-items .nav-item {
-  height: 0px;
-  /* The `display: flex` and `align-items: center` properties from the general
-       .nav-item rule will ensure the content is vertically centered. */
-}
 .sidebar .section-items {
-  max-height: 0;
+  
   overflow: hidden;
   transition: max-height 0.3s ease-in-out;
 }
+/* Remove extra margin and padding from section item container */
+.sidebar .section-items {
+    padding: 0;
+    margin: 0;
+}
+
+/* Remove margin and control padding inside each project item */
+.sidebar #projects-section .section-items .nav-item {
+    margin: 0;
+    padding: 2px 8px;
+    /* Tighter vertical spacing */
+}
+
 
 .sidebar .nav-section.open .section-items {
   max-height: 500px;
@@ -238,14 +227,22 @@
 .sidebar .section-items .nav-item span {
   font-size: 12px;
   white-space: nowrap;
-  padding: 0px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* ADDED: Explicit hover effect for items within a section to ensure consistency. */
-.sidebar .section-items .nav-item:hover {
-  background-color: var(--drawer-hover-bg);
+/* Remove hover effect entirely */
+.sidebar #projects-section .section-items .nav-item:hover {
+    background-color: transparent;
+    cursor: default;
+}
+
+/* Decrease vertical padding */
+.sidebar #projects-section .section-items .nav-item {
+    padding-top: 4px;
+    padding-bottom: 4px;
+    margin-bottom: 2px;
+    /* tighter spacing */
 }
 
 .sidebar .section-header .fa-chevron-right {
@@ -267,7 +264,7 @@
 .sidebar .project-color {
   width: 12px;
   height: 12px;
-  border-radius: 20%;
+  border-radius: 50%;
   background-color: #3498db;
   flex-shrink: 0;
 }
@@ -299,7 +296,7 @@
   display: flex;
   align-items: center;
   gap: 12px; /* Space between icon and text */
-  padding: 3px 8px; /* Vertical and horizontal padding */
+  padding: 10px 12px; /* Vertical and horizontal padding */
   border-radius: 6px;
   cursor: pointer;
   color: #212529; /* Darker text for readability on a light background */
@@ -324,4 +321,9 @@
   color: #6c757d; /* A muted, modern gray */
   padding-left: 1.25rem; /* Adjust as needed */
   list-style-type: none; /* Removes the bullet point */
+}
+
+/* Apply hover for My Workspace by ID or unique selector */
+.sidebar .section-items .nav-item a[href="/myworkspace"]:hover {
+  background-color: var(--drawer-hover-bg);
 }

@@ -2432,14 +2432,14 @@ function render() {
                 // Only show sum if:
                 // - The user is NOT a project admin
                 // - AND the sum has a value > 0
-                if (!isProjectAdmin && sum > 0) {
+                if (sum > 0) {
                     const formatted = sum % 1 === 0 ?
                         sum.toLocaleString('en-US', { maximumFractionDigits: 0 }) :
                         sum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                     
                     cell.innerHTML = `
                 <div style="font-size: 0.8rem; display: flex; justify-content: flex-start; align-items: center; height: 100%; padding-right: 8px;">
-                  <span style="color: #9ca3af; margin-right: 4px;">Sum:</span>
+                  <span style="color: #787878; margin-right: 4px;">SUM:</span>
                   <span style="font-weight: 600; color: #4b5563;">${formatted}</span>
                 </div>
             `;
@@ -3138,41 +3138,58 @@ async function updateProjectInFirebase(propertiesToUpdate) {
  * @returns {Promise<boolean>}
  */
 function showConfirmationModal(message) {
-    // Ensure no other dialogs are open
     return new Promise((resolve) => {
+        // Create overlay
         const dialogOverlay = document.createElement('div');
-        dialogOverlay.className = 'dialog-overlay'; // Use existing class for styling
-        
+        dialogOverlay.className = 'dialog-overlay';
+        dialogOverlay.style.cssText = `
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        `;
+
+        // Set modal content
         dialogOverlay.innerHTML = `
-        <div class="dialog-box" style="width: 400px;">
-            <div class="dialog-body" style="padding: 2rem; font-size: 1.1rem; text-align: center;">
-                ${message}
+            <div class="dialog-box" style="background: white; border-radius: 8px; width: 400px; overflow: hidden;">
+                <div class="dialog-body" style="padding: 2rem; text-align: center; font-size: 1.1rem;">
+                    ${message}
+                </div>
+                <div class="dialog-footer" style="display: flex; justify-content: space-around; padding: 1rem;">
+                    <button class="dialog-button" data-action="cancel">Cancel</button>
+                    <button class="dialog-button primary" data-action="confirm">Confirm</button>
+                </div>
             </div>
-            <div class="dialog-footer">
-                <button class="dialog-button" id="modal-cancel-btn">Cancel</button>
-                <button class="dialog-button primary" id="modal-confirm-btn">Confirm</button>
-            </div>
-        </div>`;
-        
+        `;
+
         document.body.appendChild(dialogOverlay);
-        
-        const confirmBtn = document.getElementById('modal-confirm-btn');
-        const cancelBtn = document.getElementById('modal-cancel-btn');
-        
+
+        const dialogBox = dialogOverlay.querySelector('.dialog-box');
+
+        // Close function
         const close = (result) => {
-            dialogOverlay.remove();
-            resolve(result);
-        };
-        
-        confirmBtn.addEventListener('click', () => close(true));
-        cancelBtn.addEventListener('click', () => close(false));
-        dialogOverlay.addEventListener('click', (e) => {
-            if (e.target === dialogOverlay) {
-                close(false);
+            if (dialogOverlay.parentNode) {
+                document.body.removeChild(dialogOverlay);
+                resolve(result);
             }
+        };
+
+        // Event delegation for buttons
+        dialogOverlay.addEventListener('click', (e) => {
+            const action = e.target.getAttribute('data-action');
+
+            if (action === 'cancel') close(false);
+            else if (action === 'confirm') close(true);
+            else if (!dialogBox.contains(e.target)) close(false); // click outside
         });
     });
 }
+
+
 
 /**
  * Deletes a custom column and all its corresponding data across all tasks in the project.
