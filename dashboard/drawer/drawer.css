@@ -78,7 +78,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 2px 4px;
+  padding: 2px 8px;
   font-size: 12px;
   height: 20px;
   border-radius: 30px;
@@ -149,12 +149,15 @@
 
 /* === COLLAPSED SIDEBAR STATE === */
 .sidebar.close .nav-item a,
-.sidebar.close .nav-item {
+.sidebar.close .nav-item,
+.sidebar.close .nav-item-project a,
+.sidebar.close .nav-item-project {
   justify-content: center;
   padding: 6px;
 }
 
 .sidebar.close .nav-item span,
+.sidebar.close .nav-item-project span,
 .sidebar.close .section-header span,
 .sidebar.close .expand-icon {
   opacity: 0;
