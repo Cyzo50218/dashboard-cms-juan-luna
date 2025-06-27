@@ -1605,10 +1605,17 @@ task-fields-table .field-value {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     border: 1px solid #e0e0e0;
     overflow: hidden;
-    min-width: 220px;
+    min-width: 110px;
     opacity: 0; /* Start invisible for transition */
     transform: translateY(-10px);
     transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.advanced-dropdown .dropdown-item .dropdown-item-label {
+    flex-grow: 1;         /* Allows the label container to take up all available space */
+    text-align: left;     /* FORCES the text inside to be left-aligned */
+    font-size: 14px;
+    color: #334155;
 }
 
 .advanced-dropdown.visible {
