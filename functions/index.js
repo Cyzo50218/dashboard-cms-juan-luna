@@ -1,31 +1,38 @@
 const functions = require("firebase-functions");
+const { defineSecret } = require("firebase-functions/params");
 const sgMail = require("@sendgrid/mail");
 
-sgMail.setApiKey(functions.config().sendgrid.key);
+// Setup secret securely
+const sendgridApiKey = defineSecret("SENDGRID_API_KEY");
 
-exports.sendEmailInvitation = functions.https.onCall(async (data, context) => {
-  // --- 1. Authentication and Validation ---
-  // Ensure the user calling this function is authenticated.
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'You must be logged in to send invitations.');
-  }
+exports.sendEmailInvitation = functions
+  .region("us-central1")
+  .https.onCall({ secrets: [sendgridApiKey] }, async (request) => {
+    // Auth check
+    if (!request.auth) {
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "You must be logged in to send invitations."
+      );
+    }
 
-  // Validate the data passed from the client. We now require invitationUrl.
-  if (!data.email || !data.projectName || !data.invitationUrl) {
-    throw new functions.https.HttpsError('invalid-argument', 'The function must be called with email, projectName, and invitationUrl arguments.');
-  }
+    const data = request.data;
+    if (!data.email || !data.projectName || !data.invitationUrl) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Missing required email, projectName, or invitationUrl"
+      );
+    }
 
-  // --- 2. Securely Get Inviter and Recipient Information ---
-  const recipientEmail = data.email;
-  const projectName = data.projectName;
-  const invitationUrl = data.invitationUrl; // Use the real URL from the client
+    const recipientEmail = data.email;
+    const projectName = data.projectName;
+    const invitationUrl = data.invitationUrl;
 
-  // Get inviter's info securely from their authentication token. THIS IS THE CHANGE.
-  const inviterName = context.auth.token.name || context.auth.token.email;
-  const inviterEmail = context.auth.token.email;
+    const inviterName = request.auth.token.name || request.auth.token.email;
+    const inviterEmail = request.auth.token.email;
+    const recipientName = data.recipientName || recipientEmail.split("@")[0];
 
-  // Generate a display name for the recipient from their email if not provided.
-  const recipientName = data.recipientName || recipientEmail.split('@')[0].replace(/[\.\_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    sgMail.setApiKey(sendgridApiKey.value());
 
   // --- SendGrid Message Object ---
   const msg = {
@@ -35,8 +42,6 @@ exports.sendEmailInvitation = functions.https.onCall(async (data, context) => {
       email: 'collection@juanlunacollections.com' // Your verified SendGrid sender
     },
     subject: `${inviterName} has invited you to collaborate on ${projectName}`,
-    
-    // Paste the new "Clean & Focused" HTML template from above into this 'html' property
     html: `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -107,14 +112,10 @@ exports.sendEmailInvitation = functions.https.onCall(async (data, context) => {
 
   // --- Send Email ---
   try {
-    await sgMail.send(msg);
-    console.log(`Clean invitation sent to ${recipientEmail} for project ${projectName}`);
-    return { success: true, message: 'Invitation sent successfully!' };
-  } catch (error) {
-    console.error('Error sending email:', error);
-    if (error.response) {
-      console.error(error.response.body);
+      await sgMail.send(msg);
+      return { success: true, message: "Invitation sent!" };
+    } catch (error) {
+      console.error("SendGrid error:", error);
+      throw new functions.https.HttpsError("internal", "Failed to send email");
     }
-    throw new functions.https.HttpsError('internal', 'Failed to send email.');
-  }
-});
+  });

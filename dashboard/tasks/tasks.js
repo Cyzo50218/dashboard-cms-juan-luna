@@ -283,31 +283,45 @@ function createAvatarStackHTML(assigneeIds, allUsers) {
             }
 
             // Attach event listeners ONLY if the user can edit
-            if (userCanEdit) {
-                const saveTitle = async () => {
-                    const newTitle = projectName.textContent.trim();
-                    if (!newTitle || newTitle === data.title) {
-                        projectName.textContent = data.title;
-                        return;
-                    }
-                    try {
-                        // THE FIX: Use the stored projectRef directly. This works for collaborators.
-                        await updateDoc(projectRef, { title: newTitle });
-                        console.log("Project title updated successfully.");
-                        data.title = newTitle;
-                    } catch (err) {
-                        console.error("Failed to update project title:", err);
-                        projectName.textContent = data.title;
-                    }
-                };
-                projectName.addEventListener("blur", saveTitle);
-                projectName.addEventListener("keydown", (e) => {
-                    if (e.key === "Enter") {
-                        e.preventDefault();
-                        projectName.blur();
-                    }
-                });
-            }
+            // NEW, CORRECTED CODE
+// First, remove any old listeners that might be lingering from a previous project
+if (titleBlurListener) {
+    projectName.removeEventListener("blur", titleBlurListener);
+}
+if (titleEnterListener) {
+    projectName.removeEventListener("keydown", titleEnterListener);
+}
+
+// Now, attach the new listeners ONLY if the user can edit
+if (userCanEdit) {
+    // Store the new listeners in our module-scoped variables
+    titleBlurListener = async () => {
+        const newTitle = projectName.textContent.trim();
+        if (!newTitle || newTitle === data.title) {
+            projectName.textContent = data.title;
+            return;
+        }
+        try {
+            await updateDoc(projectRef, { title: newTitle });
+            console.log("Project title updated successfully.");
+            data.title = newTitle; // Update local state
+        } catch (err) {
+            console.error("Failed to update project title:", err);
+            projectName.textContent = data.title; // Revert on error
+        }
+    };
+
+    titleEnterListener = (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            projectName.blur(); // Trigger the blur event to save
+        }
+    };
+
+    // Attach the new, stored listeners
+    projectName.addEventListener("blur", titleBlurListener);
+    projectName.addEventListener("keydown", titleEnterListener);
+}
         }
 
         // Project Icon Color logic remains the same
@@ -437,14 +451,28 @@ function createAvatarStackHTML(assigneeIds, allUsers) {
     loadProjectHeader();
     // --- 5. Return the Main Cleanup Function ---
     // This cleans up the tasks section itself when navigating away (e.g., to 'home').
-    return function cleanup() {
-        console.log("Cleaning up 'tasks' section and its active tab...");
-        // Clean up the last active tab's JS module
-        if (typeof currentTabCleanup === 'function') {
-            currentTabCleanup();
+    // NEW, CORRECTED CODE
+return function cleanup() {
+    console.log("Cleaning up 'tasks' section and its active tab...");
+    
+    // Clean up the last active tab's JS module
+    if (typeof currentTabCleanup === 'function') {
+        currentTabCleanup();
+    }
+    
+    // Clean up the listeners for the main tabs
+    tabs.forEach(tab => tab.removeEventListener('click', tabClickListener));
+
+    // Clean up the project title listeners to prevent stale updates
+    const projectNameEl = document.getElementById('project-name');
+    if (projectNameEl) {
+        if (titleBlurListener) {
+            projectNameEl.removeEventListener('blur', titleBlurListener);
         }
-        // Clean up the listeners for the main tabs
-        tabs.forEach(tab => tab.removeEventListener('click', tabClickListener));
-    };
+        if (titleEnterListener) {
+            projectNameEl.removeEventListener('keydown', titleEnterListener);
+        }
+    }
+};
 }
 
