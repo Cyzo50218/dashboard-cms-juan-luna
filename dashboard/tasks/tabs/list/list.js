@@ -1767,7 +1767,7 @@ function render() {
     rightHeaderContent.appendChild(addColumnBtn);
     
     // Conditionally hide only the icon inside
-    if (!userCanEditProject) {
+    if (userCanEditProject) {
         addColumnBtn.style.pointerEvents = 'none'; // disable interaction
         addColumnBtn.innerHTML = ''; // hide the icon/text
     } else {
@@ -1781,7 +1781,9 @@ function render() {
     
     header.appendChild(leftHeader);
     header.appendChild(rightHeaderContent);
-    if (!(userCanEditProject && (project.project_super_admin_uid === currentUserId || project.project_admin_user === currentUserId))) {} else {
+    if (userCanEditProject) {
+
+    } else {
         rightHeaderContent.addEventListener('click', headerClickListener);
     }
     
