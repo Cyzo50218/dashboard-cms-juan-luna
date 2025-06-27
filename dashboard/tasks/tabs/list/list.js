@@ -2837,53 +2837,29 @@ function openOptionsMenu(buttonEl) {
     taskListBody.addEventListener('scroll', updateMenuPosition, { passive: true });
 }
 
-/**
- * Deletes a section and all of its tasks from Firestore after user confirmation.
- * This operation is irreversible.
- * @param {string} sectionId The ID of the section to delete.
- */
 async function deleteSectionInFirebase(sectionId) {
-    
-    // Use the existing confirmation modal to warn the user
     const confirmed = await showConfirmationModal(
         'Are you sure you want to delete this section? All tasks within it will be permanently lost. This action cannot be undone.'
     );
-    
-    // If the user clicks "Cancel", stop the function
-    if (!confirmed) {
-        console.log("Section deletion cancelled by user.");
-        return;
+    if (!confirmed) return;
+
+    // THE FIX: Check for the correct project reference.
+    if (!currentProjectRef) {
+        return console.error("Cannot delete section: Project reference is missing.");
     }
-    
-    console.log(`User confirmed deletion for section: ${sectionId}. Proceeding...`);
-    
-    const basePath = `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}`;
-    const sectionPath = `${basePath}/sections/${sectionId}`;
-    const tasksPath = `${sectionPath}/tasks`;
+
+    // Create correct references from the main project reference.
+    const sectionRef = doc(currentProjectRef, 'sections', sectionId);
+    const tasksCollectionRef = collection(sectionRef, 'tasks');
     
     const batch = writeBatch(db);
     
     try {
-        // 1. Get all tasks in the section's subcollection
-        const tasksQuery = query(collection(db, tasksPath));
-        const tasksSnapshot = await getDocs(tasksQuery);
-        
-        // 2. Add each task to the batch for deletion
-        if (!tasksSnapshot.empty) {
-            console.log(`Found ${tasksSnapshot.size} tasks to delete.`);
-            tasksSnapshot.forEach(taskDoc => {
-                batch.delete(taskDoc.ref);
-            });
-        }
-        
-        // 3. Add the section document itself to the batch for deletion
-        const sectionRef = doc(db, sectionPath);
+        const tasksSnapshot = await getDocs(tasksCollectionRef);
+        tasksSnapshot.forEach(taskDoc => batch.delete(taskDoc.ref));
         batch.delete(sectionRef);
-        
-        // 4. Commit the batch to delete everything at once
         await batch.commit();
         console.log(`Successfully deleted section ${sectionId} and all its tasks.`);
-        
     } catch (error) {
         console.error("Error deleting section and its tasks:", error);
         alert("An error occurred while deleting the section. Please check the console.");

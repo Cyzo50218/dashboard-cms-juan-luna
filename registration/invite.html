@@ -1,36 +1,4 @@
-const functions = require("firebase-functions");
-const sgMail = require("@sendgrid/mail");
-
-sgMail.setApiKey(functions.config().sendgrid.key);
-
-exports.sendEmailInvitation = functions.https.onCall(async (data, context) => {
-  // --- Data from your Frontend ---
-  const recipientEmail = data.email;
-  const inviterName = data.inviterName || 'A colleague';
-  const projectName = data.projectName || 'a new project';
-  
-  // --- Personalization Logic ---
-  // Use the recipient's name if provided, otherwise create a name from their email
-  // e.g., "jane.doe@example.com" becomes "Jane Doe"
-  const providedRecipientName = data.recipientName;
-  const nameFromEmail = recipientEmail.split('@')[0].replace(/[\.\_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  const recipientName = providedRecipientName || nameFromEmail;
-
-  // --- Invitation Details ---
-  const invitationToken = "some-unique-token-you-generate"; 
-  const invitationUrl = `https://your-site-name.vercel.app/register/invitation/${invitationToken}`;
-
-  // --- SendGrid Message Object ---
-  const msg = {
-    to: recipientEmail,
-    from: {
-      name: 'Juan Luna Collections',
-      email: 'noreply@juanlunacollections.com' // Your verified SendGrid sender
-    },
-    subject: `${inviterName} has invited you to collaborate on ${projectName}`,
-    
-    // Paste the new "Clean & Focused" HTML template from above into this 'html' property
-    html: `<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -95,19 +63,4 @@ exports.sendEmailInvitation = functions.https.onCall(async (data, context) => {
         </tr>
     </table>
 </body>
-</html>`
-  };
-
-  // --- Send Email ---
-  try {
-    await sgMail.send(msg);
-    console.log(`Clean invitation sent to ${recipientEmail} for project ${projectName}`);
-    return { success: true, message: 'Invitation sent successfully!' };
-  } catch (error) {
-    console.error('Error sending email:', error);
-    if (error.response) {
-      console.error(error.response.body);
-    }
-    throw new functions.https.HttpsError('internal', 'Failed to send email.');
-  }
-});
+</html>
