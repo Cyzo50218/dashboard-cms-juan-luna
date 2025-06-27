@@ -89,7 +89,8 @@
 .nav-item-main-content {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 6px;
+  height: 10px;
   flex-shrink: 1;
   overflow: hidden;
 }
