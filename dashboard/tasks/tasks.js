@@ -33,6 +33,8 @@ const buttonListeners = [];
 // For the currently loaded SUB-MODULE (the content of a tab like 'list.js')
 let currentTabCleanup = null;
 
+let titleBlurListener = null;
+let titleEnterListener = null;
 /**
  * Main initialization function for the entire tasks section.
  * @param {object} params - Route parameters from the main router.
