@@ -610,45 +610,45 @@ function renderTaskFields(task) {
     
     // 1. RENDER ALL FIELDS (This part builds the static view)
     // =======================================================
-    const currentProjectTitle = currentProject.title || '...';
-    appendFieldToTable(tbody, 'project', 'Project', `<span>${currentProjectTitle}</span>`, 'project');
-    appendFieldToTable(tbody, 'assignees', 'Assignee', renderAssigneeValue(task.assignees), 'assignee');
-    appendFieldToTable(tbody, 'dueDate', 'Due Date', renderDateValue(task.dueDate), 'date');
-    
-    const priorityValue = task.priority;
-    let priorityHTML = '<span>Not set</span>';
-    if (priorityValue) {
-        let priorityColor = currentProject.customPriorities?.find(p => p.name === priorityValue)?.color || defaultPriorityColors[priorityValue];
-        priorityHTML = createTag(priorityValue, priorityColor);
-    }
-    appendFieldToTable(tbody, 'priority', 'Priority', priorityHTML, 'priority');
-    
-    const statusValue = task.status;
-    let statusHTML = '<span>Not set</span>';
-    if (statusValue) {
-        let statusColor = currentProject.customStatuses?.find(s => s.name === statusValue)?.color || defaultStatusColors[statusValue];
-        statusHTML = createTag(statusValue, statusColor);
-    }
-    appendFieldToTable(tbody, 'status', 'Status', statusHTML, 'status');
-    
-    currentProject.customColumns?.forEach(col => {
-        const value = task.customFields ? task.customFields[col.id] : null;
-        let displayHTML = '<span>Not set</span>';
-        if (value != null && value !== '') {
-            if (col.options) { // For 'Type' or other custom select columns
-                const option = col.options.find(opt => opt.name === value);
-                displayHTML = createTag(value, option ? option.color : '#ccc');
-            } else if (col.type === 'Costing') {
-                displayHTML = `<span>${col.currency || '$'}${value.toLocaleString()}</span>`;
-            } else {
-                displayHTML = `<span>${value}</span>`;
-            }
+    const currentProjectTitle = workspaceProjects.find(p => p.id === task.projectId)?.title || '...';
+appendFieldToTable(tbody, 'project', 'Project', `<span>${currentProjectTitle}</span>`, 'project');
+appendFieldToTable(tbody, 'assignees', 'Assignee', renderAssigneeValue(task.assignees), 'assignee');
+appendFieldToTable(tbody, 'dueDate', 'Due Date', renderDateValue(task.dueDate), 'date');
+
+const priorityValue = task.priority;
+let priorityHTML = '<span>Not set</span>';
+if (priorityValue) {
+    let priorityColor = currentProject.customPriorities?.find(p => p.name === priorityValue)?.color || defaultPriorityColors[priorityValue];
+    priorityHTML = createTag(priorityValue, priorityColor);
+}
+appendFieldToTable(tbody, 'priority', 'Priority', priorityHTML, 'priority');
+
+const statusValue = task.status;
+let statusHTML = '<span>Not set</span>';
+if (statusValue) {
+    let statusColor = currentProject.customStatuses?.find(s => s.name === statusValue)?.color || defaultStatusColors[statusValue];
+    statusHTML = createTag(statusValue, statusColor);
+}
+appendFieldToTable(tbody, 'status', 'Status', statusHTML, 'status');
+
+currentProject.customColumns?.forEach(col => {
+    const value = task.customFields ? task.customFields[col.id] : null;
+    let displayHTML = '<span>Not set</span>';
+    if (value != null && value !== '') {
+        if (col.type === 'Type' && col.options) {
+            const option = col.options.find(opt => opt.name === value);
+            displayHTML = createTag(value, option ? option.color : '#ccc');
+        } else if (col.type === 'Costing') {
+            displayHTML = `<span>${col.currency || '$'}${value}</span>`;
+        } else {
+            displayHTML = `<span>${value}</span>`;
         }
-        appendFieldToTable(tbody, `custom-${col.id}`, col.name, displayHTML, 'custom-field');
-    });
-    
-    table.appendChild(tbody);
-    taskFieldsContainer.appendChild(table);
+    }
+    appendFieldToTable(tbody, `custom-${col.id}`, col.name, displayHTML, 'custom-field', 'custom-field-value');
+});
+
+table.appendChild(tbody);
+taskFieldsContainer.appendChild(table);
     
     // 2. ATTACH EVENT LISTENER WITH PERMISSION CHECKS
     // =================================================
