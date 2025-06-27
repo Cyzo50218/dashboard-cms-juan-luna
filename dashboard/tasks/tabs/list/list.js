@@ -3006,7 +3006,7 @@ function findSectionById(sectionId) {
 function displaySideBarTasks(taskId) {
     console.log(`Task name clicked. Opening sidebar for task ID: ${taskId}`);
     if (window.TaskSidebar) {
-        window.TaskSidebar.open(taskId, currentProjectId);
+        window.TaskSidebar.open(taskId, currentProjectRef);
     } else {
         console.error("TaskSidebar module is not available.");
     }

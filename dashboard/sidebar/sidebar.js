@@ -209,50 +209,66 @@ function canUserEditCurrentTask() {
     }
     
     
-async function open(taskId, projectId) {
+/**
+ * Opens the sidebar for a specific task using a direct project reference.
+ * This is the most robust and efficient method.
+ * @param {string} taskId - The ID of the task to open.
+ * @param {DocumentReference} projectRef - The direct Firestore reference to the project.
+ */
+async function open(taskId, projectRef) {
     if (!isInitialized) init();
-    if (!taskId || !currentUser) return;
+    if (!taskId || !projectRef || !currentUserId) {
+        console.error("Cannot open sidebar: A taskId, projectRef, or currentUser is missing.");
+        return;
+    }
     
-    detachAllListeners();
+    close(); // Clears previous state
     
+    sidebar.classList.add('is-loading', 'is-visible');
+    rightSidebarContainer.classList.add('sidebar-open');
     
     try {
-        // THIS IS THE CORRECTED QUERY. It searches all 'tasks' collections
-        // for a document where the 'id' field matches the given taskId.
-        const tasksQuery = query(collectionGroup(db, 'tasks'), where('id', '==', taskId), limit(1));
-        const querySnapshot = await getDocs(tasksQuery);
+        // --- STEP 1: USE THE PROVIDED PROJECT REFERENCE ---
+        currentProjectRef = projectRef;
         
+        console.log("DEBUG: Sidebar opened with direct project path:", currentProjectRef.path);
         
-        if (querySnapshot.empty) {
-            // This error now correctly means one of two things:
-            // 1. The Firestore Index is missing (check console for a link).
-            // 2. The task document truly does not exist or its 'id' field is wrong.
-            throw new Error(`Task with ID ${taskId} could not be found. Please ensure the Firestore Index has been created.`);
-        }
+        // --- STEP 2: FETCH ALL DATA USING THE CORRECT REFERENCES ---
+        // Get the project data
+        const projectDoc = await getDoc(currentProjectRef);
+        if (!projectDoc.exists()) throw new Error("The provided project reference is invalid or was deleted.");
+        currentProject = { id: projectDoc.id, ...projectDoc.data() };
         
-        // Get the full, correct reference to the found document
-        currentTaskRef = querySnapshot.docs[0].ref;
+        // Find the task using its ID within the known project
+        const tasksQuery = query(collectionGroup(db, 'tasks'), where('id', '==', taskId), where('projectId', '==', currentProject.projectId), limit(1));
+        const taskSnapshot = await getDocs(tasksQuery);
+        if (taskSnapshot.empty) throw new Error(`Task ${taskId} not found in project ${currentProject.title}.`);
         
-        currentProjectRef = currentTaskRef.parent.parent.parent;
-        currentProject = currentTaskRef.parent.parent.parent;
-        taskListenerUnsubscribe = onSnapshot(currentTaskRef, async (taskDoc) => {
-            if (taskDoc.exists()) {
-                currentTask = { ...taskDoc.data(), id: taskDoc.id };
-                
-                const memberUIDs = currentProjectRef.members?.map(m => m.uid) || [];
-                allUsers = await fetchMemberProfiles(memberUIDs);
-                sidebar.classList.add('is-visible');
-                rightSidebarContainer.classList.add('sidebar-open');
-                
+        currentTaskRef = taskSnapshot.docs[0].ref;
+        const taskDoc = await getDoc(currentTaskRef);
+        currentTask = { id: taskDoc.id, ...taskDoc.data() };
+        
+        // Fetch members and set permissions
+        const memberUIDs = currentProject.members?.map(m => m.uid) || [];
+        allUsers = await fetchMemberProfiles(memberUIDs);
+        updateUserPermissions(currentProject, currentUserId);
+        
+        // --- STEP 3: RENDER THE UI ---
+        sidebar.classList.remove('is-loading');
+        renderSidebar(currentTask);
+        
+        // --- STEP 4: ATTACH REAL-TIME LISTENERS ---
+        taskListenerUnsubscribe = onSnapshot(currentTaskRef, (doc) => {
+            if (doc.exists()) {
+                currentTask = { ...doc.data(), id: doc.id };
                 renderSidebar(currentTask);
-                
-                listenToActivity();
-                listenToMessages();
-                
             } else {
                 close();
             }
         });
+        listenToActivity();
+        listenToMessages();
+        
     } catch (error) {
         console.error("TaskSidebar: Error opening task.", error);
         close();
