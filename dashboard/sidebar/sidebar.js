@@ -71,7 +71,7 @@ window.TaskSidebar = (function() {
     let userCanEditProject = false;
     let currentUserRole = null;
     let workspaceProjects = [];
-    let allUsers = [];
+    
     
     // Listeners & Caches
     let taskListenerUnsubscribe, activityListenerUnsubscribe, messagesListenerUnsubscribe;
@@ -209,7 +209,7 @@ function canUserEditCurrentTask() {
     }
     
     
-    async function open(taskId) {
+async function open(taskId) {
     if (!isInitialized) init();
     if (!taskId || !currentUserId) return;
     
