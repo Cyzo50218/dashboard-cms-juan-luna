@@ -90,7 +90,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 10px;
+  
   flex-shrink: 1;
   overflow: hidden;
 }
@@ -238,6 +238,7 @@
 .sidebar .section-items .nav-item span {
   font-size: 12px;
   white-space: nowrap;
+  padding: 0px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
