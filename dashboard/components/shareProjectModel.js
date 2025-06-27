@@ -16,6 +16,10 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app, "juanluna-cms-01");
 
+const functions = getFunctions(app); 
+
+    const sendEmailInvitation = httpsCallable(functions, 'sendEmailInvitation');
+
 let isModalOpen = false;
 let modal = null;
 let unsubscribeProjectListener = null;
@@ -538,11 +542,15 @@ async function handleInvite(modal, projectRef) {
             try {
                 // a. FIRST, call the Cloud Function to send the email.
                 console.log(`Sending invitation to new user: ${lowerEmail}`);
-                await sendEmailInvitation({
-                    email: lowerEmail,
-                    inviterName: inviter.displayName || inviter.email,
-                    projectName: projectData.name
-                });
+                const invitationUrl = `https://your-site-name.vercel.app/invitation/${invitationId}`;
+
+        // --- STEP 2: Call the Cloud Function with the Correct Data ---
+        console.log(`Sending invitation to new user: ${lowerEmail}`);
+        await sendEmailInvitation({
+            email: lowerEmail,
+            projectName: projectData.name,
+            invitationUrl: invitationUrl
+        });
 
                 // b. THEN, if successful, create a record in the top-level "InvitedProjects" collection.
                 const newInvitationRef = doc(collection(db, "InvitedProjects"));

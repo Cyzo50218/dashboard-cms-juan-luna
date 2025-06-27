@@ -4,21 +4,28 @@ const sgMail = require("@sendgrid/mail");
 sgMail.setApiKey(functions.config().sendgrid.key);
 
 exports.sendEmailInvitation = functions.https.onCall(async (data, context) => {
-  // --- Data from your Frontend ---
-  const recipientEmail = data.email;
-  const inviterName = data.inviterName || 'A colleague';
-  const projectName = data.projectName || 'a new project';
-  
-  // --- Personalization Logic ---
-  // Use the recipient's name if provided, otherwise create a name from their email
-  // e.g., "jane.doe@example.com" becomes "Jane Doe"
-  const providedRecipientName = data.recipientName;
-  const nameFromEmail = recipientEmail.split('@')[0].replace(/[\.\_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  const recipientName = providedRecipientName || nameFromEmail;
+  // --- 1. Authentication and Validation ---
+  // Ensure the user calling this function is authenticated.
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'You must be logged in to send invitations.');
+  }
 
-  // --- Invitation Details ---
-  const invitationToken = "some-unique-token-you-generate"; 
-  const invitationUrl = `https://your-site-name.vercel.app/register/invitation/${invitationToken}`;
+  // Validate the data passed from the client. We now require invitationUrl.
+  if (!data.email || !data.projectName || !data.invitationUrl) {
+    throw new functions.https.HttpsError('invalid-argument', 'The function must be called with email, projectName, and invitationUrl arguments.');
+  }
+
+  // --- 2. Securely Get Inviter and Recipient Information ---
+  const recipientEmail = data.email;
+  const projectName = data.projectName;
+  const invitationUrl = data.invitationUrl; // Use the real URL from the client
+
+  // Get inviter's info securely from their authentication token. THIS IS THE CHANGE.
+  const inviterName = context.auth.token.name || context.auth.token.email;
+  const inviterEmail = context.auth.token.email;
+
+  // Generate a display name for the recipient from their email if not provided.
+  const recipientName = data.recipientName || recipientEmail.split('@')[0].replace(/[\.\_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
   // --- SendGrid Message Object ---
   const msg = {
