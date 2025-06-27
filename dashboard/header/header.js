@@ -167,7 +167,7 @@ const inputFilter = document.querySelector('.search-input-filter');
 const moreTypeInput = document.getElementById("typeInput");
 const dropdown = document.getElementById("typeDropdown");
 
-const plusField = document.getElementById("plus-field");
+
 const newExtraInput = document.getElementById("new-extra-input");
 const inputExtraDropdown = document.getElementById('dateSelectorDropdown');
 const inputDueDateWithin = document.getElementById('inputDueDateWithin');
@@ -177,7 +177,16 @@ const inputRangeEndDropdown = document.getElementById('dateRangeTwoDropdown');
 const calendar = document.getElementById('calendar');
 const calendar1 = document.getElementById('calendar1');
 const calendar2 = document.getElementById('calendar2');
-const closeIcon = plusField.querySelector(".close-icon");
+const plusField = document.getElementById("plus-field");
+
+let closeIcon;
+
+if (plusField) {
+   closeIcon = plusField.querySelector(".close-icon");
+} else {
+  console.warn("Element with ID 'plus-field' not found.");
+}
+
 
 const searchHint = document.querySelector('.search-hint');
 const clearIcon = document.querySelector('.clear-icon');
