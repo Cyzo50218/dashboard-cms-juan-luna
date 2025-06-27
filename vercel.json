@@ -20,12 +20,12 @@
       "dest": "/registration/$1"
     },
     {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    },
-    {
       "src": "/logo.png",
       "dest": "/assets/logo.png"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
