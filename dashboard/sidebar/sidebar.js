@@ -66,6 +66,8 @@ window.TaskSidebar = (function() {
     let currentProject = null;
     let currentProjectRef = null;
     let currentWorkspaceId = null;
+    let userCanEditProject = false;
+    let currentUserRole = null;
     let workspaceProjects = [];
     let allUsers = [];
     
@@ -89,7 +91,39 @@ window.TaskSidebar = (function() {
     
     let rightSidebarContainer;
     let listviewHeaderRight;
+
+function updateUserPermissions(projectData, userId) {
+    if (!projectData || !userId) {
+        userCanEditProject = false;
+        currentUserRole = null;
+        return;
+    }
+    const members = projectData.members || [];
+    const userMemberInfo = members.find(member => member.uid === userId);
+    currentUserRole = userMemberInfo ? userMemberInfo.role : null;
     
+    const isMemberWithEditPermission = userMemberInfo && (userMemberInfo.role === "Project admin" || userMemberInfo.role === "Editor");
+    const isSuperAdmin = projectData.project_super_admin_uid === userId;
+    const isAdminUser = projectData.project_admin_user === userId;
+    
+    userCanEditProject = isMemberWithEditPermission || isSuperAdmin || isAdminUser;
+}
+
+function canUserEditCurrentTask() {
+    if (!currentTask) return false;
+    // Rule 1: Admins and Editors can always edit.
+    if (userCanEditProject) {
+        return true;
+    }
+    // Rule 2: Allow assigned Viewers/Commentators to edit.
+    if (currentUserRole === 'Viewer' || currentUserRole === 'Commentator') {
+        const isAssigned = Array.isArray(currentTask.assignees) && currentTask.assignees.includes(currentUserId);
+        if (isAssigned) {
+            return true;
+        }
+    }
+    return false;
+}
     // --- 3. CORE LOGIC ---
     function init() {
         if (isInitialized) return;
@@ -175,71 +209,62 @@ window.TaskSidebar = (function() {
     }
     
     
-    /**
-     * Opens the sidebar for a specific task using a direct path.
-     * @param {object} context - An object containing all necessary IDs.
-     * @param {string} context.taskId
-     * @param {string} context.sectionId
-     * @param {string} context.projectId
-     * @param {string} context.workspaceId
-     */
     async function open(taskId) {
-        if (!isInitialized) init();
-        if (!taskId || !currentUser) return;
+    if (!isInitialized) init();
+    if (!taskId || !currentUserId) return;
+    
+    close(); // Close any previously open sidebar and detach listeners
+    
+    sidebar.classList.add('is-loading', 'is-visible');
+    rightSidebarContainer.classList.add('sidebar-open');
+    
+    try {
+        // STEP 1: Find the task using its ID, no matter where it is.
+        const tasksQuery = query(collectionGroup(db, 'tasks'), where('id', '==', taskId), limit(1));
+        const taskSnapshot = await getDocs(tasksQuery);
         
-        detachAllListeners();
-        
-        
-        try {
-            // THIS IS THE CORRECTED QUERY. It searches all 'tasks' collections
-            // for a document where the 'id' field matches the given taskId.
-            const tasksQuery = query(collectionGroup(db, 'tasks'), where('id', '==', taskId), limit(1));
-            const querySnapshot = await getDocs(tasksQuery);
-            
-            
-            if (querySnapshot.empty) {
-                // This error now correctly means one of two things:
-                // 1. The Firestore Index is missing (check console for a link).
-                // 2. The task document truly does not exist or its 'id' field is wrong.
-                throw new Error(`Task with ID ${taskId} could not be found. Please ensure the Firestore Index has been created.`);
-            }
-            
-            // Get the full, correct reference to the found document
-            currentTaskRef = querySnapshot.docs[0].ref;
-            
-            currentProjectRef = currentTaskRef.parent.parent.parent;
-            
-            // The task's path contains the owner's userId and workspaceId.
-            const pathSegments = currentTaskRef.path.split('/');
-            const ownerId = pathSegments[1];
-            const workspaceId = pathSegments[3];
-            currentWorkspaceId = workspaceId; // Set the correct workspaceId
-            
-            taskListenerUnsubscribe = onSnapshot(currentTaskRef, async (taskDoc) => {
-                if (taskDoc.exists()) {
-                    currentTask = { ...taskDoc.data(), id: taskDoc.id };
-                    
-                    // Load workspace data using the owner's ID and correct workspaceId
-                    await loadWorkspaceData(ownerId, workspaceId, currentTask.projectId);
-                    
-                    allUsers = await fetchProjectMembers(ownerId, workspaceId, currentTask.projectId);
-                    sidebar.classList.add('is-visible');
-                    rightSidebarContainer.classList.add('sidebar-open');
-                    
-                    renderSidebar(currentTask);
-                    
-                    listenToActivity();
-                    listenToMessages();
-                    
-                } else {
-                    close();
-                }
-            });
-        } catch (error) {
-            console.error("TaskSidebar: Error opening task.", error);
-            close();
+        if (taskSnapshot.empty) {
+            throw new Error(`Task with ID ${taskId} could not be found.`);
         }
+        
+        currentTaskRef = taskSnapshot.docs[0].ref;
+        const taskData = taskSnapshot.docs[0].data();
+        
+        // STEP 2: Get the project reference from the task's path.
+        // The path is: .../projects/{projectId}/sections/{sectionId}/tasks/{taskId}
+        currentProjectRef = currentTaskRef.parent.parent;
+        const projectDoc = await getDoc(currentProjectRef);
+        
+        if (!projectDoc.exists()) {
+            throw new Error(`The project for task ${taskId} could not be found.`);
+        }
+        currentProject = { id: projectDoc.id, ...projectDoc.data() };
+        
+        // STEP 3: Set permissions and fetch all project members.
+        updateUserPermissions(currentProject, currentUserId);
+        const memberUIDs = currentProject.members?.map(m => m.uid) || [];
+        allUsers = await fetchMemberProfiles(memberUIDs);
+        
+        // STEP 4: Attach all real-time listeners for this task.
+        taskListenerUnsubscribe = onSnapshot(currentTaskRef, (doc) => {
+            if (doc.exists()) {
+                currentTask = { ...doc.data(), id: doc.id };
+                sidebar.classList.remove('is-loading');
+                renderSidebar(currentTask);
+            } else {
+                console.warn(`Task ${taskId} was deleted.`);
+                close();
+            }
+        });
+        
+        listenToActivity();
+        listenToMessages();
+        
+    } catch (error) {
+        console.error("TaskSidebar: Error opening task.", error);
+        close();
     }
+}
     
     function close() {
         if (sidebar) sidebar.classList.remove('is-visible', 'is-loading');
@@ -261,72 +286,18 @@ window.TaskSidebar = (function() {
     }
     
     // --- 4. DATA FETCHING ---
-    async function fetchActiveWorkspace(userId) {
-        const workspaceQuery = query(collection(db, `users/${userId}/myworkspace`), where("isSelected", "==", true), limit(1));
-        const workspaceSnapshot = await getDocs(workspaceQuery);
-        currentWorkspaceId = workspaceSnapshot.empty ? null : workspaceSnapshot.docs[0].id;
+    async function fetchMemberProfiles(uids) {
+    if (!uids || uids.length === 0) return [];
+    try {
+        const userPromises = uids.map(uid => getDoc(doc(db, `users/${uid}`)));
+        const userDocs = await Promise.all(userPromises);
+        return userDocs.filter(d => d.exists()).map(d => ({ id: d.id, ...d.data() }));
+    } catch (error) {
+        console.error("Error fetching member profiles:", error);
+        return [];
     }
-    
-    async function loadWorkspaceData(ownerId, workspaceId, activeProjectId) {
-        console.log("--- Starting loadWorkspaceData ---");
-        console.log("Looking for projects owned by user:", ownerId);
-        console.log("Inside workspace:", workspaceId);
-        console.log("Trying to find the project with this ID:", activeProjectId);
-        
-        // Guard clause to ensure we have the necessary IDs to proceed.
-        if (!ownerId || !workspaceId || !activeProjectId) {
-            console.error("Function stopped: ownerId, workspaceId, or activeProjectId is missing.");
-            currentProject = null; // Ensure it's null
-            return;
-        }
-        
-        try {
-            const projectsPath = `users/${ownerId}/myworkspace/${workspaceId}/projects`;
-            console.log("Querying this Firestore path for projects:", projectsPath);
-            
-            const projectsQuery = query(collection(db, projectsPath));
-            const projectsSnapshot = await getDocs(projectsQuery);
-            
-            // Check if the query returned any project documents at all.
-            if (projectsSnapshot.empty) {
-                console.error("DEBUG: No projects were found at that path. This could be a Security Rule issue on the 'projects' collection or an incorrect path.");
-                currentProject = null; // Ensure it's null
-                return;
-            }
-            
-            workspaceProjects = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            console.log("DEBUG: Found these projects in the workspace:", workspaceProjects);
-            
-            // This is the most important step. We try to find the project.
-            currentProject = workspaceProjects.find(p => p.id === activeProjectId);
-            
-            if (currentProject) {
-                console.log("SUCCESS: Found a matching project object. The data is now loaded.", currentProject);
-                generateCustomTagStyles(currentProject);
-            } else {
-                console.error("FAILURE: Could not find a project with ID '" + activeProjectId + "' in the list of fetched projects.");
-                console.error("Please check the 'projectId' field on your Task document in Firestore to make sure it is correct.");
-            }
-            
-        } catch (error) {
-            console.error("CRITICAL ERROR inside loadWorkspaceData. This is likely a permissions error.", error);
-            currentProject = null; // Ensure it's null on error
-        }
-        console.log("--- Finished loadWorkspaceData ---");
-    }
-    
-    async function fetchProjectMembers(userId, workspaceId, projectId) {
-        const project = workspaceProjects.find(p => p.id === projectId);
-        if (!project) return [];
-        const workspaceDoc = await getDoc(doc(db, `users/${userId}/myworkspace/${workspaceId}`));
-        const workspaceMembers = workspaceDoc.data()?.members?.map(m => m.uid) || [];
-        let memberUids = project.accessLevel === 'workspace' ? workspaceMembers : project.members?.map(m => m.uid) || [];
-        if (!memberUids.includes(userId)) memberUids.push(userId);
-        if (memberUids.length === 0) return [];
-        const userDocs = await Promise.all([...new Set(memberUids)].map(uid => getDoc(doc(db, `users/${uid}`))));
-        return userDocs.filter(d => d.exists()).map(d => ({ id: d.id, name: d.data().name, avatar: d.data().avatar }));
-    }
-    
+}
+
     async function updateCustomField(columnId, newValue, column) {
         if (!currentTaskRef || !currentTask) return;
         const fieldKey = `customFields.${columnId}`;
@@ -402,25 +373,46 @@ window.TaskSidebar = (function() {
         } catch (error) { console.error(`Failed to update custom field ${column.name}:`, error); }
     }
     
-    async function moveTask(newProjectId) {
-        if (!currentTaskRef || !currentTask || newProjectId === currentTask.projectId) return;
-        const newProject = workspaceProjects.find(p => p.id === newProjectId);
-        if (!newProject) return;
-        const sectionsQuery = query(collection(db, `users/${currentUser.id}/myworkspace/${currentWorkspaceId}/projects/${newProjectId}/sections`), orderBy("order", "asc"), limit(1));
+async function moveTask(newProjectId) {
+    if (!currentTaskRef || !currentTask || newProjectId === currentTask.projectId) return;
+    
+    try {
+        // Find the destination project and its first section correctly
+        const projectQuery = query(collectionGroup(db, 'projects'), where('id', '==', newProjectId), limit(1));
+        const projectSnap = await getDocs(projectQuery);
+        if (projectSnap.empty) throw new Error("Destination project not found.");
+        
+        const newProjectRef = projectSnap.docs[0].ref;
+        const newProjectData = projectSnap.docs[0].data();
+        
+        const sectionsQuery = query(collection(newProjectRef, 'sections'), orderBy("order", "asc"), limit(1));
         const sectionsSnapshot = await getDocs(sectionsQuery);
-        if (sectionsSnapshot.empty) { alert("Error: Target project has no sections."); return; }
+        if (sectionsSnapshot.empty) {
+            alert("Error: Target project has no sections.");
+            return;
+        }
         const newSectionId = sectionsSnapshot.docs[0].id;
-        const newPath = `users/${currentUser.id}/myworkspace/${currentWorkspaceId}/projects/${newProjectId}/sections/${newSectionId}/tasks/${currentTask.id}`;
+        
+        // Prepare the new task data and references
         const newTaskData = { ...currentTask, projectId: newProjectId, sectionId: newSectionId };
-        delete newTaskData.id;
-        try {
-            const batch = writeBatch(db);
-            batch.delete(currentTaskRef);
-            batch.set(doc(db, newPath), newTaskData);
-            await batch.commit();
-            logActivity({ action: 'moved', field: 'Project', from: currentProject.title, to: newProject.title });
-        } catch (error) { console.error("Failed to move task:", error); }
+        const newTaskRef = doc(newProjectRef, `sections/${newSectionId}/tasks/${currentTask.id}`);
+        
+        // Use a batch to move the task atomically
+        const batch = writeBatch(db);
+        batch.delete(currentTaskRef); // Delete from old location
+        batch.set(newTaskRef, newTaskData); // Create in new location
+        await batch.commit();
+        
+        logActivity({ action: 'moved', field: 'Project', from: currentProject.title, to: newProjectData.title });
+        
+        // Close the sidebar, as its context is now invalid
+        close();
+        
+    } catch (error) {
+        console.error("Failed to move task:", error);
+        alert("An error occurred while moving the task.");
     }
+}
     
     async function logActivity({ action, field, from, to }) {
         if (!currentTaskRef || !currentUser) return;
@@ -600,166 +592,150 @@ window.TaskSidebar = (function() {
         renderActiveTab();
     }
     
-    /**
-     * Renders all task fields and attaches necessary click listeners using the new advanced dropdown.
-     * @param {object} task The task object to render fields for.
-     */
-    function renderTaskFields(task) {
-        taskFieldsContainer.innerHTML = '';
-        if (!currentProject) return;
-        
-        const table = document.createElement('table');
-        table.className = 'task-fields-table';
-        const tbody = document.createElement('tbody');
-        
-        // --- Field Rendering (no changes here) ---
-        const currentProjectTitle = workspaceProjects.find(p => p.id === task.projectId)?.title || '...';
-        appendFieldToTable(tbody, 'project', 'Project', `<span>${currentProjectTitle}</span>`, 'project');
-        appendFieldToTable(tbody, 'assignees', 'Assignee', renderAssigneeValue(task.assignees), 'assignee');
-        appendFieldToTable(tbody, 'dueDate', 'Due Date', renderDateValue(task.dueDate), 'date');
-        
-        const priorityValue = task.priority;
-        let priorityHTML = '<span>Not set</span>';
-        if (priorityValue) {
-            let priorityColor = currentProject.customPriorities?.find(p => p.name === priorityValue)?.color || defaultPriorityColors[priorityValue];
-            priorityHTML = createTag(priorityValue, priorityColor);
-        }
-        appendFieldToTable(tbody, 'priority', 'Priority', priorityHTML, 'priority');
-        
-        const statusValue = task.status;
-        let statusHTML = '<span>Not set</span>';
-        if (statusValue) {
-            let statusColor = currentProject.customStatuses?.find(s => s.name === statusValue)?.color || defaultStatusColors[statusValue];
-            statusHTML = createTag(statusValue, statusColor);
-        }
-        appendFieldToTable(tbody, 'status', 'Status', statusHTML, 'status');
-        
-        currentProject.customColumns?.forEach(col => {
-            const value = task.customFields ? task.customFields[col.id] : null;
-            let displayHTML = '<span>Not set</span>';
-            if (value != null && value !== '') {
-                if (col.type === 'Type' && col.options) {
-                    const option = col.options.find(opt => opt.name === value);
-                    displayHTML = createTag(value, option ? option.color : '#ccc');
-                } else if (col.type === 'Costing') {
-                    displayHTML = `<span>${col.currency || '$'}${value}</span>`;
-                } else {
-                    displayHTML = `<span>${value}</span>`;
-                }
+/**
+ * Renders all task fields and attaches click listeners with baked-in permission checks.
+ * This is the central function for controlling interactivity within the sidebar.
+ * @param {object} task The task object to render fields for.
+ */
+function renderTaskFields(task) {
+    taskFieldsContainer.innerHTML = '';
+    if (!currentProject) {
+        console.error("renderTaskFields cannot run: currentProject is not loaded.");
+        return;
+    }
+    
+    const table = document.createElement('table');
+    table.className = 'task-fields-table';
+    const tbody = document.createElement('tbody');
+    
+    // 1. RENDER ALL FIELDS (This part builds the static view)
+    // =======================================================
+    const currentProjectTitle = currentProject.title || '...';
+    appendFieldToTable(tbody, 'project', 'Project', `<span>${currentProjectTitle}</span>`, 'project');
+    appendFieldToTable(tbody, 'assignees', 'Assignee', renderAssigneeValue(task.assignees), 'assignee');
+    appendFieldToTable(tbody, 'dueDate', 'Due Date', renderDateValue(task.dueDate), 'date');
+    
+    const priorityValue = task.priority;
+    let priorityHTML = '<span>Not set</span>';
+    if (priorityValue) {
+        let priorityColor = currentProject.customPriorities?.find(p => p.name === priorityValue)?.color || defaultPriorityColors[priorityValue];
+        priorityHTML = createTag(priorityValue, priorityColor);
+    }
+    appendFieldToTable(tbody, 'priority', 'Priority', priorityHTML, 'priority');
+    
+    const statusValue = task.status;
+    let statusHTML = '<span>Not set</span>';
+    if (statusValue) {
+        let statusColor = currentProject.customStatuses?.find(s => s.name === statusValue)?.color || defaultStatusColors[statusValue];
+        statusHTML = createTag(statusValue, statusColor);
+    }
+    appendFieldToTable(tbody, 'status', 'Status', statusHTML, 'status');
+    
+    currentProject.customColumns?.forEach(col => {
+        const value = task.customFields ? task.customFields[col.id] : null;
+        let displayHTML = '<span>Not set</span>';
+        if (value != null && value !== '') {
+            if (col.options) { // For 'Type' or other custom select columns
+                const option = col.options.find(opt => opt.name === value);
+                displayHTML = createTag(value, option ? option.color : '#ccc');
+            } else if (col.type === 'Costing') {
+                displayHTML = `<span>${col.currency || '$'}${value.toLocaleString()}</span>`;
+            } else {
+                displayHTML = `<span>${value}</span>`;
             }
-            appendFieldToTable(tbody, `custom-${col.id}`, col.name, displayHTML, 'custom-field', 'custom-field-value');
-        });
+        }
+        appendFieldToTable(tbody, `custom-${col.id}`, col.name, displayHTML, 'custom-field');
+    });
+    
+    table.appendChild(tbody);
+    taskFieldsContainer.appendChild(table);
+    
+    // 2. ATTACH EVENT LISTENER WITH PERMISSION CHECKS
+    // =================================================
+    table.addEventListener('click', (e) => {
+        const control = e.target.closest('.field-control');
+        if (!control) return;
         
-        table.appendChild(tbody);
-        taskFieldsContainer.appendChild(table);
+        const key = control.dataset.key;
+        const controlType = control.dataset.control;
         
-        // --- UPDATED AND SIMPLIFIED EVENT LISTENER ---
-        table.addEventListener('click', (e) => {
-            const control = e.target.closest('.field-control');
-            if (!control) return;
-            
-            const key = control.dataset.key;
-            const controlType = control.dataset.control;
-            
-            switch (controlType) {
-                case 'assignee': {
-                    // Add an "Unassigned" option to the list of all users
+        switch (controlType) {
+            case 'project':
+            case 'assignee': {
+                // PERMISSION CHECK: Strict. Only project admins/editors can perform these actions.
+                if (!userCanEditProject) {
+                    alert("You do not have permission to change this field.");
+                    return;
+                }
+                
+                if (controlType === 'project') {
+                    // This logic assumes `workspaceProjects` is populated when the sidebar opens.
+                    createAdvancedDropdown(control, {
+                        options: workspaceProjects,
+                        searchable: true,
+                        searchPlaceholder: 'Move to project...',
+                        itemRenderer: (p) => `<span>${p.title}</span>`,
+                        onSelect: (p) => {
+                            if (p.id !== currentTask.projectId) moveTask(p.id);
+                        }
+                    });
+                } else { // assignee
                     const options = [{ id: null, name: 'Unassigned', avatar: '' }, ...allUsers];
                     createAdvancedDropdown(control, {
                         options: options,
                         searchable: true,
                         searchPlaceholder: 'Search teammates...',
                         itemRenderer: (user) => {
-                            if (!user.id) return `<span>Unassigned</span>`; // Special case for unassigned
+                            if (!user.id) return `<span>Unassigned</span>`;
                             return `<div class="avatar" style="background-image: url(${user.avatar})"></div><span>${user.name}</span>`;
                         },
-                        onSelect: (user) => {
-                            updateTaskField('assignees', user.id ? [user.id] : []);
-                        }
+                        onSelect: (user) => updateTaskField('assignees', user.id ? [user.id] : [])
                     });
-                    break;
                 }
-                case 'project': { 
-    createAdvancedDropdown(control, {
-        options: workspaceProjects, // The list of all projects
-        searchable: true,
-        searchPlaceholder: 'Move to project...',
-        // Each item in the dropdown will just show the project's title
-        itemRenderer: (project) => `<span>${project.title}</span>`,
-        // When a project is selected...
-        onSelect: (project) => {
-            // ...check if it's different from the current one...
-            if (project.id !== currentTask.projectId) {
-                // ...and call the function to move the task.
-                moveTask(project.id);
+                break;
+            }
+            
+            case 'date':
+            case 'priority':
+            case 'status':
+            case 'custom-field': {
+                // PERMISSION CHECK: Lenient. Allows assigned Viewers/Commentators.
+                if (!canUserEditCurrentTask()) {
+                    alert("You do not have permission to edit this field.");
+                    return;
+                }
+                
+                // If permission is granted, proceed to open the correct editor.
+                if (controlType === 'date') {
+                    const fp = flatpickr(control, { /* flatpickr config */ });
+                    fp.open();
+                } else if (controlType === 'priority' || controlType === 'status') {
+                    const baseOptions = (controlType === 'priority') ? priorityOptions : statusOptions;
+                    const customOptions = (controlType === 'priority') ? currentProject.customPriorities : currentProject.customStatuses;
+                    const allOptions = [...baseOptions.map(name => ({ name })), ...(customOptions || [])];
+                    
+                    showStatusDropdown(control, allOptions, (selected) => {
+                        updateTaskField(controlType, selected.name);
+                    });
+                    
+                } else if (controlType === 'custom-field') {
+                    const columnId = key.split('-')[1];
+                    const column = currentProject.customColumns.find(c => c.id == columnId);
+                    if (!column) return;
+                    
+                    if (column.options) { // It's a dropdown type
+                        showStatusDropdown(control, column.options, (selected) => {
+                            updateCustomField(columnId, selected.name, column);
+                        });
+                    } else { // It's a text/number/costing field
+                        makeTextFieldEditable(control, columnId, column);
+                    }
+                }
+                break;
             }
         }
     });
-    break;
 }
-                case 'status':
-                case 'priority':
-                case 'custom-field': {
-                    let options = [];
-                    let onSelectCallback = (selected) => {};
-                    const isCustom = controlType === 'custom-field';
-                    
-                    if (isCustom) {
-                        const columnId = key.split('-')[1];
-                        const column = currentProject.customColumns.find(c => c.id == columnId);
-                        if (!column || !column.options) { // If it's a text field, make it editable instead
-                            makeTextFieldEditable(control, columnId, column);
-                            return;
-                        }
-                        options = column.options;
-                        onSelectCallback = (selected) => updateCustomField(columnId, selected.name, column);
-                        
-                    } else { // It's a priority or status field
-                        const baseOptions = (controlType === 'priority') ? priorityOptions : statusOptions;
-                        const defaultColors = (controlType === 'priority') ? defaultPriorityColors : defaultStatusColors;
-                        const customOptions = (controlType === 'priority') ? currentProject.customPriorities : currentProject.customStatuses;
-                        
-                        options = baseOptions.map(name => ({ name, color: defaultColors[name] }));
-                        if (customOptions) options = [...options, ...customOptions];
-                        
-                        onSelectCallback = (selected) => updateTaskField(controlType, selected.name);
-                    }
-                    
-                    createAdvancedDropdown(control, {
-                        options: options,
-                        searchable: false, // Can be set to true if lists are long
-                        itemRenderer: (option) => `
-                        <div class="dropdown-color-swatch" style="background-color: ${option.color}"></div>
-                        <span>${option.name}</span>`,
-                        onSelect: onSelectCallback
-                    });
-                    break;
-                }
-                case 'Numbers':
-case 'Costing':
-case 'Text': {
-    const columnId = key.split('-')[1];
-    const column = currentProject.customColumns.find(c => c.id == columnId);
-    if (column) makeTextFieldEditable(control, columnId, column);
-    break;
-}
-                case 'date': {
-                    const input = control.querySelector('.flatpickr-input');
-                    const fp = flatpickr(input, {
-                        defaultDate: currentTask.dueDate || 'today',
-                        dateFormat: "Y-m-d",
-                        onClose: function(selectedDates) {
-                            const newDate = selectedDates[0] ? flatpickr.formatDate(selectedDates[0], 'Y-m-d') : '';
-                            updateTaskField('dueDate', newDate);
-                            fp.destroy();
-                        }
-                    });
-                    fp.open();
-                    break;
-                }
-            }
-        });
-    }
     
     /**
      * Creates and appends a styled table row.
