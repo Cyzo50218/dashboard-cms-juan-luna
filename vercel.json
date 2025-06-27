@@ -22,6 +22,10 @@
     {
       "src": "/(.*)",
       "dest": "/index.html"
+    },
+    {
+      "src": "/logo.png",
+      "dest": "/assets/logo.png"
     }
   ]
 }
