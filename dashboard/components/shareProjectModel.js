@@ -490,9 +490,6 @@ if (member.uid === superAdminUID) {
 
 async function handleInvite(modal, projectRef) {
     // --- 1. Get Dependencies and the Current User (The Inviter) ---
-    const functions = getFunctions();
-    const sendEmailInvitation = httpsCallable(functions, 'sendEmailInvitation');
-    const auth = getAuth();
     const inviter = auth.currentUser;
 
     if (!inviter) {
