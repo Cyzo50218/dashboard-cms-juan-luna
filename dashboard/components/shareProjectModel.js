@@ -4,6 +4,7 @@
  */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, collection, query, where, getDocs, doc, updateDoc, arrayUnion, arrayRemove, getDoc, deleteField, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "/services/firebase-config.js";
@@ -484,51 +485,124 @@ if (member.uid === superAdminUID) {
 }
 
 async function handleInvite(modal, projectRef) {
-        const emailInput = modal.querySelector('#shareproject-email-input');
-        const invitedEmails = (modal.invitedEmails || []); // Get emails from stored state
-        if (emailInput.value.trim()) addEmailTag(emailInput.value.trim());
-        if (invitedEmails.length === 0) return;
+    // --- 1. Get Dependencies and the Current User (The Inviter) ---
+    const functions = getFunctions();
+    const sendEmailInvitation = httpsCallable(functions, 'sendEmailInvitation');
+    const auth = getAuth();
+    const inviter = auth.currentUser;
 
-        const role = modal.querySelector('#shareproject-selected-role').textContent;
-        const projectData = JSON.parse(modal.dataset.projectData || '{}');
-        const userProfilesMap = JSON.parse(modal.dataset.userProfilesMap || '{}');
-        
-        const batch = writeBatch(db);
-        const newPendingInvites = [];
+    if (!inviter) {
+        alert("Error: You must be logged in to send invitations.");
+        return;
+    }
 
-        for (const email of invitedEmails) {
-            const lowerEmail = email.toLowerCase();
-            const existingUserUID = Object.keys(userProfilesMap).find(uid => userProfilesMap[uid]?.email?.toLowerCase() === lowerEmail);
+    // --- 2. Get Data from the Modal ---
+    const emailInput = modal.querySelector('#shareproject-email-input');
+    const invitedEmails = (modal.invitedEmails || []);
+    
+    if (emailInput.value.trim()) {
+        addEmailTag(emailInput.value.trim()); 
+    }
+    
+    if (invitedEmails.length === 0) {
+        alert("Please enter at least one email address to invite.");
+        return;
+    }
 
-            if (existingUserUID) { // User is in the workspace
-                const existingMember = projectData.members.find(m => m.uid === existingUserUID);
-                if (existingMember && existingMember.role !== role) {
-                    // Update role of existing member
-                    batch.update(projectRef, { members: arrayRemove(existingMember) });
-                    batch.update(projectRef, { members: arrayUnion({ uid: existingUserUID, role: role }) });
-                } else if (!existingMember) {
-                    // THE FIX: Safely add a new member using arrayUnion
-                    batch.update(projectRef, { members: arrayUnion({ uid: existingUserUID, role: role }) });
-                }
-            } else {
-                // User is not in the workspace, add to pending
-                newPendingInvites.push({ email, role, invitedAt: serverTimestamp() });
+    const role = modal.querySelector('#shareproject-selected-role').textContent.trim();
+    const projectData = JSON.parse(modal.dataset.projectData || '{}');
+    const userProfilesMap = JSON.parse(modal.dataset.userProfilesMap || '{}');
+
+    // --- 3. Prepare a Firestore Batch and Tracking Arrays ---
+    const batch = writeBatch(db);
+    const newPendingInvites = []; // <--- RE-ADDED: Array for the project document
+    let successfulEmailSends = 0;
+    let membersAdded = 0;
+    const failedEmails = [];
+
+    // --- 4. Loop Through Emails and Process Invitations ---
+    for (const email of invitedEmails) {
+        const lowerEmail = email.toLowerCase();
+        const existingUserUID = Object.keys(userProfilesMap).find(uid => userProfilesMap[uid]?.email?.toLowerCase() === lowerEmail);
+
+        if (existingUserUID) {
+            // --- Logic for EXISTING workspace members ---
+            const existingMember = projectData.members.find(m => m.uid === existingUserUID);
+            if (!existingMember) {
+                batch.update(projectRef, { members: arrayUnion({ uid: existingUserUID, role: role }) });
+                membersAdded++;
+            }
+            
+        } else {
+            // --- Logic for NEW users who need an email invitation ---
+            try {
+                // a. FIRST, call the Cloud Function to send the email.
+                console.log(`Sending invitation to new user: ${lowerEmail}`);
+                await sendEmailInvitation({
+                    email: lowerEmail,
+                    inviterName: inviter.displayName || inviter.email,
+                    projectName: projectData.name
+                });
+
+                // b. THEN, if successful, create a record in the top-level "InvitedProjects" collection.
+                const newInvitationRef = doc(collection(db, "InvitedProjects"));
+                batch.set(newInvitationRef, {
+                    projectId: projectRef.id,
+                    projectName: projectData.name,
+                    invitedEmail: lowerEmail,
+                    role: role,
+                    invitedAt: serverTimestamp(),
+                    status: 'pending',
+                    invitedBy: {
+                        uid: inviter.uid,
+                        name: inviter.displayName,
+                        email: inviter.email
+                    }
+                });
+
+                // c. RE-ADDED: Add to the project document's own pending list as well.
+                newPendingInvites.push({ email: lowerEmail, role: role, invitedAt: serverTimestamp() });
+                
+                successfulEmailSends++;
+
+            } catch (error) {
+                console.error(`Failed to send email to ${lowerEmail}:`, error);
+                failedEmails.push(lowerEmail);
             }
         }
+    }
+
+    // --- 5. Add the project's own pendingInvites array to the batch ---
+    // RE-ADDED: This block updates the project document itself.
+    if (newPendingInvites.length > 0) {
+        batch.update(projectRef, { pendingInvites: arrayUnion(...newPendingInvites) });
+    }
+
+    // --- 6. Commit all database changes at once ---
+    try {
+        await batch.commit();
+        console.log("Batch commit successful. Members and invitations updated.");
         
-        if (newPendingInvites.length > 0) {
-            batch.update(projectRef, { pendingInvites: arrayUnion(...newPendingInvites) });
+        // --- 7. Provide Clear Feedback to the User ---
+        let feedbackMessage = "";
+        if (membersAdded > 0) feedbackMessage += `${membersAdded} member(s) added to the project.\n`;
+        if (successfulEmailSends > 0) feedbackMessage += `${successfulEmailSends} invitation(s) sent successfully!\n`;
+        if (failedEmails.length > 0) feedbackMessage += `Failed to send invitations to: ${failedEmails.join(', ')}.`;
+
+        if (feedbackMessage) {
+            alert(feedbackMessage.trim());
         }
 
-        try {
-            await batch.commit();
-            modal.invitedEmails = []; // Clear the list after sending
-            renderEmailTags(); // Re-render the empty list
-        } catch (error) {
-            console.error("Error sending invites:", error);
-            alert("Failed to send invitations.");
-        }
+        // Reset the UI
+        modal.invitedEmails = [];
+        renderEmailTags(); 
+        if (typeof closeModal === 'function') closeModal(modal);
+
+    } catch (error) {
+        console.error("Error committing invites to database:", error);
+        alert("A database error occurred while saving the invitations. Please try again.");
     }
+}
 
 
 function createProfilePic(profile) {

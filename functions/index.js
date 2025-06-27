@@ -25,7 +25,7 @@ exports.sendEmailInvitation = functions.https.onCall(async (data, context) => {
     to: recipientEmail,
     from: {
       name: 'Juan Luna Collections',
-      email: 'noreply@juanlunacollections.com' // Your verified SendGrid sender
+      email: 'collection@juanlunacollections.com' // Your verified SendGrid sender
     },
     subject: `${inviterName} has invited you to collaborate on ${projectName}`,
     
