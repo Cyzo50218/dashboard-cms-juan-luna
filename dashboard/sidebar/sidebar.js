@@ -209,63 +209,56 @@ function canUserEditCurrentTask() {
     }
     
     
-async function open(taskId) {
+async function open(taskId, projectId) {
     if (!isInitialized) init();
-    if (!taskId || !currentUserId) return;
+    if (!taskId || !currentUser) return;
     
-    close(); // Close any previously open sidebar and detach listeners
+    detachAllListeners();
     
-    sidebar.classList.add('is-loading', 'is-visible');
-    rightSidebarContainer.classList.add('sidebar-open');
     
     try {
-        // STEP 1: Find the task using its ID, no matter where it is.
+        // THIS IS THE CORRECTED QUERY. It searches all 'tasks' collections
+        // for a document where the 'id' field matches the given taskId.
         const tasksQuery = query(collectionGroup(db, 'tasks'), where('id', '==', taskId), limit(1));
-        const taskSnapshot = await getDocs(tasksQuery);
+        const querySnapshot = await getDocs(tasksQuery);
         
-        if (taskSnapshot.empty) {
-            throw new Error(`Task with ID ${taskId} could not be found.`);
+        
+        if (querySnapshot.empty) {
+            // This error now correctly means one of two things:
+            // 1. The Firestore Index is missing (check console for a link).
+            // 2. The task document truly does not exist or its 'id' field is wrong.
+            throw new Error(`Task with ID ${taskId} could not be found. Please ensure the Firestore Index has been created.`);
         }
         
-        currentTaskRef = taskSnapshot.docs[0].ref;
-        const taskData = taskSnapshot.docs[0].data();
+        // Get the full, correct reference to the found document
+        currentTaskRef = querySnapshot.docs[0].ref;
         
-        // STEP 2: Get the project reference from the task's path.
-        // The path is: .../projects/{projectId}/sections/{sectionId}/tasks/{taskId}
-        currentProjectRef = currentTaskRef.parent.parent;
-        const projectDoc = await getDoc(currentProjectRef);
-        
-        if (!projectDoc.exists()) {
-            throw new Error(`The project for task ${taskId} could not be found.`);
-        }
-        currentProject = { id: projectDoc.id, ...projectDoc.data() };
-        
-        // STEP 3: Set permissions and fetch all project members.
-        updateUserPermissions(currentProject, currentUserId);
-        const memberUIDs = currentProject.members?.map(m => m.uid) || [];
-        allUsers = await fetchMemberProfiles(memberUIDs);
-        
-        // STEP 4: Attach all real-time listeners for this task.
-        taskListenerUnsubscribe = onSnapshot(currentTaskRef, (doc) => {
-            if (doc.exists()) {
-                currentTask = { ...doc.data(), id: doc.id };
-                sidebar.classList.remove('is-loading');
+        currentProjectRef = currentTaskRef.parent.parent.parent;
+        currentProject = currentTaskRef.parent.parent.parent;
+        taskListenerUnsubscribe = onSnapshot(currentTaskRef, async (taskDoc) => {
+            if (taskDoc.exists()) {
+                currentTask = { ...taskDoc.data(), id: taskDoc.id };
+                
+                const memberUIDs = currentProjectRef.members?.map(m => m.uid) || [];
+                allUsers = await fetchMemberProfiles(memberUIDs);
+                sidebar.classList.add('is-visible');
+                rightSidebarContainer.classList.add('sidebar-open');
+                
                 renderSidebar(currentTask);
+                
+                listenToActivity();
+                listenToMessages();
+                
             } else {
-                console.warn(`Task ${taskId} was deleted.`);
                 close();
             }
         });
-        
-        listenToActivity();
-        listenToMessages();
-        
     } catch (error) {
         console.error("TaskSidebar: Error opening task.", error);
         close();
     }
 }
-    
+
     function close() {
         if (sidebar) sidebar.classList.remove('is-visible', 'is-loading');
         rightSidebarContainer.classList.remove('sidebar-open');
@@ -296,6 +289,12 @@ async function open(taskId) {
         console.error("Error fetching member profiles:", error);
         return [];
     }
+}
+
+async function fetchActiveWorkspace(userId) {
+    const workspaceQuery = query(collection(db, `users/${userId}/myworkspace`), where("isSelected", "==", true), limit(1));
+    const workspaceSnapshot = await getDocs(workspaceQuery);
+    currentWorkspaceId = workspaceSnapshot.empty ? null : workspaceSnapshot.docs[0].id;
 }
 
     async function updateCustomField(columnId, newValue, column) {
