@@ -2988,23 +2988,22 @@ async function moveTaskToSection(taskId, targetSectionId) {
     if (!currentProjectRef) return console.error("Cannot move task: Project reference is missing.");
 
     const { task: taskToMove, section: sourceSection } = findTaskAndSection(taskId);
-    const targetSection = findSectionById(targetSectionId); // This gets the full section object
+    const targetSection = findSectionById(targetSectionId);
 
     if (!taskToMove || !sourceSection || !targetSection || sourceSection.id === targetSectionId) {
-        console.error("Cannot move task. Invalid source or target.");
-        return;
+        return console.error("Cannot move task. Invalid source or target.");
     }
     
-    // Prepare the initial data for the new document.
+    // Prepare the initial data object for the new task document.
     const newTaskData = {
         ...taskToMove,
         id: taskId,
         sectionId: targetSectionId,
     };
     
-    // --- THE NEW LOGIC IS HERE ---
-    // Check if the destination section is a 'completed' type.
-    // This assumes your "Completed" section has a property { sectionType: 'completed' }
+    // --- UPDATED LOGIC FOR STATUS CHANGES ---
+
+    // Case 1: Moving INTO a 'completed' section
     if (targetSection.sectionType === 'completed') {
         console.log(`Task moved to 'Completed' section. Updating status.`);
         
@@ -3014,16 +3013,27 @@ async function moveTaskToSection(taskId, targetSectionId) {
         }
         // Set the new status to 'Completed'.
         newTaskData.status = 'Completed';
+    } 
+    // Case 2: Moving OUT OF a 'completed' section
+    else if (sourceSection.sectionType === 'completed') {
+        console.log(`Task moved out of 'Completed' section. Reverting status.`);
+
+        // Revert to the stored previous status, or a sensible default like 'On track'.
+        newTaskData.status = taskToMove.previousStatus || 'On track';
+        
+        // Clean up the previousStatus field as it's no longer needed.
+        newTaskData.previousStatus = deleteField();
     }
-    // --- END OF NEW LOGIC ---
+    // --- END OF UPDATED LOGIC ---
 
     const sourceTaskRef = doc(currentProjectRef, `sections/${sourceSection.id}/tasks/${taskId}`);
-    const newTaskRef = doc(currentProjectRef, `sections/${targetSection.id}/tasks/${taskId}`);
+    const newTaskRef = doc(currentProjectRef, `sections/${targetSectionId}/tasks/${taskId}`);
 
     try {
         const batch = writeBatch(db);
         batch.delete(sourceTaskRef);
-        batch.set(newTaskRef, newTaskData);
+        // Use { merge: true } with set() to allow deleteField() to work correctly.
+        batch.set(newTaskRef, newTaskData, { merge: true }); 
         await batch.commit();
         console.log(`Task ${taskId} moved successfully to section ${targetSectionId}.`);
     } catch (error) {
