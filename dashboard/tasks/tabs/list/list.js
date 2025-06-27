@@ -581,7 +581,20 @@ function setupEventListeners() {
         if (!controlElement) return; // Exit if not a specific interactive element
         
         const controlType = controlElement.dataset.control;
-        
+
+        if (taskId && taskId.startsWith('temp_')) {
+        const control = e.target.closest('[data-control]');
+        if (control && control.dataset.control !== 'open-sidebar') {
+            console.warn("Action blocked: Please wait a moment for the task to finish saving.");
+            // Add a subtle flash to indicate the task is saving
+            taskRow.style.transition = 'background-color 0.2s';
+            taskRow.style.backgroundColor = '#fffbe6'; // A light yellow flash
+            setTimeout(() => {
+                taskRow.style.backgroundColor = '';
+            }, 400);
+            return;
+        }
+    }
         // Block interaction with temp tasks (this logic remains the same)
         if (taskId.startsWith('temp_') && controlType !== 'open-sidebar') {
             return;
@@ -2965,34 +2978,35 @@ async function handleTaskCompletion(task, taskRowEl) {
     }
 }
 
+/**
+ * Moves a task to a different section by deleting the old doc and creating a new one.
+ * This is now fully collaboration-ready.
+ * @param {string} taskId The ID of the task to move.
+ * @param {string} targetSectionId The ID of the destination section.
+ */
 async function moveTaskToSection(taskId, targetSectionId) {
-    // 1. Get all necessary data objects first.
+    if (!currentProjectRef) return console.error("Cannot move task: Project reference is missing.");
+
     const { task: taskToMove, section: sourceSection } = findTaskAndSection(taskId);
-    // FIX: Get the full target section object, not just the ID.
     const targetSection = findSectionById(targetSectionId);
-    
-    // 2. Improved validation.
+
     if (!taskToMove || !sourceSection || !targetSection || sourceSection.id === targetSectionId) {
-        console.error("Cannot move task. Invalid source task, source section, or target section.");
-        return;
+        return console.error("Cannot move task. Invalid source or target.");
     }
     
-    // 3. Prepare the data for the new document.
+    // Prepare the data for the new document.
     const newTaskData = {
         ...taskToMove,
+        id: taskId, // Keep the same ID
         sectionId: targetSectionId,
-        id: taskId,
     };
     
-    // Note: If you need status-change logic during a generic move, you can add it here.
-    // This example keeps it a pure "move" operation.
-    
-    // 4. Define document references.
-    const sourceTaskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${sourceSection.id}/tasks/${taskId}`);
-    const newTaskRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}/projects/${currentProjectId}/sections/${targetSectionId}/tasks/${taskId}`);
-    
+    // Define correct references using the global project reference
+    const sourceTaskRef = doc(currentProjectRef, `sections/${sourceSection.id}/tasks/${taskId}`);
+    const newTaskRef = doc(currentProjectRef, `sections/${targetSectionId}/tasks/${taskId}`);
+
     try {
-        // 5. Atomically delete the old document and create the new one.
+        // Atomically delete the old doc and create the new one with the same ID.
         const batch = writeBatch(db);
         batch.delete(sourceTaskRef);
         batch.set(newTaskRef, newTaskData);
