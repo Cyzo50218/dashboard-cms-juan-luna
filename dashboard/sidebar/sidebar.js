@@ -111,6 +111,37 @@ function updateUserPermissions(projectData, userId) {
     userCanEditProject = isMemberWithEditPermission || isSuperAdmin || isAdminUser;
 }
 
+/**
+ * Checks if a specific field in the sidebar is editable for the current user.
+ * It checks for admin rights, then task assignment, and finally column-specific rules.
+ * @param {string} fieldName - The name of the field to check (e.g., "Assignee", "Costs", "Status").
+ * @returns {boolean} - True if the field is editable.
+ */
+function isSidebarFieldEditable(fieldName) {
+    // Rule 1: Project Admins/Editors can always edit any field.
+    if (userCanEditProject) {
+        return true;
+    }
+    
+    // Rule 2: If the user is NOT an admin, check if they have permission to edit this task at all.
+    // (This checks if they are an assigned Viewer/Commentator).
+    if (!canUserEditCurrentTask()) {
+        return false;
+    }
+    
+    // Rule 3: For assigned Viewers, check the project's columnRules.
+    const rules = currentProject.columnRules || [];
+    const columnRule = rules.find(rule => rule.name === fieldName);
+    
+    // If a rule exists for this field and it's set to restricted, block the edit.
+    if (columnRule && columnRule.isRestricted) {
+        console.log(`[Permissions] Edit blocked for field "${fieldName}" due to column rule.`);
+        return false;
+    }
+    
+    // If all checks pass, the assigned user is allowed to edit this field.
+    return true;
+}
 function canUserEditCurrentTask() {
     if (!currentTask) return false;
     // Rule 1: Admins and Editors can always edit.
@@ -626,9 +657,9 @@ function renderTaskFields(task) {
     // 1. RENDER ALL FIELDS (This part builds the static view)
     // =======================================================
     const currentProjectTitle = currentProject.title || '...';
-    appendFieldToTable(tbody, 'project', 'Project', `<span>${currentProjectTitle}</span>`, 'project');
-    appendFieldToTable(tbody, 'assignees', 'Assignee', renderAssigneeValue(task.assignees), 'assignee');
-    appendFieldToTable(tbody, 'dueDate', 'Due Date', renderDateValue(task.dueDate), 'date');
+    appendFieldToTable(tbody, 'project', 'Project', `<span>${currentProjectTitle}</span>`, 'project', isSidebarFieldEditable('Project'));
+    appendFieldToTable(tbody, 'assignees', 'Assignee', renderAssigneeValue(task.assignees), 'assignee', isSidebarFieldEditable('Assignee'));
+    appendFieldToTable(tbody, 'dueDate', 'Due Date', renderDateValue(task.dueDate), 'date', isSidebarFieldEditable('Due Date'));
     
     const priorityValue = task.priority;
     let priorityHTML = '<span>Not set</span>';
@@ -636,7 +667,7 @@ function renderTaskFields(task) {
         let priorityColor = currentProject.customPriorities?.find(p => p.name === priorityValue)?.color || defaultPriorityColors[priorityValue];
         priorityHTML = createTag(priorityValue, priorityColor);
     }
-    appendFieldToTable(tbody, 'priority', 'Priority', priorityHTML, 'priority');
+    appendFieldToTable(tbody, 'priority', 'Priority', priorityHTML, 'priority', isSidebarFieldEditable('Priority'));
     
     const statusValue = task.status;
     let statusHTML = '<span>Not set</span>';
@@ -644,7 +675,7 @@ function renderTaskFields(task) {
         let statusColor = currentProject.customStatuses?.find(s => s.name === statusValue)?.color || defaultStatusColors[statusValue];
         statusHTML = createTag(statusValue, statusColor);
     }
-    appendFieldToTable(tbody, 'status', 'Status', statusHTML, 'status');
+    appendFieldToTable(tbody, 'status', 'Status', statusHTML, 'status', isSidebarFieldEditable('Status'));
     
     currentProject.customColumns?.forEach(col => {
         const value = task.customFields ? task.customFields[col.id] : null;
@@ -659,7 +690,7 @@ function renderTaskFields(task) {
                 displayHTML = `<span>${value}</span>`;
             }
         }
-        appendFieldToTable(tbody, `custom-${col.id}`, col.name, displayHTML, 'custom-field');
+        appendFieldToTable(tbody, `custom-${col.id}`, col.name, displayHTML, 'custom-field', isSidebarFieldEditable(col.name));
     });
     
     table.appendChild(tbody);
@@ -674,6 +705,10 @@ function renderTaskFields(task) {
         const key = control.dataset.key;
         const controlType = control.dataset.control;
         
+        if (!isSidebarFieldEditable(label)) {
+         // Silently return, as the .is-readonly class already provides visual feedback.
+            return;
+        }
         switch (controlType) {
             case 'project':
             case 'assignee': {
