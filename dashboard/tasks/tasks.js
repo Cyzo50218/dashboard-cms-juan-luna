@@ -14,6 +14,7 @@ import {
     where,
     getDocs,
     doc,
+    updateDoc,
     runTransaction,
     collectionGroup
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
