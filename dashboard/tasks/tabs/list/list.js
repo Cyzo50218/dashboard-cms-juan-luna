@@ -2979,8 +2979,8 @@ async function handleTaskCompletion(task, taskRowEl) {
 }
 
 /**
- * Moves a task to a different section by deleting the old doc and creating a new one.
- * This is now fully collaboration-ready.
+ * Moves a task to a different section. If the target section is the "Completed"
+ * section, it also updates the task's status.
  * @param {string} taskId The ID of the task to move.
  * @param {string} targetSectionId The ID of the destination section.
  */
@@ -2988,25 +2988,39 @@ async function moveTaskToSection(taskId, targetSectionId) {
     if (!currentProjectRef) return console.error("Cannot move task: Project reference is missing.");
 
     const { task: taskToMove, section: sourceSection } = findTaskAndSection(taskId);
-    const targetSection = findSectionById(targetSectionId);
+    const targetSection = findSectionById(targetSectionId); // This gets the full section object
 
     if (!taskToMove || !sourceSection || !targetSection || sourceSection.id === targetSectionId) {
-        return console.error("Cannot move task. Invalid source or target.");
+        console.error("Cannot move task. Invalid source or target.");
+        return;
     }
     
-    // Prepare the data for the new document.
+    // Prepare the initial data for the new document.
     const newTaskData = {
         ...taskToMove,
-        id: taskId, // Keep the same ID
+        id: taskId,
         sectionId: targetSectionId,
     };
     
-    // Define correct references using the global project reference
+    // --- THE NEW LOGIC IS HERE ---
+    // Check if the destination section is a 'completed' type.
+    // This assumes your "Completed" section has a property { sectionType: 'completed' }
+    if (targetSection.sectionType === 'completed') {
+        console.log(`Task moved to 'Completed' section. Updating status.`);
+        
+        // If the task isn't already completed, save its current status for potential reversal.
+        if (newTaskData.status !== 'Completed') {
+            newTaskData.previousStatus = newTaskData.status;
+        }
+        // Set the new status to 'Completed'.
+        newTaskData.status = 'Completed';
+    }
+    // --- END OF NEW LOGIC ---
+
     const sourceTaskRef = doc(currentProjectRef, `sections/${sourceSection.id}/tasks/${taskId}`);
-    const newTaskRef = doc(currentProjectRef, `sections/${targetSectionId}/tasks/${taskId}`);
+    const newTaskRef = doc(currentProjectRef, `sections/${targetSection.id}/tasks/${taskId}`);
 
     try {
-        // Atomically delete the old doc and create the new one with the same ID.
         const batch = writeBatch(db);
         batch.delete(sourceTaskRef);
         batch.set(newTaskRef, newTaskData);
