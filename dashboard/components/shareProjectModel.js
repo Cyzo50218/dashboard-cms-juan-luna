@@ -664,7 +664,7 @@ async function handleInvite(modal, projectRef) {
   const batch = writeBatch(db);
   const newPendingInvites = [];
   let successfulEmailSends = 0;
-  let membersAdded = 0;
+  let membersAddedOrUpdated = 0;
   const failedEmails = [];
 
   // --- Loop Through Emails and Process Invitations ---
