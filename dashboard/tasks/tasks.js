@@ -7,14 +7,14 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  getFirestore,
-  collection,
-  query,
-  where,
-  getDocs,
-  doc,
-  runTransaction,
-  collectionGroup
+    getFirestore,
+    collection,
+    query,
+    where,
+    getDocs,
+    doc,
+    runTransaction,
+    collectionGroup
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "/services/firebase-config.js";
 
@@ -37,272 +37,331 @@ let currentTabCleanup = null;
  * @param {object} params - Route parameters from the main router.
  * @returns {function} The main cleanup function for the tasks section.
  */
-// File: /dashboard/tasks/tasks.js
 
 export function init(params) {
     // [FIX 1] Declare variables at the top of the function's scope.
     // This is crucial for currentTabCleanup to be accessible by all inner functions.
     let currentTabCleanup = null;
     let tabClickListener = null;
-    
+
     // --- 1. Get Parameters and DOM Elements ---
     // Inside your export function init(params)
 
-// --- 1. Get Parameters and DOM Elements ---
-const { tabId = 'list', accountId, projectId } = params;
+    // --- 1. Get Parameters and DOM Elements ---
+    const { tabId = 'list', accountId, projectId } = params;
 
-const projectName = document.getElementById('project-name');
-const projectIconColor = document.getElementById('project-color');
-const shareButton = document.getElementById('share-project-btn');
+    const projectName = document.getElementById('project-name');
+    const projectIconColor = document.getElementById('project-color');
+    const shareButton = document.getElementById('share-project-btn');
+    const avatarStackContainer = document.getElementById('project-header-members');
 
-const tabs = document.querySelectorAll('.tab-link');
+    const tabs = document.querySelectorAll('.tab-link');
 
 
-    
+
     const customizeButton = document.querySelector('.customize-btn');
 
-/**
- * Sets a random Lucide icon on a specified icon element.
- * @param {HTMLElement} iconContainer - The parent element that holds the icon glyph.
- */
-function setRandomProjectIcon(iconContainer) {
-    // 1. Define a list of miscellaneous Lucide icon names you like.
-    // You can find more at https://lucide.dev/
-    const miscellaneousIcons = [
-        'anchor', 'archive', 'award', 'axe', 'banknote', 'beaker', 'bell',
-        'bomb', 'book', 'box', 'briefcase', 'building', 'camera', 'candy',
-        'clapperboard', 'clipboard', 'cloud', 'compass', 'cpu', 'crown',
-        'diamond', 'dice-5', 'drafting-compass', 'feather', 'flag', 'flame',
-        'folder', 'gem', 'gift', 'graduation-cap', 'hammer', 'hard-hat',
-        'heart-pulse', 'key-round', 'landmark', 'layers', 'leaf', 'lightbulb',
-        'map', 'medal', 'mouse-pointer', 'package', 'palette', 'plane',
-        'puzzle', 'rocket', 'shield', 'ship', 'sprout', 'star', 'swords',
-        'ticket', 'tractor', 'trophy', 'umbrella', 'wallet', 'wrench'
-    ];
-    
-    // 2. Find the icon element within the provided container.
-    // This makes the function reusable for any icon you want to randomize.
-    const iconGlyph = iconContainer.querySelector('.project-icon-glyph');
-    if (!iconGlyph) {
-        console.error("Could not find the '.project-icon-glyph' element inside the container.");
-        return;
-    }
-    
-    // 3. Pick a random icon name from the list.
-    const randomIndex = Math.floor(Math.random() * miscellaneousIcons.length);
-    const randomIconName = miscellaneousIcons[randomIndex];
-    
-    // 4. Update the data-lucide attribute on the icon element.
-    iconGlyph.setAttribute('data-lucide', randomIconName);
-    
-    // 5. Tell the Lucide library to render the new icon.
-    // This is a crucial step.
-    lucide.createIcons();
-}
+    /**
+     * Sets a random Lucide icon on a specified icon element.
+     * @param {HTMLElement} iconContainer - The parent element that holds the icon glyph.
+     */
+    function setRandomProjectIcon(iconContainer) {
+        // 1. Define a list of miscellaneous Lucide icon names you like.
+        // You can find more at https://lucide.dev/
+        const miscellaneousIcons = [
+            'anchor', 'archive', 'award', 'axe', 'banknote', 'beaker', 'bell',
+            'bomb', 'book', 'box', 'briefcase', 'building', 'camera', 'candy',
+            'clapperboard', 'clipboard', 'cloud', 'compass', 'cpu', 'crown',
+            'diamond', 'dice-5', 'drafting-compass', 'feather', 'flag', 'flame',
+            'folder', 'gem', 'gift', 'graduation-cap', 'hammer', 'hard-hat',
+            'heart-pulse', 'key-round', 'landmark', 'layers', 'leaf', 'lightbulb',
+            'map', 'medal', 'mouse-pointer', 'package', 'palette', 'plane',
+            'puzzle', 'rocket', 'shield', 'ship', 'sprout', 'star', 'swords',
+            'ticket', 'tractor', 'trophy', 'umbrella', 'wallet', 'wrench'
+        ];
 
-/**
- * Converts an HSL color string to a HEX color string.
- * Example: "hsl(210, 40%, 96%)" will be converted to "#f0f5f9"
- * @param {string} hslString The HSL color string.
- * @returns {string} The equivalent HEX color string.
- */
-function hslStringToHex(hslString) {
-    // Use a regular expression to extract the H, S, L values.
-    const hslValues = hslString.match(/\d+/g);
-    if (!hslValues || hslValues.length < 3) {
-        console.error("Invalid HSL string format:", hslString);
-        return null; // Return null or a default color
-    }
-    
-    let h = parseInt(hslValues[0]);
-    let s = parseInt(hslValues[1]);
-    let l = parseInt(hslValues[2]);
-    
-    // The conversion formula
-    l /= 100;
-    const a = s * Math.min(l, 1 - l) / 100;
-    const f = n => {
-        const k = (n + h / 30) % 12;
-        const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-        // Convert to 0-255 range, then to a 2-digit hex string
-        return Math.round(255 * color).toString(16).padStart(2, '0');
-    };
-    
-    return `#${f(0)}${f(8)}${f(4)}`;
-}
-
-/**
- * Fetches the data for the currently selected project in a single, one-time read.
- * uses the robust 'selectedProjectId' method.
- */
-async function fetchCurrentProjectData() {
-    const user = auth.currentUser;
-    if (!user) {
-        console.error("fetchCurrentProjectData failed: User not authenticated.");
-        throw new Error("User not authenticated.");
-    }
-    
-    // 1. Find the user's selected workspace to get the selectedProjectId from it.
-    const workspaceQuery = query(
-        collection(db, `users/${user.uid}/myworkspace`),
-        where("isSelected", "==", true)
-    );
-    const workspaceSnapshot = await getDocs(workspaceQuery);
-    
-    if (workspaceSnapshot.empty) {
-        console.warn("fetchCurrentProjectData: No selected workspace found for this user.");
-        throw new Error("No selected workspace found.");
-    }
-    
-    const workspaceDoc = workspaceSnapshot.docs[0];
-    const workspaceId = workspaceDoc.id;
-    const workspaceData = workspaceDoc.data();
-    
-    // 2. Get the target project ID from the workspace data.
-    const selectedProjectId = workspaceData.selectedProjectId;
-    if (!selectedProjectId) {
-        console.warn("fetchCurrentProjectData: The active workspace does not have a selected project.");
-        throw new Error("No selected project found.");
-    }
-    
-    // 3. Find the project document using a secure collectionGroup query.
-    // This query works because it aligns with your security rules.
-    const projectQuery = query(
-        collectionGroup(db, 'projects'),
-        where('projectId', '==', selectedProjectId),
-        where('memberUIDs', 'array-contains', user.uid)
-    );
-    const projectSnapshot = await getDocs(projectQuery);
-    
-    if (projectSnapshot.empty) {
-        console.error(`fetchCurrentProjectData: Could not find project with ID '${selectedProjectId}' or user lacks permission.`);
-        throw new Error("Selected project not found or permission denied.");
-    }
-    
-    const projectDoc = projectSnapshot.docs[0];
-    
-    // 4. Return all the necessary data.
-    console.log(`[fetchCurrentProjectData] Successfully fetched project: ${projectDoc.data().title}`);
-    return {
-        data: projectDoc.data(),
-        projectId: projectDoc.id,
-        workspaceId, // The ID of the user's active workspace
-        projectPath: projectDoc.ref.path // Returning the full path is very useful for subsequent writes
-    };
-}
-
-fetchCurrentProjectData()
-    .then(({ data, projectId, workspaceId }) => {
-        const user = auth.currentUser;
-        if (!user) return;
-
-        if (projectName && data.title) {
-const members = data.members || [];
-
-const isMemberWithEditPermission = members.some(
-    (member) =>
-    member.uid === user.uid &&
-    (member.role === "Project admin")
-);
-
-const isSuperAdmin = data.project_super_admin_uid === user.uid;
-const isAdminUser = data.project_admin_user === user.uid;
-
-// Role Checker.
-const userCanEdit = isMemberWithEditPermission || isSuperAdmin || isAdminUser;
-
-projectName.textContent = data.title;
-
-// Conditionally set UI properties based on the permission check.
-if (userCanEdit) {
-    // --- USER CAN EDIT ---
-    projectName.contentEditable = true;
-    projectName.style.cursor = "text";
-    projectName.title = "Click to edit the project name"; // Helpful tooltip
-    shareButton.classList.remove('display-none'); // Show button
-} else {
-    // --- USER CANNOT EDIT (Viewer, etc.) ---
-    projectName.contentEditable = false;
-    projectName.style.cursor = "default";
-    projectName.title = ""; // No tooltip needed
-    shareButton.classList.add('display-none'); // Hide button
-}
-
-if (userCanEdit) {
-    
-    
-    // The function to save the new title to Firestore.
-    const saveTitle = async () => {
-        const newTitle = projectName.textContent.trim();
-        
-        // Extra check: Do nothing if title is empty or unchanged.
-        if (!newTitle || newTitle === data.title) {
-            projectName.textContent = data.title; // Revert if left empty on blur
+        // 2. Find the icon element within the provided container.
+        // This makes the function reusable for any icon you want to randomize.
+        const iconGlyph = iconContainer.querySelector('.project-icon-glyph');
+        if (!iconGlyph) {
+            console.error("Could not find the '.project-icon-glyph' element inside the container.");
             return;
         }
-        
+
+        // 3. Pick a random icon name from the list.
+        const randomIndex = Math.floor(Math.random() * miscellaneousIcons.length);
+        const randomIconName = miscellaneousIcons[randomIndex];
+
+        // 4. Update the data-lucide attribute on the icon element.
+        iconGlyph.setAttribute('data-lucide', randomIconName);
+
+        // 5. Tell the Lucide library to render the new icon.
+        // This is a crucial step.
+        lucide.createIcons();
+    }
+
+    /**
+     * Converts an HSL color string to a HEX color string.
+     * Example: "hsl(210, 40%, 96%)" will be converted to "#f0f5f9"
+     * @param {string} hslString The HSL color string.
+     * @returns {string} The equivalent HEX color string.
+     */
+    function hslStringToHex(hslString) {
+        // Use a regular expression to extract the H, S, L values.
+        const hslValues = hslString.match(/\d+/g);
+        if (!hslValues || hslValues.length < 3) {
+            console.error("Invalid HSL string format:", hslString);
+            return null; // Return null or a default color
+        }
+
+        let h = parseInt(hslValues[0]);
+        let s = parseInt(hslValues[1]);
+        let l = parseInt(hslValues[2]);
+
+        // The conversion formula
+        l /= 100;
+        const a = s * Math.min(l, 1 - l) / 100;
+        const f = n => {
+            const k = (n + h / 30) % 12;
+            const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+            // Convert to 0-255 range, then to a 2-digit hex string
+            return Math.round(255 * color).toString(16).padStart(2, '0');
+        };
+
+        return `#${f(0)}${f(8)}${f(4)}`;
+    }
+
+    /**
+     * Fetches the data for the currently selected project in a single, one-time read.
+     * uses the robust 'selectedProjectId' method.
+     */
+    async function fetchCurrentProjectData() {
+        const user = auth.currentUser;
+        if (!user) {
+            console.error("fetchCurrentProjectData failed: User not authenticated.");
+            throw new Error("User not authenticated.");
+        }
+
+        // 1. Find the user's selected workspace to get the selectedProjectId from it.
+        const workspaceQuery = query(
+            collection(db, `users/${user.uid}/myworkspace`),
+            where("isSelected", "==", true)
+        );
+        const workspaceSnapshot = await getDocs(workspaceQuery);
+
+        if (workspaceSnapshot.empty) {
+            console.warn("fetchCurrentProjectData: No selected workspace found for this user.");
+            throw new Error("No selected workspace found.");
+        }
+
+        const workspaceDoc = workspaceSnapshot.docs[0];
+        const workspaceId = workspaceDoc.id;
+        const workspaceData = workspaceDoc.data();
+
+        // 2. Get the target project ID from the workspace data.
+        const selectedProjectId = workspaceData.selectedProjectId;
+        if (!selectedProjectId) {
+            console.warn("fetchCurrentProjectData: The active workspace does not have a selected project.");
+            throw new Error("No selected project found.");
+        }
+
+        // 3. Find the project document using a secure collectionGroup query.
+        // This query works because it aligns with your security rules.
+        const projectQuery = query(
+            collectionGroup(db, 'projects'),
+            where('projectId', '==', selectedProjectId),
+            where('memberUIDs', 'array-contains', user.uid)
+        );
+        const projectSnapshot = await getDocs(projectQuery);
+
+        if (projectSnapshot.empty) {
+            console.error(`fetchCurrentProjectData: Could not find project with ID '${selectedProjectId}' or user lacks permission.`);
+            throw new Error("Selected project not found or permission denied.");
+        }
+
+        const projectDoc = projectSnapshot.docs[0];
+
+        // 4. Return all the necessary data.
+        console.log(`[fetchCurrentProjectData] Successfully fetched project: ${projectDoc.data().title}`);
+        return {
+            data: projectDoc.data(),
+            projectId: projectDoc.id,
+            workspaceId, // The ID of the user's active workspace
+            projectPath: projectDoc.ref.path // Returning the full path is very useful for subsequent writes
+        };
+    }
+
+    async function fetchMemberProfiles(uids) {
+        if (!uids || uids.length === 0) return [];
         try {
-            const projectDocRef = doc(
-                db,
-                `users/${user.uid}/myworkspace/${workspaceId}/projects`,
-                projectId
-            );
-            
-            // The permission check is implicitly handled by the `if (userCanEdit)` block,
-            // but keeping it in the transaction is a good server-side practice for security rules.
-            await runTransaction(db, async (transaction) => {
-                transaction.update(projectDocRef, {
-                    title: newTitle,
-                });
-            });
-            console.log("Project title updated successfully.");
-            data.title = newTitle; // Update local data object to reflect the change
-        } catch (err) {
-            console.error("Failed to update project title:", err);
-            // Revert the optimistic UI update on failure
-            projectName.textContent = data.title;
+            // Fetch multiple documents efficiently with one request per document.
+            const userPromises = uids.map(uid => getDoc(doc(db, `users/${uid}`)));
+            const userDocs = await Promise.all(userPromises);
+            return userDocs.filter(d => d.exists()).map(d => ({ uid: d.id, ...d.data() }));
+        } catch (error) {
+            console.error("Error fetching member profiles:", error);
+            return [];
         }
-    };
-                // Save on blur
-            projectName.addEventListener("blur", saveTitle);
-            
-            // Save on Enter key (and prevent new line)
-            projectName.addEventListener("keydown", (e) => {
-                if (e.key === "Enter") {
-                    e.preventDefault(); // Prevent newline
-                    projectName.blur(); // Triggers blur and saves
+    }
+
+    function createAvatarStackHTML(assigneeIds, allUsers) {
+        if (!assigneeIds || assigneeIds.length === 0) {
+            return '';
+        }
+
+        const maxVisible = 5;
+        let visibleAssignees = assigneeIds;
+        let overflowCount = 0;
+
+        if (assigneeIds.length > maxVisible) {
+            visibleAssignees = assigneeIds.slice(0, maxVisible - 1);
+            overflowCount = assigneeIds.length - (maxVisible - 1);
+        }
+
+        const avatarsHTML = visibleAssignees.map((userId, index) => {
+            const user = allUsers.find(u => u.uid === userId);
+            if (!user) return '';
+
+            const zIndex = 50 - index;
+            const initials = (user.name || '?').split(' ').map(n => n[0]).join('').substring(0, 2);
+
+            if (user.avatar && user.avatar.startsWith('https://')) {
+                return `<div class="user-avatar-tasks" title="${user.name}" style="background-image: url(${user.avatar}); z-index: ${zIndex};"></div>`;
+            } else {
+                const bgColor = '#' + (user.uid || '000000').substring(0, 6); // Simple color from UID
+                return `<div class="user-avatar-tasks" title="${user.name}" style="background-color: ${bgColor}; color: white; z-index: ${zIndex};">${initials}</div>`;
+            }
+        }).join('');
+
+        let overflowHTML = '';
+        if (overflowCount > 0) {
+            const zIndex = 50 - maxVisible;
+            overflowHTML = `<div class="user-avatar-tasks overflow" style="z-index: ${zIndex};">+${overflowCount}</div>`;
+        }
+
+        return `<div class="avatar-stack">${avatarsHTML}${overflowHTML}</div>`;
+    }
+
+
+    fetchCurrentProjectData()
+        .then(async ({ data, projectId, workspaceId }) => {
+            const user = auth.currentUser;
+            if (!user) return;
+
+            if (projectName && data.title) {
+                const members = data.members || [];
+                const memberUIDs = data.members?.map(m => m.uid) || [];
+                const allUsers = await fetchMemberProfiles(memberUIDs);
+
+                const isMemberWithEditPermission = members.some(
+                    (member) =>
+                        member.uid === user.uid &&
+                        (member.role === "Project admin")
+                );
+
+            if(avatarStackContainer){
+                avatarStackContainer.innerHTML = createAvatarStackHTML(memberUIDs, allUsers);
+            }
+
+
+                const isSuperAdmin = data.project_super_admin_uid === user.uid;
+                const isAdminUser = data.project_admin_user === user.uid;
+
+                // Role Checker.
+                const userCanEdit = isMemberWithEditPermission || isSuperAdmin || isAdminUser;
+
+                projectName.textContent = data.title;
+
+                // Conditionally set UI properties based on the permission check.
+                if (userCanEdit) {
+                    // --- USER CAN EDIT ---
+                    projectName.contentEditable = true;
+                    projectName.style.cursor = "text";
+                    projectName.title = "Click to edit the project name"; // Helpful tooltip
+                    shareButton.classList.remove('display-none'); // Show button
+                } else {
+                    // --- USER CANNOT EDIT (Viewer, etc.) ---
+                    projectName.contentEditable = false;
+                    projectName.style.cursor = "default";
+                    projectName.title = ""; // No tooltip needed
+                    shareButton.classList.add('display-none'); // Hide button
                 }
-            });
-}
 
-        }
+                if (userCanEdit) {
+
+
+                    // The function to save the new title to Firestore.
+                    const saveTitle = async () => {
+                        const newTitle = projectName.textContent.trim();
+
+                        // Extra check: Do nothing if title is empty or unchanged.
+                        if (!newTitle || newTitle === data.title) {
+                            projectName.textContent = data.title; // Revert if left empty on blur
+                            return;
+                        }
+
+                        try {
+                            const projectDocRef = doc(
+                                db,
+                                `users/${user.uid}/myworkspace/${workspaceId}/projects`,
+                                projectId
+                            );
+
+                            // The permission check is implicitly handled by the `if (userCanEdit)` block,
+                            // but keeping it in the transaction is a good server-side practice for security rules.
+                            await runTransaction(db, async (transaction) => {
+                                transaction.update(projectDocRef, {
+                                    title: newTitle,
+                                });
+                            });
+                            console.log("Project title updated successfully.");
+                            data.title = newTitle; // Update local data object to reflect the change
+                        } catch (err) {
+                            console.error("Failed to update project title:", err);
+                            // Revert the optimistic UI update on failure
+                            projectName.textContent = data.title;
+                        }
+                    };
+                    // Save on blur
+                    projectName.addEventListener("blur", saveTitle);
+
+                    // Save on Enter key (and prevent new line)
+                    projectName.addEventListener("keydown", (e) => {
+                        if (e.key === "Enter") {
+                            e.preventDefault(); // Prevent newline
+                            projectName.blur(); // Triggers blur and saves
+                        }
+                    });
+                }
+
+            }
             if (projectIconColor && data.color) {
-    // First, convert the HSL string from data.color to a HEX string
-    const hexColor = hslStringToHex(data.color);
-    
-    // Then, use the resulting HEX color
-    projectIconColor.style.backgroundColor = hexColor;
+                // First, convert the HSL string from data.color to a HEX string
+                const hexColor = hslStringToHex(data.color);
 
-    setRandomProjectIcon(projectIconColor);
-}
-    })
-    .catch((err) => {
-        console.error("Failed to load project header data:", err);
-        const projectName = document.getElementById("project-name");
-        if (projectName) {
-            projectName.textContent = "Error Loading Project";
-            projectName.style.color = "red";
-        }
-    });
+                // Then, use the resulting HEX color
+                projectIconColor.style.backgroundColor = hexColor;
+
+                setRandomProjectIcon(projectIconColor);
+            }
+        })
+        .catch((err) => {
+            console.error("Failed to load project header data:", err);
+            const projectName = document.getElementById("project-name");
+            if (projectName) {
+                projectName.textContent = "Error Loading Project";
+                projectName.style.color = "red";
+            }
+        });
 
 
     // Call the new, imported function and pass the event 'e'
     shareButton.addEventListener('click', (e) => {
         openShareModal(e);
     });
-    
+
     // --- 2. Define Core Functions ---
-    
+
     /**
      * Dynamically loads the HTML, CSS, and JS for a specific tab.
      * @param {string} targetTabId - The ID of the tab to load (e.g., 'list', 'board').
@@ -313,32 +372,32 @@ if (userCanEdit) {
             currentTabCleanup();
             currentTabCleanup = null;
         }
-        
+
         const container = document.getElementById('tab-content-container');
         if (!container) return;
-        
+
         container.innerHTML = '<div class="section-loader"></div>';
         document.getElementById('tab-specific-css')?.remove();
-        
+
         const htmlPath = `/dashboard/tasks/tabs/${targetTabId}/${targetTabId}.html`;
         const cssPath = `/dashboard/tasks/tabs/${targetTabId}/${targetTabId}.css`;
         const jsPath = `/dashboard/tasks/tabs/${targetTabId}/${targetTabId}.js?v=${new Date().getTime()}`;
-        
+
         try {
             const htmlRes = await fetch(htmlPath);
             if (!htmlRes.ok) throw new Error(`HTML not found for tab: ${targetTabId}`);
             const tabHtml = await htmlRes.text();
-            
+
             const link = document.createElement("link");
             link.rel = "stylesheet";
             link.href = cssPath;
             link.id = "tab-specific-css";
             document.head.appendChild(link);
-            
+
             const tabModule = await import(jsPath);
-            
+
             container.innerHTML = tabHtml;
-            
+
             if (tabModule.init) {
                 // Store the cleanup function for the NEWLY loaded tab
                 currentTabCleanup = tabModule.init({ accountId, projectId });
@@ -346,7 +405,7 @@ if (userCanEdit) {
         } catch (err) {
             let userMessage = `<p>An unexpected error occurred while loading the <strong>${targetTabId}</strong> tab.</p>`;
             let logMessage = `Failed to load tab '${targetTabId}':`;
-            
+
             if (err.message.startsWith('HTML not found for tab')) {
                 userMessage = `<p>Could not load the necessary HTML file for the <strong>${targetTabId}</strong> tab.</p>`;
                 logMessage = `[HTML Load Error] Failed to fetch ${htmlPath}.`;
@@ -357,12 +416,12 @@ if (userCanEdit) {
                 userMessage = `<p>Could not load the necessary script file for the <strong>${targetTabId}</strong> tab.</p>`;
                 logMessage = `[JS Load Error] The JavaScript module at ${jsPath} could not be fetched (e.g., 404 Not Found).`;
             }
-            
+
             container.innerHTML = userMessage;
             console.error(logMessage, err);
         }
     }
-    
+
     /**
      * Updates the 'active' class on the tab navigation links.
      * @param {string} targetTabId - The ID of the tab to highlight.
@@ -372,34 +431,34 @@ if (userCanEdit) {
             tab.classList.toggle('active', tab.getAttribute('data-tab') === targetTabId);
         });
     }
-    
+
     // --- 3. Attach Event Listeners ---
-    
+
     // Define the click listener function
     tabClickListener = (event) => {
         event.preventDefault();
         const currentTab = document.querySelector('.tab-link.active')?.getAttribute('data-tab');
         const newTabId = event.currentTarget.getAttribute('data-tab');
-        
+
         // Prevent redundant loading
         if (newTabId && newTabId !== currentTab) {
             const newUrl = `/tasks/${accountId}/${newTabId}/${projectId}`;
             history.pushState({ path: newUrl }, '', newUrl);
-            
+
             setActiveTabLink(newTabId);
             loadTabContent(newTabId);
         }
     };
-    
+
     tabs.forEach(tab => {
         tab.addEventListener('click', tabClickListener);
     });
-    
+
     // --- 4. Initial Load ---
     // This now runs correctly after all functions and variables are defined.
     setActiveTabLink(tabId);
     loadTabContent(tabId); // Load the content for the initial tab from the URL.
-    
+
     // --- 5. Return the Main Cleanup Function ---
     // This cleans up the tasks section itself when navigating away (e.g., to 'home').
     return function cleanup() {
