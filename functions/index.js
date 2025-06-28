@@ -1,13 +1,20 @@
-const functions = require("firebase-functions");
-const { defineSecret } = require("firebase-functions/params");
-const sgMail = require("@sendgrid/mail");
+/* eslint-disable object-curly-spacing, indent, no-undef, max-len, quotes, comma-dangle, no-unused-vars, no-trailing-spaces, eol-last */
+import { onCall } from "firebase-functions/v2/https";
+import { defineSecret } from "firebase-functions/params";
+import { initializeApp } from "firebase-admin/app";
+import sgMail from "@sendgrid/mail";
 
-// Setup secret securely
-const sendgridApiKey = defineSecret("SENDGRID_API_KEY");
+// Init Firebase Admin SDK
+initializeApp();
 
-exports.sendEmailInvitation = functions
-  .region("us-central1")
-  .https.onCall({ secrets: [sendgridApiKey] }, async (request) => {
+export const sendgridApiKey = defineSecret("SENDGRID_API_KEY_EMAIL_INVITATION");
+
+export const sendEmailInvitation = onCall(
+  {
+    region: "us-central1",
+    secrets: [sendgridApiKey],
+  },
+  async (request) => {
     // Auth check
     if (!request.auth) {
       throw new functions.https.HttpsError(
@@ -32,14 +39,14 @@ exports.sendEmailInvitation = functions
     const inviterEmail = request.auth.token.email;
     const recipientName = data.recipientName || recipientEmail.split("@")[0];
 
-    sgMail.setApiKey(sendgridApiKey.value());
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY_EMAIL_INVITATION);
 
   // --- SendGrid Message Object ---
   const msg = {
     to: recipientEmail,
     from: {
       name: 'Juan Luna Collections',
-      email: 'collection@juanlunacollections.com' // Your verified SendGrid sender
+      email: 'collection@juanlunacollections.com' 
     },
     subject: `${inviterName} has invited you to collaborate on ${projectName}`,
     html: `<!DOCTYPE html>

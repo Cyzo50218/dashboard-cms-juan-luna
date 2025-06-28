@@ -4,7 +4,8 @@ module.exports = {
     node: true,
   },
   parserOptions: {
-    "ecmaVersion": 2018,
+    ecmaVersion: "latest",
+    sourceType: "module",
   },
   extends: [
     "eslint:recommended",
@@ -21,7 +22,11 @@ module.exports = {
       env: {
         mocha: true,
       },
-      rules: {},
+       rules: {
+    "object-curly-spacing": ["error", "never"],
+    indent: ["error", 2],
+    semi: ["error", "always"],
+  },
     },
   ],
   globals: {},

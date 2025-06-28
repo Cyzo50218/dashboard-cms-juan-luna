@@ -16,7 +16,7 @@ const auth = getAuth(app);
 const db = getFirestore(app, "juanluna-cms-01");
 
 const functions = getFunctions(app); 
-    const sendEmailInvitation = httpsCallable(functions, 'sendEmailInvitation');
+    const sendEmailInvitationV2 = httpsCallable(functions, 'sendEmailInvitation');
 
 let isModalOpen = false;
 let modal = null;
@@ -561,7 +561,7 @@ async function handleInvite(modal, projectRef) {
 
                 // b. THEN, call the Cloud Function to send the email.
                 console.log(`Sending invitation to new user: ${lowerEmail}`);
-                await sendEmailInvitation({
+                await sendEmailInvitationV2({
                     email: lowerEmail,
                     projectName: projectData.name,
                     invitationUrl: invitationUrl
