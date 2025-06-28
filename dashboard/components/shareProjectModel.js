@@ -381,6 +381,7 @@ function setupEventListeners(modal, projectRef) {
       return;
     }
 
+    // ✅ We will still get this list, but we'll use it to add a visual tag, not to filter.
     const allProjectEmails = getSanitizedProjectEmails();
 
     const userProfilesMapRaw = modal.dataset.userProfilesMap || "{}";
@@ -393,10 +394,10 @@ function setupEventListeners(modal, projectRef) {
       return;
     }
 
+    // ✅ FIXED: The filter no longer removes existing project members.
     const filteredUsers = Object.values(userProfilesMap).filter(
       (user) =>
         user.email &&
-        !allProjectEmails.includes(user.email.toLowerCase()) &&
         (user.name.toLowerCase().includes(query) ||
           user.email.toLowerCase().includes(query))
     );
@@ -407,11 +408,21 @@ function setupEventListeners(modal, projectRef) {
         const item = document.createElement("a");
         item.href = "#";
         item.className = "dropdown-item";
-        item.innerHTML = `<strong>${user.name}</strong><span style="color:#666; margin-left:8px;">${user.email}</span>`;
+
+        // ✅ ENHANCEMENT: Add a "(member)" tag if user is already in the project.
+        const isAlreadyMember = allProjectEmails.includes(user.email.toLowerCase());
+        const memberIndicator = isAlreadyMember 
+            ? '<span style="color:#666; margin-left:8px; font-style: italic;">(member)</span>' 
+            : '';
+
+        item.innerHTML = `<strong>${user.name}</strong><span style="color:#666; margin-left:8px;">${user.email}</span>${memberIndicator}`;
+        
         item.addEventListener("click", (e) => {
           e.preventDefault();
           addEmailTag(user.email);
           searchDropdown.classList.add("hidden");
+          // Clear the input after selection for a better user experience
+          emailInput.value = ""; 
         });
         searchDropdown.appendChild(item);
       });
@@ -629,7 +640,7 @@ async function handleInvite(modal, projectRef) {
   const emailInput = modal.querySelector("#shareproject-email-input");
   const lastEmail = emailInput.value.trim();
   if (lastEmail && !invitedEmails.map(e => e.toLowerCase()).includes(lastEmail.toLowerCase())) {
-      invitedEmails.push(lastEmail);
+    invitedEmails.push(lastEmail);
   }
 
   // Add loading state
@@ -646,7 +657,6 @@ async function handleInvite(modal, projectRef) {
     projectData = {};
   }
 
-  // If still empty, fetch directly from Firestore
   if (!projectData || Object.keys(projectData).length === 0) {
     console.warn("Project data not found in modal, fetching directly");
     const projectSnap = await getDoc(projectRef);
@@ -660,14 +670,12 @@ async function handleInvite(modal, projectRef) {
     .querySelector("#shareproject-selected-role")
     .textContent.trim();
 
-  // --- Prepare a Firestore Batch and Tracking Arrays ---
   const batch = writeBatch(db);
-  const newPendingInvites = [];
+  const newPendingInvitesForArrayUnion = []; // Renamed for clarity
   let successfulEmailSends = 0;
   let membersAddedOrUpdated = 0;
   const failedEmails = [];
 
-  // --- Loop Through Emails and Process Invitations ---
   for (const email of invitedEmails) {
     const lowerEmail = email.toLowerCase();
     const existingUserUID = Object.keys(userProfilesMap).find(
@@ -675,76 +683,101 @@ async function handleInvite(modal, projectRef) {
     );
 
     if (existingUserUID) {
-      // User is an existing workspace member.
+      // --- Case 1 & 2: User is an existing workspace member. ---
       const memberInProject = (projectData.members || []).find(
         (m) => m.uid === existingUserUID
       );
 
-      // ✅ MODIFIED: Logic to handle existing members
       if (memberInProject) {
-        // --- Case 1: EXISTING PROJECT MEMBER ---
-        // If their role is different, update it.
+        // Is already a member, update their role if it's different.
         if (memberInProject.role !== role) {
           const updatedMemberData = { ...memberInProject, role: role };
-          // Atomically remove the old record and add the new one
           batch.update(projectRef, { members: arrayRemove(memberInProject) });
           batch.update(projectRef, { members: arrayUnion(updatedMemberData) });
           membersAddedOrUpdated++;
         }
       } else {
-        // --- Case 2: EXISTING WORKSPACE USER (but not in this project) ---
-        // Add them to the project.
+        // Is a workspace user but not in the project, add them.
         batch.update(projectRef, {
           members: arrayUnion({ uid: existingUserUID, role: role }),
         });
         membersAddedOrUpdated++;
       }
     } else {
-      // --- New User Email Invitation ---
-      try {
-        const newInvitationRef = doc(collection(db, "InvitedProjects"));
-        const invitationId = newInvitationRef.id;
-        const invitationUrl = `https://your-site-name.vercel.app/invitation/${invitationId}`;
+      // User is not in the workspace. Check for an existing pending invitation.
+      // ✅ START: NEW LOGIC
+      const existingPendingInvite = (projectData.pendingInvites || []).find(
+        p => p.email.toLowerCase() === lowerEmail
+      );
 
-        console.log(`Sending invitation to new user: ${lowerEmail}`);
-        await sendEmailInvitation({
-          email: lowerEmail,
-          projectName: projectData.title || "Unnamed Project",
-          invitationUrl: invitationUrl,
-        });
+      if (existingPendingInvite) {
+        // --- Case 3: EXISTING PENDING INVITATION ---
+        // Update the role if it's different.
+        if (existingPendingInvite.role !== role) {
+          const updatedPendingData = { ...existingPendingInvite, role: role };
+          
+          // 1. Update the record in the project's 'pendingInvites' array
+          batch.update(projectRef, { pendingInvites: arrayRemove(existingPendingInvite) });
+          batch.update(projectRef, { pendingInvites: arrayUnion(updatedPendingData) });
+          
+          // 2. Also update the role in the main 'InvitedProjects' collection document
+          if (existingPendingInvite.invitationId) {
+            const invitationDocRef = doc(db, "InvitedProjects", existingPendingInvite.invitationId);
+            batch.update(invitationDocRef, { role: role });
+          }
+          membersAddedOrUpdated++;
+        }
+      } else {
+        // --- Case 4: TRULY NEW USER INVITATION ---
+        try {
+          const newInvitationRef = doc(collection(db, "InvitedProjects"));
+          const invitationId = newInvitationRef.id;
+          const invitationUrl = `https://your-site-name.vercel.app/invitation/${invitationId}`;
 
-        batch.set(newInvitationRef, {
-          projectId: projectRef.id,
-          projectName: projectData.title || "Unnamed Project",
-          invitedEmail: lowerEmail,
-          role: role,
-          invitedAt: serverTimestamp(),
-          status: "pending",
-          invitedBy: {
-            uid: inviter.uid,
-            name: inviter.displayName,
-            email: inviter.email,
-          },
-        });
+          console.log(`Sending invitation to new user: ${lowerEmail}`);
+          await sendEmailInvitation({
+            email: lowerEmail,
+            projectName: projectData.title || "Unnamed Project",
+            invitationUrl: invitationUrl,
+          });
 
-        newPendingInvites.push({
-          email: lowerEmail,
-          role: role,
-          invitedAt: new Date().toISOString(),
-          invitationId: invitationId,
-        });
+          // Create the main invitation document
+          batch.set(newInvitationRef, {
+            projectId: projectRef.id,
+            projectName: projectData.title || "Unnamed Project",
+            invitedEmail: lowerEmail,
+            role: role,
+            invitedAt: serverTimestamp(),
+            status: "pending",
+            invitedBy: {
+              uid: inviter.uid,
+              name: inviter.displayName,
+              email: inviter.email,
+            },
+          });
 
-        successfulEmailSends++;
-      } catch (error) {
-        console.error(`Failed to send email to ${lowerEmail}:`, error);
-        failedEmails.push(lowerEmail);
+          // Prepare the object to be added to the project's 'pendingInvites' array
+          newPendingInvitesForArrayUnion.push({
+            email: lowerEmail,
+            role: role,
+            invitedAt: new Date().toISOString(),
+            invitationId: invitationId, // Store the ID for future reference
+          });
+
+          successfulEmailSends++;
+        } catch (error) {
+          console.error(`Failed to send email to ${lowerEmail}:`, error);
+          failedEmails.push(lowerEmail);
+        }
       }
+      // ✅ END: NEW LOGIC
     }
   }
 
-  if (newPendingInvites.length > 0) {
+  // This now only adds TRULY new invites to the project document's array
+  if (newPendingInvitesForArrayUnion.length > 0) {
     batch.update(projectRef, {
-      pendingInvites: arrayUnion(...newPendingInvites),
+      pendingInvites: arrayUnion(...newPendingInvitesForArrayUnion),
     });
   }
 
@@ -752,7 +785,6 @@ async function handleInvite(modal, projectRef) {
     await batch.commit();
     console.log("Batch commit successful. Members and invitations updated.");
 
-    // ✅ MODIFIED: Feedback message is more accurate
     let feedbackMessage = "";
     if (membersAddedOrUpdated > 0)
       feedbackMessage += `${membersAddedOrUpdated} member(s) were added or had their roles updated.\n`;
@@ -768,7 +800,7 @@ async function handleInvite(modal, projectRef) {
     }
 
     invitedEmails = [];
-    renderEmailTags();
+    renderEmailTags(); // Assuming this function clears and re-renders tags
     closeModal();
   } catch (error) {
     console.error("Error committing invites to database:", error);
@@ -776,12 +808,10 @@ async function handleInvite(modal, projectRef) {
       "A database error occurred while saving the invitations. Please try again."
     );
   } finally {
-    // Reset button state
     inviteBtn.disabled = false;
     inviteBtn.textContent = originalBtnText;
   }
 }
-
 function renderEmailTags() {
   if (!modal) return;
   const container = modal.querySelector("#shareproject-email-tags");
