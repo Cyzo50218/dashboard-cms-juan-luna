@@ -142,39 +142,39 @@ export function init(params) {
     /**
  * Fetches the data and reference for the currently selected project.
  */
-async function fetchCurrentProjectData() {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated.");
+    async function fetchCurrentProjectData() {
+        const user = auth.currentUser;
+        if (!user) throw new Error("User not authenticated.");
 
-    // 1. Find the selected workspace to get the selectedProjectId
-    const workspaceQuery = query(collection(db, `users/${user.uid}/myworkspace`), where("isSelected", "==", true));
-    const workspaceSnapshot = await getDocs(workspaceQuery);
-    if (workspaceSnapshot.empty) throw new Error("No selected workspace found.");
-    
-    const workspaceDoc = workspaceSnapshot.docs[0];
-    const workspaceData = workspaceDoc.data();
-    const selectedProjectId = workspaceData.selectedProjectId;
-    if (!selectedProjectId) throw new Error("No selected project found in workspace.");
+        // 1. Find the selected workspace to get the selectedProjectId
+        const workspaceQuery = query(collection(db, `users/${user.uid}/myworkspace`), where("isSelected", "==", true));
+        const workspaceSnapshot = await getDocs(workspaceQuery);
+        if (workspaceSnapshot.empty) throw new Error("No selected workspace found.");
 
-    // 2. Find the project document using a secure collectionGroup query
-    const projectQuery = query(
-        collectionGroup(db, 'projects'),
-        where('projectId', '==', selectedProjectId),
-        where('memberUIDs', 'array-contains', user.uid)
-    );
-    const projectSnapshot = await getDocs(projectQuery);
-    if (projectSnapshot.empty) throw new Error("Selected project not found or permission denied.");
+        const workspaceDoc = workspaceSnapshot.docs[0];
+        const workspaceData = workspaceDoc.data();
+        const selectedProjectId = workspaceData.selectedProjectId;
+        if (!selectedProjectId) throw new Error("No selected project found in workspace.");
 
-    const projectDoc = projectSnapshot.docs[0];
+        // 2. Find the project document using a secure collectionGroup query
+        const projectQuery = query(
+            collectionGroup(db, 'projects'),
+            where('projectId', '==', selectedProjectId),
+            where('memberUIDs', 'array-contains', user.uid)
+        );
+        const projectSnapshot = await getDocs(projectQuery);
+        if (projectSnapshot.empty) throw new Error("Selected project not found or permission denied.");
 
-    // 3. Return all the necessary data, including the reference itself
-    return {
-        data: projectDoc.data(),
-        projectId: projectDoc.id,
-        workspaceId: workspaceDoc.id,
-        projectRef: projectDoc.ref // <-- THE KEY ADDITION
-    };
-}
+        const projectDoc = projectSnapshot.docs[0];
+
+        // 3. Return all the necessary data, including the reference itself
+        return {
+            data: projectDoc.data(),
+            projectId: projectDoc.id,
+            workspaceId: workspaceDoc.id,
+            projectRef: projectDoc.ref // <-- THE KEY ADDITION
+        };
+    }
 
     async function fetchMemberProfiles(uids) {
         if (!uids || uids.length === 0) return [];
@@ -195,162 +195,191 @@ async function fetchCurrentProjectData() {
  * @param {object[]} allUsers - The array of all project members' full profiles.
  * @returns {string} The complete HTML string for the avatar stack.
  */
-function createAvatarStackHTML(assigneeIds, allUsers) {
-    if (!assigneeIds || assigneeIds.length === 0) {
-        return '';
-    }
+    function createAvatarStackHTML(assigneeIds, allUsers) {
+        if (!assigneeIds || assigneeIds.length === 0) {
+            return '';
+        }
 
-    const maxVisible = 5;
-    let visibleAssignees = assigneeIds;
-    let overflowCount = 0;
+        const maxVisible = 5;
+        let visibleAssignees = assigneeIds;
+        let overflowCount = 0;
 
-    if (assigneeIds.length > maxVisible) {
-        visibleAssignees = assigneeIds.slice(0, maxVisible - 1);
-        overflowCount = assigneeIds.length - (maxVisible - 1);
-    }
+        if (assigneeIds.length > maxVisible) {
+            visibleAssignees = assigneeIds.slice(0, maxVisible - 1);
+            overflowCount = assigneeIds.length - (maxVisible - 1);
+        }
 
-    const avatarsHTML = visibleAssignees.map((userId, index) => {
-        const user = allUsers.find(u => u.uid === userId);
-        if (!user) return '';
+        const avatarsHTML = visibleAssignees.map((userId, index) => {
+            const user = allUsers.find(u => u.uid === userId);
+            if (!user) return '';
 
-        const zIndex = 50 - index;
-        
-        // --- THE FIX IS HERE ---
-        if (user.avatar && user.avatar.startsWith('https://')) {
-            // Use a real <img> tag for better scaling and centering.
-            // The parent div provides the circular shape.
-            return `
+            const zIndex = 50 - index;
+
+            // --- THE FIX IS HERE ---
+            if (user.avatar && user.avatar.startsWith('https://')) {
+                // Use a real <img> tag for better scaling and centering.
+                // The parent div provides the circular shape.
+                return `
                 <div class="user-avatar-tasks" title="${user.name}" style="z-index: ${zIndex};">
                     <img src="${user.avatar}" alt="${user.name}">
                 </div>`;
-        } else {
-            // The fallback for initials remains the same.
-            const initials = (user.name || '?').split(' ').map(n => n[0]).join('').substring(0, 2);
-            const bgColor = '#' + (user.uid || '000000').substring(0, 6);
-            return `<div class="user-avatar-tasks" title="${user.name}" style="background-color: ${bgColor}; color: white; z-index: ${zIndex};">${initials}</div>`;
-        }
-    }).join('');
-
-    let overflowHTML = '';
-    if (overflowCount > 0) {
-        const zIndex = 50 - maxVisible;
-        overflowHTML = `<div class="user-avatar-tasks overflow" style="z-index: ${zIndex};">+${overflowCount}</div>`;
-    }
-
-    return `<div class="avatar-stack">${avatarsHTML}${overflowHTML}</div>`;
-}
-
-
- async function loadProjectHeader() {
-    try {
-        // Step 1: Fetch the project data and store the reference.
-        const projectContext = await fetchCurrentProjectData();
-        projectRef = projectContext.projectRef; // <-- Storing the correct reference
-        
-        const { data, projectId, workspaceId } = projectContext;
-        const user = auth.currentUser;
-        if (!user) return;
-
-        // Step 2: Render the UI with the fetched data.
-        if (projectName && data.title) {
-            const members = data.members || [];
-            const memberUIDs = data.members?.map(m => m.uid) || [];
-            const allUsers = await fetchMemberProfiles(memberUIDs); // Assuming fetchMemberProfiles is in scope
-
-            // Render the avatar stack if the container exists
-            const avatarStackContainer = document.getElementById('project-header-members'); 
-            if(avatarStackContainer){
-                avatarStackContainer.innerHTML = createAvatarStackHTML(memberUIDs, allUsers);
-            }
-
-            // Your permission logic remains the same
-            const isMemberWithEditPermission = members.some(m => m.uid === user.uid && m.role === "Project admin");
-            const isSuperAdmin = data.project_super_admin_uid === user.uid;
-            const isAdminUser = data.project_admin_user === user.uid;
-            const userCanEdit = isMemberWithEditPermission || isSuperAdmin || isAdminUser;
-
-            projectName.textContent = data.title;
-
-            // Conditionally set UI properties based on permissions
-            if (userCanEdit) {
-                projectName.contentEditable = true;
-                projectName.style.cursor = "text";
-                projectName.title = "Click to edit project name";
-                shareButton.classList.remove('display-none');
             } else {
-                projectName.contentEditable = false;
-                projectName.style.cursor = "default";
-                projectName.title = "";
-                shareButton.classList.add('display-none');
+                // The fallback for initials remains the same.
+                const initials = (user.name || '?').split(' ').map(n => n[0]).join('').substring(0, 2);
+                const bgColor = '#' + (user.uid || '000000').substring(0, 6);
+                return `<div class="user-avatar-tasks" title="${user.name}" style="background-color: ${bgColor}; color: white; z-index: ${zIndex};">${initials}</div>`;
+            }
+        }).join('');
+
+        let overflowHTML = '';
+        if (overflowCount > 0) {
+            const zIndex = 50 - maxVisible;
+            overflowHTML = `<div class="user-avatar-tasks overflow" style="z-index: ${zIndex};">+${overflowCount}</div>`;
+        }
+
+        return `<div class="avatar-stack">${avatarsHTML}${overflowHTML}</div>`;
+    }
+
+
+    async function loadProjectHeader() {
+        try {
+            // Step 1: Fetch the project data and store the reference.
+            const projectContext = await fetchCurrentProjectData();
+            projectRef = projectContext.projectRef; // <-- Storing the correct reference
+
+            const { data, projectId, workspaceId } = projectContext;
+            const user = auth.currentUser;
+            if (!user) return;
+
+            // Step 2: Render the UI with the fetched data.
+            if (projectName && data.title) {
+                const members = data.members || [];
+                const memberUIDs = data.members?.map(m => m.uid) || [];
+                const allUsers = await fetchMemberProfiles(memberUIDs); // Assuming fetchMemberProfiles is in scope
+
+                // Render the avatar stack if the container exists
+                const avatarStackContainer = document.getElementById('project-header-members');
+                if (avatarStackContainer) {
+                    avatarStackContainer.innerHTML = createAvatarStackHTML(memberUIDs, allUsers);
+                }
+
+                // Your permission logic remains the same
+                const isMemberWithEditPermission = members.some(m => m.uid === user.uid && m.role === "Project admin");
+                const isSuperAdmin = data.project_super_admin_uid === user.uid;
+                const isAdminUser = data.project_admin_user === user.uid;
+                const userCanEdit = isMemberWithEditPermission || isSuperAdmin || isAdminUser;
+
+                projectName.textContent = data.title;
+
+                // Conditionally set UI properties based on permissions
+                if (userCanEdit) {
+                    projectName.contentEditable = true;
+                    projectName.style.cursor = "text";
+                    projectName.title = "Click to edit project name";
+                    shareButton.classList.remove('display-none');
+                } else {
+                    projectName.contentEditable = false;
+                    projectName.style.cursor = "default";
+                    projectName.title = "";
+                    shareButton.classList.add('display-none');
+                }
+
+                // Remove any lingering listeners from previous page loads to prevent errors.
+                if (titleBlurListener) {
+                    projectName.removeEventListener("blur", titleBlurListener);
+                }
+                if (titleEnterListener) {
+                    projectName.removeEventListener("keydown", titleEnterListener);
+                }
+
+                // Only attach listeners if the user has permission.
+                if (userCanEdit) {
+                    // This listener handles the logic of saving the new title.
+                    titleBlurListener = async () => {
+                        const newTitle = projectName.textContent.trim();
+                        const originalTitle = data.title; // Use title from the initial load
+
+                        // If title is empty or unchanged, revert to original and do nothing.
+                        if (!newTitle || newTitle === originalTitle) {
+                            projectName.textContent = originalTitle;
+                            return;
+                        }
+
+                        try {
+                            const user = auth.currentUser;
+                            if (!user) throw new Error("User not authenticated for update.");
+
+                            // Step 1: Find the user's currently selected workspace to get the correct Project ID.
+                            const workspaceQuery = query(collection(db, `users/${user.uid}/myworkspace`), where("isSelected", "==", true));
+                            const workspaceSnapshot = await getDocs(workspaceQuery);
+                            if (workspaceSnapshot.empty) throw new Error("No selected workspace found.");
+
+                            const selectedProjectId = workspaceSnapshot.docs[0].data().selectedProjectId;
+                            if (!selectedProjectId) throw new Error("No project is selected in the workspace.");
+
+                            // Step 2: Find the specific project document using the ID we just found.
+                            const projectQuery = query(
+                                collectionGroup(db, 'projects'),
+                                where('projectId', '==', selectedProjectId),
+                                where('memberUIDs', 'array-contains', user.uid)
+                            );
+                            const projectSnapshot = await getDocs(projectQuery);
+                            if (projectSnapshot.empty) throw new Error("Project to update not found or permission denied.");
+
+                            const projectToUpdateRef = projectSnapshot.docs[0].ref;
+
+                            // Step 3: Perform the update on the document we just confirmed is the correct one.
+                            await updateDoc(projectToUpdateRef, { title: newTitle });
+
+                            console.log(`Project title updated to "${newTitle}" for projectId: ${selectedProjectId}`);
+                            data.title = newTitle; // Update local state to match the new title
+
+                        } catch (err) {
+                            console.error("Failed to update project title:", err);
+                            projectName.textContent = originalTitle; // Revert on error
+                            _200d_
+                        }
+                    };
+
+                    // This listener just triggers the save when Enter is pressed.
+                    titleEnterListener = (e) => {
+                        if (e.key === "Enter") {
+                            e.preventDefault();
+                            projectName.blur(); // Trigger the blur event to save.
+                        }
+                    };
+
+                    // Attach the new listeners.
+                    projectName.addEventListener("blur", titleBlurListener);
+                    projectName.addEventListener("keydown", titleEnterListener);
+                }
             }
 
-            // Attach event listeners ONLY if the user can edit
-            // NEW, CORRECTED CODE
-// First, remove any old listeners that might be lingering from a previous project
-if (titleBlurListener) {
-    projectName.removeEventListener("blur", titleBlurListener);
-}
-if (titleEnterListener) {
-    projectName.removeEventListener("keydown", titleEnterListener);
-}
-
-// Now, attach the new listeners ONLY if the user can edit
-if (userCanEdit) {
-    // Store the new listeners in our module-scoped variables
-    titleBlurListener = async () => {
-        const newTitle = projectName.textContent.trim();
-        if (!newTitle || newTitle === data.title) {
-            projectName.textContent = data.title;
-            return;
-        }
-        try {
-            await updateDoc(projectRef, { title: newTitle });
-            console.log("Project title updated successfully.");
-            data.title = newTitle; // Update local state
+            // Project Icon Color logic remains the same
+            if (projectIconColor && data.color) {
+                const hexColor = hslStringToHex(data.color);
+                projectIconColor.style.backgroundColor = hexColor;
+                setRandomProjectIcon(projectIconColor);
+            }
         } catch (err) {
-            console.error("Failed to update project title:", err);
-            projectName.textContent = data.title; // Revert on error
-        }
-    };
-
-    titleEnterListener = (e) => {
-        if (e.key === "Enter") {
-            e.preventDefault();
-            projectName.blur(); // Trigger the blur event to save
-        }
-    };
-
-    // Attach the new, stored listeners
-    projectName.addEventListener("blur", titleBlurListener);
-    projectName.addEventListener("keydown", titleEnterListener);
-}
-        }
-
-        // Project Icon Color logic remains the same
-        if (projectIconColor && data.color) {
-            const hexColor = hslStringToHex(data.color);
-            projectIconColor.style.backgroundColor = hexColor;
-            setRandomProjectIcon(projectIconColor);
-        }
-    } catch (err) {
-        console.error("Failed to load project header data:", err);
-        if (projectName) {
-            projectName.textContent = "Error Loading Project";
-            projectName.style.color = "red";
+            console.error("Failed to load project header data:", err);
+            if (projectName) {
+                projectName.textContent = "Error Loading Project";
+                projectName.style.color = "red";
+            }
         }
     }
-}
 
 
     // Call the new, imported function and pass the event 'e'
     shareButton.addEventListener('click', () => {
-    if (projectRef) {
-        // We call the imported function directly. It's guaranteed to exist.
-        openShareModal(projectRef);
-    } else {
-        console.error("Cannot open share modal: projectRef is not defined.");
-    }
-});
+        if (projectRef) {
+            // We call the imported function directly. It's guaranteed to exist.
+            openShareModal(projectRef);
+        } else {
+            console.error("Cannot open share modal: projectRef is not defined.");
+        }
+    });
 
     // --- 2. Define Core Functions ---
 
@@ -454,27 +483,27 @@ if (userCanEdit) {
     // --- 5. Return the Main Cleanup Function ---
     // This cleans up the tasks section itself when navigating away (e.g., to 'home').
     // NEW, CORRECTED CODE
-return function cleanup() {
-    console.log("Cleaning up 'tasks' section and its active tab...");
-    
-    // Clean up the last active tab's JS module
-    if (typeof currentTabCleanup === 'function') {
-        currentTabCleanup();
-    }
-    
-    // Clean up the listeners for the main tabs
-    tabs.forEach(tab => tab.removeEventListener('click', tabClickListener));
+    return function cleanup() {
+        console.log("Cleaning up 'tasks' section and its active tab...");
 
-    // Clean up the project title listeners to prevent stale updates
-    const projectNameEl = document.getElementById('project-name');
-    if (projectNameEl) {
-        if (titleBlurListener) {
-            projectNameEl.removeEventListener('blur', titleBlurListener);
+        // Clean up the last active tab's JS module
+        if (typeof currentTabCleanup === 'function') {
+            currentTabCleanup();
         }
-        if (titleEnterListener) {
-            projectNameEl.removeEventListener('keydown', titleEnterListener);
+
+        // Clean up the listeners for the main tabs
+        tabs.forEach(tab => tab.removeEventListener('click', tabClickListener));
+
+        // Clean up the project title listeners to prevent stale updates
+        const projectNameEl = document.getElementById('project-name');
+        if (projectNameEl) {
+            if (titleBlurListener) {
+                projectNameEl.removeEventListener('blur', titleBlurListener);
+            }
+            if (titleEnterListener) {
+                projectNameEl.removeEventListener('keydown', titleEnterListener);
+            }
         }
-    }
-};
+    };
 }
 
