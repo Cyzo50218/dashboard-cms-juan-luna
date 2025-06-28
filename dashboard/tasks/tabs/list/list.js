@@ -2686,7 +2686,7 @@ function initColumnResizing() {
         } else if (columnId === 'assignees') {
             columnSpecificMinWidth = 120;
         } else {
-            columnSpecificMinWidth = 150; // Default minimum width
+            columnSpecificMinWidth = 100; // Default minimum width
         }
         console.log(`[DEBUG] Resizing column '${columnId}' with a minimum width of ${columnSpecificMinWidth}px.`);
         // --- END MIRRORED LOGIC ---
