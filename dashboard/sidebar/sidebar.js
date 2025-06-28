@@ -362,40 +362,51 @@ window.TaskSidebar = (function() {
     }
 
     async function fetchEligibleMoveProjects(userId) {
-        if (!userId) return [];
-        // Use a Map to store projects by ID, preventing duplicates.
-        const eligibleProjectsMap = new Map();
+    if (!userId) return [];
+    const eligibleProjectsMap = new Map();
 
-        try {
-            // Use a collection group query to get all projects the user might have access to.
-            const allProjectsQuery = collectionGroup(db, 'projects');
-            const projectsSnapshot = await getDocs(allProjectsQuery);
+    try {
+        const allProjectsQuery = collectionGroup(db, 'projects');
+        const projectsSnapshot = await getDocs(allProjectsQuery);
 
-            projectsSnapshot.forEach(doc => {
-                const projectData = doc.data();
-                const projectId = doc.id;
+        projectsSnapshot.forEach(doc => {
+            const projectData = doc.data();
+            const projectId = doc.id;
 
-                // Condition 1: Is the user the owner of the project?
-                const isOwner = projectData.project_super_admin_uid === userId;
+            // --- THIS IS THE FIX ---
+            // Extract the workspaceId from the document's full path.
+            // The path looks like: "workspaces/workspace_id_123/projects/project_id_abc"
+            const pathParts = doc.ref.path.split('/');
+            const workspaceId = pathParts.length >= 2 ? pathParts[1] : null;
 
-                // Condition 2: Is the user a member with a valid role?
-                const memberInfo = projectData.members?.find(member => member.uid === userId);
-                const isEligibleMember = memberInfo && (memberInfo.role === 'Project admin' || memberInfo.role === 'Editor');
+            if (!workspaceId) {
+                console.warn("Could not determine workspaceId for project:", projectId);
+                return; // Skip this project if its path is unexpected
+            }
+            // --- END OF FIX ---
 
-                // If either condition is met and the project isn't already in our list, add it.
-                if ((isOwner || isEligibleMember) && !eligibleProjectsMap.has(projectId)) {
-                    eligibleProjectsMap.set(projectId, { id: projectId, ...projectData });
-                }
-            });
-            
-            // Convert the Map values back to an array.
-            return Array.from(eligibleProjectsMap.values());
 
-        } catch (error) {
-            console.error("Error fetching eligible projects for move:", error);
-            return []; // Return empty array on error
-        }
+            const isOwner = projectData.project_super_admin_uid === userId;
+            const memberInfo = projectData.members?.find(member => member.uid === userId);
+            const isEligibleMember = memberInfo && (memberInfo.role === 'Project admin' || memberInfo.role === 'Editor');
+
+            if ((isOwner || isEligibleMember) && !eligibleProjectsMap.has(projectId)) {
+                // Now, we add the extracted workspaceId to the object we save.
+                eligibleProjectsMap.set(projectId, {
+                    id: projectId,
+                    workspaceId: workspaceId, // Include the workspaceId
+                    ...projectData
+                });
+            }
+        });
+
+        return Array.from(eligibleProjectsMap.values());
+
+    } catch (error) {
+        console.error("Error fetching eligible projects for move:", error);
+        return [];
     }
+}
     
     async function fetchActiveWorkspace(userId) {
         const workspaceQuery = query(collection(db, `users/${userId}/myworkspace`), where("isSelected", "==", true), limit(1));
