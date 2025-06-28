@@ -300,6 +300,8 @@ window.TaskSidebar = (function() {
             const taskDoc = await getDoc(currentTaskRef);
             currentTask = { id: taskDoc.id, ...taskDoc.data() };
             
+            workspaceProjects = await fetchEligibleMoveProjects(currentUserId);
+
             // Fetch members and set permissions
             const memberUIDs = currentProject.members?.map(m => m.uid) || [];
             allUsers = await fetchMemberProfiles(memberUIDs);
