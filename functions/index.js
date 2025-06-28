@@ -3,7 +3,7 @@ const { defineSecret } = require("firebase-functions/params");
 const sgMail = require("@sendgrid/mail");
 
 // Setup secret securely
-const sendgridApiKey = defineSecret("SENDGRID_API_KEY");
+const sendgridApiKey = defineSecret("SENDGRID_API_KEY_EMAIL_INVITATION");
 
 exports.sendEmailInvitation = functions
   .region("us-central1")
@@ -39,7 +39,7 @@ exports.sendEmailInvitation = functions
     to: recipientEmail,
     from: {
       name: 'Juan Luna Collections',
-      email: 'collection@juanlunacollections.com' // Your verified SendGrid sender
+      email: 'collection@juanlunacollections.com' 
     },
     subject: `${inviterName} has invited you to collaborate on ${projectName}`,
     html: `<!DOCTYPE html>

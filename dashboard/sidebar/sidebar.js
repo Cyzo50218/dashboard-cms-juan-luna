@@ -46,7 +46,6 @@ import {
 import { getHeaderRight } from '/dashboard/tasks/tabs/list/list.js';
 
 window.TaskSidebar = (function() {
-    // --- 1. FIREBASE & INITIALIZATION ---
     let app, auth, db, storage;
     try {
         app = initializeApp(firebaseConfig);
@@ -58,7 +57,6 @@ window.TaskSidebar = (function() {
         return { init: () => {}, open: () => {} };
     }
     
-    // --- 2. MODULE STATE ---
     let isInitialized = false;
     let currentUser = null;
     let currentTask = null;
@@ -67,7 +65,6 @@ window.TaskSidebar = (function() {
     let currentProject = null;
     let currentProjectRef = null;
     let allUsers = [];
-
     let currentWorkspaceId = null;
     let userCanEditProject = false;
     let currentUserRole = null;
@@ -94,94 +91,94 @@ window.TaskSidebar = (function() {
     
     let rightSidebarContainer;
     let listviewHeaderRight;
-
-function updateUserPermissions(projectData, userId) {
-    if (!projectData || !userId) {
-        userCanEditProject = false;
-        currentUserRole = null;
-        return;
+    
+    function updateUserPermissions(projectData, userId) {
+        if (!projectData || !userId) {
+            userCanEditProject = false;
+            currentUserRole = null;
+            return;
+        }
+        const members = projectData.members || [];
+        const userMemberInfo = members.find(member => member.uid === userId);
+        currentUserRole = userMemberInfo ? userMemberInfo.role : null;
+        
+        const isMemberWithEditPermission = userMemberInfo && (userMemberInfo.role === "Project admin" || userMemberInfo.role === "Editor");
+        const isSuperAdmin = projectData.project_super_admin_uid === userId;
+        const isAdminUser = projectData.project_admin_user === userId;
+        
+        userCanEditProject = isMemberWithEditPermission || isSuperAdmin || isAdminUser;
     }
-    const members = projectData.members || [];
-    const userMemberInfo = members.find(member => member.uid === userId);
-    currentUserRole = userMemberInfo ? userMemberInfo.role : null;
     
-    const isMemberWithEditPermission = userMemberInfo && (userMemberInfo.role === "Project admin" || userMemberInfo.role === "Editor");
-    const isSuperAdmin = projectData.project_super_admin_uid === userId;
-    const isAdminUser = projectData.project_admin_user === userId;
-    
-    userCanEditProject = isMemberWithEditPermission || isSuperAdmin || isAdminUser;
-}
-
-/**
- * Checks if a specific field in the sidebar is editable for the current user.
- * It checks for admin rights, then task assignment, and finally column-specific rules.
- * @param {string} fieldName - The name of the field to check (e.g., "Assignee", "Costs", "Status").
- * @returns {boolean} - True if the field is editable.
- */
-function isSidebarFieldEditable(fieldName) {
-    // Rule 1: Project Admins/Editors can always edit any field.
-    if (userCanEditProject) {
+    /**
+     * Checks if a specific field in the sidebar is editable for the current user.
+     * It checks for admin rights, then task assignment, and finally column-specific rules.
+     * @param {string} fieldName - The name of the field to check (e.g., "Assignee", "Costs", "Status").
+     * @returns {boolean} - True if the field is editable.
+     */
+    function isSidebarFieldEditable(fieldName) {
+        // Rule 1: Project Admins/Editors can always edit any field.
+        if (userCanEditProject) {
+            return true;
+        }
+        
+        // Rule 2: If the user is NOT an admin, check if they have permission to edit this task at all.
+        // (This checks if they are an assigned Viewer/Commentator).
+        if (!canUserEditCurrentTask()) {
+            return false;
+        }
+        
+        // Rule 3: For assigned Viewers, check the project's columnRules.
+        const rules = currentProject.columnRules || [];
+        const columnRule = rules.find(rule => rule.name === fieldName);
+        
+        // If a rule exists for this field and it's set to restricted, block the edit.
+        if (columnRule && columnRule.isRestricted) {
+            console.log(`[Permissions] Edit blocked for field "${fieldName}" due to column rule.`);
+            return false;
+        }
+        
+        // If all checks pass, the assigned user is allowed to edit this field.
         return true;
     }
     
-    // Rule 2: If the user is NOT an admin, check if they have permission to edit this task at all.
-    // (This checks if they are an assigned Viewer/Commentator).
-    if (!canUserEditCurrentTask()) {
-        return false;
-    }
-    
-    // Rule 3: For assigned Viewers, check the project's columnRules.
-    const rules = currentProject.columnRules || [];
-    const columnRule = rules.find(rule => rule.name === fieldName);
-    
-    // If a rule exists for this field and it's set to restricted, block the edit.
-    if (columnRule && columnRule.isRestricted) {
-        console.log(`[Permissions] Edit blocked for field "${fieldName}" due to column rule.`);
-        return false;
-    }
-    
-    // If all checks pass, the assigned user is allowed to edit this field.
-    return true;
-}
-
-/**
- * Checks if the current user can edit the task's description.
- * @returns {boolean} - True if the user is an admin/editor OR is assigned to the task.
- */
-function canUserEditDescription() {
-    if (!currentTask) return false;
-    
-    // Rule 1: Admins and Editors can always edit the description.
-    if (userCanEditProject) {
-        return true;
-    }
-    
-    // Rule 2: A user can also edit if they are assigned to the task.
-    const isAssigned = Array.isArray(currentTask.assignees) && currentTask.assignees.includes(currentUserId);
-    if (isAssigned) {
-        return true;
-    }
-    
-    // Otherwise, they cannot.
-    return false;
-}
-
-function canUserEditCurrentTask() {
-    if (!currentTask) return false;
-    // Rule 1: Admins and Editors can always edit.
-    if (userCanEditProject) {
-        return true;
-    }
-    // Rule 2: Allow assigned Viewers/Commentators to edit.
-    if (currentUserRole === 'Viewer' || currentUserRole === 'Commentator') {
+    /**
+     * Checks if the current user can edit the task's description.
+     * @returns {boolean} - True if the user is an admin/editor OR is assigned to the task.
+     */
+    function canUserEditDescription() {
+        if (!currentTask) return false;
+        
+        // Rule 1: Admins and Editors can always edit the description.
+        if (userCanEditProject) {
+            return true;
+        }
+        
+        // Rule 2: A user can also edit if they are assigned to the task.
         const isAssigned = Array.isArray(currentTask.assignees) && currentTask.assignees.includes(currentUserId);
         if (isAssigned) {
             return true;
         }
+        
+        // Otherwise, they cannot.
+        return false;
     }
-    return false;
-}
-    // --- 3. CORE LOGIC ---
+    
+    function canUserEditCurrentTask() {
+        if (!currentTask) return false;
+        // Rule 1: Admins and Editors can always edit.
+        if (userCanEditProject) {
+            return true;
+        }
+        // Rule 2: Allow assigned Viewers/Commentators to edit.
+        if (currentUserRole === 'Viewer' || currentUserRole === 'Commentator') {
+            const isAssigned = Array.isArray(currentTask.assignees) && currentTask.assignees.includes(currentUserId);
+            if (isAssigned) {
+                return true;
+            }
+        }
+        return false;
+    }
+    // --- CORE LOGIC ---
     function init() {
         if (isInitialized) return;
         rightSidebarContainer = document.getElementById('right-sidebar');
@@ -250,7 +247,7 @@ function canUserEditCurrentTask() {
                 if (currentUserAvatarEl && currentUser.avatar) {
                     currentUserAvatarEl.style.backgroundImage = `url(${currentUser.avatar})`;
                 }
-        
+                
                 
             } else {
                 // This part remains the same.
@@ -264,72 +261,72 @@ function canUserEditCurrentTask() {
     }
     
     
-/**
- * Opens the sidebar for a specific task using a direct project reference.
- * This is the most robust and efficient method.
- * @param {string} taskId - The ID of the task to open.
- * @param {DocumentReference} projectRef - The direct Firestore reference to the project.
- */
-async function open(taskId, projectRef) {
-    if (!isInitialized) init();
-    if (!taskId || !projectRef || !currentUserId) {
-        console.error("Cannot open sidebar: A taskId, projectRef, or currentUser is missing.");
-        return;
+    /**
+     * Opens the sidebar for a specific task using a direct project reference.
+     * This is the most robust and efficient method.
+     * @param {string} taskId - The ID of the task to open.
+     * @param {DocumentReference} projectRef - The direct Firestore reference to the project.
+     */
+    async function open(taskId, projectRef) {
+        if (!isInitialized) init();
+        if (!taskId || !projectRef || !currentUserId) {
+            console.error("Cannot open sidebar: A taskId, projectRef, or currentUser is missing.");
+            return;
+        }
+        
+        close(); // Clears previous state
+        
+        sidebar.classList.add('is-loading', 'is-visible');
+        rightSidebarContainer.classList.add('sidebar-open');
+        
+        try {
+            // --- STEP 1: USE THE PROVIDED PROJECT REFERENCE ---
+            currentProjectRef = projectRef;
+            
+            console.log("DEBUG: Sidebar opened with direct project path:", currentProjectRef.path);
+            
+            // --- STEP 2: FETCH ALL DATA USING THE CORRECT REFERENCES ---
+            // Get the project data
+            const projectDoc = await getDoc(currentProjectRef);
+            if (!projectDoc.exists()) throw new Error("The provided project reference is invalid or was deleted.");
+            currentProject = { id: projectDoc.id, ...projectDoc.data() };
+            
+            // Find the task using its ID within the known project
+            const tasksQuery = query(collectionGroup(db, 'tasks'), where('id', '==', taskId), where('projectId', '==', currentProject.projectId), limit(1));
+            const taskSnapshot = await getDocs(tasksQuery);
+            if (taskSnapshot.empty) throw new Error(`Task ${taskId} not found in project ${currentProject.title}.`);
+            
+            currentTaskRef = taskSnapshot.docs[0].ref;
+            const taskDoc = await getDoc(currentTaskRef);
+            currentTask = { id: taskDoc.id, ...taskDoc.data() };
+            
+            // Fetch members and set permissions
+            const memberUIDs = currentProject.members?.map(m => m.uid) || [];
+            allUsers = await fetchMemberProfiles(memberUIDs);
+            updateUserPermissions(currentProject, currentUserId);
+            
+            // --- STEP 3: RENDER THE UI ---
+            sidebar.classList.remove('is-loading');
+            renderSidebar(currentTask);
+            
+            // --- STEP 4: ATTACH REAL-TIME LISTENERS ---
+            taskListenerUnsubscribe = onSnapshot(currentTaskRef, (doc) => {
+                if (doc.exists()) {
+                    currentTask = { ...doc.data(), id: doc.id };
+                    renderSidebar(currentTask);
+                } else {
+                    close();
+                }
+            });
+            listenToActivity();
+            listenToMessages();
+            
+        } catch (error) {
+            console.error("TaskSidebar: Error opening task.", error);
+            close();
+        }
     }
     
-    close(); // Clears previous state
-    
-    sidebar.classList.add('is-loading', 'is-visible');
-    rightSidebarContainer.classList.add('sidebar-open');
-    
-    try {
-        // --- STEP 1: USE THE PROVIDED PROJECT REFERENCE ---
-        currentProjectRef = projectRef;
-        
-        console.log("DEBUG: Sidebar opened with direct project path:", currentProjectRef.path);
-        
-        // --- STEP 2: FETCH ALL DATA USING THE CORRECT REFERENCES ---
-        // Get the project data
-        const projectDoc = await getDoc(currentProjectRef);
-        if (!projectDoc.exists()) throw new Error("The provided project reference is invalid or was deleted.");
-        currentProject = { id: projectDoc.id, ...projectDoc.data() };
-        
-        // Find the task using its ID within the known project
-        const tasksQuery = query(collectionGroup(db, 'tasks'), where('id', '==', taskId), where('projectId', '==', currentProject.projectId), limit(1));
-        const taskSnapshot = await getDocs(tasksQuery);
-        if (taskSnapshot.empty) throw new Error(`Task ${taskId} not found in project ${currentProject.title}.`);
-        
-        currentTaskRef = taskSnapshot.docs[0].ref;
-        const taskDoc = await getDoc(currentTaskRef);
-        currentTask = { id: taskDoc.id, ...taskDoc.data() };
-        
-        // Fetch members and set permissions
-        const memberUIDs = currentProject.members?.map(m => m.uid) || [];
-        allUsers = await fetchMemberProfiles(memberUIDs);
-        updateUserPermissions(currentProject, currentUserId);
-        
-        // --- STEP 3: RENDER THE UI ---
-        sidebar.classList.remove('is-loading');
-        renderSidebar(currentTask);
-        
-        // --- STEP 4: ATTACH REAL-TIME LISTENERS ---
-        taskListenerUnsubscribe = onSnapshot(currentTaskRef, (doc) => {
-            if (doc.exists()) {
-                currentTask = { ...doc.data(), id: doc.id };
-                renderSidebar(currentTask);
-            } else {
-                close();
-            }
-        });
-        listenToActivity();
-        listenToMessages();
-        
-    } catch (error) {
-        console.error("TaskSidebar: Error opening task.", error);
-        close();
-    }
-}
-
     function close() {
         if (sidebar) sidebar.classList.remove('is-visible', 'is-loading');
         rightSidebarContainer.classList.remove('sidebar-open');
@@ -349,25 +346,25 @@ async function open(taskId, projectRef) {
         taskListenerUnsubscribe = activityListenerUnsubscribe = messagesListenerUnsubscribe = null;
     }
     
-    // --- 4. DATA FETCHING ---
+    // --- DATA FETCHING ---
     async function fetchMemberProfiles(uids) {
-    if (!uids || uids.length === 0) return [];
-    try {
-        const userPromises = uids.map(uid => getDoc(doc(db, `users/${uid}`)));
-        const userDocs = await Promise.all(userPromises);
-        return userDocs.filter(d => d.exists()).map(d => ({ id: d.id, ...d.data() }));
-    } catch (error) {
-        console.error("Error fetching member profiles:", error);
-        return [];
+        if (!uids || uids.length === 0) return [];
+        try {
+            const userPromises = uids.map(uid => getDoc(doc(db, `users/${uid}`)));
+            const userDocs = await Promise.all(userPromises);
+            return userDocs.filter(d => d.exists()).map(d => ({ id: d.id, ...d.data() }));
+        } catch (error) {
+            console.error("Error fetching member profiles:", error);
+            return [];
+        }
     }
-}
-
-async function fetchActiveWorkspace(userId) {
-    const workspaceQuery = query(collection(db, `users/${userId}/myworkspace`), where("isSelected", "==", true), limit(1));
-    const workspaceSnapshot = await getDocs(workspaceQuery);
-    currentWorkspaceId = workspaceSnapshot.empty ? null : workspaceSnapshot.docs[0].id;
-}
-
+    
+    async function fetchActiveWorkspace(userId) {
+        const workspaceQuery = query(collection(db, `users/${userId}/myworkspace`), where("isSelected", "==", true), limit(1));
+        const workspaceSnapshot = await getDocs(workspaceQuery);
+        currentWorkspaceId = workspaceSnapshot.empty ? null : workspaceSnapshot.docs[0].id;
+    }
+    
     async function updateCustomField(columnId, newValue, column) {
         if (!currentTaskRef || !currentTask) return;
         const fieldKey = `customFields.${columnId}`;
@@ -386,7 +383,7 @@ async function fetchActiveWorkspace(userId) {
         } catch (error) { console.error(`Failed to update custom field ${column.name}:`, error); }
     }
     
-    // --- 5. REAL-TIME LISTENERS ---
+    // --- REAL-TIME LISTENERS ---
     function listenToActivity() {
         activityListenerUnsubscribe = onSnapshot(query(collection(currentTaskRef, "activity"), orderBy("timestamp", "asc")), (snapshot) => {
             allActivities = snapshot.docs.map(doc => doc.data());
@@ -417,7 +414,7 @@ async function fetchActiveWorkspace(userId) {
         });
     }
     
-    // --- 6. DATA MUTATION (EDITING & MOVING) ---
+    // --- DATA MUTATION (EDITING & MOVING) ---
     async function updateTaskField(fieldKey, newValue) {
         if (!currentTaskRef || !currentTask) return;
         const oldValue = currentTask[fieldKey];
@@ -444,45 +441,45 @@ async function fetchActiveWorkspace(userId) {
     }
     
     async function moveTask(newProjectId) {
-    if (!currentTaskRef || !currentTask || newProjectId === currentTask.projectId) return;
-    
-    try {
-        // Find the destination project and its first section correctly
-        const projectQuery = query(collectionGroup(db, 'projects'), where('id', '==', newProjectId), limit(1));
-        const projectSnap = await getDocs(projectQuery);
-        if (projectSnap.empty) throw new Error("Destination project not found.");
+        if (!currentTaskRef || !currentTask || newProjectId === currentTask.projectId) return;
         
-        const newProjectRef = projectSnap.docs[0].ref;
-        const newProjectData = projectSnap.docs[0].data();
-        
-        const sectionsQuery = query(collection(newProjectRef, 'sections'), orderBy("order", "asc"), limit(1));
-        const sectionsSnapshot = await getDocs(sectionsQuery);
-        if (sectionsSnapshot.empty) {
-            alert("Error: Target project has no sections.");
-            return;
+        try {
+            // Find the destination project and its first section correctly
+            const projectQuery = query(collectionGroup(db, 'projects'), where('id', '==', newProjectId), limit(1));
+            const projectSnap = await getDocs(projectQuery);
+            if (projectSnap.empty) throw new Error("Destination project not found.");
+            
+            const newProjectRef = projectSnap.docs[0].ref;
+            const newProjectData = projectSnap.docs[0].data();
+            
+            const sectionsQuery = query(collection(newProjectRef, 'sections'), orderBy("order", "asc"), limit(1));
+            const sectionsSnapshot = await getDocs(sectionsQuery);
+            if (sectionsSnapshot.empty) {
+                alert("Error: Target project has no sections.");
+                return;
+            }
+            const newSectionId = sectionsSnapshot.docs[0].id;
+            
+            // Prepare the new task data and references
+            const newTaskData = { ...currentTask, projectId: newProjectId, sectionId: newSectionId };
+            const newTaskRef = doc(newProjectRef, `sections/${newSectionId}/tasks/${currentTask.id}`);
+            
+            // Use a batch to move the task atomically
+            const batch = writeBatch(db);
+            batch.delete(currentTaskRef); // Delete from old location
+            batch.set(newTaskRef, newTaskData); // Create in new location
+            await batch.commit();
+            
+            logActivity({ action: 'moved', field: 'Project', from: currentProject.title, to: newProjectData.title });
+            
+            // Close the sidebar, as its context is now invalid
+            close();
+            
+        } catch (error) {
+            console.error("Failed to move task:", error);
+            alert("An error occurred while moving the task.");
         }
-        const newSectionId = sectionsSnapshot.docs[0].id;
-        
-        // Prepare the new task data and references
-        const newTaskData = { ...currentTask, projectId: newProjectId, sectionId: newSectionId };
-        const newTaskRef = doc(newProjectRef, `sections/${newSectionId}/tasks/${currentTask.id}`);
-        
-        // Use a batch to move the task atomically
-        const batch = writeBatch(db);
-        batch.delete(currentTaskRef); // Delete from old location
-        batch.set(newTaskRef, newTaskData); // Create in new location
-        await batch.commit();
-        
-        logActivity({ action: 'moved', field: 'Project', from: currentProject.title, to: newProjectData.title });
-        
-        // Close the sidebar, as its context is now invalid
-        close();
-        
-    } catch (error) {
-        console.error("Failed to move task:", error);
-        alert("An error occurred while moving the task.");
     }
-}
     
     async function logActivity({ action, field, from, to }) {
         if (!currentTaskRef || !currentUser) return;
@@ -528,23 +525,23 @@ async function fetchActiveWorkspace(userId) {
     }
     
     async function deleteMessage(messageId, imageUrl, messageText) {
-    if (imageUrl) {
-        try {
-            await deleteObject(ref(storage, imageUrl));
-        } catch (error) {
-            if (error.code !== 'storage/object-not-found') console.error("Failed to delete image:", error);
+        if (imageUrl) {
+            try {
+                await deleteObject(ref(storage, imageUrl));
+            } catch (error) {
+                if (error.code !== 'storage/object-not-found') console.error("Failed to delete image:", error);
+            }
         }
+        
+        const messageRef = doc(db, `globalChatProjects/${currentProject.id}/tasks/${currentTask.id}/Messages`, messageId);
+        const batch = writeBatch(db);
+        batch.delete(messageRef);
+        batch.update(currentTaskRef, { commentCount: increment(-1) });
+        
+        await batch.commit();
+        
+        logActivity({ action: 'deleted a comment', field: `"${messageText.substring(0, 30)}..."` });
     }
-    
-    const messageRef = doc(db, `globalChatProjects/${currentProject.id}/tasks/${currentTask.id}/Messages`, messageId);
-    const batch = writeBatch(db);
-    batch.delete(messageRef);
-    batch.update(currentTaskRef, { commentCount: increment(-1) });
-    
-    await batch.commit();
-    
-    logActivity({ action: 'deleted a comment', field: `"${messageText.substring(0, 30)}..."` });
-}
     
     async function toggleReaction(messageId, reactionType) {
         if (!currentUser) return;
@@ -575,22 +572,20 @@ async function fetchActiveWorkspace(userId) {
         const newMessageRef = doc(collection(db, messagesPath));
         
         const adminUIDs = [
-    currentProject.project_super_admin_uid,
-    currentProject.project_admin_user
-].filter(Boolean);
-        // --- THIS IS THE KEY FIX ---
+            currentProject.project_super_admin_uid,
+            currentProject.project_admin_user
+        ].filter(Boolean);
         // Check if the parent task has a chatuuid field yet.
         if (!currentTask.chatuuid) {
             // If not, update the task document. Use the task's own ID as the
             // stable, unique identifier for its chat thread.
             await updateDoc(currentTaskRef, { chatuuid: currentTask.id });
         }
-        // --- END FIX ---
         
         // Save the new message document.
         const batch = writeBatch(db);
-
-            batch.set(newMessageRef, {
+        
+        batch.set(newMessageRef, {
             id: newMessageRef.id, // The message's own unique ID
             message: messageText,
             messageNote: messageNote,
@@ -657,19 +652,13 @@ async function fetchActiveWorkspace(userId) {
         }
     }
     
-    // =================================================================================
-    // --- 7. UI RENDERING (Final Polished Version) ---
-    // =================================================================================
-    
     /**
      * Renders the entire sidebar with the latest task data.
      */
     function renderSidebar(task) {
-        // --- THIS IS THE KEY FIX ---
         // Check the task's status and toggle the CSS class on the main sidebar element
         const isCompleted = task.status === 'Completed';
         sidebar.classList.toggle('is-task-completed', isCompleted);
-        // --- END FIX ---
         
         // Update the main completion button's appearance and text
         taskCompleteBtn.classList.toggle('completed', isCompleted);
@@ -678,171 +667,168 @@ async function fetchActiveWorkspace(userId) {
         // Render the rest of the sidebar
         taskNameEl.textContent = task.name;
         const isDescriptionEditable = canUserEditDescription();
-
+        
         taskDescriptionEl.contentEditable = isDescriptionEditable;
         taskDescriptionEl.textContent = task.description || "Add a description...";
         renderTaskFields(task);
         renderActiveTab();
     }
     
-/**
- * Renders all task fields and attaches click listeners with baked-in permission checks.
- * This is the central function for controlling interactivity within the sidebar.
- * @param {object} task The task object to render fields for.
- */
-function renderTaskFields(task) {
-    taskFieldsContainer.innerHTML = '';
-    if (!currentProject) {
-        console.error("renderTaskFields cannot run: currentProject is not loaded.");
-        return;
-    }
-    
-    const table = document.createElement('table');
-    table.className = 'task-fields-table';
-    const tbody = document.createElement('tbody');
-    
-    // 1. RENDER ALL FIELDS (This part builds the static view)
-    // =======================================================
-    const currentProjectTitle = currentProject.title || '...';
-    appendFieldToTable(tbody, 'project', 'Project', `<span>${currentProjectTitle}</span>`, 'project', isSidebarFieldEditable('Project'));
-    appendFieldToTable(tbody, 'assignees', 'Assignee', renderAssigneeValue(task.assignees), 'assignee', isSidebarFieldEditable('Assignee'));
-    appendFieldToTable(tbody, 'dueDate', 'Due Date', renderDateValue(task.dueDate), 'date', isSidebarFieldEditable('Due Date'));
-    
-    const priorityValue = task.priority;
-    let priorityHTML = '<span>Not set</span>';
-    if (priorityValue) {
-        let priorityColor = currentProject.customPriorities?.find(p => p.name === priorityValue)?.color || defaultPriorityColors[priorityValue];
-        priorityHTML = createTag(priorityValue, priorityColor);
-    }
-    appendFieldToTable(tbody, 'priority', 'Priority', priorityHTML, 'priority', isSidebarFieldEditable('Priority'));
-    
-    const statusValue = task.status;
-    let statusHTML = '<span>Not set</span>';
-    if (statusValue) {
-        let statusColor = currentProject.customStatuses?.find(s => s.name === statusValue)?.color || defaultStatusColors[statusValue];
-        statusHTML = createTag(statusValue, statusColor);
-    }
-    appendFieldToTable(tbody, 'status', 'Status', statusHTML, 'status', isSidebarFieldEditable('Status'));
-    
-    currentProject.customColumns?.forEach(col => {
-        const value = task.customFields ? task.customFields[col.id] : null;
-        let displayHTML = '<span>Not set</span>';
-        if (value != null && value !== '') {
-            if (col.options) { // For 'Type' or other custom select columns
-                const option = col.options.find(opt => opt.name === value);
-                displayHTML = createTag(value, option ? option.color : '#ccc');
-            } else if (col.type === 'Costing') {
-                displayHTML = `<span>${col.currency || '$'}${value.toLocaleString()}</span>`;
-            } else {
-                displayHTML = `<span>${value}</span>`;
-            }
-        }
-        appendFieldToTable(tbody, `custom-${col.id}`, col.name, displayHTML, 'custom-field', isSidebarFieldEditable(col.name));
-    });
-    
-    table.appendChild(tbody);
-    taskFieldsContainer.appendChild(table);
-    
-    // 2. ATTACH EVENT LISTENER WITH PERMISSION CHECKS
-    // =================================================
-    table.addEventListener('click', (e) => {
-        const control = e.target.closest('.field-control');
-        if (!control) return;
-        
-        const key = control.dataset.key;
-        const controlType = control.dataset.control;
-        const label = control.closest('tr').querySelector('.sidebarprojectfield-label').textContent;
-        
-        if (!isSidebarFieldEditable(label)) {
-         // Silently return, as the .is-readonly class already provides visual feedback.
+    /**
+     * Renders all task fields and attaches click listeners with baked-in permission checks.
+     * This is the central function for controlling interactivity within the sidebar.
+     * @param {object} task The task object to render fields for.
+     */
+    function renderTaskFields(task) {
+        taskFieldsContainer.innerHTML = '';
+        if (!currentProject) {
+            console.error("renderTaskFields cannot run: currentProject is not loaded.");
             return;
         }
-        switch (controlType) {
-            case 'project':
-            case 'assignee': {
-                // PERMISSION CHECK: Strict. Only project admins/editors can perform these actions.
-                if (!userCanEditProject) {
-                    
-                    return;
-                }
-                
-                if (controlType === 'project') {
-                    // This logic assumes `workspaceProjects` is populated when the sidebar opens.
-                    createAdvancedDropdown(control, {
-                        options: workspaceProjects,
-                        searchable: true,
-                        searchPlaceholder: 'Move to project...',
-                        itemRenderer: (p) => `<span>${p.title}</span>`,
-                        onSelect: (p) => {
-                            if (p.id !== currentTask.projectId) moveTask(p.id);
-                        }
-                    });
-                } else { // assignee
-                    const options = [{ id: null, name: 'Unassigned', avatar: '' }, ...allUsers];
-                    createAdvancedDropdown(control, {
-                        options: options,
-                        searchable: true,
-                        searchPlaceholder: 'Search teammates...',
-                        itemRenderer: (user) => {
-                            if (!user.id) return `<span>Unassigned</span>`;
-                            return `<div class="avatar" style="background-image: url(${user.avatar})"></div><span>${user.name}</span>`;
-                        },
-                        onSelect: (user) => updateTaskField('assignees', user.id ? [user.id] : [])
-                    });
-                }
-                break;
-            }
-            
-            case 'date':
-            case 'priority':
-            case 'status':
-            case 'custom-field': {
-                // PERMISSION CHECK: Lenient. Allows assigned Viewers/Commentators.
-                if (!canUserEditCurrentTask()) {
-                    
-                    return;
-                }
-                
-                // If permission is granted, proceed to open the correct editor.
-                if (controlType === 'date') {
-                    const input = control.querySelector('.flatpickr-input');
-                     const fp = flatpickr(input, {
-     defaultDate: currentTask.dueDate || 'today',
-     dateFormat: "Y-m-d",
-     onClose: function(selectedDates) {
-         const newDate = selectedDates[0] ? flatpickr.formatDate(selectedDates[0], 'Y-m-d') : '';
-         updateTaskField('dueDate', newDate);
-         fp.destroy();
-     }
- });
-                    fp.open();
-                } else if (controlType === 'priority' || controlType === 'status') {
-                    const baseOptions = (controlType === 'priority') ? priorityOptions : statusOptions;
-                    const customOptions = (controlType === 'priority') ? currentProject.customPriorities : currentProject.customStatuses;
-                    const allOptions = [...baseOptions.map(name => ({ name })), ...(customOptions || [])];
-                    
-                    showStatusDropdown(control, allOptions, (selected) => {
-                        updateTaskField(controlType, selected.name);
-                    });
-                    
-                } else if (controlType === 'custom-field') {
-                    const columnId = key.split('-')[1];
-                    const column = currentProject.customColumns.find(c => c.id == columnId);
-                    if (!column) return;
-                    
-                    if (column.options) { // It's a dropdown type
-                        showStatusDropdown(control, column.options, (selected) => {
-                            updateCustomField(columnId, selected.name, column);
-                        });
-                    } else { // It's a text/number/costing field
-                        makeTextFieldEditable(control, columnId, column);
-                    }
-                }
-                break;
-            }
+        
+        const table = document.createElement('table');
+        table.className = 'task-fields-table';
+        const tbody = document.createElement('tbody');
+        
+        // 1. RENDER ALL FIELDS (This part builds the static view)
+        // =======================================================
+        const currentProjectTitle = currentProject.title || '...';
+        appendFieldToTable(tbody, 'project', 'Project', `<span>${currentProjectTitle}</span>`, 'project', isSidebarFieldEditable('Project'));
+        appendFieldToTable(tbody, 'assignees', 'Assignee', renderAssigneeValue(task.assignees), 'assignee', isSidebarFieldEditable('Assignee'));
+        appendFieldToTable(tbody, 'dueDate', 'Due Date', renderDateValue(task.dueDate), 'date', isSidebarFieldEditable('Due Date'));
+        
+        const priorityValue = task.priority;
+        let priorityHTML = '<span>Not set</span>';
+        if (priorityValue) {
+            let priorityColor = currentProject.customPriorities?.find(p => p.name === priorityValue)?.color || defaultPriorityColors[priorityValue];
+            priorityHTML = createTag(priorityValue, priorityColor);
         }
-    });
-}
+        appendFieldToTable(tbody, 'priority', 'Priority', priorityHTML, 'priority', isSidebarFieldEditable('Priority'));
+        
+        const statusValue = task.status;
+        let statusHTML = '<span>Not set</span>';
+        if (statusValue) {
+            let statusColor = currentProject.customStatuses?.find(s => s.name === statusValue)?.color || defaultStatusColors[statusValue];
+            statusHTML = createTag(statusValue, statusColor);
+        }
+        appendFieldToTable(tbody, 'status', 'Status', statusHTML, 'status', isSidebarFieldEditable('Status'));
+        
+        currentProject.customColumns?.forEach(col => {
+            const value = task.customFields ? task.customFields[col.id] : null;
+            let displayHTML = '<span>Not set</span>';
+            if (value != null && value !== '') {
+                if (col.options) { // For 'Type' or other custom select columns
+                    const option = col.options.find(opt => opt.name === value);
+                    displayHTML = createTag(value, option ? option.color : '#ccc');
+                } else if (col.type === 'Costing') {
+                    displayHTML = `<span>${col.currency || '$'}${value.toLocaleString()}</span>`;
+                } else {
+                    displayHTML = `<span>${value}</span>`;
+                }
+            }
+            appendFieldToTable(tbody, `custom-${col.id}`, col.name, displayHTML, 'custom-field', isSidebarFieldEditable(col.name));
+        });
+        
+        table.appendChild(tbody);
+        taskFieldsContainer.appendChild(table);
+        table.addEventListener('click', (e) => {
+            const control = e.target.closest('.field-control');
+            if (!control) return;
+            
+            const key = control.dataset.key;
+            const controlType = control.dataset.control;
+            const label = control.closest('tr').querySelector('.sidebarprojectfield-label').textContent;
+            
+            if (!isSidebarFieldEditable(label)) {
+                // Silently return, as the .is-readonly class already provides visual feedback.
+                return;
+            }
+            switch (controlType) {
+                case 'project':
+                case 'assignee': {
+                    // PERMISSION CHECK: Strict. Only project admins/editors can perform these actions.
+                    if (!userCanEditProject) {
+                        
+                        return;
+                    }
+                    
+                    if (controlType === 'project') {
+                        // This logic assumes `workspaceProjects` is populated when the sidebar opens.
+                        createAdvancedDropdown(control, {
+                            options: workspaceProjects,
+                            searchable: true,
+                            searchPlaceholder: 'Move to project...',
+                            itemRenderer: (p) => `<span>${p.title}</span>`,
+                            onSelect: (p) => {
+                                if (p.id !== currentTask.projectId) moveTask(p.id);
+                            }
+                        });
+                    } else { // assignee
+                        const options = [{ id: null, name: 'Unassigned', avatar: '' }, ...allUsers];
+                        createAdvancedDropdown(control, {
+                            options: options,
+                            searchable: true,
+                            searchPlaceholder: 'Search teammates...',
+                            itemRenderer: (user) => {
+                                if (!user.id) return `<span>Unassigned</span>`;
+                                return `<div class="avatar" style="background-image: url(${user.avatar})"></div><span>${user.name}</span>`;
+                            },
+                            onSelect: (user) => updateTaskField('assignees', user.id ? [user.id] : [])
+                        });
+                    }
+                    break;
+                }
+                
+                case 'date':
+                case 'priority':
+                case 'status':
+                case 'custom-field': {
+                    // PERMISSION CHECK: Lenient. Allows assigned Viewers/Commentators.
+                    if (!canUserEditCurrentTask()) {
+                        
+                        return;
+                    }
+                    
+                    // If permission is granted, proceed to open the correct editor.
+                    if (controlType === 'date') {
+                        const input = control.querySelector('.flatpickr-input');
+                        const fp = flatpickr(input, {
+                            defaultDate: currentTask.dueDate || 'today',
+                            dateFormat: "Y-m-d",
+                            onClose: function(selectedDates) {
+                                const newDate = selectedDates[0] ? flatpickr.formatDate(selectedDates[0], 'Y-m-d') : '';
+                                updateTaskField('dueDate', newDate);
+                                fp.destroy();
+                            }
+                        });
+                        fp.open();
+                    } else if (controlType === 'priority' || controlType === 'status') {
+                        const baseOptions = (controlType === 'priority') ? priorityOptions : statusOptions;
+                        const customOptions = (controlType === 'priority') ? currentProject.customPriorities : currentProject.customStatuses;
+                        const allOptions = [...baseOptions.map(name => ({ name })), ...(customOptions || [])];
+                        
+                        showStatusDropdown(control, allOptions, (selected) => {
+                            updateTaskField(controlType, selected.name);
+                        });
+                        
+                    } else if (controlType === 'custom-field') {
+                        const columnId = key.split('-')[1];
+                        const column = currentProject.customColumns.find(c => c.id == columnId);
+                        if (!column) return;
+                        
+                        if (column.options) { // It's a dropdown type
+                            showStatusDropdown(control, column.options, (selected) => {
+                                updateCustomField(columnId, selected.name, column);
+                            });
+                        } else { // It's a text/number/costing field
+                            makeTextFieldEditable(control, columnId, column);
+                        }
+                    }
+                    break;
+                }
+            }
+        });
+    }
     
     /**
      * Creates and appends a styled table row.
@@ -868,98 +854,90 @@ function renderTaskFields(task) {
         valueCell.appendChild(controlDiv);
     }
     
-/**
- * Renders the Due Date field using the advanced formatDueDate function
- * to display relative, color-coded dates like "Today" or "Yesterday".
- * @param {string} dateString The ISO date string (e.g., "2025-06-26").
- */
-function renderDateValue(dateString) {
-    // 1. Call your formatter to get the display text and color object.
-    const dueDateInfo = formatDueDate(dateString);
-    
-    // 2. Set the display text. If the formatter returns an empty string, show "No due date".
-    const displayDate = dueDateInfo.text || 'No due date';
-    
-    // 3. Create a CSS class based on the color returned by the formatter.
-    const colorClass = `date-color-${dueDateInfo.color}`; // e.g., "date-color-red"
-    
-    // 4. Return the final HTML. The wrapper div now includes the color class,
-    //    and the input's value is the user-friendly text.
-    return `
+    /**
+     * Renders the Due Date field using the advanced formatDueDate function
+     * to display relative, color-coded dates like "Today" or "Yesterday".
+     * @param {string} dateString The ISO date string (e.g., "2025-06-26").
+     */
+    function renderDateValue(dateString) {
+        const dueDateInfo = formatDueDate(dateString);
+        const displayDate = dueDateInfo.text || 'No due date';
+        const colorClass = `date-color-${dueDateInfo.color}`; // e.g., "date-color-red"
+        return `
         <div class="flatpickr-wrapper ${colorClass}">
             <input type="text" class="flatpickr-input" value="${displayDate}" readonly="readonly" placeholder="No due date">
             <i class="fa-solid fa-calendar-days input-button"></i>
         </div>
     `;
-}
-
-/**
- * Your provided function to calculate the display format for a due date.
- * (This function does not need any changes)
- */
-function formatDueDate(dueDateString) {
-    // --- Setup ---
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Normalize today for accurate comparisons.
-    
-    // Handle empty or invalid dates
-    if (!dueDateString) {
-        return { text: '', color: 'default' };
     }
     
-    const dueDate = new Date(dueDateString);
-    if (isNaN(dueDate.getTime())) {
-        return { text: 'Invalid date', color: 'red' };
-    }
-    dueDate.setHours(0, 0, 0, 0); // Also normalize the due date
-    
-    // --- Calculations ---
-    const todayYear = today.getFullYear();
-    const todayMonth = today.getMonth();
-    const dueYear = dueDate.getFullYear();
-    const dueMonth = dueDate.getMonth();
-    
-    const dayDifference = (dueDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
-    
-    // --- 1. Handle Past Dates ---
-    if (dayDifference < 0) {
-        if (dayDifference === -1) {
-            return { text: 'Yesterday', color: 'red' };
+    /**
+     * Your provided function to calculate the display format for a due date.
+     * (This function does not need any changes)
+     */
+    function formatDueDate(dueDateString) {
+        // --- Setup ---
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Normalize today for accurate comparisons.
+        
+        // Handle empty or invalid dates
+        if (!dueDateString) {
+            return { text: '', color: 'default' };
         }
-        if (dayDifference > -7) {
-            return { text: 'Last Week', color: 'red' };
+        
+        const dueDate = new Date(dueDateString);
+        if (isNaN(dueDate.getTime())) {
+            return { text: 'Invalid date', color: 'red' };
         }
-        if (todayYear === dueYear && todayMonth === dueMonth + 1) {
-            return { text: 'Last Month', color: 'red' };
+        dueDate.setHours(0, 0, 0, 0); // Also normalize the due date
+        
+        // --- Calculations ---
+        const todayYear = today.getFullYear();
+        const todayMonth = today.getMonth();
+        const dueYear = dueDate.getFullYear();
+        const dueMonth = dueDate.getMonth();
+        
+        const dayDifference = (dueDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
+        
+        // --- 1. Handle Past Dates ---
+        if (dayDifference < 0) {
+            if (dayDifference === -1) {
+                return { text: 'Yesterday', color: 'red' };
+            }
+            if (dayDifference > -7) {
+                return { text: 'Last Week', color: 'red' };
+            }
+            if (todayYear === dueYear && todayMonth === dueMonth + 1) {
+                return { text: 'Last Month', color: 'red' };
+            }
+            if (todayYear === dueYear + 1 && todayMonth === 0 && dueMonth === 11) {
+                return { text: 'Last Month', color: 'red' };
+            }
+            if (todayYear === dueYear + 1) {
+                return { text: 'Last Year', color: 'red' };
+            }
+            const MmmDddYyyyFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            return { text: MmmDddYyyyFormat.format(dueDate), color: 'red' };
         }
-        if (todayYear === dueYear + 1 && todayMonth === 0 && dueMonth === 11) {
-            return { text: 'Last Month', color: 'red' };
+        
+        // --- 2. Handle Present and Immediate Future ---
+        if (dayDifference === 0) {
+            return { text: 'Today', color: 'green' };
         }
-        if (todayYear === dueYear + 1) {
-            return { text: 'Last Year', color: 'red' };
+        if (dayDifference === 1) {
+            return { text: 'Tomorrow', color: 'yellow' };
         }
-        const MmmDddYyyyFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        return { text: MmmDddYyyyFormat.format(dueDate), color: 'red' };
+        
+        // --- 3. Handle Future Dates ---
+        if (dueYear === todayYear) {
+            const MmmDddFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+            return { text: MmmDddFormat.format(dueDate), color: 'default' };
+        } else {
+            const MmmDddYyyyFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            return { text: MmmDddYyyyFormat.format(dueDate), color: 'default' };
+        }
     }
     
-    // --- 2. Handle Present and Immediate Future ---
-    if (dayDifference === 0) {
-        return { text: 'Today', color: 'green' };
-    }
-    if (dayDifference === 1) {
-        return { text: 'Tomorrow', color: 'yellow' };
-    }
-    
-    // --- 3. Handle Future Dates ---
-    if (dueYear === todayYear) {
-        const MmmDddFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
-        return { text: MmmDddFormat.format(dueDate), color: 'default' };
-    } else {
-        const MmmDddYyyyFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        return { text: MmmDddYyyyFormat.format(dueDate), color: 'default' };
-    }
-}
-
     
     /**
      * Creates and shows a dropdown with a search input for assigning users.
@@ -1108,44 +1086,42 @@ function formatDueDate(dueDateString) {
     }
     
     function renderMessages() {
-    const activeTab = tabsContainer.querySelector('.active')?.dataset.tab || 'chat';
-    if (activeTab !== 'chat') return;
-    
-    const addCommentForm = document.getElementById('add-comment-form');
-    if (addCommentForm) addCommentForm.style.display = 'flex';
-    
-    activityLogContainer.innerHTML = '';
-    if (allMessages.length === 0) {
-        activityLogContainer.innerHTML = `<div class="placeholder-text">No messages yet. Start the conversation!</div>`;
-        return;
-    }
-    
-    allMessages.forEach(msg => {
-        const item = document.createElement('div');
-        item.className = 'comment-item';
-        item.dataset.messageId = msg.id;
+        const activeTab = tabsContainer.querySelector('.active')?.dataset.tab || 'chat';
+        if (activeTab !== 'chat') return;
         
-        const isAuthor = msg.senderId === currentUser.id;
-        // *** THE FIX IS HERE ***
-        // A user can manage a message if they are the author OR if they have project edit rights.
-        const canManageMessage = isAuthor || userCanEditProject;
+        const addCommentForm = document.getElementById('add-comment-form');
+        if (addCommentForm) addCommentForm.style.display = 'flex';
         
-        const hasLiked = msg.reactions?.like?.includes(currentUser.id);
-        const likeCount = msg.reactions?.like?.length || 0;
-        const likeIconClass = hasLiked ? 'fa-solid fa-thumbs-up' : 'fa-regular fa-thumbs-up';
+        activityLogContainer.innerHTML = '';
+        if (allMessages.length === 0) {
+            activityLogContainer.innerHTML = `<div class="placeholder-text">No messages yet. Start the conversation!</div>`;
+            return;
+        }
         
-        const reactionsHTML = `<button class="react-btn like-btn ${hasLiked ? 'reacted' : ''}" title="Like"><i class="${likeIconClass}"></i> <span class="like-count">${likeCount > 0 ? likeCount : ''}</span></button>`;
-        
-        // Use the new `canManageMessage` variable to decide whether to show the buttons.
-        let authorActionsHTML = canManageMessage ? `
+        allMessages.forEach(msg => {
+            const item = document.createElement('div');
+            item.className = 'comment-item';
+            item.dataset.messageId = msg.id;
+            
+            const isAuthor = msg.senderId === currentUser.id;
+            // A user can manage a message if they are the author OR if they have project edit rights.
+            const canManageMessage = isAuthor || userCanEditProject;
+            
+            const hasLiked = msg.reactions?.like?.includes(currentUser.id);
+            const likeCount = msg.reactions?.like?.length || 0;
+            const likeIconClass = hasLiked ? 'fa-solid fa-thumbs-up' : 'fa-regular fa-thumbs-up';
+            
+            const reactionsHTML = `<button class="react-btn like-btn ${hasLiked ? 'reacted' : ''}" title="Like"><i class="${likeIconClass}"></i> <span class="like-count">${likeCount > 0 ? likeCount : ''}</span></button>`;
+            
+            // Use the new `canManageMessage` variable to decide whether to show the buttons.
+            let authorActionsHTML = canManageMessage ? `
             <button class="edit-comment-btn" title="Edit"><i class="fa-solid fa-pencil"></i></button>
             <button class="delete-comment-btn" title="Delete"><i class="fa-solid fa-trash"></i></button>
         ` : '';
-        
-        const iconsHTML = `<div class="sidebarcommenticons">${reactionsHTML}${authorActionsHTML}</div>`;
-        const timestamp = msg.timestamp ? new Date(msg.timestamp.toDate()).toLocaleString() : 'Sending...';
-        
-            // This is the content that shows by default.
+            
+            const iconsHTML = `<div class="sidebarcommenticons">${reactionsHTML}${authorActionsHTML}</div>`;
+            const timestamp = msg.timestamp ? new Date(msg.timestamp.toDate()).toLocaleString() : 'Sending...';
+            
             const displayAreaHTML = `
             <div class="comment-display-area">
                 <div class="comment-text">${msg.message || ''}</div>
@@ -1153,7 +1129,6 @@ function formatDueDate(dueDateString) {
             </div>
         `;
             
-            // This is the simplified editing interface.
             const editAreaHTML = `
             <div class="comment-edit-area" style="display: none;">
                 <textarea class="comment-edit-input" placeholder="Edit message...">${msg.message || ''}</textarea>
@@ -1170,7 +1145,6 @@ function formatDueDate(dueDateString) {
             </div>
         `;
             
-            // Assemble the Final Message Item
             item.innerHTML = `
             <div class="avatar" style="background-image: url(${msg.senderAvatar})"></div>
             <div class="comment-body">
@@ -1188,11 +1162,11 @@ function formatDueDate(dueDateString) {
             </div>
         `;
             activityLogContainer.appendChild(item);
-    });
+        });
+        
+        activityLogContainer.scrollTop = activityLogContainer.scrollHeight;
+    }
     
-    activityLogContainer.scrollTop = activityLogContainer.scrollHeight;
-}
-
     
     /**
      * Renders all activity logs and ensures the comment form is HIDDEN.
@@ -1202,7 +1176,6 @@ function formatDueDate(dueDateString) {
         const activeTab = tabsContainer.querySelector('.active')?.dataset.tab || 'chat';
         if (activeTab !== 'activity') return;
         
-        // --- FIX: Hide the comment form ---
         const addCommentForm = document.getElementById('add-comment-form');
         if (addCommentForm) addCommentForm.style.display = 'none';
         
@@ -1222,7 +1195,7 @@ function formatDueDate(dueDateString) {
         });
     }
     
-    // --- 8. EVENT LISTENERS ---
+    // --- EVENT LISTENERS ---
     function attachEventListeners() {
         if (!sidebar) return;
         
@@ -1397,7 +1370,7 @@ function formatDueDate(dueDateString) {
         
     }
     
-    // --- 9. UI HELPERS ---
+    // --- UI HELPERS ---
     function closePopovers() {
         document.querySelectorAll('.context-dropdown').forEach(p => p.remove());
     }
@@ -1417,15 +1390,15 @@ function formatDueDate(dueDateString) {
      * @param {string} [config.searchPlaceholder='Search...'] Placeholder for the search input.
      */
     function createAdvancedDropdown(targetEl, config) {
-        // 1. Cleanup any existing dropdowns to prevent duplicates
+        // Cleanup any existing dropdowns to prevent duplicates
         document.querySelector('.advanced-dropdown')?.remove();
         
-        // 2. Create main container and append to body
+        // Create main container and append to body
         const dropdown = document.createElement('div');
         dropdown.className = 'advanced-dropdown';
         document.body.appendChild(dropdown);
         
-        // 3. Add an optional search input
+        // Add an optional search input
         if (config.searchable) {
             const searchInput = document.createElement('input');
             searchInput.type = 'text';
@@ -1436,12 +1409,12 @@ function formatDueDate(dueDateString) {
             searchInput.addEventListener('input', () => renderItems(searchInput.value));
         }
         
-        // 4. Create the list container
+        // Create the list container
         const listContainer = document.createElement('ul');
         listContainer.className = 'dropdown-list';
         dropdown.appendChild(listContainer);
         
-        // 5. Create the function that renders/re-renders the items
+        // Create the function that renders/re-renders the items
         const renderItems = (filter = '') => {
             listContainer.innerHTML = '';
             const lowerFilter = filter.toLowerCase();
@@ -1472,10 +1445,10 @@ function formatDueDate(dueDateString) {
             });
         };
         
-        // 6. Perform the initial rendering of all items
+        // Perform the initial rendering of all items
         renderItems();
         
-        // 7. Position the dropdown intelligently
+        // Position the dropdown intelligently
         const rect = targetEl.getBoundingClientRect();
         dropdown.style.left = `${rect.left}px`;
         dropdown.style.minWidth = `${rect.width}px`;
@@ -1490,7 +1463,7 @@ function formatDueDate(dueDateString) {
             dropdown.style.top = `${rect.bottom + 4}px`;
         }
         
-        // Use a short timeout to prevent flicker and allow CSS transitions
+        // Short timeout to prevent flicker and allow CSS transitions
         setTimeout(() => {
             dropdown.classList.add('visible');
             if (config.searchable) {
@@ -1498,7 +1471,6 @@ function formatDueDate(dueDateString) {
             }
         }, 10);
         
-        // 8. Add a "click outside" listener to close the dropdown
         const clickOutsideHandler = (event) => {
             // If the click is outside the dropdown and not on the original target, close it
             if (!dropdown.contains(event.target) && !targetEl.contains(event.target)) {
@@ -1527,11 +1499,9 @@ function formatDueDate(dueDateString) {
             
             // Add a colored swatch if the option has a color property.
             if (option.color) {
-                // --- FIX: Added !important to force this color to override any other styles ---
                 itemHTML += `<span class="dropdown-color-swatch" style="background-color: ${option.color} !important;"></span>`;
             }
-            
-            // Add an avatar if the option has one.
+            .
             if (option.avatar) {
                 itemHTML += `<div class="avatar" style="background-image: url(${option.avatar})"></div>`;
             }
@@ -1569,12 +1539,8 @@ function formatDueDate(dueDateString) {
         input.focus();
         
         const save = () => {
-            // --- THIS IS THE KEY FIX ---
             // If the input is cleared, set the value to null. Otherwise, use the input's value.
             const newValue = input.value.trim() === '' ? null : input.value;
-            
-            // We call the update function, which will handle the Firestore update.
-            // The real-time listener will then automatically re-render the field correctly.
             updateCustomField(columnId, newValue, column);
         };
         
@@ -1730,9 +1696,6 @@ function formatDueDate(dueDateString) {
     /**
      * Creates a <style> tag in the head to hold dynamic CSS rules for all custom tags.
      */
-    /**
-     * Creates a <style> tag in the head to hold dynamic CSS rules for all custom tags.
-     */
     function generateCustomTagStyles(projectData) {
         const styleId = 'custom-tag-styles';
         let styleElement = document.getElementById(styleId);
@@ -1750,8 +1713,6 @@ function formatDueDate(dueDateString) {
             
             // This loop is where the error occurs
             items.forEach(item => {
-                // --- FIX STARTS HERE ---
-                // Add a check to ensure the 'item' is an object and has a 'name' property
                 if (item && typeof item.name === 'string') {
                     const sanitizedName = item.name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
                     const className = `${prefix}-${sanitizedName}`;
@@ -1760,7 +1721,6 @@ function formatDueDate(dueDateString) {
                     const color = getContrastYIQ(bgColor);
                     cssRules += `.${className} { background-color: ${bgColor}; color: ${color}; }\n`;
                 }
-                // --- FIX ENDS HERE ---
             });
         };
         
@@ -1801,7 +1761,7 @@ function formatDueDate(dueDateString) {
         const dialogOverlay = document.createElement('div');
         dialogOverlay.className = 'dialog-overlay';
         
-        // --- FIX STARTS HERE ---
+
         // Determine the correct dialog title based on the option type.
         let dialogTitle = `Edit ${optionType} Option`; // Default title
         
@@ -1813,7 +1773,6 @@ function formatDueDate(dueDateString) {
                 dialogTitle = `Edit ${column.name} Option`;
             }
         }
-        // --- FIX ENDS HERE ---
         
         dialogOverlay.innerHTML = `
     <div class="dialog-box">
@@ -1859,13 +1818,6 @@ function formatDueDate(dueDateString) {
         });
     }
     
-    /**
-     * Updates a specific option within a project's array field (e.g., customPriorities) in Firestore.
-     * @param {string} optionType - 'Priority', 'Status', or 'CustomColumn'.
-     * @param {object} originalOption - The original option object to find and replace.
-     * @param {object} newOption - The new option object to insert.
-     * @param {number|null} columnId - The ID of the column if updating a column option.
-     */
     async function updateCustomOptionInFirebase(optionType, originalOption, newOption, columnId = null) {
         // Create a deep copy of the custom fields to safely modify them
         const projectCopy = JSON.parse(JSON.stringify(project));
@@ -1991,22 +1943,22 @@ function formatDueDate(dueDateString) {
             sidebar.classList.remove('is-active');
         } catch (error) {
             console.error("Failed to delete task:", error);
-           // alert("An error occurred while trying to delete the task. Please check the console for details.");
+            // alert("An error occurred while trying to delete the task. Please check the console for details.");
         }
     }
-
-function showStatusDropdown(targetEl, options, onSelectCallback) {
-    createAdvancedDropdown(targetEl, {
-        options: options,
-        searchable: false, // Typically not needed for these types of lists
-        itemRenderer: (option) => {
-            const color = option.color || defaultStatusColors[option.name] || defaultPriorityColors[option.name] || '#ccc';
-            return `<div class="dropdown-color-swatch" style="background-color: ${color}"></div><span>${option.name}</span>`;
-        },
-        onSelect: onSelectCallback
-    });
-}
-
+    
+    function showStatusDropdown(targetEl, options, onSelectCallback) {
+        createAdvancedDropdown(targetEl, {
+            options: options,
+            searchable: false, // Typically not needed for these types of lists
+            itemRenderer: (option) => {
+                const color = option.color || defaultStatusColors[option.name] || defaultPriorityColors[option.name] || '#ccc';
+                return `<div class="dropdown-color-swatch" style="background-color: ${color}"></div><span>${option.name}</span>`;
+            },
+            onSelect: onSelectCallback
+        });
+    }
+    
     function toggleSidebarView() {
         // Toggle the class on the sidebar element
         sidebar.classList.toggle('is-full-view');
