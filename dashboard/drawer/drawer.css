@@ -157,7 +157,7 @@
 }
 
 .sidebar.close .nav-item span,
-.sidebar.close .nav-item-project a,
+.sidebar.close .nav-item-project span,
 .sidebar.close .section-header span,
 .sidebar.close .expand-icon {
   opacity: 0;
