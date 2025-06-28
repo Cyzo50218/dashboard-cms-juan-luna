@@ -263,15 +263,6 @@ function setupEventListeners(modal, projectRef) {
     const inviteInputWrapper = emailInput.closest('.shareproject-invite-input-wrapper');
     let invitedEmails = [];
     
-    const getSanitizedProjectEmails = () => {
-        const projectData = JSON.parse(modal.dataset.projectData || '{}');
-        const userProfilesMap = JSON.parse(modal.dataset.userProfilesMap || '{}');
-        const existingMemberEmails = (projectData.members || []).map(m => userProfilesMap[m.uid]?.email?.toLowerCase());
-        const pendingEmails = (projectData.pendingInvites || []).map(p => p.email?.toLowerCase());
-        const currentInviteTags = invitedEmails.map(e => e.toLowerCase());
-        return [...existingMemberEmails, ...pendingEmails, ...currentInviteTags].filter(Boolean);
-    };
-    
     emailInput.addEventListener('input', () => {
         console.log('[Input Event] Search query:', emailInput.value);
         
@@ -546,7 +537,7 @@ async function handleInvite(modal, projectRef) {
 
                 await sendEmailInvitationV2({
                     email: lowerEmail,
-                    projectName: projectData.name,
+                    projectName: "SHIPPING - USA WAREHOUSE",
                     invitationUrl: invitationUrl
                 });
                 
