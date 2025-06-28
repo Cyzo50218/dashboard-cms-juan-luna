@@ -372,7 +372,12 @@ export function init(params) {
 
 
     // Call the new, imported function and pass the event 'e'
-    shareButton.addEventListener('click', () => {
+    shareButton.addEventListener('click', async () => {
+        const projectContext = await fetchCurrentProjectData();
+        projectRef = projectContext.projectRef; // <-- Storing the correct reference
+
+        const { data, projectId, workspaceId } = projectContext;
+
         if (projectRef) {
             // We call the imported function directly. It's guaranteed to exist.
             openShareModal(projectRef);
