@@ -101,7 +101,7 @@ button {
 .add-task-header-btn.hide{
     display: none;
 }
-.add-section-btn-btn.hide {
+.add-section-btn.hide {
     display: none;
 }
 .cell-restricted {

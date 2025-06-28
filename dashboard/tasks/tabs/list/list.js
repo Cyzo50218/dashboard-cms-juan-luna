@@ -1570,7 +1570,7 @@ function render() {
         addSectionBtn.classList.add('hide');
     } else {
         addTaskHeaderBtn.classList.remove('hide');
-        addSectionClassBtn.classList.remove('hide');
+        addSectionBtn.classList.remove('hide');
     }
     
     let scrollState = { top: 0, left: 0 };
