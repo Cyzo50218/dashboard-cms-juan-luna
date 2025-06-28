@@ -491,13 +491,12 @@ window.TaskSidebar = (function() {
         } catch (error) { console.error(`Failed to update custom field ${column.name}:`, error); }
     }
     
-  
-// --- DEBUGGING VERSION ---
 async function moveTask(newProjectId) {
-    if (!currentTaskRef || !currentTask || !currentUserId || newProjectId === currentTask.projectId) return;
+    if (!currentTaskRef || !currentTask || !currentUserId || !currentProject || newProjectId === currentTask.projectId) return;
+
+    const originalProjectTitle = currentProject.title;
 
     try {
-        // Find the destination project from the list we fetched.
         const destinationProjectData = workspaceProjects.find(p => p.id === newProjectId);
 
         if (!destinationProjectData || !destinationProjectData.ownerId || !destinationProjectData.activeWorkspaceId) {
@@ -505,21 +504,15 @@ async function moveTask(newProjectId) {
             throw new Error("Could not move task because destination project data is missing required path IDs.");
         }
 
-        // --- THE FINAL PATH CORRECTION ---
-        // Build the path using all the correct, dynamic parts.
         const fullPath = `users/${destinationProjectData.ownerId}/myworkspace/${destinationProjectData.activeWorkspaceId}/projects/${newProjectId}`;
-        // --- END OF FINAL PATH CORRECTION ---
-
         const newProjectRef = doc(db, fullPath);
         const projectSnap = await getDoc(newProjectRef);
         
         if (!projectSnap.exists()) {
-             // If this still fails, the problem is outside of this code.
             console.error("CRITICAL: Final path did not resolve:", fullPath);
             throw new Error("Destination project not found even with the correct path.");
         }
 
-        // The rest of the function proceeds as before...
         const newProjectData = projectSnap.data();
         const isOwner = newProjectData.project_super_admin_uid === currentUserId;
         const memberInfo = newProjectData.members?.find(member => member.uid === currentUserId);
@@ -539,19 +532,47 @@ async function moveTask(newProjectId) {
         }
         const newSectionId = sectionsSnapshot.docs[0].id;
 
+        // Prepare the atomic batch write
+        const batch = writeBatch(db);
+
+        // --- NEW LOGIC: ADD ASSIGNEES TO NEW PROJECT ---
+        const assigneesToProcess = currentTask.assignees || [];
+        const existingMemberUIDs = new Set((newProjectData.members || []).map(m => m.uid));
+
+        for (const assigneeId of assigneesToProcess) {
+            // If the assignee is not already a member of the destination project...
+            if (!existingMemberUIDs.has(assigneeId)) {
+                console.log(`Assignee ${assigneeId} is not in the destination project. Adding as 'Viewer'.`);
+                const newMemberPayload = { role: 'Viewer', uid: assigneeId };
+                // ...add them using arrayUnion to prevent duplicates.
+                batch.update(newProjectRef, {
+                    members: arrayUnion(newMemberPayload)
+                });
+            }
+        }
+        // --- END OF NEW LOGIC ---
+
+        // Original task move operations are added to the same batch
         const newTaskData = { ...currentTask, projectId: newProjectId, sectionId: newSectionId };
         const newTaskRef = doc(newProjectRef, `sections/${newSectionId}/tasks/${currentTask.id}`);
-
-        const batch = writeBatch(db);
+        
         batch.delete(currentTaskRef);
         batch.set(newTaskRef, newTaskData);
+        
+        // Commit all changes (add members, delete old task, create new task) in one go
         await batch.commit();
 
-        logActivity({ action: 'moved', field: 'Project', from: currentProject.title, to: newProjectData.title });
+        logActivity({
+            action: 'moved',
+            field: 'Project',
+            from: originalProjectTitle,
+            to: newProjectData.title
+        });
+        
         close();
 
     } catch (error) {
-        console.error("Failed to move task:", error);
+        console.error("Failed to move task:", error); 
         alert("An error occurred while moving the task. " + error.message);
     }
 }
