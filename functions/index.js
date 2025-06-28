@@ -47,6 +47,7 @@ export const sendEmailInvitation = onCall(
     from: {
       name: 'Juan Luna Collections',
       email: 'collection@juanlunacollections.com' 
+      email: 'collection@juanlunacollections.com' 
     },
     subject: `${inviterName} has invited you to collaborate on ${projectName}`,
     html: `<!DOCTYPE html>
