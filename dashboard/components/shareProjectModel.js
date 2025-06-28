@@ -93,6 +93,18 @@ export async function openShareModal(projectRef) {
   try {
     const user = auth.currentUser;
     if (!user) throw new Error("User not authenticated.");
+    let workspaceMemberUIDs = [];
+    const workspaceColRef = collection(db, 'users', user.uid, 'myworkspace');
+    const q = query(workspaceColRef, where("isSelected", "==", true), limit(1));
+    const workspaceQuerySnap = await getDocs(q);
+
+    if (!workspaceQuerySnap.empty) {
+      const workspaceDoc = workspaceQuerySnap.docs[0];
+      workspaceMemberUIDs = workspaceDoc.data().members || [];
+    } else {
+      console.warn("No active workspace found for the current user.");
+    }
+
     unsubscribeProjectListener = onSnapshot(
       projectRef,
       async (projectDocSnap) => {
@@ -124,6 +136,7 @@ export async function openShareModal(projectRef) {
           projectData,
           userProfilesMap,
           currentUserId: user.uid,
+          workspaceMemberCount: workspaceMemberUIDs.length,
         });
       }
     );
@@ -466,7 +479,7 @@ function renderStaticDropdownContent(modal) {
 
 function renderDynamicContent(
   modal,
-  { projectData, userProfilesMap, currentUserId }
+  { projectData, userProfilesMap, currentUserId, workspaceMemberCount = 0  }
 ) {
   // Ensure data is stored in modal dataset
   modal.dataset.projectData = JSON.stringify(projectData);
@@ -564,9 +577,7 @@ function renderDynamicContent(
   if (state.accessLevel === "workspace") {
     const workspaceId = "workspace-item";
     const workspaceIconHTML = `<div class="shareproject-profile-pic" style="background-color:#e5e7eb;color:#4b5563;"><i class="material-icons">people</i></div>`;
-    membersHTML += `<div class="shareproject-member-item" data-id="${workspaceId}">${workspaceIconHTML}<div class="shareproject-member-info"><strong>My Workspace</strong><p>${
-      Object.keys(userProfilesMap).length
-    } members</p></div>${createRoleDropdownButtonHTML(
+    membersHTML += `<div class="shareproject-member-item" data-id="${workspaceId}">${workspaceIconHTML}<div class="shareproject-member-info"><strong>My Workspace</strong><p>${workspaceMemberCount} members</p></div>${createRoleDropdownButtonHTML(
       workspaceId,
       state.workspaceRole,
       false

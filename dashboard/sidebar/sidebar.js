@@ -546,7 +546,8 @@ async function moveTask(newProjectId) {
                 const newMemberPayload = { role: 'Viewer', uid: assigneeId };
                 // ...add them using arrayUnion to prevent duplicates.
                 batch.update(newProjectRef, {
-                    members: arrayUnion(newMemberPayload)
+                    members: arrayUnion(newMemberPayload),
+                    memberUIDs: arrayUnion(assigneeId)
                 });
             }
         }
