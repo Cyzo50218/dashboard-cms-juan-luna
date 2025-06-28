@@ -77,6 +77,7 @@ function getSanitizedProjectEmails() {
 }
 
 export async function openShareModal(projectRef) {
+  invitedEmails = [];
   if (!projectRef) {
     alert("Error: Project not specified.");
     return;

@@ -373,28 +373,30 @@ window.TaskSidebar = (function() {
             const projectData = doc.data();
             const projectId = doc.id;
 
-            // --- THIS IS THE FIX ---
-            // Extract the workspaceId from the document's full path.
-            // The path looks like: "workspaces/workspace_id_123/projects/project_id_abc"
+            // --- THE FIX FOR THE LONG PATH ---
+            // Path: /users/{ownerId}/myworkspace/{workspaceId}/projects/{projectId}
             const pathParts = doc.ref.path.split('/');
-            const workspaceId = pathParts.length >= 2 ? pathParts[1] : null;
-
-            if (!workspaceId) {
-                console.warn("Could not determine workspaceId for project:", projectId);
-                return; // Skip this project if its path is unexpected
+            
+            // Check if the path has enough parts for our structure
+            if (pathParts.length < 6) {
+                console.warn("Skipping project with unexpected path:", doc.ref.path);
+                return;
             }
-            // --- END OF FIX ---
 
+            const ownerId = pathParts[1];       // The project owner's UID
+            const activeWorkspaceId = pathParts[3]; // The workspace ID
+            // --- END OF FIX ---
 
             const isOwner = projectData.project_super_admin_uid === userId;
             const memberInfo = projectData.members?.find(member => member.uid === userId);
             const isEligibleMember = memberInfo && (memberInfo.role === 'Project admin' || memberInfo.role === 'Editor');
 
             if ((isOwner || isEligibleMember) && !eligibleProjectsMap.has(projectId)) {
-                // Now, we add the extracted workspaceId to the object we save.
+                // We save all the parts needed to rebuild the path later
                 eligibleProjectsMap.set(projectId, {
                     id: projectId,
-                    workspaceId: workspaceId, // Include the workspaceId
+                    ownerId: ownerId, // Save the Owner's ID
+                    activeWorkspaceId: activeWorkspaceId, // Save the Workspace ID
                     ...projectData
                 });
             }
@@ -494,42 +496,30 @@ window.TaskSidebar = (function() {
 async function moveTask(newProjectId) {
     if (!currentTaskRef || !currentTask || !currentUserId || newProjectId === currentTask.projectId) return;
 
-    // --- Start of Debugging Block ---
-    console.log("--- DEBUGGING moveTask ---");
-    console.log("1. Attempting to move task to project ID:", newProjectId);
-
     try {
+        // Find the destination project from the list we fetched.
         const destinationProjectData = workspaceProjects.find(p => p.id === newProjectId);
 
-        if (!destinationProjectData) {
-            console.error("2. FATAL: Could not find the destination project in the 'workspaceProjects' array.");
-            console.log("Contents of workspaceProjects:", workspaceProjects);
-            throw new Error("Could not find destination project data in the pre-loaded list.");
+        if (!destinationProjectData || !destinationProjectData.ownerId || !destinationProjectData.activeWorkspaceId) {
+            console.error("Project data is incomplete:", destinationProjectData);
+            throw new Error("Could not move task because destination project data is missing required path IDs.");
         }
 
-        console.log("2. Found destination project data object:", destinationProjectData);
-        console.log("3. Extracted workspaceId to be used:", destinationProjectData.workspaceId);
-        
-        if (!destinationProjectData.workspaceId) {
-             console.error("4. FATAL: The 'workspaceId' on the project data object is missing or undefined!");
-             throw new Error("The project data is missing a workspaceId.");
-        }
-
-        const fullPath = `users/${destinationProjectData.workspaceId}/projects/${newProjectId}`;
-        console.log("4. Constructed Firestore path:", fullPath);
+        // --- THE FINAL PATH CORRECTION ---
+        // Build the path using all the correct, dynamic parts.
+        const fullPath = `users/${destinationProjectData.ownerId}/myworkspace/${destinationProjectData.activeWorkspaceId}/projects/${newProjectId}`;
+        // --- END OF FINAL PATH CORRECTION ---
 
         const newProjectRef = doc(db, fullPath);
         const projectSnap = await getDoc(newProjectRef);
-
-        if (!projectSnap.exists()) {
-            console.error("5. FAILED: getDoc() returned a snapshot that does not exist for the path above.");
-            throw new Error("Destination project not found.");
-        }
         
-        console.log("5. SUCCESS: Document exists at the constructed path.");
-        // --- End of Debugging Block ---
+        if (!projectSnap.exists()) {
+             // If this still fails, the problem is outside of this code.
+            console.error("CRITICAL: Final path did not resolve:", fullPath);
+            throw new Error("Destination project not found even with the correct path.");
+        }
 
-
+        // The rest of the function proceeds as before...
         const newProjectData = projectSnap.data();
         const isOwner = newProjectData.project_super_admin_uid === currentUserId;
         const memberInfo = newProjectData.members?.find(member => member.uid === currentUserId);
@@ -561,7 +551,7 @@ async function moveTask(newProjectId) {
         close();
 
     } catch (error) {
-        console.error("Failed to move task:", error); // This is the final error catch
+        console.error("Failed to move task:", error);
         alert("An error occurred while moving the task. " + error.message);
     }
 }
