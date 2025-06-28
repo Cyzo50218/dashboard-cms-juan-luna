@@ -1,5 +1,6 @@
 /* eslint-disable object-curly-spacing, indent, no-undef, max-len, quotes, comma-dangle, no-unused-vars, no-trailing-spaces, eol-last */
 import { onCall } from "firebase-functions/v2/https";
+import * as functions from "firebase-functions";
 import { defineSecret } from "firebase-functions/params";
 import { initializeApp } from "firebase-admin/app";
 import sgMail from "@sendgrid/mail";
@@ -46,7 +47,6 @@ export const sendEmailInvitation = onCall(
     to: recipientEmail,
     from: {
       name: 'Juan Luna Collections',
-      email: 'collection@juanlunacollections.com' 
       email: 'collection@juanlunacollections.com' 
     },
     subject: `${inviterName} has invited you to collaborate on ${projectName}`,

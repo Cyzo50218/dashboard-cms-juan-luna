@@ -538,6 +538,12 @@ async function handleInvite(modal, projectRef) {
                 const invitationUrl = `https://your-site-name.vercel.app/invitation/${invitationId}`; // Replace with your actual domain
                 
                 console.log(`Sending invitation to new user: ${lowerEmail}`);
+                console.log("Sending invite with values:", {
+  email: lowerEmail,
+  projectName: projectData.name,
+  invitationUrl
+});
+
                 await sendEmailInvitationV2({
                     email: lowerEmail,
                     projectName: projectData.name,
