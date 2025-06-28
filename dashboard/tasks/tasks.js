@@ -205,43 +205,56 @@ export function init(params) {
         }
     }
 
-    function createAvatarStackHTML(assigneeIds, allUsers) {
-        if (!assigneeIds || assigneeIds.length === 0) {
-            return '';
-        }
-
-        const maxVisible = 5;
-        let visibleAssignees = assigneeIds;
-        let overflowCount = 0;
-
-        if (assigneeIds.length > maxVisible) {
-            visibleAssignees = assigneeIds.slice(0, maxVisible - 1);
-            overflowCount = assigneeIds.length - (maxVisible - 1);
-        }
-
-        const avatarsHTML = visibleAssignees.map((userId, index) => {
-            const user = allUsers.find(u => u.uid === userId);
-            if (!user) return '';
-
-            const zIndex = 50 - index;
-            const initials = (user.name || '?').split(' ').map(n => n[0]).join('').substring(0, 2);
-
-            if (user.avatar && user.avatar.startsWith('https://')) {
-                return `<div class="user-avatar-tasks" title="${user.name}" style="background-image: url(${user.avatar}); z-index: ${zIndex};"></div>`;
-            } else {
-                const bgColor = '#' + (user.uid || '000000').substring(0, 6); // Simple color from UID
-                return `<div class="user-avatar-tasks" title="${user.name}" style="background-color: ${bgColor}; color: white; z-index: ${zIndex};">${initials}</div>`;
-            }
-        }).join('');
-
-        let overflowHTML = '';
-        if (overflowCount > 0) {
-            const zIndex = 50 - maxVisible;
-            overflowHTML = `<div class="user-avatar-tasks overflow" style="z-index: ${zIndex};">+${overflowCount}</div>`;
-        }
-
-        return `<div class="avatar-stack">${avatarsHTML}${overflowHTML}</div>`;
+    /**
+ * Creates the HTML for a stack of user avatars using <img> tags for better control.
+ * @param {string[]} assigneeIds - An array of user UIDs.
+ * @param {object[]} allUsers - The array of all project members' full profiles.
+ * @returns {string} The complete HTML string for the avatar stack.
+ */
+function createAvatarStackHTML(assigneeIds, allUsers) {
+    if (!assigneeIds || assigneeIds.length === 0) {
+        return '';
     }
+
+    const maxVisible = 5;
+    let visibleAssignees = assigneeIds;
+    let overflowCount = 0;
+
+    if (assigneeIds.length > maxVisible) {
+        visibleAssignees = assigneeIds.slice(0, maxVisible - 1);
+        overflowCount = assigneeIds.length - (maxVisible - 1);
+    }
+
+    const avatarsHTML = visibleAssignees.map((userId, index) => {
+        const user = allUsers.find(u => u.uid === userId);
+        if (!user) return '';
+
+        const zIndex = 50 - index;
+        
+        // --- THE FIX IS HERE ---
+        if (user.avatar && user.avatar.startsWith('https://')) {
+            // Use a real <img> tag for better scaling and centering.
+            // The parent div provides the circular shape.
+            return `
+                <div class="user-avatar-tasks" title="${user.name}" style="z-index: ${zIndex};">
+                    <img src="${user.avatar}" alt="${user.name}">
+                </div>`;
+        } else {
+            // The fallback for initials remains the same.
+            const initials = (user.name || '?').split(' ').map(n => n[0]).join('').substring(0, 2);
+            const bgColor = '#' + (user.uid || '000000').substring(0, 6);
+            return `<div class="user-avatar-tasks" title="${user.name}" style="background-color: ${bgColor}; color: white; z-index: ${zIndex};">${initials}</div>`;
+        }
+    }).join('');
+
+    let overflowHTML = '';
+    if (overflowCount > 0) {
+        const zIndex = 50 - maxVisible;
+        overflowHTML = `<div class="user-avatar-tasks overflow" style="z-index: ${zIndex};">+${overflowCount}</div>`;
+    }
+
+    return `<div class="avatar-stack">${avatarsHTML}${overflowHTML}</div>`;
+}
 
 
     fetchCurrentProjectData()
