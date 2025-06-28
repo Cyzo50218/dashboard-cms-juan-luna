@@ -209,3 +209,25 @@ button:hover {
         transform: rotate(360deg);
     }
 }
+
+
+.user-avatar-tasks {
+         height: 28px;
+         width: 28px;
+         border-radius: 50%;
+         display: flex;
+         align-items: center;
+         justify-content: center;
+         font-size: 12px;
+         font-weight: bold;
+         cursor: pointer;
+         border: 2px solid white;
+         /* Creates separation for stacked look */
+         transition: margin 0.3s ease;
+         /* Smooth transition */
+     }
+
+     /* This applies the stacking to every avatar except the first one */
+     .user-avatar-tasks:not(:first-child) {
+         margin-left: -10px;
+     }

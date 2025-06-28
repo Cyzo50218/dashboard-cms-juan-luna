@@ -2015,13 +2015,13 @@ Custom class
 
 /* Changes the color of the selected day */
 .flatpickr-day.selected {
-    background: transparent 
+    background: transparent;
     border-color: #0052cc;
 }
 
 /* Changes the color of today's date */
 .flatpickr-day.today {
-    background: transparent 
+    background: transparent; 
     border-color: #34C759;
 }
 
@@ -2261,4 +2261,3 @@ Custom class
     border: none;
     box-shadow: none;
 }
-
