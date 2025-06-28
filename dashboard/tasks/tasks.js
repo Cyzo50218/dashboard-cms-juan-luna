@@ -44,6 +44,7 @@ export function init(params) {
     // This is crucial for currentTabCleanup to be accessible by all inner functions.
     let currentTabCleanup = null;
     let tabClickListener = null;
+    let projectRef = null;
 
     // --- 1. Get Parameters and DOM Elements ---
     // Inside your export function init(params)
@@ -136,61 +137,42 @@ export function init(params) {
      * Fetches the data for the currently selected project in a single, one-time read.
      * uses the robust 'selectedProjectId' method.
      */
-    async function fetchCurrentProjectData() {
-        const user = auth.currentUser;
-        if (!user) {
-            console.error("fetchCurrentProjectData failed: User not authenticated.");
-            throw new Error("User not authenticated.");
-        }
+    /**
+ * Fetches the data and reference for the currently selected project.
+ */
+async function fetchCurrentProjectData() {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated.");
 
-        // 1. Find the user's selected workspace to get the selectedProjectId from it.
-        const workspaceQuery = query(
-            collection(db, `users/${user.uid}/myworkspace`),
-            where("isSelected", "==", true)
-        );
-        const workspaceSnapshot = await getDocs(workspaceQuery);
+    // 1. Find the selected workspace to get the selectedProjectId
+    const workspaceQuery = query(collection(db, `users/${user.uid}/myworkspace`), where("isSelected", "==", true));
+    const workspaceSnapshot = await getDocs(workspaceQuery);
+    if (workspaceSnapshot.empty) throw new Error("No selected workspace found.");
+    
+    const workspaceDoc = workspaceSnapshot.docs[0];
+    const workspaceData = workspaceDoc.data();
+    const selectedProjectId = workspaceData.selectedProjectId;
+    if (!selectedProjectId) throw new Error("No selected project found in workspace.");
 
-        if (workspaceSnapshot.empty) {
-            console.warn("fetchCurrentProjectData: No selected workspace found for this user.");
-            throw new Error("No selected workspace found.");
-        }
+    // 2. Find the project document using a secure collectionGroup query
+    const projectQuery = query(
+        collectionGroup(db, 'projects'),
+        where('projectId', '==', selectedProjectId),
+        where('memberUIDs', 'array-contains', user.uid)
+    );
+    const projectSnapshot = await getDocs(projectQuery);
+    if (projectSnapshot.empty) throw new Error("Selected project not found or permission denied.");
 
-        const workspaceDoc = workspaceSnapshot.docs[0];
-        const workspaceId = workspaceDoc.id;
-        const workspaceData = workspaceDoc.data();
+    const projectDoc = projectSnapshot.docs[0];
 
-        // 2. Get the target project ID from the workspace data.
-        const selectedProjectId = workspaceData.selectedProjectId;
-        if (!selectedProjectId) {
-            console.warn("fetchCurrentProjectData: The active workspace does not have a selected project.");
-            throw new Error("No selected project found.");
-        }
-
-        // 3. Find the project document using a secure collectionGroup query.
-        // This query works because it aligns with your security rules.
-        const projectQuery = query(
-            collectionGroup(db, 'projects'),
-            where('projectId', '==', selectedProjectId),
-            where('memberUIDs', 'array-contains', user.uid)
-        );
-        const projectSnapshot = await getDocs(projectQuery);
-
-        if (projectSnapshot.empty) {
-            console.error(`fetchCurrentProjectData: Could not find project with ID '${selectedProjectId}' or user lacks permission.`);
-            throw new Error("Selected project not found or permission denied.");
-        }
-
-        const projectDoc = projectSnapshot.docs[0];
-
-        // 4. Return all the necessary data.
-        console.log(`[fetchCurrentProjectData] Successfully fetched project: ${projectDoc.data().title}`);
-        return {
-            data: projectDoc.data(),
-            projectId: projectDoc.id,
-            workspaceId, // The ID of the user's active workspace
-            projectPath: projectDoc.ref.path // Returning the full path is very useful for subsequent writes
-        };
-    }
+    // 3. Return all the necessary data, including the reference itself
+    return {
+        data: projectDoc.data(),
+        projectId: projectDoc.id,
+        workspaceId: workspaceDoc.id,
+        projectRef: projectDoc.ref // <-- THE KEY ADDITION
+    };
+}
 
     async function fetchMemberProfiles(uids) {
         if (!uids || uids.length === 0) return [];
@@ -257,122 +239,100 @@ function createAvatarStackHTML(assigneeIds, allUsers) {
 }
 
 
-    fetchCurrentProjectData()
-        .then(async ({ data, projectId, workspaceId }) => {
-            const user = auth.currentUser;
-            if (!user) return;
+ async function loadProjectHeader() {
+    try {
+        // Step 1: Fetch the project data and store the reference.
+        const projectContext = await fetchCurrentProjectData();
+        projectRef = projectContext.projectRef; // <-- Storing the correct reference
+        
+        const { data, projectId, workspaceId } = projectContext;
+        const user = auth.currentUser;
+        if (!user) return;
 
-            if (projectName && data.title) {
-                const members = data.members || [];
-                const memberUIDs = data.members?.map(m => m.uid) || [];
-                const allUsers = await fetchMemberProfiles(memberUIDs);
+        // Step 2: Render the UI with the fetched data.
+        if (projectName && data.title) {
+            const members = data.members || [];
+            const memberUIDs = data.members?.map(m => m.uid) || [];
+            const allUsers = await fetchMemberProfiles(memberUIDs); // Assuming fetchMemberProfiles is in scope
 
-                const isMemberWithEditPermission = members.some(
-                    (member) =>
-                        member.uid === user.uid &&
-                        (member.role === "Project admin")
-                );
-
+            // Render the avatar stack if the container exists
+            const avatarStackContainer = document.getElementById('project-header-members'); 
             if(avatarStackContainer){
                 avatarStackContainer.innerHTML = createAvatarStackHTML(memberUIDs, allUsers);
             }
 
+            // Your permission logic remains the same
+            const isMemberWithEditPermission = members.some(m => m.uid === user.uid && m.role === "Project admin");
+            const isSuperAdmin = data.project_super_admin_uid === user.uid;
+            const isAdminUser = data.project_admin_user === user.uid;
+            const userCanEdit = isMemberWithEditPermission || isSuperAdmin || isAdminUser;
 
-                const isSuperAdmin = data.project_super_admin_uid === user.uid;
-                const isAdminUser = data.project_admin_user === user.uid;
+            projectName.textContent = data.title;
 
-                // Role Checker.
-                const userCanEdit = isMemberWithEditPermission || isSuperAdmin || isAdminUser;
-
-                projectName.textContent = data.title;
-
-                // Conditionally set UI properties based on the permission check.
-                if (userCanEdit) {
-                    // --- USER CAN EDIT ---
-                    projectName.contentEditable = true;
-                    projectName.style.cursor = "text";
-                    projectName.title = "Click to edit the project name"; // Helpful tooltip
-                    shareButton.classList.remove('display-none'); // Show button
-                } else {
-                    // --- USER CANNOT EDIT (Viewer, etc.) ---
-                    projectName.contentEditable = false;
-                    projectName.style.cursor = "default";
-                    projectName.title = ""; // No tooltip needed
-                    shareButton.classList.add('display-none'); // Hide button
-                }
-
-                if (userCanEdit) {
-
-
-                    // The function to save the new title to Firestore.
-                    const saveTitle = async () => {
-                        const newTitle = projectName.textContent.trim();
-
-                        // Extra check: Do nothing if title is empty or unchanged.
-                        if (!newTitle || newTitle === data.title) {
-                            projectName.textContent = data.title; // Revert if left empty on blur
-                            return;
-                        }
-
-                        try {
-                            const projectDocRef = doc(
-                                db,
-                                `users/${user.uid}/myworkspace/${workspaceId}/projects`,
-                                projectId
-                            );
-
-                            // The permission check is implicitly handled by the `if (userCanEdit)` block,
-                            // but keeping it in the transaction is a good server-side practice for security rules.
-                            await runTransaction(db, async (transaction) => {
-                                transaction.update(projectDocRef, {
-                                    title: newTitle,
-                                });
-                            });
-                            console.log("Project title updated successfully.");
-                            data.title = newTitle; // Update local data object to reflect the change
-                        } catch (err) {
-                            console.error("Failed to update project title:", err);
-                            // Revert the optimistic UI update on failure
-                            projectName.textContent = data.title;
-                        }
-                    };
-                    // Save on blur
-                    projectName.addEventListener("blur", saveTitle);
-
-                    // Save on Enter key (and prevent new line)
-                    projectName.addEventListener("keydown", (e) => {
-                        if (e.key === "Enter") {
-                            e.preventDefault(); // Prevent newline
-                            projectName.blur(); // Triggers blur and saves
-                        }
-                    });
-                }
-
+            // Conditionally set UI properties based on permissions
+            if (userCanEdit) {
+                projectName.contentEditable = true;
+                projectName.style.cursor = "text";
+                projectName.title = "Click to edit project name";
+                shareButton.classList.remove('display-none');
+            } else {
+                projectName.contentEditable = false;
+                projectName.style.cursor = "default";
+                projectName.title = "";
+                shareButton.classList.add('display-none');
             }
-            if (projectIconColor && data.color) {
-                // First, convert the HSL string from data.color to a HEX string
-                const hexColor = hslStringToHex(data.color);
 
-                // Then, use the resulting HEX color
-                projectIconColor.style.backgroundColor = hexColor;
+            // Attach event listeners ONLY if the user can edit
+            if (userCanEdit) {
+                const saveTitle = async () => {
+                    const newTitle = projectName.textContent.trim();
+                    if (!newTitle || newTitle === data.title) {
+                        projectName.textContent = data.title;
+                        return;
+                    }
+                    try {
+                        // THE FIX: Use the stored projectRef directly. This works for collaborators.
+                        await updateDoc(projectRef, { title: newTitle });
+                        console.log("Project title updated successfully.");
+                        data.title = newTitle;
+                    } catch (err) {
+                        console.error("Failed to update project title:", err);
+                        projectName.textContent = data.title;
+                    }
+                };
+                projectName.addEventListener("blur", saveTitle);
+                projectName.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        projectName.blur();
+                    }
+                });
+            }
+        }
 
-                setRandomProjectIcon(projectIconColor);
-            }
-        })
-        .catch((err) => {
-            console.error("Failed to load project header data:", err);
-            const projectName = document.getElementById("project-name");
-            if (projectName) {
-                projectName.textContent = "Error Loading Project";
-                projectName.style.color = "red";
-            }
-        });
+        // Project Icon Color logic remains the same
+        if (projectIconColor && data.color) {
+            const hexColor = hslStringToHex(data.color);
+            projectIconColor.style.backgroundColor = hexColor;
+            setRandomProjectIcon(projectIconColor);
+        }
+    } catch (err) {
+        console.error("Failed to load project header data:", err);
+        if (projectName) {
+            projectName.textContent = "Error Loading Project";
+            projectName.style.color = "red";
+        }
+    }
+}
 
 
     // Call the new, imported function and pass the event 'e'
-    shareButton.addEventListener('click', (e) => {
-        openShareModal(e);
-    });
+    shareButton.addEventListener('click', () => {
+    // THE FIX: It now passes the stored reference directly to the modal function
+    if (projectRef) {
+         window.ShareModal.open(projectRef);
+    }
+});
 
     // --- 2. Define Core Functions ---
 
@@ -472,7 +432,7 @@ function createAvatarStackHTML(assigneeIds, allUsers) {
     // This now runs correctly after all functions and variables are defined.
     setActiveTabLink(tabId);
     loadTabContent(tabId); // Load the content for the initial tab from the URL.
-
+    loadProjectHeader();
     // --- 5. Return the Main Cleanup Function ---
     // This cleans up the tasks section itself when navigating away (e.g., to 'home').
     return function cleanup() {

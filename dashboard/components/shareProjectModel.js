@@ -8,6 +8,8 @@ import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-aut
 import { getFirestore, collection, query, where, getDocs, doc, updateDoc, arrayUnion, arrayRemove, getDoc, deleteField, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "/services/firebase-config.js";
 
+window.ShareModal = (function() {
+    // --- MODULE STATE ---
 // --- Module-level state ---
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -26,66 +28,61 @@ function closeModal() {
     document.getElementById('share-project-styles')?.remove();
 }
 
-export async function openShareModal(e) {
-    if (e) e.stopPropagation();
-    if (isModalOpen) return;
-    isModalOpen = true;
-    
-    createModalUI();
-    const modal = document.querySelector('.shareproject-modal');
-    const modalBody = document.querySelector('.shareproject-modal-body');
-    
-    try {
-        const user = auth.currentUser;
-        if (!user) throw new Error("User not authenticated.");
-        
-        const workspaceQuery = query(collection(db, `users/${user.uid}/myworkspace`), where("isSelected", "==", true));
-        const workspaceSnapshot = await getDocs(workspaceQuery);
-        if (workspaceSnapshot.empty) throw new Error("No selected workspace found.");
-        const workspaceDoc = workspaceSnapshot.docs[0];
-        const workspaceMemberUIDs = workspaceDoc.data().members || [];
-        
-        const projectPath = `users/${user.uid}/myworkspace/${workspaceDoc.id}/projects`;
-        const projectQuery = query(collection(db, projectPath), where("isSelected", "==", true));
-        const projectSnapshot = await getDocs(projectQuery);
-        if (projectSnapshot.empty) throw new Error("No selected project found.");
-        const projectRef = projectSnapshot.docs[0].ref;
-        
-        renderStaticDropdownContent(modal);
-        setupEventListeners(modal, projectRef);
-        
-        unsubscribeProjectListener = onSnapshot(projectRef, async (projectDocSnap) => {
-            if (!projectDocSnap.exists()) {
-                alert("This project has been deleted.");
-                closeModal();
-                return;
-            }
+async function openShareModal(projectRef) {
+        if (!projectRef) {
+            alert("Error: Project not specified.");
+            return;
+        }
+        if (isModalOpen) return;
+        isModalOpen = true;
+
+        createModalUI(); // Creates the modal elements in the DOM
+        modal = document.querySelector('.shareproject-modal');
+        const modalBody = document.querySelector('.shareproject-modal-body');
+        modal.classList.remove('hidden');
+
+        try {
+            const user = auth.currentUser;
+            if (!user) throw new Error("User not authenticated.");
             
-            const projectData = { id: projectDocSnap.id, ...projectDocSnap.data() };
-            const projectMemberUIDs = projectData.members ? projectData.members.map(m => m.uid) : [];
-            
-            const allUniqueUIDs = [...new Set([projectData.project_super_admin_uid, user.uid, ...projectMemberUIDs, ...workspaceMemberUIDs])].filter(Boolean);
-            
-            const userProfilePromises = allUniqueUIDs.map(uid => getDoc(doc(db, "users", uid)));
-            const userProfileDocs = await Promise.all(userProfilePromises);
-            const userProfilesMap = userProfileDocs.reduce((acc, docSnap) => {
-                if (docSnap.exists()) acc[docSnap.id] = docSnap.data();
-                return acc;
-            }, {});
-            
-            renderDynamicContent(modal, {
-                projectData,
-                workspaceMemberCount: workspaceDoc.data().members?.length || 0,
-                userProfilesMap,
-                currentUserId: user.uid
+            // The modal is now driven by a real-time listener on the project document
+            unsubscribeProjectListener = onSnapshot(projectRef, async (projectDocSnap) => {
+                if (!projectDocSnap.exists()) {
+                    alert("This project has been deleted.");
+                    closeModal();
+                    return;
+                }
+
+                const projectData = { id: projectDocSnap.id, ...projectDocSnap.data() };
+
+                // Fetch all necessary user profiles for rendering
+                const memberUIDs = (projectData.members || []).map(m => m.uid);
+                const allUniqueUIDs = [...new Set([projectData.project_super_admin_uid, user.uid, ...memberUIDs])].filter(Boolean);
+                
+                const userProfilePromises = allUniqueUIDs.map(uid => getDoc(doc(db, "users", uid)));
+                const userProfileDocs = await Promise.all(userProfilePromises);
+                const userProfilesMap = userProfileDocs.reduce((acc, docSnap) => {
+                    if (docSnap.exists()) acc[docSnap.id] = docSnap.data();
+                    return acc;
+                }, {});
+
+                // Render the dynamic content with all the fresh data
+                renderDynamicContent(modal, {
+                    projectData,
+                    userProfilesMap,
+                    currentUserId: user.uid
+                });
             });
-        });
-        
-    } catch (error) {
-        console.error("Error setting up share modal:", error);
-        if (modalBody) modalBody.innerHTML = `<p style="color: red; text-align: center; padding: 40px;">Could not load project sharing details.<br>${error.message}</p>`;
+
+            // Setup event listeners once
+            renderStaticDropdownContent(modal);
+            setupEventListeners(modal, projectRef);
+
+        } catch (error) {
+            console.error("Error setting up share modal:", error);
+            if (modalBody) modalBody.innerHTML = `<p style="color: red;">Could not load sharing details.</p>`;
+        }
     }
-}
 
 // FIX: Event listeners for search/invite are now case-insensitive and robust.
 function setupEventListeners(modal, projectRef) {
@@ -362,89 +359,9 @@ function setupEventListeners(modal, projectRef) {
         }
     });
     
-    modal.querySelector('#shareproject-invite-btn').addEventListener('click', async () => {
-    if (emailInput.value.trim()) addEmailTag(emailInput.value.trim());
-    if (invitedEmails.length === 0) return;
-
-    const role = modal.querySelector('#shareproject-selected-role').textContent;
-    const projectData = JSON.parse(modal.dataset.projectData || '{}');
-    const userProfilesMap = JSON.parse(modal.dataset.userProfilesMap || '{}');
-
-    const currentUserId = auth.currentUser.uid;
-    const updates = {};
-    const newInvites = [];
-
-    for (const email of invitedEmails) {
-        const lower = email.toLowerCase();
-        const targetUID = Object.keys(userProfilesMap).find(uid =>
-            userProfilesMap[uid]?.email?.toLowerCase() === lower
-        );
-
-        if (!targetUID) {
-            // No match found — it's a new invite
-            newInvites.push({ email, role, invitedAt: new Date() });
-            continue;
-        }
-
-        // If user is already a member, update their role
-        const isMember = (projectData.members || []).some(m => m.uid === targetUID);
-        const isSuperAdmin = projectData.project_super_admin_uid === targetUID;
-        const isProjectAdmin = projectData.project_admin_user === targetUID;
-
-        if (isSuperAdmin) {
-            // Handle SUPER ADMIN transition
-            if (role !== 'Project admin') {
-                const otherAdmins = (projectData.members || []).filter(m => m.role === 'Project admin' && m.uid !== targetUID);
-                if (otherAdmins.length === 0) {
-                    alert("You must assign another Project admin before removing super admin privileges.");
-                    continue;
-                }
-
-                const newSuperAdminUID = otherAdmins[0].uid;
-                updates.project_super_admin_uid = newSuperAdminUID;
-                updates.project_admin_user = deleteField();
-
-                const updatedMembers = [...(projectData.members || []), { uid: targetUID, role }];
-                updates.members = updatedMembers;
-            }
-        } else if (isProjectAdmin) {
-            // Demote current project admin
-            updates.project_admin_user = deleteField();
-            const updatedMembers = [...(projectData.members || []).filter(m => m.uid !== targetUID), { uid: targetUID, role }];
-            updates.members = updatedMembers;
-        } else if (isMember) {
-            // Change role of existing member
-            const existing = (projectData.members || []).find(m => m.uid === targetUID);
-            if (existing.role !== role) {
-                updates.members = arrayRemove(existing);
-                await updateDoc(projectRef, updates);
-                await updateDoc(projectRef, { members: arrayUnion({ ...existing, role }) });
-            }
-        } else {
-            // Not a member or admin — add to members
-            const updatedMembers = [...(projectData.members || []), { uid: targetUID, role }];
-            updates.members = updatedMembers;
-        }
-
-        // Assign new project_admin_user if role is 'Project admin'
-        if (role === 'Project admin') {
-            updates.project_admin_user = targetUID;
-        }
-    }
-
-    if (newInvites.length > 0) {
-        await updateDoc(projectRef, {
-            pendingInvites: arrayUnion(...newInvites)
-        });
-    }
-
-    if (Object.keys(updates).length > 0) {
-        await updateDoc(projectRef, updates);
-    }
-
-    invitedEmails = [];
-    renderEmailTags();
-});
+    modal.querySelector('#shareproject-invite-btn').addEventListener('click', () => {
+        handleInvite(modal, projectRef);
+    });
 
 
 }
@@ -470,9 +387,10 @@ function renderDynamicContent(modal, { projectData, workspaceMemberCount, userPr
     };
     const projectAdmins = state.members.filter(m => m.role === 'Project admin');
 
-    if (superAdminUID && state.members.findIndex(m => m.uid === superAdminUID) === -1) {
-        state.members.unshift({ uid: superAdminUID, role: 'Project admin' });
-    }
+    let membersToRender = [...(projectData.members || [])];
+        if (superAdminUID && !membersToRender.some(m => m.uid === superAdminUID)) {
+            membersToRender.unshift({ uid: superAdminUID, role: 'Project admin' });
+        }
     
     const roles = { member: ['Project admin', 'Editor', 'Commenter', 'Viewer'], workspace: ['Editor', 'Commenter', 'Viewer'] };
     const canChangeRoles = currentUserId === superAdminUID;
@@ -561,6 +479,54 @@ if (member.uid === superAdminUID) {
     modal.querySelector('#shareproject-pending-list-container').innerHTML = pendingHTML;
 }
 
+async function handleInvite(modal, projectRef) {
+        const emailInput = modal.querySelector('#shareproject-email-input');
+        const invitedEmails = (modal.invitedEmails || []); // Get emails from stored state
+        if (emailInput.value.trim()) addEmailTag(emailInput.value.trim());
+        if (invitedEmails.length === 0) return;
+
+        const role = modal.querySelector('#shareproject-selected-role').textContent;
+        const projectData = JSON.parse(modal.dataset.projectData || '{}');
+        const userProfilesMap = JSON.parse(modal.dataset.userProfilesMap || '{}');
+        
+        const batch = writeBatch(db);
+        const newPendingInvites = [];
+
+        for (const email of invitedEmails) {
+            const lowerEmail = email.toLowerCase();
+            const existingUserUID = Object.keys(userProfilesMap).find(uid => userProfilesMap[uid]?.email?.toLowerCase() === lowerEmail);
+
+            if (existingUserUID) { // User is in the workspace
+                const existingMember = projectData.members.find(m => m.uid === existingUserUID);
+                if (existingMember && existingMember.role !== role) {
+                    // Update role of existing member
+                    batch.update(projectRef, { members: arrayRemove(existingMember) });
+                    batch.update(projectRef, { members: arrayUnion({ uid: existingUserUID, role: role }) });
+                } else if (!existingMember) {
+                    // THE FIX: Safely add a new member using arrayUnion
+                    batch.update(projectRef, { members: arrayUnion({ uid: existingUserUID, role: role }) });
+                }
+            } else {
+                // User is not in the workspace, add to pending
+                newPendingInvites.push({ email, role, invitedAt: serverTimestamp() });
+            }
+        }
+        
+        if (newPendingInvites.length > 0) {
+            batch.update(projectRef, { pendingInvites: arrayUnion(...newPendingInvites) });
+        }
+
+        try {
+            await batch.commit();
+            modal.invitedEmails = []; // Clear the list after sending
+            renderEmailTags(); // Re-render the empty list
+        } catch (error) {
+            console.error("Error sending invites:", error);
+            alert("Failed to send invitations.");
+        }
+    }
+
+
 function createProfilePic(profile) {
     const profileColors = ['#4A148C', '#004D40', '#BF360C', '#0D47A1', '#4E342E', '#AD1457', '#006064'];
     const pic = document.createElement('div');
@@ -613,3 +579,8 @@ function createModalUI() {
     modalBackdrop.innerHTML = modalHTML;
     document.body.appendChild(modalBackdrop);
 }
+
+return {
+        open: openShareModal
+    };
+})();
