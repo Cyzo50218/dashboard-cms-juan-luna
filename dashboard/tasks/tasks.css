@@ -236,7 +236,7 @@ button:hover {
 
 /* This applies the overlapping to every avatar except the first one */
 .user-avatar-tasks:not(:first-child) {
-  margin-left: -10px;
+  margin-left: 10px;
 }
 
 /* --- THE HOVER EFFECT --- */
