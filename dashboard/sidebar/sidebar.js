@@ -358,6 +358,42 @@ window.TaskSidebar = (function() {
             return [];
         }
     }
+
+    async function fetchEligibleMoveProjects(userId) {
+        if (!userId) return [];
+        // Use a Map to store projects by ID, preventing duplicates.
+        const eligibleProjectsMap = new Map();
+
+        try {
+            // Use a collection group query to get all projects the user might have access to.
+            const allProjectsQuery = collectionGroup(db, 'projects');
+            const projectsSnapshot = await getDocs(allProjectsQuery);
+
+            projectsSnapshot.forEach(doc => {
+                const projectData = doc.data();
+                const projectId = doc.id;
+
+                // Condition 1: Is the user the owner of the project?
+                const isOwner = projectData.project_super_admin_uid === userId;
+
+                // Condition 2: Is the user a member with a valid role?
+                const memberInfo = projectData.members?.find(member => member.uid === userId);
+                const isEligibleMember = memberInfo && (memberInfo.role === 'Project admin' || memberInfo.role === 'Editor');
+
+                // If either condition is met and the project isn't already in our list, add it.
+                if ((isOwner || isEligibleMember) && !eligibleProjectsMap.has(projectId)) {
+                    eligibleProjectsMap.set(projectId, { id: projectId, ...projectData });
+                }
+            });
+            
+            // Convert the Map values back to an array.
+            return Array.from(eligibleProjectsMap.values());
+
+        } catch (error) {
+            console.error("Error fetching eligible projects for move:", error);
+            return []; // Return empty array on error
+        }
+    }
     
     async function fetchActiveWorkspace(userId) {
         const workspaceQuery = query(collection(db, `users/${userId}/myworkspace`), where("isSelected", "==", true), limit(1));
@@ -441,40 +477,58 @@ window.TaskSidebar = (function() {
     }
     
     async function moveTask(newProjectId) {
-        if (!currentTaskRef || !currentTask || newProjectId === currentTask.projectId) return;
-        
+        if (!currentTaskRef || !currentTask || !currentUserId || newProjectId === currentTask.projectId) return;
+
         try {
-            // Find the destination project and its first section correctly
+            // --- PERMISSION CHECK ---
             const projectQuery = query(collectionGroup(db, 'projects'), where('id', '==', newProjectId), limit(1));
             const projectSnap = await getDocs(projectQuery);
             if (projectSnap.empty) throw new Error("Destination project not found.");
-            
+
             const newProjectRef = projectSnap.docs[0].ref;
             const newProjectData = projectSnap.docs[0].data();
-            
+
+            // Verify if the user has the right to move the task (Owner, Admin, or Editor).
+            const isOwner = newProjectData.project_super_admin_uid === currentUserId;
+            const memberInfo = newProjectData.members?.find(member => member.uid === currentUserId);
+            const isAdmin = memberInfo?.role === 'Project admin';
+            const isEditor = memberInfo?.role === 'Editor'; // Added Editor role check
+
+            if (!isOwner && !isAdmin && !isEditor) {
+                alert("Permission Denied: You must be an Editor or Admin of the destination project to move this task.");
+                console.warn(`User ${currentUserId} attempted to move task ${currentTask.id} to project ${newProjectId} without permission.`);
+                return;
+            }
+
+            // --- PROCEED WITH MOVE ---
             const sectionsQuery = query(collection(newProjectRef, 'sections'), orderBy("order", "asc"), limit(1));
             const sectionsSnapshot = await getDocs(sectionsQuery);
             if (sectionsSnapshot.empty) {
-                alert("Error: Target project has no sections.");
+                alert("Error: Target project has no sections. Please add a section first.");
                 return;
             }
             const newSectionId = sectionsSnapshot.docs[0].id;
-            
-            // Prepare the new task data and references
-            const newTaskData = { ...currentTask, projectId: newProjectId, sectionId: newSectionId };
+
+            const newTaskData = { ...currentTask,
+                projectId: newProjectId,
+                sectionId: newSectionId
+            };
             const newTaskRef = doc(newProjectRef, `sections/${newSectionId}/tasks/${currentTask.id}`);
-            
-            // Use a batch to move the task atomically
+
             const batch = writeBatch(db);
-            batch.delete(currentTaskRef); // Delete from old location
-            batch.set(newTaskRef, newTaskData); // Create in new location
+            batch.delete(currentTaskRef);
+            batch.set(newTaskRef, newTaskData);
             await batch.commit();
-            
-            logActivity({ action: 'moved', field: 'Project', from: currentProject.title, to: newProjectData.title });
-            
-            // Close the sidebar, as its context is now invalid
+
+            logActivity({
+                action: 'moved',
+                field: 'Project',
+                from: currentProject.title,
+                to: newProjectData.title
+            });
+
             close();
-            
+
         } catch (error) {
             console.error("Failed to move task:", error);
             alert("An error occurred while moving the task.");
