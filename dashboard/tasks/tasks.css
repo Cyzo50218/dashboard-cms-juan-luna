@@ -211,23 +211,43 @@ button:hover {
 }
 
 
-.user-avatar-tasks {
-         height: 28px;
-         width: 28px;
-         border-radius: 50%;
-         display: flex;
-         align-items: center;
-         justify-content: center;
-         font-size: 12px;
-         font-weight: bold;
-         cursor: pointer;
-         border: 2px solid white;
-         /* Creates separation for stacked look */
-         transition: margin 0.3s ease;
-         /* Smooth transition */
-     }
+/* This is the parent container */
+.avatar-stack {
+  display: flex; /* Aligns the avatars in a row */
+  padding-left: 10px; /* Provides some space so the first avatar's border isn't cut off */
+}
 
-     /* This applies the stacking to every avatar except the first one */
-     .user-avatar-tasks:not(:first-child) {
-         margin-left: -10px;
-     }
+.user-avatar-tasks {
+  height: 28px;
+  width: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  border: 2px solid white; /* The white border creates the separation */
+  
+  /* --- THE FIX IS HERE --- */
+  position: relative; /* z-index requires a position other than 'static' */
+  transition: margin 0.2s ease-in-out, transform 0.2s ease-in-out; /* Add transform to the transition */
+}
+
+/* This applies the overlapping to every avatar except the first one */
+.user-avatar-tasks:not(:first-child) {
+  margin-left: -10px;
+}
+
+/* --- THE HOVER EFFECT --- */
+
+/* When you hover over the whole stack, the avatars fan out */
+.avatar-stack:hover .user-avatar-tasks {
+  margin-left: 0;
+}
+
+/* When you hover over a specific avatar in the stack... */
+.avatar-stack .user-avatar-tasks:hover {
+  z-index: 10;                /* ...bring it to the front of the stack */
+  transform: scale(1.1);      /* ...and make it slightly larger */
+}
