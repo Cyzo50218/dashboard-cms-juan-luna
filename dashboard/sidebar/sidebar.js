@@ -478,64 +478,78 @@ window.TaskSidebar = (function() {
         } catch (error) { console.error(`Failed to update custom field ${column.name}:`, error); }
     }
     
-    async function moveTask(newProjectId) {
-        if (!currentTaskRef || !currentTask || !currentUserId || newProjectId === currentTask.projectId) return;
+  
+async function moveTask(newProjectId) {
+    if (!currentTaskRef || !currentTask || !currentUserId || newProjectId === currentTask.projectId) return;
 
-        try {
-            // --- PERMISSION CHECK ---
-            const projectQuery = query(collectionGroup(db, 'projects'), where('id', '==', newProjectId), limit(1));
-            const projectSnap = await getDocs(projectQuery);
-            if (projectSnap.empty) throw new Error("Destination project not found.");
+    try {
+        // --- NEW, MORE RELIABLE FETCH LOGIC ---
+        // 1. Find the full destination project object from the list we already have.
+        const destinationProjectData = workspaceProjects.find(p => p.id === newProjectId);
 
-            const newProjectRef = projectSnap.docs[0].ref;
-            const newProjectData = projectSnap.docs[0].data();
-
-            // Verify if the user has the right to move the task (Owner, Admin, or Editor).
-            const isOwner = newProjectData.project_super_admin_uid === currentUserId;
-            const memberInfo = newProjectData.members?.find(member => member.uid === currentUserId);
-            const isAdmin = memberInfo?.role === 'Project admin';
-            const isEditor = memberInfo?.role === 'Editor'; // Added Editor role check
-
-            if (!isOwner && !isAdmin && !isEditor) {
-                alert("Permission Denied: You must be an Editor or Admin of the destination project to move this task.");
-                console.warn(`User ${currentUserId} attempted to move task ${currentTask.id} to project ${newProjectId} without permission.`);
-                return;
-            }
-
-            // --- PROCEED WITH MOVE ---
-            const sectionsQuery = query(collection(newProjectRef, 'sections'), orderBy("order", "asc"), limit(1));
-            const sectionsSnapshot = await getDocs(sectionsQuery);
-            if (sectionsSnapshot.empty) {
-                alert("Error: Target project has no sections. Please add a section first.");
-                return;
-            }
-            const newSectionId = sectionsSnapshot.docs[0].id;
-
-            const newTaskData = { ...currentTask,
-                projectId: newProjectId,
-                sectionId: newSectionId
-            };
-            const newTaskRef = doc(newProjectRef, `sections/${newSectionId}/tasks/${currentTask.id}`);
-
-            const batch = writeBatch(db);
-            batch.delete(currentTaskRef);
-            batch.set(newTaskRef, newTaskData);
-            await batch.commit();
-
-            logActivity({
-                action: 'moved',
-                field: 'Project',
-                from: currentProject.title,
-                to: newProjectData.title
-            });
-
-            close();
-
-        } catch (error) {
-            console.error("Failed to move task:", error);
-            alert("An error occurred while moving the task.");
+        if (!destinationProjectData) {
+            throw new Error("Could not find destination project data in the pre-loaded list.");
         }
+
+        // 2. Construct the direct path to the document. This is much more reliable.
+        // It assumes the project object has a 'workspaceId' property.
+        const newProjectRef = doc(db, `workspaces/${destinationProjectData.workspaceId}/projects/${newProjectId}`);
+        
+        // 3. Get the document directly.
+        const projectSnap = await getDoc(newProjectRef);
+        
+        if (!projectSnap.exists()) {
+            throw new Error("Destination project not found.");
+        }
+        const newProjectData = projectSnap.data();
+        // --- END OF NEW FETCH LOGIC ---
+
+        // The permission check remains the same and is still valid.
+        const isOwner = newProjectData.project_super_admin_uid === currentUserId;
+        const memberInfo = newProjectData.members?.find(member => member.uid === currentUserId);
+        const isAdmin = memberInfo?.role === 'Project admin';
+        const isEditor = memberInfo?.role === 'Editor';
+
+        if (!isOwner && !isAdmin && !isEditor) {
+            alert("Permission Denied: You must be an Editor or Admin of the destination project to move this task.");
+            return;
+        }
+
+        // --- PROCEED WITH MOVE (This logic is unchanged) ---
+        const sectionsQuery = query(collection(newProjectRef, 'sections'), orderBy("order", "asc"), limit(1));
+        const sectionsSnapshot = await getDocs(sectionsQuery);
+        if (sectionsSnapshot.empty) {
+            alert("Error: Target project has no sections. Please add a section first.");
+            return;
+        }
+        const newSectionId = sectionsSnapshot.docs[0].id;
+
+        const newTaskData = { ...currentTask,
+            projectId: newProjectId,
+            sectionId: newSectionId
+        };
+        const newTaskRef = doc(newProjectRef, `sections/${newSectionId}/tasks/${currentTask.id}`);
+
+        const batch = writeBatch(db);
+        batch.delete(currentTaskRef);
+        batch.set(newTaskRef, newTaskData);
+        await batch.commit();
+
+        logActivity({
+            action: 'moved',
+            field: 'Project',
+            from: currentProject.title,
+            to: newProjectData.title
+        });
+
+        close();
+
+    } catch (error) {
+        // This is where your error is being caught.
+        console.error("Failed to move task:", error);
+        alert("An error occurred while moving the task. " + error.message);
     }
+}
     
     async function logActivity({ action, field, from, to }) {
         if (!currentTaskRef || !currentUser) return;
