@@ -1560,9 +1560,14 @@ function formatDueDate(dueDateString) {
 }
 
 function render() {
+    if (!project || !project.id) {
+        if (taskListBody) {
+             taskListBody.innerHTML = '<div>Loading Project...</div>';
+        }
+        return; // Exit the function early
+    }
+    
     if (!taskListBody) return;
-    
-    
     
     if (!userCanEditProject) {
         addTaskHeaderBtn.classList.add('hide');

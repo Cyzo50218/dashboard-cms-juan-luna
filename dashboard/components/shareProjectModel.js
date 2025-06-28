@@ -37,6 +37,16 @@ let unsubscribeProjectListener = null;
 let invitedEmails = [];
 
 function closeModal() {
+  const emailTagsContainer = document.querySelector(".shareproject-email-tags-container"); // Note: You need to have a container with this class where tags are rendered.
+  if (emailTagsContainer) {
+    emailTagsContainer.innerHTML = "";
+  }
+  
+  const emailInput = document.querySelector("#shareproject-email-input");
+  if (emailInput) {
+    emailInput.value = "";
+  }
+
   if (unsubscribeProjectListener) {
     unsubscribeProjectListener();
     unsubscribeProjectListener = null;
@@ -128,13 +138,6 @@ export async function openShareModal(projectRef) {
 function addEmailTag(email) {
   const emailToAdd = email.trim();
   if (!emailToAdd) return;
-
-  const allProjectEmails = getSanitizedProjectEmails();
-  if (allProjectEmails.includes(emailToAdd.toLowerCase())) {
-    alert(`"${emailToAdd}" is already a member or has a pending invitation.`);
-    modal.querySelector("#shareproject-email-input").value = "";
-    return;
-  }
 
   if (
     !invitedEmails
@@ -623,6 +626,12 @@ async function handleInvite(modal, projectRef) {
     return;
   }
 
+  const emailInput = modal.querySelector("#shareproject-email-input");
+  const lastEmail = emailInput.value.trim();
+  if (lastEmail && !invitedEmails.map(e => e.toLowerCase()).includes(lastEmail.toLowerCase())) {
+      invitedEmails.push(lastEmail);
+  }
+
   // Add loading state
   const inviteBtn = modal.querySelector("#shareproject-invite-btn");
   inviteBtn.disabled = true;
@@ -666,15 +675,29 @@ async function handleInvite(modal, projectRef) {
     );
 
     if (existingUserUID) {
-      // --- EXISTING workspace members ---
-      const existingMember = (projectData.members || []).find(
+      // User is an existing workspace member.
+      const memberInProject = (projectData.members || []).find(
         (m) => m.uid === existingUserUID
       );
-      if (!existingMember) {
+
+      // ✅ MODIFIED: Logic to handle existing members
+      if (memberInProject) {
+        // --- Case 1: EXISTING PROJECT MEMBER ---
+        // If their role is different, update it.
+        if (memberInProject.role !== role) {
+          const updatedMemberData = { ...memberInProject, role: role };
+          // Atomically remove the old record and add the new one
+          batch.update(projectRef, { members: arrayRemove(memberInProject) });
+          batch.update(projectRef, { members: arrayUnion(updatedMemberData) });
+          membersAddedOrUpdated++;
+        }
+      } else {
+        // --- Case 2: EXISTING WORKSPACE USER (but not in this project) ---
+        // Add them to the project.
         batch.update(projectRef, {
           members: arrayUnion({ uid: existingUserUID, role: role }),
         });
-        membersAdded++;
+        membersAddedOrUpdated++;
       }
     } else {
       // --- New User Email Invitation ---
@@ -729,9 +752,10 @@ async function handleInvite(modal, projectRef) {
     await batch.commit();
     console.log("Batch commit successful. Members and invitations updated.");
 
+    // ✅ MODIFIED: Feedback message is more accurate
     let feedbackMessage = "";
-    if (membersAdded > 0)
-      feedbackMessage += `${membersAdded} member(s) added to the project.\n`;
+    if (membersAddedOrUpdated > 0)
+      feedbackMessage += `${membersAddedOrUpdated} member(s) were added or had their roles updated.\n`;
     if (successfulEmailSends > 0)
       feedbackMessage += `${successfulEmailSends} invitation(s) sent successfully!\n`;
     if (failedEmails.length > 0)
