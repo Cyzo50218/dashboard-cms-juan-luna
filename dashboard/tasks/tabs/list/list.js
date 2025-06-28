@@ -2725,7 +2725,7 @@ function syncColumnWidths() {
         const headerContentWidth = textElement ? textElement.scrollWidth : 0;
         
         // 3. Define the minimum width for this column type.
-        let minWidth = 150; // Default minimum width
+        let minWidth = 100; // Default minimum width
         if (columnId === 'priority' || columnId === 'status') {
             minWidth = 100;
         } else if (columnId === 'dueDate') {
