@@ -637,45 +637,52 @@ async function handleInvite(modal, projectRef) {
     return;
   }
 
+  // --- Process input and disable button ---
   const emailInput = modal.querySelector("#shareproject-email-input");
   const lastEmail = emailInput.value.trim();
   if (lastEmail && !invitedEmails.map(e => e.toLowerCase()).includes(lastEmail.toLowerCase())) {
     invitedEmails.push(lastEmail);
   }
 
-  // Add loading state
+  if (invitedEmails.length === 0) {
+    alert("Please enter at least one email address.");
+    return;
+  }
+
   const inviteBtn = modal.querySelector("#shareproject-invite-btn");
   inviteBtn.disabled = true;
   const originalBtnText = inviteBtn.textContent;
-  inviteBtn.textContent = "Sending...";
+  inviteBtn.textContent = "Processing...";
 
+  // ✅ FIX: Fetch the LATEST project data directly from Firestore on every click.
+  // This prevents using stale data and creating duplicate pending invitations.
   let projectData;
   try {
-    projectData = JSON.parse(modal.dataset.projectData || "{}");
-  } catch (e) {
-    console.error("Failed to parse projectData", e);
-    projectData = {};
-  }
-
-  if (!projectData || Object.keys(projectData).length === 0) {
-    console.warn("Project data not found in modal, fetching directly");
     const projectSnap = await getDoc(projectRef);
     if (projectSnap.exists()) {
       projectData = projectSnap.data();
+    } else {
+      alert("Error: This project no longer exists.");
+      closeModal();
+      return;
     }
+  } catch (e) {
+    console.error("Failed to fetch latest project data:", e);
+    alert("Error connecting to the database. Please try again.");
+    inviteBtn.disabled = false;
+    inviteBtn.textContent = originalBtnText;
+    return;
   }
 
   const userProfilesMap = JSON.parse(modal.dataset.userProfilesMap || "{}");
-  const role = modal
-    .querySelector("#shareproject-selected-role")
-    .textContent.trim();
-
+  const role = modal.querySelector("#shareproject-selected-role").textContent.trim();
   const batch = writeBatch(db);
-  const newPendingInvitesForArrayUnion = []; // Renamed for clarity
+  const newPendingInvitesForArrayUnion = [];
   let successfulEmailSends = 0;
   let membersAddedOrUpdated = 0;
   const failedEmails = [];
 
+  // This loop now operates on the fresh 'projectData' fetched above
   for (const email of invitedEmails) {
     const lowerEmail = email.toLowerCase();
     const existingUserUID = Object.keys(userProfilesMap).find(
@@ -683,13 +690,9 @@ async function handleInvite(modal, projectRef) {
     );
 
     if (existingUserUID) {
-      // --- Case 1 & 2: User is an existing workspace member. ---
-      const memberInProject = (projectData.members || []).find(
-        (m) => m.uid === existingUserUID
-      );
-
+      // Case 1 & 2: User is a registered workspace member.
+      const memberInProject = (projectData.members || []).find(m => m.uid === existingUserUID);
       if (memberInProject) {
-        // Is already a member, update their role if it's different.
         if (memberInProject.role !== role) {
           const updatedMemberData = { ...memberInProject, role: role };
           batch.update(projectRef, { members: arrayRemove(memberInProject) });
@@ -697,30 +700,22 @@ async function handleInvite(modal, projectRef) {
           membersAddedOrUpdated++;
         }
       } else {
-        // Is a workspace user but not in the project, add them.
-        batch.update(projectRef, {
-          members: arrayUnion({ uid: existingUserUID, role: role }),
-        });
+        batch.update(projectRef, { members: arrayUnion({ uid: existingUserUID, role: role }) });
         membersAddedOrUpdated++;
       }
     } else {
-      // User is not in the workspace. Check for an existing pending invitation.
-      // ✅ START: NEW LOGIC
+      // Case 3 & 4: User is not in the workspace. Check pending invites.
       const existingPendingInvite = (projectData.pendingInvites || []).find(
         p => p.email.toLowerCase() === lowerEmail
       );
 
       if (existingPendingInvite) {
-        // --- Case 3: EXISTING PENDING INVITATION ---
-        // Update the role if it's different.
+        // Case 3: A pending invitation for this email already exists. UPDATE it.
         if (existingPendingInvite.role !== role) {
           const updatedPendingData = { ...existingPendingInvite, role: role };
-          
-          // 1. Update the record in the project's 'pendingInvites' array
           batch.update(projectRef, { pendingInvites: arrayRemove(existingPendingInvite) });
           batch.update(projectRef, { pendingInvites: arrayUnion(updatedPendingData) });
           
-          // 2. Also update the role in the main 'InvitedProjects' collection document
           if (existingPendingInvite.invitationId) {
             const invitationDocRef = doc(db, "InvitedProjects", existingPendingInvite.invitationId);
             batch.update(invitationDocRef, { role: role });
@@ -728,20 +723,18 @@ async function handleInvite(modal, projectRef) {
           membersAddedOrUpdated++;
         }
       } else {
-        // --- Case 4: TRULY NEW USER INVITATION ---
+        // Case 4: This is a truly new invitation. CREATE it.
         try {
           const newInvitationRef = doc(collection(db, "InvitedProjects"));
           const invitationId = newInvitationRef.id;
           const invitationUrl = `https://your-site-name.vercel.app/invitation/${invitationId}`;
 
-          console.log(`Sending invitation to new user: ${lowerEmail}`);
           await sendEmailInvitation({
             email: lowerEmail,
             projectName: projectData.title || "Unnamed Project",
             invitationUrl: invitationUrl,
           });
 
-          // Create the main invitation document
           batch.set(newInvitationRef, {
             projectId: projectRef.id,
             projectName: projectData.title || "Unnamed Project",
@@ -749,19 +742,14 @@ async function handleInvite(modal, projectRef) {
             role: role,
             invitedAt: serverTimestamp(),
             status: "pending",
-            invitedBy: {
-              uid: inviter.uid,
-              name: inviter.displayName,
-              email: inviter.email,
-            },
+            invitedBy: { uid: inviter.uid, name: inviter.displayName, email: inviter.email },
           });
 
-          // Prepare the object to be added to the project's 'pendingInvites' array
           newPendingInvitesForArrayUnion.push({
             email: lowerEmail,
             role: role,
             invitedAt: new Date().toISOString(),
-            invitationId: invitationId, // Store the ID for future reference
+            invitationId: invitationId,
           });
 
           successfulEmailSends++;
@@ -770,11 +758,9 @@ async function handleInvite(modal, projectRef) {
           failedEmails.push(lowerEmail);
         }
       }
-      // ✅ END: NEW LOGIC
     }
   }
 
-  // This now only adds TRULY new invites to the project document's array
   if (newPendingInvitesForArrayUnion.length > 0) {
     batch.update(projectRef, {
       pendingInvites: arrayUnion(...newPendingInvitesForArrayUnion),
@@ -783,35 +769,27 @@ async function handleInvite(modal, projectRef) {
 
   try {
     await batch.commit();
-    console.log("Batch commit successful. Members and invitations updated.");
-
     let feedbackMessage = "";
     if (membersAddedOrUpdated > 0)
       feedbackMessage += `${membersAddedOrUpdated} member(s) were added or had their roles updated.\n`;
     if (successfulEmailSends > 0)
       feedbackMessage += `${successfulEmailSends} invitation(s) sent successfully!\n`;
     if (failedEmails.length > 0)
-      feedbackMessage += `Failed to send invitations to: ${failedEmails.join(
-        ", "
-      )}.`;
+      feedbackMessage += `Failed to send invitations to: ${failedEmails.join(", ")}.`;
 
     if (feedbackMessage) {
       alert(feedbackMessage.trim());
     }
-
-    invitedEmails = [];
-    renderEmailTags(); // Assuming this function clears and re-renders tags
-    closeModal();
+    closeModal(); // This already resets invitedEmails etc.
   } catch (error) {
     console.error("Error committing invites to database:", error);
-    alert(
-      "A database error occurred while saving the invitations. Please try again."
-    );
+    alert("A database error occurred while saving the invitations. Please try again.");
   } finally {
     inviteBtn.disabled = false;
     inviteBtn.textContent = originalBtnText;
   }
 }
+
 function renderEmailTags() {
   if (!modal) return;
   const container = modal.querySelector("#shareproject-email-tags");

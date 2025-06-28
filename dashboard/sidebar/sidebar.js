@@ -490,32 +490,47 @@ window.TaskSidebar = (function() {
     }
     
   
+// --- DEBUGGING VERSION ---
 async function moveTask(newProjectId) {
     if (!currentTaskRef || !currentTask || !currentUserId || newProjectId === currentTask.projectId) return;
 
+    // --- Start of Debugging Block ---
+    console.log("--- DEBUGGING moveTask ---");
+    console.log("1. Attempting to move task to project ID:", newProjectId);
+
     try {
-        // --- NEW, MORE RELIABLE FETCH LOGIC ---
-        // 1. Find the full destination project object from the list we already have.
         const destinationProjectData = workspaceProjects.find(p => p.id === newProjectId);
 
         if (!destinationProjectData) {
+            console.error("2. FATAL: Could not find the destination project in the 'workspaceProjects' array.");
+            console.log("Contents of workspaceProjects:", workspaceProjects);
             throw new Error("Could not find destination project data in the pre-loaded list.");
         }
 
-        // 2. Construct the direct path to the document. This is much more reliable.
-        // It assumes the project object has a 'workspaceId' property.
-        const newProjectRef = doc(db, `workspaces/${destinationProjectData.workspaceId}/projects/${newProjectId}`);
+        console.log("2. Found destination project data object:", destinationProjectData);
+        console.log("3. Extracted workspaceId to be used:", destinationProjectData.workspaceId);
         
-        // 3. Get the document directly.
+        if (!destinationProjectData.workspaceId) {
+             console.error("4. FATAL: The 'workspaceId' on the project data object is missing or undefined!");
+             throw new Error("The project data is missing a workspaceId.");
+        }
+
+        const fullPath = `workspaces/${destinationProjectData.workspaceId}/projects/${newProjectId}`;
+        console.log("4. Constructed Firestore path:", fullPath);
+
+        const newProjectRef = doc(db, fullPath);
         const projectSnap = await getDoc(newProjectRef);
-        
+
         if (!projectSnap.exists()) {
+            console.error("5. FAILED: getDoc() returned a snapshot that does not exist for the path above.");
             throw new Error("Destination project not found.");
         }
-        const newProjectData = projectSnap.data();
-        // --- END OF NEW FETCH LOGIC ---
+        
+        console.log("5. SUCCESS: Document exists at the constructed path.");
+        // --- End of Debugging Block ---
 
-        // The permission check remains the same and is still valid.
+
+        const newProjectData = projectSnap.data();
         const isOwner = newProjectData.project_super_admin_uid === currentUserId;
         const memberInfo = newProjectData.members?.find(member => member.uid === currentUserId);
         const isAdmin = memberInfo?.role === 'Project admin';
@@ -526,7 +541,6 @@ async function moveTask(newProjectId) {
             return;
         }
 
-        // --- PROCEED WITH MOVE (This logic is unchanged) ---
         const sectionsQuery = query(collection(newProjectRef, 'sections'), orderBy("order", "asc"), limit(1));
         const sectionsSnapshot = await getDocs(sectionsQuery);
         if (sectionsSnapshot.empty) {
@@ -535,10 +549,7 @@ async function moveTask(newProjectId) {
         }
         const newSectionId = sectionsSnapshot.docs[0].id;
 
-        const newTaskData = { ...currentTask,
-            projectId: newProjectId,
-            sectionId: newSectionId
-        };
+        const newTaskData = { ...currentTask, projectId: newProjectId, sectionId: newSectionId };
         const newTaskRef = doc(newProjectRef, `sections/${newSectionId}/tasks/${currentTask.id}`);
 
         const batch = writeBatch(db);
@@ -546,18 +557,11 @@ async function moveTask(newProjectId) {
         batch.set(newTaskRef, newTaskData);
         await batch.commit();
 
-        logActivity({
-            action: 'moved',
-            field: 'Project',
-            from: currentProject.title,
-            to: newProjectData.title
-        });
-
+        logActivity({ action: 'moved', field: 'Project', from: currentProject.title, to: newProjectData.title });
         close();
 
     } catch (error) {
-        // This is where your error is being caught.
-        console.error("Failed to move task:", error);
+        console.error("Failed to move task:", error); // This is the final error catch
         alert("An error occurred while moving the task. " + error.message);
     }
 }
