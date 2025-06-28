@@ -16,6 +16,7 @@ const auth = getAuth(app);
 const db = getFirestore(app, "juanluna-cms-01");
 
 let isModalOpen = false;
+let modal = null;
 let unsubscribeProjectListener = null;
 
 function closeModal() {
@@ -436,7 +437,10 @@ function renderDynamicContent(modal, { projectData, workspaceMemberCount, userPr
     return `<button class="shareproject-dropdown-action" data-role="${role}" ${disabled}><strong>${role}</strong></button>`;
 }).join('');
 
-        const removeLink = (itemType === 'member' && !isLocked && canChangeRoles) ? `<a href="#" class="shareproject-remove"><i class="material-icons">person_remove</i> Remove member</a>` : '';
+        const removeLink = (itemType === 'member' && !isLocked && canChangeRoles) 
+        ? `<a href="#" class="shareproject-remove shareproject-dropdown-action"><i class="material-icons">person_remove</i> Remove member</a>` 
+        : '';
+        
         return `<div id="${dropdownId}" class="shareproject-dropdown-content hidden">${roleOptions}${removeLink}</div>`;
     };
     

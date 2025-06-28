@@ -19,8 +19,6 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "/services/firebase-config.js";
 
-import { openShareModal } from '/dashboard/components/shareProjectModel.js';
-
 // [NEW] Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
