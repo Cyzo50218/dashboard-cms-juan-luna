@@ -1567,7 +1567,7 @@ function render() {
     
     if (!userCanEditProject) {
         addTaskHeaderBtn.classList.add('hide');
-        addSectionClassBtn.classList.add('hide');
+        addSectionBtn.classList.add('hide');
     } else {
         addTaskHeaderBtn.classList.remove('hide');
         addSectionClassBtn.classList.remove('hide');
