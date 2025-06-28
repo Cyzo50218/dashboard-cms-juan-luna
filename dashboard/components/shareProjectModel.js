@@ -37,7 +37,10 @@ let unsubscribeProjectListener = null;
 let invitedEmails = [];
 
 function closeModal() {
-  const emailTagsContainer = document.querySelector(".shareproject-email-tags-container"); // Note: You need to have a container with this class where tags are rendered.
+  // ✅ ADDED: Ensure the global array is always reset when the modal closes.
+  invitedEmails = [];
+
+  const emailTagsContainer = document.querySelector(".shareproject-email-tags-container");
   if (emailTagsContainer) {
     emailTagsContainer.innerHTML = "";
   }
@@ -780,7 +783,16 @@ async function handleInvite(modal, projectRef) {
     if (feedbackMessage) {
       alert(feedbackMessage.trim());
     }
-    closeModal(); // This already resets invitedEmails etc.
+
+    // ✅ Clear the list of emails that were just processed.
+    invitedEmails = [];
+
+    // ✅ Re-render the email tags, which will now be an empty list, clearing the UI.
+    renderEmailTags();
+
+    // ✅ REMOVED: The closeModal() call is gone, so the modal stays open.
+    // closeModal();
+
   } catch (error) {
     console.error("Error committing invites to database:", error);
     alert("A database error occurred while saving the invitations. Please try again.");

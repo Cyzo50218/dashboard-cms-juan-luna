@@ -515,7 +515,7 @@ async function moveTask(newProjectId) {
              throw new Error("The project data is missing a workspaceId.");
         }
 
-        const fullPath = `workspaces/${destinationProjectData.workspaceId}/projects/${newProjectId}`;
+        const fullPath = `users/${destinationProjectData.workspaceId}/projects/${newProjectId}`;
         console.log("4. Constructed Firestore path:", fullPath);
 
         const newProjectRef = doc(db, fullPath);
