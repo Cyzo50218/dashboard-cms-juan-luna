@@ -1501,7 +1501,7 @@ window.TaskSidebar = (function() {
             if (option.color) {
                 itemHTML += `<span class="dropdown-color-swatch" style="background-color: ${option.color} !important;"></span>`;
             }
-            .
+            
             if (option.avatar) {
                 itemHTML += `<div class="avatar" style="background-image: url(${option.avatar})"></div>`;
             }
