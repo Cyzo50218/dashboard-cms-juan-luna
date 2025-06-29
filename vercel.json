@@ -21,7 +21,7 @@
     },
     {
       "src": "/invitation/([^/]+)",
-      "dest": "/registration/$1"
+      "dest": "/registration/register.html"
     },
     {
       "src": "/logo.png",
