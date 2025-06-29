@@ -11,17 +11,17 @@ import {
   getFirestore,
   doc,
   setDoc,
-  collection,     
-    addDoc,          
-    serverTimestamp,
-    collectionGroup,
-    getDoc,
-writeBatch,
-arrayUnion, 
-arrayRemove,
-query, 
-where, 
-getDocs
+  collection,
+  addDoc,
+  serverTimestamp,
+  collectionGroup,
+  getDoc,
+  writeBatch,
+  arrayUnion,
+  arrayRemove,
+  query,
+  where,
+  getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 import {
@@ -167,37 +167,37 @@ acceptInvitationBtn?.addEventListener("click", async () => {
 // Email registration submit
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
-
+  
   const email = emailInput.value.trim();
   const password = passwordInput.value.trim();
   const fullName = fullNameInput.value.trim();
-
+  
   console.log("Starting email registration for:", email, fullName);
-
+  
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
     console.log("User registered:", user.uid);
-
+    
     await updateProfile(user, { displayName: fullName });
     console.log("Profile updated with display name.");
-
+    
     // Generate avatar
     const initials = fullName.split(' ').slice(0, 2).map(w => w[0].toUpperCase()).join('');
     const color = getRandomColor();
     const dataUrl = generateAvatar(initials, color);
     const avatarPath = `users/${user.uid}/profile-picture/avatar.png`;
-
+    
     const storageRef = ref(storage, avatarPath);
     await uploadString(storageRef, dataUrl, 'data_url');
     console.log("Avatar uploaded to storage:", avatarPath);
-
+    
     const downloadURL = await getDownloadURL(storageRef);
     console.log("Avatar download URL:", downloadURL);
-
+    
     if (user && user.uid) {
       const userRef = doc(db, "users", user.uid);
-
+      
       const userData = {
         id: user.uid,
         name: fullName,
@@ -206,32 +206,32 @@ form.addEventListener("submit", async (e) => {
         avatar: downloadURL,
         createdAt: new Date().toISOString()
       };
-
+      
       console.log("Preparing to save user data:", userData);
-
+      
       try {
-
-  await setDoc(userRef, userData, { merge: true }); 
-  console.log("✅ Google user saved in Firestore successfully.");
-
-  const workspaceRef = collection(db, `users/${user.uid}/myworkspace`);
-  const newWorkspace = {
-    name: "My First Workspace", 
-    isSelected: true,
-    createdAt: serverTimestamp(), 
-    members: [user.uid] 
-  };
-
-  await addDoc(workspaceRef, newWorkspace);
-  console.log("✅ Default workspace created successfully.");
-
-} catch (error) {
-  console.error("❌ Error saving Google user or creating workspace:", error);
-}
+        
+        await setDoc(userRef, userData, { merge: true });
+        console.log("✅ Google user saved in Firestore successfully.");
+        
+        const workspaceRef = collection(db, `users/${user.uid}/myworkspace`);
+        const newWorkspace = {
+          name: "My First Workspace",
+          isSelected: true,
+          createdAt: serverTimestamp(),
+          members: [user.uid]
+        };
+        
+        await addDoc(workspaceRef, newWorkspace);
+        console.log("✅ Default workspace created successfully.");
+        
+      } catch (error) {
+        console.error("❌ Error saving Google user or creating workspace:", error);
+      }
     } else {
       console.warn("⚠️ User not authenticated. Cannot write to Firestore.");
     }
-
+    
     showWelcome(fullName, downloadURL, email);
   } catch (error) {
     console.error("Registration error:", error);
@@ -270,9 +270,9 @@ function showWelcome(name, photoURL, email = '') {
   googleBtn.style.display = "none";
   continueEmailLink.style.display = "none";
   acceptanceView.style.display = "block";
-
+  
   welcomeMessage.textContent = `Welcome, ${name}!`;
-
+  
   const photo = document.getElementById("user-photo");
   if (photoURL) {
     photo.src = photoURL;
@@ -308,21 +308,21 @@ async function handleInvitationAcceptance(user, invId) {
       throw new Error("This invitation is for a different email address. Please log in with the correct account.");
     }
     const projectId = invitationData.projectId;
-const role = invitationData.role;
+    const role = invitationData.role;
     const projectsCollectionGroup = collectionGroup(db, 'projects');
-
-// 2. Query across all 'projects' subcollections to find the one with the matching projectId field.
-const q = query(projectsCollectionGroup, where('projectId', '==', projectId));
-const projectQuerySnapshot = await getDocs(q);
-
-if (projectQuerySnapshot.empty) {
-  // This means no project with that ID was found anywhere.
-  throw new Error("The project associated with this invitation no longer exists.");
-}
-
-// 3. Get the document snapshot and its reference from the query result.
-const projectSnap = projectQuerySnapshot.docs[0]; // The first (and only) document found
-const projectRef = projectSnap.ref; // The correct, full path reference to the project document
+    
+    // 2. Query across all 'projects' subcollections to find the one with the matching projectId field.
+    const q = query(projectsCollectionGroup, where('projectId', '==', projectId));
+    const projectQuerySnapshot = await getDocs(q);
+    
+    if (projectQuerySnapshot.empty) {
+      // This means no project with that ID was found anywhere.
+      throw new Error("The project associated with this invitation no longer exists.");
+    }
+    
+    // 3. Get the document snapshot and its reference from the query result.
+    const projectSnap = projectQuerySnapshot.docs[0]; // The first (and only) document found
+    const projectRef = projectSnap.ref; // The correct, full path reference to the project document
     
     const projectData = projectSnap.data();
     
@@ -362,7 +362,19 @@ const projectRef = projectSnap.ref; // The correct, full path reference to the p
     
   } catch (error) {
     console.error("❌ Error accepting invitation:", error);
-    alert("Error: " + error.message);
+    
+    // Find the feedback element on the page
+    const feedbackElement = document.querySelector(".subtitle");
+    if (feedbackElement) {
+      // Display the full error message, including the link, as HTML
+      // The <br> tags make it easier to read.
+      feedbackElement.innerHTML = `<b>Error:</b> An index is required for this query.<br><br><b>Please create it here:</b><br><a href="#" class="text-blue-600 break-all">${error.message.split('https://')[1]}</a>`;
+      feedbackElement.style.color = "#E53E3E"; // Red color for the error
+    } else {
+      // Fallback if the element isn't found
+      alert("Error: " + error.message);
+    }
+    
     acceptInvitationBtn.disabled = false;
     acceptInvitationBtn.textContent = "Accept Invitation";
   }
@@ -376,18 +388,18 @@ function generateAvatar(initials, backgroundColor = '#333') {
   const size = 96;
   canvas.width = size;
   canvas.height = size;
-
+  
   const ctx = canvas.getContext("2d");
   ctx.fillStyle = backgroundColor;
   ctx.fillRect(0, 0, size, size);
-
+  
   ctx.font = "bold 40px Roboto, sans-serif";
   ctx.fillStyle = "#fff";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-
+  
   ctx.fillText(initials, size / 2, size / 2 + 2);
-
+  
   const dataUrl = canvas.toDataURL("image/png");
   console.log("Avatar generated.");
   return dataUrl;
