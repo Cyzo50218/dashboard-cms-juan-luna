@@ -16,7 +16,11 @@
       "headers": { "Location": "/login/" }
     },
     {
-      "src": "/register/invitation/(.*)",
+      "src": "/register/(.*)",
+      "dest": "/registration/$1"
+    },
+    {
+      "src": "/invitation/([^/]+)",
       "dest": "/registration/$1"
     },
     {
@@ -29,3 +33,4 @@
     }
   ]
 }
+

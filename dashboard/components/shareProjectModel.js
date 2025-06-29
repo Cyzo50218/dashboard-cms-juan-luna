@@ -670,8 +670,6 @@ async function handleInvite(modal, projectRef) {
   const originalBtnText = inviteBtn.textContent;
   inviteBtn.textContent = "Processing...";
 
-  // ✅ FIX: Fetch the LATEST project data directly from Firestore on every click.
-  // This prevents using stale data and creating duplicate pending invitations.
   let projectData;
   try {
     const projectSnap = await getDoc(projectRef);
@@ -716,8 +714,78 @@ async function handleInvite(modal, projectRef) {
           membersAddedOrUpdated++;
         }
       } else {
-        batch.update(projectRef, { members: arrayUnion({ uid: existingUserUID, role: role }) });
-        membersAddedOrUpdated++;
+         try {
+   const invitesRef = collection(db, "InvitedProjects");
+   const q = query(invitesRef,
+     where("projectId", "==", projectRef.id),
+     where("invitedEmail", "==", lowerEmail)
+   );
+   const querySnapshot = await getDocs(q);
+   
+   if (!querySnapshot.empty) {
+     // 2. UPDATE EXISTING: An invitation already exists.
+     const existingInviteDoc = querySnapshot.docs[0];
+     const existingInviteData = existingInviteDoc.data();
+     
+     if (existingInviteData.role !== role) {
+       // Role has changed, so we update the document.
+       const inviteDocRef = doc(db, "InvitedProjects", existingInviteDoc.id);
+       batch.update(inviteDocRef, { role: role });
+       
+       // Also update the 'pendingInvites' array in the project document
+       const oldPendingInviteObject = (projectData.pendingInvites || []).find(p => p.email.toLowerCase() === lowerEmail);
+       if (oldPendingInviteObject) {
+         const newPendingInviteObject = { ...oldPendingInviteObject, role: role };
+         batch.update(projectRef, { pendingInvites: arrayRemove(oldPendingInviteObject) });
+         batch.update(projectRef, { pendingInvites: arrayUnion(newPendingInviteObject) });
+       }
+       updatedInvites.push(lowerEmail);
+     }
+     // If role is the same, do nothing.
+     
+   } else {
+     // 3. CREATE NEW: This is a truly new invitation.
+     const newInvitationRef = doc(collection(db, "InvitedProjects"));
+     const invitationId = newInvitationRef.id;
+     const invitationUrl = `https://cms.juanlunacollections.com/invitation/${invitationId}`;
+     
+     // Send the email (can be awaited later or handled in parallel)
+     await sendEmailInvitation({
+       email: lowerEmail,
+       projectName: projectData.title || "Unnamed Project",
+       invitationUrl: invitationUrl,
+     });
+     
+     // A. Set the document in the top-level 'InvitedProjects' collection
+     batch.set(newInvitationRef, {
+       invitationId: invitationId,
+       projectId: projectRef.id,
+       projectName: projectData.title || "Unnamed Project",
+       invitedEmail: lowerEmail,
+       role: role,
+       invitedAt: serverTimestamp(),
+       status: "pending",
+       invitedBy: { uid: inviter.uid, name: inviter.displayName, email: inviter.email },
+     });
+     
+     // B. Add the denormalized data to the 'pendingInvites' array in the project
+     const newPendingInviteData = {
+       email: lowerEmail,
+       role: role,
+       invitedAt: new Date().toISOString(), // Use serverTimestamp in the main doc for accuracy
+       invitationId: invitationId, // IMPORTANT: Store the ID here
+     };
+     batch.update(projectRef, {
+       pendingInvites: arrayUnion(newPendingInviteData),
+     });
+     
+     successfulInvites.push(lowerEmail);
+   }
+ } catch (error) {
+   console.error(`Failed to process invitation for ${lowerEmail}:`, error);
+   failedEmails.push(lowerEmail);
+ }
+ 
       }
     } else {
       // Case 3 & 4: User is not in the workspace. Check pending invites.
@@ -743,7 +811,7 @@ async function handleInvite(modal, projectRef) {
         try {
           const newInvitationRef = doc(collection(db, "InvitedProjects"));
           const invitationId = newInvitationRef.id;
-          const invitationUrl = `https://your-site-name.vercel.app/invitation/${invitationId}`;
+          const invitationUrl = `https://cms.juanlunacollections.com/invitation/${invitationId}`;
 
           await sendEmailInvitation({
             email: lowerEmail,
@@ -752,6 +820,7 @@ async function handleInvite(modal, projectRef) {
           });
 
           batch.set(newInvitationRef, {
+            invitationId: invitationId,
             projectId: projectRef.id,
             projectName: projectData.title || "Unnamed Project",
             invitedEmail: lowerEmail,
