@@ -3610,22 +3610,16 @@ function addNewColumn(config) {
         currency: config.currency || null,
         aggregation: (config.type === 'Costing' || config.type === 'Numbers') ? 'Sum' : null,
         options: (config.type === 'Type' || config.type === 'Custom') ?
-            (config.type === 'Type' ? typeColumnOptions : []) :
-            null
+                 (config.type === 'Type' ? typeColumnOptions : []) :
+                 null
     };
     
-    // Step 1: Update customColumns with the new column
     updateProjectInFirebase({
-        customColumns: arrayUnion(newColumn)
+        customColumns: arrayUnion(newColumn),
+        columnOrder: arrayUnion(String(newId))
     });
-    
-    // Step 2: Update columnOrder with the new column ID
-    const currentOrder = project.columnOrder || [];
-    const newOrder = [...currentOrder, String(newId)];
-    
-    updateProjectInFirebase({
-        columnOrder: newOrder
-    });
+
+
 }
 
 function deleteColumn(columnId) {
