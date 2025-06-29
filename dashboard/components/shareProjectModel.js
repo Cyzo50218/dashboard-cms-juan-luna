@@ -271,15 +271,15 @@ function setupEventListeners(modal, projectRef) {
         memberId === currentUserId &&
         currentUserId === superAdminUID &&
         newRole &&
-        newRole !== "Project admin"
+        newRole !== "Project Admin"
       ) {
         const hasAnotherAdmin = (projectData.members || []).some(
-          (m) => m.role === "Project admin" && m.uid !== currentUserId
+          (m) => m.role === "Project Admin" && m.uid !== currentUserId
         );
 
         if (!hasAnotherAdmin) {
           alert(
-            "⚠️ You must assign another Project admin before changing your own role."
+            "⚠️ You must assign another Project Admin before changing your own role."
           );
           dropdown.classList.add("hidden");
           return;
@@ -296,9 +296,9 @@ function setupEventListeners(modal, projectRef) {
         await updateDoc(projectRef, { members: arrayRemove(memberData) });
         await updateDoc(projectRef, { members: arrayUnion(newData) });
 
-        if (newRole === "Project admin") {
+        if (newRole === "Project Admin") {
           await updateDoc(projectRef, { project_admin_user: memberId });
-        } else if (memberData.role === "Project admin") {
+        } else if (memberData.role === "Project Admin") {
           await updateDoc(projectRef, { project_admin_user: deleteField() });
         }
       }
@@ -464,7 +464,7 @@ function setupEventListeners(modal, projectRef) {
 }
 
 function renderStaticDropdownContent(modal) {
-  const roles = { invite: ["Project admin", "Editor", "Commenter", "Viewer"] };
+  const roles = { invite: ["Project Admin", "Editor", "Commenter", "Viewer"] };
   const roleDropdown = modal.querySelector("#shareproject-role-dropdown");
   const accessDropdown = modal.querySelector("#shareproject-access-dropdown");
   if (roleDropdown)
@@ -495,15 +495,15 @@ function renderDynamicContent(
     accessLevel: projectData.accessLevel || "private",
     workspaceRole: projectData.workspaceRole || "Viewer",
   };
-  const projectAdmins = state.members.filter((m) => m.role === "Project admin");
+  const projectAdmins = state.members.filter((m) => m.role === "Project Admin");
 
   let membersToRender = [...(projectData.members || [])];
   if (superAdminUID && !membersToRender.some((m) => m.uid === superAdminUID)) {
-    membersToRender.unshift({ uid: superAdminUID, role: "Project admin" });
+    membersToRender.unshift({ uid: superAdminUID, role: "Project Admin" });
   }
 
   const roles = {
-    member: ["Project admin", "Editor", "Commenter", "Viewer"],
+    member: ["Project Admin", "Editor", "Commenter", "Viewer"],
     workspace: ["Editor", "Commenter", "Viewer"],
   };
   const canChangeRoles = currentUserId === superAdminUID;
@@ -543,21 +543,21 @@ function renderDynamicContent(
     const roleOptions = availableRoles
       .map((role) => {
         let disabled = "";
-        if (role === "Project admin") {
+        if (role === "Project Admin") {
           // Prevent assigning more than 2 admins
           const isSelf = id === currentUserId;
           const isAlreadyAdmin =
-            state.members.find((m) => m.uid === id)?.role === "Project admin";
+            state.members.find((m) => m.uid === id)?.role === "Project Admin";
           const maxAdminsReached = projectAdmins.length >= 2 && !isAlreadyAdmin;
           if (maxAdminsReached)
-            disabled = 'disabled title="Maximum of 2 Project admins allowed."';
+            disabled = 'disabled title="Maximum of 2 Project Admins allowed."';
 
           // Prevent super admin from changing their role unless another admin exists
           if (
             id === superAdminUID &&
             !projectAdmins.some((m) => m.uid !== superAdminUID)
           ) {
-            return `<button class="shareproject-dropdown-action" disabled title="You must first transfer the Project admin role to another member."><strong>${role}</strong></button>`;
+            return `<button class="shareproject-dropdown-action" disabled title="You must first transfer the Project Admin role to another member."><strong>${role}</strong></button>`;
           }
         }
         return `<button class="shareproject-dropdown-action" data-role="${role}" ${disabled}><strong>${role}</strong></button>`;
@@ -597,13 +597,13 @@ function renderDynamicContent(
 
     if (member.uid === superAdminUID) {
       const otherAdmins = state.members.filter(
-        (m) => m.role === "Project admin" && m.uid !== superAdminUID
+        (m) => m.role === "Project Admin" && m.uid !== superAdminUID
       );
       // Lock super admin if there are no other admins to take over
       isLocked = otherAdmins.length === 0;
     }
 
-    const displayRole = isLocked ? "Project admin" : member.role;
+    const displayRole = isLocked ? "Project Admin" : member.role;
     const profilePicHTML = createProfilePic(userProfile).outerHTML;
 
     membersHTML += `<div class="shareproject-member-item" data-uid="${
