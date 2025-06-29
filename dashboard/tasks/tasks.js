@@ -264,7 +264,7 @@ export function init(params) {
                 }
 
                 // Your permission logic remains the same
-                const isMemberWithEditPermission = members.some(m => m.uid === user.uid && m.role === "Project admin");
+                const isMemberWithEditPermission = members.some(m => m.uid === user.uid && m.role === "Project admin" && m.role === "Project Admin");
                 const isSuperAdmin = data.project_super_admin_uid === user.uid;
                 const isAdminUser = data.project_admin_user === user.uid;
                 const userCanEdit = isMemberWithEditPermission || isSuperAdmin || isAdminUser;

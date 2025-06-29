@@ -328,6 +328,7 @@ async function handleInvitationAcceptance(user, invId) {
       throw new Error("The project associated with this invitation no longer exists.");
     }
     
+    
     // 3. Get the document snapshot and its reference from the query result.
     const projectSnap = projectQuerySnapshot.docs[0]; // The first (and only) document found
     const projectRef = projectSnap.ref; // The correct, full path reference to the project document
@@ -335,6 +336,20 @@ async function handleInvitationAcceptance(user, invId) {
     const projectData = projectSnap.data();
     
     const batch = writeBatch(db);
+    
+    let activeWorkspaceId = null;
+const workspaceColRef = collection(db, `users/${user.uid}/myworkspace`);
+const workspaceQuery = query(workspaceColRef, where('isSelected', '==', true));
+const workspaceSnapshot = await getDocs(workspaceQuery);
+
+if (!workspaceSnapshot.empty) {
+  // Found the active workspace
+  activeWorkspaceId = workspaceSnapshot.docs[0].id;
+  console.log("Found active workspace:", activeWorkspaceId);
+} else {
+  // Handle case where no active workspace is found, maybe just skip this step
+  console.warn("Could not find an active workspace for the user. Skipping auto-selection.");
+}
     
     // Find the specific pending invite object to remove
     const pendingInviteToRemove = (projectData.pendingInvites || []).find(p => p.invitationId === invId);
@@ -359,6 +374,13 @@ async function handleInvitationAcceptance(user, invId) {
       }
     });
     
+    if (activeWorkspaceId) {
+  const workspaceRef = doc(db, `users/${user.uid}/myworkspace/${activeWorkspaceId}`);
+  batch.set(workspaceRef, {
+    selectedProjectId: projectId
+  }, { merge: true }); 
+}
+
     // Commit all the changes at once
     await batch.commit();
     
