@@ -19,7 +19,6 @@ import {
   writeBatch,
   arrayUnion,
   arrayRemove,
-  batch,
   query,
   where,
   getDocs
