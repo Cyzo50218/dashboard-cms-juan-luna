@@ -17,7 +17,10 @@ import {
     getDoc,
 writeBatch,
 arrayUnion, 
-arrayRemove
+arrayRemove,
+query, 
+where, 
+getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 import {
@@ -53,19 +56,79 @@ const acceptInvitationBtn = document.getElementById("accept-invitation-btn");
 const emailInput = document.getElementById("email");
 const fullNameInput = document.getElementById("full-name");
 
-document.addEventListener('DOMContentLoaded', () => {
-  const path = window.location.pathname; // e.g., /invitation/xyz123
+document.addEventListener('DOMContentLoaded', async () => {
+  const path = window.location.pathname;
   const parts = path.split('/');
+  
   if (parts.length === 3 && parts[1] === 'invitation' && parts[2]) {
     invitationId = parts[2];
     console.log("Invitation ID found:", invitationId);
+    
+    const feedbackElement = document.querySelector(".subtitle");
+    
+    try {
+      feedbackElement.textContent = "Verifying invitation, please wait...";
+      const invitationRef = doc(db, "InvitedProjects", invitationId);
+      const invitationSnap = await getDoc(invitationRef);
+      
+      if (!invitationSnap.exists()) {
+        throw new Error("This invitation link is invalid or has expired.");
+      }
+      
+      const invitationData = invitationSnap.data();
+      if (invitationData.status === 'accepted') {
+        throw new Error("This invitation has already been accepted.");
+      }
+      
+      const invitedEmail = invitationData.invitedEmail;
+      if (!invitedEmail) {
+        throw new Error("This invitation is invalid (missing email).");
+      }
+      
+      // --- NEW LOGIC: Check if a user with this email already exists ---
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("email", "==", invitedEmail));
+      const userQuerySnapshot = await getDocs(q);
+      
+      if (!userQuerySnapshot.empty) {
+        // USER EXISTS: Skip registration and show the welcome/acceptance screen directly.
+        const existingUserData = userQuerySnapshot.docs[0].data();
+        console.log("Existing user found:", existingUserData.name);
+        
+        // This function hides the registration form and shows the acceptance view
+        showWelcome(existingUserData.name, existingUserData.avatar, existingUserData.email);
+        
+        // Update the welcome text specifically for a returning user
+        document.getElementById("welcome-message").textContent = `Welcome back, ${existingUserData.name}!`;
+        feedbackElement.textContent = `You've been invited to a project. Please sign in to accept.`;
+        
+      } else {
+        // USER DOES NOT EXIST: Proceed with the normal pre-fill flow.
+        console.log("New user. Displaying registration form.");
+        emailInput.value = invitedEmail;
+        emailInput.readOnly = true;
+        feedbackElement.textContent = `Invited as ${invitedEmail}. Please register or sign in to continue.`;
+      }
+      // --- END OF NEW LOGIC ---
+      
+    } catch (error) {
+      console.error("Error verifying invitation:", error);
+      feedbackElement.textContent = error.message;
+      feedbackElement.style.color = "#E53E3E";
+      // Disable all forms if the invitation is invalid
+      document.getElementById("registration-form").style.display = 'none';
+      document.getElementById("google-signin-btn").style.display = 'none';
+      document.getElementById("continue-email-link").style.display = 'none';
+      document.getElementById("orText").style.display = 'none';
+    }
+    
   } else {
     console.log("Not an invitation link.");
-    // Optional: hide invitation-specific UI if not on an invitation link
-    acceptanceView.style.display = "none";
+    if (document.getElementById("acceptance-view")) {
+      document.getElementById("acceptance-view").style.display = "none";
+    }
   }
 });
-
 
 // Toggle password visibility
 togglePasswordBtn.addEventListener("click", () => {
@@ -244,18 +307,21 @@ async function handleInvitationAcceptance(user, invId) {
       throw new Error("This invitation is for a different email address. Please log in with the correct account.");
     }
     
-    const projectId = invitationData.projectId;
-    const role = invitationData.role;
-    const projectRef = doc(db, "projects", projectId);
+    const projectsCollectionGroup = collectionGroup(db, 'projects');
+
+// 2. Query across all 'projects' subcollections to find the one with the matching projectId field.
+const q = query(projectsCollectionGroup, where('projectId', '==', projectId));
+const projectQuerySnapshot = await getDocs(q);
+
+if (projectQuerySnapshot.empty) {
+  // This means no project with that ID was found anywhere.
+  throw new Error("The project associated with this invitation no longer exists.");
+}
+
+// 3. Get the document snapshot and its reference from the query result.
+const projectSnap = projectQuerySnapshot.docs[0]; // The first (and only) document found
+const projectRef = projectSnap.ref; // The correct, full path reference to the project document
     
-    // Use a batch write to perform all operations atomically
-    const batch = writeBatch(db);
-    
-    // 1. Update the Project's members and pendingInvites arrays
-    const projectSnap = await getDoc(projectRef);
-    if (!projectSnap.exists()) {
-      throw new Error("The project associated with this invitation no longer exists.");
-    }
     const projectData = projectSnap.data();
     
     // Find the specific pending invite object to remove
