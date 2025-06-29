@@ -361,23 +361,11 @@ async function handleInvitationAcceptance(user, invId) {
     window.location.href = href;
     
   } catch (error) {
-    console.error("❌ Error accepting invitation:", error);
-    
-    // Find the feedback element on the page
-    const feedbackElement = document.querySelector(".subtitle");
-    if (feedbackElement) {
-      // Display the full error message, including the link, as HTML
-      // The <br> tags make it easier to read.
-      feedbackElement.innerHTML = `<b>Error:</b> An index is required for this query.<br><br><b>Please create it here:</b><br><a href="#" class="text-blue-600 break-all">${error.message.split('https://')[1]}</a>`;
-      feedbackElement.style.color = "#E53E3E"; // Red color for the error
-    } else {
-      // Fallback if the element isn't found
-      alert("Error: " + error.message);
-    }
-    
-    acceptInvitationBtn.disabled = false;
-    acceptInvitationBtn.textContent = "Accept Invitation";
-  }
+  console.error("❌ Error accepting invitation:", error);
+  alert("Error: " + error.message);
+  acceptInvitationBtn.disabled = false;
+  acceptInvitationBtn.textContent = "Accept Invitation";
+}
 }
 
 
