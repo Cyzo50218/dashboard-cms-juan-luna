@@ -172,7 +172,7 @@ acceptInvitationBtn?.addEventListener("click", async () => {
 });
 
 
-// Email registration submit
+// Email Registration Submit
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   
@@ -183,69 +183,28 @@ form.addEventListener("submit", async (e) => {
   console.log("Starting email registration for:", email, fullName);
   
   try {
+    // Step 1: Create the user in Firebase Authentication
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
-    console.log("User registered:", user.uid);
+    console.log("User registered in Auth:", user.uid);
     
+    // Step 2: Update the user's profile in Firebase Authentication
     await updateProfile(user, { displayName: fullName });
     console.log("Profile updated with display name.");
     
-    // Generate avatar
-    const initials = fullName.split(' ').slice(0, 2).map(w => w[0].toUpperCase()).join('');
-    const color = getRandomColor();
-    const dataUrl = generateAvatar(initials, color);
-    const avatarPath = `users/${user.uid}/profile-picture/avatar.png`;
+    // Step 3: Call our single, reusable function to handle ALL database and storage operations.
+    // It creates the user doc, generates/uploads the avatar, AND creates the default workspace.
+    const photoURL = await saveUserData(user, fullName, email, 'email');
     
-    const storageRef = ref(storage, avatarPath);
-    await uploadString(storageRef, dataUrl, 'data_url');
-    console.log("Avatar uploaded to storage:", avatarPath);
+    // Step 4: Show the final welcome screen
+    showWelcome(fullName, photoURL, email);
     
-    const downloadURL = await getDownloadURL(storageRef);
-    console.log("Avatar download URL:", downloadURL);
-    
-    if (user && user.uid) {
-      const userRef = doc(db, "users", user.uid);
-      
-      const userData = {
-        id: user.uid,
-        name: fullName,
-        email: email,
-        provider: "email",
-        avatar: downloadURL,
-        createdAt: new Date().toISOString()
-      };
-      
-      console.log("Preparing to save user data:", userData);
-      
-      try {
-        
-        await setDoc(userRef, userData, { merge: true });
-        console.log("✅ Google user saved in Firestore successfully.");
-        
-        const workspaceRef = collection(db, `users/${user.uid}/myworkspace`);
-        const newWorkspace = {
-          name: "My First Workspace",
-          isSelected: true,
-          createdAt: serverTimestamp(),
-          members: [user.uid]
-        };
-        
-        await addDoc(workspaceRef, newWorkspace);
-        console.log("✅ Default workspace created successfully.");
-        
-      } catch (error) {
-        console.error("❌ Error saving Google user or creating workspace:", error);
-      }
-    } else {
-      console.warn("⚠️ User not authenticated. Cannot write to Firestore.");
-    }
-    
-    showWelcome(fullName, downloadURL, email);
   } catch (error) {
     console.error("Registration error:", error);
     alert("Error: " + error.message);
   }
 });
+
 
 // Google Sign-In
 document.querySelectorAll("#google-signin-btn, #google-signin-btn-form").forEach(btn => {
@@ -255,7 +214,7 @@ document.querySelectorAll("#google-signin-btn, #google-signin-btn-form").forEach
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
       
-      // Save user data (your existing logic is great)
+      // This also calls our single, reusable function.
       await saveUserData(user, user.displayName, user.email, 'google', user.photoURL);
       
       showWelcome(user.displayName, user.photoURL, user.email);
@@ -267,7 +226,6 @@ document.querySelectorAll("#google-signin-btn, #google-signin-btn-form").forEach
     }
   });
 });
-
 // Show welcome screen
 function showWelcome(name, photoURL, email = '') {
   console.log("Showing welcome view:", name, email);
@@ -438,14 +396,26 @@ function stringToNumericString(str) {
   return str.split('').map(char => char.charCodeAt(0)).join('');
 }
 
+// You will need `getDoc`, `collection`, and `addDoc` from Firestore for this function.
+// Make sure they are in your import statement at the top of the file.
+
 async function saveUserData(user, fullName, email, provider, photoURL = null) {
   if (!user || !user.uid) {
     console.warn("⚠️ User not authenticated. Cannot write to Firestore.");
     return null;
   }
   
+  const userRef = doc(db, "users", user.uid);
+  
+  // --- NEW LOGIC: Check if the user is new before creating a workspace ---
+  const userSnap = await getDoc(userRef);
+  const isNewUser = !userSnap.exists();
+  
+  console.log(isNewUser ? "New user detected." : "Existing user detected.");
+  // --- END NEW LOGIC ---
+  
   let finalPhotoURL = photoURL;
-  if (provider === 'email') {
+  if (provider === 'email' && isNewUser) { // Only generate avatar for new email users
     // Generate avatar for email signups
     const initials = fullName.split(' ').slice(0, 2).map(w => w[0].toUpperCase()).join('');
     const color = getRandomColor();
@@ -456,19 +426,33 @@ async function saveUserData(user, fullName, email, provider, photoURL = null) {
     finalPhotoURL = await getDownloadURL(storageRef);
   }
   
-  const userRef = doc(db, "users", user.uid);
   const userData = {
     id: user.uid,
     name: fullName,
     email: email,
     provider: provider,
     avatar: finalPhotoURL,
-    createdAt: serverTimestamp() // Use serverTimestamp for consistency
+    ...(isNewUser && { createdAt: serverTimestamp() })
   };
   
-  // Use set with merge to create or update user document
   await setDoc(userRef, userData, { merge: true });
   console.log(`✅ User data for ${email} saved successfully.`);
+  
+  if (isNewUser) {
+    try {
+      const workspaceRef = collection(db, `users/${user.uid}/myworkspace`);
+      const newWorkspace = {
+        name: "My First Workspace",
+        isSelected: true,
+        createdAt: serverTimestamp(),
+        members: [user.uid]
+      };
+      await addDoc(workspaceRef, newWorkspace);
+      console.log("✅ Default workspace created successfully for new user.");
+    } catch (error) {
+      console.error("❌ Error creating default workspace:", error);
+    }
+  }
+  
   return finalPhotoURL;
 }
-
