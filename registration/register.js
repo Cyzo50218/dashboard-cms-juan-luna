@@ -307,7 +307,8 @@ async function handleInvitationAcceptance(user, invId) {
     if (invitationData.invitedEmail.toLowerCase() !== user.email.toLowerCase()) {
       throw new Error("This invitation is for a different email address. Please log in with the correct account.");
     }
-    
+    const projectId = invitationData.projectId;
+const role = invitationData.role;
     const projectsCollectionGroup = collectionGroup(db, 'projects');
 
 // 2. Query across all 'projects' subcollections to find the one with the matching projectId field.
