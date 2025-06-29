@@ -448,7 +448,7 @@ window.TaskSidebar = (function() {
             return;
         }
         
-        const messagesPath = `globalChatProjects/${currentProject.id}/tasks/${currentTask.id}/Messages`;
+        const messagesPath = `globalTaskChats/${currentTask.id}/Messages`;
         console.log("DEBUG: Attempting to listen for messages at path:", messagesPath);
         
         const messagesQuery = query(collection(db, messagesPath), orderBy("timestamp", "asc"));
@@ -663,7 +663,7 @@ async function moveTask(newProjectId) {
         if (!currentProject || !currentTask || !currentUser) return;
         
         // The path to the global chat collection remains the same.
-        const messagesPath = `globalChatProjects/${currentProject.id}/tasks/${currentTask.id}/Messages`;
+        const messagesPath = `globalTaskChats/${currentTask.id}/Messages`;
         
         // Create a reference for the new message document.
         const newMessageRef = doc(collection(db, messagesPath));
