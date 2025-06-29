@@ -19,7 +19,6 @@ import {
   writeBatch,
   arrayUnion,
   arrayRemove,
-  batch,
   query,
   where,
   getDocs
@@ -334,6 +333,8 @@ async function handleInvitationAcceptance(user, invId) {
     const projectRef = projectSnap.ref; // The correct, full path reference to the project document
     
     const projectData = projectSnap.data();
+    
+    const batch = writeBatch(db);
     
     // Find the specific pending invite object to remove
     const pendingInviteToRemove = (projectData.pendingInvites || []).find(p => p.invitationId === invId);
