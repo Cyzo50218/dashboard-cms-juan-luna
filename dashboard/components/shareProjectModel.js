@@ -706,11 +706,33 @@ async function handleInvite(modal, projectRef) {
     if (existingUserUID) {
       // Case 1 & 2: User is a registered workspace member.
       const memberInProject = (projectData.members || []).find(m => m.uid === existingUserUID);
+      if (role === "Project Admin") {
+  const currentAdmins = (projectData.project_admin_user || []);
+  if (currentAdmins.length >= 2 && !currentAdmins.includes(existingUserUID)) {
+    alert(`A project can only have up to 2 Project Admins. Cannot add ${email}.`);
+    failedEmails.push(email);
+    continue; // Skip to the next email
+  }
+}
       if (memberInProject) {
         if (memberInProject.role !== role) {
           const updatedMemberData = { ...memberInProject, role: role };
           batch.update(projectRef, { members: arrayRemove(memberInProject) });
           batch.update(projectRef, { members: arrayUnion(updatedMemberData) });
+          if (role === "Project Admin") {
+  batch.update(projectRef, { project_admin_user: arrayUnion(existingUserUID) });
+} else {
+  batch.update(projectRef, { project_admin_user: arrayRemove(existingUserUID) });
+}
+
+// Special case for the super admin changing roles
+if (
+  existingUserUID === projectData.project_super_admin_uid &&
+  role !== "Project Admin"
+) {
+  // This ensures the super admin is not in the admin user list if their role changes.
+  batch.update(projectRef, { project_admin_user: arrayRemove(projectData.project_super_admin_uid) });
+}
           membersAddedOrUpdated++;
         }
       } else {
