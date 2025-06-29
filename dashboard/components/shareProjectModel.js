@@ -704,164 +704,139 @@ async function handleInvite(modal, projectRef) {
     );
 
     if (existingUserUID) {
+  // Find out if the user is already a member of this specific project.
+  const memberInProject = (projectData.members || []).find(m => m.uid === existingUserUID);
+  
+  // --- SCENARIO 1: The user is already a member of the project, and their role is changing. ---
+  if (memberInProject && memberInProject.role !== role) {
+    
+    // CHECK 1.1: The project owner is demoting themselves. This is the highest priority check.
+    if (existingUserUID === projectData.project_super_admin_uid && role !== "Project Admin") {
       
-      // Case 1 & 2: User is a registered workspace member.
-      const memberInProject = (projectData.members || []).find(m => m.uid === existingUserUID);
-      if (
-  existingUserUID === projectData.project_super_admin_uid &&
-  role !== "Project Admin"
-) {
-  // Find other admins to become the new owner, excluding the current owner.
-  const otherAdmins = (projectData.project_admin_user || []).filter(
-    (uid) => uid !== projectData.project_super_admin_uid
-  );
-  
-  if (otherAdmins.length === 0) {
-    alert(
-      "You cannot remove your ownership because you are the only Project Admin. Please assign the 'Project Admin' role to another member before changing your own role."
-    );
-    inviteBtn.disabled = false;
-    inviteBtn.textContent = originalBtnText;
-    return; // Abort the entire operation
+      const otherAdmins = (projectData.project_admin_user || []).filter(
+        (uid) => uid !== projectData.project_super_admin_uid
+      );
+      
+      if (otherAdmins.length === 0) {
+        alert(
+          "You cannot remove your ownership because you are the only Project Admin. Please assign the 'Project Admin' role to another member before changing your own role."
+        );
+        inviteBtn.disabled = false;
+        inviteBtn.textContent = originalBtnText;
+        return; // Abort the entire function.
+      }
+      
+      const confirmation = window.confirm(
+        "You are about to remove your ownership of this project and transfer it to another admin. Are you sure?"
+      );
+      
+      if (!confirmation) {
+        alert("Ownership transfer cancelled.");
+        inviteBtn.disabled = false;
+        inviteBtn.textContent = originalBtnText;
+        return; // Abort the entire function.
+      }
+      
+      // If confirmed, queue the ownership transfer.
+      const newSuperAdminUID = otherAdmins[0];
+      batch.update(projectRef, { project_super_admin_uid: newSuperAdminUID });
+      batch.update(projectRef, { project_admin_user: arrayRemove(existingUserUID) });
+      
+    }
+    // CHECK 1.2: A user is being promoted to Project Admin.
+    else if (role === "Project Admin") {
+      const currentAdmins = (projectData.project_admin_user || []);
+      if (currentAdmins.length >= 2 && !currentAdmins.includes(existingUserUID)) {
+        alert(`A project can only have up to 2 Project Admins. Cannot add ${email}.`);
+        failedEmails.push(email);
+        continue; // Skip this email and go to the next in the loop.
+      }
+      batch.update(projectRef, { project_admin_user: arrayUnion(existingUserUID) });
+    }
+    // CHECK 1.3: A non-owner admin is being changed to a non-admin role.
+    else if (memberInProject.role === "Project Admin") {
+      batch.update(projectRef, { project_admin_user: arrayRemove(existingUserUID) });
+    }
+    
+    // ACTION: This part runs for any successful role change after all checks have passed.
+    const updatedMemberData = { ...memberInProject, role: role };
+    batch.update(projectRef, { members: arrayRemove(memberInProject) });
+    batch.update(projectRef, { members: arrayUnion(updatedMemberData) });
+    membersAddedOrUpdated++;
+    
   }
-  
-  // Ask for confirmation before proceeding
-  const confirmation = window.confirm(
-    "You are about to remove your ownership of this project and transfer it to another admin. Are you sure?"
-  );
-  
-  if (!confirmation) {
-    alert("Ownership transfer cancelled.");
-    inviteBtn.disabled = false;
-    inviteBtn.textContent = originalBtnText;
-    return; // Abort the entire operation
-  }
-  
-  // Promote the first available admin to be the new Super Admin
-  const newSuperAdminUID = otherAdmins[0];
-  batch.update(projectRef, {
-    project_super_admin_uid: newSuperAdminUID,
-  });
-  
-  // Remove the old owner from the project_admin_user list
-  batch.update(projectRef, {
-    project_admin_user: arrayRemove(existingUserUID),
-  });
-  
-} else if (role === "Project Admin") {
-  // Logic for ADDING a user to the admin list
-  const currentAdmins = (projectData.project_admin_user || []);
-  if (currentAdmins.length >= 2 && !currentAdmins.includes(existingUserUID)) {
-    alert(`A project can only have up to 2 Project Admins. Cannot add ${email}.`);
-    failedEmails.push(email);
-    continue; // Skip to the next email
-  }
-  batch.update(projectRef, {
-    project_admin_user: arrayUnion(existingUserUID),
-  });
-  
-} else if (memberInProject.role === "Project Admin") {
-  // Logic for REMOVING a non-owner admin from the admin list
-  batch.update(projectRef, {
-    project_admin_user: arrayRemove(existingUserUID),
-  });
-}
-      if (memberInProject) {
-        if (memberInProject.role !== role) {
-          const updatedMemberData = { ...memberInProject, role: role };
-          batch.update(projectRef, { members: arrayRemove(memberInProject) });
-          batch.update(projectRef, { members: arrayUnion(updatedMemberData) });
-          if (role === "Project Admin") {
-  batch.update(projectRef, { project_admin_user: arrayUnion(existingUserUID) });
-} else {
-  batch.update(projectRef, { project_admin_user: arrayRemove(existingUserUID) });
-}
-
-// Special case for the super admin changing roles
-if (
-  existingUserUID === projectData.project_super_admin_uid &&
-  role !== "Project Admin"
-) {
-  // This ensures the super admin is not in the admin user list if their role changes.
-  batch.update(projectRef, { project_admin_user: arrayRemove(projectData.project_super_admin_uid) });
-}
+  // --- SCENARIO 2: The user is NOT a member of the project yet. Handle as a new invitation. ---
+  else if (!memberInProject) {
+    try {
+      const invitesRef = collection(db, "InvitedProjects");
+      const q = query(invitesRef,
+        where("projectId", "==", projectRef.id),
+        where("invitedEmail", "==", lowerEmail)
+      );
+      const querySnapshot = await getDocs(q);
+      
+      // This user already has a pending invitation. UPDATE it.
+      if (!querySnapshot.empty) {
+        const existingInviteDoc = querySnapshot.docs[0];
+        const existingInviteData = existingInviteDoc.data();
+        
+        if (existingInviteData.role !== role) {
+          const inviteDocRef = doc(db, "InvitedProjects", existingInviteDoc.id);
+          batch.update(inviteDocRef, { role: role });
+          
+          const oldPendingInviteObject = (projectData.pendingInvites || []).find(p => p.email.toLowerCase() === lowerEmail);
+          if (oldPendingInviteObject) {
+            const newPendingInviteObject = { ...oldPendingInviteObject, role: role };
+            batch.update(projectRef, { pendingInvites: arrayRemove(oldPendingInviteObject) });
+            batch.update(projectRef, { pendingInvites: arrayUnion(newPendingInviteObject) });
+          }
+          // `updatedInvites` seems to be an undeclared variable in your original snippet. 
+          // Using `membersAddedOrUpdated` for general feedback.
           membersAddedOrUpdated++;
         }
-      } else {
-         try {
-   const invitesRef = collection(db, "InvitedProjects");
-   const q = query(invitesRef,
-     where("projectId", "==", projectRef.id),
-     where("invitedEmail", "==", lowerEmail)
-   );
-   const querySnapshot = await getDocs(q);
-   
-   if (!querySnapshot.empty) {
-     // 2. UPDATE EXISTING: An invitation already exists.
-     const existingInviteDoc = querySnapshot.docs[0];
-     const existingInviteData = existingInviteDoc.data();
-     
-     if (existingInviteData.role !== role) {
-       // Role has changed, so we update the document.
-       const inviteDocRef = doc(db, "InvitedProjects", existingInviteDoc.id);
-       batch.update(inviteDocRef, { role: role });
-       
-       // Also update the 'pendingInvites' array in the project document
-       const oldPendingInviteObject = (projectData.pendingInvites || []).find(p => p.email.toLowerCase() === lowerEmail);
-       if (oldPendingInviteObject) {
-         const newPendingInviteObject = { ...oldPendingInviteObject, role: role };
-         batch.update(projectRef, { pendingInvites: arrayRemove(oldPendingInviteObject) });
-         batch.update(projectRef, { pendingInvites: arrayUnion(newPendingInviteObject) });
-       }
-       updatedInvites.push(lowerEmail);
-     }
-     // If role is the same, do nothing.
-     
-   } else {
-     // 3. CREATE NEW: This is a truly new invitation.
-     const newInvitationRef = doc(collection(db, "InvitedProjects"));
-     const invitationId = newInvitationRef.id;
-     const invitationUrl = `https://cms.juanlunacollections.com/invitation/${invitationId}`;
-     
-     // Send the email (can be awaited later or handled in parallel)
-     await sendEmailInvitation({
-       email: lowerEmail,
-       projectName: projectData.title || "Unnamed Project",
-       invitationUrl: invitationUrl,
-     });
-     
-     // A. Set the document in the top-level 'InvitedProjects' collection
-     batch.set(newInvitationRef, {
-       invitationId: invitationId,
-       projectId: projectRef.id,
-       projectName: projectData.title || "Unnamed Project",
-       invitedEmail: lowerEmail,
-       role: role,
-       invitedAt: serverTimestamp(),
-       status: "pending",
-       invitedBy: { uid: inviter.uid, name: inviter.displayName, email: inviter.email },
-     });
-     
-     // B. Add the denormalized data to the 'pendingInvites' array in the project
-     const newPendingInviteData = {
-       email: lowerEmail,
-       role: role,
-       invitedAt: new Date().toISOString(), // Use serverTimestamp in the main doc for accuracy
-       invitationId: invitationId, // IMPORTANT: Store the ID here
-     };
-     batch.update(projectRef, {
-       pendingInvites: arrayUnion(newPendingInviteData),
-     });
-     
-     successfulInvites.push(lowerEmail);
-   }
- } catch (error) {
-   console.error(`Failed to process invitation for ${lowerEmail}:`, error);
-   failedEmails.push(lowerEmail);
- }
- 
       }
-    } else {
+      // This is a truly new invitation for this user. CREATE it.
+      else {
+        const newInvitationRef = doc(collection(db, "InvitedProjects"));
+        const invitationId = newInvitationRef.id;
+        const invitationUrl = `https://cms.juanlunacollections.com/invitation/${invitationId}`;
+        
+        await sendEmailInvitation({
+          email: lowerEmail,
+          projectName: projectData.title || "Unnamed Project",
+          invitationUrl: invitationUrl,
+        });
+        
+        batch.set(newInvitationRef, {
+          invitationId: invitationId,
+          projectId: projectRef.id,
+          projectName: projectData.title || "Unnamed Project",
+          invitedEmail: lowerEmail,
+          role: role,
+          invitedAt: serverTimestamp(),
+          status: "pending",
+          invitedBy: { uid: inviter.uid, name: inviter.displayName, email: inviter.email },
+        });
+        
+        const newPendingInviteData = {
+          email: lowerEmail,
+          role: role,
+          invitedAt: new Date().toISOString(),
+          invitationId: invitationId,
+        };
+        batch.update(projectRef, {
+          pendingInvites: arrayUnion(newPendingInviteData),
+        });
+        
+        // `successfulInvites` was also undeclared. Using the standard counter.
+        successfulEmailSends++;
+      }
+    } catch (error) {
+      console.error(`Failed to process invitation for ${lowerEmail}:`, error);
+      failedEmails.push(lowerEmail);
+    }
+  }
+} else {
       // Case 3 & 4: User is not in the workspace. Check pending invites.
       const existingPendingInvite = (projectData.pendingInvites || []).find(
         p => p.email.toLowerCase() === lowerEmail
