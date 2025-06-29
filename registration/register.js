@@ -437,3 +437,38 @@ function stringToNumericString(str) {
   if (!str) return '';
   return str.split('').map(char => char.charCodeAt(0)).join('');
 }
+
+async function saveUserData(user, fullName, email, provider, photoURL = null) {
+  if (!user || !user.uid) {
+    console.warn("⚠️ User not authenticated. Cannot write to Firestore.");
+    return null;
+  }
+  
+  let finalPhotoURL = photoURL;
+  if (provider === 'email') {
+    // Generate avatar for email signups
+    const initials = fullName.split(' ').slice(0, 2).map(w => w[0].toUpperCase()).join('');
+    const color = getRandomColor();
+    const dataUrl = generateAvatar(initials, color);
+    const avatarPath = `users/${user.uid}/profile-picture/avatar.png`;
+    const storageRef = ref(storage, avatarPath);
+    await uploadString(storageRef, dataUrl, 'data_url');
+    finalPhotoURL = await getDownloadURL(storageRef);
+  }
+  
+  const userRef = doc(db, "users", user.uid);
+  const userData = {
+    id: user.uid,
+    name: fullName,
+    email: email,
+    provider: provider,
+    avatar: finalPhotoURL,
+    createdAt: serverTimestamp() // Use serverTimestamp for consistency
+  };
+  
+  // Use set with merge to create or update user document
+  await setDoc(userRef, userData, { merge: true });
+  console.log(`✅ User data for ${email} saved successfully.`);
+  return finalPhotoURL;
+}
+
