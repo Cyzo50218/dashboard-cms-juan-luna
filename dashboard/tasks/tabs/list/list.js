@@ -1822,19 +1822,25 @@ function render() {
         if (section.id) leftSectionCell.dataset.sectionId = section.id;
         
         const isEditable = userCanEditProject;
-        const sectionTitleEditableClass = isEditable ? 'focus:bg-white focus:ring-1 focus:ring-slate-300' : 'cursor-default';
-        
-        leftSectionCell.innerHTML = `
-            <div class="drag-handle ${!isEditable ? 'hidden' : ''} group-hover:opacity-100 transition-opacity cursor-grab rounded flex items-start justify-center hover:bg-slate-200 user-select-none">
-                <span class="material-icons text-slate-500 select-none" style="font-size: 20px;" draggable="false">drag_indicator</span>
-            </div>
-            <span class="section-toggle fas ${section.isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'} text-slate-500 mr-2 cursor-pointer" data-section-id="${section.id}"></span>
-            <div contenteditable="${isEditable}" class="section-title truncate max-w-[400px] outline-none bg-transparent ${sectionTitleEditableClass} rounded px-1">${section.title}</div>
-            <div class="flex-grow"></div>
-            <div class="section-options-btn ${!isEditable ? 'hidden' : ''} opacity-1 group-hover:opacity-100 transition-opacity cursor-pointer p-1 rounded hover:bg-slate-200 flex items-center justify-center">
-                <span class="material-icons text-slate-500">more_horiz</span>
-            </div>
-        `;
+const isDragHidden = !isEditable;
+const sectionTitleEditableClass = isEditable ? 'focus:bg-white focus:ring-1 focus:ring-slate-300' : 'cursor-default';
+const dragHandleHiddenClass = isDragHidden ? 'hidden' : '';
+const leftCellPaddingClass = isDragHidden ? 'px-4' : '';
+
+leftSectionCell.innerHTML = `
+    <div class="flex items-center">
+        <div class="drag-handle ${dragHandleHiddenClass} group-hover:opacity-100 transition-opacity cursor-grab rounded flex items-start justify-center hover:bg-slate-200 user-select-none">
+            <span class="material-icons text-slate-500 select-none" style="font-size: 20px;" draggable="false">drag_indicator</span>
+        </div>
+        <span class="section-toggle ${leftCellPaddingClass} fas ${section.isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'} text-slate-500 mr-2 cursor-pointer" data-section-id="${section.id}"></span>
+        <div contenteditable="${isEditable}" class="section-title truncate max-w-[400px] outline-none bg-transparent ${sectionTitleEditableClass} rounded px-1">${section.title}</div>
+        <div class="flex-grow"></div>
+        <div class="section-options-btn ${!isEditable ? 'hidden' : ''} opacity-1 group-hover:opacity-100 transition-opacity cursor-pointer p-1 rounded hover:bg-slate-200 flex items-center justify-center">
+            <span class="material-icons text-slate-500">more_horiz</span>
+        </div>
+    </div>
+`;
+
         const toggleIcon = leftSectionCell.querySelector('.section-toggle');
         
         // 2. Add a click listener to it.
