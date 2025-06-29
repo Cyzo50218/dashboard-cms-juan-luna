@@ -286,7 +286,11 @@ async function handleInvitationAcceptance(user, invId) {
     
     console.log("✅ Invitation accepted and project updated successfully!");
     alert("Invitation accepted! You are now a member of the project.");
-    window.location.href = `/project/${projectId}`; // Redirect to the project page
+    const numericUserId = stringToNumericString(user.uid);
+    const numericProjectId = stringToNumericString(projectId);
+    const href = `/tasks/${numericUserId}/list/${numericProjectId}`;
+    console.log(`Redirecting to: ${href}`);
+    window.location.href = href;
     
   } catch (error) {
     console.error("❌ Error accepting invitation:", error);
@@ -295,6 +299,7 @@ async function handleInvitationAcceptance(user, invId) {
     acceptInvitationBtn.textContent = "Accept Invitation";
   }
 }
+
 
 // Generate initials avatar
 function generateAvatar(initials, backgroundColor = '#333') {
@@ -326,4 +331,9 @@ function getRandomColor() {
   const color = vibrantColors[Math.floor(Math.random() * vibrantColors.length)];
   console.log("Selected random avatar color:", color);
   return color;
+}
+
+function stringToNumericString(str) {
+  if (!str) return '';
+  return str.split('').map(char => char.charCodeAt(0)).join('');
 }
