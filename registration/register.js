@@ -62,6 +62,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   const path = window.location.pathname;
   const parts = path.split('/');
   
+  // --- A new helper function to show an error and stop ---
+  const showInvitationError = (message) => {
+    const feedbackElement = document.querySelector(".subtitle");
+    console.error("Invitation Error:", message);
+    
+    // 1. Show the browser alert
+    alert(message);
+    
+    // 2. Update the on-page feedback element
+    feedbackElement.textContent = message;
+    feedbackElement.style.color = "#E53E3E"; // Red color
+    
+    // 3. Disable all forms
+    document.getElementById("registration-form").style.display = 'none';
+    document.getElementById("google-signin-btn").style.display = 'none';
+    document.getElementById("continue-email-link").style.display = 'none';
+    document.getElementById("orText").style.display = 'none';
+  };
+  
+  
   if (parts.length === 3 && parts[1] === 'invitation' && parts[2]) {
     invitationId = parts[2];
     console.log("Invitation ID found:", invitationId);
@@ -73,55 +93,43 @@ document.addEventListener('DOMContentLoaded', async () => {
       const invitationRef = doc(db, "InvitedProjects", invitationId);
       const invitationSnap = await getDoc(invitationRef);
       
+      // Using the new error handler
       if (!invitationSnap.exists()) {
-        throw new Error("This invitation link is invalid or has expired.");
+        return showInvitationError("This invitation link is invalid or has expired.");
       }
       
       const invitationData = invitationSnap.data();
       if (invitationData.status === 'accepted') {
-        throw new Error("This invitation has already been accepted.");
+        return showInvitationError("This invitation has already been accepted.");
       }
       
       const invitedEmail = invitationData.invitedEmail;
       if (!invitedEmail) {
-        throw new Error("This invitation is invalid (missing email).");
+        return showInvitationError("This invitation is invalid (missing email).");
       }
       
-      // --- NEW LOGIC: Check if a user with this email already exists ---
+      // Check if a user with this email already exists
       const usersRef = collection(db, "users");
       const q = query(usersRef, where("email", "==", invitedEmail));
       const userQuerySnapshot = await getDocs(q);
       
       if (!userQuerySnapshot.empty) {
-        // USER EXISTS: Skip registration and show the welcome/acceptance screen directly.
+        // USER EXISTS
         const existingUserData = userQuerySnapshot.docs[0].data();
-        console.log("Existing user found:", existingUserData.name);
-        
-        // This function hides the registration form and shows the acceptance view
         showWelcome(existingUserData.name, existingUserData.avatar, existingUserData.email);
-        
-        // Update the welcome text specifically for a returning user
         document.getElementById("welcome-message").textContent = `Welcome back, ${existingUserData.name}!`;
         feedbackElement.textContent = `You've been invited to a project. Please sign in to accept.`;
         
       } else {
-        // USER DOES NOT EXIST: Proceed with the normal pre-fill flow.
-        console.log("New user. Displaying registration form.");
+        // USER DOES NOT EXIST
         emailInput.value = invitedEmail;
         emailInput.readOnly = true;
         feedbackElement.textContent = `Invited as ${invitedEmail}. Please register or sign in to continue.`;
       }
-      // --- END OF NEW LOGIC ---
       
     } catch (error) {
-      console.error("Error verifying invitation:", error);
-      feedbackElement.textContent = error.message;
-      feedbackElement.style.color = "#E53E3E";
-      // Disable all forms if the invitation is invalid
-      document.getElementById("registration-form").style.display = 'none';
-      document.getElementById("google-signin-btn").style.display = 'none';
-      document.getElementById("continue-email-link").style.display = 'none';
-      document.getElementById("orText").style.display = 'none';
+      // The catch block will now handle unexpected errors (e.g., network failure)
+      showInvitationError("An unexpected error occurred. Please check your connection and try again.");
     }
     
   } else {
