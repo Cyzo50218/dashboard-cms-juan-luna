@@ -120,7 +120,7 @@ function updateUserPermissions(projectData, userId) {
     const members = projectData.members || [];
     const userMemberInfo = members.find(member => member.uid === userId);
     currentUserRole = userMemberInfo ? userMemberInfo.role : null;
-    const isMemberWithEditPermission = userMemberInfo && (userMemberInfo.role === "Project admin" || userMemberInfo.role === "Editor");
+    const isMemberWithEditPermission = userMemberInfo && (userMemberInfo.role === "Project admin" || userMemberInfo.role === "Project Admin" || userMemberInfo.role === "Editor");
     const isSuperAdmin = projectData.project_super_admin_uid === userId;
     const isAdminUser = projectData.project_admin_user === userId;
     userCanEditProject = isMemberWithEditPermission || isSuperAdmin || isAdminUser;
@@ -146,7 +146,7 @@ function canUserEditSpecifcTask(task) {
     }
     
     // Rule 2: Check for the special case for assigned users.
-    if (currentUserRole === 'Viewer' || currentUserRole === 'Commentator') {
+    if (currentUserRole === 'Viewer' || currentUserRole === 'Commentor') {
         // Ensure task.assignees is an array before checking.
         const isAssigned = Array.isArray(task.assignees) && task.assignees.includes(currentUserId);
         

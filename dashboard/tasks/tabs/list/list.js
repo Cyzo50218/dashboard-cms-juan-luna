@@ -306,7 +306,7 @@ function updateUserPermissions(projectData, userId) {
     
     currentUserRole = userMemberInfo ? userMemberInfo.role : null;
     
-    const isMemberWithEditPermission = userMemberInfo && (userMemberInfo.role === "Project admin" || userMemberInfo.role === "Editor");
+    const isMemberWithEditPermission = userMemberInfo && (userMemberInfo.role === "Project Admin" || userMemberInfo.role === "Project admin" ||  userMemberInfo.role === "Editor");
     const isSuperAdmin = projectData.project_super_admin_uid === userId;
     const isAdminUser = projectData.project_admin_user === userId;
     
@@ -327,7 +327,7 @@ function canUserEditTask(task) {
     }
     
     // Check for the special case: Viewers or Commentators who are assigned to the task.
-    if (currentUserRole === 'Viewer' || currentUserRole === 'Commentator') {
+    if (currentUserRole === 'Viewer' || currentUserRole === 'Commentor') {
         const isAssigned = Array.isArray(task.assignees) && task.assignees.includes(currentUserId);
         if (isAssigned) {
             console.log(`[Permissions] Granting task edit for assigned ${currentUserRole}.`);
@@ -2122,7 +2122,7 @@ function render() {
                         cell.dataset.control = 'assignee';
                         content = createAssigneeHTML(task.assignees);
                         
-                        const isViewerOrCommentator = currentUserRole === 'Viewer' || currentUserRole === 'Commentator';
+                        const isViewerOrCommentator = currentUserRole === 'Viewer' || currentUserRole === 'Commentor';
                         const isAssigned = Array.isArray(task.assignees) && task.assignees.includes(currentUserId);
                         
                         if (!userCanEditProject && isViewerOrCommentator && isAssigned) {
@@ -2421,7 +2421,7 @@ function render() {
         
         const isProjectAdmin = (
             project.project_super_admin_uid === currentUserId ||
-            project.project_admin_user === currentUserId || currentUserRole === "Editor"
+            project.project_admin_user === currentUserId || currentUserRole === "Editor" || currentUserRole === "Project admin" || currentUserRole === "Project Admin" 
         );
         
         if (!isProjectAdmin) {

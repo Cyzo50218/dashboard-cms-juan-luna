@@ -317,7 +317,7 @@ function updateUserPermissions(projectData, userId) {
 
 /**
  * Checks if the current user has permission to edit a specific task.
- * Viewers/Commentators can edit a task ONLY IF they are assigned to it.
+ * Viewers/Commentors can edit a task ONLY IF they are assigned to it.
  * @param {object} task - The task object.
  * @returns {boolean} - True if the user can edit the task.
  */
@@ -326,8 +326,8 @@ function canUserEditProduct(task) {
         return true;
     }
     
-    // Check for the special case: Viewers or Commentators who are assigned to the task.
-    if (currentUserRole === 'Viewer' || currentUserRole === 'Commentator') {
+    // Check for the special case: Viewers or Commentors who are assigned to the task.
+    if (currentUserRole === 'Viewer' || currentUserRole === 'Commentor') {
         const isAssigned = Array.isArray(task.assignees) && task.assignees.includes(currentUserId);
         if (isAssigned) {
             console.log(`[Permissions] Granting task edit for assigned ${currentUserRole}.`);
@@ -1904,7 +1904,7 @@ function isCellEditable(column) {
         return true;
     }
     
-    // Assigned users (Viewer/Commentator) can edit some fields,
+    // Assigned users (Viewer/Commentor) can edit some fields,
     // BUT never allowed to modify the "Assignee" column
     if (column.name === 'Assignee') {
         return false;
