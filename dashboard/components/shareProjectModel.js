@@ -704,15 +704,67 @@ async function handleInvite(modal, projectRef) {
     );
 
     if (existingUserUID) {
+      
       // Case 1 & 2: User is a registered workspace member.
       const memberInProject = (projectData.members || []).find(m => m.uid === existingUserUID);
-      if (role === "Project Admin") {
+      if (
+  existingUserUID === projectData.project_super_admin_uid &&
+  role !== "Project Admin"
+) {
+  // Find other admins to become the new owner, excluding the current owner.
+  const otherAdmins = (projectData.project_admin_user || []).filter(
+    (uid) => uid !== projectData.project_super_admin_uid
+  );
+  
+  if (otherAdmins.length === 0) {
+    alert(
+      "You cannot remove your ownership because you are the only Project Admin. Please assign the 'Project Admin' role to another member before changing your own role."
+    );
+    inviteBtn.disabled = false;
+    inviteBtn.textContent = originalBtnText;
+    return; // Abort the entire operation
+  }
+  
+  // Ask for confirmation before proceeding
+  const confirmation = window.confirm(
+    "You are about to remove your ownership of this project and transfer it to another admin. Are you sure?"
+  );
+  
+  if (!confirmation) {
+    alert("Ownership transfer cancelled.");
+    inviteBtn.disabled = false;
+    inviteBtn.textContent = originalBtnText;
+    return; // Abort the entire operation
+  }
+  
+  // Promote the first available admin to be the new Super Admin
+  const newSuperAdminUID = otherAdmins[0];
+  batch.update(projectRef, {
+    project_super_admin_uid: newSuperAdminUID,
+  });
+  
+  // Remove the old owner from the project_admin_user list
+  batch.update(projectRef, {
+    project_admin_user: arrayRemove(existingUserUID),
+  });
+  
+} else if (role === "Project Admin") {
+  // Logic for ADDING a user to the admin list
   const currentAdmins = (projectData.project_admin_user || []);
   if (currentAdmins.length >= 2 && !currentAdmins.includes(existingUserUID)) {
     alert(`A project can only have up to 2 Project Admins. Cannot add ${email}.`);
     failedEmails.push(email);
     continue; // Skip to the next email
   }
+  batch.update(projectRef, {
+    project_admin_user: arrayUnion(existingUserUID),
+  });
+  
+} else if (memberInProject.role === "Project Admin") {
+  // Logic for REMOVING a non-owner admin from the admin list
+  batch.update(projectRef, {
+    project_admin_user: arrayRemove(existingUserUID),
+  });
 }
       if (memberInProject) {
         if (memberInProject.role !== role) {
