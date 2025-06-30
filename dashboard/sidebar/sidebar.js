@@ -795,21 +795,26 @@ async function moveTask(newProjectId) {
         appendFieldToTable(tbody, 'dueDate', 'Due Date', renderDateValue(task.dueDate), 'date', isSidebarFieldEditable('Due Date'));
         
         const priorityValue = task.priority;
-        let priorityHTML = '<span>Not set</span>';
-        if (priorityValue) {
-            let priorityColor = currentProject.customPriorities?.find(p => p.name === priorityValue)?.color || defaultPriorityColors[priorityValue];
-            priorityHTML = createTag(priorityValue, priorityColor);
-        }
-        appendFieldToTable(tbody, 'priority', 'Priority', priorityHTML, 'priority', isSidebarFieldEditable('Priority'));
+let priorityHTML = '<span>Not set</span>';
+if (priorityValue) {
+    const priorityColumn = currentProject.defaultColumns.find(c => c.id === 'priority');
+    const priorityOption = priorityColumn?.options?.find(p => p.name === priorityValue);
+    const priorityColor = priorityOption?.color;
+    
+    priorityHTML = createTag(priorityValue, priorityColor);
+}
+appendFieldToTable(tbody, 'priority', 'Priority', priorityHTML, 'priority', isSidebarFieldEditable('Priority'));
         
         const statusValue = task.status;
-        let statusHTML = '<span>Not set</span>';
-        if (statusValue) {
-            let statusColor = currentProject.customStatuses?.find(s => s.name === statusValue)?.color || defaultStatusColors[statusValue];
-            statusHTML = createTag(statusValue, statusColor);
-        }
-        appendFieldToTable(tbody, 'status', 'Status', statusHTML, 'status', isSidebarFieldEditable('Status'));
-        
+let statusHTML = '<span>Not set</span>';
+if (statusValue) {
+    const statusColumn = currentProject.defaultColumns.find(c => c.id === 'status');
+    const statusOption = statusColumn?.options?.find(s => s.name === statusValue);
+    const statusColor = statusOption?.color;
+
+    statusHTML = createTag(statusValue, statusColor);
+}
+appendFieldToTable(tbody, 'status', 'Status', statusHTML, 'status', isSidebarFieldEditable('Status'));
         currentProject.customColumns?.forEach(col => {
             const value = task.customFields ? task.customFields[col.id] : null;
             let displayHTML = '<span>Not set</span>';

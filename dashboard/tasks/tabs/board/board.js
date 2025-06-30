@@ -519,18 +519,15 @@ const hasLiked = task.likedBy && task.likedBy[currentUserId];
 let priorityTagHTML = '';
 const priorityName = task.priority;
 if (priorityName) {
-    // First, check for a user-defined custom color
-    let color = project.customPriorities?.find(p => p.name === priorityName)?.color;
-    // If no custom color, fall back to the default colors object
-    if (!color) {
-        color = defaultPriorityColors[priorityName];
-    }
-    // If a color was found (either custom or default), create a styled tag
+    const priorityColumn = project.defaultColumns.find(c => c.id === 'priority');
+    const option = priorityColumn?.options?.find(p => p.name === priorityName);
+    const color = option?.color;
+
     if (color) {
         const style = `background-color: ${color}20; color: ${color};`;
         priorityTagHTML = `<span class="boardtasks-tag" style="${style}">${priorityName}</span>`;
     } else {
-        priorityTagHTML = `<span class="boardtasks-tag">${priorityName}</span>`; // Plain tag if no color
+        priorityTagHTML = `<span class="boardtasks-tag">${priorityName}</span>`;
     }
 }
 
@@ -538,12 +535,10 @@ if (priorityName) {
 let statusTagHTML = '';
 const statusName = task.status || 'No Status';
 if (statusName) {
-    // First, check for a user-defined custom color
-    let color = project.customStatuses?.find(s => s.name === statusName)?.color;
-    // If no custom color, fall back to the default colors object
-    if (!color) {
-        color = defaultStatusColors[statusName];
-    }
+    const statusColumn = project.defaultColumns.find(c => c.id === 'status');
+    const option = statusColumn?.options?.find(s => s.name === statusName);
+    const color = option?.color;
+    
     if (color) {
         const style = `background-color: ${color}20; color: ${color};`;
         statusTagHTML = `<span class="boardtasks-tag" style="${style}">${statusName}</span>`;
