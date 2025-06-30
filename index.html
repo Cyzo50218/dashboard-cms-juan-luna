@@ -55,18 +55,7 @@
   <script type="module" src="/dashboard/components/shareProjectModel.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/isBetween.min.js"></script>
   <script>
-    (function() {
-        // This function checks the user's OS/browser preference and applies the 'dark' class if needed.
-        function applyTheme() {
-            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-            if (prefersDark) {
-                document.documentElement.classList.add('dark');
-            } else {
-                document.documentElement.classList.remove('dark');
-            }
-        }
-        applyTheme();
-    })();
+
   </script>
 </body>
 
