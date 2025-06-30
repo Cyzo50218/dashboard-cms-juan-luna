@@ -169,7 +169,7 @@
     align-items: flex-start;
     /* MODIFIED: Removed overflow-x, as the parent container now handles scrolling */
     padding-bottom: 1rem;
-    overflow-x: auto;
+    overflow: auto;
     /* Keeps space at the bottom */
 }
 
