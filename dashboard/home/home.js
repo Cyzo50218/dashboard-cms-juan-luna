@@ -408,11 +408,30 @@ export function init(params) {
         
         // --- Default Structures ---
         const INITIAL_DEFAULT_COLUMNS = [
-            { id: 'assignees', name: 'Assignee', control: 'assignee' },
-            { id: 'dueDate', name: 'Due Date', control: 'due-date' },
-            { id: 'priority', name: 'Priority', control: 'priority' },
-            { id: 'status', name: 'Status', control: 'status' }
-        ];
+    { id: 'assignees', name: 'Assignee', control: 'assignee' },
+    { id: 'dueDate', name: 'Due Date', control: 'due-date' },
+    {
+        id: 'priority',
+        name: 'Priority',
+        control: 'priority',
+        options: [
+            { name: 'High', color: '#EF4D3D' },
+            { name: 'Medium', color: '#FFD15E' },
+            { name: 'Low', color: '#59E166' }
+        ]
+    },
+    {
+        id: 'status',
+        name: 'Status',
+        control: 'status',
+        options: [
+            { name: 'On track', color: '#59E166' },
+            { name: 'At risk', color: '#fff1b8' },
+            { name: 'Off track', color: '#FFD15E' },
+            { name: 'Completed', color: '#878787' }
+        ]
+    }
+];
         const INITIAL_DEFAULT_SECTIONS = [
             { title: 'Todo', order: 0, sectionType: 'todo', isCollapsed: false },
             { title: 'Doing', order: 1, sectionType: 'doing', isCollapsed: false },

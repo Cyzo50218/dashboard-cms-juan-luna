@@ -330,7 +330,7 @@ function updateUserPermissions(projectData, userId) {
     
     currentUserRole = userMemberInfo ? userMemberInfo.role : null;
     
-    const isMemberWithEditPermission = userMemberInfo && (userMemberInfo.role === "Project Admin" || userMemberInfo.role === "Project admin" ||  userMemberInfo.role === "Editor");
+    const isMemberWithEditPermission = userMemberInfo && (userMemberInfo.role === "Project Admin" || userMemberInfo.role === "Project admin" || userMemberInfo.role === "Editor");
     const isSuperAdmin = projectData.project_super_admin_uid === userId;
     const isAdminUser = projectData.project_admin_user === userId;
     
@@ -604,20 +604,20 @@ function setupEventListeners() {
         if (!controlElement) return; // Exit if not a specific interactive element
         
         const controlType = controlElement.dataset.control;
-
+        
         if (taskId && taskId.startsWith('temp_')) {
-        const control = e.target.closest('[data-control]');
-        if (control && control.dataset.control !== 'open-sidebar') {
-            console.warn("Action blocked: Please wait a moment for the task to finish saving.");
-            // Add a subtle flash to indicate the task is saving
-            taskRow.style.transition = 'background-color 0.2s';
-            taskRow.style.backgroundColor = '#fffbe6'; // A light yellow flash
-            setTimeout(() => {
-                taskRow.style.backgroundColor = '';
-            }, 400);
-            return;
+            const control = e.target.closest('[data-control]');
+            if (control && control.dataset.control !== 'open-sidebar') {
+                console.warn("Action blocked: Please wait a moment for the task to finish saving.");
+                // Add a subtle flash to indicate the task is saving
+                taskRow.style.transition = 'background-color 0.2s';
+                taskRow.style.backgroundColor = '#fffbe6'; // A light yellow flash
+                setTimeout(() => {
+                    taskRow.style.backgroundColor = '';
+                }, 400);
+                return;
+            }
         }
-    }
         // Block interaction with temp tasks (this logic remains the same)
         if (taskId.startsWith('temp_') && controlType !== 'open-sidebar') {
             return;
@@ -661,8 +661,10 @@ function setupEventListeners() {
                     console.warn(`[Permissions] Blocked 'move-task' action. User cannot edit project.`);
                     return;
                 }
-                const optionType = (controlType === 'priority') ? 'Priority' : 'Status';
-                showStatusDropdown(controlElement, taskId, sectionId, optionType);
+                
+                const columnId = controlType;
+                showStatusDropdown(controlElement, taskId, sectionId, columnId);
+                
                 break;
             }
             
@@ -1586,7 +1588,7 @@ function formatDueDate(dueDateString) {
 function render() {
     if (!project || !project.id) {
         if (taskListBody) {
-             taskListBody.innerHTML = '<div>Loading Project...</div>';
+            taskListBody.innerHTML = '<div>Loading Project...</div>';
         }
         return; // Exit the function early
     }
@@ -1824,7 +1826,7 @@ function render() {
     header.appendChild(leftHeader);
     header.appendChild(rightHeaderContent);
     if (!userCanEditProject) {
-
+        
     } else {
         console.log("can edit two");
         rightHeaderContent.addEventListener('click', headerClickListener);
@@ -1846,12 +1848,12 @@ function render() {
         if (section.id) leftSectionCell.dataset.sectionId = section.id;
         
         const isEditable = userCanEditProject;
-const isDragHidden = !isEditable;
-const sectionTitleEditableClass = isEditable ? 'focus:bg-white focus:ring-1 focus:ring-slate-300' : 'cursor-default';
-const dragHandleHiddenClass = isDragHidden ? 'hidden' : '';
-const leftCellPaddingClass = isDragHidden ? 'px-4' : '';
-
-leftSectionCell.innerHTML = `
+        const isDragHidden = !isEditable;
+        const sectionTitleEditableClass = isEditable ? 'focus:bg-white focus:ring-1 focus:ring-slate-300' : 'cursor-default';
+        const dragHandleHiddenClass = isDragHidden ? 'hidden' : '';
+        const leftCellPaddingClass = isDragHidden ? 'px-4' : '';
+        
+        leftSectionCell.innerHTML = `
     <div class="flex items-center">
         <div class="drag-handle ${dragHandleHiddenClass} group-hover:opacity-100 transition-opacity cursor-grab rounded flex items-start justify-center hover:bg-slate-200 user-select-none">
             <span class="material-icons text-slate-500 select-none" style="font-size: 20px;" draggable="false">drag_indicator</span>
@@ -1864,7 +1866,7 @@ leftSectionCell.innerHTML = `
         </div>
     </div>
 `;
-
+        
         const toggleIcon = leftSectionCell.querySelector('.section-toggle');
         
         // 2. Add a click listener to it.
@@ -2054,7 +2056,7 @@ leftSectionCell.innerHTML = `
             
             const leftTaskCell = document.createElement('div');
             leftTaskCell.className = 'group sticky left-0 w-80 md:w-96 lg:w-[400px] flex-shrink-0 flex items-center border-r border-transparent group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg juanlunacms-spreadsheetlist-dynamic-border py-0.2';
-            leftTaskCell.dataset.control = 'open-sidebar'; 
+            leftTaskCell.dataset.control = 'open-sidebar';
             
             // --- FIX 1: Reduce the top and bottom padding of the entire cell ---
             leftTaskCell.style.paddingTop = '0px';
@@ -2177,13 +2179,15 @@ leftSectionCell.innerHTML = `
                     case 'priority':
                         cell.dataset.control = 'priority';
                         if (task.priority) {
-                            // MODIFIED: Check if the task is completed FIRST
                             if (isCompleted) {
                                 const grayStyle = `background-color: ${COMPLETED_BG_COLOR}; color: ${COMPLETED_TEXT_COLOR};`;
                                 content = `<div class="priority-tag" style="${grayStyle}">${task.priority}</div>`;
                             } else {
-                                // This is the original logic for non-completed tasks
-                                let color = project.customPriorities?.find(p => p.name === task.priority)?.color || defaultPriorityColors[task.priority];
+                                // ✅ NEW LOGIC: Find the color from the project's column definition
+                                const priorityColumn = project.defaultColumns.find(c => c.id === 'priority');
+                                const option = priorityColumn?.options?.find(p => p.name === task.priority);
+                                const color = option?.color;
+                                
                                 if (color) {
                                     const style = `background-color: ${color}20; color: ${color};`;
                                     content = `<div class="priority-tag" style="${style}">${task.priority}</div>`;
@@ -2197,14 +2201,15 @@ leftSectionCell.innerHTML = `
                     case 'status':
                         cell.dataset.control = 'status';
                         if (task.status) {
-                            // MODIFIED: Check if the task is completed FIRST
                             if (isCompleted) {
                                 const grayStyle = `background-color: ${COMPLETED_BG_COLOR}; color: ${COMPLETED_TEXT_COLOR};`;
-                                // When completed, the text should always be "Completed"
                                 content = `<div class="status-tag" style="${grayStyle}">Completed</div>`;
                             } else {
-                                // This is the original logic for non-completed tasks
-                                let color = project.customStatuses?.find(s => s.name === task.status)?.color || defaultStatusColors[task.status];
+                                // ✅ NEW LOGIC: Find the color from the project's column definition
+                                const statusColumn = project.defaultColumns.find(c => c.id === 'status');
+                                const option = statusColumn?.options?.find(s => s.name === task.status);
+                                const color = option?.color;
+                                
                                 if (color) {
                                     const style = `background-color: ${color}20; color: ${color};`;
                                     content = `<div class="status-tag" style="${style}">${task.status}</div>`;
@@ -2313,8 +2318,7 @@ leftSectionCell.innerHTML = `
                                     if (newValue !== String(oldValue).trim()) {
                                         updateTask(task.id, section.id, {
                                             [fieldPath]: (col.type === 'Costing' || col.type === 'Numbers') ?
-                                                parseFloat(newValue.replace(/,/g, '')) || 0 :
-                                                newValue
+                                                parseFloat(newValue.replace(/,/g, '')) || 0 : newValue
                                         });
                                     }
                                 });
@@ -2451,7 +2455,7 @@ leftSectionCell.innerHTML = `
         
         const isProjectAdmin = (
             project.project_super_admin_uid === currentUserId ||
-            project.project_admin_user === currentUserId || currentUserRole === "Editor" || currentUserRole === "Project admin" || currentUserRole === "Project Admin" 
+            project.project_admin_user === currentUserId || currentUserRole === "Editor" || currentUserRole === "Project admin" || currentUserRole === "Project Admin"
         );
         
         if (!isProjectAdmin) {
@@ -2877,12 +2881,12 @@ async function deleteSectionInFirebase(sectionId) {
         'Are you sure you want to delete this section? All tasks within it will be permanently lost. This action cannot be undone.'
     );
     if (!confirmed) return;
-
+    
     // THE FIX: Check for the correct project reference.
     if (!currentProjectRef) {
         return console.error("Cannot delete section: Project reference is missing.");
     }
-
+    
     // Create correct references from the main project reference.
     const sectionRef = doc(currentProjectRef, 'sections', sectionId);
     const tasksCollectionRef = collection(sectionRef, 'tasks');
@@ -2996,10 +3000,10 @@ async function handleTaskCompletion(task, taskRowEl) {
  */
 async function moveTaskToSection(taskId, targetSectionId) {
     if (!currentProjectRef) return console.error("Cannot move task: Project reference is missing.");
-
+    
     const { task: taskToMove, section: sourceSection } = findTaskAndSection(taskId);
     const targetSection = findSectionById(targetSectionId);
-
+    
     if (!taskToMove || !sourceSection || !targetSection || sourceSection.id === targetSectionId) {
         return console.error("Cannot move task. Invalid source or target.");
     }
@@ -3012,7 +3016,7 @@ async function moveTaskToSection(taskId, targetSectionId) {
     };
     
     // --- UPDATED LOGIC FOR STATUS CHANGES ---
-
+    
     // Case 1: Moving INTO a 'completed' section
     if (targetSection.sectionType === 'completed') {
         console.log(`Task moved to 'Completed' section. Updating status.`);
@@ -3023,11 +3027,11 @@ async function moveTaskToSection(taskId, targetSectionId) {
         }
         // Set the new status to 'Completed'.
         newTaskData.status = 'Completed';
-    } 
+    }
     // Case 2: Moving OUT OF a 'completed' section
     else if (sourceSection.sectionType === 'completed') {
         console.log(`Task moved out of 'Completed' section. Reverting status.`);
-
+        
         // Revert to the stored previous status, or a sensible default like 'On track'.
         newTaskData.status = taskToMove.previousStatus || 'On track';
         
@@ -3035,15 +3039,15 @@ async function moveTaskToSection(taskId, targetSectionId) {
         newTaskData.previousStatus = deleteField();
     }
     // --- END OF UPDATED LOGIC ---
-
+    
     const sourceTaskRef = doc(currentProjectRef, `sections/${sourceSection.id}/tasks/${taskId}`);
     const newTaskRef = doc(currentProjectRef, `sections/${targetSectionId}/tasks/${taskId}`);
-
+    
     try {
         const batch = writeBatch(db);
         batch.delete(sourceTaskRef);
         // Use { merge: true } with set() to allow deleteField() to work correctly.
-        batch.set(newTaskRef, newTaskData, { merge: true }); 
+        batch.set(newTaskRef, newTaskData, { merge: true });
         await batch.commit();
         console.log(`Task ${taskId} moved successfully to section ${targetSectionId}.`);
     } catch (error) {
@@ -3204,7 +3208,7 @@ function showConfirmationModal(message) {
             justify-content: center;
             z-index: 9999;
         `;
-
+        
         // Set modal content
         dialogOverlay.innerHTML = `
             <div class="dialog-box" style="background: white; border-radius: 8px; width: 400px; overflow: hidden;">
@@ -3217,11 +3221,11 @@ function showConfirmationModal(message) {
                 </div>
             </div>
         `;
-
+        
         document.body.appendChild(dialogOverlay);
-
+        
         const dialogBox = dialogOverlay.querySelector('.dialog-box');
-
+        
         // Close function
         const close = (result) => {
             if (dialogOverlay.parentNode) {
@@ -3229,11 +3233,11 @@ function showConfirmationModal(message) {
                 resolve(result);
             }
         };
-
+        
         // Event delegation for buttons
         dialogOverlay.addEventListener('click', (e) => {
             const action = e.target.getAttribute('data-action');
-
+            
             if (action === 'cancel') close(false);
             else if (action === 'confirm') close(true);
             else if (!dialogBox.contains(e.target)) close(false); // click outside
@@ -3452,28 +3456,44 @@ function createAdvancedDropdown(targetEl, config) {
 /**
  * Shows the status or priority dropdown for a task in the list view.
  */
-function showStatusDropdown(targetEl, taskId, sectionId, optionType) {
-    const isPriority = optionType === 'Priority';
-    const options = isPriority ? priorityOptions : statusOptions; // Your existing options arrays
-    const customOptions = isPriority ? project.customPriorities : project.customStatuses;
-    const allOptions = [...options.map(o => ({ name: o })), ...(customOptions || [])];
+/**
+ * Creates and shows a dropdown for Priority or Status columns.
+ * @param {HTMLElement} targetEl - The element to anchor the dropdown to.
+ * @param {string} taskId - The ID of the task being updated.
+ * @param {string} sectionId - The ID of the section containing the task.
+ * @param {string} columnId - The ID of the column being edited (e.g., 'priority', 'status').
+ */
+function showStatusDropdown(targetEl, taskId, sectionId, columnId) {
+    // Find the full column definition from the project data
+    const allColumns = [...project.defaultColumns, ...project.customColumns];
+    const column = allColumns.find(c => c.id === columnId);
+    
+    // Guard clause: If the column isn't found or has no options, do nothing.
+    if (!column || !Array.isArray(column.options)) {
+        console.error(`Could not show dropdown: Column with ID '${columnId}' not found or has no options.`);
+        return;
+    }
+    
+    // The options are now read directly from the column's definition.
+    const allOptions = column.options;
     
     createAdvancedDropdown(targetEl, {
         options: allOptions,
         itemRenderer: (option) => {
-            const color = option.color || (isPriority ? defaultPriorityColors[option.name] : defaultStatusColors[option.name]) || '#ccc';
+            const color = option.color || '#ccc';
             return `<div class="dropdown-color-swatch" style="background-color: ${color}"></div><span>${option.name}</span>`;
         },
         onSelect: (option) => {
             updateTask(taskId, sectionId, {
-                [optionType.toLowerCase()]: option.name
+                [columnId]: option.name // Use the columnId directly (e.g., 'priority': 'High')
             });
         },
         onEdit: (option) => {
-            openEditOptionDialog(optionType, option); // Your existing dialog function
+            // The 'optionType' here is now the column's display name for a better title
+            openEditOptionDialog(column.name, option, column.id);
         },
         onAdd: () => {
-            openCustomOptionDialog(optionType); // Your existing dialog function
+            openCustomOptionDialog(column.name, column.id);
         }
     });
 }
@@ -3634,16 +3654,15 @@ function addNewColumn(config) {
         currency: config.currency || null,
         aggregation: (config.type === 'Costing' || config.type === 'Numbers') ? 'Sum' : null,
         options: (config.type === 'Type' || config.type === 'Custom') ?
-                 (config.type === 'Type' ? typeColumnOptions : []) :
-                 null
+            (config.type === 'Type' ? typeColumnOptions : []) : null
     };
     
     updateProjectInFirebase({
         customColumns: arrayUnion(newColumn),
         columnOrder: arrayUnion(String(newId))
     });
-
-
+    
+    
 }
 
 function deleteColumn(columnId) {
@@ -4056,23 +4075,33 @@ function getContrastYIQ(hexcolor) {
  * @param {number|null} columnId - The ID of the column if editing a column option.
  */
 function openEditOptionDialog(optionType, originalOption, columnId = null) {
+    // ✅ Log 1: Log the initial arguments to see what the function starts with.
+    console.log("[DEBUG] openEditOptionDialog called with:", { optionType, originalOption, columnId });
+    
+    // Safety check: Ensure the original option is valid before proceeding.
+    if (!originalOption || typeof originalOption.name === 'undefined' || typeof originalOption.color === 'undefined') {
+        console.error("[DEBUG] ERROR: The 'originalOption' object is invalid or missing required properties.", originalOption);
+        alert("Cannot edit option: The provided data is invalid.");
+        return;
+    }
+    
     closeFloatingPanels();
     const dialogOverlay = document.createElement('div');
     dialogOverlay.className = 'dialog-overlay';
     
-    // --- FIX STARTS HERE ---
-    // Determine the correct dialog title based on the option type.
-    let dialogTitle = `Edit ${optionType} Option`; // Default title
+    let dialogTitle = `Edit ${optionType} Option`;
     
     if (optionType === 'CustomColumn' && columnId) {
-        // Find the custom column by its ID in our project data
         const column = project.customColumns.find(c => c.id === columnId);
         if (column) {
-            // If found, use its specific name for the dialog title
+            // ✅ Log 2: Confirm that the custom column was found.
+            console.log("[DEBUG] Found custom column:", column);
             dialogTitle = `Edit ${column.name} Option`;
+        } else {
+            // ✅ Log 3: Log a warning if the column wasn't found.
+            console.warn(`[DEBUG] Could not find a custom column with ID: ${columnId}`);
         }
     }
-    // --- FIX ENDS HERE ---
     
     dialogOverlay.innerHTML = `
     <div class="dialog-box">
@@ -4094,19 +4123,32 @@ function openEditOptionDialog(optionType, originalOption, columnId = null) {
     </div>`;
     
     document.body.appendChild(dialogOverlay);
+    // ✅ Log 4: Confirm that the dialog has been added to the page.
+    console.log("[DEBUG] Edit option dialog has been rendered.");
+    
     const nameInput = document.getElementById('edit-option-name');
     nameInput.focus();
     
-    document.getElementById('confirm-edit-option').addEventListener('click', () => {
+    document.getElementById('confirm-edit-option').addEventListener('click', async () => {
         const newOption = {
             name: document.getElementById('edit-option-name').value.trim(),
             color: document.getElementById('edit-option-color').value
         };
+        
+        // ✅ Log 5: Log the new data just before saving.
+        console.log("[DEBUG] 'Save Changes' clicked. Attempting to save new option:", newOption);
+        
         if (newOption.name) {
-            updateCustomOptionInFirebase(optionType, originalOption, newOption, columnId);
-            closeFloatingPanels();
+            try {
+                // ✅ Log 6: Add a try/catch block to specifically catch errors from the Firebase update.
+                await updateCustomOptionInFirebase(optionType, originalOption, newOption, columnId);
+                console.log("[DEBUG] Firebase update successful!");
+                closeFloatingPanels();
+            } catch (error) {
+                console.error("[DEBUG] ERROR during updateCustomOptionInFirebase:", error);
+                alert("There was an error saving your changes. Please check the console.");
+            }
         } else {
-            // Replaced alert with our custom modal for consistency
             showConfirmationModal('Please enter a name for the option.');
         }
     });
@@ -4117,51 +4159,56 @@ function openEditOptionDialog(optionType, originalOption, columnId = null) {
         }
     });
 }
-
-/**
- * Updates a specific option within a project's array field (e.g., customPriorities) in Firestore.
- * @param {string} optionType - 'Priority', 'Status', or 'CustomColumn'.
- * @param {object} originalOption - The original option object to find and replace.
- * @param {object} newOption - The new option object to insert.
- * @param {number|null} columnId - The ID of the column if updating a column option.
- */
-async function updateCustomOptionInFirebase(optionType, originalOption, newOption, columnId = null) {
-    // Create a deep copy of the custom fields to safely modify them
+async function updateCustomOptionInFirebase(optionType, originalOption, newOption, columnId) {
+    if (!columnId) {
+        console.error("Update failed: columnId was not provided.");
+        return;
+    }
+    
     const projectCopy = JSON.parse(JSON.stringify(project));
-    let fieldToUpdate = null;
-    let newArray = [];
+    let columnArrayToUpdate = null;
+    let columnIndex = -1;
     
-    if (optionType === 'Priority') {
-        fieldToUpdate = 'customPriorities';
-        newArray = projectCopy.customPriorities || [];
-    } else if (optionType === 'Status') {
-        fieldToUpdate = 'customStatuses';
-        newArray = projectCopy.customStatuses || [];
-    } else if (optionType === 'CustomColumn' && columnId) {
-        fieldToUpdate = 'customColumns';
-        const column = projectCopy.customColumns.find(c => c.id === columnId);
-        if (column && column.options) {
-            const optionIndex = column.options.findIndex(opt => opt.name === originalOption.name && opt.color === originalOption.color);
-            if (optionIndex > -1) {
-                column.options[optionIndex] = newOption;
-            }
-        }
-        newArray = projectCopy.customColumns;
-    }
-    
-    // For non-column options, find and replace the option in the array
-    if (optionType === 'Priority' || optionType === 'Status') {
-        const optionIndex = newArray.findIndex(opt => opt.name === originalOption.name && opt.color === originalOption.color);
-        if (optionIndex > -1) {
-            newArray[optionIndex] = newOption;
+    let foundColumnIndex = projectCopy.defaultColumns.findIndex(c => c.id === columnId);
+    if (foundColumnIndex > -1) {
+        columnArrayToUpdate = 'defaultColumns';
+        columnIndex = foundColumnIndex;
+    } else {
+        foundColumnIndex = projectCopy.customColumns.findIndex(c => c.id === columnId);
+        if (foundColumnIndex > -1) {
+            columnArrayToUpdate = 'customColumns';
+            columnIndex = foundColumnIndex;
         }
     }
     
-    if (fieldToUpdate) {
-        // Update the entire array in Firestore
+    if (!columnArrayToUpdate) {
+        console.error(`Update failed: Could not find column with ID: ${columnId}`);
+        return;
+    }
+    
+    const columnToEdit = projectCopy[columnArrayToUpdate][columnIndex];
+    const options = columnToEdit.options || [];
+    
+    // ✅ THE FIX: Make the comparison case-insensitive for both name and color.
+    const optionIndex = options.findIndex(opt =>
+        opt.name.toLowerCase() === originalOption.name.toLowerCase() &&
+        opt.color.toLowerCase() === originalOption.color.toLowerCase()
+    );
+    
+    if (optionIndex === -1) {
+        console.error("Update failed: Could not find the original option to update.", originalOption);
+        return;
+    }
+    
+    columnToEdit.options[optionIndex] = newOption;
+    
+    try {
         await updateProjectInFirebase({
-            [fieldToUpdate]: newArray
+            [columnArrayToUpdate]: projectCopy[columnArrayToUpdate]
         });
+        console.log(`✅ Successfully updated option in column '${columnId}'`);
+    } catch (error) {
+        console.error("Error updating project in Firebase:", error);
     }
 }
 
