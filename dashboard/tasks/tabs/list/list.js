@@ -3143,27 +3143,61 @@ async function updateTaskInFirebase(taskId, sectionId, propertiesToUpdate) {
  * @param {object} taskData - An object containing the initial data for the task (e.g., { name: 'My new task' }).
  */
 async function addTaskToFirebase(sectionId, taskData) {
+    // ✅ Log 1: Announce that the function has been called and show the initial data.
+    console.log("[addTaskToFirebase] Function called with:", { sectionId, taskData });
+
+    // ✅ Log 2: Check the critical context variables needed for the operation.
+    console.log("[addTaskToFirebase] Checking context state:", {
+        currentProjectRef_path: currentProjectRef?.path,
+        currentProjectId,
+        currentUserId
+    });
+
     // 1. Ensure we have the necessary context to build the path.
-    if (!currentProjectRef || !sectionId) {
-        return console.error("Cannot add task: Missing section ID or project reference.");
+    if (!currentProjectRef || !sectionId || !currentProjectId || !currentUserId) {
+        // ✅ Log 3: If any context is missing, log a critical error and stop.
+        console.error("❌ CRITICAL ERROR: Cannot add task because essential context is missing.", {
+            hasProjectRef: !!currentProjectRef,
+            hasSectionId: !!sectionId,
+            hasProjectId: !!currentProjectId,
+            hasUserId: !!currentUserId
+        });
+        return;
     }
+    
+    // Build the path to the 'tasks' subcollection.
     const sectionRef = doc(currentProjectRef, 'sections', sectionId);
     const tasksCollectionRef = collection(sectionRef, 'tasks');
     
+    // ✅ Log 4: Show the exact path we are trying to write to.
+    console.log(`[addTaskToFirebase] Attempting to write to path: ${tasksCollectionRef.path}`);
+
     try {
         const newTaskRef = doc(tasksCollectionRef); // Create a reference to get the ID
+        
+        // Prepare the complete data object that will be saved.
         const fullTaskData = {
             ...taskData,
             id: newTaskRef.id,
-            projectId: currentProjectId, // Keep projectId for collectionGroup queries
+            projectId: currentProjectId,
             userId: currentUserId,
             sectionId: sectionId,
             createdAt: serverTimestamp()
         };
+
+        // ✅ Log 5: Display the final data object just before the save attempt.
+        console.log("[addTaskToFirebase] Preparing to save final data object:", fullTaskData);
+        
+        // The actual save operation.
         await setDoc(newTaskRef, fullTaskData);
-        console.log("Successfully added task with ID: ", newTaskRef.id);
+        
+        // ✅ Log 6: This will ONLY run if the await setDoc() line completes without throwing an error.
+        console.log(`✅ SUCCESS: Firestore reported success for adding task with ID: ${newTaskRef.id}`);
+
     } catch (error) {
-        console.error("Error adding task:", error);
+        // ✅ Log 7: If `await setDoc()` fails for any reason (e.g., security rules), this block will run.
+        console.error("❌ FIRESTORE ERROR: Error adding task:", error);
+        alert("A database error occurred while trying to save the task. Please check the console and your security rules.");
     }
 }
 
