@@ -773,7 +773,7 @@ switch (controlType) {
         e.stopPropagation();
         
         // Check for permission before allowing the action.
-        if (canUserCheckTask(task)) {
+        if (canUserEditSpecifcTask(task)) {
             handleTaskCompletion(task, taskCard);
         }
         break;
