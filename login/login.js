@@ -90,7 +90,7 @@ googleSignInBtn.addEventListener('click', async () => {
         
         // Add a small delay before redirecting to allow success message to be seen
         setTimeout(() => {
-            window.location.href = '/dashboard'; // Or your desired redirect path
+            window.location.href = '/'; // Or your desired redirect path
         }, 1500);
         
     } catch (error) {
