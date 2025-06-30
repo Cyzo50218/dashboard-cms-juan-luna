@@ -751,42 +751,30 @@ async function addSectionToFirebase() {
 const handleBlur = async (e) => {
     if (!e.target.isContentEditable) return;
     
-    // Find the '.is-new' task card, if it exists
     const taskCard = e.target.closest('.boardtasks-task-card.is-new');
 
     // --- This block is only for handling NEW tasks ---
     if (taskCard) {
-        console.log("[handleBlur] Blur event on a NEW task card detected.");
         const newName = e.target.textContent.trim();
-        console.log(`[handleBlur] Text content is: "${newName}"`);
-
         const tempId = taskCard.dataset.taskId;
         const sectionEl = e.target.closest('.boardtasks-kanban-column');
-        if (!sectionEl) {
-            console.error("[handleBlur] Could not find parent kanban column.");
-            return;
-        }
+        if (!sectionEl) return;
 
         const section = findSection(sectionEl.dataset.sectionId);
-        if (!section) {
-            console.error(`[handleBlur] Could not find section with ID: ${sectionEl.dataset.sectionId}`);
-            return;
-        }
-        console.log("[handleBlur] Found section:", section.title);
+        if (!section) return;
 
         const taskIndex = section.tasks.findIndex(t => t.id === tempId);
-        if (taskIndex === -1) {
-            console.error(`[handleBlur] Could not find temporary task with ID: ${tempId} in the local data array.`);
-            return;
-        }
-        console.log(`[handleBlur] Found temp task at index: ${taskIndex}`);
+        if (taskIndex === -1) return;
 
         if (newName) {
-            // This is the path for SAVING the task
-            console.log("[handleBlur] Name is not empty. Proceeding to save...");
-            const taskData = section.tasks.splice(taskIndex, 1)[0];
+            // ✅ THE FIX: Don't remove the task from the local array.
+            // Just get a copy of its data.
+            const taskData = { ...section.tasks[taskIndex] };
             delete taskData.isNew;
             delete taskData.id;
+            
+            // Immediately remove the temporary card from the UI for good UX.
+            taskCard.remove();
             
             const tasksCollectionRef = collection(currentProjectRef, `sections/${section.id}/tasks`);
             try {
@@ -801,22 +789,22 @@ const handleBlur = async (e) => {
                     createdAt: serverTimestamp(),
                     priority: 'Low', status: 'On track', assignees: []
                 };
+                // Now we just save to Firestore and wait for the listener to update the UI.
                 await setDoc(newTaskRef, fullTaskData);
-                console.log("[handleBlur] SUCCESS: New task saved to Firestore.");
+                
             } catch (error) {
-                console.error("[handleBlur] ERROR: Failed to save new task to Firestore:", error);
-                renderBoard(); // Re-render to undo the local splice on error
+                console.error("Error adding new task:", error);
+                // If saving fails, re-render to bring back the temporary card so the user can try again.
+                renderBoard();
             }
         } else {
-            // This is the path for CANCELING the task
-            console.log("[handleBlur] Name is empty. Canceling and removing temporary task.");
-            section.tasks.splice(taskIndex, 1);
-            renderBoard();
+            // If the name is empty, just remove the temporary card.
+            taskCard.remove();
         }
         return; 
     }
 
-    // --- This block is for handling EXISTING tasks/sections ---
+    // --- Logic for EXISTING tasks/sections remains the same ---
     const existingTaskCard = e.target.closest('.boardtasks-task-card');
     const sectionHeader = e.target.closest('.boardtasks-column-header');
 
