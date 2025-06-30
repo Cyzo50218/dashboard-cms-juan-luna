@@ -100,8 +100,8 @@ let reorderingInProgress = false;
 
 // Initialize safely
 let currentlyFocusedSectionId = null;
-const priorityOptions = ['High', 'Medium', 'Low'];
-const statusOptions = ['On track', 'At risk', 'Off track', 'Completed'];
+const priorityOptions = ['', '', ''];
+const statusOptions = ['', '', '', ''];
 const columnTypeOptions = ['Text', 'Numbers', 'Costing', 'Type', 'Custom'];
 const typeColumnOptions = [
     { name: 'Invoice', color: '#ffc107' }, // Amber
@@ -1068,42 +1068,14 @@ function getSortedProject(project) {
         sections: [...project.sections].sort((a, b) => a.order - b.order)
     };
 }
-
-/**
- * Finds the full Firestore path to the user's currently selected project.
- * This function is now collaboration-ready.
- * @param {object} db - The Firestore database instance.
- * @param {string} userId - The UID of the currently authenticated user.
- * @returns {Promise<string>} A promise that resolves to the full path of the project document.
- */
 async function _getSelectedProjectPath(db, userId) {
     
-    // Step 1: Find the user's active workspace.
-    const workspaceQuery = query(
-        collection(db, `users/${userId}/myworkspace`),
-        where("isSelected", "==", true),
-        limit(1) // Optimization as we only need one
-    );
-    const workspaceSnap = await getDocs(workspaceQuery);
-    
-    if (workspaceSnap.empty) {
-        throw new Error("No selected workspace found for the user.");
-    }
-    
-    // Step 2: Read the 'selectedProjectId' from the workspace document's data.
-    const workspaceData = workspaceSnap.docs[0].data();
-    const selectedProjectId = workspaceData.selectedProjectId;
-    
-    if (!selectedProjectId) {
-        throw new Error("The active workspace does not have a selected project.");
-    }
-    
-    // Step 3: Use a collectionGroup query to find the project by its ID, no matter where it's nested.
-    // This is the key change that supports shared projects.
+    // Step 4: Use a collectionGroup query to find the project by its ID.
+    // This part remains the same, as it's already perfect for a collaborative system.
     const projectQuery = query(
         collectionGroup(db, 'projects'),
         where('projectId', '==', selectedProjectId),
-        where('memberUIDs', 'array-contains', userId) // Ensures security rules are met
+        where('memberUIDs', 'array-contains', userId) // Important security check
     );
     const projectSnap = await getDocs(projectQuery);
     
@@ -1111,7 +1083,7 @@ async function _getSelectedProjectPath(db, userId) {
         throw new Error(`Project with ID '${selectedProjectId}' not found, or user does not have permission.`);
     }
     
-    // Step 4: Return the full path from the found document's reference.
+    // Step 5: Return the full path from the found document's reference.
     const projectPath = projectSnap.docs[0].ref.path;
     console.log(`[DEBUG] _getSelectedProjectPath resolved to: ${projectPath}`);
     return projectPath;
@@ -3429,6 +3401,10 @@ function closeFloatingPanels() {
     document.querySelectorAll('.advanced-dropdown, .floating-panel').forEach(p => p.remove());
 }
 
+function closeFloatingPanelsOnButton() {
+    document.querySelectorAll('.dialog-overlay, .advanced-dropdown, .floating-panel').forEach(p => p.remove());
+}
+
 function createAdvancedDropdown(targetEl, config) {
     closeFloatingPanels();
     
@@ -3928,8 +3904,8 @@ function addNewTask(section) {
         name: '',
         isNew: true,
         dueDate: '',
-        priority: 'Low',
-        status: 'On track',
+        priority: '',
+        status: '',
         assignees: [],
         customFields: {},
         order: section.tasks.length
@@ -4217,10 +4193,12 @@ function openEditOptionDialog(optionType, originalOption, columnId = null) {
         if (newOption.name) {
             try {
                 // ✅ Log 6: Add a try/catch block to specifically catch errors from the Firebase update.
+                closeFloatingPanelsOnButton();
                 await updateCustomOptionInFirebase(optionType, originalOption, newOption, columnId);
                 console.log("[DEBUG] Firebase update successful!");
-                closeFloatingPanels();
+                
             } catch (error) {
+                closeFloatingPanelsOnButton();
                 console.error("[DEBUG] ERROR during updateCustomOptionInFirebase:", error);
                 alert("There was an error saving your changes. Please check the console.");
             }
@@ -4235,56 +4213,121 @@ function openEditOptionDialog(optionType, originalOption, columnId = null) {
         }
     });
 }
+
+/**
+ * Updates a column option. If the option's name is changed, it efficiently finds all
+ * tasks using the old value and clears them in a single atomic batch.
+ * This approach avoids creating an index for every custom column.
+ *
+ * @param {string} optionType - 'Priority', 'Status', or the column name for custom columns.
+ * @param {object} originalOption - The option object before edits { name, color }.
+ * @param {object} newOption - The new option object after edits { name, color }.
+ * @param {string|number} columnId - The ID of the column being updated.
+ */
 async function updateCustomOptionInFirebase(optionType, originalOption, newOption, columnId) {
-    if (!columnId) {
-        console.error("Update failed: columnId was not provided.");
+    if (!currentProjectRef || !columnId) {
+        console.error("Update failed: currentProjectRef or columnId was not provided.");
         return;
     }
-    
+
+    // --- 1. Prepare the Project Document Update (Local Modification) ---
     const projectCopy = JSON.parse(JSON.stringify(project));
     let columnArrayToUpdate = null;
     let columnIndex = -1;
-    
-    let foundColumnIndex = projectCopy.defaultColumns.findIndex(c => c.id === columnId);
-    if (foundColumnIndex > -1) {
+
+    let foundInDefault = projectCopy.defaultColumns.findIndex(c => String(c.id) === String(columnId));
+    if (foundInDefault > -1) {
         columnArrayToUpdate = 'defaultColumns';
-        columnIndex = foundColumnIndex;
+        columnIndex = foundInDefault;
     } else {
-        foundColumnIndex = projectCopy.customColumns.findIndex(c => c.id === columnId);
-        if (foundColumnIndex > -1) {
+        let foundInCustom = projectCopy.customColumns.findIndex(c => String(c.id) === String(columnId));
+        if (foundInCustom > -1) {
             columnArrayToUpdate = 'customColumns';
-            columnIndex = foundColumnIndex;
+            columnIndex = foundInCustom;
         }
     }
-    
+
     if (!columnArrayToUpdate) {
         console.error(`Update failed: Could not find column with ID: ${columnId}`);
         return;
     }
-    
+
     const columnToEdit = projectCopy[columnArrayToUpdate][columnIndex];
+    const isOptionsColumn = Array.isArray(columnToEdit.options); // ✅ Check if this column actually uses options.
     const options = columnToEdit.options || [];
-    
-    // ✅ THE FIX: Make the comparison case-insensitive for both name and color.
     const optionIndex = options.findIndex(opt =>
         opt.name.toLowerCase() === originalOption.name.toLowerCase() &&
         opt.color.toLowerCase() === originalOption.color.toLowerCase()
     );
-    
+
     if (optionIndex === -1) {
-        console.error("Update failed: Could not find the original option to update.", originalOption);
+        console.warn(`Could not find original option to update:`, originalOption);
         return;
     }
-    
+
     columnToEdit.options[optionIndex] = newOption;
-    
+
+    // --- 2. Start an Atomic Batch Write ---
+    const batch = writeBatch(db);
+
+    // --- 3. Add the Project Update to the Batch ---
+    batch.update(currentProjectRef, {
+        [columnArrayToUpdate]: projectCopy[columnArrayToUpdate]
+    });
+    console.log(`[Batch] Queued update for project's column definition.`);
+
+
+    // --- 4. EFFICIENTLY Query and Update Tasks ---
+    const nameHasChanged = originalOption.name !== newOption.name;
+
+    // ✅ Only proceed if the name changed AND it's a column type that has options.
+    if (nameHasChanged && isOptionsColumn) {
+        const taskFieldPath = (columnId === 'status' || columnId === 'priority') 
+            ? columnId 
+            : `customFields.${columnId}`;
+        const oldValue = originalOption.name;
+
+        console.log(`[Batch] Option name changed. Fetching all project tasks to find and clear old value: "${oldValue}"`);
+        
+        // Step A: Fetch ALL tasks for the project. This requires only ONE index on projectId.
+        const allTasksQuery = query(
+            collectionGroup(db, 'tasks'),
+            where("projectId", "==", project.id)
+        );
+        const tasksSnapshot = await getDocs(allTasksQuery);
+
+        if (!tasksSnapshot.empty) {
+            let tasksToClearCount = 0;
+            // Step B: Loop through the tasks on the CLIENT-SIDE to find matches.
+            tasksSnapshot.forEach(taskDoc => {
+                const taskData = taskDoc.data();
+                let taskValue;
+
+                if (taskFieldPath.startsWith('customFields.')) {
+                    taskValue = taskData.customFields ? taskData.customFields[columnId] : undefined;
+                } else {
+                    taskValue = taskData[taskFieldPath];
+                }
+                
+                // Step C: If a match is found, add it to the batch.
+                if (taskValue === oldValue) {
+                    batch.update(taskDoc.ref, { [taskFieldPath]: '' }); // Set to blank
+                    tasksToClearCount++;
+                }
+            });
+            console.log(`[Batch] Found ${tasksToClearCount} tasks to clear. Added updates to batch.`);
+        } else {
+            console.log(`[Batch] No tasks found in project. No tasks to clear.`);
+        }
+    }
+
+    // --- 5. Commit the Entire Batch ---
     try {
-        await updateProjectInFirebase({
-            [columnArrayToUpdate]: projectCopy[columnArrayToUpdate]
-        });
-        console.log(`✅ Successfully updated option in column '${columnId}'`);
+        await batch.commit();
+        console.log("✅ SUCCESS: Project options and relevant tasks were updated successfully.");
     } catch (error) {
-        console.error("Error updating project in Firebase:", error);
+        console.error("❌ BATCH FAILED: An error occurred during the atomic update:", error);
+        alert("An error occurred while saving. The changes were not applied. Please check the console.");
     }
 }
 
@@ -4306,8 +4349,7 @@ async function collapseExpandedSection(sectionId) {
         const user = auth.currentUser;
         if (!user) throw new Error("User not authenticated.");
         
-        const basePath = await _getSelectedProjectPath(db, user.uid);
-        const sectionRef = doc(db, `${basePath}/sections/${sectionId}`);
+        const sectionRef = doc(db, `${currentProjectRef}/sections/${sectionId}`);
         await updateDoc(sectionRef, { isCollapsed: false });
         console.log(`✅ Section ${sectionId} marked as collapsed in Firestore.`);
         
@@ -4334,8 +4376,7 @@ async function expandCollapsedSection(sectionId) {
         const user = auth.currentUser;
         if (!user) throw new Error("User not authenticated.");
         
-        const basePath = await _getSelectedProjectPath(db, user.uid);
-        const sectionRef = doc(db, `${basePath}/sections/${sectionId}`);
+        const sectionRef = doc(db, `${currentProjectRef}/sections/${sectionId}`);
         await updateDoc(sectionRef, { isCollapsed: true });
         console.log(`✅ Section ${sectionId} marked as collapsed in Firestore.`);
         

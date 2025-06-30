@@ -343,6 +343,7 @@ const checkDueDates = () => {
     });
 };
 
+
 // --- 6. CORE INITIALIZATION & CLEANUP ---
 const init = () => {
     // Get DOM element references
@@ -859,6 +860,11 @@ const handleBlur = async (e) => {
 
         if (newName) {
             // --- SAVE LOGIC ---
+            const taskIndex = section.tasks.findIndex(t => t.id === tempId);
+            if (taskIndex > -1) {
+                section.tasks.splice(taskIndex, 1);
+            }
+
             const order = section.tasks.length - 1; // Get order before it might change
             const taskData = {
                 name: newName,
@@ -871,15 +877,6 @@ const handleBlur = async (e) => {
 
             // Call the dedicated function to save the task
             await addTaskToFirebase(sectionId, taskData);
-
-            // ✅ THE FIX: After a successful save, find and remove the now-obsolete
-            // temporary task from the local data array.
-            const taskIndex = section.tasks.findIndex(t => t.id === tempId);
-            if (taskIndex > -1) {
-                section.tasks.splice(taskIndex, 1);
-            }
-            // We do NOT call renderBoard() here. We let the listener handle the final UI update,
-            // but now the temporary task is gone from the local state and won't be re-added.
 
         } else {
             // --- CANCEL LOGIC ---

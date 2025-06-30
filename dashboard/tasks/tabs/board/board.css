@@ -67,6 +67,7 @@
     position: relative;
     box-sizing: border-box;
     display: flex;
+    overflow-x: auto;       /* Enables horizontal scrolling ONLY for this element */
     flex-direction: column;
 }
 
@@ -161,7 +162,7 @@
     align-items: flex-start;
     padding-bottom: 1rem;
     flex-grow: 1;           /* Allows this element to expand and fill the remaining height */
-    overflow-x: auto;       /* Enables horizontal scrolling ONLY for this element */
+    
     overflow-y: auto;     /* Prevents vertical scrolling on the board itself */
 }
 
