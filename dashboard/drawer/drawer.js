@@ -228,22 +228,32 @@ function renderProjectsList() {
     /**
      * Main event listener for the drawer. (No changes needed)
      */
-    sidebar.addEventListener('click', (e) => {
-        if (e.target.closest('.add-project-action')) {
-            e.stopPropagation();
-            handleAddProject();
-            return;
+    sidebar.addEventListener('click', async (e) => {
+    const sectionHeader = e.target.closest('.section-header');
+    if (sectionHeader) {
+        sectionHeader.closest('.nav-section')?.classList.toggle('open');
+        return;
+    }
+    
+    if (e.target.closest('.add-project-action')) {
+        e.stopPropagation();
+        handleAddProject();
+        document.querySelector('.drawerprojects-dropdown')?.remove();
+        return;
+    }
+    
+    const projectLink = e.target.closest('.projects-item a');
+    if (projectLink) {
+        e.preventDefault();
+        const projectItem = projectLink.closest('.projects-item');
+        const projectId = projectItem.dataset.projectId;
+        if (projectId) {
+            // When a project is clicked, we run the selection logic.
+            // The onSnapshot listener will then automatically handle the re-render.
+            selectProject(projectId);
         }
-        
-        const projectLink = e.target.closest('.projects-item a');
-        if (projectLink) {
-            e.preventDefault();
-            const projectId = projectLink.closest('.projects-item').dataset.projectId;
-            if (projectId && projectId !== selectedProjectId) {
-                selectProject(projectId);
-            }
-        }
-    });
+    }
+});
     
     /**
      * ✅ Main auth listener now uses a NESTED listener approach.
