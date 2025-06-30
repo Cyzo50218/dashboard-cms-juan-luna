@@ -637,7 +637,7 @@ return `
                     ${customTypeTagsHTML}
                 </div>
                 <div class="boardtasks-task-footer">
-                    <span class="boardtasks-due-date" data-due-date="${task.dueDate}">${dueDateInfo.text}</span>
+                    <span class="boardtasks-due-date" data-due-date="${task.dueDate} data-color-name="${dueDateInfo.color}">${dueDateInfo.text}</span>
                     <div class="boardtasks-task-actions">
                         <i class="fa-regular fa-heart ${hasLiked ? 'liked' : ''}" title="Like" data-control="like"></i>
                         <i class="fa-regular fa-comment" title="Comment" data-control="open-sidebar"></i>
