@@ -387,94 +387,108 @@ export function init(params) {
     }
     
     async function handleProjectCreate() {
-        if (!currentUser || !activeWorkspaceId) {
-            alert("Cannot create project. User or workspace not identified.");
+    // The initial check no longer needs `activeWorkspaceId`
+    if (!currentUser) {
+        alert("Cannot create project. User not identified.");
+        return;
+    }
+    const name = prompt("Enter new project name:");
+    if (!name || !name.trim()) return;
+    
+    try {
+        // ✅ 1. Get the active workspace using the 'selectedWorkspace' field from the user document
+        const userRef = doc(db, 'users', currentUser.uid);
+        const userSnap = await getDoc(userRef);
+        
+        if (!userSnap.exists() || !userSnap.data().selectedWorkspace) {
+            alert("Cannot create project. No active workspace is selected.");
             return;
         }
-        const name = prompt("Enter new project name:");
-        if (!name || !name.trim()) return;
+        const activeWorkspaceId = userSnap.data().selectedWorkspace;
         
-        // --- Default Structures (No changes here) ---
+        // --- Default Structures ---
         const INITIAL_DEFAULT_COLUMNS = [
-            { id: 'assignees', name: 'Assignee', control: 'assignee' },
-            { id: 'dueDate', name: 'Due Date', control: 'due-date' },
-            { id: 'priority', name: 'Priority', control: 'priority' },
-            { id: 'status', name: 'Status', control: 'status' }
-        ];
+    { id: 'assignees', name: 'Assignee', control: 'assignee' },
+    { id: 'dueDate', name: 'Due Date', control: 'due-date' },
+    {
+        id: 'priority',
+        name: 'Priority',
+        control: 'priority',
+        options: [
+            { name: 'High', color: '#EF4D3D' },
+            { name: 'Medium', color: '#FFD15E' },
+            { name: 'Low', color: '#59E166' }
+        ]
+    },
+    {
+        id: 'status',
+        name: 'Status',
+        control: 'status',
+        options: [
+            { name: 'On track', color: '#59E166' },
+            { name: 'At risk', color: '#fff1b8' },
+            { name: 'Off track', color: '#FFD15E' },
+            { name: 'Completed', color: '#878787' }
+        ]
+    }
+];
         const INITIAL_DEFAULT_SECTIONS = [
             { title: 'Todo', order: 0, sectionType: 'todo', isCollapsed: false },
             { title: 'Doing', order: 1, sectionType: 'doing', isCollapsed: false },
             { title: 'Completed', order: 2, sectionType: 'completed', isCollapsed: true }
         ];
+        // ✅ 2. Derive the initial column order from the default columns
+        const INITIAL_COLUMN_ORDER = INITIAL_DEFAULT_COLUMNS.map(col => col.id);
         
-        // --- Define references needed for the transaction ---
-        const projectsColRef = collection(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}/projects`);
+        // --- Define references using the correctly identified activeWorkspaceId ---
+        const workspaceRef = doc(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}`);
+        const projectsColRef = collection(workspaceRef, "projects");
         const newProjectRef = doc(projectsColRef); // Generate the new project's ID upfront
-        const workspaceRef = doc(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}`); // Get a reference to the parent workspace
         
-        try {
-            await runTransaction(db, async (transaction) => {
-                /*
-                --- DEPRECATED METHOD (before June 24, 2025) ---
-                The old logic found the previously selected project in a local array and updated
-                its 'isSelected' flag to false, while setting the new project's flag to true.
-                This state is now managed entirely by the 'selectedProjectId' field on the
-                parent workspace document, making the transaction simpler and more reliable.
-
-                const currentlySelectedProject = projectsData.find(p => p.isSelected === true);
-                if (currentlySelectedProject) {
-                    const oldSelectedRef = doc(projectsColRef, currentlySelectedProject.id);
-                    transaction.update(oldSelectedRef, { isSelected: false });
-                }
-                // The old `transaction.set` for the new project also included `isSelected: true`.
-                */
-                
-                // --- NEW TRANSACTION LOGIC ---
-                
-                // 1. Set the data for the new project document.
-                // Note: `isSelected` is removed. `projectId` and `memberUIDs` are added for our queries.
-                transaction.set(newProjectRef, {
-                    title: name.trim(),
-                    projectId: newProjectRef.id, // Store the document's own ID as a queryable field
-                    memberUIDs: [currentUser.uid], // Add the creator to the members list for queries
-                    color: generateColorForName(name.trim()),
-                    starred: false,
-                    createdAt: serverTimestamp(),
-                    accessLevel: "workspace",
-                    workspaceRole: "Viewer",
-                    project_super_admin_uid: currentUser.uid,
-                    project_admin_user: '',
-                    members: [{ uid: currentUser.uid, role: "Project Admin" }], // Use "Project Admin" consistently
-                    pendingInvites: [],
-                    defaultColumns: INITIAL_DEFAULT_COLUMNS,
-                    customColumns: []
-                });
-                
-                // 2. Update the parent workspace to make this new project the selected one.
-                // This is the core of the new logic.
-                transaction.update(workspaceRef, { selectedProjectId: newProjectRef.id });
-                
-                // 3. Create the default sections for the new project (no change here).
-                const sectionsColRef = collection(newProjectRef, "sections");
-                INITIAL_DEFAULT_SECTIONS.forEach(sectionData => {
-                    const sectionRef = doc(sectionsColRef);
-                    transaction.set(sectionRef, {
-                        ...sectionData,
-                        createdAt: serverTimestamp()
-                    });
-                });
+        await runTransaction(db, async (transaction) => {
+            // 1. Set the data for the new project document
+            transaction.set(newProjectRef, {
+                title: name.trim(),
+                projectId: newProjectRef.id,
+                workspaceId: activeWorkspaceId, // Store the parent workspace ID
+                memberUIDs: [currentUser.uid],
+                color: generateColorForName(name.trim()),
+                starred: false,
+                createdAt: serverTimestamp(),
+                accessLevel: "private",
+                workspaceRole: "Viewer",
+                project_super_admin_uid: currentUser.uid,
+                project_admin_user: '',
+                // Set creator's role correctly
+                members: [{ uid: currentUser.uid, role: "Project Owner Admin" }],
+                pendingInvites: [],
+                defaultColumns: INITIAL_DEFAULT_COLUMNS,
+                customColumns: [],
+                // ✅ 3. Add the 'columnOrder' array to the new project
+                columnOrder: INITIAL_COLUMN_ORDER
             });
             
-            showNotification('Project created!', 'success');
+            // 2. Update the parent workspace to make this new project the selected one
+            transaction.update(workspaceRef, { selectedProjectId: newProjectRef.id });
             
-            // The call to `selectProject()` is no longer needed. The real-time listener on the
-            // workspace will automatically detect the 'selectedProjectId' change and update the UI.
-            
-        } catch (error) {
-            console.error("Full error object in handleProjectCreate:", error);
-            showNotification("Failed to create project due to a database error.", "error");
-        }
+            // 3. Create the default sections for the new project
+            const sectionsColRef = collection(newProjectRef, "sections");
+            INITIAL_DEFAULT_SECTIONS.forEach(sectionData => {
+                const sectionRef = doc(sectionsColRef);
+                transaction.set(sectionRef, {
+                    ...sectionData,
+                    createdAt: serverTimestamp()
+                });
+            });
+        });
+        
+        showNotification('Project created!', 'success');
+        
+    } catch (error) {
+        console.error("Full error object in handleProjectCreate:", error);
+        showNotification("Failed to create project due to a database error.", "error");
     }
+}
     
     async function handleTaskCompletion(taskId, isCompleted) {
         if (!currentUser || !activeWorkspaceId || !activeProjectId) return;
@@ -541,42 +555,69 @@ export function init(params) {
     }
     
     // ===================================================================
-    // [4] REAL-TIME LISTENER MANAGEMENT (RESTRUCTURED)
+    // [4] REAL-TIME LISTENER MANAGEMENT
     // ===================================================================
     
-    function attachWorkspaceListener(userId) {
-        if (listeners.workspace) listeners.workspace();
-        const workspaceQuery = query(collection(db, `users/${userId}/myworkspace`), where("isSelected", "==", true));
+    function attachDashboardListeners(userId) {
+    if (listeners.user) listeners.user();
+    if (listeners.workspace) listeners.workspace();
+    detachAllDataListeners();
+    
+    let currentActiveWorkspaceId = null;
+    
+    const userDocRef = doc(db, 'users', userId);
+    listeners.user = onSnapshot(userDocRef, (userSnap) => {
+        if (!userSnap.exists()) {
+            console.error("User document not found.");
+            return;
+        }
         
-        listeners.workspace = onSnapshot(workspaceQuery, (snapshot) => {
+        const newWorkspaceId = userSnap.data().selectedWorkspace || null;
+        
+        if (newWorkspaceId === currentActiveWorkspaceId) {
+            return;
+        }
+        currentActiveWorkspaceId = newWorkspaceId;
+        
+        if (listeners.workspace) listeners.workspace();
+        detachAllDataListeners();
+        
+        if (!currentActiveWorkspaceId) {
+            console.warn("No selected workspace found. Please select a workspace.");
+            activeWorkspaceId = null;
+            renderProjects();
+            renderMyTasksCard();
+            renderPeople();
+            renderGlobalStats();
+            return;
+        }
+        
+        const workspaceRef = doc(db, `users/${userId}/myworkspace`, currentActiveWorkspaceId);
+        listeners.workspace = onSnapshot(workspaceRef, (workspaceSnap) => {
             detachAllDataListeners();
-            if (!snapshot.empty) {
-                const workspaceDoc = snapshot.docs[0];
-                activeWorkspaceId = workspaceDoc.id;
-                
-                // --- NEW ---
-                // Get the selected project ID from the workspace document's data.
-                const selectedProjectId = workspaceDoc.data().selectedProjectId || null;
-                
-                console.log(`Active workspace: ${activeWorkspaceId}, Selected Project ID from DB: ${selectedProjectId}`);
-                
-                // Pass the ID down to the project listener
-                attachProjectListener(userId, activeWorkspaceId, selectedProjectId);
-                attachPeopleListener(userId, activeWorkspaceId);
-                
-            } else {
-                console.warn("No selected workspace found. Please select a workspace.");
-                activeWorkspaceId = null;
-                // Clear out the view
-                renderProjects();
-                renderMyTasksCard();
-                renderPeople();
-                renderGlobalStats();
+            
+            if (!workspaceSnap.exists()) {
+                console.warn(`Selected workspace ${currentActiveWorkspaceId} does not exist.`);
+                return;
             }
+            
+            const workspaceData = workspaceSnap.data();
+            activeWorkspaceId = workspaceSnap.id;
+            const selectedProjectId = workspaceData.selectedProjectId || null;
+            
+            console.log(`Active workspace: ${activeWorkspaceId}, Selected Project ID: ${selectedProjectId}`);
+            
+            attachProjectListener(userId, activeWorkspaceId, selectedProjectId);
+            attachPeopleListener(userId, activeWorkspaceId);
+            
         }, (error) => {
-            console.error("Error listening to workspace:", error);
+            console.error(`Error listening to workspace ${currentActiveWorkspaceId}:`, error);
         });
-    }
+        
+    }, (error) => {
+        console.error("Error listening to user document:", error);
+    });
+}
     
     function attachProjectListener(userId, workspaceId, selectedProjectId) { // <-- Note the new parameter
         
@@ -819,7 +860,7 @@ export function init(params) {
             currentUser = user;
             if (user) {
                 // *** NEW ENTRY POINT FOR DATA LOADING ***
-                attachWorkspaceListener(user.uid);
+                attachDashboardListeners(user.uid);
                 renderActiveTaskFilterLabel();
             } else {
                 // Clear UI on logout

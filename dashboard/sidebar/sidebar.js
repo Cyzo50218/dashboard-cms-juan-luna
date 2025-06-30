@@ -102,7 +102,7 @@ window.TaskSidebar = (function() {
         const userMemberInfo = members.find(member => member.uid === userId);
         currentUserRole = userMemberInfo ? userMemberInfo.role : null;
         
-        const isMemberWithEditPermission = userMemberInfo && (userMemberInfo.role === "Project admin" || userMemberInfo.role === "Editor");
+        const isMemberWithEditPermission = userMemberInfo && (userMemberInfo.role === "Project admin" || userMemberInfo.role === "Project Admin" || userMemberInfo.role === "Editor");
         const isSuperAdmin = projectData.project_super_admin_uid === userId;
         const isAdminUser = projectData.project_admin_user === userId;
         
@@ -122,7 +122,7 @@ window.TaskSidebar = (function() {
         }
         
         // Rule 2: If the user is NOT an admin, check if they have permission to edit this task at all.
-        // (This checks if they are an assigned Viewer/Commentator).
+        // (This checks if they are an assigned Viewer/Commentor).
         if (!canUserEditCurrentTask()) {
             return false;
         }
@@ -169,8 +169,8 @@ window.TaskSidebar = (function() {
         if (userCanEditProject) {
             return true;
         }
-        // Rule 2: Allow assigned Viewers/Commentators to edit.
-        if (currentUserRole === 'Viewer' || currentUserRole === 'Commentator') {
+        // Rule 2: Allow assigned Viewers/Commentors to edit.
+        if (currentUserRole === 'Viewer' || currentUserRole === 'Commentor') {
             const isAssigned = Array.isArray(currentTask.assignees) && currentTask.assignees.includes(currentUserId);
             if (isAssigned) {
                 return true;
@@ -389,7 +389,7 @@ window.TaskSidebar = (function() {
 
             const isOwner = projectData.project_super_admin_uid === userId;
             const memberInfo = projectData.members?.find(member => member.uid === userId);
-            const isEligibleMember = memberInfo && (memberInfo.role === 'Project admin' || memberInfo.role === 'Editor');
+            const isEligibleMember = memberInfo && (memberInfo.role === 'Project admin' || memberInfo.role === 'Project Admin' || memberInfo.role === 'Editor');
 
             if ((isOwner || isEligibleMember) && !eligibleProjectsMap.has(projectId)) {
                 // We save all the parts needed to rebuild the path later
@@ -411,10 +411,19 @@ window.TaskSidebar = (function() {
 }
     
     async function fetchActiveWorkspace(userId) {
-        const workspaceQuery = query(collection(db, `users/${userId}/myworkspace`), where("isSelected", "==", true), limit(1));
-        const workspaceSnapshot = await getDocs(workspaceQuery);
-        currentWorkspaceId = workspaceSnapshot.empty ? null : workspaceSnapshot.docs[0].id;
+    try {
+        const userRef = doc(db, 'users', userId);
+        const userSnap = await getDoc(userRef);
+        
+        currentWorkspaceId = userSnap.exists() ? userSnap.data().selectedWorkspace || null : null;
+        
+        console.log(`[DEBUG] Fetched active workspace ID: ${currentWorkspaceId}`);
+        
+    } catch (error) {
+        console.error("Error fetching active workspace:", error);
+        currentWorkspaceId = null;
     }
+}
     
     async function updateCustomField(columnId, newValue, column) {
         if (!currentTaskRef || !currentTask) return;
@@ -448,7 +457,7 @@ window.TaskSidebar = (function() {
             return;
         }
         
-        const messagesPath = `globalChatProjects/${currentProject.id}/tasks/${currentTask.id}/Messages`;
+        const messagesPath = `globalTaskChats/${currentTask.id}/Messages`;
         console.log("DEBUG: Attempting to listen for messages at path:", messagesPath);
         
         const messagesQuery = query(collection(db, messagesPath), orderBy("timestamp", "asc"));
@@ -663,7 +672,7 @@ async function moveTask(newProjectId) {
         if (!currentProject || !currentTask || !currentUser) return;
         
         // The path to the global chat collection remains the same.
-        const messagesPath = `globalChatProjects/${currentProject.id}/tasks/${currentTask.id}/Messages`;
+        const messagesPath = `globalTaskChats/${currentTask.id}/Messages`;
         
         // Create a reference for the new message document.
         const newMessageRef = doc(collection(db, messagesPath));
@@ -885,7 +894,7 @@ appendFieldToTable(tbody, 'status', 'Status', statusHTML, 'status', isSidebarFie
                 case 'priority':
                 case 'status':
                 case 'custom-field': {
-                    // PERMISSION CHECK: Lenient. Allows assigned Viewers/Commentators.
+                    // PERMISSION CHECK: Lenient. Allows assigned Viewers/Commentors.
                     if (!canUserEditCurrentTask()) {
                         
                         return;

@@ -7,7 +7,24 @@ import {
     sendPasswordResetEmail,
     onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+    getFirestore,
+    doc,
+    setDoc,
+    getDoc, 
+    collection, 
+    addDoc, 
+    updateDoc, 
+    serverTimestamp 
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+import {
+    getStorage,
+    ref,
+    uploadString,
+    getDownloadURL
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+
 import { firebaseConfig } from "/services/firebase-config.js";
 
 // --- 1. INITIALIZATION ---
@@ -15,7 +32,9 @@ console.log("Initializing Firebase...");
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app, "juanluna-cms-01");
+const storage = getStorage(app); 
 console.log("Firebase initialized.");
+
 
 // --- 2. DOM ELEMENTS ---
 const slideContainer = document.getElementById('slideContainer');
@@ -29,18 +48,21 @@ const backArrow = document.getElementById('backArrow');
 const togglePassword = document.getElementById("togglePassword");
 const googleSignInBtn = document.querySelector('.google-signin-btn');
 const forgotPasswordLinks = document.querySelectorAll('.forgot-password-link'); // Selects both links
+let isProcessingSignIn = false;
 
 // --- 3. GLOBAL STATE ---
 let userEmail = ''; // Store the user's email between the two steps
 
 // --- 4. CORE AUTHENTICATION LOGIC ---
 
+
+
 onAuthStateChanged(auth, (user) => {
-    if (user) {
-        console.log("User is already signed in:", user.uid);
+    if (user && !isProcessingSignIn) {
+        console.log("User is already signed in on page load. Redirecting...");
         window.location.href = '/';
     } else {
-        console.log("No user signed in. Ready for login.");
+        console.log("No user signed in, or sign-in is in progress. Ready for login.");
     }
 });
 
@@ -80,26 +102,29 @@ passwordForm.addEventListener('submit', async (e) => {
 });
 
 googleSignInBtn.addEventListener('click', async () => {
+    isProcessingSignIn = true;
+    
     const provider = new GoogleAuthProvider();
     try {
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
-        const userRef = doc(db, "users", user.uid);
-        await setDoc(userRef, {
-            uid: user.uid,
-            name: user.displayName,
-            email: user.email,
-            provider: "google",
-            avatar: user.photoURL,
-            createdAt: new Date().toISOString()
-        }, { merge: true });
+        await saveUserData(user, user.displayName, user.email, "google", user.photoURL);
+        
         showSuccess('Sign-in successful! Redirecting...');
+        setTimeout(() => {
+            window.location.href = '/';
+        }, 1500);
+        
     } catch (error) {
         if (error.code !== 'auth/popup-closed-by-user') {
+            console.error("Google Sign-In Error:", error);
             showError('Failed to sign in with Google.');
         }
+    } finally {
+        isProcessingSignIn = false;
     }
 });
+
 
 // --- NEW: FORGOT PASSWORD LOGIC ---
 forgotPasswordLinks.forEach(link => {
@@ -161,4 +186,82 @@ function showSuccess(message) {
 function hideMessages() {
     errorMessageEl.classList.remove('show');
     successMessageEl.classList.remove('show');
+}
+
+/**
+ * Saves or updates user data in Firestore.
+ * Crucially, it checks if the user is new and, if so, creates their
+ * default workspace and sets it as the selected one.
+ * @param {object} user - The Firebase Auth user object.
+ * @param {string} fullName - The user's full name.
+ * @param {string} email - The user's email.
+ * @param {string} provider - The auth provider (e.g., 'google', 'email').
+ * @param {string|null} photoURL - The URL for the user's avatar.
+ */
+async function saveUserData(user, fullName, email, provider, photoURL = null) {
+    if (!user || !user.uid) {
+        console.warn("⚠️ User not authenticated. Cannot write to Firestore.");
+        return null;
+    }
+    
+    const userRef = doc(db, "users", user.uid);
+    
+    // This is the key step: check if the user document already exists.
+    const userSnap = await getDoc(userRef);
+    const isNewUser = !userSnap.exists();
+    
+    console.log(isNewUser ? "New user detected." : "Existing user detected.");
+    
+    let finalPhotoURL = photoURL;
+    // Only generate a new avatar if it's a new user signing up with email
+    if (provider === 'email' && isNewUser) {
+        const initials = fullName.split(' ').slice(0, 2).map(w => w[0].toUpperCase()).join('');
+        const color = getRandomColor(); // Assuming you have this helper function
+        const dataUrl = generateAvatar(initials, color); // Assuming you have this helper
+        const avatarPath = `users/${user.uid}/profile-picture/avatar.png`;
+        const storageRef = ref(storage, avatarPath);
+        await uploadString(storageRef, dataUrl, 'data_url');
+        finalPhotoURL = await getDownloadURL(storageRef);
+    }
+    
+    // Prepare the user data. The 'createdAt' field is only added for new users.
+    const userData = {
+        id: user.uid,
+        name: fullName,
+        email: email,
+        provider: provider,
+        avatar: finalPhotoURL,
+        ...(isNewUser && { createdAt: serverTimestamp() })
+    };
+    
+    // Save the user data. 'merge: true' prevents overwriting existing fields.
+    await setDoc(userRef, userData, { merge: true });
+    console.log(`✅ User data for ${email} saved successfully.`);
+    
+    // This block ONLY runs if the user is brand new.
+    if (isNewUser) {
+        try {
+            const workspaceRef = collection(db, `users/${user.uid}/myworkspace`);
+            const newWorkspace = {
+                name: "My First Workspace",
+                createdAt: serverTimestamp(),
+                members: [user.uid]
+            };
+            
+            // Create the new workspace and get its reference
+            const newWorkspaceRef = await addDoc(workspaceRef, newWorkspace);
+            console.log("✅ Default workspace created successfully for new user.");
+            
+            // Update the main user document with the ID of the new workspace
+            await updateDoc(userRef, {
+                selectedWorkspace: newWorkspaceRef.id
+            });
+            console.log(`✅ Set '${newWorkspaceRef.id}' as the default selected workspace.`);
+            
+        } catch (error) {
+            console.error("❌ Error creating default workspace:", error);
+        }
+    }
+    
+    return finalPhotoURL;
 }

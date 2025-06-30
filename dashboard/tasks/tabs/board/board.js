@@ -120,7 +120,7 @@ function updateUserPermissions(projectData, userId) {
     const members = projectData.members || [];
     const userMemberInfo = members.find(member => member.uid === userId);
     currentUserRole = userMemberInfo ? userMemberInfo.role : null;
-    const isMemberWithEditPermission = userMemberInfo && (userMemberInfo.role === "Project admin" || userMemberInfo.role === "Editor");
+    const isMemberWithEditPermission = userMemberInfo && (userMemberInfo.role === "Project admin" || userMemberInfo.role === "Project Admin" || userMemberInfo.role === "Editor");
     const isSuperAdmin = projectData.project_super_admin_uid === userId;
     const isAdminUser = projectData.project_admin_user === userId;
     userCanEditProject = isMemberWithEditPermission || isSuperAdmin || isAdminUser;
@@ -146,7 +146,7 @@ function canUserEditSpecifcTask(task) {
     }
     
     // Rule 2: Check for the special case for assigned users.
-    if (currentUserRole === 'Viewer' || currentUserRole === 'Commentator') {
+    if (currentUserRole === 'Viewer' || currentUserRole === 'Commentor') {
         // Ensure task.assignees is an array before checking.
         const isAssigned = Array.isArray(task.assignees) && task.assignees.includes(currentUserId);
         
@@ -295,134 +295,128 @@ function detachProjectSpecificListeners() {
 function attachRealtimeListeners(userId) {
     detachAllListeners();
     currentUserId = userId;
-    console.log(`[Board.js DEBUG] Attaching listeners for user: ${userId}`);
     
-    // STEP 1: Listen to the user's workspace to find the selected project ID.
-    const workspaceQuery = query(collection(db, `users/${userId}/myworkspace`), where("isSelected", "==", true));
+    let currentWorkspaceId = null;
+    let currentProjectId = null;
     
-    activeListeners.workspace = onSnapshot(workspaceQuery, async (workspaceSnapshot) => {
-        detachProjectSpecificListeners();
-        currentProjectRef = null; // Reset the global project reference
-        
-        if (workspaceSnapshot.empty) {
-            console.warn("[Board.js DEBUG] No selected workspace.");
-            project = { sections: [] };
-            renderBoard(); // You need a renderBoard() function
+    const userDocRef = doc(db, 'users', userId);
+    activeListeners.user = onSnapshot(userDocRef, (userSnap) => {
+        if (!userSnap.exists()) {
+            detachAllListeners();
             return;
         }
         
-        const workspaceDoc = workspaceSnapshot.docs[0];
-        const selectedProjectId = workspaceDoc.data().selectedProjectId;
+        const newWorkspaceId = userSnap.data().selectedWorkspace;
+        if (newWorkspaceId === currentWorkspaceId) return;
         
-        if (!selectedProjectId) {
-            console.warn("[Board.js DEBUG] No selected project ID in workspace.");
+        currentWorkspaceId = newWorkspaceId;
+        
+        if (activeListeners.workspace) activeListeners.workspace();
+        detachProjectSpecificListeners();
+        
+        if (!currentWorkspaceId) {
             project = { sections: [] };
             renderBoard();
             return;
         }
         
-        // STEP 2: Find the correct project document using its ID, regardless of who owns it.
-        try {
-            const projectQuery = query(
-                collectionGroup(db, 'projects'),
-                where('projectId', '==', selectedProjectId),
-                where('memberUIDs', 'array-contains', currentUserId)
-            );
-            const projectSnapshot = await getDocs(projectQuery);
-            
-            if (projectSnapshot.empty) {
-                console.error(`[Board.js DEBUG] CRITICAL: Project '${selectedProjectId}' not found or user lacks permission.`);
+        const workspaceRef = doc(db, `users/${userId}/myworkspace`, currentWorkspaceId);
+        activeListeners.workspace = onSnapshot(workspaceRef, async (workspaceSnap) => {
+            if (!workspaceSnap.exists()) {
                 project = { sections: [] };
                 renderBoard();
                 return;
             }
             
-            // STEP 3: Store the definitive project reference and ID.
-            const projectDoc = projectSnapshot.docs[0];
-            currentProjectRef = projectDoc.ref;
-            currentProjectId = projectDoc.id; // The document's actual ID in its collection
-            console.log(`[Board.js DEBUG] Found project at path: ${currentProjectRef.path}`);
+            const newProjectId = workspaceSnap.data().selectedProjectId;
+            if (newProjectId === currentProjectId) return;
             
-            // STEP 4: Attach all real-time listeners.
-            activeListeners.project = onSnapshot(currentProjectRef, async (projectDetailSnap) => {
-                if (!projectDetailSnap.exists()) return;
-                
-                console.log(`[Board.js DEBUG] Project details updated.`);
-                const projectData = projectDetailSnap.data();
-                project = { ...project, ...projectData, id: projectDetailSnap.id };
-                
-                // *** NEW LOGIC: Set permissions and fetch member profiles here ***
-                updateUserPermissions(projectData, currentUserId);
-                const memberUIDs = projectData.members?.map(m => m.uid) || [];
-                allUsers = await fetchMemberProfiles(memberUIDs);
-                // *** END NEW LOGIC ***
-                
-                // Listener for Sections
-                const sectionsQuery = query(collection(currentProjectRef, 'sections'), orderBy("order"));
-                activeListeners.sections = onSnapshot(sectionsQuery, (snapshot) => {
-                    project.sections = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, tasks: [] }));
-                    distributeTasksToSections(allTasksFromSnapshot);
-                    renderBoard();
-                });
-                
-                // Listener for all Tasks in this Project
-                const tasksQuery = query(collectionGroup(db, 'tasks'), where('projectId', '==', project.projectId));
-                activeListeners.tasks = onSnapshot(tasksQuery, (snapshot) => {
-                    allTasksFromSnapshot = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-                    distributeTasksToSections(allTasksFromSnapshot);
-                    if (!isMovingTask) renderBoard();
-                });
-                
-                // Listener for Messages (Cover Images)
-                const messagesQuery = query(collectionGroup(db, 'Messages'), where('imageUrl', '!=', null));
-
-activeListeners.messages = onSnapshot(messagesQuery, (snapshot) => {
-    const newImageMap = {};
-    
-    snapshot.forEach(doc => {
-        const data = doc.data();
-        const pathSegments = doc.ref.path.split('/');
-        
-        // 2. We extract the projectId from the path (e.g., from 'globalChatProjects/{projectId}/...')
-        const projectsIndex = pathSegments.indexOf('globalChatProjects');
-        if (projectsIndex === -1 || pathSegments.length <= projectsIndex + 1) return; // Malformed path
-        
-        const messageProjectId = pathSegments[projectsIndex + 1];
-        
-        // 3. IMPORTANT: We only process messages that belong to the CURRENTLY active project.
-        if (messageProjectId === project.projectId) {
-            const tasksIndex = pathSegments.indexOf('tasks');
-            if (tasksIndex > -1 && pathSegments.length > tasksIndex + 1) {
-                const taskId = pathSegments[tasksIndex + 1];
-                
-                if (taskId && data.imageUrl && data.timestamp) {
-                    const existing = newImageMap[taskId];
-                    
-                    // This logic correctly finds the OLDEST image for each taskId
-                    if (!existing || data.timestamp.toMillis() < existing.timestamp.toMillis()) {
-                        newImageMap[taskId] = {
-                            imageUrl: data.imageUrl,
-                            timestamp: data.timestamp
-                        };
-                    }
-                }
+            currentProjectId = newProjectId;
+            detachProjectSpecificListeners();
+            
+            if (!currentProjectId) {
+                project = { sections: [] };
+                renderBoard();
+                return;
             }
-        }
-    });
-    
-    // This map now correctly links taskId to the oldest imageUrl
-    taskImageMap = Object.fromEntries(
-        Object.entries(newImageMap).map(([key, value]) => [key, value.imageUrl])
-    );
-    
-    renderBoard();
-    
-}, err => console.error("Message listener error:", err));
-
-            });
-        } catch (error) {
-            console.error("[Board.js DEBUG] Error attaching listeners:", error);
-        }
+            
+            try {
+                const projectQuery = query(
+                    collectionGroup(db, 'projects'),
+                    where('projectId', '==', currentProjectId),
+                    where('memberUIDs', 'array-contains', currentUserId)
+                );
+                const projectSnapshot = await getDocs(projectQuery);
+                
+                if (projectSnapshot.empty) {
+                    project = { sections: [] };
+                    renderBoard();
+                    return;
+                }
+                
+                currentProjectRef = projectSnapshot.docs[0].ref;
+                
+                activeListeners.project = onSnapshot(currentProjectRef, async (projectDetailSnap) => {
+                    if (!projectDetailSnap.exists()) return;
+                    
+                    const projectData = projectDetailSnap.data();
+                    project = { ...project, ...projectData, id: projectDetailSnap.id };
+                    
+                    updateUserPermissions(projectData, currentUserId);
+                    const memberUIDs = projectData.members?.map(m => m.uid) || [];
+                    allUsers = await fetchMemberProfiles(memberUIDs);
+                    
+                    const sectionsQuery = query(collection(currentProjectRef, 'sections'), orderBy("order"));
+                    activeListeners.sections = onSnapshot(sectionsQuery, (snapshot) => {
+                        project.sections = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, tasks: [] }));
+                        distributeTasksToSections(allTasksFromSnapshot);
+                        renderBoard();
+                    });
+                    
+                    const tasksQuery = query(collectionGroup(db, 'tasks'), where('projectId', '==', project.projectId));
+                    activeListeners.tasks = onSnapshot(tasksQuery, (snapshot) => {
+                        allTasksFromSnapshot = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+                        distributeTasksToSections(allTasksFromSnapshot);
+                        if (!isMovingTask) renderBoard();
+                    });
+                    
+                    const messagesQuery = query(collectionGroup(db, 'Messages'), where('imageUrl', '!=', null));
+                    activeListeners.messages = onSnapshot(messagesQuery, (snapshot) => {
+                        const newImageMap = {};
+                        snapshot.forEach(doc => {
+                            const data = doc.data();
+                            const pathSegments = doc.ref.path.split('/');
+                            const projectsIndex = pathSegments.indexOf('globalChatProjects');
+                            if (projectsIndex === -1 || pathSegments.length <= projectsIndex + 1) return;
+                            
+                            const messageProjectId = pathSegments[projectsIndex + 1];
+                            
+                            if (messageProjectId === project.projectId) {
+                                const tasksIndex = pathSegments.indexOf('tasks');
+                                if (tasksIndex > -1 && pathSegments.length > tasksIndex + 1) {
+                                    const taskId = pathSegments[tasksIndex + 1];
+                                    if (taskId && data.imageUrl && data.timestamp) {
+                                        const existing = newImageMap[taskId];
+                                        if (!existing || data.timestamp.toMillis() < existing.timestamp.toMillis()) {
+                                            newImageMap[taskId] = {
+                                                imageUrl: data.imageUrl,
+                                                timestamp: data.timestamp
+                                            };
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                        taskImageMap = Object.fromEntries(
+                            Object.entries(newImageMap).map(([key, value]) => [key, value.imageUrl])
+                        );
+                        renderBoard();
+                    });
+                });
+            } catch (error) {
+                console.error("Error attaching listeners:", error);
+            }
+        });
     });
 }
 

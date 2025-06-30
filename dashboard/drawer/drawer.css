@@ -105,7 +105,7 @@
 }
 
 .projects-item a {
-    height: 2px;
+  height: 2px;
 }
 
 .nav-item-main-content {
@@ -122,8 +122,10 @@
 .sidebar-nav [class*="fa-"] {
   font-size: 16px;
   opacity: var(--drawer-icon-opacity);
-  flex-shrink: 0; /* Prevents icons from shrinking */
-  width: 20px;    /* Gives all icons a consistent width for alignment */
+  flex-shrink: 0;
+  /* Prevents icons from shrinking */
+  width: 20px;
+  /* Gives all icons a consistent width for alignment */
   text-align: center;
   transition: opacity 0.3s ease;
 }
@@ -132,7 +134,8 @@
 .sidebar .expand-icon {
   font-size: 12px;
   opacity: 0.6;
-  width: auto; /* Let this smaller icon size itself */
+  width: auto;
+  /* Let this smaller icon size itself */
 }
 
 /* === END: CORRECTED ICON STYLING === */
@@ -195,13 +198,16 @@
 
 /* 3. Make the button wrapper transparent and size it properly */
 .sidebar .add-project-btn {
-  background-color: transparent; /* Explicitly set background to transparent */
+  background-color: transparent;
+  /* Explicitly set background to transparent */
   border: none;
-  padding: 0; /* Remove default padding */
+  padding: 0;
+  /* Remove default padding */
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;   /* Give it a defined size for a better hover area */
+  width: 28px;
+  /* Give it a defined size for a better hover area */
   height: 28px;
   border-radius: 6px;
   color: var(--drawer-text-secondary-color);
@@ -223,51 +229,103 @@
   opacity: 0;
   pointer-events: none;
 }
+
 /* === END: CORRECTED ADD PROJECT BUTTON === */
 
+/*
+  CORRECTED CSS - Add this to your drawer.css
+*/
 
-.sidebar .section-items {
+/* --- FIX #1: Correcting the Open/Close Animation ---
+  This targets the LIST CONTAINER (the <ul> with class .section-items)
+*/
+
+/* This is the DEFAULT, CLOSED state */
+.sidebar .nav-section .section-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
   
+  /* By default, the list is completely collapsed and hidden */
+  max-height: 0;
   overflow: hidden;
+  /* This hides the items when max-height is 0 */
+  
+  /* This creates the smooth slide animation */
   transition: max-height 0.3s ease-in-out;
 }
-/* Remove extra margin and padding from section item container */
-.sidebar .section-items {
-    padding: 0;
-    margin: 0;
+
+/* This is the OPEN state (when the parent .nav-section has the .open class) */
+.sidebar .nav-section.open .section-items {
+  /* We animate the max-height to a large value to reveal the items */
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-height: 500px;
+  /* Adjust if your lists are very long */
+}
+
+.sidebar .section-items .nav-item .nav-item-main-content {
+  /* Basic truncation styles */
+  white-space: nowrap;
+  /* Don't wrap text */
+  overflow: hidden;
+  /* Hide the overflowed text */
+  text-overflow: ellipsis;
+  /* Show "..." */
+  
+  /* --- THE MAGIC FIX FOR FLEXBOX --- */
+  /* This tells the text to grow and shrink as needed */
+  flex: 1;
+  
+  /* This is the key property. It allows the element to shrink
+     smaller than its own content, which is required for the
+     ellipsis to appear in a flex container. */
+  min-width: 0;
+}
+
+.sidebar .project-color {
+  /* This prevents the colored square from being squished */
+  flex-shrink: 0;
+}
+
+/* --- FIX #2: Correcting the Text Truncation ---
+  This targets the TEXT ELEMENT itself (the <span> inside each list item)
+*/
+.sidebar .section-items .nav-item span {
+  /* Prevents the text from wrapping to a new line */
+  white-space: nowrap;
+  
+  /* Hides the part of the text that doesn't fit */
+  overflow: hidden;
+  
+  /* Adds the "..." at the end */
+  
+  
+  /* These ensure the span behaves correctly for truncation */
+  display: block;
+  width: 100%;
 }
 
 /* Remove margin and control padding inside each project item */
 .sidebar #projects-section .section-items .nav-item {
-    margin: 0;
-    padding: 2px 8px;
-    /* Tighter vertical spacing */
-}
-
-
-.sidebar .nav-section.open .section-items {
-  max-height: 500px;
-}
-
-.sidebar .section-items .nav-item span {
-  font-size: 12px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  margin: 0;
+  padding: 2px 8px;
+  /* Tighter vertical spacing */
 }
 
 /* Remove hover effect entirely */
 .sidebar #projects-section .section-items .nav-item:hover {
-    background-color: transparent;
-    cursor: default;
+  background-color: transparent;
+  cursor: default;
 }
 
 /* Decrease vertical padding */
 .sidebar #projects-section .section-items .nav-item {
-    padding-top: 4px;
-    padding-bottom: 4px;
-    margin-bottom: 2px;
-    /* tighter spacing */
+  padding-top: 4px;
+  padding-bottom: 4px;
+  margin-bottom: 2px;
+  /* tighter spacing */
 }
 
 .sidebar .section-header .fa-chevron-right {
@@ -306,8 +364,10 @@
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   z-index: 9999;
-  width: 200px; /* A bit wider for better spacing */
-  padding: 6px; /* Add some padding around the list */
+  width: 200px;
+  /* A bit wider for better spacing */
+  padding: 6px;
+  /* Add some padding around the list */
   font-size: 14px;
 }
 
@@ -322,35 +382,67 @@
 .drawerprojects-dropdown li {
   display: flex;
   align-items: center;
-  gap: 12px; /* Space between icon and text */
-  padding: 10px 12px; /* Vertical and horizontal padding */
+  gap: 12px;
+  /* Space between icon and text */
+  padding: 10px 12px;
+  /* Vertical and horizontal padding */
   border-radius: 6px;
   cursor: pointer;
-  color: #212529; /* Darker text for readability on a light background */
+  color: #212529;
+  /* Darker text for readability on a light background */
   transition: background-color 0.2s ease;
 }
 
 .drawerprojects-dropdown li:hover {
-  background-color: #e9ecef; /* A subtle hover effect */
+  background-color: #e9ecef;
+  /* A subtle hover effect */
 }
 
 /* Style the icon inside the dropdown item */
 .drawerprojects-dropdown li .fa-plus {
-  width: 16px; /* A specific width for alignment */
+  width: 16px;
+  /* A specific width for alignment */
   font-size: 14px;
   text-align: center;
-  color: #495057; /* A slightly softer icon color */
+  color: #495057;
+  /* A slightly softer icon color */
 }
 
 .nav-item-empty {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 14px;
-  color: #6c757d; /* A muted, modern gray */
-  padding-left: 1.25rem; /* Adjust as needed */
-  list-style-type: none; /* Removes the bullet point */
+  color: #6c757d;
+  /* A muted, modern gray */
+  padding-left: 1.25rem;
+  /* Adjust as needed */
+  list-style-type: none;
+  /* Removes the bullet point */
 }
 
 /* Apply hover for My Workspace by ID or unique selector */
 .sidebar .section-items .nav-item a[href="/myworkspace"]:hover {
   background-color: var(--drawer-hover-bg);
+}
+
+/* Style for the project item when it is selected */
+.projects-item.selected {
+    /* A subtle background highlight to make it stand out */
+    border: transparent;
+    background-color: transparent;
+    
+}
+
+.projects-item:hover {
+  /* A subtle background highlight to make it stand out */
+  border: transparent;
+  background-color: var(--drawer-hover-bg);
+}
+
+.projects-item.selected a {
+    font-weight: 600;
+}
+
+.projects-item {
+  white-space: nowrap;
+  overflow: hidden;
 }
