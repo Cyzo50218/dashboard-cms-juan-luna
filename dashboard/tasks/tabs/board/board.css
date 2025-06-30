@@ -43,6 +43,22 @@
     font-weight: normal;
 }
 
+.boardtasks-due-date[data-color-name="red"] {
+    color: #EF4D3D;
+}
+
+.boardtasks-due-date[data-color-name="green"] {
+    color: #59E166; 
+}
+
+.boardtasks-due-date[data-color-name="yellow"] {
+    color: #FFD15E; 
+}
+
+.boardtasks-due-date[data-color-name="default"] {
+    color: var(--completed-color) !important;
+}
+
 /* --- Containers & Headers --- */
 .boardtasks-board-container {
     /* MODIFIED: Removed top padding, it will be moved to the header */
