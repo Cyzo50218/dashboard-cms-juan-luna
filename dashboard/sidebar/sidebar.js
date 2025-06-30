@@ -891,52 +891,67 @@ appendFieldToTable(tbody, 'status', 'Status', statusHTML, 'status', isSidebarFie
                 }
                 
                 case 'date':
-                case 'priority':
-                case 'status':
-                case 'custom-field': {
-                    // PERMISSION CHECK: Lenient. Allows assigned Viewers/Commentors.
-                    if (!canUserEditCurrentTask()) {
-                        
-                        return;
+        case 'priority':
+        case 'status':
+        case 'custom-field': {
+            // PERMISSION CHECK: Lenient. Allows assigned Viewers/Commentors.
+            if (!canUserEditCurrentTask()) {
+                return;
+            }
+            
+            if (controlType === 'date') {
+                const input = control.querySelector('.flatpickr-input');
+                const fp = flatpickr(input, {
+                    defaultDate: currentTask.dueDate || 'today',
+                    dateFormat: "Y-m-d",
+                    onClose: function(selectedDates) {
+                        const newDate = selectedDates[0] ? flatpickr.formatDate(selectedDates[0], 'Y-m-d') : '';
+                        updateTaskField('dueDate', newDate);
+                        fp.destroy();
                     }
-                    
-                    // If permission is granted, proceed to open the correct editor.
-                    if (controlType === 'date') {
-                        const input = control.querySelector('.flatpickr-input');
-                        const fp = flatpickr(input, {
-                            defaultDate: currentTask.dueDate || 'today',
-                            dateFormat: "Y-m-d",
-                            onClose: function(selectedDates) {
-                                const newDate = selectedDates[0] ? flatpickr.formatDate(selectedDates[0], 'Y-m-d') : '';
-                                updateTaskField('dueDate', newDate);
-                                fp.destroy();
-                            }
-                        });
-                        fp.open();
-                    } else if (controlType === 'priority' || controlType === 'status') {
-                        const baseOptions = (controlType === 'priority') ? priorityOptions : statusOptions;
-                        const customOptions = (controlType === 'priority') ? currentProject.customPriorities : currentProject.customStatuses;
-                        const allOptions = [...baseOptions.map(name => ({ name })), ...(customOptions || [])];
-                        
-                        showStatusDropdown(control, allOptions, (selected) => {
-                            updateTaskField(controlType, selected.name);
-                        });
-                        
-                    } else if (controlType === 'custom-field') {
-                        const columnId = key.split('-')[1];
-                        const column = currentProject.customColumns.find(c => c.id == columnId);
-                        if (!column) return;
-                        
-                        if (column.options) { // It's a dropdown type
-                            showStatusDropdown(control, column.options, (selected) => {
-                                updateCustomField(columnId, selected.name, column);
-                            });
-                        } else { // It's a text/number/costing field
-                            makeTextFieldEditable(control, columnId, column);
-                        }
-                    }
-                    break;
+                });
+                fp.open();
+            } else if (controlType === 'priority' || controlType === 'status') {
+                const column = currentProject.defaultColumns.find(c => c.id === controlType);
+                if (!column || !column.options) {
+                    console.error(`Column '${controlType}' not found or has no options.`);
+                    return;
                 }
+
+                // 2. The complete options array (with names and colors) is read directly.
+                const completeOptions = column.options;
+
+                // 3. Call the generic dropdown function with the complete data.
+                showStatusDropdown(control, completeOptions, (selected) => {
+                    updateTaskField(controlType, selected.name);
+                });
+
+                // --- OLD LOGIC (REMOVED) ---
+                /*
+                const baseOptions = (controlType === 'priority') ? priorityOptions : statusOptions;
+                const customOptions = (controlType === 'priority') ? currentProject.customPriorities : currentProject.customStatuses;
+                const allOptions = [...baseOptions.map(name => ({ name })), ...(customOptions || [])];
+                showStatusDropdown(control, allOptions, (selected) => {
+                    updateTaskField(controlType, selected.name);
+                });
+                */
+               
+            } else if (controlType === 'custom-field') {
+                const columnId = key.split('-')[1];
+                const column = currentProject.customColumns.find(c => c.id == columnId);
+                if (!column) return;
+                
+                if (column.options) { // It's a dropdown type
+                    // The generic showStatusDropdown now works perfectly for custom fields too.
+                    showStatusDropdown(control, column.options, (selected) => {
+                        updateCustomField(columnId, selected.name, column);
+                    });
+                } else { // It's a text/number/costing field
+                    makeTextFieldEditable(control, columnId, column);
+                }
+            }
+            break;
+        }
             }
         });
     }
@@ -2059,16 +2074,16 @@ appendFieldToTable(tbody, 'status', 'Status', statusHTML, 'status', isSidebarFie
     }
     
     function showStatusDropdown(targetEl, options, onSelectCallback) {
-        createAdvancedDropdown(targetEl, {
-            options: options,
-            searchable: false, // Typically not needed for these types of lists
-            itemRenderer: (option) => {
-                const color = option.color || defaultStatusColors[option.name] || defaultPriorityColors[option.name] || '#ccc';
-                return `<div class="dropdown-color-swatch" style="background-color: ${color}"></div><span>${option.name}</span>`;
-            },
-            onSelect: onSelectCallback
-        });
-    }
+    createAdvancedDropdown(targetEl, {
+        options: options,
+        searchable: false,
+        itemRenderer: (option) => {
+            const color = option.color || '#ccc'; // Use gray as a fallback for any malformed data
+            return `<div class="dropdown-color-swatch" style="background-color: ${color}"></div><span>${option.name}</span>`;
+        },
+        onSelect: onSelectCallback
+    });
+}
     
     function toggleSidebarView() {
         // Toggle the class on the sidebar element
