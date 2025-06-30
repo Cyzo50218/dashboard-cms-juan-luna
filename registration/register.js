@@ -269,45 +269,40 @@ async function handleInvitationAcceptance(user, invId) {
     const invitationData = invitationSnap.data();
     console.log("Invitation data:", invitationData);
     
-    // Verify the email matches
     if (invitationData.invitedEmail.toLowerCase() !== user.email.toLowerCase()) {
       throw new Error("This invitation is for a different email address. Please log in with the correct account.");
     }
+    
     const projectId = invitationData.projectId;
     const role = invitationData.role;
     const projectsCollectionGroup = collectionGroup(db, 'projects');
     
-    // 2. Query across all 'projects' subcollections to find the one with the matching projectId field.
     const q = query(projectsCollectionGroup, where('projectId', '==', projectId));
     const projectQuerySnapshot = await getDocs(q);
     
     if (projectQuerySnapshot.empty) {
-      // This means no project with that ID was found anywhere.
       throw new Error("The project associated with this invitation no longer exists.");
     }
     
-    
-    // 3. Get the document snapshot and its reference from the query result.
-    const projectSnap = projectQuerySnapshot.docs[0]; // The first (and only) document found
-    const projectRef = projectSnap.ref; // The correct, full path reference to the project document
-    
+    const projectSnap = projectQuerySnapshot.docs[0];
+    const projectRef = projectSnap.ref;
     const projectData = projectSnap.data();
     
     const batch = writeBatch(db);
     
+    // ✅ Get the user's active workspace using the new, direct method.
+    const userDocRef = doc(db, 'users', user.uid);
+    const userSnap = await getDoc(userDocRef);
     let activeWorkspaceId = null;
-const workspaceColRef = collection(db, `users/${user.uid}/myworkspace`);
-const workspaceQuery = query(workspaceColRef, where('isSelected', '==', true));
-const workspaceSnapshot = await getDocs(workspaceQuery);
-
-if (!workspaceSnapshot.empty) {
-  // Found the active workspace
-  activeWorkspaceId = workspaceSnapshot.docs[0].id;
-  console.log("Found active workspace:", activeWorkspaceId);
-} else {
-  // Handle case where no active workspace is found, maybe just skip this step
-  console.warn("Could not find an active workspace for the user. Skipping auto-selection.");
-}
+    
+    if (userSnap.exists() && userSnap.data().selectedWorkspace) {
+      activeWorkspaceId = userSnap.data().selectedWorkspace;
+      console.log("Found active workspace:", activeWorkspaceId);
+    } else {
+      console.warn("Could not find an active workspace for the user. Skipping auto-selection of the project.");
+    }
+    
+    // --- The old query logic has been completely replaced by the block above ---
     
     // Find the specific pending invite object to remove
     const pendingInviteToRemove = (projectData.pendingInvites || []).find(p => p.invitationId === invId);
@@ -315,13 +310,13 @@ if (!workspaceSnapshot.empty) {
       batch.update(projectRef, { pendingInvites: arrayRemove(pendingInviteToRemove) });
     }
     
-    // Add the new member to the 'members' array
+    // Add the new member to the project
     batch.update(projectRef, {
       members: arrayUnion({ uid: user.uid, role: role }),
-      memberUIDs: arrayUnion(user.uid) // Also update the simple memberUIDs array
+      memberUIDs: arrayUnion(user.uid)
     });
     
-    // 2. Update the invitation status to "accepted" in InvitedProjects
+    // Update the invitation status
     batch.update(invitationRef, {
       status: "accepted",
       acceptedAt: serverTimestamp(),
@@ -332,18 +327,20 @@ if (!workspaceSnapshot.empty) {
       }
     });
     
+    // If an active workspace was found, automatically select the new project for the user.
     if (activeWorkspaceId) {
-  const workspaceRef = doc(db, `users/${user.uid}/myworkspace/${activeWorkspaceId}`);
-  batch.set(workspaceRef, {
-    selectedProjectId: projectId
-  }, { merge: true }); 
-}
-
-    // Commit all the changes at once
+      const workspaceRef = doc(db, `users/${user.uid}/myworkspace/${activeWorkspaceId}`);
+      batch.set(workspaceRef, {
+        selectedProjectId: projectId
+      }, { merge: true });
+    }
+    
+    // Commit all changes at once
     await batch.commit();
     
     console.log("✅ Invitation accepted and project updated successfully!");
     alert("Invitation accepted! You are now a member of the project.");
+    
     const numericUserId = stringToNumericString(user.uid);
     const numericProjectId = stringToNumericString(projectId);
     const href = `/tasks/${numericUserId}/list/${numericProjectId}`;
@@ -351,13 +348,12 @@ if (!workspaceSnapshot.empty) {
     window.location.href = href;
     
   } catch (error) {
-  console.error("❌ Error accepting invitation:", error);
-  alert("Error: " + error.message);
-  acceptInvitationBtn.disabled = false;
-  acceptInvitationBtn.textContent = "Accept Invitation";
+    console.error("❌ Error accepting invitation:", error);
+    alert("Error: " + error.message);
+    acceptInvitationBtn.disabled = false;
+    acceptInvitationBtn.textContent = "Accept Invitation";
+  }
 }
-}
-
 
 // Generate initials avatar
 function generateAvatar(initials, backgroundColor = '#333') {
@@ -396,9 +392,6 @@ function stringToNumericString(str) {
   return str.split('').map(char => char.charCodeAt(0)).join('');
 }
 
-// You will need `getDoc`, `collection`, and `addDoc` from Firestore for this function.
-// Make sure they are in your import statement at the top of the file.
-
 async function saveUserData(user, fullName, email, provider, photoURL = null) {
   if (!user || !user.uid) {
     console.warn("⚠️ User not authenticated. Cannot write to Firestore.");
@@ -407,16 +400,13 @@ async function saveUserData(user, fullName, email, provider, photoURL = null) {
   
   const userRef = doc(db, "users", user.uid);
   
-  // --- NEW LOGIC: Check if the user is new before creating a workspace ---
   const userSnap = await getDoc(userRef);
   const isNewUser = !userSnap.exists();
   
   console.log(isNewUser ? "New user detected." : "Existing user detected.");
-  // --- END NEW LOGIC ---
   
   let finalPhotoURL = photoURL;
-  if (provider === 'email' && isNewUser) { // Only generate avatar for new email users
-    // Generate avatar for email signups
+  if (provider === 'email' && isNewUser) {
     const initials = fullName.split(' ').slice(0, 2).map(w => w[0].toUpperCase()).join('');
     const color = getRandomColor();
     const dataUrl = generateAvatar(initials, color);
@@ -443,12 +433,21 @@ async function saveUserData(user, fullName, email, provider, photoURL = null) {
       const workspaceRef = collection(db, `users/${user.uid}/myworkspace`);
       const newWorkspace = {
         name: "My First Workspace",
-        isSelected: true,
         createdAt: serverTimestamp(),
         members: [user.uid]
       };
-      await addDoc(workspaceRef, newWorkspace);
+      
+      // ✅ Step 1: Create the new workspace and get its reference.
+      const newWorkspaceRef = await addDoc(workspaceRef, newWorkspace);
       console.log("✅ Default workspace created successfully for new user.");
+      
+      // ✅ Step 2: Update the main user document with the ID of the new workspace.
+      // This sets the new workspace as the default 'selectedWorkspace'.
+      await updateDoc(userRef, {
+        selectedWorkspace: newWorkspaceRef.id
+      });
+      console.log(`✅ Set '${newWorkspaceRef.id}' as the default selected workspace.`);
+      
     } catch (error) {
       console.error("❌ Error creating default workspace:", error);
     }

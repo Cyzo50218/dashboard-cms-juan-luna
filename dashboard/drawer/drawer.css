@@ -423,3 +423,26 @@
 .sidebar .section-items .nav-item a[href="/myworkspace"]:hover {
   background-color: var(--drawer-hover-bg);
 }
+
+/* Style for the project item when it is selected */
+.projects-item.selected {
+    /* A subtle background highlight to make it stand out */
+    border: transparent;
+    background-color: transparent;
+    
+}
+
+.projects-item:hover {
+  /* A subtle background highlight to make it stand out */
+  border: transparent;
+  background-color: var(--drawer-hover-bg);
+}
+
+.projects-item.selected a {
+    font-weight: 600;
+}
+
+.projects-item {
+  white-space: nowrap;
+  overflow: hidden;
+}

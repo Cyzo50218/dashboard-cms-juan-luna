@@ -77,6 +77,7 @@ let currentProjectRef = null;
 // --- Real-time Listener Management ---
 // This object will hold the unsubscribe functions for our active listeners.
 let activeListeners = {
+    user: null,
     workspace: null,
     project: null,
     sections: null,
@@ -137,13 +138,35 @@ function detachAllListeners() {
     Object.keys(activeListeners).forEach(key => activeListeners[key] = null);
 }
 
+/**
+ * Detaches all active Firestore listeners to prevent memory leaks and
+ * unnecessary data fetching when the user logs out or navigates away.
+ */
 function detachProjectSpecificListeners() {
-    console.log("[DEBUG] Detaching project-specific listeners (project, sections, tasks)...");
+    console.log("[DEBUG] Detaching all active Firestore listeners...");
+    
+    // Detach the listener on the main user document
+    if (activeListeners.user) {
+        activeListeners.user(); // This executes the unsubscribe function
+        activeListeners.user = null; // Reset the state
+    }
+    
+    // Detach the listener on the active workspace document
+    if (activeListeners.workspace) {
+        activeListeners.workspace();
+        activeListeners.workspace = null;
+    }
+    
+    // Detach the listener for the projects collectionGroup query
+    if (activeListeners.projects) {
+        activeListeners.projects();
+        activeListeners.projects = null;
+    }
     
     // Check for and unsubscribe from the project details listener
     if (activeListeners.project) {
-        activeListeners.project(); // This executes the unsubscribe function returned by onSnapshot
-        activeListeners.project = null; // Reset the state to clean up
+        activeListeners.project();
+        activeListeners.project = null;
     }
     
     // Check for and unsubscribe from the sections listener
@@ -157,6 +180,8 @@ function detachProjectSpecificListeners() {
         activeListeners.tasks();
         activeListeners.tasks = null;
     }
+    
+    console.log("[DEBUG] All listeners have been detached.");
 }
 
 function attachRealtimeListeners(userId) {
@@ -164,98 +189,103 @@ function attachRealtimeListeners(userId) {
     currentUserId = userId;
     console.log(`[DEBUG] Attaching listeners for user: ${userId}`);
     
-    // STEP 1: Find the user's active workspace to know where to find the selected project ID.
-    const workspaceQuery = query(collection(db, `users/${userId}/myworkspace`), where("isSelected", "==", true));
+    const userDocRef = doc(db, 'users', userId);
     
-    activeListeners.workspace = onSnapshot(workspaceQuery, async (workspaceSnapshot) => {
-        // When the active workspace changes, we must clean up listeners for the previous project.
-        detachProjectSpecificListeners();
-        
-        if (workspaceSnapshot.empty) {
-            console.warn("[DEBUG] No selected workspace. Clearing UI.");
-            project = {}; // Clear all project data
-            render(); // Render the empty state
+    activeListeners.user = onSnapshot(userDocRef, (userSnap) => {
+        if (!userSnap.exists()) {
+            console.error("User document not found.");
+            if (activeListeners.workspace) activeListeners.workspace();
             return;
         }
         
-        const workspaceDoc = workspaceSnapshot.docs[0];
-        currentWorkspaceId = workspaceDoc.id;
-        const workspaceData = workspaceDoc.data();
+        const newActiveWorkspaceId = userSnap.data().selectedWorkspace;
         
-        // STEP 2: Read the 'selectedProjectId' from the active workspace document. This is our target.
-        const selectedProjectId = workspaceData.selectedProjectId || null;
-        console.log(`[DEBUG] Found workspace '${currentWorkspaceId}'. It points to selectedProjectId: '${selectedProjectId}'`);
-        
-        if (!selectedProjectId) {
-            console.warn("[DEBUG] The active workspace does not point to a selected project.");
-            project = {};
-            render();
-            return;
-        }
-        
-        // STEP 3: Use the ID to find the actual project document, no matter where it's nested.
-        // We use a one-time `getDocs` with `collectionGroup` to find its full path.
-        try {
-            const projectQuery = query(
-                collectionGroup(db, 'projects'),
-                where('projectId', '==', selectedProjectId),
-                where('memberUIDs', 'array-contains', currentUserId)
-            );
-            const projectSnapshot = await getDocs(projectQuery);
+        if (newActiveWorkspaceId) {
+            const workspaceRef = doc(db, `users/${userId}/myworkspace`, newActiveWorkspaceId);
             
-            if (projectSnapshot.empty) {
-                console.error(`[DEBUG] CRITICAL: Could not find any project with the ID '${selectedProjectId}'.`);
-                project = {};
-                render();
-                return;
-            }
-            
-            const projectDoc = projectSnapshot.docs[0];
-            const projectRef = projectDoc.ref; // This is the full, correct path to the document
-            currentProjectId = projectDoc.id;
-            currentProjectRef = projectDoc.ref;
-            console.log(`[DEBUG] Successfully found project at path: ${projectRef.path}`);
-            
-            // STEP 4: Now that we have the correct project, attach real-time listeners to it.
-            activeListeners.project = onSnapshot(projectRef, async (projectDetailSnap) => {
-                if (!projectDetailSnap.exists()) {
-                    console.error("[DEBUG] The selected project was deleted.");
-                    project = { customColumns: [], sections: [], customPriorities: [], customStatuses: [] };
+            activeListeners.workspace = onSnapshot(workspaceRef, async (workspaceSnapshot) => {
+                detachProjectSpecificListeners();
+                currentProjectRef = null;
+                
+                if (!workspaceSnapshot.exists()) {
+                    console.warn("[DEBUG] No selected workspace. Clearing UI.");
+                    project = {};
                     render();
                     return;
                 }
                 
-                console.log(`[DEBUG] Project details listener fired for ${projectDetailSnap.id}`);
-                const projectData = projectDetailSnap.data();
-                project = { ...project, ...projectDetailSnap.data(), id: projectDetailSnap.id };
+                currentWorkspaceId = workspaceSnapshot.id;
+                const workspaceData = workspaceSnapshot.data();
                 
-                updateUserPermissions(projectData, currentUserId);
-                const memberUIDs = projectData.members?.map(m => m.uid) || [];
+                const selectedProjectId = workspaceData.selectedProjectId || null;
+                console.log(`[DEBUG] Found workspace '${currentWorkspaceId}'. It points to selectedProjectId: '${selectedProjectId}'`);
                 
-                // Fetch all user profiles using the new helper function
-                allUsers = await fetchMemberProfiles(memberUIDs);
-                
-                // Attach listener for Sections
-                const sectionsQuery = query(collection(projectRef, 'sections'), orderBy("order"));
-                if (activeListeners.sections) activeListeners.sections();
-                activeListeners.sections = onSnapshot(sectionsQuery, (sectionsSnapshot) => {
-                    project.sections = sectionsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, tasks: [] }));
-                    distributeTasksToSections(allTasksFromSnapshot);
+                if (!selectedProjectId) {
+                    console.warn("[DEBUG] The active workspace does not point to a selected project.");
+                    project = {};
                     render();
-                });
+                    return;
+                }
                 
-                // Attach listener for Tasks (using collectionGroup is still powerful here)
-                const tasksGroupQuery = query(collectionGroup(db, 'tasks'), where('projectId', '==', currentProjectId), orderBy('createdAt', 'desc'));
-                if (activeListeners.tasks) activeListeners.tasks();
-                activeListeners.tasks = onSnapshot(tasksGroupQuery, (tasksSnapshot) => {
-                    allTasksFromSnapshot = tasksSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-                    distributeTasksToSections(allTasksFromSnapshot);
-                    render();
-                });
+                try {
+                    const projectQuery = query(
+                        collectionGroup(db, 'projects'),
+                        where('projectId', '==', selectedProjectId),
+                        where('memberUIDs', 'array-contains', currentUserId)
+                    );
+                    const projectSnapshot = await getDocs(projectQuery);
+                    
+                    if (projectSnapshot.empty) {
+                        console.error(`[DEBUG] CRITICAL: Could not find any project with the ID '${selectedProjectId}'.`);
+                        project = {};
+                        render();
+                        return;
+                    }
+                    
+                    const projectDoc = projectSnapshot.docs[0];
+                    const projectRef = projectDoc.ref;
+                    currentProjectId = projectDoc.id;
+                    currentProjectRef = projectDoc.ref;
+                    console.log(`[DEBUG] Successfully found project at path: ${projectRef.path}`);
+                    
+                    activeListeners.project = onSnapshot(projectRef, async (projectDetailSnap) => {
+                        if (!projectDetailSnap.exists()) {
+                            console.error("[DEBUG] The selected project was deleted.");
+                            project = { customColumns: [], sections: [], customPriorities: [], customStatuses: [] };
+                            render();
+                            return;
+                        }
+                        
+                        console.log(`[DEBUG] Project details listener fired for ${projectDetailSnap.id}`);
+                        project = { ...project, ...projectDetailSnap.data(), id: projectDetailSnap.id };
+                        
+                        updateUserPermissions(projectDetailSnap.data(), currentUserId);
+                        const memberUIDs = projectDetailSnap.data().members?.map(m => m.uid) || [];
+                        allUsers = await fetchMemberProfiles(memberUIDs);
+                        
+                        const sectionsQuery = query(collection(projectRef, 'sections'), orderBy("order"));
+                        if (activeListeners.sections) activeListeners.sections();
+                        activeListeners.sections = onSnapshot(sectionsQuery, (sectionsSnapshot) => {
+                            project.sections = sectionsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, tasks: [] }));
+                            distributeTasksToSections(allTasksFromSnapshot);
+                            render();
+                        });
+                        
+                        const tasksGroupQuery = query(collectionGroup(db, 'tasks'), where('projectId', '==', currentProjectId), orderBy('createdAt', 'desc'));
+                        if (activeListeners.tasks) activeListeners.tasks();
+                        activeListeners.tasks = onSnapshot(tasksGroupQuery, (tasksSnapshot) => {
+                            allTasksFromSnapshot = tasksSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+                            distributeTasksToSections(allTasksFromSnapshot);
+                            render();
+                        });
+                    });
+                    
+                } catch (error) {
+                    console.error("[DEBUG] Error finding project via collectionGroup query:", error);
+                }
             });
-            
-        } catch (error) {
-            console.error("[DEBUG] Error finding project via collectionGroup query:", error);
+        } else {
+            console.log("[DEBUG] No workspace is selected for this user.");
         }
     });
 }
@@ -287,12 +317,6 @@ async function fetchMemberProfiles(uids) {
 
 // --- Permission Helper Functions ---
 
-/**
- * Sets the global permission flags based on the user's role in the current project.
- * This should be called whenever the project data is loaded or updated.
- * @param {object} projectData - The full project document data.
- * @param {string} userId - The UID of the currently authenticated user.
- */
 function updateUserPermissions(projectData, userId) {
     if (!projectData || !userId) {
         userCanEditProject = false;

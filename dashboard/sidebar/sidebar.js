@@ -411,10 +411,19 @@ window.TaskSidebar = (function() {
 }
     
     async function fetchActiveWorkspace(userId) {
-        const workspaceQuery = query(collection(db, `users/${userId}/myworkspace`), where("isSelected", "==", true), limit(1));
-        const workspaceSnapshot = await getDocs(workspaceQuery);
-        currentWorkspaceId = workspaceSnapshot.empty ? null : workspaceSnapshot.docs[0].id;
+    try {
+        const userRef = doc(db, 'users', userId);
+        const userSnap = await getDoc(userRef);
+        
+        currentWorkspaceId = userSnap.exists() ? userSnap.data().selectedWorkspace || null : null;
+        
+        console.log(`[DEBUG] Fetched active workspace ID: ${currentWorkspaceId}`);
+        
+    } catch (error) {
+        console.error("Error fetching active workspace:", error);
+        currentWorkspaceId = null;
     }
+}
     
     async function updateCustomField(columnId, newValue, column) {
         if (!currentTaskRef || !currentTask) return;
