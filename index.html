@@ -54,29 +54,19 @@
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
   <script type="module" src="/dashboard/components/shareProjectModel.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/isBetween.min.js"></script>
-  <script type="module">
-    // Import the functions you need from the SDKs you need
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
-    // TODO: Add SDKs for Firebase products that you want to use
-    // https://firebase.google.com/docs/web/setup#available-libraries
-    
-    // Your web app's Firebase configuration
-    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-    const firebaseConfig = {
-      apiKey: "AIzaSyBtVnLfn6D0356YPVSkYn7UjgBuSQ4_Dl0",
-      authDomain: "juan-luna-db.firebaseapp.com",
-      projectId: "juan-luna-db",
-      storageBucket: "juan-luna-db.firebasestorage.app",
-      messagingSenderId: "273627922642",
-      appId: "1:273627922642:web:0e8fd3a833f740e542ad0b",
-      measurementId: "G-D1K9XPZ1DT"
-    };
-    
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
-    console.log("✅ Firebase initialized:", app.name);
+  <script>
+    (function() {
+        // This function checks the user's OS/browser preference and applies the 'dark' class if needed.
+        function applyTheme() {
+            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (prefersDark) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
+        applyTheme();
+    })();
   </script>
 </body>
 
