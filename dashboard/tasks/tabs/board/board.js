@@ -781,73 +781,77 @@ async function addSectionToFirebase() {
 }
 
 const handleBlur = async (e) => {
-    // Check if the event target is an editable field
+    // Only proceed if the event target is an editable field
     if (!e.target.isContentEditable) return;
     
-    const newName = e.target.textContent.trim();
+    // Check if we are dealing with a new task card
     const taskCard = e.target.closest('.boardtasks-task-card.is-new');
 
     if (taskCard) {
-        // This is a new task, so it must be an editor. No extra check needed here.
         const newName = e.target.textContent.trim();
-        const tempId = taskCard.dataset.taskId;
-        const sectionEl = e.target.closest('.boardtasks-kanban-column');
+        const sectionEl = taskCard.closest('.boardtasks-kanban-column');
         if (!sectionEl) return;
-        const section = findSection(sectionEl.dataset.sectionId);
-        const taskIndex = section.tasks.findIndex(t => t.id === tempId);
-        if (taskIndex === -1) return;
+        
+        const sectionId = sectionEl.dataset.sectionId;
 
+        // Remove the temporary card from the screen immediately. This provides clean,
+        // instant feedback and prevents it from being re-rendered by other events.
+        taskCard.remove();
+
+        // Only proceed to save to the database if the user actually typed a name.
         if (newName) {
-            const taskData = section.tasks.splice(taskIndex, 1)[0];
-            delete taskData.isNew;
-            delete taskData.id;
-            // Path fix
-            const tasksCollectionRef = collection(currentProjectRef, `sections/${section.id}/tasks`);
             try {
+                // Find the real section data to calculate the correct 'order' for the new task.
+                const section = findSection(sectionId);
+                const order = section ? section.tasks.length : 0;
+
+                const tasksCollectionRef = collection(currentProjectRef, `sections/${sectionId}/tasks`);
                 const newTaskRef = doc(tasksCollectionRef);
+                
                 const fullTaskData = {
-                    ...taskData,
                     name: newName,
                     id: newTaskRef.id,
+                    order: order,
                     projectId: currentProjectId,
-                    sectionId: section.id,
+                    sectionId: sectionId,
                     userId: currentUserId,
                     createdAt: serverTimestamp(),
-                    priority: 'Low', status: 'On track', assignees: [] // Add defaults
+                    priority: 'Low',
+                    status: 'On track',
+                    assignees: [],
+                    customFields: {}
                 };
+                
+                // Save the complete task to Firestore. The real-time listener will then add it to the UI.
                 await setDoc(newTaskRef, fullTaskData);
+                console.log(`SUCCESS: New task '${newName}' saved to Firestore.`);
+
             } catch (error) {
                 console.error("Error adding new task:", error);
-                renderBoard();
+                alert("Failed to save the new task. Please try again.");
             }
-        } else {
-            section.tasks.splice(taskIndex, 1);
-            renderBoard();
         }
-        return; // Exit after handling new task
+        return; // Important: Stop execution here after handling a new task.
     }
 
-    // --- B. Handle EXISTING task/section update ---
+    // --- Logic for updating EXISTING tasks/sections (This part remains the same) ---
     const existingTaskCard = e.target.closest('.boardtasks-task-card');
     const sectionHeader = e.target.closest('.boardtasks-column-header');
 
     if (existingTaskCard) {
         const { task, section } = findTaskAndSection(existingTaskCard.dataset.taskId);
         if (!task) return;
-        // Path fix
         const taskRef = doc(currentProjectRef, `sections/${section.id}/tasks/${task.id}`);
-        const newName = e.target.textContent.trim();
-        if (task.name !== newName) {
-            await updateDoc(taskRef, { name: newName });
+        const updatedName = e.target.textContent.trim();
+        if (task.name !== updatedName) {
+            await updateDoc(taskRef, { name: updatedName });
         }
     } else if (sectionHeader) {
-        // This is already gated by contenteditable, but we double-check.
         if (!userCanEditProject) return;
         const sectionId = sectionHeader.closest('.boardtasks-kanban-column').dataset.sectionId;
         const section = findSection(sectionId);
         const newTitle = e.target.textContent.trim();
         if (section.title !== newTitle) {
-            // Path fix
             const sectionRef = doc(currentProjectRef, `sections/${sectionId}`);
             await updateDoc(sectionRef, { title: newTitle });
         }
