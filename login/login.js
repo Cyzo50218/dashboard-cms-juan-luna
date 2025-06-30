@@ -29,18 +29,21 @@ const backArrow = document.getElementById('backArrow');
 const togglePassword = document.getElementById("togglePassword");
 const googleSignInBtn = document.querySelector('.google-signin-btn');
 const forgotPasswordLinks = document.querySelectorAll('.forgot-password-link'); // Selects both links
+let isProcessingSignIn = false;
 
 // --- 3. GLOBAL STATE ---
 let userEmail = ''; // Store the user's email between the two steps
 
 // --- 4. CORE AUTHENTICATION LOGIC ---
 
+
+
 onAuthStateChanged(auth, (user) => {
-    if (user) {
-        console.log("User is already signed in:", user.uid);
+    if (user && !isProcessingSignIn) {
+        console.log("User is already signed in on page load. Redirecting...");
         window.location.href = '/';
     } else {
-        console.log("No user signed in. Ready for login.");
+        console.log("No user signed in, or sign-in is in progress. Ready for login.");
     }
 });
 
@@ -80,6 +83,8 @@ passwordForm.addEventListener('submit', async (e) => {
 });
 
 googleSignInBtn.addEventListener('click', async () => {
+    isProcessingSignIn = true;
+    
     const provider = new GoogleAuthProvider();
     try {
         const result = await signInWithPopup(auth, provider);
@@ -87,20 +92,20 @@ googleSignInBtn.addEventListener('click', async () => {
         await saveUserData(user, user.displayName, user.email, "google", user.photoURL);
         
         showSuccess('Sign-in successful! Redirecting...');
-        
-        // Add a small delay before redirecting to allow success message to be seen
         setTimeout(() => {
-            window.location.href = '/'; // Or your desired redirect path
+            window.location.href = '/';
         }, 1500);
         
     } catch (error) {
-        // Don't show an error if the user simply closes the popup
         if (error.code !== 'auth/popup-closed-by-user') {
             console.error("Google Sign-In Error:", error);
             showError('Failed to sign in with Google.');
         }
+    } finally {
+        isProcessingSignIn = false;
     }
 });
+
 
 // --- NEW: FORGOT PASSWORD LOGIC ---
 forgotPasswordLinks.forEach(link => {
