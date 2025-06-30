@@ -730,10 +730,42 @@ return `
 
 
 // --- 9. DATA MODIFICATION & EVENT HANDLERS ---
+/**
+ * Creates a temporary task object in the local state and triggers a re-render.
+ * This now includes all necessary default fields for a new task.
+ * @param {object} section - The section object where the task will be added.
+ */
 function createTemporaryTask(section) {
+    if (!section) {
+        console.error("Cannot create task: The section provided is invalid.");
+        return;
+    }
+    
     const tempId = `temp_${Date.now()}`;
-    section.tasks.push({ id: tempId, name: '', isNew: true, sectionId: section.id, order: section.tasks.length });
+    
+    // ✅ NEW: Create a complete task object with all default fields.
+    const newTask = {
+        id: tempId,
+        name: '',
+        isNew: true,
+        sectionId: section.id, // Keep the sectionId for proper handling
+        dueDate: '',
+        priority: 'Low',
+        status: 'On track',
+        assignees: [],
+        customFields: {},
+        order: section.tasks.length
+    };
+    
+    section.tasks.push(newTask);
     taskIdToFocus = tempId;
+    
+    // If the section is collapsed, expand it to show the new task.
+    if (section.isCollapsed) {
+        section.isCollapsed = false;
+    }
+    
+    // Call the correct render function for your board.
     renderBoard();
 }
 
@@ -749,33 +781,27 @@ async function addSectionToFirebase() {
 }
 
 const handleBlur = async (e) => {
+    // Check if the event target is an editable field
     if (!e.target.isContentEditable) return;
     
+    const newName = e.target.textContent.trim();
     const taskCard = e.target.closest('.boardtasks-task-card.is-new');
 
-    // --- This block is only for handling NEW tasks ---
     if (taskCard) {
+        // This is a new task, so it must be an editor. No extra check needed here.
         const newName = e.target.textContent.trim();
         const tempId = taskCard.dataset.taskId;
         const sectionEl = e.target.closest('.boardtasks-kanban-column');
         if (!sectionEl) return;
-
         const section = findSection(sectionEl.dataset.sectionId);
-        if (!section) return;
-
         const taskIndex = section.tasks.findIndex(t => t.id === tempId);
         if (taskIndex === -1) return;
 
         if (newName) {
-            // ✅ THE FIX: Don't remove the task from the local array.
-            // Just get a copy of its data.
-            const taskData = { ...section.tasks[taskIndex] };
+            const taskData = section.tasks.splice(taskIndex, 1)[0];
             delete taskData.isNew;
             delete taskData.id;
-            
-            // Immediately remove the temporary card from the UI for good UX.
-            taskCard.remove();
-            
+            // Path fix
             const tasksCollectionRef = collection(currentProjectRef, `sections/${section.id}/tasks`);
             try {
                 const newTaskRef = doc(tasksCollectionRef);
@@ -787,41 +813,41 @@ const handleBlur = async (e) => {
                     sectionId: section.id,
                     userId: currentUserId,
                     createdAt: serverTimestamp(),
-                    priority: 'Low', status: 'On track', assignees: []
+                    priority: 'Low', status: 'On track', assignees: [] // Add defaults
                 };
-                // Now we just save to Firestore and wait for the listener to update the UI.
                 await setDoc(newTaskRef, fullTaskData);
-                
             } catch (error) {
                 console.error("Error adding new task:", error);
-                // If saving fails, re-render to bring back the temporary card so the user can try again.
                 renderBoard();
             }
         } else {
-            // If the name is empty, just remove the temporary card.
-            taskCard.remove();
+            section.tasks.splice(taskIndex, 1);
+            renderBoard();
         }
-        return; 
+        return; // Exit after handling new task
     }
 
-    // --- Logic for EXISTING tasks/sections remains the same ---
+    // --- B. Handle EXISTING task/section update ---
     const existingTaskCard = e.target.closest('.boardtasks-task-card');
     const sectionHeader = e.target.closest('.boardtasks-column-header');
 
     if (existingTaskCard) {
         const { task, section } = findTaskAndSection(existingTaskCard.dataset.taskId);
         if (!task) return;
+        // Path fix
         const taskRef = doc(currentProjectRef, `sections/${section.id}/tasks/${task.id}`);
         const newName = e.target.textContent.trim();
         if (task.name !== newName) {
             await updateDoc(taskRef, { name: newName });
         }
     } else if (sectionHeader) {
+        // This is already gated by contenteditable, but we double-check.
         if (!userCanEditProject) return;
         const sectionId = sectionHeader.closest('.boardtasks-kanban-column').dataset.sectionId;
         const section = findSection(sectionId);
         const newTitle = e.target.textContent.trim();
         if (section.title !== newTitle) {
+            // Path fix
             const sectionRef = doc(currentProjectRef, `sections/${sectionId}`);
             await updateDoc(sectionRef, { title: newTitle });
         }
