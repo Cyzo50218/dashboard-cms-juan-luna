@@ -380,8 +380,55 @@ function setupEventListeners(modal, projectRef) {
     }
   });
   
-  // --- 2. Other Specific Listeners (No changes needed here) ---
-  
+  modal.addEventListener('click', async (e) => {
+        const leaveBtn = e.target.closest('#shareproject-leave-btn');
+        if (!leaveBtn) return;
+        
+        const projectData = JSON.parse(modal.dataseif (if (true) {
+            
+        }) {
+            
+        }t.projectData || '{}');
+        const userProfilesMap = JSON.parse(modal.dataset.userProfilesMap || '{}');
+        const superAdminUID = projectData.project_super_admin_uid;
+        const currentUserId = auth.currentUser.uid;
+        const secondaryAdminUID = projectData.project_admin_user;
+        
+        if (currentUserId === superAdminUID) {
+            if (secondaryAdminUID) {
+                const adminProfile = userProfilesMap[secondaryAdminUID];
+                const adminName = adminProfile ? adminProfile.name : 'the current admin';
+                if (confirm(`Are you sure you want to leave? Ownership will be transferred to ${adminName}. This action is irreversible.`)) {
+                    const leavingAdminData = (projectData.members || []).find(m => m.uid === currentUserId);
+                    const updates = {
+                        project_super_admin_uid: secondaryAdminUID,
+                        project_admin_user: deleteField(),
+                        members: arrayRemove(leavingAdminData)
+                    };
+                    await updateDoc(projectRef, updates);
+                    alert("You have left the project and ownership has been transferred.");
+                    closeModal();
+                }
+            } else {
+                if (confirm("WARNING: You are the only admin for this project. Leaving will permanently DELETE the project for all members. This action cannot be undone. Are you sure?")) {
+                    await deleteDoc(projectRef);
+                    alert("Project has been permanently deleted.");
+                    closeModal();
+                }
+            }
+        } else {
+            if (confirm("Are you sure you want to leave this project? You will lose access permanently unless invited back.")) {
+                const memberData = (projectData.members || []).find(m => m.uid === currentUserId);
+                if (memberData) {
+                    await updateDoc(projectRef, { members: arrayRemove(memberData) });
+                    if (secondaryAdminUID === currentUserId) await updateDoc(projectRef, { project_admin_user: deleteField() });
+                    alert("You have successfully left the project.");
+                    closeModal();
+                }
+            }
+        }
+    });
+    
   // Listener for the main close button
   modal.querySelector("#shareproject-close-modal-btn").addEventListener("click", closeModal);
   
