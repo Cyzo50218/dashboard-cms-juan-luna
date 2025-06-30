@@ -780,6 +780,36 @@ async function addSectionToFirebase() {
     } catch (error) { console.error("Error adding section:", error); }
 }
 
+/**
+ * Saves a new task document to the correct subcollection in Firestore.
+ * @param {string} sectionId - The ID of the section to add the task to.
+ * @param {object} taskData - An object containing the core task details like name, order, etc.
+ */
+async function addTaskToFirebase(sectionId, taskData) {
+    // 1. Ensure we have the necessary context to build the path.
+    if (!currentProjectRef || !sectionId) {
+        return console.error("Cannot add task: Missing section ID or project reference.");
+    }
+    const sectionRef = doc(currentProjectRef, 'sections', sectionId);
+    const tasksCollectionRef = collection(sectionRef, 'tasks');
+    
+    try {
+        const newTaskRef = doc(tasksCollectionRef); // Create a reference to get the ID
+        const fullTaskData = {
+            ...taskData,
+            id: newTaskRef.id,
+            projectId: currentProjectId, // Keep projectId for collectionGroup queries
+            userId: currentUserId,
+            sectionId: sectionId,
+            createdAt: serverTimestamp()
+        };
+        await setDoc(newTaskRef, fullTaskData);
+        console.log("Successfully added task with ID: ", newTaskRef.id);
+    } catch (error) {
+        console.error("Error adding task:", error);
+    }
+}
+
 const handleBlur = async (e) => {
     // Only proceed if the event target is an editable field
     if (!e.target.isContentEditable) return;
@@ -793,45 +823,24 @@ const handleBlur = async (e) => {
         if (!sectionEl) return;
         
         const sectionId = sectionEl.dataset.sectionId;
-
-        // Remove the temporary card from the screen immediately. This provides clean,
-        // instant feedback and prevents it from being re-rendered by other events.
         taskCard.remove();
 
-        // Only proceed to save to the database if the user actually typed a name.
+        // Only proceed to save if the user actually typed a name.
         if (newName) {
-            try {
-                // Find the real section data to calculate the correct 'order' for the new task.
-                const section = findSection(sectionId);
-                const order = section ? section.tasks.length : 0;
 
-                const tasksCollectionRef = collection(currentProjectRef, `sections/${sectionId}/tasks`);
-                const newTaskRef = doc(tasksCollectionRef);
-                
-                const fullTaskData = {
-                    name: newName,
-                    id: newTaskRef.id,
-                    order: order,
-                    projectId: currentProjectId,
-                    sectionId: sectionId,
-                    userId: currentUserId,
-                    createdAt: serverTimestamp(),
-                    priority: 'Low',
-                    status: 'On track',
-                    assignees: [],
-                    customFields: {}
-                };
-                
-                // Save the complete task to Firestore. The real-time listener will then add it to the UI.
-                await setDoc(newTaskRef, fullTaskData);
-                console.log(`SUCCESS: New task '${newName}' saved to Firestore.`);
-
-            } catch (error) {
-                console.error("Error adding new task:", error);
-                alert("Failed to save the new task. Please try again.");
-            }
+            const section = findSection(sectionId);
+            const order = section ? section.tasks.length : 0;
+            const taskData = {
+                name: newName,
+                order: order,
+                priority: 'Low',
+                status: 'On track',
+                assignees: [],
+                customFields: {}
+            };
+            await addTaskToFirebase(sectionId, taskData);
         }
-        return; // Important: Stop execution here after handling a new task.
+        return; 
     }
 
     // --- Logic for updating EXISTING tasks/sections (This part remains the same) ---
