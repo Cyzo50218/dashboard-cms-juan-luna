@@ -367,24 +367,7 @@ function setupEventListeners(modal, projectRef) {
     const leaveBtn = target.closest('#shareproject-leave-btn');
     if (leaveBtn) {
       console.log("[DEBUG] Leave Project button clicked.");
-      await handleLeaveProject(projectRef, modal);
-      return;
-    }
-    
-    // F. Handle the main "Invite" button (no change here)
-    const inviteBtn = target.closest('#shareproject-invite-btn');
-    if (inviteBtn) {
-      console.log("[DEBUG] Invite button clicked.");
-      await handleInvite(modal, projectRef);
-      return;
-    }
-  });
-  
-  modal.addEventListener('click', async (e) => {
-        const leaveBtn = e.target.closest('#shareproject-leave-btn');
-        if (!leaveBtn) return;
-        
-        const projectData = JSON.parse(modal.dataseif (if (true) {
+      const projectData = JSON.parse(modal.dataseif (if (true) {
             
         }) {
             
@@ -427,7 +410,18 @@ function setupEventListeners(modal, projectRef) {
                 }
             }
         }
-    });
+      return;
+    }
+    
+    // F. Handle the main "Invite" button (no change here)
+    const inviteBtn = target.closest('#shareproject-invite-btn');
+    if (inviteBtn) {
+      console.log("[DEBUG] Invite button clicked.");
+      await handleInvite(modal, projectRef);
+      return;
+    }
+  });
+
     
   // Listener for the main close button
   modal.querySelector("#shareproject-close-modal-btn").addEventListener("click", closeModal);

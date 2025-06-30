@@ -688,8 +688,8 @@ function setupEventListeners() {
                         onEdit: (option) => openEditOptionDialog('CustomColumn', option, column.id), // Your existing dialog
                         onAdd: () => openCustomColumnOptionDialog(column.id),
                         onDelete: (optionToDelete) => {
-                deleteCustomColumnOption(column.id, optionToDelete);
-            }
+                            deleteCustomColumnOption(column.id, optionToDelete);
+                        }
                     });
                 }
                 break;
@@ -2274,8 +2274,8 @@ function render() {
                                                 openCustomColumnOptionDialog(col.id);
                                             },
                                             onDelete: (optionToDelete) => {
-                deleteCustomColumnOption(col.id, optionToDelete);
-            }
+                                                deleteCustomColumnOption(col.id, optionToDelete);
+                                            }
                                         });
                                     }
                                 });
@@ -3123,14 +3123,14 @@ async function updateTaskInFirebase(taskId, sectionId, propertiesToUpdate) {
 async function addTaskToFirebase(sectionId, taskData) {
     // ✅ Log 1: Announce that the function has been called and show the initial data.
     console.log("[addTaskToFirebase] Function called with:", { sectionId, taskData });
-
+    
     // ✅ Log 2: Check the critical context variables needed for the operation.
     console.log("[addTaskToFirebase] Checking context state:", {
         currentProjectRef_path: currentProjectRef?.path,
         currentProjectId,
         currentUserId
     });
-
+    
     // 1. Ensure we have the necessary context to build the path.
     if (!currentProjectRef || !sectionId || !currentProjectId || !currentUserId) {
         // ✅ Log 3: If any context is missing, log a critical error and stop.
@@ -3149,7 +3149,7 @@ async function addTaskToFirebase(sectionId, taskData) {
     
     // ✅ Log 4: Show the exact path we are trying to write to.
     console.log(`[addTaskToFirebase] Attempting to write to path: ${tasksCollectionRef.path}`);
-
+    
     try {
         const newTaskRef = doc(tasksCollectionRef); // Create a reference to get the ID
         
@@ -3162,7 +3162,7 @@ async function addTaskToFirebase(sectionId, taskData) {
             sectionId: sectionId,
             createdAt: serverTimestamp()
         };
-
+        
         // ✅ Log 5: Display the final data object just before the save attempt.
         console.log("[addTaskToFirebase] Preparing to save final data object:", fullTaskData);
         
@@ -3171,7 +3171,7 @@ async function addTaskToFirebase(sectionId, taskData) {
         
         // ✅ Log 6: This will ONLY run if the await setDoc() line completes without throwing an error.
         console.log(`✅ SUCCESS: Firestore reported success for adding task with ID: ${newTaskRef.id}`);
-
+        
     } catch (error) {
         // ✅ Log 7: If `await setDoc()` fails for any reason (e.g., security rules), this block will run.
         console.error("❌ FIRESTORE ERROR: Error adding task:", error);
@@ -3447,7 +3447,7 @@ function createAdvancedDropdown(targetEl, config) {
         searchInput.type = 'text';
         searchInput.placeholder = config.searchPlaceholder || 'Search...'; // Use provided placeholder
         dropdown.appendChild(searchInput);
-
+        
         // Add event listener for filtering
         searchInput.addEventListener('input', () => {
             renderItems(searchInput.value);
@@ -3486,7 +3486,7 @@ function createAdvancedDropdown(targetEl, config) {
             // ✅ --- NEW: Container for action buttons ---
             const actionsContainer = document.createElement('div');
             actionsContainer.className = 'dropdown-item-actions';
-
+            
             // Add optional edit button
             if (config.onEdit) {
                 const editBtn = document.createElement('button');
@@ -3500,12 +3500,12 @@ function createAdvancedDropdown(targetEl, config) {
                 });
                 actionsContainer.appendChild(editBtn); // Add to actions container
             }
-
+            
             // ✅ --- NEW: Add optional delete button ---
             if (config.onDelete) {
                 const deleteBtn = document.createElement('button');
                 // Add a specific class for red styling
-                deleteBtn.className = 'dropdown-item-action-btn dropdown-item-danger'; 
+                deleteBtn.className = 'dropdown-item-action-btn dropdown-item-danger';
                 deleteBtn.innerHTML = `<i class="fas fa-trash-alt fa-xs"></i>`;
                 deleteBtn.title = 'Delete Option';
                 deleteBtn.addEventListener('click', (e) => {
@@ -3518,7 +3518,7 @@ function createAdvancedDropdown(targetEl, config) {
                 });
                 actionsContainer.appendChild(deleteBtn); // Add to actions container
             }
-
+            
             // Append the entire actions container to the list item
             if (actionsContainer.hasChildNodes()) {
                 li.appendChild(actionsContainer);
@@ -3546,7 +3546,7 @@ function createAdvancedDropdown(targetEl, config) {
     dropdown.style.left = `${rect.left}px`;
     dropdown.style.minWidth = `${rect.width}px`;
     const spaceBelow = window.innerHeight - rect.bottom;
-
+    
     // Use a timeout to allow the browser to render the dropdown and calculate its height
     setTimeout(() => {
         const dropdownHeight = dropdown.offsetHeight;
@@ -4043,32 +4043,32 @@ function openCustomOptionDialog(optionType) {
 function addNewCustomOption(optionType, newOption) {
     // 1. Determine the ID of the column we need to modify.
     const columnIdToUpdate = optionType.toLowerCase(); // 'Priority' -> 'priority'
-
+    
     // 2. Create a deep copy of the existing defaultColumns array to avoid bugs.
     const newDefaultColumns = JSON.parse(JSON.stringify(project.defaultColumns));
-
+    
     // 3. Find the specific column object ('priority' or 'status') in our copied array.
     const columnToUpdate = newDefaultColumns.find(col => col.id === columnIdToUpdate);
-
+    
     // 4. Safety check: If for some reason the column isn't found, stop here.
     if (!columnToUpdate) {
         console.error(`Could not find a default column with ID: "${columnIdToUpdate}"`);
         return;
     }
-
+    
     // 5. Ensure the 'options' array exists on the column object.
     if (!Array.isArray(columnToUpdate.options)) {
         columnToUpdate.options = [];
     }
-
+    
     // 6. Add the new option to the options array of our copied column.
     columnToUpdate.options.push(newOption);
-
+    
     // 7. Save the entire, updated 'defaultColumns' array back to Firestore.
     updateProjectInFirebase({
         defaultColumns: newDefaultColumns
     });
-
+    
     console.log(`Successfully added new option "${newOption.name}" to the "${optionType}" column.`);
 }
 
@@ -4297,7 +4297,7 @@ function openEditOptionDialog(optionType, originalOption, columnId = null) {
     dialogOverlay.addEventListener('click', e => {
         if (e.target === e.currentTarget) {
             closeFloatingPanels();
-        }else if (e.target.id === 'cancel-edit-option') {
+        } else if (e.target.id === 'cancel-edit-option') {
             closeFloatingPanelsOnButton();
         }
     });
@@ -4318,12 +4318,12 @@ async function updateCustomOptionInFirebase(optionType, originalOption, newOptio
         console.error("Update failed: currentProjectRef or columnId was not provided.");
         return;
     }
-
+    
     // --- 1. Prepare the Project Document Update (Local Modification) ---
     const projectCopy = JSON.parse(JSON.stringify(project));
     let columnArrayToUpdate = null;
     let columnIndex = -1;
-
+    
     let foundInDefault = projectCopy.defaultColumns.findIndex(c => String(c.id) === String(columnId));
     if (foundInDefault > -1) {
         columnArrayToUpdate = 'defaultColumns';
@@ -4335,12 +4335,12 @@ async function updateCustomOptionInFirebase(optionType, originalOption, newOptio
             columnIndex = foundInCustom;
         }
     }
-
+    
     if (!columnArrayToUpdate) {
         console.error(`Update failed: Could not find column with ID: ${columnId}`);
         return;
     }
-
+    
     const columnToEdit = projectCopy[columnArrayToUpdate][columnIndex];
     const isOptionsColumn = Array.isArray(columnToEdit.options); // ✅ Check if this column actually uses options.
     const options = columnToEdit.options || [];
@@ -4348,34 +4348,34 @@ async function updateCustomOptionInFirebase(optionType, originalOption, newOptio
         opt.name.toLowerCase() === originalOption.name.toLowerCase() &&
         opt.color.toLowerCase() === originalOption.color.toLowerCase()
     );
-
+    
     if (optionIndex === -1) {
         console.warn(`Could not find original option to update:`, originalOption);
         return;
     }
-
+    
     columnToEdit.options[optionIndex] = newOption;
-
+    
     // --- 2. Start an Atomic Batch Write ---
     const batch = writeBatch(db);
-
+    
     // --- 3. Add the Project Update to the Batch ---
     batch.update(currentProjectRef, {
         [columnArrayToUpdate]: projectCopy[columnArrayToUpdate]
     });
     console.log(`[Batch] Queued update for project's column definition.`);
-
-
+    
+    
     // --- 4. EFFICIENTLY Query and Update Tasks ---
     const nameHasChanged = originalOption.name !== newOption.name;
-
+    
     // ✅ Only proceed if the name changed AND it's a column type that has options.
     if (nameHasChanged && isOptionsColumn) {
-        const taskFieldPath = (columnId === 'status' || columnId === 'priority') 
-            ? columnId 
-            : `customFields.${columnId}`;
+        const taskFieldPath = (columnId === 'status' || columnId === 'priority') ?
+            columnId :
+            `customFields.${columnId}`;
         const oldValue = originalOption.name;
-
+        
         console.log(`[Batch] Option name changed. Fetching all project tasks to find and clear old value: "${oldValue}"`);
         
         // Step A: Fetch ALL tasks for the project. This requires only ONE index on projectId.
@@ -4384,14 +4384,14 @@ async function updateCustomOptionInFirebase(optionType, originalOption, newOptio
             where("projectId", "==", project.id)
         );
         const tasksSnapshot = await getDocs(allTasksQuery);
-
+        
         if (!tasksSnapshot.empty) {
             let tasksToClearCount = 0;
             // Step B: Loop through the tasks on the CLIENT-SIDE to find matches.
             tasksSnapshot.forEach(taskDoc => {
                 const taskData = taskDoc.data();
                 let taskValue;
-
+                
                 if (taskFieldPath.startsWith('customFields.')) {
                     taskValue = taskData.customFields ? taskData.customFields[columnId] : undefined;
                 } else {
@@ -4400,7 +4400,8 @@ async function updateCustomOptionInFirebase(optionType, originalOption, newOptio
                 
                 // Step C: If a match is found, add it to the batch.
                 if (taskValue === oldValue) {
-                    batch.update(taskDoc.ref, { [taskFieldPath]: '' }); // Set to blank
+                    batch.update(taskDoc.ref, {
+                        [taskFieldPath]: '' }); // Set to blank
                     tasksToClearCount++;
                 }
             });
@@ -4409,7 +4410,7 @@ async function updateCustomOptionInFirebase(optionType, originalOption, newOptio
             console.log(`[Batch] No tasks found in project. No tasks to clear.`);
         }
     }
-
+    
     // --- 5. Commit the Entire Batch ---
     try {
         await batch.commit();
@@ -4439,32 +4440,33 @@ async function deleteCustomColumn(columnId) {
         "Are you sure you want to delete this column? All data in this column for all tasks will be permanently lost. This cannot be undone."
     );
     if (!confirmed) return;
-
+    
     console.log(`[Batch] Preparing to delete custom column: ${columnId}`);
     const batch = writeBatch(db);
-
+    
     // --- 1. Update the Project Document ---
-
+    
     // Remove from 'customColumns' array
     const newCustomColumns = project.customColumns.filter(c => String(c.id) !== String(columnId));
     batch.update(currentProjectRef, { customColumns: newCustomColumns });
-
+    
     // Remove from 'columnOrder' array
     batch.update(currentProjectRef, { columnOrder: arrayRemove(String(columnId)) });
-
+    
     // Remove any saved widths from the 'fixedSizing' map
-    batch.update(currentProjectRef, { [`fixedSizing.${columnId}`]: deleteField() });
-
+    batch.update(currentProjectRef, {
+        [`fixedSizing.${columnId}`]: deleteField() });
+    
     console.log(`[Batch] Queued project document updates.`);
-
+    
     // --- 2. Update all Task Documents ---
     console.log(`[Batch] Querying all tasks in project to remove data for column ${columnId}...`);
-
+    
     const tasksQuery = query(
         collectionGroup(db, 'tasks'),
         where("projectId", "==", project.id)
     );
-
+    
     try {
         const tasksSnapshot = await getDocs(tasksQuery);
         if (!tasksSnapshot.empty) {
@@ -4476,12 +4478,12 @@ async function deleteCustomColumn(columnId) {
             });
             console.log(`[Batch] Queued ${tasksSnapshot.size} task updates.`);
         }
-
+        
         // --- 3. Commit the Entire Atomic Operation ---
         await batch.commit();
         console.log("✅ SUCCESS: Column and all its data deleted successfully.");
         // The listener will trigger a re-render automatically.
-
+        
     } catch (error) {
         console.error("❌ BATCH FAILED: Could not delete column.", error);
         alert("An error occurred while deleting the column. Please check the console.");
@@ -4495,71 +4497,82 @@ async function deleteCustomColumn(columnId) {
  * @param {object} optionToDelete The option object to remove (e.g., { name: 'Blocked', color: '#ff0000' }).
  */
 async function deleteDefaultColumnOption(columnId, optionToDelete) {
-    // --- Permission Check ---
-    const isOwnerOrAdmin = project.project_super_admin_uid === auth.currentUser.uid || 
-                            project.project_admin_user.includes(auth.currentUser.uid);
+    // --- Permission Check (No changes needed) ---
+    const isOwnerOrAdmin = project.project_super_admin_uid === auth.currentUser.uid ||
+        project.project_admin_user.includes(auth.currentUser.uid);
     if (!isOwnerOrAdmin) {
         return alert("Permission Denied: Only project admins can delete options.");
     }
     
-    // --- Confirmation ---
+    // --- Confirmation (No changes needed) ---
     const confirmed = window.confirm(
         `Are you sure you want to delete the "${optionToDelete.name}" option? All tasks using this option will be cleared.`
     );
     if (!confirmed) return;
-
+    
     console.log(`[Batch] Preparing to delete option "${optionToDelete.name}" from column "${columnId}".`);
     const batch = writeBatch(db);
-
-    // --- 1. Update the Project Document ---
+    
+    // --- 1. Update the Project Document (No changes needed) ---
     const newDefaultColumns = JSON.parse(JSON.stringify(project.defaultColumns));
     const columnToUpdate = newDefaultColumns.find(c => c.id === columnId);
-
+    
     if (!columnToUpdate || !columnToUpdate.options) {
         return console.error(`Cannot delete option, column "${columnId}" not found or has no options.`);
     }
-
-    // Filter out the option to be deleted
+    
     columnToUpdate.options = columnToUpdate.options.filter(
         opt => opt.name.toLowerCase() !== optionToDelete.name.toLowerCase()
     );
-
+    
     batch.update(currentProjectRef, { defaultColumns: newDefaultColumns });
     console.log(`[Batch] Queued project document update for defaultColumns.`);
-
+    
     // --- 2. Update all Task Documents ---
     const taskFieldPath = columnId; // 'status' or 'priority'
     const oldValue = optionToDelete.name;
-
-    console.log(`[Batch] Querying all tasks where '${taskFieldPath}' == '${oldValue}'...`);
     
-    const tasksToClearQuery = query(
+    // ✅ CHANGED: Query for ALL tasks in the project.
+    // This query only requires a basic index on "projectId", which is much more reusable.
+    console.log(`[Batch] Querying all tasks in project "${project.id}" to find matches...`);
+    const allTasksQuery = query(
         collectionGroup(db, 'tasks'),
-        where("projectId", "==", project.id),
-        where(taskFieldPath, "==", oldValue)
+        where("projectId", "==", project.id)
     );
-
+    
     try {
-        const tasksSnapshot = await getDocs(tasksToClearQuery);
+        const tasksSnapshot = await getDocs(allTasksQuery);
+        let tasksToUpdateCount = 0;
+
         if (!tasksSnapshot.empty) {
             tasksSnapshot.forEach(taskDoc => {
-                // Clear the field by setting it to an empty string
-                batch.update(taskDoc.ref, { [taskFieldPath]: '' });
+                // ✅ ADDED: Manually filter the tasks on the client side.
+                // Check if the task's field matches the value we want to delete.
+                if (taskDoc.data()[taskFieldPath] === oldValue) {
+                    // If it matches, queue an update to clear the field.
+                    batch.update(taskDoc.ref, { [taskFieldPath]: '' });
+                    tasksToUpdateCount++;
+                }
             });
-            console.log(`[Batch] Queued ${tasksSnapshot.size} task updates to clear old option.`);
         }
-
+        
+        if (tasksToUpdateCount > 0) {
+            console.log(`[Batch] Queued ${tasksToUpdateCount} task updates to clear old option.`);
+        } else {
+            console.log(`[Batch] No tasks found with the option "${oldValue}".`);
+        }
+        
         // --- 3. Commit the Entire Atomic Operation ---
         await batch.commit();
-        console.log(`✅ SUCCESS: Option "${oldValue}" deleted and tasks cleared.`);
-
+        console.log(`✅ SUCCESS: Option "${oldValue}" deleted and tasks updated.`);
+        
     } catch (error) {
         console.error("❌ BATCH FAILED: Could not delete option.", error);
         alert("An error occurred while deleting the option. Please check the console.");
     }
 }
 
-// --- Specific Functions to be Called by the UI ---
+// --- Specific Functions (No changes needed) ---
 
 /**
  * Deletes a single option from the "Status" column.
@@ -4596,7 +4609,7 @@ async function collapseExpandedSection(sectionId) {
         if (!user) throw new Error("User not authenticated.");
         
         const sectionRef = doc(currentProjectRef, 'sections', sectionId);
-
+        
         await updateDoc(sectionRef, { isCollapsed: false });
         console.log(`✅ Section ${sectionId} marked as collapsed in Firestore.`);
         
