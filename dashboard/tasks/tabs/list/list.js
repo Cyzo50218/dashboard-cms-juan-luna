@@ -686,7 +686,10 @@ function setupEventListeners() {
                             });
                         },
                         onEdit: (option) => openEditOptionDialog('CustomColumn', option, column.id), // Your existing dialog
-                        onAdd: () => openCustomColumnOptionDialog(column.id) // Your existing dialog
+                        onAdd: () => openCustomColumnOptionDialog(column.id),
+                        onDelete: (optionToDelete) => {
+                deleteCustomColumnOption(column.id, optionToDelete);
+            }
                     });
                 }
                 break;
@@ -2269,7 +2272,10 @@ function render() {
                                             onAdd: () => {
                                                 // This calls your existing dialog for adding a new option
                                                 openCustomColumnOptionDialog(col.id);
-                                            }
+                                            },
+                                            onDelete: (optionToDelete) => {
+                deleteCustomColumnOption(col.id, optionToDelete);
+            }
                                         });
                                     }
                                 });
@@ -3405,6 +3411,19 @@ function closeFloatingPanelsOnButton() {
     document.querySelectorAll('.dialog-overlay, .advanced-dropdown, .floating-panel').forEach(p => p.remove());
 }
 
+/**
+ * Creates a highly configurable, advanced dropdown menu.
+ *
+ * @param {HTMLElement} targetEl - The element to anchor the dropdown to.
+ * @param {object} config - The configuration object.
+ * @param {Array<object>} config.options - The array of items to display.
+ * @param {function(object):string} config.itemRenderer - Function to render the HTML for each item.
+ * @param {function(object):void} config.onSelect - Callback for when an item is selected.
+ * @param {boolean} [config.searchable=false] - Whether to include a search input.
+ * @param {function():void} [config.onAdd] - Callback for an "Add New" button in the footer.
+ * @param {function(object):void} [config.onEdit] - Callback for an "Edit" button on each item.
+ * @param {function(object):void} [config.onDelete] - Callback for a "Delete" button on each item.
+ */
 function createAdvancedDropdown(targetEl, config) {
     closeFloatingPanels();
     
@@ -3419,7 +3438,6 @@ function createAdvancedDropdown(targetEl, config) {
             document.removeEventListener('click', clickOutsideHandler, true);
         }
     };
-    // Use a timeout to attach the listener, preventing it from firing on the same click that opened it
     setTimeout(() => document.addEventListener('click', clickOutsideHandler, true), 0);
     
     // --- Search Input ---
@@ -3427,8 +3445,13 @@ function createAdvancedDropdown(targetEl, config) {
         const searchInput = document.createElement('input');
         searchInput.className = 'dropdown-search-input';
         searchInput.type = 'text';
-        searchInput.placeholder = 'Search teammates...';
+        searchInput.placeholder = config.searchPlaceholder || 'Search...'; // Use provided placeholder
         dropdown.appendChild(searchInput);
+
+        // Add event listener for filtering
+        searchInput.addEventListener('input', () => {
+            renderItems(searchInput.value);
+        });
     }
     
     // --- List Container ---
@@ -3448,22 +3471,26 @@ function createAdvancedDropdown(targetEl, config) {
             const li = document.createElement('li');
             li.className = 'dropdown-item';
             
+            // Main content of the item
             const content = document.createElement('div');
             content.className = 'dropdown-item-content';
             content.innerHTML = config.itemRenderer(option);
             li.appendChild(content);
             
-            // Handle main item click
             content.addEventListener('click', (e) => {
                 e.stopPropagation();
                 config.onSelect(option);
                 closeFloatingPanels();
             });
             
+            // ✅ --- NEW: Container for action buttons ---
+            const actionsContainer = document.createElement('div');
+            actionsContainer.className = 'dropdown-item-actions';
+
             // Add optional edit button
             if (config.onEdit) {
                 const editBtn = document.createElement('button');
-                editBtn.className = 'dropdown-item-edit-btn';
+                editBtn.className = 'dropdown-item-action-btn';
                 editBtn.innerHTML = `<i class="fas fa-pencil-alt fa-xs"></i>`;
                 editBtn.title = 'Edit Option';
                 editBtn.addEventListener('click', (e) => {
@@ -3471,8 +3498,32 @@ function createAdvancedDropdown(targetEl, config) {
                     config.onEdit(option);
                     closeFloatingPanels();
                 });
-                li.appendChild(editBtn);
+                actionsContainer.appendChild(editBtn); // Add to actions container
             }
+
+            // ✅ --- NEW: Add optional delete button ---
+            if (config.onDelete) {
+                const deleteBtn = document.createElement('button');
+                // Add a specific class for red styling
+                deleteBtn.className = 'dropdown-item-action-btn dropdown-item-danger'; 
+                deleteBtn.innerHTML = `<i class="fas fa-trash-alt fa-xs"></i>`;
+                deleteBtn.title = 'Delete Option';
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    // Add a confirmation step for safety
+                    if (window.confirm(`Are you sure you want to delete "${option.name || 'this item'}"?`)) {
+                        config.onDelete(option);
+                        closeFloatingPanels();
+                    }
+                });
+                actionsContainer.appendChild(deleteBtn); // Add to actions container
+            }
+
+            // Append the entire actions container to the list item
+            if (actionsContainer.hasChildNodes()) {
+                li.appendChild(actionsContainer);
+            }
+            
             listContainer.appendChild(li);
         });
     };
@@ -3491,18 +3542,21 @@ function createAdvancedDropdown(targetEl, config) {
     
     // --- Initial Render & Positioning ---
     renderItems();
-    // Use the same robust positioning logic from the sidebar answer
     const rect = targetEl.getBoundingClientRect();
     dropdown.style.left = `${rect.left}px`;
     dropdown.style.minWidth = `${rect.width}px`;
     const spaceBelow = window.innerHeight - rect.bottom;
-    if (spaceBelow < dropdown.offsetHeight && rect.top > dropdown.offsetHeight) {
-        dropdown.style.top = `${rect.top - dropdown.offsetHeight - 4}px`;
-    } else {
-        dropdown.style.top = `${rect.bottom + 4}px`;
-    }
-    
-    setTimeout(() => dropdown.classList.add('visible'), 10);
+
+    // Use a timeout to allow the browser to render the dropdown and calculate its height
+    setTimeout(() => {
+        const dropdownHeight = dropdown.offsetHeight;
+        if (spaceBelow < dropdownHeight && rect.top > dropdownHeight) {
+            dropdown.style.top = `${rect.top - dropdownHeight - 4}px`; // Position above
+        } else {
+            dropdown.style.top = `${rect.bottom + 4}px`; // Position below
+        }
+        dropdown.classList.add('visible');
+    }, 10);
 }
 
 /**
@@ -3546,6 +3600,13 @@ function showStatusDropdown(targetEl, taskId, sectionId, columnId) {
         },
         onAdd: () => {
             openCustomOptionDialog(column.name, column.id);
+        },
+        onDelete: (optionToDelete) => {
+            if (columnId === 'status') {
+                deleteStatusOption(optionToDelete);
+            } else if (columnId === 'priority') {
+                deletePriorityOption(optionToDelete);
+            }
         }
     });
 }
@@ -3974,15 +4035,41 @@ function openCustomOptionDialog(optionType) {
 
 
 /**
- * Writes the new custom Priority or Status option to Firebase.
+ * Writes the new custom Priority or Status option to the correct 'options' array
+ * inside the project's 'defaultColumns'.
  * @param {string} optionType - 'Priority' or 'Status'.
  * @param {object} newOption - The new option object { name, color }.
  */
 function addNewCustomOption(optionType, newOption) {
-    const fieldToUpdate = optionType === 'Priority' ? 'customPriorities' : 'customStatuses';
+    // 1. Determine the ID of the column we need to modify.
+    const columnIdToUpdate = optionType.toLowerCase(); // 'Priority' -> 'priority'
+
+    // 2. Create a deep copy of the existing defaultColumns array to avoid bugs.
+    const newDefaultColumns = JSON.parse(JSON.stringify(project.defaultColumns));
+
+    // 3. Find the specific column object ('priority' or 'status') in our copied array.
+    const columnToUpdate = newDefaultColumns.find(col => col.id === columnIdToUpdate);
+
+    // 4. Safety check: If for some reason the column isn't found, stop here.
+    if (!columnToUpdate) {
+        console.error(`Could not find a default column with ID: "${columnIdToUpdate}"`);
+        return;
+    }
+
+    // 5. Ensure the 'options' array exists on the column object.
+    if (!Array.isArray(columnToUpdate.options)) {
+        columnToUpdate.options = [];
+    }
+
+    // 6. Add the new option to the options array of our copied column.
+    columnToUpdate.options.push(newOption);
+
+    // 7. Save the entire, updated 'defaultColumns' array back to Firestore.
     updateProjectInFirebase({
-        [fieldToUpdate]: arrayUnion(newOption)
+        defaultColumns: newDefaultColumns
     });
+
+    console.log(`Successfully added new option "${newOption.name}" to the "${optionType}" column.`);
 }
 
 /**
@@ -4208,8 +4295,10 @@ function openEditOptionDialog(optionType, originalOption, columnId = null) {
     });
     
     dialogOverlay.addEventListener('click', e => {
-        if (e.target === e.currentTarget || e.target.id === 'cancel-edit-option') {
+        if (e.target === e.currentTarget) {
             closeFloatingPanels();
+        }else if (e.target.id === 'cancel-edit-option') {
+            closeFloatingPanelsOnButton();
         }
     });
 }
@@ -4332,6 +4421,163 @@ async function updateCustomOptionInFirebase(optionType, originalOption, newOptio
 }
 
 /**
+ * Deletes a custom column entirely. This involves:
+ * 1. Removing the column definition from `project.customColumns`.
+ * 2. Removing the column ID from `project.columnOrder`.
+ * 3. Removing the column's data from the `customFields` map in EVERY task.
+ * This is an atomic operation.
+ * @param {string | number} columnId The ID of the custom column to delete.
+ */
+async function deleteCustomColumn(columnId) {
+    // --- Permission Check ---
+    if (project.project_super_admin_uid !== auth.currentUser.uid) {
+        return alert("Permission Denied: Only the project owner can delete columns.");
+    }
+    
+    // --- Confirmation ---
+    const confirmed = window.confirm(
+        "Are you sure you want to delete this column? All data in this column for all tasks will be permanently lost. This cannot be undone."
+    );
+    if (!confirmed) return;
+
+    console.log(`[Batch] Preparing to delete custom column: ${columnId}`);
+    const batch = writeBatch(db);
+
+    // --- 1. Update the Project Document ---
+
+    // Remove from 'customColumns' array
+    const newCustomColumns = project.customColumns.filter(c => String(c.id) !== String(columnId));
+    batch.update(currentProjectRef, { customColumns: newCustomColumns });
+
+    // Remove from 'columnOrder' array
+    batch.update(currentProjectRef, { columnOrder: arrayRemove(String(columnId)) });
+
+    // Remove any saved widths from the 'fixedSizing' map
+    batch.update(currentProjectRef, { [`fixedSizing.${columnId}`]: deleteField() });
+
+    console.log(`[Batch] Queued project document updates.`);
+
+    // --- 2. Update all Task Documents ---
+    console.log(`[Batch] Querying all tasks in project to remove data for column ${columnId}...`);
+
+    const tasksQuery = query(
+        collectionGroup(db, 'tasks'),
+        where("projectId", "==", project.id)
+    );
+
+    try {
+        const tasksSnapshot = await getDocs(tasksQuery);
+        if (!tasksSnapshot.empty) {
+            tasksSnapshot.forEach(taskDoc => {
+                // For each task, remove the specific field from the 'customFields' map
+                batch.update(taskDoc.ref, {
+                    [`customFields.${columnId}`]: deleteField()
+                });
+            });
+            console.log(`[Batch] Queued ${tasksSnapshot.size} task updates.`);
+        }
+
+        // --- 3. Commit the Entire Atomic Operation ---
+        await batch.commit();
+        console.log("✅ SUCCESS: Column and all its data deleted successfully.");
+        // The listener will trigger a re-render automatically.
+
+    } catch (error) {
+        console.error("❌ BATCH FAILED: Could not delete column.", error);
+        alert("An error occurred while deleting the column. Please check the console.");
+    }
+}
+
+/**
+ * Deletes an option from a default column (Status or Priority) and clears the
+ * value from all tasks that were using it. This is an atomic operation.
+ * @param {'status' | 'priority'} columnId The ID of the column to modify.
+ * @param {object} optionToDelete The option object to remove (e.g., { name: 'Blocked', color: '#ff0000' }).
+ */
+async function deleteDefaultColumnOption(columnId, optionToDelete) {
+    // --- Permission Check ---
+    const isOwnerOrAdmin = project.project_super_admin_uid === auth.currentUser.uid || 
+                            project.project_admin_user.includes(auth.currentUser.uid);
+    if (!isOwnerOrAdmin) {
+        return alert("Permission Denied: Only project admins can delete options.");
+    }
+    
+    // --- Confirmation ---
+    const confirmed = window.confirm(
+        `Are you sure you want to delete the "${optionToDelete.name}" option? All tasks using this option will be cleared.`
+    );
+    if (!confirmed) return;
+
+    console.log(`[Batch] Preparing to delete option "${optionToDelete.name}" from column "${columnId}".`);
+    const batch = writeBatch(db);
+
+    // --- 1. Update the Project Document ---
+    const newDefaultColumns = JSON.parse(JSON.stringify(project.defaultColumns));
+    const columnToUpdate = newDefaultColumns.find(c => c.id === columnId);
+
+    if (!columnToUpdate || !columnToUpdate.options) {
+        return console.error(`Cannot delete option, column "${columnId}" not found or has no options.`);
+    }
+
+    // Filter out the option to be deleted
+    columnToUpdate.options = columnToUpdate.options.filter(
+        opt => opt.name.toLowerCase() !== optionToDelete.name.toLowerCase()
+    );
+
+    batch.update(currentProjectRef, { defaultColumns: newDefaultColumns });
+    console.log(`[Batch] Queued project document update for defaultColumns.`);
+
+    // --- 2. Update all Task Documents ---
+    const taskFieldPath = columnId; // 'status' or 'priority'
+    const oldValue = optionToDelete.name;
+
+    console.log(`[Batch] Querying all tasks where '${taskFieldPath}' == '${oldValue}'...`);
+    
+    const tasksToClearQuery = query(
+        collectionGroup(db, 'tasks'),
+        where("projectId", "==", project.id),
+        where(taskFieldPath, "==", oldValue)
+    );
+
+    try {
+        const tasksSnapshot = await getDocs(tasksToClearQuery);
+        if (!tasksSnapshot.empty) {
+            tasksSnapshot.forEach(taskDoc => {
+                // Clear the field by setting it to an empty string
+                batch.update(taskDoc.ref, { [taskFieldPath]: '' });
+            });
+            console.log(`[Batch] Queued ${tasksSnapshot.size} task updates to clear old option.`);
+        }
+
+        // --- 3. Commit the Entire Atomic Operation ---
+        await batch.commit();
+        console.log(`✅ SUCCESS: Option "${oldValue}" deleted and tasks cleared.`);
+
+    } catch (error) {
+        console.error("❌ BATCH FAILED: Could not delete option.", error);
+        alert("An error occurred while deleting the option. Please check the console.");
+    }
+}
+
+// --- Specific Functions to be Called by the UI ---
+
+/**
+ * Deletes a single option from the "Status" column.
+ * @param {object} optionToDelete The Status option object to remove.
+ */
+function deleteStatusOption(optionToDelete) {
+    deleteDefaultColumnOption('status', optionToDelete);
+}
+
+/**
+ * Deletes a single option from the "Priority" column.
+ * @param {object} optionToDelete The Priority option object to remove.
+ */
+function deletePriorityOption(optionToDelete) {
+    deleteDefaultColumnOption('priority', optionToDelete);
+}
+
+/**
  * Collapses an expanded section, removing its task rows and updating its state.
  * @param {string} sectionId - The ID of the section to collapse.
  */
@@ -4349,7 +4595,8 @@ async function collapseExpandedSection(sectionId) {
         const user = auth.currentUser;
         if (!user) throw new Error("User not authenticated.");
         
-        const sectionRef = doc(db, `${currentProjectRef}/sections/${sectionId}`);
+        const sectionRef = doc(currentProjectRef, 'sections', sectionId);
+
         await updateDoc(sectionRef, { isCollapsed: false });
         console.log(`✅ Section ${sectionId} marked as collapsed in Firestore.`);
         
@@ -4376,7 +4623,8 @@ async function expandCollapsedSection(sectionId) {
         const user = auth.currentUser;
         if (!user) throw new Error("User not authenticated.");
         
-        const sectionRef = doc(db, `${currentProjectRef}/sections/${sectionId}`);
+        const sectionRef = doc(currentProjectRef, 'sections', sectionId);
+        
         await updateDoc(sectionRef, { isCollapsed: true });
         console.log(`✅ Section ${sectionId} marked as collapsed in Firestore.`);
         

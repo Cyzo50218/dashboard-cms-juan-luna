@@ -78,79 +78,89 @@ function getSanitizedProjectEmails() {
 }
 
 export async function openShareModal(projectRef) {
-  invitedEmails = [];
-  if (!projectRef) {
-    alert("Error: Project not specified.");
-    return;
-  }
-  if (isModalOpen) return;
-  isModalOpen = true;
-
-  createModalUI();
-  modal = document.querySelector(".shareproject-modal");
-  const modalBody = document.querySelector(".shareproject-modal-body");
-  modal.classList.remove("hidden");
-
-  try {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated.");
-    let workspaceMemberUIDs = [];
-    const workspaceColRef = collection(db, 'users', user.uid, 'myworkspace');
-    const q = query(workspaceColRef, where("isSelected", "==", true), limit(1));
-    const workspaceQuerySnap = await getDocs(q);
-
-    if (!workspaceQuerySnap.empty) {
-      const workspaceDoc = workspaceQuerySnap.docs[0];
-      workspaceMemberUIDs = workspaceDoc.data().members || [];
-    } else {
-      console.warn("No active workspace found for the current user.");
+    invitedEmails = [];
+    if (!projectRef) {
+        alert("Error: Project not specified.");
+        return;
     }
+    if (isModalOpen) return;
+    isModalOpen = true;
 
-    unsubscribeProjectListener = onSnapshot(
-      projectRef,
-      async (projectDocSnap) => {
-        if (!projectDocSnap.exists()) {
-          alert("This project has been deleted.");
-          closeModal();
-          return;
+    createModalUI();
+    modal = document.querySelector(".shareproject-modal");
+    const modalBody = document.querySelector(".shareproject-modal-body");
+    modal.classList.remove("hidden");
+
+    try {
+        const user = auth.currentUser;
+        if (!user) throw new Error("User not authenticated.");
+        
+        // --- START: CORRECTED LOGIC FOR NESTED WORKSPACE ---
+
+        // Step 1: Get the user's document to find their selected workspace ID.
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        if (!userDocSnap.exists()) {
+            throw new Error("Current user document not found.");
         }
+        
+        const userData = userDocSnap.data();
 
-        const projectData = { id: projectDocSnap.id, ...projectDocSnap.data() };
-        const memberUIDs = (projectData.members || []).map((m) => m.uid);
-        const allUniqueUIDs = [
-          ...new Set([
-            projectData.project_super_admin_uid,
-            user.uid,
-            ...memberUIDs,
-          ]),
-        ].filter(Boolean);
+        // Step 2: Fetch the specific workspace document from the user's 'myworkspace' subcollection.
+        let workspaceMemberUIDs = [];
 
-        const userProfilePromises = allUniqueUIDs.map((uid) =>
-          getDoc(doc(db, "users", uid))
+        // --- END: CORRECTED LOGIC ---
+
+
+        unsubscribeProjectListener = onSnapshot(
+            projectRef,
+            async (projectDocSnap) => {
+                if (!projectDocSnap.exists()) {
+                    alert("This project has been deleted.");
+                    closeModal();
+                    return;
+                }
+
+                const projectData = { id: projectDocSnap.id, ...projectDocSnap.data() };
+                const memberUIDs = (projectData.members || []).map((m) => m.uid);
+                
+                const allUniqueUIDs = [
+                    ...new Set([
+                        projectData.project_super_admin_uid,
+                        user.uid,
+                        ...memberUIDs,
+                        ...workspaceMemberUIDs 
+                    ]),
+                ].filter(Boolean);
+
+                const userProfilePromises = allUniqueUIDs.map((uid) =>
+                    getDoc(doc(db, "users", uid))
+                );
+                const userProfileDocs = await Promise.all(userProfilePromises);
+                const userProfilesMap = userProfileDocs.reduce((acc, docSnap) => {
+                    if (docSnap.exists()) acc[docSnap.id] = docSnap.data();
+                    return acc;
+                }, {});
+
+                renderDynamicContent(modal, {
+                    projectData,
+                    userProfilesMap,
+                    currentUserId: user.uid,
+                    workspaceMemberCount: workspaceMemberUIDs.length,
+                });
+            }
         );
-        const userProfileDocs = await Promise.all(userProfilePromises);
-        const userProfilesMap = userProfileDocs.reduce((acc, docSnap) => {
-          if (docSnap.exists()) acc[docSnap.id] = docSnap.data();
-          return acc;
-        }, {});
-        renderDynamicContent(modal, {
-          projectData,
-          userProfilesMap,
-          currentUserId: user.uid,
-          workspaceMemberCount: workspaceMemberUIDs.length,
-        });
-      }
-    );
 
-    renderStaticDropdownContent(modal);
-    setupEventListeners(modal, projectRef);
-  } catch (error) {
-    console.error("Detailed error in openShareModal:", error);
-    const userMessage = `Could not load sharing details. <br><small style="color:#666;">Reason: ${error.message}</small>`;
-    if (modalBody) {
-      modalBody.innerHTML = `<p style="color: #d93025; font-family: sans-serif; text-align: center; padding: 20px;">${userMessage}</p>`;
+        renderStaticDropdownContent(modal);
+        setupEventListeners(modal, projectRef);
+
+    } catch (error) {
+        console.error("Detailed error in openShareModal:", error);
+        const userMessage = `Could not load sharing details. <br><small style="color:#666;">Reason: ${error.message}</small>`;
+        if (modalBody) {
+            modalBody.innerHTML = `<p style="color: #d93025; font-family: sans-serif; text-align: center; padding: 20px;">${userMessage}</p>`;
+        }
     }
-  }
 }
 
 function addEmailTag(email) {

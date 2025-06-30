@@ -2190,37 +2190,83 @@ Custom class
     overflow-y: auto;
 }
 
+/*
+ * The main container for each row in the dropdown.
+ * This is the KEY FIX for vertical alignment.
+*/
 .advanced-dropdown .dropdown-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between; /* To space out name and edit button */
-    padding: 8px 10px;
-    border-radius: 4px;
+    display: flex;                 /* Lays out content and actions in a row */
+    justify-content: space-between; /* Pushes content left and actions right */
+    align-items: center;           /* Vertically centers everything in the row */
+    padding: 6px 10px;             /* Adjust padding as needed */
     cursor: pointer;
-    font-size: 14px;
-    transition: background-color 0.2s ease;
+    transition: background-color 0.2s ease-in-out;
 }
 
 .advanced-dropdown .dropdown-item:hover {
-    background-color: #f5f5f5;
+    background-color: #f5f5f5; /* Your existing hover style */
 }
 
+/*
+ * The container for the text/icon content on the left.
+ * It's also a flex container to align its internal items (like a color swatch and text).
+*/
 .advanced-dropdown .dropdown-item-content {
     display: flex;
     align-items: center;
+    /* Allow content to shrink if needed, and prevent it from overflowing */
+    flex-grow: 1;
+    min-width: 0;
 }
 
-.advanced-dropdown .dropdown-item-edit-btn {
+/* * NEW: A container to group all action buttons (edit, delete, etc.)
+*/
+.advanced-dropdown .dropdown-item-actions {
+    display: flex;
+    align-items: center;
+    margin-left: 12px; /* Adds some space between the content and the buttons */
+}
+
+/* * NEW: A generic class for ALL action buttons for consistent styling.
+ * This replaces your old .dropdown-item-edit-btn
+*/
+.advanced-dropdown .dropdown-item-action-btn {
     background: none;
     border: none;
     cursor: pointer;
-    color: #888;
-    padding: 4px;
+    padding: 5px; /* A little more clickable area */
     border-radius: 4px;
+    line-height: 1; /* Helps with icon alignment */
+    opacity: 0.6;   /* Make icons subtle until hovered */
+    transition: all 0.2s ease-in-out;
 }
-.advanced-dropdown .dropdown-item-edit-btn:hover {
+
+/* Show icons more clearly when the whole ROW is hovered */
+.advanced-dropdown .dropdown-item:hover .dropdown-item-action-btn {
+    opacity: 1;
+}
+
+/* Specific hover for the button itself */
+.advanced-dropdown .dropdown-item-action-btn:hover {
     background-color: #e0e0e0;
-    color: #000;
+}
+
+/* General style for the icons within the buttons */
+.advanced-dropdown .dropdown-item-action-btn i {
+    font-size: 13px;  /* Adjust icon size */
+    color: #555;     /* Default icon color */
+    pointer-events: none; /* Prevents the icon from stealing clicks from the button */
+}
+
+/* * NEW: A modifier class specifically for the delete button.
+*/
+.advanced-dropdown .dropdown-item-danger:hover {
+    background-color: #f8d7da; /* A light red background on hover for delete */
+}
+
+/* The icon inside the delete button will be red */
+.advanced-dropdown .dropdown-item-danger i {
+    color: #d9534f; /* A nice, standard red */
 }
 
 .advanced-dropdown .dropdown-color-swatch {
