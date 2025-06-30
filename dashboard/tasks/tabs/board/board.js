@@ -169,19 +169,79 @@ const findTaskAndSection = (taskId) => {
     return { task: null, section: null };
 };
 
-const formatDueDate = (dueDateString) => {
-    if (!dueDateString) return '';
+function formatDueDate(dueDateString) {
+    // --- Setup ---
     const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-    const dueDate = new Date(dueDateString + 'T00:00:00');
-    today.setHours(0, 0, 0, 0);
-    tomorrow.setHours(0, 0, 0, 0);
-    dueDate.setHours(0, 0, 0, 0);
-    if (dueDate.getTime() === today.getTime()) return 'Today';
-    if (dueDate.getTime() === tomorrow.getTime()) return 'Tomorrow';
-    return dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-};
+    today.setHours(0, 0, 0, 0); // Normalize today to the start of the day for accurate comparisons.
+    
+    // Handle empty or invalid dates
+    if (!dueDateString) {
+        return { text: '', color: 'default' }; // Return empty text as requested
+    }
+    
+    const dueDate = new Date(dueDateString); // Directly parse the string
+    if (isNaN(dueDate.getTime())) {
+        return { text: 'Invalid date', color: 'red' };
+    }
+    dueDate.setHours(0, 0, 0, 0); // Also normalize the due date
+    
+    // --- Calculations ---
+    const todayYear = today.getFullYear();
+    const todayMonth = today.getMonth();
+    const dueYear = dueDate.getFullYear();
+    const dueMonth = dueDate.getMonth();
+    
+    // Calculate the difference in milliseconds and convert to days
+    const dayDifference = (dueDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
+    
+    // --- 1. Handle Past Dates ---
+    if (dayDifference < 0) {
+        if (dayDifference === -1) {
+            return { text: 'Yesterday', color: 'red' };
+        }
+        // "Last Week" is considered any day within the last 7 days (but not yesterday)
+        if (dayDifference > -7) {
+            return { text: 'Last Week', color: 'red' };
+        }
+        // Check if it was last calendar month in the same year
+        if (todayYear === dueYear && todayMonth === dueMonth + 1) {
+            return { text: 'Last Month', color: 'red' };
+        }
+        // Check if it was December last year when it's January this year
+        if (todayYear === dueYear + 1 && todayMonth === 0 && dueMonth === 11) {
+            return { text: 'Last Month', color: 'red' };
+        }
+        // Check if it was last year
+        if (todayYear === dueYear + 1) {
+            return { text: 'Last Year', color: 'red' };
+        }
+        // Fallback for all other past dates (e.g., "Over a year ago")
+        const MmmDddYyyyFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        return { text: MmmDddYyyyFormat.format(dueDate), color: 'red' };
+    }
+    
+    // --- 2. Handle Present and Immediate Future ---
+    if (dayDifference === 0) {
+        return { text: 'Today', color: 'green' };
+    }
+    if (dayDifference === 1) {
+        return { text: 'Tomorrow', color: 'yellow' }; // Changed to yellow for "approaching"
+    }
+    
+    // --- 3. Handle Future Dates ---
+    
+    // If the due date is in the current year
+    if (dueYear === todayYear) {
+        const MmmDddFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+        return { text: MmmDddFormat.format(dueDate), color: 'default' }; // e.g., "30 Jun"
+    }
+    
+    // If the due date is in a future year
+    else {
+        const MmmDddYyyyFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        return { text: MmmDddYyyyFormat.format(dueDate), color: 'default' }; // e.g., "30 Jun 2026"
+    }
+}
 
 const checkDueDates = () => {
     const today = new Date('2025-06-12T00:00:00');
