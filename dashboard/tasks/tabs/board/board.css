@@ -67,7 +67,7 @@
     margin: 0;
     position: relative;
     box-sizing: border-box;
-    overflow: auto; 
+    overflow: hidden; 
 }
 
 /* --- Containers & Headers --- */
@@ -169,6 +169,7 @@
     align-items: flex-start;
     /* MODIFIED: Removed overflow-x, as the parent container now handles scrolling */
     padding-bottom: 1rem;
+    overflow-x: auto;
     /* Keeps space at the bottom */
 }
 
