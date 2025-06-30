@@ -7,7 +7,24 @@ import {
     sendPasswordResetEmail,
     onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+    getFirestore,
+    doc,
+    setDoc,
+    getDoc, 
+    collection, 
+    addDoc, 
+    updateDoc, 
+    serverTimestamp 
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+import {
+    getStorage,
+    ref,
+    uploadString,
+    getDownloadURL
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+
 import { firebaseConfig } from "/services/firebase-config.js";
 
 // --- 1. INITIALIZATION ---
@@ -15,7 +32,9 @@ console.log("Initializing Firebase...");
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app, "juanluna-cms-01");
+const storage = getStorage(app); 
 console.log("Firebase initialized.");
+
 
 // --- 2. DOM ELEMENTS ---
 const slideContainer = document.getElementById('slideContainer');
