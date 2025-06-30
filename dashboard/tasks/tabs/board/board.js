@@ -107,6 +107,87 @@ async function fetchMemberProfiles(uids) {
 }
 
 /**
+ * Handles the logic for completing and un-completing a task.
+ * It moves the task to/from a designated "Completed" section.
+ * @param {object} task - The task object being completed.
+ * @param {HTMLElement} taskCardEl - The DOM element for the task card.
+ */
+async function handleTaskCompletion(task, taskCardEl) {
+    if (!task || !currentProjectRef) {
+        console.error("Task data or project reference is missing.");
+        return;
+    }
+
+    const taskId = task.id;
+    const batch = writeBatch(db);
+    const isCurrentlyCompleted = task.status === 'Completed';
+
+    if (isCurrentlyCompleted) {
+        // --- LOGIC FOR UN-COMPLETING A TASK ---
+        
+        // Find the section where the task should return. Use its 'previousSectionId' if it exists,
+        // otherwise, assume it goes back to the first non-completed section.
+        const targetSectionId = task.previousSectionId || project.sections.find(s => s.sectionType !== 'completed')?.id;
+        if (!targetSectionId) {
+            console.error("Cannot un-complete task: No target section found.");
+            return;
+        }
+
+        const sourceTaskRef = doc(currentProjectRef, `sections/${task.sectionId}/tasks/${taskId}`);
+        const targetTaskRef = doc(currentProjectRef, `sections/${targetSectionId}/tasks/${taskId}`);
+        
+        // Prepare the restored task data, removing the 'previous' fields
+        const { previousStatus, previousSectionId, ...restOfTask } = task;
+        const restoredTaskData = {
+            ...restOfTask,
+            status: previousStatus || 'On track', // Restore previous status or a default
+            sectionId: targetSectionId,
+        };
+
+        // Move the task by deleting the old and setting the new
+        batch.delete(sourceTaskRef);
+        batch.set(targetTaskRef, restoredTaskData);
+
+    } else {
+        // --- LOGIC FOR COMPLETING A TASK ---
+        
+        // Find the project's designated "Completed" section
+        const completedSection = project.sections.find(s => s.sectionType === 'completed');
+        if (!completedSection) {
+            console.error("Cannot complete task: A section with sectionType: 'completed' was not found.");
+            alert("Please create a 'Completed' section in your project settings to use this feature.");
+            return;
+        }
+
+        const sourceTaskRef = doc(currentProjectRef, `sections/${task.sectionId}/tasks/${taskId}`);
+        const targetTaskRef = doc(currentProjectRef, `sections/${completedSection.id}/tasks/${taskId}`);
+        
+        // Prepare the new task data, saving its current state before marking as completed
+        const updatedTaskData = {
+            ...task,
+            status: 'Completed',
+            previousStatus: task.status, // Remember the original status
+            previousSectionId: task.sectionId, // Remember the original section
+            sectionId: completedSection.id, // Set the new section
+        };
+
+        // Move the task
+        batch.delete(sourceTaskRef);
+        batch.set(targetTaskRef, updatedTaskData);
+    }
+
+    // --- Execute the batch update ---
+    try {
+        await batch.commit();
+        console.log(`Task ${taskId} completion status updated successfully.`);
+        // Note: The real-time listener will automatically call renderBoard(),
+        // so no manual re-render is needed here.
+    } catch (error) {
+        console.error(`Error updating task completion for ${taskId}:`, error);
+    }
+}
+
+/**
  * Sets the global permission flags based on the user's role in the current project.
  * @param {object} projectData - The full project document data.
  * @param {string} userId - The UID of the currently authenticated user.
