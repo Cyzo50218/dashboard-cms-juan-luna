@@ -617,6 +617,8 @@ if (project.customColumns && task.customFields) {
     });
 }
 
+const dueDateInfo = formatDueDate(task.dueDate);
+
 // --- FINAL HTML TEMPLATE ---
 return `
         <div class="boardtasks-task-card ${cardCompletedClass}" id="task-${task.id}" data-task-id="${task.id}" draggable="${isEditable}" data-control="open-sidebar">
@@ -635,7 +637,7 @@ return `
                     ${customTypeTagsHTML}
                 </div>
                 <div class="boardtasks-task-footer">
-                    <span class="boardtasks-due-date" data-due-date="${task.dueDate}">${formatDueDate(task.dueDate)}</span>
+                    <span class="boardtasks-due-date" data-due-date="${task.dueDate}">${dueDateInfo.text}</span>
                     <div class="boardtasks-task-actions">
                         <i class="fa-regular fa-heart ${hasLiked ? 'liked' : ''}" title="Like" data-control="like"></i>
                         <i class="fa-regular fa-comment" title="Comment" data-control="open-sidebar"></i>
