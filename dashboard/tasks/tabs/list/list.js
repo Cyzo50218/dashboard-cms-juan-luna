@@ -1720,7 +1720,7 @@ function render() {
                 
                 // A renderer that provides a specific icon for each column type
                 itemRenderer: (type) => {
-                    let icon = 'fa-font'; // Default icon for 'Text'
+                    let icon = ''; // Default icon for 'Text'
                     switch (type.name) {
                         case 'Numbers':
                             // icon = 'fa-hashtag';
@@ -1735,7 +1735,7 @@ function render() {
                             //     icon = 'fa-calendar-alt';
                             break;
                     }
-                    return `<i class="fas ${icon}"></i><span>${type.name}</span>`;
+                    return `</i><span>${type.name}</span>`;
                 },
                 // The onSelect logic is now cleaner
                 onSelect: (selected) => {
@@ -2593,6 +2593,7 @@ function render() {
     
     syncColumnWidths();
     initColumnResizing();
+    applySavedWidths();
     if (taskIdToFocus) {
         // Find the new task row's editable name field using the ID we saved
         const taskToFocusEl = taskListBody.querySelector(`[data-task-id="${taskIdToFocus}"] .task-name`);
@@ -2676,20 +2677,47 @@ function initColumnDragging() {
     });
 }
 
+/**
+ * Reads the saved column widths from project.fixedSizing and applies them to the table.
+ */
+function applySavedWidths() {
+    const table = document.querySelector('.min-w-max.relative');
+    if (!table || !project || !project.fixedSizing) return;
+    
+    console.log("[DEBUG] Applying saved column widths...", project.fixedSizing);
+    
+    // Loop through the saved sizes in the 'fixedSizing' map
+    for (const [colId, savedWidth] of Object.entries(project.fixedSizing)) {
+        // Find all cells (header and body) for this column ID
+        const cellsToResize = table.querySelectorAll(`[data-column-id="${colId}"]`);
+        
+        if (cellsToResize.length > 0) {
+            console.log(`[DEBUG] -> Setting width for column '${colId}' to ${savedWidth}px`);
+            cellsToResize.forEach(cell => {
+                cell.style.width = `${savedWidth}px`;
+                cell.style.minWidth = `${savedWidth}px`;
+            });
+        }
+    }
+}
+
 function initColumnResizing() {
     const table = document.querySelector('.min-w-max.relative');
     if (!table) return;
     
     // These variables will be set when a drag operation starts.
     let initialX, initialWidth, columnId;
-    let columnSpecificMinWidth; // This will hold the minimum width for the column being dragged.
+    let columnSpecificMinWidth;
+    let finalWidth; // ✅ ADDED: To store the width at the end of the drag.
     
     const onDragMove = (e) => {
         const currentX = e.touches ? e.touches[0].clientX : e.clientX;
         const deltaX = currentX - initialX;
         
-        // Use the dynamically set minimum width from the onDragStart event.
         const newWidth = Math.max(columnSpecificMinWidth, initialWidth + deltaX);
+        
+        // ✅ ADDED: Store the calculated width so we can access it on drag end.
+        finalWidth = newWidth;
         
         const cellsToResize = table.querySelectorAll(`[data-column-id="${columnId}"]`);
         cellsToResize.forEach(cell => {
@@ -2698,11 +2726,29 @@ function initColumnResizing() {
         });
     };
     
-    const onDragEnd = () => {
+    const onDragEnd = async () => { // ✅ Made this function async
         document.removeEventListener('mousemove', onDragMove);
         document.removeEventListener('mouseup', onDragEnd);
         document.removeEventListener('touchmove', onDragMove);
         document.removeEventListener('touchend', onDragEnd);
+        
+        // ✅ --- NEW SAVE LOGIC STARTS HERE ---
+        // Only save if the width has actually been calculated and changed.
+        if (finalWidth && Math.round(finalWidth) !== Math.round(initialWidth)) {
+            console.log(`[DEBUG] Saving new width for column '${columnId}': ${finalWidth}px`);
+            
+            try {
+                // Use dot notation to update a specific field within the 'fixedSizing' map.
+                // e.g., it will create a payload like { 'fixedSizing.priority': 150 }
+                await updateProjectInFirebase({
+                    [`fixedSizing.${columnId}`]: Math.round(finalWidth)
+                });
+                console.log("✅ Column width saved successfully.");
+            } catch (error) {
+                console.error("❌ Failed to save column width:", error);
+            }
+        }
+        // ✅ --- NEW SAVE LOGIC ENDS HERE ---
     };
     
     const onDragStart = (e) => {
@@ -2714,20 +2760,16 @@ function initColumnResizing() {
         columnId = headerCell.dataset.columnId;
         initialX = e.touches ? e.touches[0].clientX : e.clientX;
         initialWidth = headerCell.offsetWidth;
+        finalWidth = initialWidth; // ✅ ADDED: Reset finalWidth at the start of a drag.
         
-        // --- MIRRORED LOGIC FROM syncColumnWidths ---
-        // Here, we determine the correct minimum width for THIS specific column.
+        // Determine the correct minimum width for THIS specific column.
         if (columnId === 'priority' || columnId === 'status') {
             columnSpecificMinWidth = 100;
-        } else if (columnId === 'dueDate') {
-            columnSpecificMinWidth = 120;
-        } else if (columnId === 'assignees') {
+        } else if (columnId === 'dueDate' || columnId === 'assignees') {
             columnSpecificMinWidth = 120;
         } else {
-            columnSpecificMinWidth = 100; // Default minimum width
+            columnSpecificMinWidth = 100; // Default minimum width for custom columns
         }
-        console.log(`[DEBUG] Resizing column '${columnId}' with a minimum width of ${columnSpecificMinWidth}px.`);
-        // --- END MIRRORED LOGIC ---
         
         document.addEventListener('mousemove', onDragMove);
         document.addEventListener('mouseup', onDragEnd);
