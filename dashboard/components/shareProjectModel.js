@@ -78,89 +78,103 @@ function getSanitizedProjectEmails() {
 }
 
 export async function openShareModal(projectRef) {
-    invitedEmails = [];
-    if (!projectRef) {
-        alert("Error: Project not specified.");
-        return;
+  invitedEmails = [];
+  if (!projectRef) {
+    alert("Error: Project not specified.");
+    return;
+  }
+  if (isModalOpen) return;
+  isModalOpen = true;
+  
+  createModalUI();
+  modal = document.querySelector(".shareproject-modal");
+  const modalBody = document.querySelector(".shareproject-modal-body");
+  modal.classList.remove("hidden");
+  
+  try {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated.");
+    
+    const userDocRef = doc(db, 'users', user.uid);
+    const userDocSnap = await getDoc(userDocRef);
+    if (!userDocSnap.exists()) {
+      throw new Error("Current user document not found.");
     }
-    if (isModalOpen) return;
-    isModalOpen = true;
-
-    createModalUI();
-    modal = document.querySelector(".shareproject-modal");
-    const modalBody = document.querySelector(".shareproject-modal-body");
-    modal.classList.remove("hidden");
-
-    try {
-        const user = auth.currentUser;
-        if (!user) throw new Error("User not authenticated.");
-        
-        // --- START: CORRECTED LOGIC FOR NESTED WORKSPACE ---
-
-        // Step 1: Get the user's document to find their selected workspace ID.
-        const userDocRef = doc(db, 'users', user.uid);
-        const userDocSnap = await getDoc(userDocRef);
-        if (!userDocSnap.exists()) {
-            throw new Error("Current user document not found.");
+    
+    const userData = userDocSnap.data();
+    const selectedWorkspaceId = userData.selectedWorkspace;
+    
+    if (!selectedWorkspaceId) {
+      console.warn("User has no 'selectedWorkspace' field.");
+    }
+    
+    let workspaceMemberUIDs = [];
+    if (selectedWorkspaceId) {
+      const workspaceRef = doc(db, `users/${user.uid}/myworkspace/${selectedWorkspaceId}`);
+      const workspaceSnap = await getDoc(workspaceRef);
+      if (workspaceSnap.exists()) {
+        workspaceMemberUIDs = workspaceSnap.data().members || [];
+      }
+    }
+    
+    // ✅ ADDED: A flag to track if we've set up the listeners yet.
+    let listenersAttached = false;
+    
+    unsubscribeProjectListener = onSnapshot(
+      projectRef,
+      async (projectDocSnap) => {
+        if (!projectDocSnap.exists()) {
+          alert("This project has been deleted.");
+          closeModal();
+          return;
         }
         
-        const userData = userDocSnap.data();
-
-        // Step 2: Fetch the specific workspace document from the user's 'myworkspace' subcollection.
-        let workspaceMemberUIDs = [];
-
-        // --- END: CORRECTED LOGIC ---
-
-
-        unsubscribeProjectListener = onSnapshot(
-            projectRef,
-            async (projectDocSnap) => {
-                if (!projectDocSnap.exists()) {
-                    alert("This project has been deleted.");
-                    closeModal();
-                    return;
-                }
-
-                const projectData = { id: projectDocSnap.id, ...projectDocSnap.data() };
-                const memberUIDs = (projectData.members || []).map((m) => m.uid);
-                
-                const allUniqueUIDs = [
-                    ...new Set([
-                        projectData.project_super_admin_uid,
-                        user.uid,
-                        ...memberUIDs,
-                        ...workspaceMemberUIDs 
-                    ]),
-                ].filter(Boolean);
-
-                const userProfilePromises = allUniqueUIDs.map((uid) =>
-                    getDoc(doc(db, "users", uid))
-                );
-                const userProfileDocs = await Promise.all(userProfilePromises);
-                const userProfilesMap = userProfileDocs.reduce((acc, docSnap) => {
-                    if (docSnap.exists()) acc[docSnap.id] = docSnap.data();
-                    return acc;
-                }, {});
-
-                renderDynamicContent(modal, {
-                    projectData,
-                    userProfilesMap,
-                    currentUserId: user.uid,
-                    workspaceMemberCount: workspaceMemberUIDs.length,
-                });
-            }
+        const projectData = { id: projectDocSnap.id, ...projectDocSnap.data() };
+        const memberUIDs = (projectData.members || []).map((m) => m.uid);
+        
+        const allUniqueUIDs = [
+          ...new Set([
+            projectData.project_super_admin_uid,
+            user.uid,
+            ...memberUIDs,
+            ...workspaceMemberUIDs
+          ]),
+        ].filter(Boolean);
+        
+        const userProfilePromises = allUniqueUIDs.map((uid) =>
+          getDoc(doc(db, "users", uid))
         );
-
-        renderStaticDropdownContent(modal);
-        setupEventListeners(modal, projectRef);
-
-    } catch (error) {
-        console.error("Detailed error in openShareModal:", error);
-        const userMessage = `Could not load sharing details. <br><small style="color:#666;">Reason: ${error.message}</small>`;
-        if (modalBody) {
-            modalBody.innerHTML = `<p style="color: #d93025; font-family: sans-serif; text-align: center; padding: 20px;">${userMessage}</p>`;
+        const userProfileDocs = await Promise.all(userProfilePromises);
+        const userProfilesMap = userProfileDocs.reduce((acc, docSnap) => {
+          if (docSnap.exists()) acc[docSnap.id] = docSnap.data();
+          return acc;
+        }, {});
+        
+        // The first time data arrives, the DOM is built by this function.
+        renderDynamicContent(modal, {
+          projectData,
+          userProfilesMap,
+          currentUserId: user.uid,
+          workspaceMemberCount: workspaceMemberUIDs.length,
+        });
+        
+        // ✅ THE FIX: Set up event listeners only ONCE, after the first render.
+        if (!listenersAttached) {
+          console.log("[DEBUG] First render complete. Attaching event listeners now.");
+          renderStaticDropdownContent(modal); // Also move static rendering here
+          setupEventListeners(modal, projectRef);
+          listenersAttached = true; // Set the flag so this doesn't run again.
         }
+      }
+    );
+    
+  } catch (error) {
+    console.error("Detailed error in openShareModal:", error);
+    const userMessage = `Could not load sharing details. <br><small style="color:#666;">Reason: ${error.message}</small>`;
+    if (modalBody) {
+      modalBody.innerHTML = `<p style="color: #d93025; font-family: sans-serif; text-align: center; padding: 20px;">${userMessage}</p>`;
     }
+  }
 }
 
 function addEmailTag(email) {
@@ -178,340 +192,220 @@ function addEmailTag(email) {
   modal.querySelector("#shareproject-email-input").value = "";
 }
 
-function setupEventListeners(modal, projectRef) {
-  modal
-    .querySelector("#shareproject-close-modal-btn")
-    .addEventListener("click", closeModal);
-  document
-    .getElementById("shareproject-modal-backdrop")
-    .addEventListener("click", (e) => {
-      if (e.target.id === "shareproject-modal-backdrop") closeModal();
-      if (
-        !e.target.closest(
-          "[data-target-dropdown], .shareproject-dropdown-content, .shareproject-user-search-dropdown"
-        )
-      ) {
-        document
-          .querySelectorAll(
-            ".shareproject-dropdown-content, .shareproject-user-search-dropdown"
-          )
-          .forEach((el) => el.classList.add("hidden"));
-      }
-    });
-
-  modal.addEventListener("click", (e) => {
-    const dropdownBtn = e.target.closest("[data-target-dropdown]");
-    if (dropdownBtn) {
-      e.stopPropagation();
-      const dropdown = document.getElementById(
-        dropdownBtn.dataset.targetDropdown
-      );
-      if (!dropdown) return;
-
-      const contextId =
-        dropdownBtn.closest("[data-uid]")?.dataset.uid ||
-        dropdownBtn.closest("[data-id]")?.dataset.id ||
-        dropdownBtn.id;
-      dropdown.dataset.contextId = contextId;
-
-      const isHidden = dropdown.classList.contains("hidden");
-      document
-        .querySelectorAll(".shareproject-dropdown-content")
-        .forEach((el) => el.classList.add("hidden"));
-
-      if (isHidden) {
-        const modalRect = modal.getBoundingClientRect();
-        const buttonRect = dropdownBtn.getBoundingClientRect();
-        dropdown.style.top = `${buttonRect.bottom - modalRect.top + 5}px`;
-        if (dropdown.id === "shareproject-access-dropdown") {
-          dropdown.style.left = `${buttonRect.left - modalRect.left}px`;
-          dropdown.style.right = `${modalRect.right - buttonRect.right}px`;
-        } else {
-          const dropdownWidth = dropdown.offsetWidth;
-          dropdown.style.left = `${
-            buttonRect.right - modalRect.left - dropdownWidth
-          }px`;
-        }
-        dropdown.classList.remove("hidden");
-      }
-    }
-  });
-
-  modal.addEventListener("click", async (e) => {
-  const actionBtn = e.target.closest(".shareproject-dropdown-action");
-  if (!actionBtn) return;
-  
-  e.preventDefault();
+/**
+ * Handles all dropdown actions like changing a role or removing a member.
+ * This version uses a robust method for updating the members array.
+ * @param {HTMLElement} actionBtn The dropdown button element that was clicked.
+ * @param {DocumentReference} projectRef A Firestore reference to the current project.
+ */
+async function handleRoleChangeAction(actionBtn, projectRef) {
   const dropdown = actionBtn.closest(".shareproject-dropdown-content");
   if (!dropdown) return;
   
-  // --- Constants & Data ---
-  const OWNER_ROLE = "Project Owner Admin";
-  const ADMIN_ROLE = "Project Admin";
+  // Hide the dropdown immediately for a better UI feel
+  dropdown.classList.add("hidden");
   
+  // --- Data Setup ---
   const contextId = dropdown.dataset.contextId;
   const projectData = JSON.parse(modal.dataset.projectData || "{}");
-  const superAdminUID = projectData.project_super_admin_uid;
-  const projectAdminUser = projectData.project_admin_user;
-  const currentUserId = auth.currentUser.uid;
   const newRole = actionBtn.dataset.role;
   const isRemove = actionBtn.matches(".shareproject-remove");
+  const currentUserId = auth.currentUser.uid;
+  const superAdminUID = projectData.project_super_admin_uid;
   
-  // All actions require owner permissions
+  // --- Permission Check ---
   if (currentUserId !== superAdminUID) {
-    return alert("Only the project owner can modify or remove members.");
+    return alert("Only the project owner can modify member roles.");
   }
   
   const memberId = contextId;
-  const memberData = (projectData.members || []).find((m) => m.uid === memberId);
-  if (!memberData) return;
+  const batch = writeBatch(db);
   
-  
-  // ✅ RULE 1: THIS BLOCK NOW HANDLES OWNERSHIP TRANSFER
-  if (memberId === superAdminUID) {
-    // First, check if there is a Project Admin to transfer ownership to.
-    if (!projectAdminUser || projectAdminUser === superAdminUID) {
-      alert(`You must appoint a '${ADMIN_ROLE}' before you can transfer project ownership.`);
-      dropdown.classList.add("hidden");
-      return;
-    }
-    
-    // Present a final, clear confirmation warning.
-    const confirmation = confirm(
-      "⚠️ DANGER: You are about to permanently transfer ownership of this project.\n\n" +
-      "You will lose all your owner privileges, and the current Project Admin will take over as the new Super Admin.\n\n" +
-      "This action cannot be undone. Are you sure you want to proceed?"
-    );
-    
-    if (confirmation) {
-      // User confirmed. Proceed with the ownership transfer.
-      try {
-        // Find the new owner's data to get their name/role for the array update
-        const newOwnerData = (projectData.members || []).find(m => m.uid === projectAdminUser);
-        
-        // Create a new members array with updated roles
-        const updatedMembers = (projectData.members || []).map(m => {
-          if (m.uid === superAdminUID) {
-            // The old owner gets the new role from the dropdown (e.g., "Viewer")
-            return { ...m, role: newRole || 'Viewer' };
-          }
-          if (m.uid === projectAdminUser) {
-            // The new owner gets the official owner role
-            return { ...newOwnerData, role: OWNER_ROLE };
-          }
-          return m; // Other members are unchanged
-        });
-        
-        // Perform the database update
-        await updateDoc(projectRef, {
-          project_super_admin_uid: projectAdminUser, // Promote the admin to super admin
-          project_admin_user: deleteField(), // Clear the secondary admin field
-          members: updatedMembers // Save the new members array
-        });
-        
-        alert("Ownership transferred successfully.");
-        
-      } catch (error) {
-        console.error("Error transferring ownership:", error);
-        alert("An error occurred during the ownership transfer. Please try again.");
-      }
-    }
-    
-    dropdown.classList.add("hidden");
-    return; // Stop further execution
-  }
-  
-  
-  // --- All following logic is for actions on OTHER members ---
-  
+  // --- SCENARIO 1: Removing a member ---
   if (isRemove) {
-    // Owner cannot be removed from here, already handled above.
-    await updateDoc(projectRef, { members: arrayRemove(memberData) });
-    if (projectAdminUser === memberId) {
-      await updateDoc(projectRef, { project_admin_user: deleteField() });
+    if (memberId === superAdminUID) {
+      return alert("The project owner cannot be removed. You must transfer ownership first.");
+    }
+    
+    const memberData = (projectData.members || []).find(m => m.uid === memberId);
+    if (memberData) {
+      batch.update(projectRef, {
+        members: arrayRemove(memberData),
+        project_admin_user: arrayRemove(memberId) // Also remove from admins if they were one
+      });
     }
   }
+  // --- SCENARIO 2: Changing a role ---
   else if (newRole) {
-    if (newRole === OWNER_ROLE) {
-      alert(`The '${OWNER_ROLE}' role can only be assigned through an ownership transfer.`);
-      dropdown.classList.add("hidden");
-      return;
-    }
+    // Find the original state of the members array
+    const originalMembers = projectData.members || [];
     
-    if (newRole === ADMIN_ROLE && projectAdminUser && projectAdminUser !== memberId) {
-      alert(`You can only have one '${ADMIN_ROLE}'. Please demote the current admin first.`);
-      dropdown.classList.add("hidden");
-      return;
-    }
+    // Create the new, updated members array using .map()
+    const updatedMembers = originalMembers.map(member => {
+      // Find the member we want to change and return their new state
+      if (member.uid === memberId) {
+        return { ...member, role: newRole };
+      }
+      // Return all other members unchanged
+      return member;
+    });
     
-    const newData = { ...memberData, role: newRole };
-    await updateDoc(projectRef, { members: arrayRemove(memberData) });
-    await updateDoc(projectRef, { members: arrayUnion(newData) });
+    // Add the update for the entire 'members' array to the batch
+    batch.update(projectRef, { members: updatedMembers });
     
-    if (newRole === ADMIN_ROLE) {
-      await updateDoc(projectRef, { project_admin_user: memberId });
-    } else if (projectAdminUser === memberId) {
-      await updateDoc(projectRef, { project_admin_user: deleteField() });
+    // Additionally, update the 'project_admin_user' array if necessary
+    if (newRole === "Project Admin") {
+      batch.update(projectRef, { project_admin_user: arrayUnion(memberId) });
+    } else {
+      // If their new role is NOT admin, ensure they are removed from the admin list
+      batch.update(projectRef, { project_admin_user: arrayRemove(memberId) });
     }
   }
   
-  dropdown.classList.add("hidden");
-});
+  // --- Commit the Batch ---
+  try {
+    await batch.commit();
+    console.log("✅ Update successful. The onSnapshot listener should now refresh the UI.");
+    // There is no need to call render() manually. 
+    // The onSnapshot listener will detect the change and do it for you.
+  } catch (error) {
+    console.error("❌ Update failed:", error);
+    alert("An error occurred while saving changes. Please check the console.");
+  }
+}
 
-  modal.addEventListener("click", async (e) => {
-    const leaveBtn = e.target.closest("#shareproject-leave-btn");
-    if (!leaveBtn) return;
+function toggleDropdown(dropdownBtn, modal) {
+  const dropdownId = dropdownBtn.dataset.targetDropdown;
+  const dropdown = document.getElementById(dropdownId);
+  if (!dropdown) return;
+  
+  const contextId = dropdownBtn.closest("[data-uid]")?.dataset.uid || dropdownBtn.closest("[data-id]")?.dataset.id || dropdownBtn.id;
+  dropdown.dataset.contextId = contextId;
+  
+  const isHidden = dropdown.classList.contains("hidden");
+  // Hide all other dropdowns first
+  document.querySelectorAll(".shareproject-dropdown-content").forEach((el) => el.classList.add("hidden"));
+  
+  if (isHidden) {
+    // --- POSITIONING LOGIC ---
+    const modalRect = modal.getBoundingClientRect();
+    const buttonRect = dropdownBtn.getBoundingClientRect();
+    
+    // Set the dropdown's top position to be just below the button.
+    dropdown.style.top = `${buttonRect.bottom - modalRect.top + 5}px`; // Added 5px for a small gap.
+    
+    // ✅ CHANGED: Align the dropdown's left edge with the button's left edge.
+    dropdown.style.left = `${buttonRect.left - modalRect.left}px`;
+    
+    dropdown.classList.remove("hidden");
+  }
+}
 
-    const projectData = JSON.parse(modal.dataset.projectData || "{}");
-    const userProfilesMap = JSON.parse(modal.dataset.userProfilesMap || "{}");
-    const superAdminUID = projectData.project_super_admin_uid;
-    const currentUserId = auth.currentUser.uid;
-    const secondaryAdminUID = projectData.project_admin_user;
-
-    if (currentUserId === superAdminUID) {
-      if (secondaryAdminUID) {
-        const adminProfile = userProfilesMap[secondaryAdminUID];
-        const adminName = adminProfile
-          ? adminProfile.name
-          : "the current admin";
-        if (
-          confirm(
-            `Are you sure you want to leave? Ownership will be transferred to ${adminName}. This action is irreversible.`
-          )
-        ) {
-          const leavingAdminData = (projectData.members || []).find(
-            (m) => m.uid === currentUserId
-          );
-          const updates = {
-            project_super_admin_uid: secondaryAdminUID,
-            project_admin_user: deleteField(),
-            members: arrayRemove(leavingAdminData),
-          };
-          await updateDoc(projectRef, updates);
-          alert(
-            "You have left the project and ownership has been transferred."
-          );
-          closeModal();
-        }
-      } else {
-        if (
-          confirm(
-            "WARNING: You are the only admin for this project. Leaving will permanently DELETE the project for all members. This action cannot be undone. Are you sure?"
-          )
-        ) {
-          await deleteDoc(projectRef);
-          alert("Project has been permanently deleted.");
-          closeModal();
+/**
+ * Sets up all event listeners for the share modal.
+ * This function uses a single, unified click handler on the modal but
+ * differentiates between various action types for predictable behavior.
+ * @param {HTMLElement} modal The modal element.
+ * @param {DocumentReference} projectRef A Firestore reference to the current project.
+ */
+function setupEventListeners(modal, projectRef) {
+  // --- 1. Master Click Listener (Event Delegation) ---
+  modal.addEventListener('click', async (e) => {
+    const target = e.target;
+    e.preventDefault(); // Prevent default link/button behavior for all handled actions.
+    
+    // A. Handle clicks on role/remove buttons for EXISTING MEMBERS
+    const memberActionBtn = target.closest('#shareproject-member-dropdowns-container .shareproject-dropdown-action');
+    if (memberActionBtn) {
+      console.log("[DEBUG] Member action button clicked:", memberActionBtn.dataset);
+      await handleRoleChangeAction(memberActionBtn, projectRef);
+      return;
+    }
+    
+    // B. Handle changing the role for a NEW INVITE
+    const inviteRoleBtn = target.closest('#shareproject-role-dropdown .shareproject-dropdown-action');
+    if (inviteRoleBtn) {
+      const newRole = inviteRoleBtn.dataset.role;
+      if (newRole) {
+        // Just update the UI text, no database action needed here.
+        document.getElementById('shareproject-selected-role').textContent = newRole;
+      }
+      // Hide the dropdown
+      inviteRoleBtn.closest('.shareproject-dropdown-content').classList.add('hidden');
+      return;
+    }
+    
+    // C. Handle changing the project's GENERAL ACCESS LEVEL
+    const accessActionBtn = target.closest('#shareproject-access-dropdown .shareproject-dropdown-action');
+    if (accessActionBtn) {
+      const newAccess = accessActionBtn.dataset.access;
+      if (newAccess) {
+        try {
+          // Update Firestore. The onSnapshot listener will automatically re-render the UI.
+          await updateDoc(projectRef, { accessLevel: newAccess });
+          console.log(`Project access level changed to: ${newAccess}`);
+        } catch (error) {
+          console.error("Failed to update access level:", error);
+          alert("Error: Could not save the new access setting.");
         }
       }
-    } else {
-      if (
-        confirm(
-          "Are you sure you want to leave this project? You will lose access permanently unless invited back."
-        )
-      ) {
-        const memberData = (projectData.members || []).find(
-          (m) => m.uid === currentUserId
-        );
-        if (memberData) {
-          await updateDoc(projectRef, { members: arrayRemove(memberData) });
-          if (secondaryAdminUID === currentUserId)
-            await updateDoc(projectRef, { project_admin_user: deleteField() });
-          alert("You have successfully left the project.");
-          closeModal();
-        }
-      }
+      // Hide the dropdown
+      accessActionBtn.closest('.shareproject-dropdown-content').classList.add('hidden');
+      return;
+    }
+    
+    // D. Handle clicks that open dropdown menus (no change here)
+    const dropdownToggleBtn = target.closest('[data-target-dropdown]');
+    if (dropdownToggleBtn) {
+      e.stopPropagation(); // Keep this to prevent the backdrop click from firing
+      console.log("[DEBUG] Dropdown toggle clicked.");
+      toggleDropdown(dropdownToggleBtn, modal);
+      return;
+    }
+    
+    // E. Handle the "Leave Project" button (no change here)
+    const leaveBtn = target.closest('#shareproject-leave-btn');
+    if (leaveBtn) {
+      console.log("[DEBUG] Leave Project button clicked.");
+      await handleLeaveProject(projectRef, modal);
+      return;
+    }
+    
+    // F. Handle the main "Invite" button (no change here)
+    const inviteBtn = target.closest('#shareproject-invite-btn');
+    if (inviteBtn) {
+      console.log("[DEBUG] Invite button clicked.");
+      await handleInvite(modal, projectRef);
+      return;
     }
   });
-
+  
+  // --- 2. Other Specific Listeners (No changes needed here) ---
+  
+  // Listener for the main close button
+  modal.querySelector("#shareproject-close-modal-btn").addEventListener("click", closeModal);
+  
+  // Listener for the modal backdrop
+  document.getElementById("shareproject-modal-backdrop").addEventListener("click", (e) => {
+    if (e.target.id === "shareproject-modal-backdrop") {
+      closeModal();
+      return;
+    }
+    // This part closes dropdowns if you click anywhere outside their content area
+    if (!e.target.closest("[data-target-dropdown], .shareproject-dropdown-content")) {
+      document.querySelectorAll(".shareproject-dropdown-content").forEach((el) => el.classList.add("hidden"));
+    }
+  });
+  
+  // Listeners for the email input field
   const emailInput = modal.querySelector("#shareproject-email-input");
-  const inviteInputWrapper = emailInput.closest(
-    ".shareproject-invite-input-wrapper"
-  );
-
-  emailInput.addEventListener("input", () => {
-    let searchDropdown = inviteInputWrapper.querySelector(
-      ".shareproject-user-search-dropdown"
-    );
-    if (!searchDropdown) {
-      searchDropdown = document.createElement("div");
-      searchDropdown.className = "shareproject-user-search-dropdown";
-      inviteInputWrapper.appendChild(searchDropdown);
-    }
-
-    searchDropdown.innerHTML = `<div class="search-loading-indicator">Loading...</div>`;
-    searchDropdown.classList.remove("hidden");
-
-    const query = emailInput.value.toLowerCase().trim();
-
-    if (!query) {
-      searchDropdown.classList.add("hidden");
-      searchDropdown.innerHTML = "";
-      return;
-    }
-
-    // ✅ We will still get this list, but we'll use it to add a visual tag, not to filter.
-    const allProjectEmails = getSanitizedProjectEmails();
-
-    const userProfilesMapRaw = modal.dataset.userProfilesMap || "{}";
-    let userProfilesMap;
-    try {
-      userProfilesMap = JSON.parse(userProfilesMapRaw);
-    } catch (err) {
-      console.error("Failed to parse userProfilesMap:", err);
-      searchDropdown.innerHTML = `<div class="search-error">Failed to load user list.</div>`;
-      return;
-    }
-
-    // ✅ FIXED: The filter no longer removes existing project members.
-    const filteredUsers = Object.values(userProfilesMap).filter(
-      (user) =>
-        user.email &&
-        (user.name.toLowerCase().includes(query) ||
-          user.email.toLowerCase().includes(query))
-    );
-
-    if (filteredUsers.length > 0) {
-      searchDropdown.innerHTML = "";
-      filteredUsers.forEach((user) => {
-        const item = document.createElement("a");
-        item.href = "#";
-        item.className = "dropdown-item";
-
-        // ✅ ENHANCEMENT: Add a "(member)" tag if user is already in the project.
-        const isAlreadyMember = allProjectEmails.includes(user.email.toLowerCase());
-        const memberIndicator = isAlreadyMember 
-            ? '<span style="color:#666; margin-left:8px; font-style: italic;">(member)</span>' 
-            : '';
-
-        item.innerHTML = `<strong>${user.name}</strong><span style="color:#666; margin-left:8px;">${user.email}</span>${memberIndicator}`;
-        
-        item.addEventListener("click", (e) => {
-          e.preventDefault();
-          addEmailTag(user.email);
-          searchDropdown.classList.add("hidden");
-          // Clear the input after selection for a better user experience
-          emailInput.value = ""; 
-        });
-        searchDropdown.appendChild(item);
-      });
-    } else {
-      searchDropdown.innerHTML = `<div class="no-results">No matching users found.</div>`;
-    }
-  });
-
+  emailInput.addEventListener("input", () => handleEmailSearch(modal)); // Assumes handleEmailSearch exists
   emailInput.addEventListener("keydown", (e) => {
     if ((e.key === "Enter" || e.key === ",") && emailInput.value) {
       e.preventDefault();
       addEmailTag(emailInput.value);
     }
   });
-
-  modal
-    .querySelector("#shareproject-invite-btn")
-    .addEventListener("click", () => {
-      handleInvite(modal, projectRef);
-    });
 }
 
 function renderStaticDropdownContent(modal) {
