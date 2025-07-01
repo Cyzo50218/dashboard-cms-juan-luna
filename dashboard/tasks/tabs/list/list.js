@@ -2030,52 +2030,51 @@ function render() {
             
             
             const leftTaskCell = document.createElement('div');
-            leftTaskCell.className = 'group sticky left-0 w-80 md:w-96 lg:w-[400px] flex-shrink-0 flex items-center border-r border-transparent group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg juanlunacms-spreadsheetlist-dynamic-border py-0.2';
-            leftTaskCell.dataset.control = 'open-sidebar';
-            
-            // --- FIX 1: Reduce the top and bottom padding of the entire cell ---
-            leftTaskCell.style.paddingTop = '0px';
-            leftTaskCell.style.paddingBottom = '0px';
-            
-            const isCompleted = task.status === 'Completed';
-            const taskNameClass = isCompleted ? 'task-name task-name-completed' : 'task-name';
-            
-            leftTaskCell.innerHTML = `
-                <div class="drag-handle ${!userCanEditProject ? 'hidden' : ''} cursor-grab rounded flex items-center justify-center hover:bg-slate-200 user-select-none">
-                    <span class="material-icons text-slate-400 select-none opacity-1 group-hover:opacity-100 transition-opacity" style="font-size: 20px;" draggable="false">drag_indicator</span>
-                </div>
-                <label class="juanlunacms-spreadsheetlist-custom-checkbox-container px-2 ml-4" data-control="check">
-                    <input type="checkbox" ${isCompleted ? 'checked' : ''} ${!canEditThisTask ? 'disabled' : ''}>
-                    <span class="juanlunacms-spreadsheetlist-custom-checkbox"></span>
-                </label>
-                <div class="flex items-start flex-grow min-w-0">
-                    <span
-                        class="${taskNameClass} ${taskNameEditableClass} truncate whitespace-nowrap overflow-hidden text-ellipsis text-[9px] block outline-none bg-transparent rounded px-1 transition-all duration-150"
-                        style="max-width: 100%;"
-                        contenteditable="${canEditThisTask}"
-                        data-task-id="${task.id}"
-                        data-control="task-name"
-                    >
-                        ${task.name}
-                    </span>
-        <div class="task-controls flex items-center gap-1 ml-1 transition-opacity duration-150 group-hover:opacity-100">
-            <span class="material-icons text-[15px] text-slate-400 cursor-pointer hover:text-red-500 transition" data-control="like" data-task-id="${task.id}">
-                favorite_border
-            </span>
-            ${likeCount > 0 ? `<span class="like-count text-sm text-slate-500">${likeCount}</span>` : ''}
+leftTaskCell.className = 'group sticky left-0 w-80 md:w-96 lg:w-[400px] flex-shrink-0 flex items-center border-r border-transparent group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg juanlunacms-spreadsheetlist-dynamic-border py-0.2';
+leftTaskCell.dataset.control = 'open-sidebar';
 
-            <span class="material-icons text-[15px] text-slate-400 cursor-pointer hover:text-blue-500 transition" data-control="comment" data-task-id="${task.id}">
+// --- FIX 1: Reduce the top and bottom padding of the entire cell ---
+leftTaskCell.style.paddingTop = '0px';
+leftTaskCell.style.paddingBottom = '0px';
+
+const isCompleted = task.status === 'Completed';
+const taskNameClass = isCompleted ? 'task-name task-name-completed' : 'task-name';
+
+leftTaskCell.innerHTML = `
+    <div class="drag-handle ${!userCanEditProject ? 'hidden' : ''} cursor-grab rounded flex items-center justify-center hover:bg-slate-200 user-select-none">
+        <span class="material-icons text-slate-400 select-none opacity-1 group-hover:opacity-100 transition-opacity" style="font-size: 20px;" draggable="false">drag_indicator</span>
+    </div>
+    <label class="juanlunacms-spreadsheetlist-custom-checkbox-container px-2 ml-4" data-control="check">
+        <input type="checkbox" ${isCompleted ? 'checked' : ''} ${!canEditThisTask ? 'disabled' : ''}>
+        <span class="juanlunacms-spreadsheetlist-custom-checkbox"></span>
+    </label>
+    <div class="flex items-center flex-grow min-w-0">
+        <span
+            class="${taskNameClass} ${taskNameEditableClass} truncate whitespace-nowrap overflow-hidden text-ellipsis text-[9px] block outline-none bg-transparent rounded px-1 transition-all duration-150"
+            style="max-width: 100%;"
+            contenteditable="${canEditThisTask}"
+            data-task-id="${task.id}"
+            data-control="task-name"
+        >
+            ${task.name}
+        </span>
+        <div class="task-controls flex items-center gap-1 ml-1 transition-opacity duration-150 group-hover:opacity-100">
+            ${commentCount > 0 ? `<span class="comment-count text-[9px] text-slate-500">${commentCount}</span>` : ''}
+             <span class="material-icons text-slate-400 cursor-pointer hover:text-blue-500 transition" style="font-size: 14px;" data-control="comment" data-task-id="${task.id}">
                 chat_bubble_outline
             </span>
-            ${commentCount > 0 ? `<span class="comment-count text-sm text-slate-500">${commentCount}</span>` : ''}
+            ${likeCount > 0 ? `<span class="like-count text-[9px] text-slate-500">${likeCount}</span>` : ''}
+            <span class="material-icons text-slate-400 cursor-pointer hover:text-red-500 transition" style="font-size: 14px;" data-control="like" data-task-id="${task.id}">
+                favorite_border
+            </span>
         </div>
-                </div>
-                <div class="flex-shrink-0 ml-auto pr-2">
-                    <span class="material-icons text-sm text-slate-400 ${!canEditThisTask ? 'hidden' : 'cursor-pointer hover:text-slate-600 transition'}" data-control="move-task" data-task-id="${task.id}">
-                        swap_vert
-                    </span>
-                </div>
-            `;
+    </div>
+    <div class="flex-shrink-0 ml-auto pr-2">
+        <span class="material-icons text-sm text-slate-400 ${!canEditThisTask ? 'hidden' : 'cursor-pointer hover:text-slate-600 transition'}" data-control="move-task" data-task-id="${task.id}">
+            swap_vert
+        </span>
+    </div>
+`;
             
             const rightTaskCells = document.createElement('div');
             rightTaskCells.className = 'flex-grow flex group-hover:bg-slate-50';
