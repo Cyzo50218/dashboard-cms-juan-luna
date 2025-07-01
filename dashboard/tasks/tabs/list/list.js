@@ -4571,11 +4571,11 @@ async function deleteDefaultColumnOption(columnId, optionToDelete) {
 }
 
 function deleteStatusOption(optionToDelete) {
-  //  deleteDefaultColumnOption('status', optionToDelete);
+    deleteDefaultColumnOption('status', optionToDelete);
 }
 
 function deletePriorityOption(optionToDelete) {
-  //  deleteDefaultColumnOption('priority', optionToDelete);
+    deleteDefaultColumnOption('priority', optionToDelete);
 }
 
 /**
