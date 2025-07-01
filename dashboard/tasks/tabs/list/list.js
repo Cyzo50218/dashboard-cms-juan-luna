@@ -2050,7 +2050,7 @@ function render() {
                 </label>
                 <div class="flex items-start flex-grow min-w-0">
                     <span
-                        class="${taskNameClass} ${taskNameEditableClass} truncate whitespace-nowrap overflow-hidden text-ellipsis text-[11px] block outline-none bg-transparent rounded px-1 transition-all duration-150"
+                        class="${taskNameClass} ${taskNameEditableClass} truncate whitespace-nowrap overflow-hidden text-ellipsis text-[9px] block outline-none bg-transparent rounded px-1 transition-all duration-150"
                         style="max-width: 100%;"
                         contenteditable="${canEditThisTask}"
                         data-task-id="${task.id}"
@@ -2059,12 +2059,12 @@ function render() {
                         ${task.name}
                     </span>
         <div class="task-controls flex items-center gap-1 ml-1 transition-opacity duration-150 group-hover:opacity-100">
-            <span class="material-icons text-[18px] text-slate-400 cursor-pointer hover:text-red-500 transition" data-control="like" data-task-id="${task.id}">
+            <span class="material-icons text-[15px] text-slate-400 cursor-pointer hover:text-red-500 transition" data-control="like" data-task-id="${task.id}">
                 favorite_border
             </span>
             ${likeCount > 0 ? `<span class="like-count text-sm text-slate-500">${likeCount}</span>` : ''}
 
-            <span class="material-icons text-[18px] text-slate-400 cursor-pointer hover:text-blue-500 transition" data-control="comment" data-task-id="${task.id}">
+            <span class="material-icons text-[15px] text-slate-400 cursor-pointer hover:text-blue-500 transition" data-control="comment" data-task-id="${task.id}">
                 chat_bubble_outline
             </span>
             ${commentCount > 0 ? `<span class="comment-count text-sm text-slate-500">${commentCount}</span>` : ''}
