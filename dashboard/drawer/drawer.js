@@ -44,46 +44,46 @@ import { firebaseConfig } from "/services/firebase-config.js";
     }
     
     /**
- * Renders the project list. This function is now more flexible and can
- * optionally group projects by active workspace vs. others.
- */
-function renderProjectsList() {
-    const projectsListContainer = sidebar.querySelector('#projects-section .section-items');
-    if (!projectsListContainer) return;
-    
-    // ✅ 1. Filter for visible projects FIRST
-    // A project is visible if it's not private, OR if it is private and you are the owner.
-    const visibleProjects = projectsData.filter(p =>
-        p.accessLevel !== 'private' || p.project_super_admin_uid === currentUser.uid
-    );
-    
-    projectsListContainer.innerHTML = '';
-    
-    // ✅ 2. Use the 'visibleProjects' array for all subsequent logic
-    if (visibleProjects.length === 0) {
-        projectsListContainer.innerHTML = `<li class="nav-item-empty">No projects yet.</li>`;
-        updateMyTasksLink(null); // Pass null when no projects
-        return;
-    }
-    
-    // --- Group visible projects by active workspace ---
-    const activeProjects = activeWorkspaceId ? visibleProjects.filter(p => p.workspaceId === activeWorkspaceId) : [];
-    const otherProjects = activeWorkspaceId ? visibleProjects.filter(p => p.workspaceId !== activeWorkspaceId) : visibleProjects;
-    
-    const renderProjectItem = (project) => {
-        const projectLi = document.createElement('li');
-        projectLi.classList.add('nav-item-project', 'projects-item');
+     * Renders the project list. This function is now more flexible and can
+     * optionally group projects by active workspace vs. others.
+     */
+    function renderProjectsList() {
+        const projectsListContainer = sidebar.querySelector('#projects-section .section-items');
+        if (!projectsListContainer) return;
         
-        if (project.id === selectedProjectId) {
-            projectLi.classList.add('selected');
-            projectLi.style.setProperty('--project-highlight-color', project.color);
+        // ✅ 1. Filter for visible projects FIRST
+        // A project is visible if it's not private, OR if it is private and you are the owner.
+        const visibleProjects = projectsData.filter(p =>
+            p.accessLevel !== 'private' || p.project_super_admin_uid === currentUser.uid
+        );
+        
+        projectsListContainer.innerHTML = '';
+        
+        // ✅ 2. Use the 'visibleProjects' array for all subsequent logic
+        if (visibleProjects.length === 0) {
+            projectsListContainer.innerHTML = `<li class="nav-item-empty">No projects yet.</li>`;
+            updateMyTasksLink(null); // Pass null when no projects
+            return;
         }
         
-        projectLi.dataset.projectId = project.id;
-        const numericUserId = stringToNumericString(currentUser?.uid);
-        const numericProjectId = stringToNumericString(project.id);
-        const href = `/tasks/${numericUserId}/list/${numericProjectId}`;
-        projectLi.innerHTML = `
+        // --- Group visible projects by active workspace ---
+        const activeProjects = activeWorkspaceId ? visibleProjects.filter(p => p.workspaceId === activeWorkspaceId) : [];
+        const otherProjects = activeWorkspaceId ? visibleProjects.filter(p => p.workspaceId !== activeWorkspaceId) : visibleProjects;
+        
+        const renderProjectItem = (project) => {
+            const projectLi = document.createElement('li');
+            projectLi.classList.add('nav-item-project', 'projects-item');
+            
+            if (project.id === selectedProjectId) {
+                projectLi.classList.add('selected');
+                projectLi.style.setProperty('--project-highlight-color', project.color);
+            }
+            
+            projectLi.dataset.projectId = project.id;
+            const numericUserId = stringToNumericString(currentUser?.uid);
+            const numericProjectId = stringToNumericString(project.id);
+            const href = `/tasks/${numericUserId}/list/${numericProjectId}`;
+            projectLi.innerHTML = `
                 <a href="${href}" data-link>
                     <div class="nav-item-main-content">
                         <div class="project-color" style="background-color: ${project.color};"></div>
@@ -91,24 +91,24 @@ function renderProjectsList() {
                     </div>
                 </a>
             `;
-        projectsListContainer.appendChild(projectLi);
-    };
-    
-    if (activeProjects.length > 0) {
-        activeProjects.forEach(renderProjectItem);
-    }
-    
-    if (otherProjects.length > 0) {
+            projectsListContainer.appendChild(projectLi);
+        };
+        
         if (activeProjects.length > 0) {
-            // Optional header for separation
+            activeProjects.forEach(renderProjectItem);
         }
-        otherProjects.forEach(renderProjectItem);
+        
+        if (otherProjects.length > 0) {
+            if (activeProjects.length > 0) {
+                // Optional header for separation
+            }
+            otherProjects.forEach(renderProjectItem);
+        }
+        
+        // ✅ 3. Update the "My Tasks" link based on the visible projects
+        const selectedProject = visibleProjects.find(p => p.id === selectedProjectId);
+        updateMyTasksLink(selectedProject || visibleProjects[0]);
     }
-    
-    // ✅ 3. Update the "My Tasks" link based on the visible projects
-    const selectedProject = visibleProjects.find(p => p.id === selectedProjectId);
-    updateMyTasksLink(selectedProject || visibleProjects[0]);
-}
     
     /**
      * Helper to update the main "My Tasks" link. (No changes needed here)
@@ -229,31 +229,31 @@ function renderProjectsList() {
      * Main event listener for the drawer. (No changes needed)
      */
     sidebar.addEventListener('click', async (e) => {
-    const sectionHeader = e.target.closest('.section-header');
-    if (sectionHeader) {
-        sectionHeader.closest('.nav-section')?.classList.toggle('open');
-        return;
-    }
-    
-    if (e.target.closest('.add-project-action')) {
-        e.stopPropagation();
-        handleAddProject();
-        document.querySelector('.drawerprojects-dropdown')?.remove();
-        return;
-    }
-    
-    const projectLink = e.target.closest('.projects-item a');
-    if (projectLink) {
-        e.preventDefault();
-        const projectItem = projectLink.closest('.projects-item');
-        const projectId = projectItem.dataset.projectId;
-        if (projectId) {
-            // When a project is clicked, we run the selection logic.
-            // The onSnapshot listener will then automatically handle the re-render.
-            selectProject(projectId);
+        const sectionHeader = e.target.closest('.section-header');
+        if (sectionHeader) {
+            sectionHeader.closest('.nav-section')?.classList.toggle('open');
+            return;
         }
-    }
-});
+        
+        if (e.target.closest('.add-project-action')) {
+            e.stopPropagation();
+            handleAddProject();
+            document.querySelector('.drawerprojects-dropdown')?.remove();
+            return;
+        }
+        
+        const projectLink = e.target.closest('.projects-item a');
+        if (projectLink) {
+            e.preventDefault();
+            const projectItem = projectLink.closest('.projects-item');
+            const projectId = projectItem.dataset.projectId;
+            if (projectId) {
+                // When a project is clicked, we run the selection logic.
+                // The onSnapshot listener will then automatically handle the re-render.
+                selectProject(projectId);
+            }
+        }
+    });
     
     /**
      * ✅ Main auth listener now uses a NESTED listener approach.

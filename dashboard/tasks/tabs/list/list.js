@@ -4401,7 +4401,8 @@ async function updateCustomOptionInFirebase(optionType, originalOption, newOptio
                 // Step C: If a match is found, add it to the batch.
                 if (taskValue === oldValue) {
                     batch.update(taskDoc.ref, {
-                        [taskFieldPath]: '' }); // Set to blank
+                        [taskFieldPath]: ''
+                    }); // Set to blank
                     tasksToClearCount++;
                 }
             });
@@ -4455,7 +4456,8 @@ async function deleteCustomColumn(columnId) {
     
     // Remove any saved widths from the 'fixedSizing' map
     batch.update(currentProjectRef, {
-        [`fixedSizing.${columnId}`]: deleteField() });
+        [`fixedSizing.${columnId}`]: deleteField()
+    });
     
     console.log(`[Batch] Queued project document updates.`);
     
@@ -4490,12 +4492,6 @@ async function deleteCustomColumn(columnId) {
     }
 }
 
-/**
- * Deletes an option from a default column (Status or Priority) and clears the
- * value from all tasks that were using it. This is an atomic operation.
- * @param {'status' | 'priority'} columnId The ID of the column to modify.
- * @param {object} optionToDelete The option object to remove (e.g., { name: 'Blocked', color: '#ff0000' }).
- */
 async function deleteDefaultColumnOption(columnId, optionToDelete) {
     // --- Permission Check (No changes needed) ---
     const isOwnerOrAdmin = project.project_super_admin_uid === auth.currentUser.uid ||
@@ -4543,14 +4539,16 @@ async function deleteDefaultColumnOption(columnId, optionToDelete) {
     try {
         const tasksSnapshot = await getDocs(allTasksQuery);
         let tasksToUpdateCount = 0;
-
+        
         if (!tasksSnapshot.empty) {
             tasksSnapshot.forEach(taskDoc => {
                 // ✅ ADDED: Manually filter the tasks on the client side.
                 // Check if the task's field matches the value we want to delete.
                 if (taskDoc.data()[taskFieldPath] === oldValue) {
                     // If it matches, queue an update to clear the field.
-                    batch.update(taskDoc.ref, { [taskFieldPath]: '' });
+                    batch.update(taskDoc.ref, {
+                        [taskFieldPath]: ''
+                    });
                     tasksToUpdateCount++;
                 }
             });
@@ -4572,22 +4570,12 @@ async function deleteDefaultColumnOption(columnId, optionToDelete) {
     }
 }
 
-// --- Specific Functions (No changes needed) ---
-
-/**
- * Deletes a single option from the "Status" column.
- * @param {object} optionToDelete The Status option object to remove.
- */
 function deleteStatusOption(optionToDelete) {
-    deleteDefaultColumnOption('status', optionToDelete);
+  //  deleteDefaultColumnOption('status', optionToDelete);
 }
 
-/**
- * Deletes a single option from the "Priority" column.
- * @param {object} optionToDelete The Priority option object to remove.
- */
 function deletePriorityOption(optionToDelete) {
-    deleteDefaultColumnOption('priority', optionToDelete);
+  //  deleteDefaultColumnOption('priority', optionToDelete);
 }
 
 /**

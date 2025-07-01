@@ -1,4 +1,3 @@
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getFunctions,
@@ -40,7 +39,7 @@ let invitedEmails = [];
 function closeModal() {
   // ✅ ADDED: Ensure the global array is always reset when the modal closes.
   invitedEmails = [];
-
+  
   const emailTagsContainer = document.querySelector(".shareproject-email-tags-container");
   if (emailTagsContainer) {
     emailTagsContainer.innerHTML = "";
@@ -50,7 +49,7 @@ function closeModal() {
   if (emailInput) {
     emailInput.value = "";
   }
-
+  
   if (unsubscribeProjectListener) {
     unsubscribeProjectListener();
     unsubscribeProjectListener = null;
@@ -180,11 +179,11 @@ export async function openShareModal(projectRef) {
 function addEmailTag(email) {
   const emailToAdd = email.trim();
   if (!emailToAdd) return;
-
+  
   if (
     !invitedEmails
-      .map((e) => e.toLowerCase())
-      .includes(emailToAdd.toLowerCase())
+    .map((e) => e.toLowerCase())
+    .includes(emailToAdd.toLowerCase())
   ) {
     invitedEmails.push(emailToAdd);
     renderEmailTags();
@@ -363,53 +362,71 @@ function setupEventListeners(modal, projectRef) {
       return;
     }
     
-    // E. Handle the "Leave Project" button (no change here)
+    // E. Handle the "Leave Project" button
     const leaveBtn = target.closest('#shareproject-leave-btn');
     if (leaveBtn) {
       console.log("[DEBUG] Leave Project button clicked.");
-      const projectData = JSON.parse(modal.dataseif (if (true) {
-            
-        }) {
-            
-        }t.projectData || '{}');
-        const userProfilesMap = JSON.parse(modal.dataset.userProfilesMap || '{}');
-        const superAdminUID = projectData.project_super_admin_uid;
-        const currentUserId = auth.currentUser.uid;
-        const secondaryAdminUID = projectData.project_admin_user;
+      
+      // ✅ CORRECTED LINES:
+      const projectData = JSON.parse(modal.dataset.projectData || '{}');
+      const userProfilesMap = JSON.parse(modal.dataset.userProfilesMap || '{}');
+      
+      const superAdminUID = projectData.project_super_admin_uid;
+      const currentUserId = auth.currentUser.uid;
+      // NOTE: project_admin_user in your original code seems to be a single UID, not an array.
+      // This logic assumes it's a single secondary admin UID.
+      const secondaryAdminUID = projectData.project_admin_user;
+      
+      if (currentUserId === superAdminUID) {
+        // Case 1: The Project Owner is leaving
+        const otherAdmins = (projectData.members || [])
+          .filter(m => m.role === 'Project Admin' && m.uid !== currentUserId)
+          .map(m => m.uid);
         
-        if (currentUserId === superAdminUID) {
-            if (secondaryAdminUID) {
-                const adminProfile = userProfilesMap[secondaryAdminUID];
-                const adminName = adminProfile ? adminProfile.name : 'the current admin';
-                if (confirm(`Are you sure you want to leave? Ownership will be transferred to ${adminName}. This action is irreversible.`)) {
-                    const leavingAdminData = (projectData.members || []).find(m => m.uid === currentUserId);
-                    const updates = {
-                        project_super_admin_uid: secondaryAdminUID,
-                        project_admin_user: deleteField(),
-                        members: arrayRemove(leavingAdminData)
-                    };
-                    await updateDoc(projectRef, updates);
-                    alert("You have left the project and ownership has been transferred.");
-                    closeModal();
-                }
-            } else {
-                if (confirm("WARNING: You are the only admin for this project. Leaving will permanently DELETE the project for all members. This action cannot be undone. Are you sure?")) {
-                    await deleteDoc(projectRef);
-                    alert("Project has been permanently deleted.");
-                    closeModal();
-                }
+        if (otherAdmins.length > 0) {
+          // If other admins exist, transfer ownership to the first one
+          const newOwnerUID = otherAdmins[0];
+          const adminProfile = userProfilesMap[newOwnerUID];
+          const adminName = adminProfile ? adminProfile.name : 'the next admin';
+          
+          if (confirm(`Are you sure you want to leave? Ownership will be transferred to ${adminName}. This action is irreversible.`)) {
+            const leavingAdminData = (projectData.members || []).find(m => m.uid === currentUserId);
+            const updates = {
+              project_super_admin_uid: newOwnerUID,
+              members: arrayRemove(leavingAdminData)
+            };
+            // Also remove the leaving user from the admin array if it exists
+            if (projectData.project_admin_user) {
+              updates.project_admin_user = arrayRemove(currentUserId);
             }
+            await updateDoc(projectRef, updates);
+            alert("You have left the project and ownership has been transferred.");
+            closeModal();
+          }
         } else {
-            if (confirm("Are you sure you want to leave this project? You will lose access permanently unless invited back.")) {
-                const memberData = (projectData.members || []).find(m => m.uid === currentUserId);
-                if (memberData) {
-                    await updateDoc(projectRef, { members: arrayRemove(memberData) });
-                    if (secondaryAdminUID === currentUserId) await updateDoc(projectRef, { project_admin_user: deleteField() });
-                    alert("You have successfully left the project.");
-                    closeModal();
-                }
-            }
+          // If the owner is the ONLY member with admin rights, they must delete the project
+          if (confirm("WARNING: You are the only admin for this project. Leaving will permanently DELETE the project for all members. This action cannot be undone. Are you sure?")) {
+            await deleteDoc(projectRef);
+            alert("Project has been permanently deleted.");
+            closeModal();
+          }
         }
+      } else {
+        // Case 2: A regular member or non-owner admin is leaving
+        if (confirm("Are you sure you want to leave this project? You will lose access permanently unless invited back.")) {
+          const memberData = (projectData.members || []).find(m => m.uid === currentUserId);
+          if (memberData) {
+            const updates = { members: arrayRemove(memberData) };
+            // If the leaving user was also in the separate admin field, remove them
+            if (projectData.project_admin_user && projectData.project_admin_user.includes(currentUserId)) {
+              updates.project_admin_user = arrayRemove(currentUserId);
+            }
+            await updateDoc(projectRef, updates);
+            alert("You have successfully left the project.");
+            closeModal();
+          }
+        }
+      }
       return;
     }
     
@@ -421,8 +438,8 @@ function setupEventListeners(modal, projectRef) {
       return;
     }
   });
-
-    
+  
+  
   // Listener for the main close button
   modal.querySelector("#shareproject-close-modal-btn").addEventListener("click", closeModal);
   
@@ -455,23 +472,22 @@ function renderStaticDropdownContent(modal) {
   const accessDropdown = modal.querySelector("#shareproject-access-dropdown");
   if (roleDropdown)
     roleDropdown.innerHTML = roles.invite
-      .map(
-        (role) =>
-          `<button class="shareproject-dropdown-action" data-role="${role}">${role}</button>`
-      )
-      .join("");
+    .map(
+      (role) =>
+      `<button class="shareproject-dropdown-action" data-role="${role}">${role}</button>`
+    )
+    .join("");
   if (accessDropdown)
     accessDropdown.innerHTML = `<a href="#" data-access="workspace" class="shareproject-dropdown-action"><strong><i class="material-icons">public</i> My Workspace</strong><p>Everyone can find and access.</p></a><a href="#" data-access="private" class="shareproject-dropdown-action"><strong><i class="material-icons">lock</i> Private to members</strong><p>Only invited members can access.</p></a>`;
 }
 
 function renderDynamicContent(
-  modal,
-  { projectData, userProfilesMap, currentUserId, workspaceMemberCount = 0  }
+  modal, { projectData, userProfilesMap, currentUserId, workspaceMemberCount = 0 }
 ) {
   // Ensure data is stored in modal dataset
   modal.dataset.projectData = JSON.stringify(projectData);
   modal.dataset.userProfilesMap = JSON.stringify(userProfilesMap);
-
+  
   const superAdminUID = projectData.project_super_admin_uid;
   let state = {
     members: JSON.parse(JSON.stringify(projectData.members || [])),
@@ -482,18 +498,18 @@ function renderDynamicContent(
     workspaceRole: projectData.workspaceRole || "Viewer",
   };
   const projectAdmins = state.members.filter((m) => m.role === "Project Admin");
-
+  
   let membersToRender = [...(projectData.members || [])];
   if (superAdminUID && !membersToRender.some((m) => m.uid === superAdminUID)) {
     membersToRender.unshift({ uid: superAdminUID, role: "Project Admin" });
   }
-
+  
   const roles = {
     member: ["Project Admin", "Editor", "Commenter", "Viewer"],
     workspace: ["Editor", "Commenter", "Viewer"],
   };
   const canChangeRoles = currentUserId === superAdminUID;
-
+  
   const accessIcon = modal.querySelector("#shareproject-access-icon");
   const accessTitle = modal.querySelector("#shareproject-access-title");
   const accessDesc = modal.querySelector("#shareproject-access-desc");
@@ -508,17 +524,17 @@ function renderDynamicContent(
       accessDesc.textContent = "Only explicitly invited members can access.";
     }
   }
-
+  
   const createRoleDropdownButtonHTML = (id, currentRole, isLocked) => {
     const dropdownId = `role-dropdown-for-${id.replace(/[^a-zA-Z0-9]/g, "")}`;
     const disabledAttr = isLocked || !canChangeRoles ? "disabled" : "";
     const dropdownIcon =
-      isLocked || !canChangeRoles
-        ? ""
-        : '<i class="material-icons">arrow_drop_down</i>';
+      isLocked || !canChangeRoles ?
+      "" :
+      '<i class="material-icons">arrow_drop_down</i>';
     return `<div class="shareproject-member-role" data-id="${id}"><button class="shareproject-dropdown-btn" data-target-dropdown="${dropdownId}" ${disabledAttr}><span>${currentRole}</span>${dropdownIcon}</button></div>`;
   };
-
+  
   const createRoleDropdownMenuHTML = (
     id,
     availableRoles,
@@ -537,7 +553,7 @@ function renderDynamicContent(
           const maxAdminsReached = projectAdmins.length >= 2 && !isAlreadyAdmin;
           if (maxAdminsReached)
             disabled = 'disabled title="Maximum of 2 Project Admins allowed."';
-
+          
           // Prevent super admin from changing their role unless another admin exists
           if (
             id === superAdminUID &&
@@ -549,18 +565,18 @@ function renderDynamicContent(
         return `<button class="shareproject-dropdown-action" data-role="${role}" ${disabled}><strong>${role}</strong></button>`;
       })
       .join("");
-
+    
     const removeLink =
-      itemType === "member" && !isLocked && canChangeRoles
-        ? `<a href="#" class="shareproject-remove shareproject-dropdown-action"><i class="material-icons">person_remove</i> Remove member</a>`
-        : "";
-
+      itemType === "member" && !isLocked && canChangeRoles ?
+      `<a href="#" class="shareproject-remove shareproject-dropdown-action"><i class="material-icons">person_remove</i> Remove member</a>` :
+      "";
+    
     return `<div id="${dropdownId}" class="shareproject-dropdown-content hidden">${roleOptions}${removeLink}</div>`;
   };
-
+  
   let membersHTML = "";
   let memberDropdownsHTML = "";
-
+  
   if (state.accessLevel === "workspace") {
     const workspaceId = "workspace-item";
     const workspaceIconHTML = `<div class="shareproject-profile-pic" style="background-color:#e5e7eb;color:#4b5563;"><i class="material-icons">people</i></div>`;
@@ -576,11 +592,11 @@ function renderDynamicContent(
       "workspace"
     );
   }
-
+  
   state.members.forEach((member) => {
     const userProfile = userProfilesMap[member.uid] || { name: "Unknown User" };
     let isLocked = false;
-
+    
     if (member.uid === superAdminUID) {
       const otherAdmins = state.members.filter(
         (m) => m.role === "Project Admin" && m.uid !== superAdminUID
@@ -588,10 +604,10 @@ function renderDynamicContent(
       // Lock super admin if there are no other admins to take over
       isLocked = otherAdmins.length === 0;
     }
-
+    
     const displayRole = isLocked ? "Project Admin" : member.role;
     const profilePicHTML = createProfilePic(userProfile).outerHTML;
-
+    
     membersHTML += `<div class="shareproject-member-item" data-uid="${
       member.uid
     }">${profilePicHTML}<div class="shareproject-member-info"><strong>${
@@ -610,17 +626,17 @@ function renderDynamicContent(
       "member"
     );
   });
-
+  
   let pendingHTML = "";
   if (state.pendingInvites.length > 0) {
     pendingHTML +=
       '<p class="shareproject-section-title">Pending Invitations</p>';
     state.pendingInvites.forEach(
       (invite) =>
-        (pendingHTML += `<div class="shareproject-pending-item"><div class="shareproject-pending-icon"><i class="material-icons">hourglass_top</i></div><div class="shareproject-member-info"><strong>${invite.email}</strong><p>Invitation sent. Role: ${invite.role}</p></div></div>`)
+      (pendingHTML += `<div class="shareproject-pending-item"><div class="shareproject-pending-icon"><i class="material-icons">hourglass_top</i></div><div class="shareproject-member-info"><strong>${invite.email}</strong><p>Invitation sent. Role: ${invite.role}</p></div></div>`)
     );
   }
-
+  
   modal.querySelector(".shareproject-modal-header h2").textContent = `Share ${
     projectData.title || "Unnamed Project"
   }`;
@@ -633,29 +649,29 @@ function renderDynamicContent(
 
 async function handleInvite(modal, projectRef) {
   const inviter = auth.currentUser;
-
+  
   if (!inviter) {
     alert("Error: You must be logged in to send invitations.");
     return;
   }
-
+  
   // --- Process input and disable button ---
   const emailInput = modal.querySelector("#shareproject-email-input");
   const lastEmail = emailInput.value.trim();
   if (lastEmail && !invitedEmails.map(e => e.toLowerCase()).includes(lastEmail.toLowerCase())) {
     invitedEmails.push(lastEmail);
   }
-
+  
   if (invitedEmails.length === 0) {
     alert("Please enter at least one email address.");
     return;
   }
-
+  
   const inviteBtn = modal.querySelector("#shareproject-invite-btn");
   inviteBtn.disabled = true;
   const originalBtnText = inviteBtn.textContent;
   inviteBtn.textContent = "Processing...";
-
+  
   let projectData;
   try {
     const projectSnap = await getDoc(projectRef);
@@ -673,7 +689,7 @@ async function handleInvite(modal, projectRef) {
     inviteBtn.textContent = originalBtnText;
     return;
   }
-
+  
   const userProfilesMap = JSON.parse(modal.dataset.userProfilesMap || "{}");
   const role = modal.querySelector("#shareproject-selected-role").textContent.trim();
   const batch = writeBatch(db);
@@ -681,184 +697,184 @@ async function handleInvite(modal, projectRef) {
   let successfulEmailSends = 0;
   let membersAddedOrUpdated = 0;
   const failedEmails = [];
-
+  
   // This loop now operates on the fresh 'projectData' fetched above
   for (const email of invitedEmails) {
     const lowerEmail = email.toLowerCase();
     const existingUserUID = Object.keys(userProfilesMap).find(
       (uid) => userProfilesMap[uid]?.email?.toLowerCase() === lowerEmail
     );
-
+    
     if (existingUserUID) {
-  console.log(`[LOG] Processing user with email: ${lowerEmail} and UID: ${existingUserUID}`);
-  
-  // Find out if the user is already a member of this specific project.
-  const memberInProject = (projectData.members || []).find(m => m.uid === existingUserUID);
-  
-  if (memberInProject) {
-    console.log('[LOG] User is an existing member of the project.', memberInProject);
-  } else {
-    console.log('[LOG] User is NOT a member of this project. Will treat as a new invitation.');
-  }
-  
-  // --- SCENARIO 1: The user is already a member of the project, and their role is changing. ---
-  if (memberInProject && memberInProject.role !== role) {
-    console.log(`[LOG] Role change detected for member. From: "${memberInProject.role}" -> To: "${role}"`);
-    
-    // Log critical data for the owner check
-    console.log(`[LOG] Is this user the super admin? UID match: ${existingUserUID === projectData.project_super_admin_uid}`);
-    console.log(`   - User's UID: ${existingUserUID}`);
-    console.log(`   - Super Admin UID from DB: ${projectData.project_super_admin_uid}`);
-    console.log(`[LOG] Is the new role NOT 'Project Admin'? Role check: ${role !== "Project Admin"}`);
-    
-    // CHECK 1.1: The project owner is demoting themselves. This is the highest priority check.
-    if (existingUserUID === projectData.project_super_admin_uid && role !== "Project Admin") {
-      console.log('[LOG] ENTERING DANGER ZONE: Super admin is attempting to change their own role.');
+      console.log(`[LOG] Processing user with email: ${lowerEmail} and UID: ${existingUserUID}`);
       
-      const otherAdmins = (projectData.project_admin_user || []).filter(
-        (uid) => uid !== projectData.project_super_admin_uid
-      );
-      console.log('[LOG] Found other admins to transfer ownership to:', otherAdmins);
+      // Find out if the user is already a member of this specific project.
+      const memberInProject = (projectData.members || []).find(m => m.uid === existingUserUID);
       
-      if (otherAdmins.length === 0) {
-        console.error('[LOG] OWNER DEMOTION BLOCKED: No other admins found.');
-        alert(
-          "You cannot remove your ownership because you are the only Project Admin. Please assign the 'Project Admin' role to another member before changing your own role."
-        );
-        inviteBtn.disabled = false;
-        inviteBtn.textContent = originalBtnText;
-        return; // Abort the entire function.
+      if (memberInProject) {
+        console.log('[LOG] User is an existing member of the project.', memberInProject);
+      } else {
+        console.log('[LOG] User is NOT a member of this project. Will treat as a new invitation.');
       }
       
-      console.log('[LOG] Prompting user for confirmation...');
-      const confirmation = window.confirm(
-        "You are about to remove your ownership of this project and transfer it to another admin. Are you sure?"
-      );
-      
-      if (!confirmation) {
-        console.warn('[LOG] User cancelled the ownership transfer.');
-        alert("Ownership transfer cancelled.");
-        inviteBtn.disabled = false;
-        inviteBtn.textContent = originalBtnText;
-        return; // Abort the entire function.
-      }
-      
-      console.log('[LOG] User CONFIRMED. Proceeding with ownership transfer.');
-      const newSuperAdminUID = otherAdmins[0];
-      console.log(`[LOG] New super admin will be: ${newSuperAdminUID}`);
-      batch.update(projectRef, { project_super_admin_uid: newSuperAdminUID });
-      batch.update(projectRef, { project_admin_user: arrayRemove(existingUserUID) });
-      
-    }
-    // CHECK 1.2: A user is being promoted to Project Admin.
-    else if (role === "Project Admin") {
-      console.log('[LOG] Attempting to make user a "Project Admin".');
-      const currentAdmins = (projectData.project_admin_user || []);
-      console.log('[LOG] Current admins:', currentAdmins, `Count: ${currentAdmins.length}`);
-      if (currentAdmins.length >= 2 && !currentAdmins.includes(existingUserUID)) {
-        console.error('[LOG] ADMIN LIMIT BLOCKED: Cannot add another admin.');
-        alert(`A project can only have up to 2 Project Admins. Cannot add ${email}.`);
-        failedEmails.push(email);
-        continue; // Skip this email and go to the next in the loop.
-      }
-      console.log('[LOG] Admin check passed. Adding user to project_admin_user array.');
-      batch.update(projectRef, { project_admin_user: arrayUnion(existingUserUID) });
-    }
-    // CHECK 1.3: A non-owner admin is being changed to a non-admin role.
-    else if (memberInProject.role === "Project Admin") {
-      console.log('[LOG] Removing non-owner admin from project_admin_user array.');
-      batch.update(projectRef, { project_admin_user: arrayRemove(existingUserUID) });
-    }
-    
-    // ACTION: This part runs for any successful role change after all checks have passed.
-    console.log('[LOG] Queuing update to the "members" array.');
-    const updatedMemberData = { ...memberInProject, role: role };
-    batch.update(projectRef, { members: arrayRemove(memberInProject) });
-    batch.update(projectRef, { members: arrayUnion(updatedMemberData) });
-    membersAddedOrUpdated++;
-    
-  } else if (memberInProject && memberInProject.role === role) {
-    console.log(`[LOG] No action needed. User is already a member with the role "${role}".`);
-  }
-  // --- SCENARIO 2: The user is NOT a member of the project yet. Handle as a new invitation. ---
-  else if (!memberInProject) {
-    console.log('[LOG] ENTERING INVITATION LOGIC for non-project member.');
-    try {
-      const invitesRef = collection(db, "InvitedProjects");
-      const q = query(invitesRef,
-        where("projectId", "==", projectRef.id),
-        where("invitedEmail", "==", lowerEmail)
-      );
-      const querySnapshot = await getDocs(q);
-      
-      if (!querySnapshot.empty) {
-        console.log('[LOG] Found existing pending invitation. Will update it.');
-        const existingInviteDoc = querySnapshot.docs[0];
-        const existingInviteData = existingInviteDoc.data();
+      // --- SCENARIO 1: The user is already a member of the project, and their role is changing. ---
+      if (memberInProject && memberInProject.role !== role) {
+        console.log(`[LOG] Role change detected for member. From: "${memberInProject.role}" -> To: "${role}"`);
         
-        if (existingInviteData.role !== role) {
-          console.log(`[LOG] Invitation role changing from "${existingInviteData.role}" to "${role}".`);
-          const inviteDocRef = doc(db, "InvitedProjects", existingInviteDoc.id);
-          batch.update(inviteDocRef, { role: role });
+        // Log critical data for the owner check
+        console.log(`[LOG] Is this user the super admin? UID match: ${existingUserUID === projectData.project_super_admin_uid}`);
+        console.log(`   - User's UID: ${existingUserUID}`);
+        console.log(`   - Super Admin UID from DB: ${projectData.project_super_admin_uid}`);
+        console.log(`[LOG] Is the new role NOT 'Project Admin'? Role check: ${role !== "Project Admin"}`);
+        
+        // CHECK 1.1: The project owner is demoting themselves. This is the highest priority check.
+        if (existingUserUID === projectData.project_super_admin_uid && role !== "Project Admin") {
+          console.log('[LOG] ENTERING DANGER ZONE: Super admin is attempting to change their own role.');
           
-          const oldPendingInviteObject = (projectData.pendingInvites || []).find(p => p.email.toLowerCase() === lowerEmail);
-          if (oldPendingInviteObject) {
-            const newPendingInviteObject = { ...oldPendingInviteObject, role: role };
-            batch.update(projectRef, { pendingInvites: arrayRemove(oldPendingInviteObject) });
-            batch.update(projectRef, { pendingInvites: arrayUnion(newPendingInviteObject) });
+          const otherAdmins = (projectData.project_admin_user || []).filter(
+            (uid) => uid !== projectData.project_super_admin_uid
+          );
+          console.log('[LOG] Found other admins to transfer ownership to:', otherAdmins);
+          
+          if (otherAdmins.length === 0) {
+            console.error('[LOG] OWNER DEMOTION BLOCKED: No other admins found.');
+            alert(
+              "You cannot remove your ownership because you are the only Project Admin. Please assign the 'Project Admin' role to another member before changing your own role."
+            );
+            inviteBtn.disabled = false;
+            inviteBtn.textContent = originalBtnText;
+            return; // Abort the entire function.
           }
-          membersAddedOrUpdated++;
-        } else {
-          console.log('[LOG] Invitation role is the same. No update needed.');
+          
+          console.log('[LOG] Prompting user for confirmation...');
+          const confirmation = window.confirm(
+            "You are about to remove your ownership of this project and transfer it to another admin. Are you sure?"
+          );
+          
+          if (!confirmation) {
+            console.warn('[LOG] User cancelled the ownership transfer.');
+            alert("Ownership transfer cancelled.");
+            inviteBtn.disabled = false;
+            inviteBtn.textContent = originalBtnText;
+            return; // Abort the entire function.
+          }
+          
+          console.log('[LOG] User CONFIRMED. Proceeding with ownership transfer.');
+          const newSuperAdminUID = otherAdmins[0];
+          console.log(`[LOG] New super admin will be: ${newSuperAdminUID}`);
+          batch.update(projectRef, { project_super_admin_uid: newSuperAdminUID });
+          batch.update(projectRef, { project_admin_user: arrayRemove(existingUserUID) });
+          
+        }
+        // CHECK 1.2: A user is being promoted to Project Admin.
+        else if (role === "Project Admin") {
+          console.log('[LOG] Attempting to make user a "Project Admin".');
+          const currentAdmins = (projectData.project_admin_user || []);
+          console.log('[LOG] Current admins:', currentAdmins, `Count: ${currentAdmins.length}`);
+          if (currentAdmins.length >= 2 && !currentAdmins.includes(existingUserUID)) {
+            console.error('[LOG] ADMIN LIMIT BLOCKED: Cannot add another admin.');
+            alert(`A project can only have up to 2 Project Admins. Cannot add ${email}.`);
+            failedEmails.push(email);
+            continue; // Skip this email and go to the next in the loop.
+          }
+          console.log('[LOG] Admin check passed. Adding user to project_admin_user array.');
+          batch.update(projectRef, { project_admin_user: arrayUnion(existingUserUID) });
+        }
+        // CHECK 1.3: A non-owner admin is being changed to a non-admin role.
+        else if (memberInProject.role === "Project Admin") {
+          console.log('[LOG] Removing non-owner admin from project_admin_user array.');
+          batch.update(projectRef, { project_admin_user: arrayRemove(existingUserUID) });
+        }
+        
+        // ACTION: This part runs for any successful role change after all checks have passed.
+        console.log('[LOG] Queuing update to the "members" array.');
+        const updatedMemberData = { ...memberInProject, role: role };
+        batch.update(projectRef, { members: arrayRemove(memberInProject) });
+        batch.update(projectRef, { members: arrayUnion(updatedMemberData) });
+        membersAddedOrUpdated++;
+        
+      } else if (memberInProject && memberInProject.role === role) {
+        console.log(`[LOG] No action needed. User is already a member with the role "${role}".`);
+      }
+      // --- SCENARIO 2: The user is NOT a member of the project yet. Handle as a new invitation. ---
+      else if (!memberInProject) {
+        console.log('[LOG] ENTERING INVITATION LOGIC for non-project member.');
+        try {
+          const invitesRef = collection(db, "InvitedProjects");
+          const q = query(invitesRef,
+            where("projectId", "==", projectRef.id),
+            where("invitedEmail", "==", lowerEmail)
+          );
+          const querySnapshot = await getDocs(q);
+          
+          if (!querySnapshot.empty) {
+            console.log('[LOG] Found existing pending invitation. Will update it.');
+            const existingInviteDoc = querySnapshot.docs[0];
+            const existingInviteData = existingInviteDoc.data();
+            
+            if (existingInviteData.role !== role) {
+              console.log(`[LOG] Invitation role changing from "${existingInviteData.role}" to "${role}".`);
+              const inviteDocRef = doc(db, "InvitedProjects", existingInviteDoc.id);
+              batch.update(inviteDocRef, { role: role });
+              
+              const oldPendingInviteObject = (projectData.pendingInvites || []).find(p => p.email.toLowerCase() === lowerEmail);
+              if (oldPendingInviteObject) {
+                const newPendingInviteObject = { ...oldPendingInviteObject, role: role };
+                batch.update(projectRef, { pendingInvites: arrayRemove(oldPendingInviteObject) });
+                batch.update(projectRef, { pendingInvites: arrayUnion(newPendingInviteObject) });
+              }
+              membersAddedOrUpdated++;
+            } else {
+              console.log('[LOG] Invitation role is the same. No update needed.');
+            }
+          }
+          else {
+            console.log('[LOG] No pending invitation found. Creating a new one.');
+            const newInvitationRef = doc(collection(db, "InvitedProjects"));
+            const invitationId = newInvitationRef.id;
+            const invitationUrl = `https://cms.juanlunacollections.com/invitation/${invitationId}`;
+            
+            await sendEmailInvitation({
+              email: lowerEmail,
+              projectName: projectData.title || "Unnamed Project",
+              invitationUrl: invitationUrl,
+            });
+            console.log('[LOG] Email invitation sent.');
+            
+            batch.set(newInvitationRef, {
+              invitationId: invitationId,
+              projectId: projectRef.id,
+              projectName: projectData.title || "Unnamed Project",
+              invitedEmail: lowerEmail,
+              role: role,
+              invitedAt: serverTimestamp(),
+              status: "pending",
+              invitedBy: { uid: inviter.uid, name: inviter.displayName, email: inviter.email },
+            });
+            
+            const newPendingInviteData = {
+              email: lowerEmail,
+              role: role,
+              invitedAt: new Date().toISOString(),
+              invitationId: invitationId,
+            };
+            batch.update(projectRef, {
+              pendingInvites: arrayUnion(newPendingInviteData),
+            });
+            console.log('[LOG] Queued new invitation document and update to project pendingInvites.');
+            successfulEmailSends++;
+          }
+        } catch (error) {
+          console.error(`[FATAL] Failed to process invitation for ${lowerEmail}:`, error);
+          failedEmails.push(lowerEmail);
         }
       }
-      else {
-        console.log('[LOG] No pending invitation found. Creating a new one.');
-        const newInvitationRef = doc(collection(db, "InvitedProjects"));
-        const invitationId = newInvitationRef.id;
-        const invitationUrl = `https://cms.juanlunacollections.com/invitation/${invitationId}`;
-        
-        await sendEmailInvitation({
-          email: lowerEmail,
-          projectName: projectData.title || "Unnamed Project",
-          invitationUrl: invitationUrl,
-        });
-        console.log('[LOG] Email invitation sent.');
-        
-        batch.set(newInvitationRef, {
-          invitationId: invitationId,
-          projectId: projectRef.id,
-          projectName: projectData.title || "Unnamed Project",
-          invitedEmail: lowerEmail,
-          role: role,
-          invitedAt: serverTimestamp(),
-          status: "pending",
-          invitedBy: { uid: inviter.uid, name: inviter.displayName, email: inviter.email },
-        });
-        
-        const newPendingInviteData = {
-          email: lowerEmail,
-          role: role,
-          invitedAt: new Date().toISOString(),
-          invitationId: invitationId,
-        };
-        batch.update(projectRef, {
-          pendingInvites: arrayUnion(newPendingInviteData),
-        });
-        console.log('[LOG] Queued new invitation document and update to project pendingInvites.');
-        successfulEmailSends++;
-      }
-    } catch (error) {
-      console.error(`[FATAL] Failed to process invitation for ${lowerEmail}:`, error);
-      failedEmails.push(lowerEmail);
-    }
-  }
-} else {
+    } else {
       // Case 3 & 4: User is not in the workspace. Check pending invites.
       const existingPendingInvite = (projectData.pendingInvites || []).find(
         p => p.email.toLowerCase() === lowerEmail
       );
-
+      
       if (existingPendingInvite) {
         // Case 3: A pending invitation for this email already exists. UPDATE it.
         if (existingPendingInvite.role !== role) {
@@ -878,13 +894,13 @@ async function handleInvite(modal, projectRef) {
           const newInvitationRef = doc(collection(db, "InvitedProjects"));
           const invitationId = newInvitationRef.id;
           const invitationUrl = `https://cms.juanlunacollections.com/invitation/${invitationId}`;
-
+          
           await sendEmailInvitation({
             email: lowerEmail,
             projectName: projectData.title || "Unnamed Project",
             invitationUrl: invitationUrl,
           });
-
+          
           batch.set(newInvitationRef, {
             invitationId: invitationId,
             projectId: projectRef.id,
@@ -895,14 +911,14 @@ async function handleInvite(modal, projectRef) {
             status: "pending",
             invitedBy: { uid: inviter.uid, name: inviter.displayName, email: inviter.email },
           });
-
+          
           newPendingInvitesForArrayUnion.push({
             email: lowerEmail,
             role: role,
             invitedAt: new Date().toISOString(),
             invitationId: invitationId,
           });
-
+          
           successfulEmailSends++;
         } catch (error) {
           console.error(`Failed to send email to ${lowerEmail}:`, error);
@@ -911,13 +927,13 @@ async function handleInvite(modal, projectRef) {
       }
     }
   }
-
+  
   if (newPendingInvitesForArrayUnion.length > 0) {
     batch.update(projectRef, {
       pendingInvites: arrayUnion(...newPendingInvitesForArrayUnion),
     });
   }
-
+  
   try {
     await batch.commit();
     let feedbackMessage = "";
@@ -927,20 +943,20 @@ async function handleInvite(modal, projectRef) {
       feedbackMessage += `${successfulEmailSends} invitation(s) sent successfully!\n`;
     if (failedEmails.length > 0)
       feedbackMessage += `Failed to send invitations to: ${failedEmails.join(", ")}.`;
-
+    
     if (feedbackMessage) {
       alert(feedbackMessage.trim());
     }
-
+    
     // ✅ Clear the list of emails that were just processed.
     invitedEmails = [];
-
+    
     // ✅ Re-render the email tags, which will now be an empty list, clearing the UI.
     renderEmailTags();
-
+    
     // ✅ REMOVED: The closeModal() call is gone, so the modal stays open.
     // closeModal();
-
+    
   } catch (error) {
     console.error("Error committing invites to database:", error);
     alert("A database error occurred while saving the invitations. Please try again.");
@@ -1006,7 +1022,7 @@ function createModalUI() {
   styleSheet.id = "share-project-styles";
   styleSheet.innerText = styles;
   document.head.appendChild(styleSheet);
-
+  
   const modalHTML = `
     <div class="shareproject-modal">
         <div class="shareproject-modal-header"><h2>Share Project</h2><button id="shareproject-close-modal-btn" class="shareproject-icon-btn"><i class="material-icons">close</i></button></div>
@@ -1028,7 +1044,7 @@ function createModalUI() {
         <div id="shareproject-access-dropdown" class="shareproject-dropdown-content hidden"></div>
         <div id="shareproject-member-dropdowns-container"></div>
     </div>`;
-
+  
   const modalBackdrop = document.createElement("div");
   modalBackdrop.id = "shareproject-modal-backdrop";
   modalBackdrop.className = "shareproject-modal-backdrop";
