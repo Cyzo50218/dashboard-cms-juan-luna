@@ -2608,6 +2608,10 @@ function isCellEditable(column) {
 function createFloatingInput(targetCell, task, column) {
     if (document.querySelector('.floating-input-wrapper')) return;
     
+    // ✅ Find the main scrollable grid container
+    const scrollContainer = targetCell.closest('.juanlunacms-spreadsheetlist-custom-scrollbar');
+    if (!scrollContainer) return; // Exit if the container isn't found
+    
     const cellRect = targetCell.getBoundingClientRect();
     const currentValue = task.customFields ? (task.customFields[column.id] || '') : '';
     
@@ -2617,43 +2621,45 @@ function createFloatingInput(targetCell, task, column) {
     wrapper.style.top = `${cellRect.top}px`;
     wrapper.style.left = `${cellRect.left}px`;
     wrapper.style.width = `${cellRect.width}px`;
-    // Use min-height to allow the wrapper to grow with the textarea
     wrapper.style.minHeight = `${cellRect.height}px`;
     
-    let editor; // This will hold either our input or textarea
+    let editor;
     
     if (column.type === 'Text') {
         editor = document.createElement('textarea');
-        editor.className = 'floating-input'; // Use the same class for consistent styling
+        editor.className = 'floating-input';
         editor.value = currentValue;
-        
-        // Auto-growing logic for the textarea
         const autoGrow = () => {
             editor.style.height = 'auto';
             editor.style.height = (editor.scrollHeight) + 'px';
             wrapper.style.height = editor.style.height;
         };
         editor.addEventListener('input', autoGrow);
-        
-        // Call it once initially to set the correct starting size
         setTimeout(autoGrow, 0);
-        
-    } else { // For 'Numbers', 'Costing', etc.
+    } else {
         editor = document.createElement('input');
         editor.type = 'number';
         editor.className = 'floating-input';
         editor.value = currentValue;
-        // The wrapper's height will be fixed for single-line inputs
         wrapper.style.height = `${cellRect.height}px`;
     }
     
-    // --- Event Handling ---
-    const cleanup = () => wrapper.remove();
+    // ✅ This function will run every time the grid scrolls
+    const repositionOnScroll = () => {
+        const newRect = targetCell.getBoundingClientRect();
+        wrapper.style.top = `${newRect.top}px`;
+        wrapper.style.left = `${newRect.left}px`;
+    };
+    
+    const cleanup = () => {
+        // ✅ Remove the scroll listener to prevent memory leaks
+        scrollContainer.removeEventListener('scroll', repositionOnScroll);
+        wrapper.remove();
+    };
     
     const saveAndClose = () => {
         const newValue = editor.value.trim();
         const oldValue = String(currentValue).trim();
-        
         if (newValue !== oldValue) {
             const parsedValue = (column.type === 'Costing' || column.type === 'Numbers') ?
                 parseFloat(newValue) || 0 :
@@ -2666,15 +2672,11 @@ function createFloatingInput(targetCell, task, column) {
     };
     
     editor.addEventListener('blur', saveAndClose);
-    
     editor.addEventListener('keydown', (e) => {
-        // For textareas, we DON'T want Enter to save.
         if (editor.tagName === 'TEXTAREA') {
-            if (e.key === 'Escape') cleanup(); // Still cancel on Escape
+            if (e.key === 'Escape') cleanup();
             return;
         }
-        
-        // For regular inputs, Enter saves, Escape cancels.
         if (e.key === 'Enter') {
             e.preventDefault();
             saveAndClose();
@@ -2683,7 +2685,9 @@ function createFloatingInput(targetCell, task, column) {
         }
     });
     
-    // --- Final Assembly ---
+    // ✅ Add the scroll listener when the input is created
+    scrollContainer.addEventListener('scroll', repositionOnScroll);
+    
     wrapper.appendChild(editor);
     document.body.appendChild(wrapper);
     editor.focus();
