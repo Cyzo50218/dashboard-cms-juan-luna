@@ -399,14 +399,30 @@ async function saveUserData(user, fullName, email, provider, photoURL = null) {
   }
   
   const userRef = doc(db, "users", user.uid);
-  
   const userSnap = await getDoc(userRef);
   const isNewUser = !userSnap.exists();
   
   console.log(isNewUser ? "New user detected." : "Existing user detected.");
   
+  // If the user already exists, we don't need to do anything else here.
+  // Just update their data if necessary (e.g., new Google avatar).
+  if (!isNewUser) {
+    const existingData = userSnap.data();
+    const updateData = {
+      name: fullName, // Always update name/avatar in case it changed in Google
+      avatar: photoURL || existingData.avatar,
+    };
+    await setDoc(userRef, updateData, { merge: true });
+    console.log(`✅ Existing user data for ${email} refreshed.`);
+    return photoURL || existingData.avatar;
+  }
+  
+  // --- Start of New User Setup ---
+  console.log("Starting setup for new user...");
   let finalPhotoURL = photoURL;
-  if (provider === 'email' && isNewUser) {
+  
+  // 1. Generate an avatar if one doesn't exist (for email signups)
+  if (provider === 'email') {
     const initials = fullName.split(' ').slice(0, 2).map(w => w[0].toUpperCase()).join('');
     const color = getRandomColor();
     const dataUrl = generateAvatar(initials, color);
@@ -414,44 +430,40 @@ async function saveUserData(user, fullName, email, provider, photoURL = null) {
     const storageRef = ref(storage, avatarPath);
     await uploadString(storageRef, dataUrl, 'data_url');
     finalPhotoURL = await getDownloadURL(storageRef);
+    console.log("Generated and uploaded new avatar.");
   }
   
-  const userData = {
+  // 2. Prepare the batch write to ensure atomicity
+  const batch = writeBatch(db);
+  
+  // 3. Prepare the new workspace document
+  // We get its ID *before* committing the batch.
+  const workspaceCollectionRef = collection(db, `users/${user.uid}/myworkspace`);
+  const newWorkspaceRef = doc(workspaceCollectionRef); // Create a reference with a new ID
+  const newWorkspaceData = {
+    name: "My First Workspace",
+    createdAt: serverTimestamp(),
+    members: [user.uid]
+  };
+  
+  // 4. Prepare the new user document, now INCLUDING the selectedWorkspace ID
+  const newUserData = {
     id: user.uid,
     name: fullName,
     email: email,
     provider: provider,
     avatar: finalPhotoURL,
-    ...(isNewUser && { createdAt: serverTimestamp() })
+    createdAt: serverTimestamp(),
+    selectedWorkspace: newWorkspaceRef.id // Assign the ID directly
   };
   
-  await setDoc(userRef, userData, { merge: true });
-  console.log(`✅ User data for ${email} saved successfully.`);
+  // 5. Add both operations to the batch
+  batch.set(userRef, newUserData); // Operation 1: Create the user doc
+  batch.set(newWorkspaceRef, newWorkspaceData); // Operation 2: Create the workspace doc
   
-  if (isNewUser) {
-    try {
-      const workspaceRef = collection(db, `users/${user.uid}/myworkspace`);
-      const newWorkspace = {
-        name: "My First Workspace",
-        createdAt: serverTimestamp(),
-        members: [user.uid]
-      };
-      
-      // ✅ Step 1: Create the new workspace and get its reference.
-      const newWorkspaceRef = await addDoc(workspaceRef, newWorkspace);
-      console.log("✅ Default workspace created successfully for new user.");
-      
-      // ✅ Step 2: Update the main user document with the ID of the new workspace.
-      // This sets the new workspace as the default 'selectedWorkspace'.
-      await updateDoc(userRef, {
-        selectedWorkspace: newWorkspaceRef.id
-      });
-      console.log(`✅ Set '${newWorkspaceRef.id}' as the default selected workspace.`);
-      
-    } catch (error) {
-      console.error("❌ Error creating default workspace:", error);
-    }
-  }
+  // 6. Commit the batch
+  await batch.commit();
+  console.log("✅ New user and default workspace created atomically.");
   
   return finalPhotoURL;
 }
