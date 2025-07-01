@@ -1562,11 +1562,16 @@ function formatDueDate(dueDateString) {
 
 function render() {
     if (!project || !project.id) {
-        if (taskListBody) {
-            taskListBody.innerHTML = '<div>Loading Project...</div>';
-        }
-        return; // Exit the function early
+    if (taskListBody) {
+        taskListBody.innerHTML = `
+            <div class="progress-loading-container">
+                <div class="progress-spinner"></div>
+                <div class="loading-text">Loading project data...</div>
+            </div>
+        `;
     }
+    return; 
+}
     
     if (!taskListBody) return;
     

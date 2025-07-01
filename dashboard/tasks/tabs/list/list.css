@@ -2333,3 +2333,31 @@ textarea.floating-input {
     content: '-';
     color: #cbd5e1; /* A light gray color */
 }
+.progress-loading-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* Centers vertically */
+    align-items: center; /* Centers horizontally */
+    height: 100%; /* Take full height of parent to allow centering */
+    width: 100%; /* Take full width of parent */
+    gap: 10px; /* Space between spinner and text */
+}
+
+.progress-spinner {
+    border: 4px solid #f3f3f3; /* Light grey border */
+    border-top: 4px solid #000000; /* Black border for the "spinning" part */
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite; /* Animation for spinning effect */
+}
+
+.loading-text {
+    color: #333; /* Darker text color */
+    font-size: 1.1em;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
