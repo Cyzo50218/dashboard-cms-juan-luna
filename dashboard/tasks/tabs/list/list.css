@@ -2295,38 +2295,37 @@ Custom class
     transform: translateY(-10px);
     transition: opacity 150ms ease-out, transform 150ms ease-out;
 }
-
-/* State for when the panel is visible */
 .floating-panel.visible {
     opacity: 1;
     transform: translateY(0);
 }
-
-/* Ensure the datepicker from the library fits nicely inside */
 .floating-panel .datepicker {
     border: none;
     box-shadow: none;
 }
-/*
-  Styles for the floating input component
-*/
 .floating-input-wrapper {
-  z-index: 50; /* Ensures it appears above the grid */
+  z-index: 50;
   padding: 0;
   box-sizing: border-box;
+  /* Let the height be determined by its content */
+  height: auto; 
 }
-
 .floating-input {
   width: 100%;
   height: 100%;
-  border: 2px solid #3b82f6; /* A blue border, like Asana */
+  border: 2px solid #3b82f6;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   border-radius: 4px;
   font-family: inherit;
   font-size: 13px;
+  line-height: 1.5; /* Improved line spacing for textarea */
   padding: 4px 8px;
   box-sizing: border-box;
   outline: none;
+}
+textarea.floating-input {
+  resize: none; /* Disable the browser's default resize handle */
+  overflow: hidden; /* Hide the scrollbar, as it grows automatically */
 }
 
 /* Optional: a subtle placeholder for empty numeric cells */
