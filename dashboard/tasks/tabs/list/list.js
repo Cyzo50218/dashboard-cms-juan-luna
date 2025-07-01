@@ -2285,30 +2285,13 @@ function render() {
                             // --- Logic for other column types (Text, Costing, etc.) ---
                         } else { // This "else" is for columns that are NOT "Select" type
                             
-                            cell.contentEditable = canEditThisCell;
                             if (canEditThisCell) {
-                                cell.addEventListener('blur', () => {
-                                    const newValue = cell.innerText.trim();
-                                    const fieldPath = `customFields.${col.id}`;
-                                    const oldValue = rawValue ?? '';
-                                    
-                                    // Only update if value actually changed
-                                    if (newValue !== String(oldValue).trim()) {
-                                        updateTask(task.id, section.id, {
-                                            [fieldPath]: (col.type === 'Costing' || col.type === 'Numbers') ?
-                                                parseFloat(newValue.replace(/,/g, '')) || 0 : newValue
-                                        });
-                                    }
-                                });
-                                
-                                // Optional: allow pressing "Enter" to save
-                                cell.addEventListener('keydown', (e) => {
-                                    if (e.key === 'Enter') {
-                                        e.preventDefault(); // prevent new line
-                                        cell.blur(); // trigger blur handler
-                                    }
-                                });
-                            }
+    cell.addEventListener('click', (e) => {
+        // Stop the click from opening the task details sidebar
+        e.stopPropagation();
+        createFloatingInput(cell, task, col);
+    });
+}
                             
                             if (!canEditThisCell) {
                                 cell.classList.add('cell-restricted'); // Add a class for styling
@@ -2616,7 +2599,67 @@ function isCellEditable(column) {
     return true;
 }
 
-
+function createFloatingInput(targetCell, task, column) {
+    // Prevent creating a new input if one is already active
+    if (document.querySelector('.floating-input-wrapper')) return;
+    
+    // 1. Get position and value from the clicked cell
+    const cellRect = targetCell.getBoundingClientRect();
+    const currentValue = task.customFields ? (task.customFields[column.id] || '') : '';
+    
+    // 2. Create the wrapper and the input element
+    const wrapper = document.createElement('div');
+    wrapper.className = 'floating-input-wrapper';
+    wrapper.style.position = 'fixed';
+    wrapper.style.top = `${cellRect.top}px`;
+    wrapper.style.left = `${cellRect.left}px`;
+    wrapper.style.width = `${cellRect.width}px`;
+    wrapper.style.height = `${cellRect.height}px`;
+    
+    const input = document.createElement('input');
+    input.type = (column.type === 'Costing' || column.type === 'Numbers') ? 'number' : 'text';
+    input.className = 'floating-input';
+    input.value = currentValue;
+    
+    // --- Event Handling ---
+    const cleanup = () => {
+        wrapper.remove();
+        // Optional: remove a "cell-is-editing" class from the targetCell if you add one
+    };
+    
+    const saveAndClose = () => {
+        const newValue = input.value.trim();
+        const oldValue = String(currentValue).trim();
+        
+        if (newValue !== oldValue) {
+            const parsedValue = (column.type === 'Costing' || column.type === 'Numbers') ?
+                parseFloat(newValue) || 0 :
+                newValue;
+            
+            updateTask(task.id, task.sectionId, {
+                [`customFields.${column.id}`]: parsedValue
+            });
+        }
+        cleanup();
+    };
+    
+    input.addEventListener('blur', saveAndClose);
+    
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            saveAndClose(); // Save on Enter
+        } else if (e.key === 'Escape') {
+            cleanup(); // Cancel on Escape
+        }
+    });
+    
+    // 3. Append to the DOM and focus
+    wrapper.appendChild(input);
+    document.body.appendChild(wrapper);
+    input.focus();
+    input.select(); // Select the text for immediate replacement
+}
 
 function initColumnDragging() {
     const headerContainer = document.querySelector('.juanlunacms-spreadsheetlist-sticky-header .flex-grow');

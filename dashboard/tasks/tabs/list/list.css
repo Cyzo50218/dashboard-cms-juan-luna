@@ -2307,3 +2307,30 @@ Custom class
     border: none;
     box-shadow: none;
 }
+/*
+  Styles for the floating input component
+*/
+.floating-input-wrapper {
+  z-index: 50; /* Ensures it appears above the grid */
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.floating-input {
+  width: 100%;
+  height: 100%;
+  border: 2px solid #3b82f6; /* A blue border, like Asana */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 4px 8px;
+  box-sizing: border-box;
+  outline: none;
+}
+
+/* Optional: a subtle placeholder for empty numeric cells */
+.numeric-placeholder:empty::after {
+    content: '-';
+    color: #cbd5e1; /* A light gray color */
+}
