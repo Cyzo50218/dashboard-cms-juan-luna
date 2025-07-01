@@ -2050,7 +2050,7 @@ function render() {
                 </label>
                 <div class="flex items-start flex-grow min-w-0">
                     <span
-                        class="${taskNameClass} ${taskNameEditableClass} truncate whitespace-nowrap overflow-hidden text-ellipsis text-[13px] block outline-none bg-transparent rounded px-1 transition-all duration-150"
+                        class="${taskNameClass} ${taskNameEditableClass} truncate whitespace-nowrap overflow-hidden text-ellipsis text-[11px] block outline-none bg-transparent rounded px-1 transition-all duration-150"
                         style="max-width: 100%;"
                         contenteditable="${canEditThisTask}"
                         data-task-id="${task.id}"
@@ -2098,7 +2098,7 @@ function render() {
                 // --- Base Styling ---
                 const borderClass = 'border-r';
                 const leftBorderClass = i === 0 ? 'border-l' : '';
-                let cellClasses = `table-cell px-1 py-0.2 flex items-center ${borderClass} ${leftBorderClass} border-slate-200`;
+                let cellClasses = `table-cell text-[11px] px-1 py-0.2 flex items-center ${borderClass} ${leftBorderClass} border-slate-200`;
                 
                 if (
                     col.type === 'Text' || col.type === 'Numbers' || col.type === 'Type' ||
