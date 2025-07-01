@@ -1,69 +1,543 @@
 <header class="main-header">
-    <button class="menu-btn" id="menuToggle"><i data-lucide="menu"></i></button>
+  <button class="menu-btn" id="menuToggle">
+    <span class="bar"></span>
+    <span class="bar"></span>
+    <span class="bar"></span>
+  </button>
 
-    <button id="createToggle" class="create-btn">
-        <span class="material-icons-outlined create-icon">add</span>
-        <span class="create-text">Create</span>
+  <button id="createToggle" class="create-btn">
+    <span class="material-icons-outlined create-icon">add</span>
+    <span class="create-text">Create</span>
+  </button>
+  
+<div class="create-expand hidden">
+  <ul class="expand-menu">
+    <li><i data-lucide="check-square"></i> <span>Tasks</span></li>
+    <li><i data-lucide="folder"></i> <span>Projects</span></li>
+    
+  </ul>
+  <hr class="divider" />
+  <div class="invite-option">
+    <i data-lucide="user-plus"></i> <span>Invite</span>
+  </div>
+</div>
+
+  <div class="search-container">
+<div class="search-container-two" id="searchToggle">
+  <div class="search-wrapper">
+    <span class="material-icons-outlined search-icon">search</span>
+    <h1 class="search-hint">Search...</h1>
+    <span class="material-icons-outlined clear-icon hidden">close</span>
+  </div>
+</div>
+
+    
+
+  <div class="search-expand-more hidden" id="search-filter">
+    
+<div class="search-wrapper-more">
+  <input type="text" class="search-input-filter" placeholder="Search..." />
+  <span class="clear-text">clear</span>
+</div>
+
+  
+        <!-- TYPES ex.. type inside projects, tasks, projects, messages, etc... -->
+        <div class="mb-3 row align-items-center dropdown">
+  <label for="typeDropdown" class="col-sm-3 col-form-label">Type</label>
+  <div class="col-sm-9">
+<button
+  class="form-select text-start dropdown-toggle"
+  type="button"
+  id="typeDropdown"
+  data-bs-toggle="dropdown"
+  aria-expanded="false"
+>
+  <span class="dropdown-label">Any</span>
+</button>
+<ul class="dropdown-menu" aria-labelledby="typeDropdown">
+  <li><a class="dropdown-item" href="#">Any</a></li>
+  <li><hr class="dropdown-divider"></li>
+  <li>
+    <a class="dropdown-item" href="#">
+      <span class="material-icons-outlined">check_circle</span>
+      Tasks
+    </a>
+  </li>
+  <li>
+    <a class="dropdown-item" href="#">
+      <span class="material-icons-outlined">assignment</span>
+      Projects
+    </a>
+  </li>
+  <li>
+    <a class="dropdown-item" href="#">
+      <span class="material-icons-outlined">folder</span>
+      Portfolio
+    </a>
+  </li>
+  <li>
+    <a class="dropdown-item" href="#">
+      <span class="material-icons-outlined">chat_bubble_outline</span>
+      Messages
+    </a>
+  </li>
+  <!--
+  <li>
+    <a class="dropdown-item" href="#">
+      <span class="material-icons-outlined">dashboard_customize</span>
+      In portfolios
+    </a>
+  </li>
+  -->
+</ul>
+
+  </div>
+</div>
+
+        <!-- LOCATED ex.. tasks, teams, portfolio... -->        
+        <div class="mb-3 row align-items-center dropdown" id="locatedGlobal">
+  <label for="locatedDropdown" class="col-sm-3 col-form-label">Located</label>
+  <div class="col-sm-9">
+<button
+  class="form-select text-start dropdown-toggle"
+  type="button"
+  id="locatedDropdown"
+  data-bs-toggle="dropdown"
+  aria-expanded="false"
+>
+  <span class="dropdown-label">Anywhere</span>
+</button>
+    <ul class="dropdown-menu" aria-labelledby="locatedDropdown">
+      <li><a class="dropdown-item" href="#">Anywhere</a></li>
+      <li><hr class="dropdown-divider"></li>
+      <li><a class="dropdown-item" href="#">In any of these projects</a></li>
+      <li><a class="dropdown-item" href="#">In all of these projects</a></li>
+      <li><a class="dropdown-item" href="#">In projects owned by</a></li>
+      <li><a class="dropdown-item" href="#">In projects with all of these members</a></li>
+      <li><a class="dropdown-item" href="#">Not in these projects</a></li>
+      <li><hr class="dropdown-divider"></li>
+      <li><a class="dropdown-item" href="#">In portfolios</a></li>
+      <li><a class="dropdown-item" href="#">In teams</a></li>
+    </ul>
+  </div>
+</div>
+
+        <!-- LOCATED ex.. projects only-->        
+        <div class="mb-3 row align-items-center dropdown hidden" id="locatedProjectDropdown">
+  <label for="locatedDropdownProjects" class="col-sm-3 col-form-label">Located</label>
+  <div class="col-sm-9">
+    <button class="form-select text-start dropdown-toggle" type="button" id="locatedDropdownProjects" data-bs-toggle="dropdown" aria-expanded="false">
+      <span class="dropdown-label">Anywhere</span>
     </button>
-    <div class="create-expand hidden">
-        <ul>
-            <li><i data-lucide="check-square"></i> <span>Tasks</span></li>
-            <li><i data-lucide="folder"></i> <span>Projects</span></li>
-        </ul>
-        <hr class="divider" />
-        <div class="invite-option"><i data-lucide="user-plus"></i> <span>Invite</span></div>
-    </div>
+    <ul class="dropdown-menu" aria-labelledby="locatedDropdownProjects">
+      <li><a class="dropdown-item" href="#">Anywhere</a></li>
+      <li><hr class="dropdown-divider"></li>
+      <li><a class="dropdown-item" href="#">In portfolios</a></li>
+      <li><a class="dropdown-item" href="#">In teams</a></li>
+    </ul>
+  </div>
+</div>
 
-    <div class="search-container">
-        <div id="searchToggle">
-            <span class="material-icons-outlined">search</span>
-            <span class="search-hint">Search...</span>
+        <!-- EXTRA FIELD FOR THE LOCATED PROJECT OPTION -->
+        <div class="hidden" id="extra-field-projectdropdown">
+          <div class="mb-3 row align-items-center" id="extra-input">
+            <label for="extraFieldInput" class="col-sm-3 col-form-label"></label>
+            <div class="col-sm-9">
+              <input type="text" class="form-control" id="extraFieldInput">
+            </div>
+          </div>
+        </div>
+        
+        <!-- EXTRA FIELD FOR THE LOCATED OPTION -->
+        <div class="hidden" id="extra-field">
+  <div class="mb-3 row align-items-center" id="extra-input">
+    <label for="extraFieldInput" class="col-sm-3 col-form-label"></label>
+    <div class="col-sm-9">
+      <input type="text" class="form-control" id="extraFieldInput">
+    </div>
+  </div>
+
+  <div class="plus-container" style="user-select: none;">
+    <div id="plus-field" class="d-flex align-items-center" style="cursor: pointer;">
+      <span class="plus-icon me-2" id="plus">+</span>
+      <span class="normal-text">Not in these projects</span>
+      <span class="close-icon ms-auto" style="margin-left: auto; display: none; cursor: pointer;
+        height: 40px; width: 40px; font-size: 22px;
+        display: flex; align-items: center; justify-content: center;">
+        ×
+      </span>
+    </div>
+  </div>
+
+  <div class="mb-3 row align-items-center hidden" id="new-extra-input">
+    <label for="collaboratorsInput" class="col-sm-3 col-form-label"></label>
+    <div class="col-sm-9">
+      <input type="text" class="form-control" id="extraFieldInput2">
+    </div>
+  </div>
+</div>
+  
+        <!-- STATUS -->
+        <div class="hidden" id="status-field">
+          <div class="mb-3 row align-items-center dropdown">
+             <label for="statusDropdown" class="col-sm-3 col-form-label">Status</label>
+              <div class="col-sm-9">
+              <button class="form-select text-start dropdown-toggle" type="button" id="statusDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+               Any
+              </button>
+              <ul class="dropdown-menu" aria-labelledby="statusDropdown">
+               <li><a class="dropdown-item" href="#">Any</a></li>
+               <li><hr class="dropdown-divider"></li>
+               <li><a class="dropdown-item" href="#">Incomplete</a></li>
+               <li><a class="dropdown-item" href="#">Completed</a></li>
+               <li><a class="dropdown-item" href="#">Deleted</a></li>
+             </ul>
+          </div>
+        </div>
+     </div>
+        
+        <!-- ASSIGNED TO -->
+        <div class="mb-3 row align-items-center" id="assigned-to">
+          <label for="assignedToInput" class="col-sm-3 col-form-label">Assigned to</label>
+          <div class="col-sm-9">
+            <input type="text" class="form-control" id="assignedToInput">
+          </div>
         </div>
 
-        <div class="search-expand hidden" id="searchExpand">
-            <div class="search-wrapper-two">
-                <input type="text" class="search-input" placeholder="Search..." />
-                <span class="material-icons-outlined" id="filter-icon">filter_list</span>
-            </div>
+        <!-- DUE DATE -->        
+        <div class="hidden"id="due-date-field">
+         <div class="mb-3 row align-items-center dropdown" >
+         <label for="dueDateDropdown" class="col-sm-3 col-form-label" id="duedate-label">Due Date</label>
 
-            <div class="search-content-area">
-                <div class="search-options">
-                    <div class="option-btn" data-target="mytask-display"><span class="material-icons-outlined">check_circle</span><span>My Tasks</span><span class="material-icons-outlined cancel-icon">cancel</span></div>
-                    <div class="option-btn" data-target="project-display"><span class="material-icons-outlined">assignment</span><span>Projects</span><span class="material-icons-outlined cancel-icon">cancel</span></div>
-                    <div class="option-btn" data-target="people-query"><span class="material-icons-outlined">people</span><span>People</span><span class="material-icons-outlined cancel-icon">cancel</span></div>
-                    <div class="option-btn" data-target="message-query"><span class="material-icons-outlined">message</span><span>Messages</span><span class="material-icons-outlined cancel-icon">cancel</span></div>
-                </div>
+         <div class="col-sm-9" style="margin-top: 20px;" id="duedate-field">
+              <button class="form-select text-start dropdown-toggle" type="button" id="dueDateDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+               Any
+              </button>
+              <ul class="dropdown-menu" aria-labelledby="dueDateDropdown">
+               <li><a class="dropdown-item" href="#">Any Date</a></li>
+               <li><hr class="dropdown-divider"></li>
+               <li><a class="dropdown-item" href="#">Specific Date</a></li>
+               <li><hr class="dropdown-divider"></li>
+               <li><a class="dropdown-item" href="#">Yesterday</a></li>
+               <li><a class="dropdown-item" href="#">Today</a></li>
+               <li><a class="dropdown-item" href="#">Tomorrow</a></li>
+               <li><hr class="dropdown-divider"></li>
+               <li><a class="dropdown-item" href="#">Within the last</a></li>
+               <li><a class="dropdown-item" href="#">Within the next</a></li>
+               <li><a class="dropdown-item" href="#">Through the next</a></li>
+               <li><a class="dropdown-item" href="#">Date Range</a></li>
+             </ul>
+          </div>
 
-                <div class="mytask-display hidden"><hr/><div class="option-btn-tasks">In project</div><div class="option-btn-tasks">Assigned to</div><div class="option-btn-tasks">With collaborators</div></div>
-                <div class="project-display hidden"><hr/><div class="option-btn-tasks">Owner</div><div class="option-btn-tasks">With members</div></div>
-                <div id="people-query" class="hidden"><div class="container-empty" id="people-empty-state"><p>No people found.<br>Invite teammates!</p></div></div>
-                <div id="message-query" class="hidden"><div class="container-empty" id="messages-empty-state"><p>No recent items.</p></div></div>
-                <div id="saved-container"><h4 id="saved-searches-text">Saved Searches</h4><div class="saved-searches"><div>Task I've created</div></div></div>
-            </div>
+    <div class="col-sm-9 hidden" id="duedate-dropdown-extra">
+      <div class="row align-items-center mt-3" id="extra-duedate-field">
+        <div class="col-sm-6">
+         <button class="form-select text-start dropdown-toggle" type="button" id="dueDateDropdownExtra" data-bs-toggle="dropdown" aria-expanded="false">
+             Any
+         </button>
+        <ul class="dropdown-menu" aria-labelledby="dueDateDropdownExtra">
+        <li><a class="dropdown-item" href="#">Any Date</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item" href="#">Specific Date</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item" href="#">Yesterday</a></li>
+        <li><a class="dropdown-item" href="#">Today</a></li>
+        <li><a class="dropdown-item" href="#">Tomorrow</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item" href="#">Within the last</a></li>
+        <li><a class="dropdown-item" href="#">Within the next</a></li>
+        <li><a class="dropdown-item" href="#">Through the next</a></li>
+        <li><a class="dropdown-item" href="#">Date Range</a></li>
+      </ul>
+        </div>
 
-            <div id="search-filter" class="hidden">
-                 <div class="d-flex justify-content-between align-items-center mb-3"><h4>Advanced Search</h4><button id="close-filter-btn" class="btn-close"></button></div>
-                 
-                 <div class="mb-3 row align-items-center dropdown"><label for="typeDropdown" class="col-sm-3 col-form-label">Type</label><div class="col-sm-9"><button class="form-select text-start dropdown-toggle" type="button" id="typeDropdown" data-bs-toggle="dropdown">Any</button><ul class="dropdown-menu" aria-labelledby="typeDropdown"><li><a class="dropdown-item" href="#">Any</a></li><li><a class="dropdown-item" href="#">Tasks</a></li><li><a class="dropdown-item" href="#">Projects</a></li></ul></div></div>
-                 <div class="mb-3 row align-items-center" id="assigned-to"><label class="col-sm-3 col-form-label">Assigned to</label><div class="col-sm-9"><input type="text" class="form-control"></div></div>
-                 <div class="hidden" id="due-date-field"><div class="mb-3 row align-items-center dropdown"><label for="dueDateDropdown" class="col-sm-3 col-form-label">Due Date</label><div class="col-sm-9"><button class="form-select text-start dropdown-toggle" type="button" id="dueDateDropdown" data-bs-toggle="dropdown">Any</button><ul class="dropdown-menu" aria-labelledby="dueDateDropdown"><li><a class="dropdown-item" href="#">Any Date</a></li><li><a class="dropdown-item" href="#">Date Range</a></li></ul></div></div></div>
-                 
-                 <div class="dialog-footer mt-4 text-end"><button type="button" class="btn btn-secondary">Reset</button><button type="button" class="btn btn-primary">Search</button></div>
-            </div>
+        <div class="col-sm-6">
+         <button class="form-select text-start dropdown-toggle" type="button" id="dateSelectorDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+             ../../..
+         </button>
+           <ul class="dropdown-menu" id="date-picker" aria-labelledby="dueDateDropdownExtra">
+              <div id="calendar" class="calendar l"></div>
+          </ul>
+        </div>
+
         </div>
     </div>
+  </div>
 
-    <div class="icons" id="profileToggle">
-        <img src="https://i.pravatar.cc/32" alt="Profile" class="profile-picture" id="profile-picture">
-        <span class="material-icons-outlined dropdown">expand_more</span>
+     <div class="hidden" id="duedate-dropdown-within">
+  <div class="mb-3 row align-items-center dropdown">
+    <label class="col-sm-3 col-form-label"></label>
+    <div class="col-sm-9">
+      <div class="row align-items-center" id="extra-duedate-field" style="margin-top: 0 !important;">
+        <div class="col-sm-3">
+          <input type="text" class="form-control" id="inputDueDateWithin" placeholder="">
+       </div>
+        <div class="col-sm-9">
+          <button class="form-select text-start dropdown-toggle" type="button" id="dueDateDropdownWithin" data-bs-toggle="dropdown" aria-expanded="false">
+            Day
+          </button>
+          <ul class="dropdown-menu" aria-labelledby="dueDateDropdownWithin">
+            <li><a class="dropdown-item" href="#">Day</a></li>
+            <li><a class="dropdown-item" hrefl="#">Weeks</a></li>
+            <li><a class="dropdown-item" href="#">Months</a></li>
+          </ul>
+        </div>
+      </div>
     </div>
-    <div class="account-expand hidden">
-        <img class="account-expand-circle" src="https://i.pravatar.cc/64" alt="Profile" id="profile-picture-expand">
-        <h3>My Workspace</h3>
-        <h4 id="account-email">user@example.com</h4>
-        <hr class="account-divider" />
-        <ul class="account-menu"><li id="add-workspace-btn"><span class="material-symbols-outlined">add</span><span>New Workspace</span></li></ul>
-        <hr class="account-divider" />
-        <ul class="account-menu"><li id="logout-btn"><span class="material-symbols-outlined logout-icon">logout</span><span class="account-menu-text-logout">Logout</span></li></ul>
+  </div>
+</div>
+
+     <div class="hidden" id="duedate-dropdown-date-range">
+  <div class="mb-3 row align-items-center dropdown">
+    <label class="col-sm-3 col-form-label"></label>
+    <div class="col-sm-9">
+      <div class="row align-items-center" id="extra-duedate-field" style="margin-top: 0 !important;">
+        <div class="col-sm-6">
+            <button class="form-select daterange text-start dropdown-toggle" type="button" id="dateRangeOneDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+            Start
+            </button>
+            <ul class="dropdown-menu" id="date-picker" aria-labelledby="dateRangeOneDropdown">
+              <div id="calendar1" class="calendar l"></div>
+            </ul>
+        </div>
+        <div class="col-sm-6">
+           <button class="form-select daterange text-start dropdown-toggle" type="button" id="dateRangeTwoDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+           End
+           </button>
+           <ul class="dropdown-menu" id="date-picker" aria-labelledby="dateRangeTwoDropdown">
+             <div id="calendar2" class="calendar l"></div>
+           </ul>
+        </div>
+      </div>
     </div>
+  </div>
+</div>
+</div>
+
+        <!-- AUTHORS -->
+        <div class="mb-3 row align-items-center hidden" id="authors">
+          <label for="authorsInput" class="col-sm-3 col-form-label">Authors</label>
+          <div class="col-sm-9">
+            <input type="text" class="form-control" id="authorsInput">
+          </div>
+        </div>
+
+        <!-- COLLABORATOR -->
+        <div class="mb-3 row align-items-center" id="collaborators">
+          <label for="collaboratorsInput" class="col-sm-3 col-form-label">Collaborators</label>
+          <div class="col-sm-9">
+            <input type="text" class="form-control" id="collaboratorsInput">
+          </div>
+        </div>
+
+        <!-- OWNERS -->
+        <div class="mb-3 row align-items-center hidden" id="owners">
+          <label for="ownersInput" class="col-sm-3 col-form-label">Owner</label>
+          <div class="col-sm-9">
+            <input type="text" class="form-control" id="ownersInput">
+          </div>
+        </div>
+
+        <!-- MEMBERS -->
+        <div class="mb-3 row align-items-center hidden" id="members">
+          <label for="membersInput" class="col-sm-3 col-form-label">Members</label>
+          <div class="col-sm-9">
+            <input type="text" class="form-control" id="membersInput">
+          </div>
+        </div>
+        
+        <!-- STATUS PROJECT -->
+        <div class="hidden" id="status-project-field">
+          <div class="mb-3 row align-items-center dropdown">
+             <label for="statusProjectDropdown" class="col-sm-3 col-form-label">Status</label>
+              <div class="col-sm-9">
+              <button class="form-select text-start dropdown-toggle" type="button" id="statusProjectDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+               Any
+              </button>
+              <ul class="dropdown-menu" aria-labelledby="statusProjectDropdown">
+               <li><a class="dropdown-item" href="#">Any</a></li>
+               <li><hr class="dropdown-divider"></li>
+               <li><a class="dropdown-item" href="#">Active</a></li>
+               <li><a class="dropdown-item" href="#">Completed</a></li>
+               <li><a class="dropdown-item" href="#">Deleted</a></li>
+               <li><a class="dropdown-item" href="#">Archived</a></li>
+             </ul>
+          </div>
+        </div>
+     </div>              
+        
+        <div class="dialog-footer">
+          <button type="button" class="btn btn-secondary">Reset filters</button>
+          <button type="button" class="btn btn-primary">Search</button>
+        </div>
+</div>
+
+    
+  </div>
+
+  
+<div class="search-expand hidden">
+  
+<div class="search-wrapper-two">
+  <input type="text" class="search-input" placeholder="Search..." />
+  <span class="material-icons-outlined cancel-search-icon hidden">cancel</span>
+<span class="material-icons-outlined more-filter-icon" id="filter-icon" style="margin-left: 8px; color: #767A88; font-size: 20px;">filter_list</span>
+
+</div>
+
+<div id="options-query">
+    <div class="email-container hidden" id="email-container-id">
+    <span class="material-icons-outlined email">email</span>
+    <h1 class="email-text">Invite teammates via Email</h1>
+  </div>
+  <br>
+</div>
+
+<div class="search-options">
+      <div class="option-btn">
+        <span class="material-icons-outlined">check_circle</span>
+        <span class="option-text">My Tasks</span>
+        <span class="material-icons-outlined cancel-icon">cancel</span>
+      </div>
+      <div class="mytask-display hidden" id="mytask-display">
+        <hr class="horizontal-divider" />
+        <br>
+        <div class="option-btn-tasks">
+          <span class="option-text">In project</span>
+        </div>
+        <div class="option-btn-tasks">
+          <span class="option-text">Assigned to</span>
+        </div>
+        <div class="option-btn-tasks">
+          <span class="option-text">With collaborators</span>
+        </div>
+      </div>
+      <div class="option-btn">
+        <span class="material-icons-outlined">assignment</span>
+        <span class="option-text">Projects</span>
+        <span class="material-icons-outlined cancel-icon">cancel</span>
+      </div>
+      <div class="project-display hidden" id="project-display">
+        <hr class="horizontal-divider" />
+        <br>
+        <div class="option-btn-tasks">
+          <span class="option-text">Owner</span>
+        </div>
+        <div class="option-btn-tasks">
+          <span class="option-text">With members</span>
+        </div>
+      </div>
+      <div class="option-btn">
+        <span class="material-icons-outlined">people</span>
+        <span class="option-text">People</span>
+        <span class="material-icons-outlined cancel-icon">cancel</span>
+      </div>
+     <div class="option-btn">
+       <span class="material-icons-outlined">message</span>
+       <span class="option-text">Messages</span>
+       <span class="material-icons-outlined cancel-icon">cancel</span>
+    </div>
+    </div>
+    
+<div id="people-query">
+  <div class="container-empty hidden" id="people-empty-state">
+    <br>
+    <p class="empty-text">No people found.<br>Invite teammates to get started!</p>
+  </div>
+
+  <div class="email-container hidden" id="email-container-id-people">
+    <span class="material-icons-outlined email">email</span>
+    <h1 class="email-text">Invite teammates via Email</h1>
+    <br>
+  </div>
+  
+</div>
+
+<div id="message-query">
+  <div class="container-empty hidden" id="messages-empty-state">
+    <p class="empty-text">No recent items available.<br>Try typing to see suggestions</p>
+  </div>
+  
+  <div class="email-container hidden" id="email-container-id">
+    <span class="material-icons-outlined email">email</span>
+    <h1 class="email-text">Invite teammates via Email</h1>
+  </div>
+  
+  <br>
+</div>
+
+<div id="recent-container">
+    <h4>Recents</h4>
+    <div></div>
+  </div>
+  
+<div id="saved-container">
+    <br>
+    <h4 id="saved-searches-text">Saved Searches</h4>
+    <div class="saved-searches">
+      <div class="savedsearches-btn">
+        <span class="material-icons-outlined savedsearches">check_circle</span>
+        <span class="savedsearches-text">Task I've created</span>
+      </div>
+      <div class="savedsearches-btn">
+        <span class="material-icons-outlined savedsearches">assignment</span>
+        <span class="savedsearches-text">Task I've assigned to others</span>
+      </div>
+      <div class="savedsearches-btn">
+        <span class="material-icons-outlined savedsearches">check_circle</span>
+        <span class="savedsearches-text">Recently completed</span>
+      </div>
+    </div>
+  </div>
+  
+<div id="half-query" class="skeleton-active">
+  
+</div>
+
+</div>
+
+
+  </div>
+
+  <div class="icons">
+    <img id="profileToggle" alt="Profile" class="profile-picture">
+    <span class="material-icons-outlined dropdown">expand_more</span>
+  </div>
+  
+ <div class="account-expand hidden">
+   <img class="account-expand-circle" alt="Profile" id="profile-picture-expand">
+  <br>
+  <h3>My Workspace</h3>
+  <h4 id="account-email">myfavoritemappingswar@gmail.com</h4>
+  <br>
+<ul class="account-menu">
+  <li id="add-workspace-btn">
+    <span class="material-symbols-outlined">add</span>
+    <h1 class="account-menu-text">New Workspace</h1>
+  </li>
+</ul>
+<hr class="account-divider" />
+<ul class="account-menu">
+  <li>
+    <span class="material-symbols-outlined">person</span>
+    <h1 class="account-menu-text">Profile</h1>
+  </li>
+  <li>
+    <span class="material-symbols-outlined">settings</span>
+    <h1 class="account-menu-text">Settings</h1>
+  </li>
+  <li>
+    <span class="material-symbols-outlined">person_add</span>
+    <h1 class="account-menu-text">Add another account</h1>
+  </li>
+</ul>
+<hr class="account-divider" />
+<ul class="account-menu">
+  <li id="logout-btn">
+    <span class="material-symbols-outlined logout-icon">logout</span>
+    <h1 class="account-menu-text-logout">Logout</h1>
+  </li>
+</ul>
+</div>
+
 </header>
