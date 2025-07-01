@@ -16,7 +16,7 @@ import {
     serverTimestamp,
     getDoc,
     setDoc,
-    updateDoc
+    updateDoc // Import updateDoc for selectProject
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "/services/firebase-config.js";
 
@@ -30,6 +30,7 @@ import { firebaseConfig } from "/services/firebase-config.js";
     const sidebar = document.getElementById("dashboardDrawer");
     if (!sidebar) return;
     
+    // --- Module-level state variables ---
     let projectsData = [];
     let activeWorkspaceId = null;
     let selectedProjectId = null;
@@ -37,6 +38,8 @@ import { firebaseConfig } from "/services/firebase-config.js";
     let unsubscribeProjects = null;
     let unsubscribeUserDoc = null;
     let unsubscribeWorkspace = null;
+    // A flag to prevent multiple reload loops
+    let isReloading = false;
     
     function stringToNumericString(str) {
         if (!str) return '';
@@ -44,11 +47,11 @@ import { firebaseConfig } from "/services/firebase-config.js";
     }
     
     function renderProjectsList() {
+        // This function body remains unchanged from your provided code
         const projectsListContainer = sidebar.querySelector('#projects-section .section-items');
         if (!projectsListContainer || !currentUser) return;
         
         const visibleProjects = projectsData.filter(p =>
-            (!activeWorkspaceId || p.workspaceId === activeWorkspaceId) &&
             (p.accessLevel !== 'private' || (p.members && p.members.some(m => m.uid === currentUser.uid)))
         );
         
@@ -59,6 +62,9 @@ import { firebaseConfig } from "/services/firebase-config.js";
             updateMyTasksLink(null);
             return;
         }
+        
+        const activeProjects = activeWorkspaceId ? visibleProjects.filter(p => p.workspaceId === activeWorkspaceId) : [];
+        const otherProjects = activeWorkspaceId ? visibleProjects.filter(p => p.workspaceId !== activeWorkspaceId) : visibleProjects;
         
         const renderProjectItem = (project) => {
             const projectLi = document.createElement('li');
@@ -84,13 +90,15 @@ import { firebaseConfig } from "/services/firebase-config.js";
             projectsListContainer.appendChild(projectLi);
         };
         
-        visibleProjects.sort((a, b) => a.title.localeCompare(b.title));
-        visibleProjects.forEach(renderProjectItem);
+        activeProjects.sort((a, b) => a.title.localeCompare(b.title)).forEach(renderProjectItem);
+        otherProjects.sort((a, b) => a.title.localeCompare(b.title)).forEach(renderProjectItem);
         
         const selectedProject = visibleProjects.find(p => p.id === selectedProjectId);
         updateMyTasksLink(selectedProject || visibleProjects[0]);
     }
     
+    // This function and all other helper/event handler functions
+    // remain unchanged from your provided code.
     function updateMyTasksLink(targetProject) {
         const myTasksLink = sidebar.querySelector('#my-tasks-link');
         if (!myTasksLink) return;
@@ -154,7 +162,6 @@ import { firebaseConfig } from "/services/firebase-config.js";
             await runTransaction(db, async (transaction) => {
                 transaction.set(newProjectRef, newProjectData);
                 transaction.update(workspaceRef, { selectedProjectId: newProjectRef.id });
-                
                 const sectionsColRef = collection(newProjectRef, "sections");
                 sectionsData.forEach(section => transaction.set(doc(sectionsColRef), section));
             });
@@ -211,6 +218,7 @@ import { firebaseConfig } from "/services/firebase-config.js";
         activeWorkspaceId = null;
         selectedProjectId = null;
         projectsData = [];
+        isReloading = false;
         
         if (user) {
             currentUser = user;
@@ -227,18 +235,28 @@ import { firebaseConfig } from "/services/firebase-config.js";
                     
                     if (activeWorkspaceId) {
                         const workspaceRef = doc(db, `users/${user.uid}/myworkspace/${activeWorkspaceId}`);
+                        
+                        // ✅ MODIFIED: This listener now handles auto-reselection and reloads the page.
                         unsubscribeWorkspace = onSnapshot(workspaceRef, (workspaceSnap) => {
+                            if (isReloading) return; // Prevent loops
+                            
                             const newSelectedProjectId = workspaceSnap.data()?.selectedProjectId || null;
                             const isStillValid = newSelectedProjectId && projectsData.some(p => p.id === newSelectedProjectId);
                             
+                            // --- Auto-reselection and reload logic ---
                             if (!isStillValid) {
-                                console.log(`DEBUG: Selected project ${newSelectedProjectId} is null or invalid. Attempting to re-select.`);
+                                console.log(`DEBUG: Selected project ${newSelectedProjectId} is null or invalid.`);
                                 const availableProjects = projectsData.filter(p => p.workspaceId === activeWorkspaceId);
+                                
                                 if (availableProjects.length > 0) {
                                     const fallbackProjectId = availableProjects.sort((a, b) => a.title.localeCompare(b.title))[0].id;
-                                    console.log(`DEBUG: Found fallback project: ${fallbackProjectId}. Selecting it now.`);
-                                    selectProject(fallbackProjectId);
-                                    return;
+                                    console.log(`DEBUG: Found fallback project: ${fallbackProjectId}. Selecting it and reloading.`);
+                                    
+                                    isReloading = true; // Set flag to prevent loop
+                                    selectProject(fallbackProjectId).then(() => {
+                                        window.location.reload();
+                                    });
+                                    return; // Exit to wait for reload
                                 }
                             }
                             
