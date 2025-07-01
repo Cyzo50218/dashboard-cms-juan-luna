@@ -32,7 +32,7 @@ const ui = {
 
     // Search & Filter
     searchToggle: document.getElementById("searchToggle"),
-    searchExpand: document.querySelector(".search-expand"),
+    searchExpand: document.getElementById("searchExpand"),
     searchInput: document.querySelector('.search-input'),
     cancelSearchIcon: document.querySelector('.cancel-search-icon'),
     searchOptions: document.querySelector('.search-options'),
@@ -55,15 +55,15 @@ const ui = {
     projectOptionBtns: document.querySelectorAll('.project-display .option-btn-tasks'),
 
     // Invite/Email Modals
-    emailContainer: document.querySelectorAll('.email-container'),
     inviteBtnPeople: document.getElementById('email-container-id-people'),
     inviteBtnGeneric: document.getElementById('email-container-id'),
 
     // Advanced Filter Elements
     filterToggleMenu: document.getElementById("filter-icon"),
     searchFilterMenu: document.getElementById("search-filter"),
+    closeFilterBtn: document.getElementById('close-filter-btn'),
+    searchContentArea: document.querySelector('.search-content-area'),
     filterSearchInput: document.querySelector('.search-input-filter'),
-    clearFilterInputBtn: document.querySelector('.clear-text'),
     typeDropdown: document.getElementById("typeDropdown"),
     plusField: document.getElementById("plus-field"),
     plusIcon: document.getElementById('plus'),
@@ -91,7 +91,7 @@ const ui = {
         mainDropdown: document.getElementById('dueDateDropdown'),
         extraDropdown: document.getElementById('dueDateDropdownExtra'),
         withinInput: document.getElementById('inputDueDateWithin'),
-        withinUnitDropdown: document.getElementById('dueDateDropdownWithin'),
+        dateSelector: document.getElementById('dateSelectorDropdown'),
         rangeStart: document.getElementById('dateRangeOneDropdown'),
         rangeEnd: document.getElementById('dateRangeTwoDropdown'),
         specificDateContainer: document.getElementById('duedate-dropdown-extra'),
@@ -125,22 +125,10 @@ let state = {
 
 // --- 5. HELPER & UTILITY FUNCTIONS ---
 
-/**
- * Checks for mobile screen size.
- * @returns {boolean} True if the screen width is 768px or less.
- */
-function isMobile() {
-    return window.matchMedia("(max-width: 768px)").matches;
-}
-
-/**
- * Updates the user's profile picture and email in the header.
- * @param {object} user - The Firebase user object.
- */
+/** Updates the user's profile picture and email in the header. */
 async function updateProfileDisplay(user) {
     if (!user) return;
-
-    const mainProfileImg = document.getElementById("profileToggle");
+    const mainProfileImg = document.getElementById("profile-picture");
     const expandProfileImg = document.getElementById("profile-picture-expand");
     const expandEmail = document.getElementById("account-email");
 
@@ -160,9 +148,7 @@ async function updateProfileDisplay(user) {
 
 // --- 6. CORE UI & AUTHENTICATION HANDLERS ---
 
-/**
- * Signs the current user out and redirects to the login page.
- */
+/** Signs the current user out and redirects to the login page. */
 async function handleLogout() {
     try {
         await signOut(auth);
@@ -172,10 +158,9 @@ async function handleLogout() {
     }
 }
 
-/**
- * Handles the creation of a new workspace via a prompt.
- */
+/** Handles the creation of a new workspace via a prompt. */
 async function handleNewWorkspace() {
+    // This function requires runTransaction, query, where, serverTimestamp from Firestore
     const currentUser = auth.currentUser;
     if (!currentUser) return alert("You must be logged in to create a workspace.");
 
@@ -210,109 +195,28 @@ async function handleNewWorkspace() {
     }
 }
 
-/**
- * Handles clicks outside of specified active menus to close them.
- * @param {Event} e - The click event object.
- */
+/** Handles clicks outside of specified active menus to close them. */
 function handleOutsideClicks(e) {
-    const clickedOutside = (menu, toggle) => menu && toggle && !menu.contains(e.target) && !toggle.contains(e.target);
-
-    if (clickedOutside(ui.createExpand, ui.createToggle) && ui.createExpand.classList.contains("show")) {
-        ui.createExpand.classList.add("hidden");
-        ui.createExpand.classList.remove("show");
-    }
-    if (clickedOutside(ui.profileExpand, ui.profileToggle) && ui.profileExpand.classList.contains("show")) {
-        ui.profileExpand.classList.add("hidden");
-    }
-    if (clickedOutside(ui.searchExpand, ui.searchToggle) && !ui.searchExpand.classList.contains("hidden")) {
-        ui.searchExpand.classList.add("hidden");
-        ui.searchToggle.classList.remove("hidden");
-    }
-    if (clickedOutside(ui.searchFilterMenu, ui.filterToggleMenu) && !e.target.closest('.calendar-dates div')) {
-        if (!ui.searchFilterMenu.classList.contains("hidden")) {
-            ui.searchFilterMenu.classList.add("hidden");
-            if (!ui.filterToggleMenu.contains(e.target)) {
-                ui.searchExpand.classList.remove("hidden");
-                ui.searchToggle.classList.add("hidden");
-            }
-        }
+    const isClickOutside = (element, trigger) =>
+        element && !element.classList.contains('hidden') &&
+        !element.contains(e.target) && !trigger.contains(e.target);
+    
+    if (isClickOutside(ui.createExpand, ui.createToggle)) ui.createExpand.classList.add('hidden');
+    if (isClickOutside(ui.accountExpand, ui.profileToggle)) ui.accountExpand.classList.add('hidden');
+    if (isClickOutside(ui.searchExpand, ui.searchToggle) && !e.target.closest('.dropdown-menu')) {
+        ui.searchExpand.classList.add('hidden');
+        ui.searchToggle.classList.remove('hidden');
     }
 }
 
 // --- 7. SEARCH FUNCTIONALITY ---
 
-// 7.1. Simple Search (Main Search Bar)
-function handleMainSearchInput() {
-    const value = ui.searchInput.value.trim();
-    ui.cancelSearchIcon.classList.toggle('hidden', value === '');
-    ui.savedContainer.classList.toggle('hidden', value !== '');
-    ui.recentContainer.classList.toggle('hidden', value !== '');
-    ui.searchQueryContainer.classList.toggle('hidden', value === '');
-
-    if (value === '') {
-        resetToDefaultSearchView();
-        return;
-    }
-
-    ui.searchQueryContainer.innerHTML = `<div class="skeleton-loader" style="width: 200px;"></div><div class="skeleton-loader" style="width: 500px;"></div>`;
-    ui.searchQueryContainer.classList.add("skeleton-active");
-
-    setTimeout(() => {
-        ui.searchQueryContainer.classList.remove("skeleton-active");
-        ui.searchQueryContainer.innerHTML = '';
-
-        const startsWithKeyword = value.startsWith('with:') || value.startsWith('assignee:') || value.startsWith('in:');
-        ui.searchOptions.classList.toggle('hidden', startsWithKeyword);
-        ui.optionsQuery.classList.toggle('hidden', !startsWithKeyword);
-
-        if (value.startsWith('with:') || value.startsWith('assignee:')) {
-            ui.inviteBtnGeneric.classList.remove('hidden');
-        }
-    }, 1000);
-}
-
-function resetToDefaultSearchView() {
-    ui.searchQueryContainer.classList.add("hidden");
-    ui.optionsQuery.classList.add("hidden");
-    ui.searchOptions.classList.remove("hidden");
-    ui.inviteBtnGeneric.classList.add('hidden');
-    if (ui.messagesEmptyState) ui.messagesEmptyState.classList.toggle("hidden", !state.isMessagesTabSelected);
-    if (ui.peopleEmptyState) ui.peopleEmptyState.classList.toggle("hidden", !state.isPeopleTabSelected);
-}
-
-function clearMainSearch() {
-    ui.searchInput.value = '';
-    ui.cancelSearchIcon.classList.add('hidden');
-    ui.savedContainer.classList.remove("hidden");
-    ui.searchOptions.classList.remove("hidden");
-    ui.recentContainer.classList.remove("hidden");
-    ui.inviteBtnGeneric.classList.add('hidden');
-    ui.searchInput.focus();
-}
-
-// 7.2. Contextual Search (Tasks & Projects Quick Actions)
-function setupContextualSearch(prefix, showEmail = false) {
-    ui.searchInput.value = prefix;
-    ui.cancelSearchIcon.classList.remove('hidden');
-    ui.searchOptions.classList.add("hidden");
-    ui.savedContainer.classList.add("hidden");
-    ui.recentContainer.classList.add("hidden");
-
-    if (showEmail) {
-        ui.inviteBtnGeneric.classList.remove('hidden');
-        ui.searchQueryContainer.classList.remove("hidden");
-        ui.optionsQuery.classList.remove("hidden");
-    }
-    ui.searchInput.focus();
-}
-
-// 7.3. Advanced Search (Filter Menu)
+// 7.1. Advanced Search (Filter Menu)
 function renderCalendar(month) {
     ui.dueDateFields.calendars.forEach((cal, index) => {
         if (!cal) return;
         cal.innerHTML = '';
         const localMonth = month.clone();
-
         const header = document.createElement('div');
         header.className = 'calendar-header';
         header.innerHTML = `<span class="prev-month">&#x2329;</span><span>${localMonth.format('MMMM YYYY')}</span><span class="next-month">&#x232A;</span>`;
@@ -324,18 +228,14 @@ function renderCalendar(month) {
         const days = document.createElement('div');
         days.className = 'calendar-days';
         ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(d => {
-            const el = document.createElement('div');
-            el.textContent = d;
-            days.appendChild(el);
+            const el = document.createElement('div'); el.textContent = d; days.appendChild(el);
         });
         cal.appendChild(days);
 
         const dates = document.createElement('div');
         dates.className = 'calendar-dates';
         const startDay = localMonth.startOf('month').day();
-        for (let i = 0; i < startDay; i++) {
-            dates.appendChild(document.createElement('div'));
-        }
+        for (let i = 0; i < startDay; i++) dates.appendChild(document.createElement('div'));
 
         for (let d = 1; d <= localMonth.daysInMonth(); d++) {
             const dateEl = document.createElement('div');
@@ -361,7 +261,7 @@ function handleDateSelection(date, calendarIndex) {
         state.filter.rangeEnd = date;
         ui.dueDateFields.rangeEnd.textContent = formatted;
     } else {
-        ui.dueDateFields.extraDropdown.textContent = formatted;
+        ui.dueDateFields.dateSelector.textContent = formatted;
     }
     renderCalendar(state.currentMonth);
 }
@@ -397,155 +297,103 @@ function handleDueDateChange(selectedDueDate) {
 
     mainDropdown.textContent = selectedDueDate;
     extraDropdown.textContent = selectedDueDate;
-    [withinContainer, rangeContainer, specificDateContainer].forEach(c => c.classList.add('hidden'));
+    [withinContainer, rangeContainer, specificDateContainer].forEach(c => c && c.classList.add('hidden'));
 
     state.filter.rangeStart = null;
     state.filter.rangeEnd = null;
-    rangeStart.textContent = 'Start';
-    rangeEnd.textContent = 'End';
+    if(rangeStart) rangeStart.textContent = 'Start';
+    if(rangeEnd) rangeEnd.textContent = 'End';
 
     if (['Yesterday', 'Today', 'Tomorrow', 'Specific Date'].includes(selectedDueDate)) {
-        specificDateContainer.classList.remove('hidden');
+        if(specificDateContainer) specificDateContainer.classList.remove('hidden');
     } else if (['Within the last', 'Within the next'].includes(selectedDueDate)) {
-        withinContainer.classList.remove('hidden');
+        if(withinContainer) withinContainer.classList.remove('hidden');
     } else if (selectedDueDate === 'Date Range') {
-        rangeContainer.classList.remove('hidden');
+        if(rangeContainer) rangeContainer.classList.remove('hidden');
     }
     renderCalendar(state.currentMonth);
 }
 
 // --- 8. EVENT LISTENER INITIALIZATION ---
-
 function initializeEventListeners() {
-    // Core UI
-    if (ui.menuToggle) ui.menuToggle.addEventListener("click", () => {
-        const isClosed = ui.drawer.classList.toggle("close");
-        ui.rootdrawer.style.width = isClosed ? "80px" : "260px";
-    });
-    if (ui.searchToggle) ui.searchToggle.addEventListener("click", () => {
-        ui.searchExpand.classList.remove("hidden");
-        ui.searchToggle.classList.add("hidden");
-    });
-    if (ui.createToggle) ui.createToggle.addEventListener("click", (e) => {
+    // Dropdown Toggles
+    if (ui.createToggle) ui.createToggle.addEventListener('click', (e) => { e.stopPropagation(); ui.createExpand.classList.toggle('hidden'); });
+    if (ui.profileToggle) ui.profileToggle.addEventListener('click', (e) => { e.stopPropagation(); ui.accountExpand.classList.toggle('hidden'); });
+
+    // Search Toggles
+    if (ui.searchToggle) ui.searchToggle.addEventListener('click', (e) => {
         e.stopPropagation();
-        ui.createExpand.classList.remove("hidden");
-        ui.createExpand.classList.add("show");
-    });
-    if (ui.profileToggle) ui.profileToggle.addEventListener("click", (e) => {
-        e.stopPropagation();
-        ui.profileExpand.classList.remove("hidden");
+        ui.searchToggle.classList.add('hidden');
+        ui.searchExpand.classList.remove('hidden');
     });
 
-    document.addEventListener("click", (e) => {
-        handleOutsideClicks(e);
-        if (e.target.closest('#logout-btn')) handleLogout();
-        if (e.target.closest('#add-workspace-btn')) handleNewWorkspace();
-    });
-
-    // Main Search
-    if (ui.searchInput) ui.searchInput.addEventListener('input', handleMainSearchInput);
-    if (ui.cancelSearchIcon) ui.cancelSearchIcon.addEventListener('click', clearMainSearch);
-
-    // Contextual Search
-    ui.taskOptionBtns.forEach((btn, index) => btn.addEventListener('click', () => {
-        const actions = { 0: ['in: '], 1: ['assignee: ', true], 2: ['with: ', true] };
-        setupContextualSearch(...actions[index]);
-    }));
-    ui.projectOptionBtns.forEach((btn, index) => btn.addEventListener('click', () => {
-        const actions = { 0: ['owner: ', true], 1: ['with: ', true] };
-        setupContextualSearch(...actions[index]);
-    }));
-
-    // Invite Modal
-    [ui.inviteBtnPeople, ui.inviteBtnGeneric].forEach(btn => {
-        if (btn) btn.addEventListener('click', async () => {
-            const result = await showInviteModal();
-            console.log(result ? `Invitation details: ${JSON.stringify(result)}` : "Modal closed.");
-        });
-    });
-
-    // Main Tab Selection
-    ui.mainOptionBtns.forEach((btn, index) => {
-        btn.addEventListener("click", () => {
-            const isSelected = btn.classList.toggle("selected");
-            state.isPeopleTabSelected = index === 2 && isSelected;
-            state.isMessagesTabSelected = index === 3 && isSelected;
-
-            ui.mainOptionBtns.forEach((otherBtn, otherIndex) => {
-                if (index !== otherIndex) {
-                    otherBtn.classList.remove("selected");
-                    if (isSelected) otherBtn.classList.add("hide");
-                }
-            });
-            if (!isSelected) ui.mainOptionBtns.forEach(b => b.classList.remove("hide"));
-
-            const contentMap = { 0: ui.mytaskdisplay, 1: ui.projectdisplay, 2: ui.peopleEmptyState, 3: ui.messagesEmptyState };
-            Object.values(contentMap).forEach(el => { if(el) el.classList.add('hidden') });
-            if (isSelected && contentMap[index]) contentMap[index].classList.remove('hidden');
-        });
-    });
-
-    // Advanced Filter
     if (ui.filterToggleMenu) ui.filterToggleMenu.addEventListener('click', () => {
-        ui.searchFilterMenu.classList.remove("hidden");
-        ui.searchExpand.classList.add("hidden");
+        ui.searchFilterMenu.classList.remove('hidden');
+        ui.searchContentArea.classList.add('hidden');
     });
 
-    document.querySelectorAll(".dropdown-menu .dropdown-item").forEach(item => {
-        item.addEventListener("click", function(e) {
-            e.preventDefault();
-            const selectedText = this.textContent.trim();
-            const button = this.closest('.dropdown-menu').previousElementSibling;
-            if (!button) return;
-            button.textContent = selectedText;
+    if (ui.closeFilterBtn) ui.closeFilterBtn.addEventListener('click', () => {
+        ui.searchFilterMenu.classList.add('hidden');
+        ui.searchContentArea.classList.remove('hidden');
+    });
 
-            switch (button.id) {
-                case 'typeDropdown': updateFilterFieldsVisibility(selectedText); break;
-                case 'locatedDropdown':
-                case 'locatedDropdownProjects':
-                    state.filter.location = selectedText;
-                    if (ui.fields.extraField) ui.fields.extraField.classList.toggle('hidden', !['In any of these projects', 'In all of these projects'].includes(selectedText));
-                    break;
-                case 'dueDateDropdown':
-                case 'dueDateDropdownExtra':
-                    handleDueDateChange(selectedText);
-                    break;
-                case 'statusDropdown': state.filter.status = selectedText; break;
-                case 'statusProjectDropdown': state.filter.statusProject = selectedText; break;
+    // Main Search Option Tabs
+    ui.optionBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const wasSelected = btn.classList.contains('selected');
+            document.querySelectorAll('.mytask-display, .project-display, #people-query, #message-query').forEach(el => el.classList.add('hidden'));
+            ui.optionBtns.forEach(b => b.classList.remove('selected'));
+            if(ui.savedContainer) ui.savedContainer.classList.remove('hidden');
+
+            if (!wasSelected) {
+                btn.classList.add('selected');
+                const targetId = btn.dataset.target;
+                const targetElement = document.getElementById(targetId);
+                if (targetElement) targetElement.classList.remove('hidden');
+                if(ui.savedContainer) ui.savedContainer.classList.add('hidden');
             }
         });
     });
 
-    if (ui.plusField) ui.plusField.addEventListener("click", () => {
-        if (ui.newExtraInput) ui.newExtraInput.classList.remove("hidden");
-        if (ui.plusIcon) ui.plusIcon.classList.add("hidden");
-        if (ui.closeIcon) ui.closeIcon.style.display = "inline";
-    });
+    // Advanced Filter Dropdown Logic
+    document.querySelectorAll(".dropdown-menu .dropdown-item").forEach(item => {
+        item.addEventListener("click", function(e) {
+            e.preventDefault();
+            const selectedText = this.textContent.trim();
+            const dropdownMenu = this.closest(".dropdown-menu");
+            const button = dropdownMenu.previousElementSibling;
 
-    if (ui.closeIcon) ui.closeIcon.addEventListener("click", (e) => {
-        e.stopPropagation();
-        if (ui.newExtraInput) ui.newExtraInput.classList.add("hidden");
-        if (ui.plusIcon) ui.plusIcon.classList.remove("hidden");
-        ui.closeIcon.style.display = "none";
+            if (button) button.textContent = selectedText;
+
+            switch (dropdownMenu.getAttribute("aria-labelledby")) {
+                case 'typeDropdown': updateFilterFieldsVisibility(selectedText); break;
+                case 'dueDateDropdown':
+                case 'dueDateDropdownExtra':
+                    handleDueDateChange(selectedText);
+                    break;
+            }
+        });
     });
+    
+    // Global Click Listener for closing menus
+    document.addEventListener('click', handleOutsideClicks);
+
+    // Logout
+    if (ui.logoutBtn) ui.logoutBtn.addEventListener('click', handleLogout);
 }
 
+
 // --- 9. MAIN EXECUTION ---
-onAuthStateChanged(auth, (user) => {
-    if (!user) {
-        window.location.href = '/login/login.html';
-        return;
+auth.onAuthStateChanged(user => {
+    if (user) {
+        console.log("User is authenticated. Initializing header.");
+        if (window.lucide) window.lucide.createIcons();
+        
+        updateProfileDisplay(user);
+        initializeEventListeners();
+        renderCalendar(state.currentMonth);
+    } else {
+        console.log("User is not authenticated. Redirecting to login.");
+        // window.location.href = '/login/login.html';
     }
-
-    console.log("Header script running for user:", user.uid);
-    lucide.createIcons();
-    updateProfileDisplay(user);
-    initializeEventListeners();
-    renderCalendar(state.currentMonth);
-
-    // Set initial UI state
-    if(ui.searchQueryContainer) ui.searchQueryContainer.classList.add("hidden");
-    if(ui.closeIcon) ui.closeIcon.style.display = "none";
-    if(ui.optionsQuery) ui.optionsQuery.classList.add("hidden");
-    if(ui.rootdrawer) ui.rootdrawer.style.width = "260px";
 });
