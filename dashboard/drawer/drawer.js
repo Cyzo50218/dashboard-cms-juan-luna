@@ -80,13 +80,13 @@ import { firebaseConfig } from "/services/firebase-config.js";
             const numericProjectId = stringToNumericString(project.id);
             const href = `/tasks/${numericUserId}/list/${numericProjectId}`;
             projectLi.innerHTML = `
-                <a href="${href}" data-link>
-                    <div class="nav-item-main-content">
-                        <div class="project-color" style="background-color: ${project.color};"></div>
-                        <span>${project.title}</span>
-                    </div>
-                </a>
-            `;
+                <a href="${href}" data-link>
+                    <div class="nav-item-main-content">
+                        <div class="project-color" style="background-color: ${project.color};"></div>
+                        <span>${project.title}</span>
+                    </div>
+                </a>
+            `;
             projectsListContainer.appendChild(projectLi);
         };
         
