@@ -1,105 +1,197 @@
-
 /**
  * header.js
  *
- * This script manages all interactive elements within the main application header.
- * It handles user authentication state to display profile information,
- * provides logout and new workspace functionality, and manages the search/filter UI.
+ * Manages all interactive elements within the main application header.
+ * - Handles user authentication and profile display.
+ * - Provides logout and new workspace functionality.
+ * - Manages simple and advanced search/filter UI.
  */
 
 // --- 1. FIREBASE IMPORTS ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, collection, addDoc, serverTimestamp, runTransaction,
-    doc, getDocs, getDoc} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, doc, getDoc, runTransaction, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "/services/firebase-config.js";
 import { showInviteModal } from '/dashboard/components/showEmailModel.js';
-
 
 // --- 2. FIREBASE INITIALIZATION ---
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app, "juanluna-cms-01");
 
-async function updateProfileDisplay(user) {
-  if (!user) return;
+// --- 3. UI ELEMENT SELECTORS ---
+const ui = {
+    // Main Layout & Toggles
+    rootdrawer: document.getElementById("rootdrawer"),
+    drawer: document.getElementById("dashboardDrawer"),
+    menuToggle: document.getElementById("menuToggle"),
+    profileToggle: document.getElementById("profileToggle"),
+    profileExpand: document.querySelector(".account-expand"),
+    createToggle: document.getElementById("createToggle"),
+    createExpand: document.querySelector(".create-expand"),
 
-  const mainProfileImg = document.getElementById("profileToggle"); // assuming <img id="profileToggle" />
-  const expandProfileImg = document.getElementById("profile-picture-expand"); // class, so use querySelector
-  const expandEmail = document.getElementById("account-email");
+    // Search & Filter
+    searchToggle: document.getElementById("searchToggle"),
+    searchExpand: document.querySelector(".search-expand"),
+    searchInput: document.querySelector('.search-input'),
+    cancelSearchIcon: document.querySelector('.cancel-search-icon'),
+    searchOptions: document.querySelector('.search-options'),
+    recentContainer: document.getElementById('recent-container'),
+    savedContainer: document.getElementById('saved-container'),
+    searchQueryContainer: document.getElementById('half-query'),
+    optionsQuery: document.getElementById('options-query'),
+    peopleEmptyState: document.getElementById('people-empty-state'),
+    messagesEmptyState: document.getElementById('messages-empty-state'),
 
-  if (expandEmail) {
-    expandEmail.textContent = user.email;
-  }
+    // Main Content Tabs
+    mainOptionBtns: document.querySelectorAll(".option-btn"),
+    mytaskdisplay: document.getElementById("mytask-display"),
+    projectdisplay: document.getElementById("project-display"),
+    savedSearchText: document.getElementById('saved-searches-text'),
+    savedSearchContainer: document.querySelector('.saved-searches'),
 
-  let avatarUrl = user.avatar;
+    // Task & Project Specific Buttons
+    taskOptionBtns: document.querySelectorAll('.mytask-display .option-btn-tasks'),
+    projectOptionBtns: document.querySelectorAll('.project-display .option-btn-tasks'),
 
-  try {
-    const userDocRef = doc(db, "users", user.uid);
-    const userSnap = await getDoc(userDocRef);
+    // Invite/Email Modals
+    emailContainer: document.querySelectorAll('.email-container'),
+    inviteBtnPeople: document.getElementById('email-container-id-people'),
+    inviteBtnGeneric: document.getElementById('email-container-id'),
 
-    if (userSnap.exists()) {
-      const userData = userSnap.data();
-      if (userData.avatar) {
-        avatarUrl = userData.avatar;
-      }
+    // Advanced Filter Elements
+    filterToggleMenu: document.getElementById("filter-icon"),
+    searchFilterMenu: document.getElementById("search-filter"),
+    filterSearchInput: document.querySelector('.search-input-filter'),
+    clearFilterInputBtn: document.querySelector('.clear-text'),
+    typeDropdown: document.getElementById("typeDropdown"),
+    plusField: document.getElementById("plus-field"),
+    plusIcon: document.getElementById('plus'),
+    closeIcon: document.getElementById("plus-field")?.querySelector(".close-icon"),
+    newExtraInput: document.getElementById("new-extra-input"),
+
+    // Dynamic Filter Fields
+    fields: {
+        authors: document.getElementById('authors'),
+        collaborators: document.getElementById('collaborators'),
+        assignedTo: document.getElementById('assigned-to'),
+        owners: document.getElementById('owners'),
+        members: document.getElementById('members'),
+        locatedGlobal: document.getElementById('locatedGlobal'),
+        locatedProjectDropdown: document.getElementById('locatedProjectDropdown'),
+        extraField: document.getElementById('extra-field'),
+        extraFieldProject: document.getElementById('extra-field-projectdropdown'),
+        status: document.getElementById('status-field'),
+        statusProject: document.getElementById('status-project-field'),
+        dueDate: document.getElementById('due-date-field'),
+    },
+
+    // Due Date Filter Components
+    dueDateFields: {
+        mainDropdown: document.getElementById('dueDateDropdown'),
+        extraDropdown: document.getElementById('dueDateDropdownExtra'),
+        withinInput: document.getElementById('inputDueDateWithin'),
+        withinUnitDropdown: document.getElementById('dueDateDropdownWithin'),
+        rangeStart: document.getElementById('dateRangeOneDropdown'),
+        rangeEnd: document.getElementById('dateRangeTwoDropdown'),
+        specificDateContainer: document.getElementById('duedate-dropdown-extra'),
+        withinContainer: document.getElementById('duedate-dropdown-within'),
+        rangeContainer: document.getElementById('duedate-dropdown-date-range'),
+        calendars: [
+            document.getElementById('calendar'),
+            document.getElementById('calendar1'),
+            document.getElementById('calendar2')
+        ]
     }
-  } catch (error) {
-    console.error("Error fetching user avatar from Firestore:", error);
-  }
-    mainProfileImg.src = avatarUrl;
-    expandProfileImg.src = avatarUrl;
+};
+
+// --- 4. STATE MANAGEMENT ---
+let state = {
+    isMessagesTabSelected: false,
+    isPeopleTabSelected: false,
+    currentMonth: dayjs(),
+    filter: {
+        type: "Any",
+        location: "Anywhere",
+        status: "",
+        statusProject: "",
+        dueDate: "",
+        withinDays: null,
+        withinUnit: "days",
+        rangeStart: null,
+        rangeEnd: null,
+    }
+};
+
+// --- 5. HELPER & UTILITY FUNCTIONS ---
+
+/**
+ * Checks for mobile screen size.
+ * @returns {boolean} True if the screen width is 768px or less.
+ */
+function isMobile() {
+    return window.matchMedia("(max-width: 768px)").matches;
 }
 
+/**
+ * Updates the user's profile picture and email in the header.
+ * @param {object} user - The Firebase user object.
+ */
+async function updateProfileDisplay(user) {
+    if (!user) return;
+
+    const mainProfileImg = document.getElementById("profileToggle");
+    const expandProfileImg = document.getElementById("profile-picture-expand");
+    const expandEmail = document.getElementById("account-email");
+
+    if (expandEmail) expandEmail.textContent = user.email;
+
+    try {
+        const userDocRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userDocRef);
+        const avatarUrl = userSnap.exists() && userSnap.data().avatar ? userSnap.data().avatar : (user.photoURL || 'assets/img/default-avatar.png');
+
+        if (mainProfileImg) mainProfileImg.src = avatarUrl;
+        if (expandProfileImg) expandProfileImg.src = avatarUrl;
+    } catch (error) {
+        console.error("Error fetching user avatar from Firestore:", error);
+    }
+}
+
+// --- 6. CORE UI & AUTHENTICATION HANDLERS ---
 
 /**
  * Signs the current user out and redirects to the login page.
  */
 async function handleLogout() {
-  try {
-    await signOut(auth);
-    console.log("User signed out successfully.");
-    window.location.href = '/login/login.html';
-  } catch (error) {
-    console.error("Error signing out:", error);
-  }
+    try {
+        await signOut(auth);
+        window.location.href = '/login/login.html';
+    } catch (error) {
+        console.error("Error signing out:", error);
+    }
 }
 
+/**
+ * Handles the creation of a new workspace via a prompt.
+ */
 async function handleNewWorkspace() {
     const currentUser = auth.currentUser;
-    if (!currentUser) {
-        alert("You must be logged in to create a workspace.");
-        return;
-    }
+    if (!currentUser) return alert("You must be logged in to create a workspace.");
 
     const newWorkspaceName = prompt("Enter a name for your new workspace:");
-    if (!newWorkspaceName || newWorkspaceName.trim() === '') {
-        return;
-    }
+    if (!newWorkspaceName || !newWorkspaceName.trim()) return;
 
     const workspacesColRef = collection(db, `users/${currentUser.uid}/myworkspace`);
-
     try {
         await runTransaction(db, async (transaction) => {
-            const selectedWorkspaceQuery = query(workspacesColRef, where("isSelected", "==", true));
-            const selectedWorkspacesSnapshot = await transaction.get(selectedWorkspaceQuery);
+            const selectedQuery = query(workspacesColRef, where("isSelected", "==", true));
+            const selectedSnapshot = await transaction.get(selectedQuery);
 
-            if (!selectedWorkspacesSnapshot.empty) {
-                const oldSelectedDoc = selectedWorkspacesSnapshot.docs[0];
-                const oldWorkspaceRef = doc(db, `users/${currentUser.uid}/myworkspace`, oldSelectedDoc.id);
-
-                const allWorkspacesSnapshot = await transaction.get(query(workspacesColRef));
-                const workspaceCount = allWorkspacesSnapshot.size;
-                
-                const numberToWord = ["First", "Second", "Third", "Fourth", "Fifth"];
-                const newName = `My ${numberToWord[workspaceCount] || (workspaceCount + 1) + 'th'} Workspace`;
-
-                const updateData = { isSelected: false };
-                if (oldSelectedDoc.data().name.startsWith("My First Workspace")) {
-                    updateData.name = newName;
-                }
-                
-                transaction.update(oldWorkspaceRef, updateData);
+            if (!selectedSnapshot.empty) {
+                const oldSelectedDoc = selectedSnapshot.docs[0];
+                const oldWorkspaceRef = doc(workspacesColRef, oldSelectedDoc.id);
+                transaction.update(oldWorkspaceRef, { isSelected: false });
             }
 
             const newWorkspaceRef = doc(workspacesColRef);
@@ -110,919 +202,350 @@ async function handleNewWorkspace() {
                 members: [currentUser.uid]
             });
         });
-
         alert(`Workspace "${newWorkspaceName.trim()}" created successfully!`);
-        window.location.replace('/'); 
-
+        window.location.replace('/');
     } catch (error) {
-        console.error("Error creating new workspace in transaction:", error);
+        console.error("Error creating new workspace:", error);
         alert("Failed to create the new workspace. Please try again.");
     }
 }
 
+/**
+ * Handles clicks outside of specified active menus to close them.
+ * @param {Event} e - The click event object.
+ */
+function handleOutsideClicks(e) {
+    const clickedOutside = (menu, toggle) => menu && toggle && !menu.contains(e.target) && !toggle.contains(e.target);
 
-// --- 4. MAIN SCRIPT LOGIC ---
-
-// This function runs once Firebase confirms the user's authentication state.
-onAuthStateChanged(auth, (user) => {
-  if (!user) {
-    window.location.href = '/login/login.html';
-    return;
-  }
-
-const menuToggle = document.getElementById("menuToggle");
-const rootdrawer = document.getElementById("rootdrawer");
-const filterToggleMenu = document.getElementById("filter-icon"); 
-const searchFilterMenu = document.getElementById("search-filter"); 
-
-const drawer = document.getElementById("dashboardDrawer");
-const createToggle = document.getElementById("createToggle");
-const createExpand = document.querySelector(".create-expand");
-const searchToggle = document.getElementById("searchToggle");
-const searchExpand = document.querySelector(".search-expand");
-const profileToggle = document.getElementById("profileToggle");
-const profileExpand = document.querySelector(".account-expand");
-const optionBtns = document.querySelectorAll(".option-btn");
-
-const cancelIcon = document.querySelector('.cancel-search-icon');
-const mytaskdisplay = document.getElementById("mytask-display");
-const taskOptionBtns = document.querySelectorAll('.mytask-display .option-btn-tasks');
-const projectdisplay = document.getElementById("project-display");
-const projectOptionBtns = document.querySelectorAll('.project-display .option-btn-tasks');
-const savedSearchText = document.getElementById('saved-searches-text');
-const savedSearchContainer = document.querySelector('.saved-searches');
-const recentContainer = document.getElementById('recent-container');
-const savedContainer = document.getElementById('saved-container');
-const halfQuery = document.getElementById('half-query');
-const optionsQuery = document.getElementById('options-query');
-const searchOptions = document.querySelector('.search-options');
-
-const emailContainerId = document.getElementById('email-container-id');
-const emailContainerPeopleId = document.getElementById('email-container-id-people');
-const emailContainer = document.querySelectorAll('.email-container');
-const peopleEmptyState = document.getElementById('people-empty-state');
-const messagesEmptyState = document.getElementById('messages-empty-state');
-const input = document.querySelector('.search-input');
-const inputFilter = document.querySelector('.search-input-filter');
-const moreTypeInput = document.getElementById("typeInput");
-const dropdown = document.getElementById("typeDropdown");
-
-
-const newExtraInput = document.getElementById("new-extra-input");
-const inputExtraDropdown = document.getElementById('dateSelectorDropdown');
-const inputDueDateWithin = document.getElementById('inputDueDateWithin');
-const inputRangeStartDropdown = document.getElementById('dateRangeOneDropdown');
-const inputRangeEndDropdown = document.getElementById('dateRangeTwoDropdown');
-
-const calendar = document.getElementById('calendar');
-const calendar1 = document.getElementById('calendar1');
-const calendar2 = document.getElementById('calendar2');
-const plusField = document.getElementById("plus-field");
-
-let closeIcon;
-
-if (plusField) {
-   closeIcon = plusField.querySelector(".close-icon");
-} else {
-  console.warn("Element with ID 'plus-field' not found.");
-}
-
-
-const searchHint = document.querySelector('.search-hint');
-const clearIcon = document.querySelector('.clear-icon');
-
-const isSelected3 = optionBtns[3].classList.contains("selected");
-const isSelected2 = optionBtns[2].classList.contains("selected");
-
-let selected = false;
-let openCalendar = false;
-let selectedPeople = false;
-
-/* search filter */
-/* global */
-let selectedType = "";
-let selectedLocation = "";
-let selectedStatus = "";
-let selectedStatusProject = '';
-let selectedDueDate = "";
-let selectedWithinDaysWeeksMonths = "";
-let selectedDate = null;
-let currentMonth = dayjs();
-let rangeStartDate = null;
-let rangeEndDate = null;
-
-function isMobile() {
-  return window.matchMedia("(max-width: 768px)").matches;
-}
-
-  lucide.createIcons();
-
-function updateClearIconVisibility() {
-  if (searchHint.textContent.trim() !== "Search...") {
-    clearIcon.classList.remove('hidden');
-  } else {
-    clearIcon.classList.add('hidden');
-  }
-}
-
-
-const renderCalendar = (month) => {
-  const calendars = [calendar, calendar1, calendar2];
-
-  calendars.forEach((cal, index) => {
-    cal.innerHTML = ''; // Clear previous content
-    const localMonth = month.clone();
-
-    // Header
-    const header = document.createElement('div');
-    header.className = 'calendar-header';
-    const prevId = `prev-${index}`;
-    const nextId = `next-${index}`;
-    header.innerHTML = `
-      <span id="${prevId}">&#x2329;</span>
-      <span>${localMonth.format('MMMM YYYY')}</span>
-      <span id="${nextId}">&#x232A;</span>
-    `;
-    cal.appendChild(header);
-
-    // Days row
-    const days = document.createElement('div');
-    days.className = 'calendar-days';
-    ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(d => {
-      const el = document.createElement('div');
-      el.textContent = d[0];
-      days.appendChild(el);
-    });
-    cal.appendChild(days);
-
-    // Dates grid
-    const dates = document.createElement('div');
-    dates.className = 'calendar-dates';
-
-    const startOfMonth = localMonth.startOf('month');
-    const daysInMonth = localMonth.daysInMonth();
-    const startDay = startOfMonth.day();
-
-    for (let i = 0; i < startDay; i++) {
-      dates.appendChild(document.createElement('div'));
+    if (clickedOutside(ui.createExpand, ui.createToggle) && ui.createExpand.classList.contains("show")) {
+        ui.createExpand.classList.add("hidden");
+        ui.createExpand.classList.remove("show");
     }
-
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dateEl = document.createElement('div');
-      const thisDate = localMonth.date(d);
-
-      dateEl.textContent = d;
-
-      if (thisDate.isSame(dayjs(), 'day')) dateEl.classList.add('today');
-
-      // Highlight selected dates
-      if (index === 1 && rangeStartDate && thisDate.isSame(rangeStartDate, 'day')) {
-        dateEl.classList.add('selected');
-      }
-      if (index === 2 && rangeEndDate && thisDate.isSame(rangeEndDate, 'day')) {
-        dateEl.classList.add('selected');
-      }
-
-      // Optional: highlight dates in range
-      if (
-        rangeStartDate &&
-        rangeEndDate &&
-        thisDate.isAfter(rangeStartDate, 'day') &&
-        thisDate.isBefore(rangeEndDate, 'day')
-      ) {
-        dateEl.classList.add('in-range'); // Define this class in CSS if needed
-      }
-
-      dateEl.onclick = () => {
-        if (index === 1) {
-          // Start date calendar
-          rangeStartDate = thisDate;
-          openCalendar = false;
-          inputRangeStartDropdown.textContent = thisDate.format('YYYY-MM-DD');
-        } else if (index === 2) {
-          // End date calendar
-          rangeEndDate = thisDate;
-          openCalendar = false;
-          inputRangeEndDropdown.textContent = thisDate.format('YYYY-MM-DD');
-        } else {
-          // General calendar
-          selectedDate = thisDate;
-          openCalendar = false;
-          const formatted = thisDate.format('YYYY-MM-DD');
-
-          if (['Yesterday', 'Today', 'Tomorrow', 'Specific Date'].includes(selectedDueDate)) {
-            inputExtraDropdown.textContent = formatted;
-          } else if (
-            ['Within the last', 'Within the next', 'Through the next'].includes(selectedDueDate)
-          ) {
-            inputDueDateWithin.textContent = formatted;
-          }
+    if (clickedOutside(ui.profileExpand, ui.profileToggle) && ui.profileExpand.classList.contains("show")) {
+        ui.profileExpand.classList.add("hidden");
+    }
+    if (clickedOutside(ui.searchExpand, ui.searchToggle) && !ui.searchExpand.classList.contains("hidden")) {
+        ui.searchExpand.classList.add("hidden");
+        ui.searchToggle.classList.remove("hidden");
+    }
+    if (clickedOutside(ui.searchFilterMenu, ui.filterToggleMenu) && !e.target.closest('.calendar-dates div')) {
+        if (!ui.searchFilterMenu.classList.contains("hidden")) {
+            ui.searchFilterMenu.classList.add("hidden");
+            if (!ui.filterToggleMenu.contains(e.target)) {
+                ui.searchExpand.classList.remove("hidden");
+                ui.searchToggle.classList.add("hidden");
+            }
         }
+    }
+}
 
-        renderCalendar(currentMonth); // Refresh
-      };
+// --- 7. SEARCH FUNCTIONALITY ---
 
-      dates.appendChild(dateEl);
+// 7.1. Simple Search (Main Search Bar)
+function handleMainSearchInput() {
+    const value = ui.searchInput.value.trim();
+    ui.cancelSearchIcon.classList.toggle('hidden', value === '');
+    ui.savedContainer.classList.toggle('hidden', value !== '');
+    ui.recentContainer.classList.toggle('hidden', value !== '');
+    ui.searchQueryContainer.classList.toggle('hidden', value === '');
+
+    if (value === '') {
+        resetToDefaultSearchView();
+        return;
     }
 
-    cal.appendChild(dates);
+    ui.searchQueryContainer.innerHTML = `<div class="skeleton-loader" style="width: 200px;"></div><div class="skeleton-loader" style="width: 500px;"></div>`;
+    ui.searchQueryContainer.classList.add("skeleton-active");
 
-    // Navigation handlers
-    document.getElementById(prevId).onclick = () => {
-      currentMonth = currentMonth.subtract(1, 'month');
-      renderCalendar(currentMonth);
-    };
-    document.getElementById(nextId).onclick = () => {
-      currentMonth = currentMonth.add(1, 'month');
-      renderCalendar(currentMonth);
-    };
-  });
-};
-
-inputDueDateWithin.addEventListener('input', function() {
-  this.value = this.value.replace(/[^0-9]/g, '');
-});
-
-renderCalendar(currentMonth);
-updateClearIconVisibility();
-
-halfQuery.classList.add("hidden");
-closeIcon.style.display = "none";
-optionsQuery.classList.add("hidden");
-
-rootdrawer.style.width = "260px";
-menuToggle.addEventListener("click", (e) => {
-  e.stopPropagation();
-
-  const isClosed = drawer.classList.toggle("close");
-  
-  if (isClosed) {
-    // If drawer is now closed, remove open class
-    drawer.classList.remove("open");
-    rootdrawer.style.width = "80px";
-  } else {
-    // If drawer is now open, add open class
-    rootdrawer.style.width = "260px";
-    drawer.classList.add("open");
-  }
-});
-
-
-
-searchToggle.addEventListener("click", (e) => {
-  e.stopPropagation();
-  searchExpand.classList.remove("hidden");
-  searchToggle.classList.add("hidden"); 
-});
-
-createToggle.addEventListener("click", (e) => {
-  e.stopPropagation();
-  createExpand.classList.remove("hidden");
-  createExpand.classList.add("show");
-});
-
-profileToggle.addEventListener("click", (e) => {
-  e.stopPropagation();
-  profileExpand.classList.remove("hidden");
-  profileExpand.classList.add("show");
-});
-
-filterToggleMenu.addEventListener('click', () => {
-  searchFilterMenu.classList.remove("hidden");
-  searchExpand.classList.add("hidden");
-});
-
-calendar.addEventListener('click', function(e) {
-  e.stopPropagation();
-  openCalendar = true;
-});
-
-document.addEventListener("click", (e) => {
-  
-  const clickedOutsideFilterMenu =
-    !searchFilterMenu.contains(e.target) && !filterToggleMenu.contains(e.target);
-  const clickedOutsideCreate =
-    !createExpand.contains(e.target) && !createToggle.contains(e.target);
-  const clickedOutsideAccount =
-    !profileExpand.contains(e.target) && !profileToggle.contains(e.target);
-  const clickedOutsideSearch =
-    !searchExpand.contains(e.target) && !searchToggle.contains(e.target);
-
-  // Check if the clicked element is part of a calendar date
-  const isCalendarDateClick = e.target.closest('.calendar-dates div');
-
-
-  if (clickedOutsideCreate && !createExpand.classList.contains("hidden")) {
-    createExpand.classList.add("hidden");
-    createExpand.classList.remove("show");
-  }
-
-  // Modified condition for searchFilterMenu
-  if (clickedOutsideFilterMenu && !searchFilterMenu.classList.contains("hidden") && !isCalendarDateClick) {
-    searchFilterMenu.classList.add("hidden");
-    // Only re-show searchExpand and hide searchToggle if searchFilterMenu is being hidden
-    // and it's not due to a direct click on searchToggle itself
-    if (!filterToggleMenu.contains(e.target)) { // Prevent hiding if filterToggleMenu was clicked to close
-      searchExpand.classList.remove("hidden");
-      searchToggle.classList.add("hidden");
-    }
-  }
-
-
-  if (clickedOutsideSearch && !searchExpand.classList.contains("hidden")) {
-    searchExpand.classList.add("hidden");
-    searchToggle.classList.remove("hidden");
-  }
-
-  if (clickedOutsideAccount && !profileExpand.classList.contains("hidden")) {
-    profileExpand.classList.add("hidden");
-    profileToggle.classList.remove("hidden");
-  }
-});
-
-
-optionBtns[0].addEventListener("click", () => {
-  const btn = optionBtns[0];
-  const isSelected = btn.classList.contains("selected");
-
-  if (isSelected) {
-    btn.classList.remove("selected");
-    optionBtns.forEach(b => b.classList.remove("hide"));
-    mytaskdisplay.classList.add("hidden");
-    savedSearchText.classList.remove("hidden");
-    savedSearchContainer.classList.remove("hidden");
-  } else {
-    btn.classList.add("selected");
-    mytaskdisplay.classList.remove("hidden");
-    savedSearchText.classList.add("hidden");
-    savedSearchContainer.classList.add("hidden");
-    optionBtns.forEach((b, i) => {
-      if (i !== 0) {
-        b.classList.add("hide");
-        b.classList.remove("selected");
-      }
-    });
-  }
-});
-
-optionBtns[1].addEventListener("click", () => {
-  const btn = optionBtns[1];
-  const isSelected = btn.classList.contains("selected");
-
-  if (isSelected) {
-    btn.classList.remove("selected");
-    optionBtns.forEach(b => b.classList.remove("hide"));
-    projectdisplay.classList.add("hidden");
-    savedSearchText.classList.remove("hidden");
-savedSearchContainer.classList.remove("hidden");
-savedContainer.classList.remove("hidden");
-searchOptions.classList.remove("hidden");
-recentContainer.classList.remove("hidden");
-emailContainerId.classList.add('hidden');
-  } else {
-    btn.classList.add("selected");
-    projectdisplay.classList.remove("hidden");
-    savedSearchText.classList.add("hidden");
-savedSearchContainer.classList.add("hidden");
-    optionBtns.forEach((b, i) => {
-      if (i !== 1) {
-        b.classList.add("hide");
-        b.classList.remove("selected");
-      }
-    });
-  }
-});
-
-optionBtns[2].addEventListener("click", () => {
-  const btn = optionBtns[2];
-  const isSelected = btn.classList.contains("selected");
-  halfQuery.classList.remove("skeleton-active");
-  
-  if (isSelected) {
-    selectedPeople = false
-    btn.classList.remove("selected");
-    optionBtns.forEach(b => b.classList.remove("hide"));
-    savedSearchText.classList.remove("hidden");
-savedSearchContainer.classList.remove("hidden");
-emailContainerPeopleId.classList.add('hidden');
-recentContainer.classList.remove("hidden");
-savedContainer.classList.remove("hidden");
-searchOptions.classList.remove("hidden");
-recentContainer.classList.remove("hidden");
-emailContainerPeopleId.classList.add('hidden');
-peopleEmptyState.classList.add("hidden");
-  } else {
-    selectedPeople = true
-    btn.classList.add("selected");
-    savedSearchText.classList.add("hidden");
-    peopleEmptyState.classList.remove("hidden");
-    emailContainerPeopleId.classList.remove('hidden');
-    recentContainer.classList.add("hidden");
-    savedSearchContainer.classList.add("hidden");
-    optionBtns.forEach((b, i) => {
-      if (i !== 2) {
-        b.classList.add("hide");
-        b.classList.remove("selected");
-      }
-    });
-  }
-});
-
-optionBtns[3].addEventListener("click", () => {
-  const btn = optionBtns[3];
-  const isSelected = btn.classList.contains("selected");
-  halfQuery.classList.remove("skeleton-active");
-  
-  if (isSelected) {
-    selected = false
-    btn.classList.remove("selected");
-    optionBtns.forEach(b => b.classList.remove("hide"));
-    savedSearchText.classList.remove("hidden");
-savedSearchContainer.classList.remove("hidden");
-recentContainer.classList.remove("hidden");
-messagesEmptyState.classList.add("hidden");
-savedContainer.classList.remove("hidden");
-searchOptions.classList.remove("hidden");
-recentContainer.classList.remove("hidden");
-emailContainerId.classList.add('hidden');
-  } else {
-    selected = true
-    btn.classList.add("selected");
-    savedSearchText.classList.add("hidden");
-    messagesEmptyState.classList.remove("hidden");
-    
-    recentContainer.classList.add("hidden");
-    savedSearchContainer.classList.add("hidden");
-    optionBtns.forEach((b, i) => {
-      if (i !== 3) {
-        b.classList.add("hide");
-        b.classList.remove("selected");
-      }
-    });
-  }
-});
-
-//Tasks
-taskOptionBtns[0].addEventListener('click', () => {
-  cancelIcon.classList.remove('hidden');
-  optionsQuery.classList.add("hidden");
-  searchOptions.classList.add("hidden");
-  recentContainer.classList.add("hidden");
-  input.value = 'in: '; // in_project
-  input.focus();
-});
-
-taskOptionBtns[1].addEventListener('click', () => {
-  cancelIcon.classList.remove('hidden');
-  input.value = 'assignee: '; // assigned_to
-  emailContainerId.classList.remove('hidden');
-  savedContainer.classList.add("hidden");
-  recentContainer.classList.add("hidden");
-  halfQuery.classList.remove("hidden");
-  optionsQuery.classList.remove("hidden");
-  searchOptions.classList.add("hidden");
-  input.focus();
-});
-
-taskOptionBtns[2].addEventListener('click', () => {
-  cancelIcon.classList.remove('hidden');
-  input.value = 'with: '; // with_collaborator
-  emailContainerId.classList.remove('hidden');
-  savedContainer.classList.add("hidden");
-  recentContainer.classList.add("hidden");
-  optionsQuery.classList.remove("hidden");
-  halfQuery.classList.remove("hidden");
-  searchOptions.classList.add("hidden");
-  input.focus();
-});
-
-//Projects
-projectOptionBtns[0].addEventListener('click', () => {
-  cancelIcon.classList.remove('hidden');
-  emailContainerId.classList.remove('hidden');
-  savedContainer.classList.add("hidden");
-  halfQuery.classList.remove("hidden");
-  recentContainer.classList.add("hidden");
-  optionsQuery.classList.remove("hidden");
-  searchOptions.classList.add("hidden");
-  input.value = 'assignee: '; // owner
-  input.focus();
-});
-
-projectOptionBtns[1].addEventListener('click', () => {
-  cancelIcon.classList.remove('hidden');
-  emailContainerId.classList.remove('hidden');
-  savedContainer.classList.add("hidden");
-  optionsQuery.classList.remove("hidden");
-  recentContainer.classList.add("hidden");
-  searchOptions.classList.add("hidden");
-  input.value = 'with: '; // with members
-  input.focus();
-});
-
-
-input.addEventListener('input', () => {
-  
-  if (input.value.trim() !== '') {
-    cancelIcon.classList.remove('hidden');
-    savedContainer.classList.add("hidden");
-    recentContainer.classList.add("hidden");
-    halfQuery.classList.remove("hidden");
-    // skeleton loader
-    halfQuery.classList.add("skeleton-active");
-    
-    
-      emailContainerPeopleId.classList.add('hidden');
-    
-      document.getElementById('email-container-id').classList.add('hidden');
-    
-    
-    peopleEmptyState.classList.add("hidden");
-    messagesEmptyState.classList.add("hidden");
-    halfQuery.innerHTML = `
-      <div class="skeleton-loader" style="width: 200px;"></div>
-      <div class="skeleton-loader" style="width: 500px;"></div>
-      <div class="skeleton-loader" style="width: 400px;"></div>
-    `;
-
-    
     setTimeout(() => {
-      halfQuery.classList.remove("skeleton-active");
-      const value = input.value.trim();
-if (value.startsWith('with:') || value.startsWith('assignee:')) {
-  searchOptions.classList.add("hidden");
-  halfQuery.classList.remove("hidden");
-  optionsQuery.classList.remove("hidden");
-  document.getElementById('email-container-id').classList.add('hidden');
-  emailContainerId.classList.remove('hidden');
-} else if (value.startsWith('in:')) {
-  recentContainer.classList.add("hidden");
-  searchOptions.classList.add("hidden");
-  }else {
-  searchOptions.classList.remove("hidden");
-  halfQuery.classList.add("hidden");
-  optionsQuery.classList.add("hidden");
-  document.getElementById('email-container-id').classList.add('hidden');
+        ui.searchQueryContainer.classList.remove("skeleton-active");
+        ui.searchQueryContainer.innerHTML = '';
 
-  }
+        const startsWithKeyword = value.startsWith('with:') || value.startsWith('assignee:') || value.startsWith('in:');
+        ui.searchOptions.classList.toggle('hidden', startsWithKeyword);
+        ui.optionsQuery.classList.toggle('hidden', !startsWithKeyword);
 
-      halfQuery.innerHTML = ''; 
-    }, 1000); 
-
-  } else {
-    recentContainer.classList.add("hidden");
-  
-if (selected) {
-  messagesEmptyState.classList.remove("hidden");
-  recentContainer.classList.add("hidden");
-  halfQuery.classList.remove("skeleton-active");
-  console.log('1 not selected');
-} else if (selectedPeople) {
-  peopleEmptyState.classList.remove("hidden");
-  halfQuery.classList.remove("skeleton-active");
-  emailContainerPeopleId.classList.remove('hidden');
-  savedContainer.classList.add("hidden");
-  console.log('2 not selected');
-} else{
-  console.log('both not selected');
-  halfQuery.classList.add("hidden");
-  optionsQuery.classList.add("hidden");
-  recentContainer.classList.remove("hidden");
-}
-
-    cancelIcon.classList.add('hidden');
-    savedContainer.classList.remove("hidden");
-    
-    searchOptions.classList.remove("hidden");
-    emailContainerId.classList.add('hidden');
-    halfQuery.innerHTML = ''; // Clear results
-  }
-  
-});
-
-document.querySelector('.clear-text').addEventListener('click', function () {
-  inputFilter.value = '';
-  document.querySelector('.search-input-filter').focus(); // Optional: refocus the input
-});
-
-cancelIcon.addEventListener('click', () => {
-  input.value = '';
-  cancelIcon.classList.add('hidden');
-savedContainer.classList.remove("hidden");
-searchOptions.classList.remove("hidden");
-recentContainer.classList.remove("hidden");
-emailContainerId.classList.add('hidden');
-  input.focus();
-});
-
-emailContainer.forEach(el => {
-  el.addEventListener('click', () => {
-    emailContainer.forEach(item => item.classList.remove('selected'));
-    el.classList.add('selected');
-  });
-});
-
-document.querySelectorAll(".dropdown-menu .dropdown-item").forEach(item => {
-  item.addEventListener("click", function(e) {
-    e.preventDefault();
-
-    // Exclude span icon from selected text
-    const selectedText = Array.from(this.childNodes)
-      .filter(node => node.nodeType === Node.TEXT_NODE)
-      .map(node => node.textContent.trim())
-      .join("");
-
-    const dropdownMenu = this.closest(".dropdown-menu");
-    const buttonId = dropdownMenu.getAttribute("aria-labelledby");
-    const button = document.getElementById(buttonId);
-
-    if (button) {
-      button.textContent = selectedText;
-    }
-
-    // Store the selected value based on which dropdown was used
-    if (buttonId === "typeDropdown") {
-      selectedType = selectedText;
-      console.log("Selected Type:", selectedType);
-      
-      if (selectedType == 'Any'){
-        document.getElementById('authors').classList.add("hidden");
-        document.getElementById('locatedGlobal').classList.remove("hidden");
-        document.getElementById('locatedProjectDropdown').classList.add("hidden");
-        document.getElementById('extra-field').classList.add("hidden");
-        document.getElementById('extra-field-projectdropdown').classList.add("hidden");
-        document.getElementById('status-field').classList.add("hidden");
-        document.getElementById('due-date-field').classList.add("hidden");
-        document.getElementById('owners').classList.add("hidden");
-        document.getElementById('members').classList.add("hidden");
-        document.getElementById('collaborators').classList.remove("hidden");
-        document.getElementById('assigned-to').classList.remove("hidden");
-        document.getElementById('status-project-field').classList.add("hidden");
-      }else if (selectedType == 'Tasks'){
-        document.getElementById('authors').classList.add("hidden");
-        document.getElementById('locatedGlobal').classList.remove("hidden");
-        document.getElementById('locatedProjectDropdown').classList.add("hidden");
-        document.getElementById('extra-field-projectdropdown').classList.add("hidden");
-        document.getElementById('collaborators').classList.remove("hidden");
-        document.getElementById('assigned-to').classList.remove("hidden");
-        document.getElementById('status-field').classList.remove("hidden");
-        document.getElementById('due-date-field').classList.remove("hidden");
-        document.getElementById('owners').classList.add("hidden");
-        document.getElementById('members').classList.add("hidden");
-        document.getElementById('status-project-field').classList.add("hidden");
-      } else if (selectedType === 'Projects') {
-        document.getElementById('authors').classList.add("hidden");
-        document.getElementById('locatedGlobal').classList.add("hidden");
-        document.getElementById('locatedProjectDropdown').classList.remove("hidden");
-        document.getElementById('extra-field').classList.add("hidden");
-        document.getElementById('status-field').classList.add("hidden");
-        document.getElementById('due-date-field').classList.add("hidden");
-        document.getElementById('collaborators').classList.add("hidden");
-        document.getElementById('assigned-to').classList.add("hidden");
-        document.getElementById('owners').classList.remove("hidden");
-        document.getElementById('members').classList.remove("hidden");
-        document.getElementById('status-project-field').classList.remove("hidden");
-        document.getElementById('status-field').classList.add("hidden");
-        document.getElementById('due-date-field').classList.add("hidden");
-      } else if (selectedType === 'Portfolio') {
-        document.getElementById('extra-field-projectdropdown').classList.add("hidden");
-        document.getElementById('locatedGlobal').classList.remove("hidden");
-        document.getElementById('locatedProjectDropdown').classList.add("hidden");
-        document.getElementById('status-field').classList.add("hidden");
-        document.getElementById('due-date-field').classList.add("hidden");
-        document.getElementById('extra-field').classList.add("hidden");
-        document.getElementById('status-field').classList.add("hidden");
-        document.getElementById('due-date-field').classList.add("hidden");
-        document.getElementById('collaborators').classList.add("hidden");
-        document.getElementById('assigned-to').classList.add("hidden");
-        document.getElementById('owners').classList.remove("hidden");
-        document.getElementById('authors').classList.add("hidden");
-        document.getElementById('members').classList.remove("hidden");
-        document.getElementById('status-project-field').classList.add("hidden");
-        
-      } else if (selectedType === 'Messages') {
-        document.getElementById('extra-field-projectdropdown').classList.add("hidden");
-        document.getElementById('locatedGlobal').classList.remove("hidden");
-        document.getElementById('locatedProjectDropdown').classList.add("hidden");
-        document.getElementById('status-field').classList.add("hidden");
-        document.getElementById('due-date-field').classList.add("hidden");
-        document.getElementById('extra-field').classList.add("hidden");
-        document.getElementById('status-field').classList.add("hidden");
-        document.getElementById('due-date-field').classList.add("hidden");
-        document.getElementById('collaborators').classList.remove("hidden");
-        document.getElementById('assigned-to').classList.add("hidden");
-        document.getElementById('owners').classList.add("hidden");
-        document.getElementById('authors').classList.remove("hidden");
-        document.getElementById('members').classList.add("hidden");
-        document.getElementById('status-project-field').classList.add("hidden");
-        
-      } else {
-        document.getElementById('authors').classList.add("hidden");
-        document.getElementById('extra-field-projectdropdown').classList.add("hidden");
-        document.getElementById('locatedGlobal').classList.remove("hidden");
-        document.getElementById('locatedProjectDropdown').classList.add("hidden");
-        document.getElementById('status-field').classList.add("hidden");
-        document.getElementById('due-date-field').classList.add("hidden");
-        document.getElementById('extra-field').classList.add("hidden");
-        document.getElementById('status-field').classList.add("hidden");
-        document.getElementById('due-date-field').classList.add("hidden");
-        document.getElementById('collaborators').classList.remove("hidden");
-        document.getElementById('assigned-to').classList.remove("hidden");
-        document.getElementById('owners').classList.add("hidden");
-        document.getElementById('members').classList.add("hidden");
-        document.getElementById('status-project-field').classList.add("hidden");
-        
-      }
-      
-    } else if (buttonId === "locatedDropdown") {
-      selectedLocation = selectedText;
-      
-      if (selectedType === 'Any' || selectedType === 'Tasks' || selectedType === 'Portfolio' || selectedType === 'Messages') {
-      if (selectedLocation === 'In any of these projects' || selectedLocation === 'In all of these projects') {
-        document.getElementById('plus-field').classList.remove("hidden");
-        document.getElementById('extra-field').classList.remove("hidden");
-      } else if (selectedLocation === 'Anywhere') {
-        document.getElementById('plus-field').classList.add("hidden");
-        document.getElementById('extra-field').classList.add("hidden");
-      } else {
-        document.getElementById('plus-field').classList.add("hidden");
-        document.getElementById('extra-field').classList.remove("hidden");
-      }
-      }
-
-    }else if (buttonId === "locatedDropdownProjects") {
-      selectedLocation = selectedText;
-      
-      if (selectedLocation === 'In portfolios' || selectedLocation === 'In teams') {
-        document.getElementById('extra-field-projectdropdown').classList.remove("hidden");
-        
-      } else {
-        
-        document.getElementById('extra-field-projectdropdown').classList.add("hidden");
-        
-      }
-     }else if (buttonId === "dueDateDropdown"){
-      document.getElementById('dueDateDropdownExtra').textContent = selectedText;
-      selectedDueDate = selectedText;
-      
-      if (selectedDueDate === 'Yesterday' || selectedDueDate === 'Today' 
-      || selectedDueDate === 'Tomorrow' || selectedDueDate === 'Specific Date') {
-          document.getElementById('duedate-field').classList.add("hidden");
-          document.getElementById('duedate-dropdown-extra').classList.remove("hidden");
-          document.getElementById('duedate-dropdown-within').classList.add("hidden");
-
-          document.getElementById('duedate-dropdown-date-range').classList.add("hidden");
-          rangeStartDate = '';
-          rangeEndDate = '';
-          inputRangeStartDropdown.textContent = 'Start';
-          inputRangeEndDropdown.textContent = 'End';
-          inputDueDateWithin.textContent = '';
-          renderCalendar(currentMonth);
-        }else if(selectedDueDate === 'Within the last' || selectedDueDate === 'Within the next' ||
-          selectedDueDate === 'Through the next'){
-          document.getElementById('duedate-field').classList.remove("hidden");
-          document.getElementById('duedate-dropdown-extra').classList.add("hidden");
-          document.getElementById('duedate-dropdown-date-range').classList.add("hidden");
-          document.getElementById('duedate-dropdown-within').classList.remove("hidden");
-          
-          rangeStartDate = '';
-          rangeEndDate = '';
-          inputRangeStartDropdown.textContent = 'Start';
-          inputRangeEndDropdown.textContent = 'End';
-          inputExtraDropdown.textContent = '../../..';
-          renderCalendar(currentMonth);
-        } else if (selectedDueDate === 'Date Range') {
-          document.getElementById('duedate-field').classList.remove("hidden");
-          document.getElementById('duedate-dropdown-extra').classList.add("hidden");
-          document.getElementById('duedate-dropdown-within').classList.add("hidden");
-          
-          document.getElementById('duedate-dropdown-date-range').classList.remove("hidden");
-          inputExtraDropdown.textContent = '../../..';
-          inputDueDateWithin.textContent = '';
-          renderCalendar(currentMonth);
-        }else{
-          document.getElementById('duedate-field').classList.remove("hidden");
-          document.getElementById('duedate-dropdown-extra').classList.add("hidden");
+        if (value.startsWith('with:') || value.startsWith('assignee:')) {
+            ui.inviteBtnGeneric.classList.remove('hidden');
         }
-        
-    } else if (buttonId === "dueDateDropdownExtra"){
-      document.getElementById('dueDateDropdown').textContent = selectedText;
-      selectedDueDate = selectedText;
-    
-      
-      if (selectedDueDate === 'Yesterday' || selectedDueDate === 'Today' ||
-        selectedDueDate === 'Tomorrow' || selectedDueDate === 'Specific Date') {
-        document.getElementById('duedate-field').classList.add("hidden");
-        document.getElementById('duedate-dropdown-extra').classList.remove("hidden");
-      } else if (selectedDueDate === 'Within the last' || selectedDueDate === 'Within the next' ||
-        selectedDueDate === 'Through the next') {
-        document.getElementById('duedate-field').classList.remove("hidden");
-        document.getElementById('duedate-dropdown-extra').classList.add("hidden");
-        
-        document.getElementById('duedate-dropdown-within').classList.remove("hidden");
-        
-      } else if (selectedDueDate === 'Date Range') {
-        document.getElementById('duedate-field').classList.remove("hidden");
-        document.getElementById('duedate-dropdown-extra').classList.add("hidden");
-      
-        document.getElementById('duedate-dropdown-date-range').classList.remove("hidden");
-        
-      } else {
-        document.getElementById('duedate-field').classList.remove("hidden");
-        document.getElementById('duedate-dropdown-extra').classList.add("hidden");
-      }
-      
-    } else if (buttonId === "dueDateDropdownWithin"){
-      selectedWithinDaysWeeksMonths = selectedText;
-      
-    } else if (buttonId === "statusDropdown") {
-      selectedStatus = selectedText;
-      
-    } else if (buttonId === "statusProjectDropdown") {
-      selectedStatusProject = selectedText;
-      
-    } else{
-      document.getElementById('status-field').classList.add("hidden");
-      document.getElementById('due-date-field').classList.add("hidden");
-    }
-    
-  });
-});
-
-plusField.addEventListener("click", function() {
-  newExtraInput.classList.remove("hidden");
-  document.getElementById('plus').classList.add("hidden");
-  closeIcon.style.display = "inline";
-});
-
-closeIcon.addEventListener("click", function(event) {
-  event.stopPropagation(); // Prevent triggering the plusField click
-  newExtraInput.classList.add("hidden");
-  document.getElementById('plus').classList.remove("hidden");
-  closeIcon.style.display = "none";
-  
-});
-
-const inviteBtnPeople = document.getElementById('email-container-id-people');
-const inviteBtnGeneric = document.getElementById('email-container-id');
-
-
-// 2. Attach the event listener using an 'async' arrow function
-if (inviteBtnPeople) {
-  inviteBtnPeople.addEventListener('click', async () => {
-    console.log("Invite button clicked, opening modal...");
-    
-    // 3. Call the function and 'await' the result
-    const result = await showInviteModal();
-    
-    // 4. This code will only run AFTER the modal is closed
-    if (result) {
-      // This block runs if the user clicked "Send"
-      console.log("Invitation details:", result);
-      console.log("Emails to invite:", result.emails);
-      console.log("Add to projects:", result.projects);
-      
-      // Now you can do something with the data, for example:
-      // sendInvitesToFirestore(result.emails, result.projects);
-      
-    } else {
-      // This block runs if the user clicked the '×' to close the modal
-      console.log("Modal was closed without sending an invitation.");
-    }
-  });
+    }, 1000);
 }
 
-
-// Do the same for the other button if it has the same behavior
-if (inviteBtnGeneric) {
-  inviteBtnGeneric.addEventListener('click', async () => {
-    console.log("Invite button clicked, opening modal...");
-    const result = await showInviteModal();
-    if (result) {
-      console.log("Invitation details:", result);
-    } else {
-      console.log("Modal was closed without sending an invitation.");
-    }
-  });
+function resetToDefaultSearchView() {
+    ui.searchQueryContainer.classList.add("hidden");
+    ui.optionsQuery.classList.add("hidden");
+    ui.searchOptions.classList.remove("hidden");
+    ui.inviteBtnGeneric.classList.add('hidden');
+    if (ui.messagesEmptyState) ui.messagesEmptyState.classList.toggle("hidden", !state.isMessagesTabSelected);
+    if (ui.peopleEmptyState) ui.peopleEmptyState.classList.toggle("hidden", !state.isPeopleTabSelected);
 }
 
-  // --- USER IS LOGGED IN, PROCEED WITH INITIALIZATION ---
-  console.log("Header script running for user:", user.uid);
-  
-  // Update the profile display with the user's info
-  updateProfileDisplay(user);
-  
-  document.addEventListener("click", (e) => {
-    // --- NEW: Handle Logout and New Workspace clicks ---
-    if (e.target.closest('#logout-btn')) {
-      handleLogout();
-      return;
-    }
-    if (e.target.closest('#add-workspace-btn')) {
-      handleNewWorkspace();
-      return;
-    }
-    
-  });
+function clearMainSearch() {
+    ui.searchInput.value = '';
+    ui.cancelSearchIcon.classList.add('hidden');
+    ui.savedContainer.classList.remove("hidden");
+    ui.searchOptions.classList.remove("hidden");
+    ui.recentContainer.classList.remove("hidden");
+    ui.inviteBtnGeneric.classList.add('hidden');
+    ui.searchInput.focus();
+}
 
+// 7.2. Contextual Search (Tasks & Projects Quick Actions)
+function setupContextualSearch(prefix, showEmail = false) {
+    ui.searchInput.value = prefix;
+    ui.cancelSearchIcon.classList.remove('hidden');
+    ui.searchOptions.classList.add("hidden");
+    ui.savedContainer.classList.add("hidden");
+    ui.recentContainer.classList.add("hidden");
+
+    if (showEmail) {
+        ui.inviteBtnGeneric.classList.remove('hidden');
+        ui.searchQueryContainer.classList.remove("hidden");
+        ui.optionsQuery.classList.remove("hidden");
+    }
+    ui.searchInput.focus();
+}
+
+// 7.3. Advanced Search (Filter Menu)
+function renderCalendar(month) {
+    ui.dueDateFields.calendars.forEach((cal, index) => {
+        if (!cal) return;
+        cal.innerHTML = '';
+        const localMonth = month.clone();
+
+        const header = document.createElement('div');
+        header.className = 'calendar-header';
+        header.innerHTML = `<span class="prev-month">&#x2329;</span><span>${localMonth.format('MMMM YYYY')}</span><span class="next-month">&#x232A;</span>`;
+        cal.appendChild(header);
+
+        header.querySelector('.prev-month').onclick = () => renderCalendar(state.currentMonth.subtract(1, 'month'));
+        header.querySelector('.next-month').onclick = () => renderCalendar(state.currentMonth.add(1, 'month'));
+
+        const days = document.createElement('div');
+        days.className = 'calendar-days';
+        ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(d => {
+            const el = document.createElement('div');
+            el.textContent = d;
+            days.appendChild(el);
+        });
+        cal.appendChild(days);
+
+        const dates = document.createElement('div');
+        dates.className = 'calendar-dates';
+        const startDay = localMonth.startOf('month').day();
+        for (let i = 0; i < startDay; i++) {
+            dates.appendChild(document.createElement('div'));
+        }
+
+        for (let d = 1; d <= localMonth.daysInMonth(); d++) {
+            const dateEl = document.createElement('div');
+            const thisDate = localMonth.date(d);
+            dateEl.textContent = d;
+            if (thisDate.isSame(dayjs(), 'day')) dateEl.classList.add('today');
+            if ((index === 1 && state.filter.rangeStart?.isSame(thisDate, 'day')) || (index === 2 && state.filter.rangeEnd?.isSame(thisDate, 'day'))) {
+                dateEl.classList.add('selected');
+            }
+            dateEl.onclick = () => handleDateSelection(thisDate, index);
+            dates.appendChild(dateEl);
+        }
+        cal.appendChild(dates);
+    });
+}
+
+function handleDateSelection(date, calendarIndex) {
+    const formatted = date.format('YYYY-MM-DD');
+    if (calendarIndex === 1) {
+        state.filter.rangeStart = date;
+        ui.dueDateFields.rangeStart.textContent = formatted;
+    } else if (calendarIndex === 2) {
+        state.filter.rangeEnd = date;
+        ui.dueDateFields.rangeEnd.textContent = formatted;
+    } else {
+        ui.dueDateFields.extraDropdown.textContent = formatted;
+    }
+    renderCalendar(state.currentMonth);
+}
+
+function updateFilterFieldsVisibility(type) {
+    Object.values(ui.fields).forEach(f => { if (f) f.classList.add('hidden') });
+    state.filter.type = type;
+
+    const show = (keys) => keys.forEach(key => { if (ui.fields[key]) ui.fields[key].classList.remove('hidden') });
+
+    switch (type) {
+        case 'Tasks':
+            show(['locatedGlobal', 'collaborators', 'assignedTo', 'status', 'dueDate']);
+            break;
+        case 'Projects':
+            show(['owners', 'members', 'locatedProjectDropdown', 'statusProject']);
+            break;
+        case 'Portfolio':
+            show(['owners', 'members']);
+            break;
+        case 'Messages':
+            show(['locatedGlobal', 'collaborators', 'assignedTo', 'authors']);
+            break;
+        default: // 'Any'
+            show(['locatedGlobal', 'collaborators', 'assignedTo']);
+            break;
+    }
+}
+
+function handleDueDateChange(selectedDueDate) {
+    state.filter.dueDate = selectedDueDate;
+    const { mainDropdown, extraDropdown, withinContainer, rangeContainer, specificDateContainer, rangeStart, rangeEnd } = ui.dueDateFields;
+
+    mainDropdown.textContent = selectedDueDate;
+    extraDropdown.textContent = selectedDueDate;
+    [withinContainer, rangeContainer, specificDateContainer].forEach(c => c.classList.add('hidden'));
+
+    state.filter.rangeStart = null;
+    state.filter.rangeEnd = null;
+    rangeStart.textContent = 'Start';
+    rangeEnd.textContent = 'End';
+
+    if (['Yesterday', 'Today', 'Tomorrow', 'Specific Date'].includes(selectedDueDate)) {
+        specificDateContainer.classList.remove('hidden');
+    } else if (['Within the last', 'Within the next'].includes(selectedDueDate)) {
+        withinContainer.classList.remove('hidden');
+    } else if (selectedDueDate === 'Date Range') {
+        rangeContainer.classList.remove('hidden');
+    }
+    renderCalendar(state.currentMonth);
+}
+
+// --- 8. EVENT LISTENER INITIALIZATION ---
+
+function initializeEventListeners() {
+    // Core UI
+    if (ui.menuToggle) ui.menuToggle.addEventListener("click", () => {
+        const isClosed = ui.drawer.classList.toggle("close");
+        ui.rootdrawer.style.width = isClosed ? "80px" : "260px";
+    });
+    if (ui.searchToggle) ui.searchToggle.addEventListener("click", () => {
+        ui.searchExpand.classList.remove("hidden");
+        ui.searchToggle.classList.add("hidden");
+    });
+    if (ui.createToggle) ui.createToggle.addEventListener("click", (e) => {
+        e.stopPropagation();
+        ui.createExpand.classList.remove("hidden");
+        ui.createExpand.classList.add("show");
+    });
+    if (ui.profileToggle) ui.profileToggle.addEventListener("click", (e) => {
+        e.stopPropagation();
+        ui.profileExpand.classList.remove("hidden");
+    });
+
+    document.addEventListener("click", (e) => {
+        handleOutsideClicks(e);
+        if (e.target.closest('#logout-btn')) handleLogout();
+        if (e.target.closest('#add-workspace-btn')) handleNewWorkspace();
+    });
+
+    // Main Search
+    if (ui.searchInput) ui.searchInput.addEventListener('input', handleMainSearchInput);
+    if (ui.cancelSearchIcon) ui.cancelSearchIcon.addEventListener('click', clearMainSearch);
+
+    // Contextual Search
+    ui.taskOptionBtns.forEach((btn, index) => btn.addEventListener('click', () => {
+        const actions = { 0: ['in: '], 1: ['assignee: ', true], 2: ['with: ', true] };
+        setupContextualSearch(...actions[index]);
+    }));
+    ui.projectOptionBtns.forEach((btn, index) => btn.addEventListener('click', () => {
+        const actions = { 0: ['owner: ', true], 1: ['with: ', true] };
+        setupContextualSearch(...actions[index]);
+    }));
+
+    // Invite Modal
+    [ui.inviteBtnPeople, ui.inviteBtnGeneric].forEach(btn => {
+        if (btn) btn.addEventListener('click', async () => {
+            const result = await showInviteModal();
+            console.log(result ? `Invitation details: ${JSON.stringify(result)}` : "Modal closed.");
+        });
+    });
+
+    // Main Tab Selection
+    ui.mainOptionBtns.forEach((btn, index) => {
+        btn.addEventListener("click", () => {
+            const isSelected = btn.classList.toggle("selected");
+            state.isPeopleTabSelected = index === 2 && isSelected;
+            state.isMessagesTabSelected = index === 3 && isSelected;
+
+            ui.mainOptionBtns.forEach((otherBtn, otherIndex) => {
+                if (index !== otherIndex) {
+                    otherBtn.classList.remove("selected");
+                    if (isSelected) otherBtn.classList.add("hide");
+                }
+            });
+            if (!isSelected) ui.mainOptionBtns.forEach(b => b.classList.remove("hide"));
+
+            const contentMap = { 0: ui.mytaskdisplay, 1: ui.projectdisplay, 2: ui.peopleEmptyState, 3: ui.messagesEmptyState };
+            Object.values(contentMap).forEach(el => { if(el) el.classList.add('hidden') });
+            if (isSelected && contentMap[index]) contentMap[index].classList.remove('hidden');
+        });
+    });
+
+    // Advanced Filter
+    if (ui.filterToggleMenu) ui.filterToggleMenu.addEventListener('click', () => {
+        ui.searchFilterMenu.classList.remove("hidden");
+        ui.searchExpand.classList.add("hidden");
+    });
+
+    document.querySelectorAll(".dropdown-menu .dropdown-item").forEach(item => {
+        item.addEventListener("click", function(e) {
+            e.preventDefault();
+            const selectedText = this.textContent.trim();
+            const button = this.closest('.dropdown-menu').previousElementSibling;
+            if (!button) return;
+            button.textContent = selectedText;
+
+            switch (button.id) {
+                case 'typeDropdown': updateFilterFieldsVisibility(selectedText); break;
+                case 'locatedDropdown':
+                case 'locatedDropdownProjects':
+                    state.filter.location = selectedText;
+                    if (ui.fields.extraField) ui.fields.extraField.classList.toggle('hidden', !['In any of these projects', 'In all of these projects'].includes(selectedText));
+                    break;
+                case 'dueDateDropdown':
+                case 'dueDateDropdownExtra':
+                    handleDueDateChange(selectedText);
+                    break;
+                case 'statusDropdown': state.filter.status = selectedText; break;
+                case 'statusProjectDropdown': state.filter.statusProject = selectedText; break;
+            }
+        });
+    });
+
+    if (ui.plusField) ui.plusField.addEventListener("click", () => {
+        if (ui.newExtraInput) ui.newExtraInput.classList.remove("hidden");
+        if (ui.plusIcon) ui.plusIcon.classList.add("hidden");
+        if (ui.closeIcon) ui.closeIcon.style.display = "inline";
+    });
+
+    if (ui.closeIcon) ui.closeIcon.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (ui.newExtraInput) ui.newExtraInput.classList.add("hidden");
+        if (ui.plusIcon) ui.plusIcon.classList.remove("hidden");
+        ui.closeIcon.style.display = "none";
+    });
+}
+
+// --- 9. MAIN EXECUTION ---
+onAuthStateChanged(auth, (user) => {
+    if (!user) {
+        window.location.href = '/login/login.html';
+        return;
+    }
+
+    console.log("Header script running for user:", user.uid);
+    lucide.createIcons();
+    updateProfileDisplay(user);
+    initializeEventListeners();
+    renderCalendar(state.currentMonth);
+
+    // Set initial UI state
+    if(ui.searchQueryContainer) ui.searchQueryContainer.classList.add("hidden");
+    if(ui.closeIcon) ui.closeIcon.style.display = "none";
+    if(ui.optionsQuery) ui.optionsQuery.classList.add("hidden");
+    if(ui.rootdrawer) ui.rootdrawer.style.width = "260px";
 });
