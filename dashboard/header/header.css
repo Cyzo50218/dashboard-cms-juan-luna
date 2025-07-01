@@ -727,7 +727,7 @@ button.form-select.daterange.dropdown-toggle {
             color: #DBDBDB;
             box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
         }
-        .dialog-footer {
+        .header-header-dialog-footer {
             display: flex;
             justify-content: flex-end;
             gap: 10px;
@@ -735,16 +735,16 @@ button.form-select.daterange.dropdown-toggle {
             padding-top: 15px;
             border-top: 1px solid #eee;
         }
-        .dialog-footer .btn {
+        .header-dialog-footer .btn {
             border-radius: 6px;
             padding: 10px 20px;
         }
-        .dialog-footer .btn-secondary {
+        .header-dialog-footer .btn-secondary {
             background-color: #808080;
             border-color: #969696;
             color: #C0C0C0;
         }
-        .dialog-footer .btn-primary {
+        .header-dialog-footer .btn-primary {
             background-color: #266EE0;
             border-color: #266EE0;
         }
