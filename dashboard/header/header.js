@@ -185,7 +185,7 @@ async function updateProfileDisplay(user) {
 }
 
 function renderAllPeople(people) {
-  const recentContainerDiv = document.querySelector("#people-query > div");
+  const recentContainerDiv = document.querySelector("#recent-container > div");
   const peopleEmptyState = document.getElementById('people-empty-state');
   const emailContainerPeopleId = document.getElementById('email-container-id-people'); // Your invite button
   
