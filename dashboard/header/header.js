@@ -835,7 +835,7 @@ onAuthStateChanged(auth, (user) => {
       }
     });
     const processedPeopleData = await getProcessedWorkspacePeopleData();
-    if (processedPeopleData.length > 0)
+    if (processedPeopleData.length > 0){
       peopleQueryDiv.innerHTML = '<div class="loading-spinner"></div>';
       await new Promise(resolve => setTimeout(resolve, 300));
       renderAllPeople(processedPeopleData, peopleQueryDiv, peopleEmptyState, emailContainerPeopleId);
