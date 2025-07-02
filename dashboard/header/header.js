@@ -815,9 +815,11 @@ onAuthStateChanged(auth, (user) => {
       
       // Show all general UI elements that should always be visible
       savedSearchText.classList.remove("hidden");
-      savedSearchContainer.classList.remove("hidden");
-      recentContainer.classList.remove("hidden");
-      savedContainer.classList.remove("hidden");
+savedSearchContainer.classList.remove("hidden");
+recentContainer.classList.remove("hidden");
+messagesEmptyState.classList.add("hidden"); // This empty state is for messages, keep hidden on deselect
+savedContainer.classList.remove("hidden");
+searchOptions.classList.remove("hidden");
       
       // Hide People-specific elements (this is now handled directly by renderAllPeople's parent)
       peopleQueryDiv.classList.add('hidden'); // Hide the entire #people-query div
@@ -835,24 +837,9 @@ onAuthStateChanged(auth, (user) => {
         b.classList.remove("selected");
       });
       
-      // Re-render the default content (recent tasks and recent people) into recent-container
-      // Note: We need a new structure here because renderRecentItems uses the new #recent-content-wrapper
-      // and its children. The old code was targetting #recent-container > div.
-      // Let's ensure the recent-container's inner structure is ready for renderRecentItems
-      const recentContentWrapper = document.getElementById("recent-content-wrapper");
-      const recentPeopleSection = document.getElementById("recent-people-section");
-      const recentTasksSection = document.getElementById("recent-tasks-section");
-      
-      if (recentContentWrapper && recentPeopleSection && recentTasksSection) {
-        recentContentWrapper.innerHTML = ''; // Clear wrapper first
-        recentContentWrapper.appendChild(recentPeopleSection);
-        recentContentWrapper.appendChild(recentTasksSection);
-        // Call renderRecentItems with the correct parameters
-        renderRecentItems(exampleRecentTasks, exampleRecentPeople, null, false, false);
-      } else {
-        console.error("Required recent content wrapper/sections not found for default view.");
-      }
-      
+      mytaskdisplay.classList.add("hidden");
+peopleQueryDiv.classList.add('hidden'); 
+renderRecentItems(exampleRecentTasks, exampleRecentPeople);
       
     } else {
       // --- SCENARIO: User is SELECTING the "People" tab ---
