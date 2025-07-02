@@ -1,3 +1,6 @@
+:root {
+  --asana-blue: #3a77f3;
+}
 
 
 /* Hide initially */
@@ -1257,27 +1260,65 @@ margin-left: 6px;
 }
 #recent-container {
     display: flex;
+    width: 528px;
     flex-direction: column;
     height: 100%; /* Or set a fixed height for the scrollable area if needed */
     flex-grow: 1; /* Allow it to fill available space within its parent search-expand/filter */
-    /* Add overflow-y: auto; if you expect a lot of content and need internal scrolling */
 }
 
-/* Ensure the parent of #recent-container (e.g., .search-expand or #search-filter) also has appropriate height/flex properties to allow #recent-content-wrapper to grow */
+.headersearches-invite-email-button-recents {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  padding-left: 8px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: var(--asana-blue);
+  font-size: 14px;
+  border-top: 1px solid rgba(104, 104, 104, 0.5);
+  font-weight: 500;
+  height: 40px;
+  transition: background-color 0.2s ease;
+}
+
+.headersearches-invite-email-button-recents:hover {
+  background-color: rgba(36, 151, 255, 0.18);
+}
+
+.headersearches-invite-email-button-recents .invite-icon-wrapper {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--asana-blue);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.headersearches-invite-email-button-recents .material-icons-outlined {
+  font-size: 14px;
+  color: var(--asana-blue);
+}
+.headersearches-invite-email-button-recents .email-text {
+  font-size: 14px;
+  padding-bottom: 8px;
+  color: var(--asana-blue);
+}
 .search-expand,
 #search-filter {
     display: flex;
     flex-direction: column;
-    /* You might need to set a min-height or max-height for these based on your overall layout */
-    height: auto; /* Or specific height */
-    max-height: 80vh; /* Example: to prevent it from growing too large */
+    height: auto; 
 }
 .headersearches-tasks-recent-item {
     display: flex;
     align-items: center;
-    padding: 8px 10px;
+    padding: 3px 10px;
     margin-bottom: 5px;
-    border-radius: 6px;
     transition: background-color 0.2s ease;
     cursor: pointer;
 }
@@ -1350,4 +1391,111 @@ margin-left: 6px;
     color: var(--text-color-primary, #e0e0e0);
     margin-bottom: 10px;
     padding: 0 10px; /* Align with item padding */
+}
+.headersearches-tasks-recent-title{
+  font-size: 9px;
+  padding-top: 4px;
+font-weight: 500;
+}
+.headersearches-project-square-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 11px; /* Size of the square icon */
+    height: 11px; /* Size of the square icon */
+    border-radius: 4px; /* Slightly rounded corners for the square */
+    margin-right: 12px; /* Space between the icon and project name */
+    flex-shrink: 0;
+    background-color: currentColor; /* This will pick up the color from JS style */
+}
+/* For the three dots (more options) icon */
+.project-more-icon {
+    font-size: 18px; /* Size of the three dots icon */
+    color: var(--icon-color, #888); /* Muted icon color */
+    margin-left: 10px; /* Space between assignee and dots */
+    cursor: pointer;
+    padding: 2px; /* Little padding for clickable area */
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+
+/* In your CSS file (e.g., style.css or header.css) */
+
+/* Ensure the avatars have relative positioning for z-index to work */
+.headersearches-assignee-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: var(--avatar-bg, #555);
+    color: var(--avatar-text, #fff);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: bold;
+    flex-shrink: 0;
+    background-size: cover;
+    background-position: center;
+    border: 1px solid var(--surface-color-dark, #36393f); /* Thin border for visual separation */
+    box-sizing: border-box;
+    position: relative; /* REQUIRED for z-index to work */
+}
+
+/* Apply negative margin for the overlapping effect, targeting all avatars except the first */
+.headersearches-assignee-list .headersearsearches-assignee-avatar + .headersearches-assignee-avatar {
+    
+}
+
+/* --- Stacking Order: Rightmost Avatar on Top --- */
+
+/* The first avatar (leftmost) is at the bottom of the stack (lowest z-index) */
+.headersearches-assignee-list .headersearches-assignee-avatar:nth-child(1) {
+    z-index: 4;
+    margin-left: -12px;
+}
+
+/* The second avatar is on top of the first */
+.headersearches-assignee-list .headersearches-assignee-avatar:nth-child(2) {
+    z-index: 3;
+    margin-left: -12px;
+}
+
+/* The third avatar (rightmost of the visible ones) is on top of the second (highest z-index among avatars) */
+.headersearches-assignee-list .headersearches-assignee-avatar:nth-child(3) {
+    z-index: 2;
+    margin-left: -12px;
+}
+
+/* Ensure the 'more_horiz' icon is always on top of all avatars */
+.headersearches-assignee-list .project-more-icon {
+    position: relative; /* REQUIRED for z-index to work */
+    z-index: 1; /* Higher than any avatar */
+    margin-left: -12px; /* Also apply negative margin to stack it correctly with avatars */
+    /* Ensure other styles for project-more-icon are present here too */
+    font-size: 18px;
+    color: var(--icon-color, #888);
+    cursor: pointer;
+    border-radius: 50%;
+    background-color: var(--avatar-bg, #3E3E3E);
+    padding: 2px;
+    transition: background-color 0.2s ease;
+}
+
+/* Hover for the project-more-icon */
+.headersearches-assignee-list .project-more-icon:hover {
+    background-color: var(--hover-bg-color);
+}
+
+
+/* Re-check or simplify .headersearches-assignee-list's gap if present */
+.headersearches-assignee-list {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    /* If you had 'gap' here, you might want to remove it or set to 0,
+       as the negative margin on individual avatars controls spacing */
+    /* gap: 0; */
+}
+.project-more-icon:hover {
+    background-color: var(--hover-bg-color); /* Subtle background on hover */
 }

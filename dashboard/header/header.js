@@ -81,6 +81,63 @@ const exampleRecentPeople = [
   initials: 'CI'
 }];
 
+// header.js (Replace your existing exampleRecentProjects with this one)
+
+const exampleRecentProjects = [
+    {
+        id: 'project_req_track_001',
+        name: 'Request tracking',
+        color: '#2196F3', // Blue color matching Asana's project icon
+        tasksCount: 40,
+        assignees: [
+            {
+                id: 'user_john', // Corresponds to user_john's UID
+                initials: 'JW',
+                avatarUrl: 'https://i.pravatar.cc/150?img=68', // Loadable avatar URL
+                role: 'project_lead' // Role within this specific project's context
+            },
+            {
+                id: 'user_cl', // Corresponds to user_clinton's UID
+                initials: 'CI',
+                avatarUrl: 'https://i.pravatar.cc/150?img=33', // Another loadable avatar URL
+                role: 'designer'
+            },
+            {
+                id: 'user_jezz', // Corresponds to user_jezz's UID
+                initials: 'JE',
+                avatarUrl: 'https://i.pravatar.cc/150?img=12',
+                role: 'developer'
+            },
+            { // This assignee will trigger the 'more_horiz' icon if there are more than 3
+                id: 'user_jane',
+                initials: 'JD',
+                avatarUrl: 'https://i.pravatar.cc/150?img=47',
+                role: 'qa_engineer'
+            }
+        ]
+    },
+    {
+        id: 'project_website_redesign_002',
+        name: 'Website Redesign',
+        color: '#FF9800', // Example Orange project color
+        tasksCount: 15,
+        assignees: [
+            {
+                id: 'user_jezz',
+                initials: 'JE',
+                avatarUrl: 'https://i.pravatar.cc/150?img=12',
+                role: 'frontend_dev'
+            },
+            {
+                id: 'user_alex',
+                initials: 'AS',
+                avatarUrl: 'https://i.pravatar.cc/150?img=7',
+                role: 'project_manager'
+            }
+        ]
+    }
+];
+
 const mockUsersCollection = [
   {
     id: 'user_john',
@@ -157,6 +214,22 @@ const mockMyWorkspaceCollection = [
   ]
 }];
 
+function createRecentsInviteEmailButton() {
+  const inviteBtn = document.createElement('div');
+  inviteBtn.className = 'headersearches-invite-email-button-recents'; // This class will have margin-top: auto
+  inviteBtn.innerHTML = `
+<div class="invite-icon-wrapper">
+    <span class="material-icons-outlined">mail</span>
+  </div> 
+  <span class ="email-text">Invite teammates via email </span>
+    `;
+  inviteBtn.addEventListener('click', async () => {
+    console.log("Invite button clicked (Recents view), opening modal...");
+    const result = await showInviteModal();
+    if (result) { /* ... handle result ... */ } else { /* ... */ }
+  });
+  return inviteBtn;
+}
 
 async function updateProfileDisplay(user) {
   if (!user) return;
@@ -254,68 +327,100 @@ function renderAllPeople(people, peopleQueryDiv, peopleEmptyState, emailContaine
   }
 }
 
-function renderRecentItems(tasks, people, taskLimit, hidePeople = false) {
+function renderRecentItems(tasks, people, projects, taskLimit = null, hidePeopleContent = false, showInviteButton = false) {
   const recentContainerDiv = document.querySelector("#recent-container > div");
   if (!recentContainerDiv) {
     console.error("Recent container div not found!");
     return;
   }
   
-  recentContainerDiv.innerHTML = ''; // Clear existing content
-  
-  // Apply task limit if specified
-  const tasksToRender = taskLimit ? tasks.slice(0, taskLimit) : tasks;
-  
-  // Render Tasks
-  tasksToRender.forEach(item => {
+  recentContainerDiv.innerHTML = ''; 
+if (projects && projects.length > 0) {
+  projects.forEach(project => {
     const itemDiv = document.createElement('div');
-    itemDiv.className = 'headersearches-tasks-recent-item';
-    itemDiv.dataset.itemId = item.id;
+    itemDiv.className = 'headersearches-tasks-recent-item'; // Reusing common item styling
+    itemDiv.dataset.itemId = project.id;
+        let assigneesToDisplay = project.assignees.slice(0, 2); // Show up to 3 assignees
+    let remainingAssigneesCount = project.assignees.length - assigneesToDisplay.length;
     
-    const statusIcon = item.name.includes("Alert") ? 'error_outline' : 'check_circle';
-    
-    const assigneesHtml = item.assignees.map(assignee => `
-            <div class="headersearches-assignee-avatar" ${assignee.avatarUrl ? `style="background-image: url(${assignee.avatarUrl});"` : ''}>
-                ${!assignee.avatarUrl ? assignee.initials : ''}
-            </div>
-        `).join('');
+    const assigneesHtml = assigneesToDisplay.map(assignee => `
+                <div class="headersearches-assignee-avatar" ${assignee.avatarUrl ? `style="background-image: url(${assignee.avatarUrl});"` : ''}>
+                    ${!assignee.avatarUrl ? assignee.initials : ''}
+                </div>
+            `).join('');
+    const moreAssigneesHtml = remainingAssigneesCount > 0 ?
+      `<span class="material-icons-outlined project-more-icon">more_horiz</span>` : '';
+
     
     itemDiv.innerHTML = `
-            <span class="material-icons-outlined headersearches-tasks-recent-status-icon">${statusIcon}</span>
-            <div class="headersearches-tasks-recent-content">
-                <div class="headersearches-tasks-recent-title">${item.name}</div>
-                <div class="headersearches-tasks-recent-meta">
-                    <span class="headersearches-tasks-project-dot" style="background-color: ${item.project.color};"></span>
-                    <span class="headersearches-tasks-project-name">${item.project.name}</span>
-                </div>
-            </div>
-            <div class="headersearches-assignee-list">
-                ${assigneesHtml}
-            </div>
-        `;
-    recentContainerDiv.appendChild(itemDiv);
-  });
-  
-  // Render People ONLY if hidePeople is false
-  if (people.length > 0 && !hidePeople) {
-    people.forEach(person => {
-      const personDiv = document.createElement('div');
-      personDiv.className = 'headersearches-tasks-recent-item';
-      personDiv.dataset.itemId = person.id;
-      
-      personDiv.innerHTML = `
-                <span class="material-icons-outlined headersearches-tasks-recent-status-icon">person</span>
+                <span class="headersearches-project-square-icon" style="background-color: ${project.color};"></span>
                 <div class="headersearches-tasks-recent-content">
-                    <div class="headersearches-tasks-recent-title">${person.name}</div>
-                    <div class="headersearches-tasks-recent-meta">${person.email}</div>
+                    <div class="headersearches-tasks-recent-title">${project.name}</div>
                 </div>
                 <div class="headersearches-assignee-list">
-                    <div class="headersearches-assignee-avatar">${person.initials}</div>
-                    <span class="material-icons-outlined headersearches-globe-icon">public</span>
+                    ${assigneesHtml}
+                    ${moreAssigneesHtml} <!-- Insert the "more" icon if applicable -->
                 </div>
             `;
-      recentContainerDiv.appendChild(personDiv);
+    recentContainerDiv.appendChild(itemDiv);
+  });
+  } else { 
+    
+    const tasksToRender = taskLimit ? tasks.slice(0, taskLimit) : tasks;
+  
+    tasksToRender.forEach(item => {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'headersearches-tasks-recent-item';
+      itemDiv.dataset.itemId = item.id;
+      
+      const statusIcon = item.name.includes("Alert") ? 'error_outline' : 'check_circle';
+      
+      const assigneesHtml = item.assignees.map(assignee => `
+                <div class="headersearches-assignee-avatar" ${assignee.avatarUrl ? `style="background-image: url(${assignee.avatarUrl});"` : ''}>
+                    ${!assignee.avatarUrl ? assignee.initials : ''}
+                </div>
+            `).join('');
+      
+      itemDiv.innerHTML = `
+                <span class="material-icons-outlined headersearches-tasks-recent-status-icon">${statusIcon}</span>
+                <div class="headersearches-tasks-recent-content">
+                    <div class="headersearches-tasks-recent-title">${item.name}</div>
+                    <div class="headersearches-tasks-recent-meta">
+                        <span class="headersearches-tasks-project-dot" style="background-color: ${item.project.color};"></span>
+                        <span class="headersearches-tasks-project-name">${item.project.name}</span>
+                    </div>
+                </div>
+                <div class="headersearches-assignee-list">
+                    ${assigneesHtml}
+                </div>
+            `;
+      recentContainerDiv.appendChild(itemDiv);
     });
+    
+    if (people.length > 0 && !hidePeopleContent) { // Changed hidePeople to hidePeopleContent for consistency
+      people.forEach(person => {
+        const personDiv = document.createElement('div');
+        personDiv.className = 'headersearches-tasks-recent-item';
+        personDiv.dataset.itemId = person.id;
+        
+        personDiv.innerHTML = `
+                    <span class="material-icons-outlined headersearches-tasks-recent-status-icon">person</span>
+                    <div class="headersearches-tasks-recent-content">
+                        <div class="headersearches-tasks-recent-title">${person.name}</div>
+                        <div class="headersearches-tasks-recent-meta">${person.email}</div>
+                    </div>
+                    <div class="headersearches-assignee-list">
+                        <div class="headersearches-assignee-avatar">${person.initials}</div>
+                        <span class="material-icons-outlined headersearches-globe-icon">public</span>
+                    </div>
+                `;
+        recentContainerDiv.appendChild(personDiv);
+      });
+    }
+  } 
+  
+  if (showInviteButton) {
+    recentContainerDiv.appendChild(createRecentsInviteEmailButton());
   }
 }
 
@@ -758,7 +863,7 @@ onAuthStateChanged(auth, (user) => {
       savedSearchText.classList.remove("hidden");
       savedSearchContainer.classList.remove("hidden");
       
-      renderRecentItems(exampleRecentTasks, exampleRecentPeople);
+      renderRecentItems(exampleRecentTasks, exampleRecentPeople, []);
     } else {
       // --- Is NOT selected, now selecting "My Tasks" ---
       btn.classList.add("selected");
@@ -771,7 +876,7 @@ onAuthStateChanged(auth, (user) => {
           b.classList.remove("selected");
         }
       });
-      renderRecentItems(exampleRecentTasks, exampleRecentPeople, 4, true);
+      renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], 4, true, false);
     }
   });
   optionBtns[1].addEventListener("click", () => {
@@ -799,111 +904,60 @@ onAuthStateChanged(auth, (user) => {
           b.classList.remove("selected");
         }
       });
+      renderRecentItems([], [], exampleRecentProjects, null, true, false);
     }
   });
-  optionBtns[2].addEventListener("click", async () => { // <<< Ensure 'async' is here!
-  console.log("--- Click Event on 'People' Button Triggered ---");
   
+  optionBtns[2].addEventListener("click", async () => { // <<< Ensure 'async' is here!
   const btn = optionBtns[2];
   const isSelected = btn.classList.contains("selected");
-  console.log("Is 'People' button currently selected (before click):", isSelected);
-  
   halfQuery.classList.remove("skeleton-active"); // Remove skeleton if it was active
   
   if (isSelected) {
-    // --- SCENARIO: User is DE-SELECTING the "People" tab ---
-    console.log("Entering: DESELECTING 'People' tab");
     selectedPeople = false;
     btn.classList.remove("selected");
-    
-    console.log("DEBUG: Showing general UI elements.");
-    // Show all general UI elements that should always be visible
     savedSearchText.classList.remove("hidden");
     savedSearchContainer.classList.remove("hidden");
     recentContainer.classList.remove("hidden");
     savedContainer.classList.remove("hidden");
+    emailContainerPeopleId.classList.remove('hidden');
     searchOptions.classList.remove("hidden"); // Ensure the row of filter buttons is visible
-    
-    // Hide People-specific container
-    console.log("DEBUG: Hiding people-specific container (peopleQueryDiv).");
     if (peopleQueryDiv) peopleQueryDiv.classList.add('hidden'); // This hides the entire #people-query div
-    
-    // Hide static invite button and empty state within #people-query (as they are children of peopleQueryDiv now hidden)
-    // If peopleQueryDiv is hidden, its children are implicitly hidden, but good to ensure
-    if (document.getElementById('email-container-id-people')) {
-      document.getElementById('email-container-id-people').classList.add('hidden');
-    }
+      
     if (peopleEmptyState) peopleEmptyState.classList.add("hidden");
     
-    
-    // Show the "Recents" title
-    console.log("DEBUG: Showing 'Recents' title.");
+  
     if (recentContainerTitle) {
       recentContainerTitle.classList.remove("hidden");
     }
-    
-    // Ensure all other option buttons are visible and deselect them
-    console.log("DEBUG: Ensuring all option buttons are visible and deselecting others.");
     optionBtns.forEach(b => {
       b.classList.remove("hide"); // Ensure no option button is hidden
       b.classList.remove("selected");
     });
-    
-    console.log("DEBUG: Calling renderRecentItems to restore default view.");
-    // Re-render the default content (recent tasks and recent people) into recent-container
-    renderRecentItems(exampleRecentTasks, exampleRecentPeople, null, false, true); // show general invite
-    
-    console.log("Exiting: DESELECTING 'People' tab");
+    renderRecentItems(exampleRecentTasks,  exampleRecentPeople, [], null, false, false); // show general invite
     
   } else {
-    // --- SCENARIO: User is SELECTING the "People" tab ---
-    console.log("Entering: SELECTING 'People' tab");
     selectedPeople = true;
     btn.classList.add("selected");
-    
-    console.log("DEBUG: Ensuring general UI elements remain visible (not hiding them).");
-    // Ensure general search UI elements remain visible
     savedSearchText.classList.add("hidden");
     savedSearchContainer.classList.add("hidden");
     savedContainer.classList.add("hidden");
-    
-    // Ensure the main recent-container is visible
-    console.log("DEBUG: Ensuring main recentContainer is visible.");
-    if (recentContainer) recentContainer.classList.add("hidden");
-    
-    // Show the #people-query div
-    console.log("DEBUG: Showing peopleQueryDiv.");
-    if (peopleQueryDiv) peopleQueryDiv.classList.remove('hidden');
-    
-    
-    // Hide the "Recents" title
-    console.log("DEBUG: Hiding 'Recents' title.");
+    if (recentContainer) recentContainer.classList.remove("hidden");
+    if (peopleQueryDiv) peopleQueryDiv.classList.add('hidden');
     if (recentContainerTitle) {
-      recentContainerTitle.classList.add("hidden");
+      recentContainerTitle.classList.remove("hidden");
     }
-    
-    // Hide task/project specific displays
-    console.log("DEBUG: Hiding task/project specific displays.");
     mytaskdisplay.classList.add("hidden");
     projectdisplay.classList.add("hidden");
     messagesEmptyState.classList.add("hidden");
-    
-    // Deselect other main filter buttons (My Tasks, Projects, Messages)
-    console.log("DEBUG: Deselecting other main filter buttons.");
     optionBtns.forEach((b, i) => {
   if (i !== 2) {
     b.classList.add("hide");
     b.classList.remove("selected");
   }
 });
-    
-    // Fetch the processed people data
-    console.log("DEBUG: Calling getProcessedWorkspacePeopleData(). Awaiting data...");
+    /*
     const processedPeopleData = await getProcessedWorkspacePeopleData();
-    console.log("DEBUG: Processed People Data received:", processedPeopleData);
-    console.log("DEBUG: Processed People Data Length:", processedPeopleData.length);
-    
-    // Check if the array has items to render, or show empty state
     if (processedPeopleData.length > 0) {
       console.log("DEBUG: Data is NOT empty. Showing loading spinner then rendering people.");
       // Data is NOT empty, show loading spinner then render people
@@ -922,9 +976,10 @@ onAuthStateChanged(auth, (user) => {
       peopleEmptyState.classList.remove("hidden"); // Show empty state
       emailContainerPeopleId.classList.remove('hidden'); // Show invite button
     }
-    console.log("Exiting: SELECTING 'People' tab");
+    */
+    renderRecentItems([], exampleRecentPeople, [], null, false, true); // show general invite
+    
   }
-  console.log("--- End of Click Event ---");
 });
   optionBtns[3].addEventListener("click", () => {
     const btn = optionBtns[3];
@@ -1409,7 +1464,7 @@ onAuthStateChanged(auth, (user) => {
   
   // Update the profile display with the user's info
   updateProfileDisplay(user);
-  renderRecentItems(exampleRecentTasks, exampleRecentPeople);
+  renderRecentItems(exampleRecentTasks, exampleRecentPeople, []);
   
   document.addEventListener("click", (e) => {
     // --- NEW: Handle Logout and New Workspace clicks ---
