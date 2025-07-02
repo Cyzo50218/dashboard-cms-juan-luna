@@ -863,14 +863,14 @@ onAuthStateChanged(auth, (user) => {
     
     console.log("DEBUG: Ensuring general UI elements remain visible (not hiding them).");
     // Ensure general search UI elements remain visible
-    savedSearchText.classList.remove("hidden");
-    savedSearchContainer.classList.remove("hidden");
-    savedContainer.classList.remove("hidden");
-    searchOptions.classList.remove("hidden");
+    savedSearchText.classList.add("hidden");
+    savedSearchContainer.classList.add("hidden");
+    savedContainer.classList.add("hidden");
+    searchOptions.classList.add("hidden");
     
     // Ensure the main recent-container is visible
     console.log("DEBUG: Ensuring main recentContainer is visible.");
-    if (recentContainer) recentContainer.classList.remove("hidden");
+    if (recentContainer) recentContainer.classList.add("hidden");
     
     // Hide the default recent content (tasks/recent people)
     console.log("DEBUG: Clearing #recent-container > div and hiding general invite button.");
