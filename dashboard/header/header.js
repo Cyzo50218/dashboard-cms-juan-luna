@@ -188,34 +188,25 @@ async function updateProfileDisplay(user) {
   expandProfileImg.src = avatarUrl;
 }
 
-// header.js (Update this function)
-
-/**
- * Renders a list of all people (users) directly inside the #people-query container.
- * This function also manages the visibility of the static peopleEmptyState and emailContainerPeopleId elements.
- * @param {PersonData[]} people - An array of user objects to render.
- */
-function renderAllPeople(people) {
-  const peopleQueryDiv = document.getElementById('people-query'); // Target #people-query directly
-  const peopleEmptyState = document.getElementById('people-empty-state');
-  const emailContainerPeopleId = document.getElementById('email-container-id-people');
+function renderAllPeople(people, peopleQueryDiv, peopleEmptyState, emailContainerPeopleId) {
+  // Note: No need for `getElementById` calls inside this function anymore.
+  // The elements are passed as arguments.
   
   if (!peopleQueryDiv || !peopleEmptyState || !emailContainerPeopleId) {
-    console.error("One or more people display elements (people-query, people-empty-state, email-container-id-people) not found!");
+    console.error("One or more people display elements passed as arguments are null or undefined!");
     return;
   }
   
-  // 1. Clear any *previously rendered dynamic list items* from #people-query
-  //    We identify dynamic list items by their class 'headersearches-tasks-recent-item'
+  // 1. Clear any *previously rendered dynamic list items* from peopleQueryDiv
   Array.from(peopleQueryDiv.children).forEach(child => {
     if (child.classList.contains('headersearches-tasks-recent-item')) {
       peopleQueryDiv.removeChild(child);
     }
   });
   
-  // 2. Hide static elements initially
+  // 2. Hide static elements initially before deciding their visibility
   peopleEmptyState.classList.add("hidden");
-  emailContainerPeopleId.classList.add("hidden"); // Ensure it's hidden before deciding to show it
+  emailContainerPeopleId.classList.add("hidden");
   
   // 3. Render the dynamic people list or show empty state
   if (people.length === 0) {
@@ -223,21 +214,17 @@ function renderAllPeople(people) {
     peopleEmptyState.classList.remove("hidden");
     emailContainerPeopleId.classList.remove('hidden'); // Always show invite button with empty state
   } else {
-    // Hide empty state and append dynamic people list
-    peopleEmptyState.classList.add("hidden"); // Ensure it's hidden if people are present
+    // Hide empty state
+    peopleEmptyState.classList.add("hidden");
     
-    // Create a DocumentFragment for efficient DOM manipulation
     const fragment = document.createDocumentFragment();
-    
     people.forEach(person => {
       const personDiv = document.createElement('div');
       personDiv.className = 'headersearches-tasks-recent-item'; // Reusing existing item class
       personDiv.dataset.itemId = person.id;
-      
       const roleOrEmailHtml = person.workspaceRole ?
         `<div class="headersearches-person-roles">${person.workspaceRole.charAt(0).toUpperCase() + person.workspaceRole.slice(1)}</div>` :
         `<div class="headersearches-person-email">${person.email}</div>`;
-      
       personDiv.innerHTML = `
                 <span class="material-icons-outlined headersearches-tasks-recent-status-icon">person</span>
                 <div class="headersearches-tasks-recent-content">
@@ -254,20 +241,17 @@ function renderAllPeople(people) {
       fragment.appendChild(personDiv); // Add to fragment
     });
     
-    // Append all new items at once
-    // Insert before the static elements if they exist, or append otherwise
+    // Append all new items at once, before the static elements if they exist
+    // This ensures dynamic list appears above empty state and invite button
     if (peopleQueryDiv.querySelector('#people-empty-state')) {
       peopleQueryDiv.insertBefore(fragment, peopleEmptyState);
     } else {
-      peopleQueryDiv.appendChild(fragment);
+      peopleQueryDiv.appendChild(fragment); // Fallback if structure somehow changes
     }
     
-    // Show the static invite button (it will position itself based on flex/margin-top)
+    // Show the static invite button
     emailContainerPeopleId.classList.remove('hidden');
   }
-  
-  // Ensure the main recent-container (which holds the search-expand) is visible.
-  // This is managed by the optionBtns[2] click listener, not here.
 }
 
 function renderRecentItems(tasks, people, taskLimit, hidePeople = false) {
@@ -505,7 +489,9 @@ onAuthStateChanged(auth, (user) => {
   const inputRangeStartDropdown = document.getElementById('dateRangeOneDropdown');
   const inputRangeEndDropdown = document.getElementById('dateRangeTwoDropdown');
   const peopleQueryDiv = document.getElementById('people-query');
-  
+  const peopleEmptyState = document.getElementById('people-empty-state');
+  const emailContainerPeopleId = document.getElementById('email-container-id-people');
+
   const calendar = document.getElementById('calendar');
   const calendar1 = document.getElementById('calendar1');
   const calendar2 = document.getElementById('calendar2');
@@ -919,7 +905,7 @@ onAuthStateChanged(auth, (user) => {
       await new Promise(resolve => setTimeout(resolve, 300));
       
       const processedPeopleData = await getProcessedWorkspacePeopleData();
-      renderAllPeople(processedPeopleData); // This function will populate #people-query
+      renderAllPeople(processedPeopleData, peopleQueryDiv, peopleEmptyState, emailContainerPeopleId);
     }
   });
   
