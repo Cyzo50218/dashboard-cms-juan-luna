@@ -4066,7 +4066,7 @@ function addNewTask(section) {
  * Opens a dialog for creating a new custom dropdown option (Priority or Status).
  * This function handles the UI part.
  */
-function openCustomOptionDialog(optionType) {
+function openCustomOptionDialog(optionType, columnId) {
     closeFloatingPanels();
     const dialogOverlay = document.createElement('div');
     dialogOverlay.className = 'dialog-overlay';
@@ -4101,7 +4101,7 @@ function openCustomOptionDialog(optionType) {
         const name = document.getElementById('custom-option-name').value.trim();
         const color = document.getElementById('custom-option-color').value;
         if (name) {
-            addNewCustomOption(optionType, { name, color });
+            addNewCustomOption(optionType, columnId, { name, color });
             closeDialog();
         } else {
             alert('Please enter a name for the option.');
@@ -4120,7 +4120,7 @@ function openCustomOptionDialog(optionType) {
  * @param {string} optionType - 'Priority' or 'Status'.
  * @param {object} newOption - The new option object { name, color }.
  */
-function addNewCustomOption(optionType, newOption) {
+function addNewCustomOption(optionType, columnId, newOption) {
     // 1. Determine the ID of the column we need to modify.
     const columnIdToUpdate = optionType.toLowerCase(); // 'Priority' -> 'priority'
     
@@ -4128,7 +4128,7 @@ function addNewCustomOption(optionType, newOption) {
     const newDefaultColumns = JSON.parse(JSON.stringify(project.defaultColumns));
     
     // 3. Find the specific column object ('priority' or 'status') in our copied array.
-    const columnToUpdate = newDefaultColumns.find(col => col.id === columnIdToUpdate);
+    const columnToUpdate = newDefaultColumns.find(col => col.id === columnId);
     
     // 4. Safety check: If for some reason the column isn't found, stop here.
     if (!columnToUpdate) {

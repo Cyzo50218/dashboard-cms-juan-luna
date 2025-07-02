@@ -16,10 +16,143 @@ import { firebaseConfig } from "/services/firebase-config.js";
 import { showInviteModal } from '/dashboard/components/showEmailModel.js';
 
 
+
 // --- 2. FIREBASE INITIALIZATION ---
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app, "juanluna-cms-01");
+
+const exampleRecentTasks = [
+    {
+        id: 'task_abc1',
+        name: 'lol',
+        project: { name: 'Shop Barongg', color: '#66bb6a' }, // Example green color
+        assignees: []
+    },
+    {
+        id: 'task_abc2',
+        name: 'Draft project brief',
+        project: { name: 'Shop Barongg', color: '#66bb6a' },
+        assignees: [{ id: 'user_cl', initials: 'CI' }]
+    },
+    {
+        id: 'task_abc3',
+        name: 'Alert: Asana invitation could not be delivered to jezz@gmail....',
+        project: { name: 'Shop Barongg', color: '#66bb6a' },
+        assignees: [{ id: 'user_cl', initials: 'CI' }]
+    },
+    {
+        id: 'task_abc4',
+        name: 'Schedule kickoff meeting',
+        project: { name: 'Shop Barongg', color: '#66bb6a' },
+        assignees: [{ id: 'user_jw', initials: 'JW' }]
+    },
+    {
+        id: 'task_abc5',
+        name: 'Share timeline with teammates',
+        project: { name: 'Shop Barongg', color: '#66bb6a' },
+        assignees: []
+    }
+];
+
+const exampleRecentPeople = [
+    {
+        id: 'user_jw_email',
+        name: 'john wick',
+        email: 'twicekgamers@gmail.com',
+        initials: 'JW'
+    },
+    {
+        id: 'user_jezz_email',
+        name: 'jezz@gmail.com',
+        email: 'jezz@gmail.com',
+        initials: 'JE'
+    },
+    {
+        id: 'user_cl_email',
+        name: 'clinton.ihegoro120@gmail.com',
+        email: 'clinton.ihegoro120@gmail.com',
+        initials: 'CI'
+    }
+];
+
+const mockUsersCollection = [
+  {
+    id: 'user_john',
+    displayName: 'John Wick',
+    email: 'john.wick@example.com',
+    initials: 'JW',
+    avatarUrl: null // You could put a URL here, e.g., 'https://example.com/avatars/john.jpg'
+  },
+  {
+    id: 'user_jezz',
+    displayName: 'Jezz Gabriel',
+    email: 'jezz@gmail.com',
+    initials: 'JE',
+    avatarUrl: null
+  },
+  {
+    id: 'user_clinton',
+    displayName: 'Clinton Ihegoro',
+    email: 'clinton.ihegoro120@gmail.com',
+    initials: 'CI',
+    avatarUrl: null
+  },
+  {
+    id: 'user_jane',
+    displayName: 'Jane Doe',
+    email: 'jane.doe@example.com',
+    initials: 'JD',
+    avatarUrl: null
+  },
+  {
+    id: 'user_alex',
+    displayName: 'Alex Smith',
+    email: 'alex.smith@example.com',
+    initials: 'AS',
+    avatarUrl: null
+  }
+  // You can add more mock user objects here as needed for testing
+];
+
+const mockMyWorkspaceCollection = [
+    {
+        id: 'workspace_dev_team_001',
+        name: 'Development Team',
+        isSelected: true,
+        members: [
+            { uid: 'user_john', role: 'admin' },
+            { uid: 'user_jezz', role: 'member' },
+            { uid: 'user_clinton', role: 'guest' }
+        ]
+    },
+    {
+        id: 'workspace_marketing_002',
+        name: 'Marketing Campaigns',
+        isSelected: false,
+        members: [
+            { uid: 'user_jezz', role: 'admin' }, // Jezz is admin here, member in 'Development Team'
+            { uid: 'user_jane', role: 'member' }
+        ]
+    },
+    {
+        id: 'workspace_hr_portal_003',
+        name: 'HR Portal',
+        isSelected: true,
+        members: [
+            { uid: 'user_alex', role: 'owner' } // Alex is the owner of this one
+        ]
+    },
+    {
+        id: 'workspace_personal_004', // A workspace where only the current user (if they are 'user_current_user') is a member
+        name: 'My Personal Workspace',
+        isSelected: false,
+        members: [
+            { uid: 'user_john', role: 'owner' } // John is owner here
+        ]
+    }
+];
+
 
 async function updateProfileDisplay(user) {
   if (!user) return;
@@ -51,7 +184,166 @@ async function updateProfileDisplay(user) {
     expandProfileImg.src = avatarUrl;
 }
 
+function renderAllPeople(people) {
+  const recentContainerDiv = document.querySelector("#recent-container > div");
+  const peopleEmptyState = document.getElementById('people-empty-state');
+  const emailContainerPeopleId = document.getElementById('email-container-id-people'); // Your invite button
+  
+  if (!recentContainerDiv) {
+    console.error("Recent container div not found for people!");
+    return;
+  }
+  
+  recentContainerDiv.innerHTML = ''; // Clear existing content (from tasks or anything else)
+  
+  if (people.length === 0) {
+    // Show empty state and invite button
+    peopleEmptyState.classList.remove("hidden");
+    emailContainerPeopleId.classList.remove('hidden');
+  } else {
+    // Hide empty state, show invite button (as per screenshot)
+    peopleEmptyState.classList.add("hidden");
+    emailContainerPeopleId.classList.remove('hidden');
+    
+    people.forEach(person => {
+      const personDiv = document.createElement('div');
+      personDiv.className = 'headersearches-tasks-recent-item';
+      personDiv.dataset.itemId = person.id;
+      
+      const roleOrEmailHtml = person.workspaceRole ?
+        `<div class="headersearches-person-roles">${person.workspaceRole.charAt(0).toUpperCase() + person.workspaceRole.slice(1)}</div>` :
+        `<div class="headersearches-person-email">${person.email}</div>`;
+      
+      personDiv.innerHTML = `
+                <span class="material-icons-outlined headersearches-tasks-recent-status-icon">person</span>
+                <div class="headersearches-tasks-recent-content">
+                    <div class="headersearches-tasks-recent-title">${person.displayName}</div>
+                    <div class="headersearches-tasks-recent-meta">${roleOrEmailHtml}</div>
+                </div>
+                <div class="headersearches-assignee-list">
+                    <div class="headersearches-assignee-avatar" ${person.avatarUrl ? `style="background-image: url(${person.avatarUrl});"` : ''}>
+                        ${!person.avatarUrl ? person.initials : ''}
+                    </div>
+                    <span class="material-icons-outlined headersearches-globe-icon">public</span>
+                </div>
+            `;
+      recentContainerDiv.appendChild(personDiv);
+    });
+  }
+}
 
+function renderRecentItems(tasks, people, taskLimit, hidePeople = false) {
+  const recentContainerDiv = document.querySelector("#recent-container > div");
+  if (!recentContainerDiv) {
+    console.error("Recent container div not found!");
+    return;
+  }
+  
+  recentContainerDiv.innerHTML = ''; // Clear existing content
+  
+  // Apply task limit if specified
+  const tasksToRender = taskLimit ? tasks.slice(0, taskLimit) : tasks;
+  
+  // Render Tasks
+  tasksToRender.forEach(item => {
+    const itemDiv = document.createElement('div');
+    itemDiv.className = 'headersearches-tasks-recent-item';
+    itemDiv.dataset.itemId = item.id;
+    
+    const statusIcon = item.name.includes("Alert") ? 'error_outline' : 'check_circle';
+    
+    const assigneesHtml = item.assignees.map(assignee => `
+            <div class="headersearches-assignee-avatar" ${assignee.avatarUrl ? `style="background-image: url(${assignee.avatarUrl});"` : ''}>
+                ${!assignee.avatarUrl ? assignee.initials : ''}
+            </div>
+        `).join('');
+    
+    itemDiv.innerHTML = `
+            <span class="material-icons-outlined headersearches-tasks-recent-status-icon">${statusIcon}</span>
+            <div class="headersearches-tasks-recent-content">
+                <div class="headersearches-tasks-recent-title">${item.name}</div>
+                <div class="headersearches-tasks-recent-meta">
+                    <span class="headersearches-tasks-project-dot" style="background-color: ${item.project.color};"></span>
+                    <span class="headersearches-tasks-project-name">${item.project.name}</span>
+                </div>
+            </div>
+            <div class="headersearches-assignee-list">
+                ${assigneesHtml}
+            </div>
+        `;
+    recentContainerDiv.appendChild(itemDiv);
+  });
+  
+  // Render People ONLY if hidePeople is false
+  if (people.length > 0 && !hidePeople) { 
+    people.forEach(person => {
+      const personDiv = document.createElement('div');
+      personDiv.className = 'headersearches-tasks-recent-item';
+      personDiv.dataset.itemId = person.id;
+      
+      personDiv.innerHTML = `
+                <span class="material-icons-outlined headersearches-tasks-recent-status-icon">person</span>
+                <div class="headersearches-tasks-recent-content">
+                    <div class="headersearches-tasks-recent-title">${person.name}</div>
+                    <div class="headersearches-tasks-recent-meta">${person.email}</div>
+                </div>
+                <div class="headersearches-assignee-list">
+                    <div class="headersearches-assignee-avatar">${person.initials}</div>
+                    <span class="material-icons-outlined headersearches-globe-icon">public</span>
+                </div>
+            `;
+      recentContainerDiv.appendChild(personDiv);
+    });
+  }
+}
+
+async function getProcessedWorkspacePeopleData() {
+  const processedPeopleMap = new Map(); // Map to store unique PersonData objects by UID
+  
+  // 1. First, populate the map with all known users from mockUsersCollection.
+  //    Initialize their roles as null, which will be updated if they are found in a workspace.
+  mockUsersCollection.forEach(user => {
+    processedPeopleMap.set(user.id, {
+      id: user.id,
+      displayName: user.displayName,
+      email: user.email,
+      initials: user.initials,
+      avatarUrl: user.avatarUrl,
+      workspaceRole: null // Initialize role as null
+    });
+  });
+  
+  // 2. Iterate through `mockMyWorkspaceCollection` to extract members and their roles.
+  //    Update the `workspaceRole` for users already in `processedPeopleMap`.
+  mockMyWorkspaceCollection.forEach(workspace => {
+    workspace.members.forEach(member => {
+      const userInMap = processedPeopleMap.get(member.uid);
+      if (userInMap) {
+        // If the user already exists in our map:
+        // Prioritize the first role found, or implement a more complex strategy
+        // (e.g., if new role is 'admin' and current is 'member', update to 'admin').
+        // For simplicity, we assign if null, or you could overwrite for the "latest found" role.
+        if (!userInMap.workspaceRole) { // Assign the role if not already assigned
+          userInMap.workspaceRole = member.role;
+        }
+        // If you want to show ALL roles a user has across workspaces:
+        // if (!userInMap.allWorkspaceRoles) userInMap.allWorkspaceRoles = [];
+        // userInMap.allWorkspaceRoles.push(`${member.role} in ${workspace.name}`);
+      } else {
+        // This scenario means a user is listed in a workspace member list
+        // but doesn't exist in our `mockUsersCollection`.
+        // In a real app, this would be an edge case (e.g., user deleted, or data inconsistency).
+        // For mock data, ensure `mockUsersCollection` contains all UIDs referenced.
+        console.warn(`Member UID '${member.uid}' from workspace '${workspace.name}' not found in mockUsersCollection. Skipping.`);
+      }
+    });
+  });
+  let workspacePeople = Array.from(processedPeopleMap.values());
+  workspacePeople = workspacePeople.filter(person => person.workspaceRole !== null);
+  workspacePeople.sort((a, b) => a.displayName.localeCompare(b.displayName));
+  
+  return workspacePeople;
+}
 /**
  * Signs the current user out and redirects to the login page.
  */
@@ -156,6 +448,7 @@ const savedContainer = document.getElementById('saved-container');
 const halfQuery = document.getElementById('half-query');
 const optionsQuery = document.getElementById('options-query');
 const searchOptions = document.querySelector('.search-options');
+const recentContainerTitle = document.querySelector("#recent-container h4");
 
 const emailContainerId = document.getElementById('email-container-id');
 const emailContainerPeopleId = document.getElementById('email-container-id-people');
@@ -201,6 +494,9 @@ let selectedDate = null;
 let currentMonth = dayjs();
 let rangeStartDate = null;
 let rangeEndDate = null;
+
+
+
 
 function isMobile() {
   return window.matchMedia("(max-width: 768px)").matches;
@@ -431,18 +727,21 @@ document.addEventListener("click", (e) => {
   }
 });
 
-
 optionBtns[0].addEventListener("click", () => {
   const btn = optionBtns[0];
   const isSelected = btn.classList.contains("selected");
-
+  
   if (isSelected) {
+    // --- Was selected, now deselecting ---
     btn.classList.remove("selected");
     optionBtns.forEach(b => b.classList.remove("hide"));
     mytaskdisplay.classList.add("hidden");
     savedSearchText.classList.remove("hidden");
     savedSearchContainer.classList.remove("hidden");
+  
+    renderRecentItems(exampleRecentTasks, exampleRecentPeople);
   } else {
+    // --- Is NOT selected, now selecting "My Tasks" ---
     btn.classList.add("selected");
     mytaskdisplay.classList.remove("hidden");
     savedSearchText.classList.add("hidden");
@@ -453,6 +752,7 @@ optionBtns[0].addEventListener("click", () => {
         b.classList.remove("selected");
       }
     });
+    renderRecentItems(exampleRecentTasks, exampleRecentPeople, 4, true);
   }
 });
 
@@ -484,38 +784,71 @@ savedSearchContainer.classList.add("hidden");
   }
 });
 
-optionBtns[2].addEventListener("click", () => {
+optionBtns[2].addEventListener("click", async () => { // <<< IMPORTANT: ENSURE 'async' IS HERE
   const btn = optionBtns[2];
   const isSelected = btn.classList.contains("selected");
   halfQuery.classList.remove("skeleton-active");
   
   if (isSelected) {
-    selectedPeople = false
+    // --- Was selected, now deselecting "People" ---
+    selectedPeople = false;
     btn.classList.remove("selected");
     optionBtns.forEach(b => b.classList.remove("hide"));
-    savedSearchText.classList.remove("hidden");
-savedSearchContainer.classList.remove("hidden");
-emailContainerPeopleId.classList.add('hidden');
-recentContainer.classList.remove("hidden");
-savedContainer.classList.remove("hidden");
-searchOptions.classList.remove("hidden");
-recentContainer.classList.remove("hidden");
-emailContainerPeopleId.classList.add('hidden');
-peopleEmptyState.classList.add("hidden");
+  
+    recentContainer.classList.remove("hidden"); // <<< Ensure the main #recent-container is visible
+    savedContainer.classList.remove("hidden");
+    
+    
+    // Hide People-specific elements
+    emailContainerPeopleId.classList.add('hidden');
+    peopleEmptyState.classList.add("hidden");
+    
+    // Show "Recents" title
+    if (recentContainerTitle) {
+      recentContainerTitle.classList.remove("hidden");
+    }
+    
+    // Re-render default recents (tasks and recent people)
+    renderRecentItems(exampleRecentTasks, exampleRecentPeople);
+    
   } else {
-    selectedPeople = true
+    // --- Is NOT selected, now selecting "People" ---
+    selectedPeople = true;
     btn.classList.add("selected");
-    savedSearchText.classList.add("hidden");
-    peopleEmptyState.classList.remove("hidden");
-    emailContainerPeopleId.classList.remove('hidden');
-    recentContainer.classList.add("hidden");
-    savedSearchContainer.classList.add("hidden");
+  
+    savedContainer.classList.add("hidden"); // Hide saved searches too
+    
+    // Ensure recentContainer is visible (its content will be managed by renderAllPeople)
+    recentContainer.classList.remove("hidden"); // <<< Ensure this is NOT .add('hidden')
+    
+    // Hide "Recents" title
+    if (recentContainerTitle) {
+      recentContainerTitle.classList.add("hidden");
+    }
+    
+    // Hide task/project specific displays if they were open
+    mytaskdisplay.classList.add("hidden");
+    projectdisplay.classList.add("hidden");
+    messagesEmptyState.classList.add("hidden"); // Also hide messages empty state if active
+    
+    // Hide all other filter buttons except 'People'
     optionBtns.forEach((b, i) => {
       if (i !== 2) {
         b.classList.add("hide");
         b.classList.remove("selected");
       }
     });
+    
+    // Display a temporary loading state
+    const recentContainerDiv = document.querySelector("#recent-container > div");
+    recentContainerDiv.innerHTML = '<div class="loading-spinner"></div>';
+    
+    // Simulate a network delay (for mock data visibility)
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    // Call the function to get processed workspace members data and render it
+    const processedPeopleData = await getProcessedWorkspacePeopleData();
+    renderAllPeople(processedPeopleData);
   }
 });
 
@@ -1002,6 +1335,7 @@ if (inviteBtnGeneric) {
   
   // Update the profile display with the user's info
   updateProfileDisplay(user);
+  renderRecentItems(exampleRecentTasks, exampleRecentPeople);
   
   document.addEventListener("click", (e) => {
     // --- NEW: Handle Logout and New Workspace clicks ---
@@ -1017,3 +1351,4 @@ if (inviteBtnGeneric) {
   });
 
 });
+
