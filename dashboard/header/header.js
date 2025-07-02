@@ -829,7 +829,9 @@ optionBtns[2].addEventListener("click", async () => {
     
     // Show all general UI elements that should always be visible
     savedSearchText.classList.remove("hidden");
-    
+    savedSearchContainer.classList.remove("hidden");
+    recentContainer.classList.remove("hidden");
+    savedContainer.classList.remove("hidden");
     
     // Hide People-specific elements (this is now handled directly by renderAllPeople's parent)
     peopleQueryDiv.classList.add('hidden'); // Hide the entire #people-query div
@@ -847,6 +849,10 @@ optionBtns[2].addEventListener("click", async () => {
       b.classList.remove("selected");
     });
     
+    // Re-render the default content (recent tasks and recent people) into recent-container
+    // Note: We need a new structure here because renderRecentItems uses the new #recent-content-wrapper
+    // and its children. The old code was targetting #recent-container > div.
+    // Let's ensure the recent-container's inner structure is ready for renderRecentItems
     const recentContentWrapper = document.getElementById("recent-content-wrapper");
     const recentPeopleSection = document.getElementById("recent-people-section");
     const recentTasksSection = document.getElementById("recent-tasks-section");
@@ -869,7 +875,9 @@ optionBtns[2].addEventListener("click", async () => {
     
     // Ensure general search UI elements remain visible - do NOT hide them
     savedSearchText.classList.remove("hidden");
-  
+    savedSearchContainer.classList.remove("hidden");
+    savedContainer.classList.remove("hidden");
+    
     
     // Ensure the main recent-container is visible
     recentContainer.classList.remove("hidden");
