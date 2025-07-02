@@ -5,10 +5,12 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "/services/firebase-config.js";
-import { getFunctions, httpsCallable } from "firebase/functions";
+import {
+  getFunctions,
+  httpsCallable,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
 
-const functions = getFunctions(); 
-const runBackfill = httpsCallable(functions, "runAlgoliaBackfill");
+
 
 // Keep track of the current section's cleanup logic to prevent memory leaks.
 let currentSectionCleanup = null;
@@ -215,6 +217,8 @@ async function loadHTML(selector, url) {
 document.addEventListener("DOMContentLoaded", () => {
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
+    const functions = getFunctions(app); 
+    const runBackfill = httpsCallable(functions, "runAlgoliaBackfill");
     
     onAuthStateChanged(auth, async (user) => {
         if (user) {
