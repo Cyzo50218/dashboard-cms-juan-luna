@@ -3,12 +3,15 @@ import { onCall } from "firebase-functions/v2/https";
 import * as functions from "firebase-functions";
 import { defineSecret } from "firebase-functions/params";
 import { initializeApp } from "firebase-admin/app";
+import * as algoliasearch from 'algoliasearch';
 import sgMail from "@sendgrid/mail";
 
 // Init Firebase Admin SDK
 initializeApp();
 
 export const sendgridApiKey = defineSecret("SENDGRID_API_KEY_EMAIL_INVITATION");
+export const ALGOLIA_APP_ID = defineSecret("ALGOLIA_APP_ID");
+export const ALGOLIA_ADMIN_API_KEY = defineSecret("ALGOLIA_ADMIN_API_KEY");
 
 export const sendEmailInvitation = onCall(
   {
@@ -247,3 +250,20 @@ export const sendEmailWorkspaceInvitation = onCall(
       throw new functions.https.HttpsError("internal", "Failed to send email");
     }
   });  
+
+export const runAlgoliaBackfill = onCall(
+  {
+    secrets: [ALGOLIA_APP_ID, ALGOLIA_ADMIN_API_KEY],
+    region: "us-central1",
+    timeoutSeconds: 540, // 9 minutes max
+  },
+  async (req) => {
+    try {
+      await backfillAll();
+
+      return { success: true, message: "Backfill completed." };
+    } catch (err) {
+      throw new Error("Backfill failed: " + err.message);
+    }
+  }
+);  

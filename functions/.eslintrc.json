@@ -4,5 +4,7 @@
     "es2021": true
   },
   "extends": "eslint:recommended",
-  "rules": {}
+  "rules": {
+    "max-len": "off"
+  }
 }

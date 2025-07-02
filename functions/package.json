@@ -10,9 +10,7 @@
     "logs": "firebase functions:log"
   },
   "functions": {
-    "predeploy": [
-      
-    ]
+    "predeploy": []
   },
   "engines": {
     "node": "20"
@@ -21,6 +19,7 @@
   "main": "index.js",
   "dependencies": {
     "@sendgrid/mail": "^8.1.5",
+    "algoliasearch": "^5.30.0",
     "firebase-admin": "^12.6.0",
     "firebase-functions": "^6.0.1"
   },
