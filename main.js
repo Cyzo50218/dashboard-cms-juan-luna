@@ -248,13 +248,7 @@ document.addEventListener("DOMContentLoaded", () => {
             window.addEventListener('popstate', router); // Handle back/forward buttons
             router(); // Initial route call for the first page load
             
-            runBackfill()
-             .then((res) => {
-                 console.log("✅ Backfill success:", res.data.message);
-             })
-             .catch((err) => {
-                 console.error("❌ Backfill error:", err.message);
-            });
+            
         } else {
             // --- USER IS NOT LOGGED IN ---
             console.log("No authenticated user. Redirecting to /login/...");

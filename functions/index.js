@@ -5,6 +5,7 @@ import { defineSecret } from "firebase-functions/params";
 import { initializeApp } from "firebase-admin/app";
 import * as algoliasearch from 'algoliasearch';
 import sgMail from "@sendgrid/mail";
+import { backfillAll } from "./backfillAllAlgolia.js";
 
 // Init Firebase Admin SDK
 initializeApp();
