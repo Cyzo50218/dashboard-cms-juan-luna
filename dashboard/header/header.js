@@ -774,7 +774,6 @@ onAuthStateChanged(auth, (user) => {
       renderRecentItems(exampleRecentTasks, exampleRecentPeople, 4, true);
     }
   });
-  
   optionBtns[1].addEventListener("click", () => {
     const btn = optionBtns[1];
     const isSelected = btn.classList.contains("selected");
@@ -835,12 +834,8 @@ onAuthStateChanged(auth, (user) => {
         b.classList.remove("selected");
       }
     });
-    
-    
-    
     const processedPeopleData = await getProcessedWorkspacePeopleData();
-    
-    if(processedPeopleData){
+    if (processedPeopleData.length > 0)
       peopleQueryDiv.innerHTML = '<div class="loading-spinner"></div>';
       await new Promise(resolve => setTimeout(resolve, 300));
       renderAllPeople(processedPeopleData, peopleQueryDiv, peopleEmptyState, emailContainerPeopleId);
