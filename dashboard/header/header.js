@@ -215,6 +215,7 @@ function renderAllPeople(people, peopleQueryDiv, peopleEmptyState, emailContaine
     emailContainerPeopleId.classList.remove('hidden'); // Always show invite button with empty state
   } else {
     // Hide empty state
+    emailContainerPeopleId.classList.remove('hidden');
     peopleEmptyState.classList.add("hidden");
     
     const fragment = document.createDocumentFragment();
@@ -249,8 +250,7 @@ function renderAllPeople(people, peopleQueryDiv, peopleEmptyState, emailContaine
       peopleQueryDiv.appendChild(fragment); // Fallback if structure somehow changes
     }
     
-    // Show the static invite button
-    emailContainerPeopleId.classList.remove('hidden');
+    
   }
 }
 
