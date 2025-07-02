@@ -489,9 +489,7 @@ onAuthStateChanged(auth, (user) => {
   const inputRangeStartDropdown = document.getElementById('dateRangeOneDropdown');
   const inputRangeEndDropdown = document.getElementById('dateRangeTwoDropdown');
   const peopleQueryDiv = document.getElementById('people-query');
-  const peopleEmptyState = document.getElementById('people-empty-state');
-  const emailContainerPeopleId = document.getElementById('email-container-id-people');
-
+   
   const calendar = document.getElementById('calendar');
   const calendar1 = document.getElementById('calendar1');
   const calendar2 = document.getElementById('calendar2');
