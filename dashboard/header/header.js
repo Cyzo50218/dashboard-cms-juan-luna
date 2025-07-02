@@ -866,17 +866,10 @@ onAuthStateChanged(auth, (user) => {
     savedSearchText.classList.add("hidden");
     savedSearchContainer.classList.add("hidden");
     savedContainer.classList.add("hidden");
-    searchOptions.classList.add("hidden");
     
     // Ensure the main recent-container is visible
     console.log("DEBUG: Ensuring main recentContainer is visible.");
     if (recentContainer) recentContainer.classList.add("hidden");
-    
-    // Hide the default recent content (tasks/recent people)
-    console.log("DEBUG: Clearing #recent-container > div and hiding general invite button.");
-    document.querySelector("#recent-container > div").innerHTML = '';
-    if (emailContainerId) emailContainerId.classList.add('hidden'); // Hide the general invite button
-    
     
     // Show the #people-query div
     console.log("DEBUG: Showing peopleQueryDiv.");
