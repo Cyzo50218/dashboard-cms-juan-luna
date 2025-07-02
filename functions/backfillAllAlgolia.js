@@ -1,34 +1,30 @@
 // backfillAll.js
-import {initializeApp, applicationDefault} from "firebase-admin/app";
 import {getFirestore} from "firebase-admin/firestore";
-import * as algoliasearch from "algoliasearch";
-import {defineSecret} from "firebase-functions/params";
-import dotenv from "dotenv";
+import {createRequire} from "module";
+const require = createRequire(import.meta.url);
 
-dotenv.config();
+const algoliasearch = require("algoliasearch");
 
-// === Init Firebase & Firestore ===
-initializeApp({credential: applicationDefault()});
-const db = getFirestore();
-
-// === Init Algolia Clients ===
-export const ALGOLIA_APP_ID = defineSecret("ALGOLIA_APP_ID");
-export const ALGOLIA_ADMIN_API_KEY = defineSecret("ALGOLIA_ADMIN_API_KEY");
-
-const algoliaClient = algoliasearch(
-    ALGOLIA_APP_ID,
-    ALGOLIA_ADMIN_API_KEY,
-);
-
-const indexProjects = algoliaClient.initIndex("projects");
-const indexSections = algoliaClient.initIndex("sections");
-const indexTasks = algoliaClient.initIndex("tasks");
-const indexUsers = algoliaClient.initIndex("users");
 /**
  * Recursively backfills all users, workspaces, projects, sections, and tasks
- * from Firestore into their respective Algolia indexes. Skips entries already indexed.
+ * from Firestore into their respective Algolia indexes.
+ *
+ * This function reads nested collections under:
+ * users/{userId}/myworkspace/{workspaceId}/projects/{projectId}/sections/{sectionId}/tasks
+ * and indexes them into corresponding Algolia indices: users, projects, sections, and tasks.
+ *
+ * @param {string} appId - The Algolia Application ID from Firebase Secret Manager.
+ * @param {string} adminKey - The Algolia Admin API Key from Firebase Secret Manager.
+ * @return {Promise<void>} A promise that resolves when all documents have been indexed.
  */
-async function backfillAll() {
+export async function backfillAll(appId, adminKey) {
+  const db = getFirestore();
+  const algoliaClient = algoliasearch(appId, adminKey);
+
+  const indexProjects = algoliaClient.initIndex("projects");
+  const indexSections = algoliaClient.initIndex("sections");
+  const indexTasks = algoliaClient.initIndex("tasks");
+  const indexUsers = algoliaClient.initIndex("users");
   const usersSnap = await db.collection("users").get();
 
   for (const userDoc of usersSnap.docs) {

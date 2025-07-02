@@ -525,7 +525,7 @@ function attachRealtimeListeners(userId) {
                         snapshot.forEach(doc => {
                             const data = doc.data();
                             const pathSegments = doc.ref.path.split('/');
-                            const projectsIndex = pathSegments.indexOf('globalChatProjects');
+                            const projectsIndex = pathSegments.indexOf('globalTaskChats');
                             if (projectsIndex === -1 || pathSegments.length <= projectsIndex + 1) return;
                             
                             const messageProjectId = pathSegments[projectsIndex + 1];

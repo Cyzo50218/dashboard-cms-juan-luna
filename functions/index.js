@@ -260,7 +260,7 @@ export const runAlgoliaBackfill = onCall(
   },
   async (req) => {
     try {
-      await backfillAll();
+      await backfillAll(ALGOLIA_APP_ID, ALGOLIA_ADMIN_API_KEY);
 
       return { success: true, message: "Backfill completed." };
     } catch (err) {
