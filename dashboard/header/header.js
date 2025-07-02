@@ -898,11 +898,11 @@ onAuthStateChanged(auth, (user) => {
     // Deselect other main filter buttons (My Tasks, Projects, Messages)
     console.log("DEBUG: Deselecting other main filter buttons.");
     optionBtns.forEach((b, i) => {
-      if (i !== 2) { // '2' is the index for the "People" button
-        b.classList.remove("selected");
-      }
-      b.classList.remove("hide"); // Ensure no option button is hidden
-    });
+  if (i !== 2) {
+    b.classList.add("hide");
+    b.classList.remove("selected");
+  }
+});
     
     // Fetch the processed people data
     console.log("DEBUG: Calling getProcessedWorkspacePeopleData(). Awaiting data...");
