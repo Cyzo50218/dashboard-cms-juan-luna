@@ -333,7 +333,9 @@ window.TaskSidebar = (function() {
         if (sidebar) sidebar.classList.remove('is-visible', 'is-loading');
         rightSidebarContainer.classList.remove('sidebar-open');
         const headerRight = getHeaderRight();
-        headerRight.classList.remove('hide');
+        if(headerRight){
+            headerRight.classList.remove('hide');
+        }
         detachAllListeners();
         closePopovers();
         currentTask = currentTaskRef = currentProject = null;
