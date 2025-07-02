@@ -184,30 +184,50 @@ async function updateProfileDisplay(user) {
     expandProfileImg.src = avatarUrl;
 }
 
+// header.js (Update this function)
+
+/**
+ * Renders a list of all people (users) directly inside the #people-query container.
+ * This function also manages the visibility of the static peopleEmptyState and emailContainerPeopleId elements.
+ * @param {PersonData[]} people - An array of user objects to render.
+ */
 function renderAllPeople(people) {
-  const recentContainerDiv = document.querySelector("#recent-container > div");
+  const peopleQueryDiv = document.getElementById('people-query'); // Target #people-query directly
   const peopleEmptyState = document.getElementById('people-empty-state');
-  const emailContainerPeopleId = document.getElementById('email-container-id-people'); // Your invite button
+  const emailContainerPeopleId = document.getElementById('email-container-id-people');
   
-  if (!recentContainerDiv) {
-    console.error("Recent container div not found for people!");
+  if (!peopleQueryDiv || !peopleEmptyState || !emailContainerPeopleId) {
+    console.error("One or more people display elements (people-query, people-empty-state, email-container-id-people) not found!");
     return;
   }
   
-  recentContainerDiv.innerHTML = ''; // Clear existing content (from tasks or anything else)
+  // 1. Clear any *previously rendered dynamic list items* from #people-query
+  //    We identify dynamic list items by their class 'headersearches-tasks-recent-item'
+  Array.from(peopleQueryDiv.children).forEach(child => {
+    if (child.classList.contains('headersearches-tasks-recent-item')) {
+      peopleQueryDiv.removeChild(child);
+    }
+  });
   
+  // 2. Hide static elements initially
+  peopleEmptyState.classList.add("hidden");
+  emailContainerPeopleId.classList.add("hidden"); // Ensure it's hidden before deciding to show it
+  
+  // 3. Render the dynamic people list or show empty state
   if (people.length === 0) {
-    // Show empty state and invite button
+    // Show empty state if no people found
     peopleEmptyState.classList.remove("hidden");
-    emailContainerPeopleId.classList.remove('hidden');
+    emailContainerPeopleId.classList.remove('hidden'); // Always show invite button with empty state
   } else {
-    // Hide empty state, show invite button (as per screenshot)
-    peopleEmptyState.classList.add("hidden");
-    emailContainerPeopleId.classList.remove('hidden');
+    // Hide empty state and append dynamic people list
+    peopleEmptyState.classList.add("hidden"); // Ensure it's hidden if people are present
+    
+    // Create a DocumentFragment for efficient DOM manipulation
+    const fragment = document.createDocumentFragment();
     
     people.forEach(person => {
       const personDiv = document.createElement('div');
-      personDiv.className = 'headersearches-tasks-recent-item';
+      personDiv.className = 'headersearches-tasks-recent-item'; // Reusing existing item class
       personDiv.dataset.itemId = person.id;
       
       const roleOrEmailHtml = person.workspaceRole ?
@@ -227,9 +247,23 @@ function renderAllPeople(people) {
                     <span class="material-icons-outlined headersearches-globe-icon">public</span>
                 </div>
             `;
-      recentContainerDiv.appendChild(personDiv);
+      fragment.appendChild(personDiv); // Add to fragment
     });
+    
+    // Append all new items at once
+    // Insert before the static elements if they exist, or append otherwise
+    if (peopleQueryDiv.querySelector('#people-empty-state')) {
+      peopleQueryDiv.insertBefore(fragment, peopleEmptyState);
+    } else {
+      peopleQueryDiv.appendChild(fragment);
+    }
+    
+    // Show the static invite button (it will position itself based on flex/margin-top)
+    emailContainerPeopleId.classList.remove('hidden');
   }
+  
+  // Ensure the main recent-container (which holds the search-expand) is visible.
+  // This is managed by the optionBtns[2] click listener, not here.
 }
 
 function renderRecentItems(tasks, people, taskLimit, hidePeople = false) {
@@ -783,72 +817,99 @@ savedSearchContainer.classList.add("hidden");
     });
   }
 });
-
-optionBtns[2].addEventListener("click", async () => { // <<< IMPORTANT: ENSURE 'async' IS HERE
+optionBtns[2].addEventListener("click", async () => {
   const btn = optionBtns[2];
   const isSelected = btn.classList.contains("selected");
   halfQuery.classList.remove("skeleton-active");
   
   if (isSelected) {
-    // --- Was selected, now deselecting "People" ---
+    // --- SCENARIO: User is DE-SELECTING the "People" tab ---
     selectedPeople = false;
     btn.classList.remove("selected");
-    optionBtns.forEach(b => b.classList.remove("hide"));
-  
-    recentContainer.classList.remove("hidden"); // <<< Ensure the main #recent-container is visible
-    savedContainer.classList.remove("hidden");
+    
+    // Show all general UI elements that should always be visible
+    savedSearchText.classList.remove("hidden");
     
     
-    // Hide People-specific elements
-    emailContainerPeopleId.classList.add('hidden');
-    peopleEmptyState.classList.add("hidden");
+    // Hide People-specific elements (this is now handled directly by renderAllPeople's parent)
+    peopleQueryDiv.classList.add('hidden'); // Hide the entire #people-query div
+    peopleEmptyState.classList.add('hidden'); // Ensure empty state is hidden
+    document.getElementById('email-container-id-people').classList.add('hidden'); // Hide the static invite button
     
-    // Show "Recents" title
+    // Show the "Recents" title
     if (recentContainerTitle) {
       recentContainerTitle.classList.remove("hidden");
     }
     
-    // Re-render default recents (tasks and recent people)
-    renderRecentItems(exampleRecentTasks, exampleRecentPeople);
+    // Ensure all other option buttons are visible and deselect them
+    optionBtns.forEach(b => {
+      b.classList.remove("hide");
+      b.classList.remove("selected");
+    });
+    
+    const recentContentWrapper = document.getElementById("recent-content-wrapper");
+    const recentPeopleSection = document.getElementById("recent-people-section");
+    const recentTasksSection = document.getElementById("recent-tasks-section");
+    
+    if (recentContentWrapper && recentPeopleSection && recentTasksSection) {
+      recentContentWrapper.innerHTML = ''; // Clear wrapper first
+      recentContentWrapper.appendChild(recentPeopleSection);
+      recentContentWrapper.appendChild(recentTasksSection);
+      // Call renderRecentItems with the correct parameters
+      renderRecentItems(exampleRecentTasks, exampleRecentPeople, null, false, false);
+    } else {
+      console.error("Required recent content wrapper/sections not found for default view.");
+    }
+    
     
   } else {
-    // --- Is NOT selected, now selecting "People" ---
+    // --- SCENARIO: User is SELECTING the "People" tab ---
     selectedPeople = true;
     btn.classList.add("selected");
+    
+    // Ensure general search UI elements remain visible - do NOT hide them
+    savedSearchText.classList.remove("hidden");
   
-    savedContainer.classList.add("hidden"); // Hide saved searches too
     
-    // Ensure recentContainer is visible (its content will be managed by renderAllPeople)
-    recentContainer.classList.remove("hidden"); // <<< Ensure this is NOT .add('hidden')
+    // Ensure the main recent-container is visible
+    recentContainer.classList.remove("hidden");
     
-    // Hide "Recents" title
+    // Show the #people-query div, and hide the #recent-container's inner dynamic content
+    peopleQueryDiv.classList.remove('hidden'); // Show the #people-query container
+    if (document.getElementById("recent-content-wrapper")) {
+      document.getElementById("recent-content-wrapper").classList.add('hidden');
+    }
+    
+    // Hide the "Recents" title
     if (recentContainerTitle) {
       recentContainerTitle.classList.add("hidden");
     }
     
-    // Hide task/project specific displays if they were open
+    // Hide task/project specific displays
     mytaskdisplay.classList.add("hidden");
     projectdisplay.classList.add("hidden");
-    messagesEmptyState.classList.add("hidden"); // Also hide messages empty state if active
+    messagesEmptyState.classList.add("hidden");
     
-    // Hide all other filter buttons except 'People'
+    // Deselect other main filter buttons (My Tasks, Projects, Messages)
     optionBtns.forEach((b, i) => {
       if (i !== 2) {
-        b.classList.add("hide");
         b.classList.remove("selected");
       }
+      b.classList.remove("hide"); // Ensure no option button is hidden
     });
     
-    // Display a temporary loading state
-    const recentContainerDiv = document.querySelector("#recent-container > div");
-    recentContainerDiv.innerHTML = '<div class="loading-spinner"></div>';
+    // Prepare for loading and display the people data
+    // No need to clear peopleQueryDiv.innerHTML here, renderAllPeople will handle it.
+    peopleEmptyState.classList.add("hidden"); // Hide empty state while loading
     
-    // Simulate a network delay (for mock data visibility)
+    // Show loading indicator inside peopleQueryDiv
+    peopleQueryDiv.innerHTML = '<div class="loading-spinner"></div>'; // This will temporarily clear static elements too
+    // before renderAllPeople re-appends them.
+    
     await new Promise(resolve => setTimeout(resolve, 300));
     
-    // Call the function to get processed workspace members data and render it
     const processedPeopleData = await getProcessedWorkspacePeopleData();
-    renderAllPeople(processedPeopleData);
+    renderAllPeople(processedPeopleData); // This function will populate #people-query
   }
 });
 
