@@ -1415,7 +1415,7 @@ peopleEmptyState.classList.add("hidden"); // Hide people empty state
     halfQuery.classList.add("hidden"); // Hide search results container
     optionsQuery.classList.add("hidden"); // Hide additional options (like email contacts)
     emailContainerId.classList.add('hidden'); // Ensure general email invite is hidden
-    halfQuery.innerHTML = ''; // Clear results
+    halfQuery.add('hidden');
     // Reset specific display based on the last selected category button if any
     if (selectedOptionBtnIndex === 0) { // Tasks
       mytaskdisplay.classList.remove("hidden");
@@ -1452,6 +1452,7 @@ peopleEmptyState.classList.add("hidden"); // Hide people empty state
       renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], [], 4, false, false, false); // Default view
     }
     displaySearchResults([], [], [], []);
+    input.focus();
   }
 });
   
@@ -1489,6 +1490,7 @@ peopleEmptyState.classList.add("hidden"); // Hide people empty state
     renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], [],4, false, false, false); // Default view
   }
   displaySearchResults([], [], [], []);
+  halfQuery.add('hidden');
   input.focus();
 });
   
