@@ -1114,6 +1114,7 @@ mytaskdisplay.classList.add("hidden"); // Hide mytask display
       projectdisplay.classList.remove("hidden");
       savedSearchText.classList.add("hidden");
       savedSearchContainer.classList.add("hidden");
+      messagesEmptyState.classList.remove("hidden");
       optionBtns.forEach((b, i) => {
         if (i !== 1) {
           b.classList.add("hide");
