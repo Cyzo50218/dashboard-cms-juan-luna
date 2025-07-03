@@ -357,38 +357,8 @@ function renderRecentItems(tasks, people, projects, messages, taskLimit = null, 
   }
   
   recentContainerDiv.innerHTML = '';
-  
-  if (showRecentMessages) { // New condition for messages
-    if (exampleRecentMessages && exampleRecentMessages.length > 0) {
-      messages.forEach(message => {
-        const itemDiv = document.createElement('div');
-        itemDiv.className = 'headersearches-tasks-recent-item';
-        itemDiv.dataset.itemId = message.id;
-        
-        itemDiv.innerHTML = `
-          <span class="material-icons-outlined headersearches-tasks-recent-status-icon">message</span>
-          <div class="headersearches-tasks-recent-content">
-            <div class="headersearches-tasks-recent-title">${message.title}</div>
-            <div class="headersearches-tasks-recent-meta">
-              <div class="headersearches-assignee-avatar" ${message.sender.avatarUrl ? `style="background-image: url(${message.sender.avatarUrl});"` : ''}>
-                ${!message.sender.avatarUrl ? message.sender.initials : ''}
-              </div>
-              <span>${message.sender.name}</span>
-              <span class="message-date">${dayjs(message.date).format('MMM D')}</span>
-            </div>
-          </div>
-          <span class="material-icons-outlined message-star-icon">star_border</span>
-        `;
-        recentContainerDiv.appendChild(itemDiv);
-      });
-    } else {
-      // Display a message if no recent messages
-      const noMessagesDiv = document.createElement('div');
-      noMessagesDiv.className = 'search-no-results'; // Reusing no results style
-      noMessagesDiv.innerHTML = `<p>No recent messages to display.</p>`;
-      recentContainerDiv.appendChild(noMessagesDiv);
-    }
-  } else if (projects && projects.length > 0) {
+    
+   if (projects && projects.length > 0) {
     projects.forEach(project => {
       const itemDiv = document.createElement('div');
       itemDiv.className = 'headersearches-tasks-recent-item'; // Reusing common item styling
@@ -470,6 +440,36 @@ function renderRecentItems(tasks, people, projects, messages, taskLimit = null, 
       });
     }
   }
+  
+  if (showRecentMessages && exampleRecentMessages.length > 0) {
+  messages.forEach(message => {
+    const itemDiv = document.createElement('div');
+    itemDiv.className = 'headersearches-tasks-recent-item';
+    itemDiv.dataset.itemId = message.id;
+    
+    itemDiv.innerHTML = `
+          <span class="material-icons-outlined headersearches-tasks-recent-status-icon">message</span>
+          <div class="headersearches-tasks-recent-content">
+            <div class="headersearches-tasks-recent-title">${message.title}</div>
+            <div class="headersearches-tasks-recent-meta">
+              <div class="headersearches-assignee-avatar" ${message.sender.avatarUrl ? `style="background-image: url(${message.sender.avatarUrl});"` : ''}>
+                ${!message.sender.avatarUrl ? message.sender.initials : ''}
+              </div>
+              <span>${message.sender.name}</span>
+              <span class="message-date">${dayjs(message.date).format('MMM D')}</span>
+            </div>
+          </div>
+          <span class="material-icons-outlined message-star-icon">star_border</span>
+        `;
+    recentContainerDiv.appendChild(itemDiv);
+  });
+  } else {
+  // Display a message if no recent messages
+  const noMessagesDiv = document.createElement('div');
+  noMessagesDiv.className = 'search-no-results'; // Reusing no results style
+  noMessagesDiv.innerHTML = `<p>No recent messages to display.</p>`;
+  recentContainerDiv.appendChild(noMessagesDiv);
+}
   
   if (showInviteButton) {
     recentContainerDiv.appendChild(createRecentsInviteEmailButton());
