@@ -111,7 +111,8 @@
   align-items: center;
   justify-content: center;
   gap: 12px;
-  padding: 16px;
+  padding-left: 16px;
+  padding-right: 16px;
   width: 100%;
 }
 
@@ -1270,9 +1271,9 @@ margin-left: 6px;
   display: flex;
   align-items: center;
   gap: 4px;
-  padding-top: 12px;
+  padding-top: 13px;
   padding-bottom: 12px;
-  padding-left: 8px;
+  padding-left: 15px;
   cursor: pointer;
   background: none;
   border: none;
@@ -1300,11 +1301,11 @@ margin-left: 6px;
 }
 
 .headersearches-invite-email-button-recents .material-icons-outlined {
-  font-size: 14px;
+  font-size: 11px;
   color: var(--asana-blue);
 }
 .headersearches-invite-email-button-recents .email-text {
-  font-size: 14px;
+  font-size: 11px;
   padding-bottom: 8px;
   color: var(--asana-blue);
 }
@@ -1336,12 +1337,14 @@ margin-left: 6px;
     flex-direction: column;
 }
 .headersearches-tasks-recent-title {
-    font-size: 14px;
+    font-size: 12px;
+    padding-top: 4px;
+    font-weight: 500;
     color: var(--text-color-primary, #e0e0e0);
     margin-bottom: 2px;
 }
 .headersearches-tasks-recent-meta {
-    font-size: 12px;
+    font-size: 10px;
     color: var(--text-color-secondary, #b0b0b0);
     display: flex;
     align-items: center;
@@ -1356,6 +1359,7 @@ margin-left: 6px;
 .headersearches-tasks-project-name {
     white-space: nowrap; /* Keep project name on single line */
     overflow: hidden;
+    font-size: 10px;
     text-overflow: ellipsis;
 }
 .headersearches-assignee-list { /* Renamed for clarity for the container */
@@ -1391,11 +1395,6 @@ margin-left: 6px;
     color: var(--text-color-primary, #e0e0e0);
     margin-bottom: 10px;
     padding: 0 10px; /* Align with item padding */
-}
-.headersearches-tasks-recent-title{
-  font-size: 9px;
-  padding-top: 4px;
-font-weight: 500;
 }
 .headersearches-project-square-icon {
     display: flex;

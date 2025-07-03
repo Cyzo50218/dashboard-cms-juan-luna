@@ -893,6 +893,7 @@ onAuthStateChanged(auth, (user) => {
       searchOptions.classList.remove("hidden");
       recentContainer.classList.remove("hidden");
       emailContainerId.classList.add('hidden');
+      renderRecentItems(exampleRecentTasks, exampleRecentPeople, []);
     } else {
       btn.classList.add("selected");
       projectdisplay.classList.remove("hidden");

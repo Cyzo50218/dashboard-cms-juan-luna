@@ -1562,16 +1562,16 @@ function formatDueDate(dueDateString) {
 
 function render() {
     if (!project || !project.id) {
-    if (taskListBody) {
-        taskListBody.innerHTML = `
+        if (taskListBody) {
+            taskListBody.innerHTML = `
             <div class="progress-loading-container">
                 <div class="progress-spinner"></div>
                 <div class="loading-text">Loading project data...</div>
             </div>
         `;
+        }
+        return;
     }
-    return; 
-}
     
     if (!taskListBody) return;
     
@@ -2035,17 +2035,17 @@ function render() {
             
             
             const leftTaskCell = document.createElement('div');
-leftTaskCell.className = 'group sticky left-0 w-80 md:w-96 lg:w-[400px] flex-shrink-0 flex items-center border-r border-transparent group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg juanlunacms-spreadsheetlist-dynamic-border py-0.2';
-leftTaskCell.dataset.control = 'open-sidebar';
-
-// --- FIX 1: Reduce the top and bottom padding of the entire cell ---
-leftTaskCell.style.paddingTop = '0px';
-leftTaskCell.style.paddingBottom = '0px';
-
-const isCompleted = task.status === 'Completed';
-const taskNameClass = isCompleted ? 'task-name task-name-completed' : 'task-name';
-
-leftTaskCell.innerHTML = `
+            leftTaskCell.className = 'group sticky left-0 w-80 md:w-96 lg:w-[400px] flex-shrink-0 flex items-center border-r border-transparent group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg juanlunacms-spreadsheetlist-dynamic-border py-0.2';
+            leftTaskCell.dataset.control = 'open-sidebar';
+            
+            // --- FIX 1: Reduce the top and bottom padding of the entire cell ---
+            leftTaskCell.style.paddingTop = '0px';
+            leftTaskCell.style.paddingBottom = '0px';
+            
+            const isCompleted = task.status === 'Completed';
+            const taskNameClass = isCompleted ? 'task-name task-name-completed' : 'task-name';
+            
+            leftTaskCell.innerHTML = `
     <div class="drag-handle ${!userCanEditProject ? 'hidden' : ''} cursor-grab rounded flex items-center justify-center hover:bg-slate-200 user-select-none">
         <span class="material-icons text-slate-400 select-none opacity-1 group-hover:opacity-100 transition-opacity" style="font-size: 20px;" draggable="false">drag_indicator</span>
     </div>
@@ -2290,12 +2290,12 @@ leftTaskCell.innerHTML = `
                         } else { // This "else" is for columns that are NOT "Select" type
                             
                             if (canEditThisCell) {
-    cell.addEventListener('click', (e) => {
-        // Stop the click from opening the task details sidebar
-        e.stopPropagation();
-        createFloatingInput(cell, task, col);
-    });
-}
+                                cell.addEventListener('click', (e) => {
+                                    // Stop the click from opening the task details sidebar
+                                    e.stopPropagation();
+                                    createFloatingInput(cell, task, col);
+                                });
+                            }
                             
                             if (!canEditThisCell) {
                                 cell.classList.add('cell-restricted'); // Add a class for styling
