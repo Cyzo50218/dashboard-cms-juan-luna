@@ -82,8 +82,8 @@ const exampleRecentPeople = [
 }];
 
 const exampleRecentMessages = [
-  {}
 ];
+
 
 const exampleRecentProjects = [
     {
