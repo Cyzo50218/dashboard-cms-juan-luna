@@ -1336,6 +1336,9 @@ margin-left: 6px;
     display: flex;
     flex-direction: column;
 }
+.recent-title{
+  margin-top: 8px;
+}
 .headersearches-tasks-recent-title {
     font-size: 12px;
     padding-top: 4px;
