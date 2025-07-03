@@ -461,13 +461,7 @@ function renderRecentItems(tasks, people, projects, messages, taskLimit = null, 
         `;
     recentContainerDiv.appendChild(itemDiv);
   });
-} else {
-  // Display a message if no recent messages
-  const noMessagesDiv = document.createElement('div');
-  noMessagesDiv.className = 'search-no-results'; // Reusing no results style
-  noMessagesDiv.innerHTML = `<p>No recent messages to display.</p>`;
-  recentContainerDiv.appendChild(noMessagesDiv);
-}
+} 
   } 
   
   
