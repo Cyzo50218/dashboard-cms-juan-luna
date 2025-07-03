@@ -818,6 +818,7 @@ onAuthStateChanged(auth, (user) => {
   const isSelected2 = optionBtns[2].classList.contains("selected");
   
   let selected = false;
+  let searchEmpty= false;
   let selectedOptionBtnIndex = -1; 
   
   /* search filter */
@@ -1356,24 +1357,24 @@ peopleEmptyState.classList.add("hidden"); // Hide people empty state
       let filteredMessages = []; // NEW: Array for messages
       
       // Perform filtering based on the selected category or general search
-      if (selectedOptionBtnIndex === 0 || selectedOptionBtnIndex === -1) { // Tasks or Any/No selection
+      if (selectedOptionBtnIndex === 0 || selectedOptionBtnIndex === -1 && !searchEmpty) { // Tasks or Any/No selection
         filteredTasks = exampleRecentTasks.filter(task =>
           task.name.toLowerCase().includes(lowerCaseValue) ||
           task.project.name.toLowerCase().includes(lowerCaseValue)
         );
       }
-      if (selectedOptionBtnIndex === 1 || selectedOptionBtnIndex === -1) { // Projects or Any/No selection
+      if (selectedOptionBtnIndex === 1 || selectedOptionBtnIndex === -1 && !searchEmpty) { // Projects or Any/No selection
         filteredProjects = exampleRecentProjects.filter(project =>
           project.name.toLowerCase().includes(lowerCaseValue)
         );
       }
-      if (selectedOptionBtnIndex === 2 || selectedOptionBtnIndex === -1) { // People or Any/No selection
+      if (selectedOptionBtnIndex === 2 || selectedOptionBtnIndex === -1 && !searchEmpty) { // People or Any/No selection
         filteredPeople = mockUsersCollection.filter(person =>
           (person.displayName && person.displayName.toLowerCase().includes(lowerCaseValue)) ||
           (person.email && person.email.toLowerCase().includes(lowerCaseValue))
         );
       }
-      if (selectedOptionBtnIndex === 3 || selectedOptionBtnIndex === -1) { // NEW: Messages or Any/No selection
+      if (selectedOptionBtnIndex === 3 || selectedOptionBtnIndex === -1 && !searchEmpty) { // NEW: Messages or Any/No selection
         filteredMessages = exampleRecentMessages.filter(message =>
           message.title.toLowerCase().includes(lowerCaseValue) ||
           message.preview.toLowerCase().includes(lowerCaseValue) ||
@@ -1404,7 +1405,7 @@ peopleEmptyState.classList.add("hidden"); // Hide people empty state
         // if all arrays are empty, so no extra logic needed here.
       }
       
-    }, 1000); // Simulate network delay
+    }, 500); // Simulate network delay
   } else {
     // Input is empty, revert to default states
     cancelIcon.classList.add('hidden');
@@ -1452,6 +1453,7 @@ peopleEmptyState.classList.add("hidden"); // Hide people empty state
       renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], [], 4, false, false, false); // Default view
     }
     displaySearchResults([], [], [], []);
+    searchEmpty = true;
     input.focus();
   }
 });
@@ -1490,6 +1492,7 @@ peopleEmptyState.classList.add("hidden"); // Hide people empty state
     renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], [],4, false, false, false); // Default view
   }
   displaySearchResults([], [], [], []);
+  searchEmpty = true;
   halfQuery.add('hidden');
   input.focus();
 });
