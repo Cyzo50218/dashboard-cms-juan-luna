@@ -1491,6 +1491,36 @@ input.addEventListener('input', () => {
   halfQuery.add('hidden');
   input.focus();
 });
+
+cancelIcon.addEventListener('click', () => {
+  input.value = '';
+  input.focus(); // Keep focus on the input after clearing
+  cancelIcon.classList.add('hidden');
+  savedContainer.classList.remove("hidden");
+  searchOptions.classList.remove("hidden");
+  recentContainer.classList.remove("hidden");
+  emailContainerId.classList.add('hidden');
+  halfQuery.classList.add("hidden"); // Corrected
+  optionsQuery.classList.add("hidden");
+  
+  if (selectedOptionBtnIndex === 0) { // Tasks
+  mytaskdisplay.classList.remove("hidden");
+  renderRecentItems(exampleRecentTasks, [], [], [], 4, true, false, false);
+} else if (selectedOptionBtnIndex === 1) { // Projects
+  projectdisplay.classList.remove("hidden");
+  renderRecentItems([], [], exampleRecentProjects, [], 4, true, false, false);
+} else if (selectedOptionBtnIndex === 2) { // People
+  peopleEmptyState.classList.remove("hidden");
+  emailContainerPeopleId.classList.remove('hidden');
+  renderRecentItems([], exampleRecentPeople, [], [], 4, false, true, false);
+} else if (selectedOptionBtnIndex === 3) { // NEW: Messages
+  messagesEmptyState.classList.remove("hidden");
+  renderRecentItems([], [], [], exampleRecentMessages, 4, true, false, true);
+} else {
+  // No specific category selected, show general recents
+  renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], [], 4, false, false, false); // Default view
+}
+});
   
   emailContainer.forEach(el => {
     el.addEventListener('click', () => {
