@@ -1505,6 +1505,7 @@ margin-left: 6px;
 .search-no-results {
     text-align: center;
     padding: 20px;
+    width: 428px;
     color: #777;
 }
 .search-no-results p {
@@ -1514,7 +1515,7 @@ margin-left: 6px;
     display: flex;
     align-items: center;
     gap: 6px; /* Space between icon and text */
-    padding-left: 18px;
+    padding-left: 4px;
     padding-top: 8px;
     width: 428px;
     color: var(--search-text-color, #e8eaed); /* Light text color */
