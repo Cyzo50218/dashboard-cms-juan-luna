@@ -593,6 +593,7 @@
 .scrollable-results{
   max-height: 300px;
   overflow-y: auto;
+  width: 406px;
 }
 
 input.form-control {
