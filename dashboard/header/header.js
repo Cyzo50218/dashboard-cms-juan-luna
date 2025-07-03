@@ -1235,8 +1235,7 @@ projectdisplay.classList.add("hidden"); // Hide project display
       btn.classList.add("selected");
       savedSearchText.classList.add("hidden");
       messagesEmptyState.classList.remove("hidden");
-      
-      recentContainer.classList.add("hidden");
+
       savedSearchContainer.classList.add("hidden");
       optionBtns.forEach((b, i) => {
         if (i !== 3) {
