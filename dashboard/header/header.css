@@ -1521,7 +1521,7 @@ margin-left: 6px;
     color: var(--search-text-color, #e8eaed); /* Light text color */
     border-radius: 8px; /* Slightly rounded corners */
     font-family: 'Roboto', sans-serif; /* Or your preferred font */
-    font-size: 11px;
+    font-size: 10px;
     margin: 10px; /* Optional: Space around the hint */
 }
 .enter-search-results-hint .search-icon-wrapper {
@@ -1548,8 +1548,9 @@ margin-left: 6px;
 .enter-search-results-hint .enter-key-indicator {
     background-color: var(--key-background-color, #5f6368); /* Darker gray for the key background */
     color: var(--key-text-color, #e8eaed); /* Light text on key */
-    padding: 3px 8px;
+    padding: 3px 6px;
     border-radius: 4px;
+    font-size: 11px;
     font-weight: bold;
     white-space: nowrap; /* Prevent "Enter" from breaking onto new line */
 }
