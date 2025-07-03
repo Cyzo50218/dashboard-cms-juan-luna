@@ -28,8 +28,8 @@ import {
     getDoc,
     getDocs,
     limit,
-    increment,    
-    deleteField ,
+    increment,
+    deleteField,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 import { firebaseConfig } from "/services/firebase-config.js";
@@ -117,11 +117,11 @@ async function handleTaskCompletion(task, taskCardEl) {
         console.error("Task data or project reference is missing.");
         return;
     }
-
+    
     const taskId = task.id;
     const batch = writeBatch(db);
     const isCurrentlyCompleted = task.status === 'Completed';
-
+    
     if (isCurrentlyCompleted) {
         // --- LOGIC FOR UN-COMPLETING A TASK ---
         
@@ -132,7 +132,7 @@ async function handleTaskCompletion(task, taskCardEl) {
             console.error("Cannot un-complete task: No target section found.");
             return;
         }
-
+        
         const sourceTaskRef = doc(currentProjectRef, `sections/${task.sectionId}/tasks/${taskId}`);
         const targetTaskRef = doc(currentProjectRef, `sections/${targetSectionId}/tasks/${taskId}`);
         
@@ -143,11 +143,11 @@ async function handleTaskCompletion(task, taskCardEl) {
             status: previousStatus || 'On track', // Restore previous status or a default
             sectionId: targetSectionId,
         };
-
+        
         // Move the task by deleting the old and setting the new
         batch.delete(sourceTaskRef);
         batch.set(targetTaskRef, restoredTaskData);
-
+        
     } else {
         // --- LOGIC FOR COMPLETING A TASK ---
         
@@ -158,7 +158,7 @@ async function handleTaskCompletion(task, taskCardEl) {
             alert("Please create a 'Completed' section in your project settings to use this feature.");
             return;
         }
-
+        
         const sourceTaskRef = doc(currentProjectRef, `sections/${task.sectionId}/tasks/${taskId}`);
         const targetTaskRef = doc(currentProjectRef, `sections/${completedSection.id}/tasks/${taskId}`);
         
@@ -170,12 +170,12 @@ async function handleTaskCompletion(task, taskCardEl) {
             previousSectionId: task.sectionId, // Remember the original section
             sectionId: completedSection.id, // Set the new section
         };
-
+        
         // Move the task
         batch.delete(sourceTaskRef);
         batch.set(targetTaskRef, updatedTaskData);
     }
-
+    
     // --- Execute the batch update ---
     try {
         await batch.commit();
@@ -374,17 +374,17 @@ const init = () => {
     // Authentication state observer
     onAuthStateChanged(auth, async (user) => {
         if (user) {
-    // THE ONLY THING to do here is start the listener process with the user's ID.
-    console.log(`Board View: User ${user.uid} signed in.`);
-    attachRealtimeListeners(user.uid);
-} else {
-    // This is the cleanup for when a user signs out.
-    console.log("Board View: User signed out.");
-    cleanup();
-    if (kanbanBoard) {
-        kanbanBoard.innerHTML = '<div class="loading-placeholder">Please log in to view the board.</div>';
-    }
-}
+            // THE ONLY THING to do here is start the listener process with the user's ID.
+            console.log(`Board View: User ${user.uid} signed in.`);
+            attachRealtimeListeners(user.uid);
+        } else {
+            // This is the cleanup for when a user signs out.
+            console.log("Board View: User signed out.");
+            cleanup();
+            if (kanbanBoard) {
+                kanbanBoard.innerHTML = '<div class="loading-placeholder">Please log in to view the board.</div>';
+            }
+        }
     });
     
     return cleanup;
@@ -393,13 +393,13 @@ const init = () => {
 const cleanup = () => {
     detachAllListeners();
     sortableInstances.forEach(s => s.destroy());
-sortableInstances = [];
-allUsers = [];
-project = { id: null, sections: [] };
-taskImageMap = {};
-currentUserId = null;
-currentProjectRef = null;
-currentProjectId = null;
+    sortableInstances = [];
+    allUsers = [];
+    project = { id: null, sections: [] };
+    taskImageMap = {};
+    currentUserId = null;
+    currentProjectRef = null;
+    currentProjectId = null;
 };
 // --- 7. REAL-TIME DATA & STATE MANAGEMENT ---
 function detachAllListeners() {
@@ -429,15 +429,15 @@ function detachProjectSpecificListeners() {
     }
     
     if (activeListeners.messages) {
-    activeListeners.messages();
-    activeListeners.messages = null;
-}
+        activeListeners.messages();
+        activeListeners.messages = null;
+    }
 }
 
 function attachRealtimeListeners(userId) {
     detachAllListeners();
     currentUserId = userId;
-
+    
     const userDocRef = doc(db, 'users', userId);
     activeListeners.user = onSnapshot(userDocRef, (userSnap) => {
         if (!userSnap.exists()) {
@@ -519,38 +519,62 @@ function attachRealtimeListeners(userId) {
                         if (!isMovingTask) renderBoard();
                     });
                     
-                    const messagesQuery = query(collectionGroup(db, 'Messages'), where('imageUrl', '!=', null));
-                    activeListeners.messages = onSnapshot(messagesQuery, (snapshot) => {
-                        const newImageMap = {};
-                        snapshot.forEach(doc => {
-                            const data = doc.data();
-                            const pathSegments = doc.ref.path.split('/');
-                            const projectsIndex = pathSegments.indexOf('globalTaskChats');
-                            if (projectsIndex === -1 || pathSegments.length <= projectsIndex + 1) return;
-                            
-                            const messageProjectId = pathSegments[projectsIndex + 1];
-                            
-                            if (messageProjectId === project.projectId) {
-                                const tasksIndex = pathSegments.indexOf('tasks');
-                                if (tasksIndex > -1 && pathSegments.length > tasksIndex + 1) {
-                                    const taskId = pathSegments[tasksIndex + 1];
-                                    if (taskId && data.imageUrl && data.timestamp) {
-                                        const existing = newImageMap[taskId];
-                                        if (!existing || data.timestamp.toMillis() < existing.timestamp.toMillis()) {
-                                            newImageMap[taskId] = {
-                                                imageUrl: data.imageUrl,
-                                                timestamp: data.timestamp
-                                            };
-                                        }
-                                    }
-                                }
-                            }
-                        });
-                        taskImageMap = Object.fromEntries(
-                            Object.entries(newImageMap).map(([key, value]) => [key, value.imageUrl])
-                        );
-                        renderBoard();
-                    });
+                    const messagesQuery = query(
+    collection(db, 'globalTaskChats', currentTask.id, 'Messages'), // Corrected path
+    where('imageUrl', '!=', null)
+);
+activeListeners.messages = onSnapshot(messagesQuery, (snapshot) => {
+    const newImageMap = {};
+    snapshot.forEach(doc => {
+        const data = doc.data();
+        // The path parsing logic below is no longer strictly needed for filtering
+        // by project and task, as the query now targets the specific task's messages.
+        // However, if you still need to extract taskId or other info from the path,
+        // you can keep it. For this specific fix, it's not directly relevant.
+        
+        // Original path parsing logic (can be simplified or removed if not needed for other purposes)
+        const pathSegments = doc.ref.path.split('/');
+        const projectsIndex = pathSegments.indexOf('globalTaskChats');
+        
+        if (projectsIndex === -1 || pathSegments.length <= projectsIndex + 1) return;
+        
+        const messageProjectId = pathSegments[projectsIndex + 1];
+        
+        if (messageProjectId === project.projectId) { // This check might be redundant if currentTask.id is derived from project.projectId
+            const tasksIndex = pathSegments.indexOf('tasks'); // This part of the path is not in the new query structure
+            if (tasksIndex > -1 && pathSegments.length > tasksIndex + 1) {
+                const taskId = pathSegments[tasksIndex + 1]; // This taskId will be currentTask.id
+                if (taskId && data.imageUrl && data.timestamp) {
+                    const existing = newImageMap[taskId];
+                    if (!existing || data.timestamp.toMillis() < existing.timestamp.toMillis()) {
+                        newImageMap[taskId] = {
+                            imageUrl: data.imageUrl,
+                            timestamp: data.timestamp
+                        };
+                    }
+                }
+            } else { // Simplified logic for the new query path
+                // If you only care about the currentTask.id, you can directly use it
+                // and simplify the extraction of taskId.
+                // Assuming currentTask.id is indeed the taskId for these messages.
+                const taskId = currentTask.id; // Directly use currentTask.id
+                if (data.imageUrl && data.timestamp) {
+                    const existing = newImageMap[taskId];
+                    if (!existing || data.timestamp.toMillis() < existing.timestamp.toMillis()) {
+                        newImageMap[taskId] = {
+                            imageUrl: data.imageUrl,
+                            timestamp: data.timestamp
+                        };
+                    }
+                }
+            }
+        }
+    });
+    taskImageMap = Object.fromEntries(
+        Object.entries(newImageMap).map(([key, value]) => [key, value.imageUrl])
+    );
+    renderBoard();
+});
                 });
             } catch (error) {
                 console.error("Error attaching listeners:", error);
@@ -587,7 +611,7 @@ const renderBoard = () => {
     if (userCanEditProject) {
         initSortable();
     }
-
+    
     if (addSectionBtn) {
         addTaskMainBtn.style.display = userCanEditProject ? '' : 'none';
         addSectionBtn.style.display = userCanEditProject ? '' : 'none';
@@ -616,7 +640,7 @@ const renderColumn = (section) => {
             <span class="boardtasks-task-count">${section.tasks.filter(t => !t.isNew).length}</span>
         </div>
         <div class="boardtasks-tasks-container">${section.tasks.map(renderTask).join('')}</div>
-        <button class="boardtasks-add-task-btn" style="display: ${userCanEditProject ? 'flex' : 'none'};"><i class="fas fa-plus"></i> Add task</button>`; 
+        <button class="boardtasks-add-task-btn" style="display: ${userCanEditProject ? 'flex' : 'none'};"><i class="fas fa-plus"></i> Add task</button>`;
     kanbanBoard.appendChild(columnEl);
 };
 
@@ -637,69 +661,69 @@ const renderTask = (task) => {
     }
     
     const assigneesHTML = (task.assignees || []).map(uid => {
-    const user = allUsers.find(u => u.uid === uid);
-    return user ? `<img src="${user.avatar || 'https://via.placeholder.com/24'}" alt="${user.name}" class="boardtasks-assignee-avatar" title="${user.name}">` : '';
-}).join('');
-
-const oldestImageUrl = task.chatuuid ? taskImageMap[task.chatuuid] : null;
-const isCompleted = task.status === 'Completed';
-const cardCompletedClass = isCompleted ? 'boardtasks-task-checked' : '';
-const hasLiked = task.likedBy && task.likedBy[currentUserId];
-
-// --- DYNAMIC TAG GENERATION LOGIC ---
-
-// 1. PRIORITY TAG
-let priorityTagHTML = '';
-const priorityName = task.priority;
-if (priorityName) {
-    const priorityColumn = project.defaultColumns.find(c => c.id === 'priority');
-    const option = priorityColumn?.options?.find(p => p.name === priorityName);
-    const color = option?.color;
-
-    if (color) {
-        const style = `background-color: ${color}20; color: ${color};`;
-        priorityTagHTML = `<span class="boardtasks-tag" style="${style}">${priorityName}</span>`;
-    } else {
-        priorityTagHTML = `<span class="boardtasks-tag">${priorityName}</span>`;
-    }
-}
-
-// 2. STATUS TAG
-let statusTagHTML = '';
-const statusName = task.status || 'No Status';
-if (statusName) {
-    const statusColumn = project.defaultColumns.find(c => c.id === 'status');
-    const option = statusColumn?.options?.find(s => s.name === statusName);
-    const color = option?.color;
+        const user = allUsers.find(u => u.uid === uid);
+        return user ? `<img src="${user.avatar || 'https://via.placeholder.com/24'}" alt="${user.name}" class="boardtasks-assignee-avatar" title="${user.name}">` : '';
+    }).join('');
     
-    if (color) {
-        const style = `background-color: ${color}20; color: ${color};`;
-        statusTagHTML = `<span class="boardtasks-tag" style="${style}">${statusName}</span>`;
-    } else {
-        statusTagHTML = `<span class="boardtasks-tag">${statusName}</span>`;
-    }
-}
-
-// 3. CUSTOM "TYPE" TAGS
-let customTypeTagsHTML = '';
-if (project.customColumns && task.customFields) {
-    const typeColumns = project.customColumns.filter(col => col.type === 'Type');
-    typeColumns.forEach(col => {
-        const valueName = task.customFields[col.id];
-        if (valueName && col.options) {
-            const selectedOption = col.options.find(opt => opt.name === valueName);
-            if (selectedOption && selectedOption.color) {
-                const style = `background-color: ${selectedOption.color}20; color: ${selectedOption.color};`;
-                customTypeTagsHTML += `<span class="boardtasks-tag" style="${style}">${valueName}</span>`;
-            }
+    const oldestImageUrl = task.chatuuid ? taskImageMap[task.chatuuid] : null;
+    const isCompleted = task.status === 'Completed';
+    const cardCompletedClass = isCompleted ? 'boardtasks-task-checked' : '';
+    const hasLiked = task.likedBy && task.likedBy[currentUserId];
+    
+    // --- DYNAMIC TAG GENERATION LOGIC ---
+    
+    // 1. PRIORITY TAG
+    let priorityTagHTML = '';
+    const priorityName = task.priority;
+    if (priorityName) {
+        const priorityColumn = project.defaultColumns.find(c => c.id === 'priority');
+        const option = priorityColumn?.options?.find(p => p.name === priorityName);
+        const color = option?.color;
+        
+        if (color) {
+            const style = `background-color: ${color}20; color: ${color};`;
+            priorityTagHTML = `<span class="boardtasks-tag" style="${style}">${priorityName}</span>`;
+        } else {
+            priorityTagHTML = `<span class="boardtasks-tag">${priorityName}</span>`;
         }
-    });
-}
-
-const dueDateInfo = formatDueDate(task.dueDate);
-
-// --- FINAL HTML TEMPLATE ---
-return `
+    }
+    
+    // 2. STATUS TAG
+    let statusTagHTML = '';
+    const statusName = task.status || 'No Status';
+    if (statusName) {
+        const statusColumn = project.defaultColumns.find(c => c.id === 'status');
+        const option = statusColumn?.options?.find(s => s.name === statusName);
+        const color = option?.color;
+        
+        if (color) {
+            const style = `background-color: ${color}20; color: ${color};`;
+            statusTagHTML = `<span class="boardtasks-tag" style="${style}">${statusName}</span>`;
+        } else {
+            statusTagHTML = `<span class="boardtasks-tag">${statusName}</span>`;
+        }
+    }
+    
+    // 3. CUSTOM "TYPE" TAGS
+    let customTypeTagsHTML = '';
+    if (project.customColumns && task.customFields) {
+        const typeColumns = project.customColumns.filter(col => col.type === 'Type');
+        typeColumns.forEach(col => {
+            const valueName = task.customFields[col.id];
+            if (valueName && col.options) {
+                const selectedOption = col.options.find(opt => opt.name === valueName);
+                if (selectedOption && selectedOption.color) {
+                    const style = `background-color: ${selectedOption.color}20; color: ${selectedOption.color};`;
+                    customTypeTagsHTML += `<span class="boardtasks-tag" style="${style}">${valueName}</span>`;
+                }
+            }
+        });
+    }
+    
+    const dueDateInfo = formatDueDate(task.dueDate);
+    
+    // --- FINAL HTML TEMPLATE ---
+    return `
         <div class="boardtasks-task-card ${cardCompletedClass}" id="task-${task.id}" data-task-id="${task.id}" draggable="${isEditable}" data-control="open-sidebar">
             ${oldestImageUrl ? `<img src="${oldestImageUrl}" class="boardtasks-task-attachment">` : ''}
             <div class="boardtasks-task-content">
@@ -786,14 +810,14 @@ async function addSectionToFirebase() {
 async function addTaskToFirebase(sectionId, taskData) {
     // ✅ Log 1: Announce that the function has been called and show the initial data.
     console.log("[addTaskToFirebase] Function called with:", { sectionId, taskData });
-
+    
     // ✅ Log 2: Check the critical context variables needed for the operation.
     console.log("[addTaskToFirebase] Checking context state:", {
         currentProjectRef_path: currentProjectRef?.path,
         currentProjectId,
         currentUserId
     });
-
+    
     // 1. Ensure we have the necessary context to build the path.
     if (!currentProjectRef || !sectionId || !currentProjectId || !currentUserId) {
         // ✅ Log 3: If any context is missing, log a critical error and stop.
@@ -812,7 +836,7 @@ async function addTaskToFirebase(sectionId, taskData) {
     
     // ✅ Log 4: Show the exact path we are trying to write to.
     console.log(`[addTaskToFirebase] Attempting to write to path: ${tasksCollectionRef.path}`);
-
+    
     try {
         const newTaskRef = doc(tasksCollectionRef); // Create a reference to get the ID
         
@@ -825,7 +849,7 @@ async function addTaskToFirebase(sectionId, taskData) {
             sectionId: sectionId,
             createdAt: serverTimestamp()
         };
-
+        
         // ✅ Log 5: Display the final data object just before the save attempt.
         console.log("[addTaskToFirebase] Preparing to save final data object:", fullTaskData);
         
@@ -834,7 +858,7 @@ async function addTaskToFirebase(sectionId, taskData) {
         
         // ✅ Log 6: This will ONLY run if the await setDoc() line completes without throwing an error.
         console.log(`✅ SUCCESS: Firestore reported success for adding task with ID: ${newTaskRef.id}`);
-
+        
     } catch (error) {
         // ✅ Log 7: If `await setDoc()` fails for any reason (e.g., security rules), this block will run.
         console.error("❌ FIRESTORE ERROR: Error adding task:", error);
@@ -847,7 +871,7 @@ const handleBlur = async (e) => {
     if (!e.target.isContentEditable) return;
     
     const taskCard = e.target.closest('.boardtasks-task-card.is-new');
-
+    
     if (taskCard) {
         const newName = e.target.textContent.trim();
         const tempId = taskCard.dataset.taskId; // Get the temporary ID
@@ -857,14 +881,14 @@ const handleBlur = async (e) => {
         const sectionId = sectionEl.dataset.sectionId;
         const section = findSection(sectionId);
         if (!section) return;
-
+        
         if (newName) {
             // --- SAVE LOGIC ---
             const taskIndex = section.tasks.findIndex(t => t.id === tempId);
             if (taskIndex > -1) {
                 section.tasks.splice(taskIndex, 1);
             }
-
+            
             const order = section.tasks.length - 1; // Get order before it might change
             const taskData = {
                 name: newName,
@@ -874,10 +898,10 @@ const handleBlur = async (e) => {
                 assignees: [],
                 customFields: {}
             };
-
+            
             // Call the dedicated function to save the task
             await addTaskToFirebase(sectionId, taskData);
-
+            
         } else {
             // --- CANCEL LOGIC ---
             // If the name is empty, remove the temporary task from the local data array...
@@ -888,13 +912,13 @@ const handleBlur = async (e) => {
             // ...and re-render the board to make the empty card disappear.
             renderBoard();
         }
-        return; 
+        return;
     }
-
+    
     // --- Logic for updating EXISTING tasks/sections (remains the same) ---
     const existingTaskCard = e.target.closest('.boardtasks-task-card');
     const sectionHeader = e.target.closest('.boardtasks-column-header');
-
+    
     if (existingTaskCard) {
         const { task, section } = findTaskAndSection(existingTaskCard.dataset.taskId);
         if (!task) return;
@@ -920,53 +944,53 @@ const handleKanbanClick = (e) => {
         createTemporaryTask(findSection(e.target.closest('.boardtasks-kanban-column').dataset.sectionId));
         return;
     }
-
+    
     const control = e.target.closest('[data-control]');
-if (!control) return; // If the click was not on a designated control, do nothing.
-
-// Find the parent task card to get the task's context.
-const taskCard = control.closest('.boardtasks-task-card');
-if (!taskCard) return;
-
-const taskId = taskCard.dataset.taskId;
-const { task, section } = findTaskAndSection(taskId);
-if (!task) return;
-
-// Get the specific action type from the data-control attribute.
-const controlType = control.dataset.control;
-
-// Use a switch statement to perform the correct action.
-switch (controlType) {
-    case 'open-sidebar':
-        // This is the default action for the card itself and the comment icon.
-        displaySideBarTasks(taskId, currentProjectRef);
-        break;
-        
-    case 'check':
-        // Stop the event from bubbling up to the card, which would also open the sidebar.
-        e.stopPropagation();
-        
-        // Check for permission before allowing the action.
-        if (canUserEditSpecifcTask(task)) {
-            handleTaskCompletion(task, taskCard);
-        }
-        break;
-        
-    case 'like':
-        // Stop the event from bubbling up.
-        e.stopPropagation();
-        
-        // Liking is allowed for all roles.
-        const taskRef = doc(currentProjectRef, `sections/${section.id}/tasks/${task.id}`);
-        const hasLiked = task.likedBy && task.likedBy[currentUserId];
-        
-        updateDoc(taskRef, {
-            likedAmount: increment(hasLiked ? -1 : 1),
-            [`likedBy.${currentUserId}`]: hasLiked ? deleteField() : true
-        });
-        break;
-}
-
+    if (!control) return; // If the click was not on a designated control, do nothing.
+    
+    // Find the parent task card to get the task's context.
+    const taskCard = control.closest('.boardtasks-task-card');
+    if (!taskCard) return;
+    
+    const taskId = taskCard.dataset.taskId;
+    const { task, section } = findTaskAndSection(taskId);
+    if (!task) return;
+    
+    // Get the specific action type from the data-control attribute.
+    const controlType = control.dataset.control;
+    
+    // Use a switch statement to perform the correct action.
+    switch (controlType) {
+        case 'open-sidebar':
+            // This is the default action for the card itself and the comment icon.
+            displaySideBarTasks(taskId, currentProjectRef);
+            break;
+            
+        case 'check':
+            // Stop the event from bubbling up to the card, which would also open the sidebar.
+            e.stopPropagation();
+            
+            // Check for permission before allowing the action.
+            if (canUserEditSpecifcTask(task)) {
+                handleTaskCompletion(task, taskCard);
+            }
+            break;
+            
+        case 'like':
+            // Stop the event from bubbling up.
+            e.stopPropagation();
+            
+            // Liking is allowed for all roles.
+            const taskRef = doc(currentProjectRef, `sections/${section.id}/tasks/${task.id}`);
+            const hasLiked = task.likedBy && task.likedBy[currentUserId];
+            
+            updateDoc(taskRef, {
+                likedAmount: increment(hasLiked ? -1 : 1),
+                [`likedBy.${currentUserId}`]: hasLiked ? deleteField() : true
+            });
+            break;
+    }
+    
 };
 
 const handleFilterInput = (e) => {
@@ -1049,11 +1073,11 @@ async function handleTaskMoved(evt) {
         } else {
             const taskSnap = await getDoc(doc(currentProjectRef, `sections/${oldSectionId}/tasks/${taskId}`));
             if (!taskSnap.exists()) throw new Error("Source task not found!");
-
+            
             const newTaskRef = doc(currentProjectRef, `sections/${newSectionId}/tasks/${taskId}`);
             batch.set(newTaskRef, { ...taskSnap.data(), sectionId: newSectionId });
             batch.delete(taskSnap.ref);
-
+            
             to.querySelectorAll('.boardtasks-task-card').forEach((el, i) => batch.update(doc(currentProjectRef, `sections/${newSectionId}/tasks/${el.dataset.taskId}`), { order: i }));
             from.querySelectorAll('.boardtasks-task-card').forEach((el, i) => batch.update(doc(currentProjectRef, `sections/${oldSectionId}/tasks/${el.dataset.taskId}`), { order: i }));
         }

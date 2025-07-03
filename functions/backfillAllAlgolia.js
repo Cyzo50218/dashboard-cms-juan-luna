@@ -1,9 +1,8 @@
 // backfillAll.js
 import {getFirestore} from "firebase-admin/firestore";
-import {createRequire} from "module";
+import {createRequire} from 'module';
 const require = createRequire(import.meta.url);
-
-const algoliasearch = require("algoliasearch");
+const {default: algoliasearch} = require('algoliasearch'); 
 
 /**
  * Recursively backfills all users, workspaces, projects, sections, and tasks
