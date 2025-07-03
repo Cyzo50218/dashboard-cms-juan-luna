@@ -1350,7 +1350,7 @@ peopleEmptyState.classList.add("hidden"); // Hide people empty state
     setTimeout(() => {
       halfQuery.classList.remove("skeleton-active");
       const lowerCaseValue = value.toLowerCase();
-      
+      searchEmpty = false;
       let filteredTasks = [];
       let filteredProjects = [];
       let filteredPeople = [];
