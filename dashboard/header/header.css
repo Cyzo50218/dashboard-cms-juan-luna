@@ -1261,7 +1261,7 @@ margin-left: 6px;
 }
 #recent-container {
     display: flex;
-    width: 528px;
+    width: 428px;
     flex-direction: column;
     height: 100%; /* Or set a fixed height for the scrollable area if needed */
     flex-grow: 1; /* Allow it to fill available space within its parent search-expand/filter */
