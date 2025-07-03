@@ -1322,16 +1322,14 @@ peopleEmptyState.classList.add("hidden"); // Hide people empty state
     input.focus();
   });
   
-  // Add this variable outside the onAuthStateChanged or at a scope accessible by the input listener
-let searchTimeout = null;
-const DEBOUNCE_DELAY = 300; // A common delay (in milliseconds)
+  let searchTimeout = null;
+const DEBOUNCE_DELAY = 300;
 
-// Inside your onAuthStateChanged function, where your input.addEventListener is:
+// ... (inside onAuthStateChanged) ...
 
 input.addEventListener('input', () => {
   const value = input.value.trim();
   
-  // --- Clear any existing timeout on every new input event ---
   clearTimeout(searchTimeout);
   
   if (value !== '') {
@@ -1355,19 +1353,15 @@ input.addEventListener('input', () => {
         <div class="skeleton-loader" style="width: 400px;"></div>
       `;
     
-    // --- Start a new timeout for the search operation ---
     searchTimeout = setTimeout(() => {
       halfQuery.classList.remove("skeleton-active");
-      const lowerCaseValue = value.toLowerCase(); // Use the 'value' from this specific input event
+      const lowerCaseValue = value.toLowerCase();
       
       let filteredTasks = [];
       let filteredProjects = [];
       let filteredPeople = [];
       let filteredMessages = [];
       
-      // The `!searchEmpty` condition is redundant here because `value !== ''` already confirms it's not empty.
-      // If `searchEmpty` is a global flag, it should be managed carefully.
-      // For filtering purposes, `value !== ''` implies you want results.
       if (selectedOptionBtnIndex === 0 || selectedOptionBtnIndex === -1) {
         filteredTasks = exampleRecentTasks.filter(task =>
           task.name.toLowerCase().includes(lowerCaseValue) ||
@@ -1393,7 +1387,6 @@ input.addEventListener('input', () => {
         );
       }
       
-      // Handle special prefixes for "with:" and "assignee:"
       if (value.startsWith('with:') || value.startsWith('assignee:')) {
         optionsQuery.classList.remove("hidden");
         emailContainerId.classList.remove('hidden');
@@ -1406,10 +1399,8 @@ input.addEventListener('input', () => {
         document.getElementById('email-container-id').classList.add('hidden');
         displaySearchResults(filteredTasks, filteredProjects, filteredPeople, filteredMessages);
       }
-      
-    }, DEBOUNCE_DELAY); // Use the defined debounce delay
+    }, DEBOUNCE_DELAY);
   } else {
-    // Input is empty, revert to default states
     cancelIcon.classList.add('hidden');
     halfQuery.innerHTML = '';
     halfQuery.classList.add("hidden");
@@ -1421,34 +1412,36 @@ input.addEventListener('input', () => {
     savedContainer.classList.remove("hidden");
     searchOptions.classList.remove("hidden");
     
-    // Reset specific display based on the last selected category button or show general recents
-    if (selectedOptionBtnIndex === 0) { // Tasks
+    if (selectedOptionBtnIndex === 0) {
       recentContainer.classList.add("hidden");
       mytaskdisplay.classList.remove("hidden");
       projectdisplay.classList.add("hidden");
       messagesEmptyState.classList.add("hidden");
       peopleEmptyState.classList.add("hidden");
-    } else if (selectedOptionBtnIndex === 1) { // Projects
+      renderRecentItems(exampleRecentTasks, [], [], 4, true, false, false);
+    } else if (selectedOptionBtnIndex === 1) {
       recentContainer.classList.add("hidden");
       projectdisplay.classList.remove("hidden");
       mytaskdisplay.classList.add("hidden");
       messagesEmptyState.classList.add("hidden");
       peopleEmptyState.classList.add("hidden");
-    } else if (selectedOptionBtnIndex === 2) { // People
+      renderRecentItems([], [], exampleRecentProjects, null, true, false, false);
+    } else if (selectedOptionBtnIndex === 2) {
       recentContainer.classList.add("hidden");
       peopleEmptyState.classList.remove("hidden");
       emailContainerPeopleId.classList.remove('hidden');
       mytaskdisplay.classList.add("hidden");
       projectdisplay.classList.add("hidden");
       messagesEmptyState.classList.add("hidden");
-    } else if (selectedOptionBtnIndex === 3) { // Messages
+      renderRecentItems([], exampleRecentPeople, [], null, false, true, false);
+    } else if (selectedOptionBtnIndex === 3) {
       recentContainer.classList.add("hidden");
       messagesEmptyState.classList.remove("hidden");
       mytaskdisplay.classList.add("hidden");
       projectdisplay.classList.add("hidden");
       peopleEmptyState.classList.add("hidden");
+      renderRecentItems([], [], [], null, false, false, true);
     } else {
-      // No specific category selected, show general recents and initial state
       recentContainer.classList.remove("hidden");
       mytaskdisplay.classList.add("hidden");
       projectdisplay.classList.add("hidden");
@@ -1456,8 +1449,6 @@ input.addEventListener('input', () => {
       peopleEmptyState.classList.add("hidden");
       renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], null, false, false, false);
     }
-    // Removed displaySearchResults([], [], [], []); as it's not needed when input is truly empty
-    // Removed searchEmpty = true; as this variable seems to be a source of confusion.
     input.focus();
   }
 });
