@@ -439,9 +439,7 @@ function renderRecentItems(tasks, people, projects, messages, taskLimit = null, 
         recentContainerDiv.appendChild(personDiv);
       });
     }
-  }
-  
-  if (showRecentMessages && exampleRecentMessages.length > 0) {
+  }else if (showRecentMessages && messages.length > 0) {
   messages.forEach(message => {
     const itemDiv = document.createElement('div');
     itemDiv.className = 'headersearches-tasks-recent-item';
