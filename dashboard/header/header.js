@@ -1322,14 +1322,23 @@ peopleEmptyState.classList.add("hidden"); // Hide people empty state
     input.focus();
   });
   
-  input.addEventListener('input', () => {
-  const value = input.value.trim(); // Moved value declaration up
+  // Add this variable outside the onAuthStateChanged or at a scope accessible by the input listener
+let searchTimeout = null;
+const DEBOUNCE_DELAY = 300; // A common delay (in milliseconds)
+
+// Inside your onAuthStateChanged function, where your input.addEventListener is:
+
+input.addEventListener('input', () => {
+  const value = input.value.trim();
+  
+  // --- Clear any existing timeout on every new input event ---
+  clearTimeout(searchTimeout);
   
   if (value !== '') {
     cancelIcon.classList.remove('hidden');
     savedContainer.classList.add("hidden");
     recentContainer.classList.add("hidden");
-    searchOptions.classList.add("hidden"); // NEW: Hide search options when actively searching
+    searchOptions.classList.add("hidden");
     halfQuery.classList.remove("hidden");
     halfQuery.classList.add("skeleton-active");
     
@@ -1337,9 +1346,8 @@ peopleEmptyState.classList.add("hidden"); // Hide people empty state
     document.getElementById('email-container-id').classList.add('hidden');
     peopleEmptyState.classList.add("hidden");
     messagesEmptyState.classList.add("hidden");
-    mytaskdisplay.classList.add("hidden"); // Ensure these are hidden during active search
-    projectdisplay.classList.add("hidden"); // Ensure these are hidden during active search
-    
+    mytaskdisplay.classList.add("hidden");
+    projectdisplay.classList.add("hidden");
     
     halfQuery.innerHTML = `
         <div class="skeleton-loader" style="width: 200px;"></div>
@@ -1347,34 +1355,37 @@ peopleEmptyState.classList.add("hidden"); // Hide people empty state
         <div class="skeleton-loader" style="width: 400px;"></div>
       `;
     
-    setTimeout(() => {
+    // --- Start a new timeout for the search operation ---
+    searchTimeout = setTimeout(() => {
       halfQuery.classList.remove("skeleton-active");
-      const lowerCaseValue = value.toLowerCase();
-      searchEmpty = false;
+      const lowerCaseValue = value.toLowerCase(); // Use the 'value' from this specific input event
+      
       let filteredTasks = [];
       let filteredProjects = [];
       let filteredPeople = [];
-      let filteredMessages = []; // NEW: Array for messages
+      let filteredMessages = [];
       
-      // Perform filtering based on the selected category or general search
-      if (selectedOptionBtnIndex === 0 || selectedOptionBtnIndex === -1 && !searchEmpty) { // Tasks or Any/No selection
+      // The `!searchEmpty` condition is redundant here because `value !== ''` already confirms it's not empty.
+      // If `searchEmpty` is a global flag, it should be managed carefully.
+      // For filtering purposes, `value !== ''` implies you want results.
+      if (selectedOptionBtnIndex === 0 || selectedOptionBtnIndex === -1) {
         filteredTasks = exampleRecentTasks.filter(task =>
           task.name.toLowerCase().includes(lowerCaseValue) ||
           task.project.name.toLowerCase().includes(lowerCaseValue)
         );
       }
-      if (selectedOptionBtnIndex === 1 || selectedOptionBtnIndex === -1 && !searchEmpty) { // Projects or Any/No selection
+      if (selectedOptionBtnIndex === 1 || selectedOptionBtnIndex === -1) {
         filteredProjects = exampleRecentProjects.filter(project =>
           project.name.toLowerCase().includes(lowerCaseValue)
         );
       }
-      if (selectedOptionBtnIndex === 2 || selectedOptionBtnIndex === -1 && !searchEmpty) { // People or Any/No selection
+      if (selectedOptionBtnIndex === 2 || selectedOptionBtnIndex === -1) {
         filteredPeople = mockUsersCollection.filter(person =>
           (person.displayName && person.displayName.toLowerCase().includes(lowerCaseValue)) ||
           (person.email && person.email.toLowerCase().includes(lowerCaseValue))
         );
       }
-      if (selectedOptionBtnIndex === 3 || selectedOptionBtnIndex === -1 && !searchEmpty) { // NEW: Messages or Any/No selection
+      if (selectedOptionBtnIndex === 3 || selectedOptionBtnIndex === -1) {
         filteredMessages = exampleRecentMessages.filter(message =>
           message.title.toLowerCase().includes(lowerCaseValue) ||
           message.preview.toLowerCase().includes(lowerCaseValue) ||
@@ -1386,63 +1397,56 @@ peopleEmptyState.classList.add("hidden"); // Hide people empty state
       if (value.startsWith('with:') || value.startsWith('assignee:')) {
         optionsQuery.classList.remove("hidden");
         emailContainerId.classList.remove('hidden');
-        // Display only filtered people for these queries
-        displaySearchResults([], [], filteredPeople, []); // NEW: Pass empty messages array
+        displaySearchResults([], [], filteredPeople, []);
       } else if (value.startsWith('in:')) {
-        optionsQuery.classList.add("hidden"); // Assuming 'in:' doesn't show general options
-        // Display tasks and projects for 'in:'
-        displaySearchResults(filteredTasks, filteredProjects, [], []); // NEW: Pass empty messages array
+        optionsQuery.classList.add("hidden");
+        displaySearchResults(filteredTasks, filteredProjects, [], []);
       } else {
-        // General search: display all types of results based on active filter
-        optionsQuery.classList.add("hidden"); // Hide general options during search
+        optionsQuery.classList.add("hidden");
         document.getElementById('email-container-id').classList.add('hidden');
-        displaySearchResults(filteredTasks, filteredProjects, filteredPeople, filteredMessages); // NEW: Pass messages here
+        displaySearchResults(filteredTasks, filteredProjects, filteredPeople, filteredMessages);
       }
       
-      // If no results after filtering, display a generic no results message.
-      if (filteredTasks.length === 0 && filteredProjects.length === 0 && filteredPeople.length === 0 && filteredMessages.length === 0) { // NEW: Added messages to condition
-        // The displaySearchResults function already handles showing the "No results found" message
-        // if all arrays are empty, so no extra logic needed here.
-      }
-      
-    }, 500); // Simulate network delay
+    }, DEBOUNCE_DELAY); // Use the defined debounce delay
   } else {
     // Input is empty, revert to default states
     cancelIcon.classList.add('hidden');
-    savedContainer.classList.remove("hidden");
-    searchOptions.classList.remove("hidden"); // NEW: Show search options when input is empty
-    recentContainer.classList.remove("hidden"); // NEW: Show recents when input is empty
+    halfQuery.innerHTML = '';
+    halfQuery.classList.add("hidden");
     
-    halfQuery.classList.add("hidden"); // Hide search results container
-    optionsQuery.classList.add("hidden"); // Hide additional options (like email contacts)
-    emailContainerId.classList.add('hidden'); // Ensure general email invite is hidden
-    halfQuery.add('hidden');
-    // Reset specific display based on the last selected category button if any
+    optionsQuery.classList.add("hidden");
+    emailContainerId.classList.add('hidden');
+    emailContainerPeopleId.classList.add('hidden');
+    
+    savedContainer.classList.remove("hidden");
+    searchOptions.classList.remove("hidden");
+    
+    // Reset specific display based on the last selected category button or show general recents
     if (selectedOptionBtnIndex === 0) { // Tasks
+      recentContainer.classList.add("hidden");
       mytaskdisplay.classList.remove("hidden");
       projectdisplay.classList.add("hidden");
       messagesEmptyState.classList.add("hidden");
       peopleEmptyState.classList.add("hidden");
-      renderRecentItems(exampleRecentTasks, [], [], [], 4, true, false, false); // Updated call
     } else if (selectedOptionBtnIndex === 1) { // Projects
+      recentContainer.classList.add("hidden");
       projectdisplay.classList.remove("hidden");
       mytaskdisplay.classList.add("hidden");
       messagesEmptyState.classList.add("hidden");
       peopleEmptyState.classList.add("hidden");
-      renderRecentItems([], [], exampleRecentProjects, [], 4, true, false, false); // Updated call
     } else if (selectedOptionBtnIndex === 2) { // People
+      recentContainer.classList.add("hidden");
       peopleEmptyState.classList.remove("hidden");
       emailContainerPeopleId.classList.remove('hidden');
       mytaskdisplay.classList.add("hidden");
       projectdisplay.classList.add("hidden");
       messagesEmptyState.classList.add("hidden");
-      renderRecentItems([], exampleRecentPeople, [], [], 4, false, true, false); // Updated call
-    } else if (selectedOptionBtnIndex === 3) { // NEW: Messages
+    } else if (selectedOptionBtnIndex === 3) { // Messages
+      recentContainer.classList.add("hidden");
       messagesEmptyState.classList.remove("hidden");
       mytaskdisplay.classList.add("hidden");
       projectdisplay.classList.add("hidden");
       peopleEmptyState.classList.add("hidden");
-      renderRecentItems([], [], [], exampleRecentMessages, 4, true, false, true); // NEW: Show recent messages
     } else {
       // No specific category selected, show general recents and initial state
       recentContainer.classList.remove("hidden");
@@ -1450,10 +1454,10 @@ peopleEmptyState.classList.add("hidden"); // Hide people empty state
       projectdisplay.classList.add("hidden");
       messagesEmptyState.classList.add("hidden");
       peopleEmptyState.classList.add("hidden");
-      renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], [], 4, false, false, false); // Default view
+      renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], null, false, false, false);
     }
-    displaySearchResults([], [], [], []);
-    searchEmpty = true;
+    // Removed displaySearchResults([], [], [], []); as it's not needed when input is truly empty
+    // Removed searchEmpty = true; as this variable seems to be a source of confusion.
     input.focus();
   }
 });
