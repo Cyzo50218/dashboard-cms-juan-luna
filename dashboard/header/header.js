@@ -349,7 +349,7 @@ function renderAllPeople(people, peopleQueryDiv, peopleEmptyState, emailContaine
   }
 }
 
-function renderRecentItems(tasks, people, projects, taskLimit = null, hidePeopleContent = false, showInviteButton = false, showRecentMessages = false) { // Added showRecentMessages parameter
+function renderRecentItems(tasks, people, projects, messages, taskLimit = null, hidePeopleContent = false, showInviteButton = false, showRecentMessages = false) { // Added showRecentMessages parameter
   const recentContainerDiv = document.querySelector("#recent-container > div");
   if (!recentContainerDiv) {
     console.error("Recent container div not found!");
@@ -360,7 +360,7 @@ function renderRecentItems(tasks, people, projects, taskLimit = null, hidePeople
   
   if (showRecentMessages) { // New condition for messages
     if (exampleRecentMessages && exampleRecentMessages.length > 0) {
-      exampleRecentMessages.forEach(message => {
+      messages.forEach(message => {
         const itemDiv = document.createElement('div');
         itemDiv.className = 'headersearches-tasks-recent-item';
         itemDiv.dataset.itemId = message.id;
@@ -1235,6 +1235,8 @@ projectdisplay.classList.add("hidden"); // Hide project display
       searchOptions.classList.remove("hidden");
       recentContainer.classList.remove("hidden");
       emailContainerId.classList.add('hidden');
+      renderRecentItems(exampleRecentTasks,  exampleRecentPeople, [], null, false, false); // show general invite
+    
     } else {
       selectedOptionBtnIndex = 3;
       btn.classList.add("selected");
@@ -1249,7 +1251,7 @@ projectdisplay.classList.add("hidden"); // Hide project display
           b.classList.remove("selected");
         }
       });
-      renderRecentItems([], [], [], null, false, false, true); 
+      renderRecentItems([], [], [], exampleRecentMessages, null, false, false, true); 
     }
   input.value = ''; // Clear input on option selection
 cancelIcon.classList.add('hidden'); // Hide cancel icon
@@ -1419,26 +1421,26 @@ peopleEmptyState.classList.add("hidden"); // Hide people empty state
       projectdisplay.classList.add("hidden");
       messagesEmptyState.classList.add("hidden");
       peopleEmptyState.classList.add("hidden");
-      renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], 4, true, false, false); // Updated call
+      renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], [], 4, true, false, false); // Updated call
     } else if (selectedOptionBtnIndex === 1) { // Projects
       projectdisplay.classList.remove("hidden");
       mytaskdisplay.classList.add("hidden");
       messagesEmptyState.classList.add("hidden");
       peopleEmptyState.classList.add("hidden");
-      renderRecentItems([], [], exampleRecentProjects, null, true, false, false); // Updated call
+      renderRecentItems([], [], exampleRecentProjects, [] null, true, false, false); // Updated call
     } else if (selectedOptionBtnIndex === 2) { // People
       peopleEmptyState.classList.remove("hidden");
       emailContainerPeopleId.classList.remove('hidden');
       mytaskdisplay.classList.add("hidden");
       projectdisplay.classList.add("hidden");
       messagesEmptyState.classList.add("hidden");
-      renderRecentItems([], exampleRecentPeople, [], null, false, true, false); // Updated call
+      renderRecentItems([], exampleRecentPeople, [], [], null, false, true, false); // Updated call
     } else if (selectedOptionBtnIndex === 3) { // NEW: Messages
       messagesEmptyState.classList.remove("hidden");
       mytaskdisplay.classList.add("hidden");
       projectdisplay.classList.add("hidden");
       peopleEmptyState.classList.add("hidden");
-      renderRecentItems([], [], [], null, false, false, true); // NEW: Show recent messages
+      renderRecentItems([], [], [], exampleRecentMessages, null, false, false, true); // NEW: Show recent messages
     } else {
       // No specific category selected, show general recents and initial state
       recentContainer.classList.remove("hidden");
@@ -1446,7 +1448,7 @@ peopleEmptyState.classList.add("hidden"); // Hide people empty state
       projectdisplay.classList.add("hidden");
       messagesEmptyState.classList.add("hidden");
       peopleEmptyState.classList.add("hidden");
-      renderRecentItems(exampleRecentTasks, exampleRecentPeople, []); // Default view
+      renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], []); // Default view
     }
     
     emailContainerId.classList.add('hidden'); // Ensure general email invite is hidden
@@ -1485,7 +1487,7 @@ peopleEmptyState.classList.add("hidden"); // Hide people empty state
     renderRecentItems([], [], [], null, false, false, true); // NEW: Show recent messages
   } else {
     // No specific category selected, show general recents
-    renderRecentItems(exampleRecentTasks, exampleRecentPeople, []); // Default view
+    renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], true, true, false); // Default view
   }
   input.focus();
 });

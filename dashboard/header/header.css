@@ -1500,6 +1500,7 @@ margin-left: 6px;
 }
 .search-results-section-heading {
     font-size: 0.85em;
+    width: 530px;
     font-weight: 600;
     color: #5f6368; /* A darker gray for headings */
     margin-top: 15px;
