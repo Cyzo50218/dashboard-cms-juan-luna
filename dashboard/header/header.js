@@ -419,6 +419,7 @@ function renderRecentItems(tasks, people, projects, messages, taskLimit = null, 
         recentContainerDiv.appendChild(personDiv);
       });
     }
+    
      if (showRecentMessages && messages.length > 0) {
   messages.forEach(message => {
     const itemDiv = document.createElement('div');
@@ -441,7 +442,7 @@ function renderRecentItems(tasks, people, projects, messages, taskLimit = null, 
         `;
     recentContainerDiv.appendChild(itemDiv);
   });
-}else {
+}else if (showRecentMessages && messages.length == 0) {
   // Display a message if no recent messages
   const noMessagesDiv = document.createElement('div');
   noMessagesDiv.className = 'search-no-results'; // Reusing no results style
