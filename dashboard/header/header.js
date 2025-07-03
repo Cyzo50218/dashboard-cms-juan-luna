@@ -1489,6 +1489,7 @@ peopleEmptyState.classList.add("hidden"); // Hide people empty state
     // No specific category selected, show general recents
     renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], [],4, false, false, false); // Default view
   }
+  displaySearchResults([], [], [], []);
   input.focus();
 });
   
