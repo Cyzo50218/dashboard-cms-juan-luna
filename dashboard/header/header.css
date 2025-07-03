@@ -1510,3 +1510,44 @@ margin-left: 6px;
 .search-no-results p {
     margin-bottom: 5px;
 }
+.enter-search-results-hint {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Space between icon and text */
+    padding: 12px 15px;
+    background-color: var(--search-background-color, #202124); /* Dark background like in the image */
+    color: var(--search-text-color, #e8eaed); /* Light text color */
+    border-radius: 8px; /* Slightly rounded corners */
+    font-family: 'Roboto', sans-serif; /* Or your preferred font */
+    font-size: 0.95em;
+    margin: 10px; /* Optional: Space around the hint */
+}
+.enter-search-results-hint .search-icon-wrapper {
+    /* Optional: Style for the wrapper if needed, e.g., to create a circular background */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* width: 24px; /* Example size */
+    /* height: 24px; */
+    /* border-radius: 50%; */
+    /* background-color: rgba(255, 255, 255, 0.1); */ /* Subtle background for icon */
+}
+.enter-search-results-hint .search-icon-wrapper .fas.fa-search {
+    font-size: 18px; /* Adjust size as needed for Font Awesome */
+    color: var(--icon-color, #9aa0a6); /* Lighter gray for the icon */
+    /* Ensure Font Awesome CSS is loaded for 'fas' and 'fa-search' to work */
+}
+.enter-search-results-hint .hint-text {
+    flex-grow: 1; /* Allows text to take available space */
+    display: flex; /* To align "Press Enter" part */
+    align-items: center;
+    gap: 8px; /* Space between "Press" and "Enter" */
+}
+.enter-search-results-hint .enter-key-indicator {
+    background-color: var(--key-background-color, #5f6368); /* Darker gray for the key background */
+    color: var(--key-text-color, #e8eaed); /* Light text on key */
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    white-space: nowrap; /* Prevent "Enter" from breaking onto new line */
+}

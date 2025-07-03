@@ -478,7 +478,35 @@ function renderRecentItems(tasks, people, projects, messages, taskLimit = null, 
   }
 }
 
-function displaySearchResults(tasks, projects, people, messages) { // Updated function signature
+function enterSearchResults() {
+  const containerDiv = document.createElement('div');
+  containerDiv.className = 'enter-search-results-hint';
+  
+  containerDiv.innerHTML = `
+        <div class="search-icon-wrapper">
+            <i class="fas fa-search"></i>
+        </div>
+        <div class="hint-text">
+            Press <span class="enter-key-indicator">Enter</span> to view all results
+        </div>
+    `;
+  
+  // Add click listener to the entire hint container
+  containerDiv.addEventListener('click', () => {
+    // Get the current value from the main search input field
+    const input = document.querySelector('.search-input');
+    const value = input ? input.value.trim() : ''; // Get value, handle if input not found
+    
+    // Only redirect if there's actually a search query
+    if (value !== '') {
+      window.location.href = '/searchresults';
+    }
+  });
+  
+  return containerDiv;
+}
+
+function displaySearchResults(tasks, projects, people, messages) {
   const halfQueryDiv = document.getElementById('half-query');
   if (!halfQueryDiv) {
     console.error("half-query div not found for displaying search results!");
@@ -487,141 +515,155 @@ function displaySearchResults(tasks, projects, people, messages) { // Updated fu
   
   // Clear previous content
   halfQueryDiv.innerHTML = '';
-  halfQueryDiv.classList.remove("skeleton-active"); // Ensure skeleton is off
+  halfQueryDiv.classList.remove("skeleton-active");
   
   const fragment = document.createDocumentFragment();
   
-  // Helper to create a section heading
   const createSectionHeading = (title) => {
     const heading = document.createElement('h5');
-    heading.className = 'search-results-section-heading'; // Add a class for styling
+    heading.className = 'search-results-section-heading';
     heading.textContent = title;
     return heading;
   };
   
-  // 1. Render Projects
-  if (projects && projects.length > 0) {
-    fragment.appendChild(createSectionHeading('Projects'));
-    projects.forEach(project => {
-      const itemDiv = document.createElement('div');
-      itemDiv.className = 'headersearches-tasks-recent-item search-result-item';
-      itemDiv.dataset.itemId = project.id;
-      
-      let assigneesToDisplay = project.assignees.slice(0, 2);
-      let remainingAssigneesCount = project.assignees.length - assigneesToDisplay.length;
-      
-      const assigneesHtml = assigneesToDisplay.map(assignee => `
-                <div class="headersearches-assignee-avatar" ${assignee.avatarUrl ? `style="background-image: url(${assignee.avatarUrl});"` : ''}>
-                    ${!assignee.avatarUrl ? assignee.initials : ''}
-                </div>
-            `).join('');
-      const moreAssigneesHtml = remainingAssigneesCount > 0 ?
-        `<span class="material-icons-outlined project-more-icon">more_horiz</span>` : '';
-      
-      itemDiv.innerHTML = `
-                <span class="headersearches-project-square-icon" style="background-color: ${project.color};"></span>
-                <div class="headersearches-tasks-recent-content">
-                    <div class="headersearches-tasks-recent-title">${project.name}</div>
-                    <div class="headersearches-tasks-recent-meta">Project</div> </div>
-                <div class="headersearches-assignee-list">
-                    ${assigneesHtml}
-                    ${moreAssigneesHtml}
-                </div>
-            `;
-      fragment.appendChild(itemDiv);
-    });
-  }
+  // Combine all results into a single array for initial display logic
+  let allResults = [];
   
-  // 2. Render Tasks
-  if (tasks && tasks.length > 0) {
-    fragment.appendChild(createSectionHeading('Tasks'));
-    tasks.forEach(task => {
-      const itemDiv = document.createElement('div');
-      itemDiv.className = 'headersearches-tasks-recent-item search-result-item';
-      itemDiv.dataset.itemId = task.id;
-      
-      const statusIcon = task.name.includes("Alert") ? 'error_outline' : 'check_circle';
-      const assigneesHtml = task.assignees.map(assignee => `
-                <div class="headersearches-assignee-avatar" ${assignee.avatarUrl ? `style="background-image: url(${assignee.avatarUrl});"` : ''}>
-                    ${!assignee.avatarUrl ? assignee.initials : ''}
-                </div>
-            `).join('');
-      
-      itemDiv.innerHTML = `
-                <span class="material-icons-outlined headersearches-tasks-recent-status-icon">${statusIcon}</span>
+  // Add projects to allResults, maintaining their type for rendering
+  projects.forEach(project => allResults.push({ type: 'project', data: project }));
+  // Add tasks
+  tasks.forEach(task => allResults.push({ type: 'task', data: task }));
+  // Add people
+  people.forEach(person => allResults.push({ type: 'person', data: person }));
+  // Add messages
+  messages.forEach(message => allResults.push({ type: 'message', data: message }));
+  
+  const hasResults = allResults.length > 0;
+  const initialDisplayLimit = 4;
+  const resultsToDisplay = allResults.slice(0, initialDisplayLimit);
+  
+  // Render combined results
+  if (hasResults) {
+    resultsToDisplay.forEach(item => {
+      let itemDiv;
+      switch (item.type) {
+        case 'project':
+          const project = item.data;
+          itemDiv = document.createElement('div');
+          itemDiv.className = 'headersearches-tasks-recent-item search-result-item';
+          itemDiv.dataset.itemId = project.id;
+          
+          let assigneesToDisplay = project.assignees.slice(0, 2);
+          let remainingAssigneesCount = project.assignees.length - assigneesToDisplay.length;
+          
+          const assigneesHtml = assigneesToDisplay.map(assignee => `
+                            <div class="headersearches-assignee-avatar" ${assignee.avatarUrl ? `style="background-image: url(${assignee.avatarUrl});"` : ''}>
+                                ${!assignee.avatarUrl ? assignee.initials : ''}
+                            </div>
+                        `).join('');
+          const moreAssigneesHtml = remainingAssigneesCount > 0 ?
+            `<span class="material-icons-outlined project-more-icon">more_horiz</span>` : '';
+          
+          itemDiv.innerHTML = `
+                            <span class="headersearches-project-square-icon" style="background-color: ${project.color};"></span>
+                            <div class="headersearches-tasks-recent-content">
+                                <div class="headersearches-tasks-recent-title">${project.name}</div>
+                                <div class="headersearches-tasks-recent-meta">Project</div>
+                            </div>
+                            <div class="headersearches-assignee-list">
+                                ${assigneesHtml}
+                                ${moreAssigneesHtml}
+                            </div>
+                        `;
+          break;
+          
+        case 'task':
+          const task = item.data;
+          itemDiv = document.createElement('div');
+          itemDiv.className = 'headersearches-tasks-recent-item search-result-item';
+          itemDiv.dataset.itemId = task.id;
+          
+          const statusIcon = task.name.includes("Alert") ? 'error_outline' : 'check_circle';
+          const taskAssigneesHtml = task.assignees.map(assignee => `
+                            <div class="headersearches-assignee-avatar" ${assignee.avatarUrl ? `style="background-image: url(${assignee.avatarUrl});"` : ''}>
+                                ${!assignee.avatarUrl ? assignee.initials : ''}
+                            </div>
+                        `).join('');
+          
+          itemDiv.innerHTML = `
+                            <span class="material-icons-outlined headersearches-tasks-recent-status-icon">${statusIcon}</span>
+                            <div class="headersearches-tasks-recent-content">
+                                <div class="headersearches-tasks-recent-title">${task.name}</div>
+                                <div class="headersearches-tasks-recent-meta">
+                                    <span class="headersearches-tasks-project-dot" style="background-color: ${task.project.color};"></span>
+                                    <span class="headersearches-tasks-project-name">${task.project.name}</span>
+                                </div>
+                            </div>
+                            <div class="headersearches-assignee-list">
+                                ${taskAssigneesHtml}
+                            </div>
+                        `;
+          break;
+          
+        case 'person':
+          const person = item.data;
+          itemDiv = document.createElement('div');
+          itemDiv.className = 'headersearches-tasks-recent-item search-result-item';
+          itemDiv.dataset.itemId = person.id;
+          
+          const roleOrEmailHtml = person.workspaceRole ?
+            `<div class="headersearches-person-roles">${person.workspaceRole.charAt(0).toUpperCase() + person.workspaceRole.slice(1)}</div>` :
+            `<div class="headersearches-person-email">${person.email}</div>`;
+          
+          itemDiv.innerHTML = `
+                            <span class="material-icons-outlined headersearches-tasks-recent-status-icon">person</span>
+                            <div class="headersearches-tasks-recent-content">
+                                <div class="headersearches-tasks-recent-title">${person.displayName || person.name}</div>
+                                <div class="headersearches-tasks-recent-meta">${roleOrEmailHtml}</div>
+                            </div>
+                            <div class="headersearches-assignee-list">
+                                <div class="headersearches-assignee-avatar" ${person.avatarUrl ? `style="background-image: url(${person.avatarUrl});"` : ''}>
+                                    ${!person.avatarUrl ? person.initials : ''}
+                                </div>
+                                <span class="material-icons-outlined headersearches-globe-icon">public</span>
+                            </div>
+                        `;
+          break;
+          
+        case 'message':
+          const message = item.data;
+          itemDiv = document.createElement('div');
+          itemDiv.className = 'headersearches-tasks-recent-item search-result-item';
+          itemDiv.dataset.itemId = message.id;
+          
+          itemDiv.innerHTML = `
+                <span class="material-icons-outlined headersearches-tasks-recent-status-icon">message</span>
                 <div class="headersearches-tasks-recent-content">
-                    <div class="headersearches-tasks-recent-title">${task.name}</div>
-                    <div class="headersearches-tasks-recent-meta">
-                        <span class="headersearches-tasks-project-dot" style="background-color: ${task.project.color};"></span>
-                        <span class="headersearches-tasks-project-name">${task.project.name}</span>
+                  <div class="headersearches-tasks-recent-title">${message.title}</div>
+                  <div class="headersearches-tasks-recent-meta">
+                    <div class="headersearches-assignee-avatar" ${message.sender.avatarUrl ? `style="background-image: url(${message.sender.avatarUrl});"` : ''}>
+                      ${!message.sender.avatarUrl ? message.sender.initials : ''}
                     </div>
+                    <span>${message.sender.name}</span>
+                    <span class="message-date">${dayjs(message.date).format('MMM D')}</span>
+                  </div>
                 </div>
-                <div class="headersearches-assignee-list">
-                    ${assigneesHtml}
-                </div>
-            `;
-      fragment.appendChild(itemDiv);
+                <span class="material-icons-outlined message-star-icon">star_border</span>
+              `;
+          break;
+      }
+      if (itemDiv) {
+        fragment.appendChild(itemDiv);
+      }
     });
-  }
-  
-  // 3. Render People
-  if (people && people.length > 0) {
-    fragment.appendChild(createSectionHeading('People'));
-    people.forEach(person => {
-      const personDiv = document.createElement('div');
-      personDiv.className = 'headersearches-tasks-recent-item search-result-item';
-      personDiv.dataset.itemId = person.id;
-      
-      const roleOrEmailHtml = person.workspaceRole ?
-        `<div class="headersearches-person-roles">${person.workspaceRole.charAt(0).toUpperCase() + person.workspaceRole.slice(1)}</div>` :
-        `<div class="headersearches-person-email">${person.email}</div>`;
-      
-      personDiv.innerHTML = `
-                <span class="material-icons-outlined headersearches-tasks-recent-status-icon">person</span>
-                <div class="headersearches-tasks-recent-content">
-                    <div class="headersearches-tasks-recent-title">${person.displayName || person.name}</div>
-                    <div class="headersearches-tasks-recent-meta">${roleOrEmailHtml}</div>
-                </div>
-                <div class="headersearches-assignee-list">
-                    <div class="headersearches-assignee-avatar" ${person.avatarUrl ? `style="background-image: url(${person.avatarUrl});"` : ''}>
-                        ${!person.avatarUrl ? person.initials : ''}
-                    </div>
-                    <span class="material-icons-outlined headersearches-globe-icon">public</span>
-                </div>
-            `;
-      fragment.appendChild(personDiv);
-    });
-  }
-  
-  // 4. Render Messages
-  if (messages && messages.length > 0) { // New section for messages
-    fragment.appendChild(createSectionHeading('Messages'));
-    messages.forEach(message => {
-      const itemDiv = document.createElement('div');
-      itemDiv.className = 'headersearches-tasks-recent-item search-result-item';
-      itemDiv.dataset.itemId = message.id;
-      
-      itemDiv.innerHTML = `
-        <span class="material-icons-outlined headersearches-tasks-recent-status-icon">message</span>
-        <div class="headersearches-tasks-recent-content">
-          <div class="headersearches-tasks-recent-title">${message.title}</div>
-          <div class="headersearches-tasks-recent-meta">
-            <div class="headersearches-assignee-avatar" ${message.sender.avatarUrl ? `style="background-image: url(${message.sender.avatarUrl});"` : ''}>
-              ${!message.sender.avatarUrl ? message.sender.initials : ''}
-            </div>
-            <span>${message.sender.name}</span>
-            <span class="message-date">${dayjs(message.date).format('MMM D')}</span>
-          </div>
-        </div>
-        <span class="material-icons-outlined message-star-icon">star_border</span>
-      `;
-      fragment.appendChild(itemDiv);
-    });
-  }
-  
-  
-  // If no results, display a message
-  if (tasks.length === 0 && projects.length === 0 && people.length === 0 && messages.length === 0) { // Updated condition
+    
+    // Add the "Press Enter" hint if there are more results than the display limit
+    if (allResults.length > initialDisplayLimit) {
+      fragment.appendChild(enterSearchResults());
+    }
+    
+  } else {
+    // If no results at all, display a generic "No results found" message
     const noResultsDiv = document.createElement('div');
     noResultsDiv.className = 'search-no-results';
     noResultsDiv.innerHTML = `
@@ -632,7 +674,7 @@ function displaySearchResults(tasks, projects, people, messages) { // Updated fu
   }
   
   halfQueryDiv.appendChild(fragment);
-  halfQueryDiv.classList.remove('hidden'); // Ensure the container is visible
+  halfQueryDiv.classList.remove('hidden');
 }
 
 async function getProcessedWorkspacePeopleData() {
@@ -1325,7 +1367,16 @@ peopleEmptyState.classList.add("hidden"); // Hide people empty state
   let searchTimeout = null;
 const DEBOUNCE_DELAY = 300;
 
-// ... (inside onAuthStateChanged) ...
+input.addEventListener('keydown', (event) => {
+  // Check if the "Enter" key was pressed
+  if (event.key === 'Enter') {
+    const value = input.value.trim();
+    // Only redirect if there's actually a search query
+    if (value !== '') {
+      window.location.href = '/searchresults';
+    }
+  }
+});
 
 input.addEventListener('input', () => {
   const value = input.value.trim();
