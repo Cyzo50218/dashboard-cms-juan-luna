@@ -439,7 +439,7 @@ function renderRecentItems(tasks, people, projects, messages, taskLimit = null, 
         recentContainerDiv.appendChild(personDiv);
       });
     }
-  }else if (showRecentMessages && messages.length > 0) {
+    else if (showRecentMessages && messages.length > 0) {
   messages.forEach(message => {
     const itemDiv = document.createElement('div');
     itemDiv.className = 'headersearches-tasks-recent-item';
@@ -461,13 +461,15 @@ function renderRecentItems(tasks, people, projects, messages, taskLimit = null, 
         `;
     recentContainerDiv.appendChild(itemDiv);
   });
-  } else {
+} else {
   // Display a message if no recent messages
   const noMessagesDiv = document.createElement('div');
   noMessagesDiv.className = 'search-no-results'; // Reusing no results style
   noMessagesDiv.innerHTML = `<p>No recent messages to display.</p>`;
   recentContainerDiv.appendChild(noMessagesDiv);
 }
+  } 
+  
   
   if (showInviteButton) {
     recentContainerDiv.appendChild(createRecentsInviteEmailButton());
