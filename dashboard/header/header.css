@@ -1318,7 +1318,7 @@ margin-left: 6px;
 .headersearches-tasks-recent-item {
     display: flex;
     align-items: center;
-    padding: 3px 10px;
+    padding: 1px 10px;
     margin-bottom: 5px;
     transition: background-color 0.2s ease;
     cursor: pointer;
@@ -1341,7 +1341,7 @@ margin-left: 6px;
 }
 .headersearches-tasks-recent-title {
     font-size: 12px;
-    padding-top: 4px;
+    padding-top: 2px;
     font-weight: 500;
     color: var(--text-color-primary, #e0e0e0);
     margin-bottom: 2px;
@@ -1410,7 +1410,6 @@ margin-left: 6px;
     flex-shrink: 0;
     background-color: currentColor; /* This will pick up the color from JS style */
 }
-/* For the three dots (more options) icon */
 .project-more-icon {
     font-size: 18px; /* Size of the three dots icon */
     color: var(--icon-color, #888); /* Muted icon color */
@@ -1420,10 +1419,6 @@ margin-left: 6px;
     border-radius: 4px;
     transition: background-color 0.2s ease;
 }
-
-/* In your CSS file (e.g., style.css or header.css) */
-
-/* Ensure the avatars have relative positioning for z-index to work */
 .headersearches-assignee-avatar {
     width: 24px;
     height: 24px;
@@ -1442,8 +1437,6 @@ margin-left: 6px;
     box-sizing: border-box;
     position: relative; /* REQUIRED for z-index to work */
 }
-
-/* Apply negative margin for the overlapping effect, targeting all avatars except the first */
 .headersearches-assignee-list .headersearsearches-assignee-avatar + .headersearches-assignee-avatar {
     
 }
@@ -1467,8 +1460,6 @@ margin-left: 6px;
     z-index: 2;
     margin-left: -12px;
 }
-
-/* Ensure the 'more_horiz' icon is always on top of all avatars */
 .headersearches-assignee-list .project-more-icon {
     position: relative; /* REQUIRED for z-index to work */
     z-index: 1; /* Higher than any avatar */
@@ -1482,14 +1473,9 @@ margin-left: 6px;
     padding: 2px;
     transition: background-color 0.2s ease;
 }
-
-/* Hover for the project-more-icon */
 .headersearches-assignee-list .project-more-icon:hover {
     background-color: var(--hover-bg-color);
 }
-
-
-/* Re-check or simplify .headersearches-assignee-list's gap if present */
 .headersearches-assignee-list {
     display: flex;
     align-items: center;
