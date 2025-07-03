@@ -1342,6 +1342,7 @@ margin-left: 6px;
     flex-direction: column;
 }
 .recent-title{
+  position: sticky;
   margin-top: 8px;
 }
 .headersearches-tasks-recent-title {
