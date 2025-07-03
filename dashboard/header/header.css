@@ -1535,7 +1535,7 @@ margin-left: 6px;
     /* background-color: rgba(255, 255, 255, 0.1); */ /* Subtle background for icon */
 }
 .enter-search-results-hint .search-icon-wrapper .fas.fa-search {
-    font-size: 18px; /* Adjust size as needed for Font Awesome */
+    font-size: 12px; /* Adjust size as needed for Font Awesome */
     color: var(--icon-color, #9aa0a6); /* Lighter gray for the icon */
     /* Ensure Font Awesome CSS is loaded for 'fas' and 'fa-search' to work */
 }
