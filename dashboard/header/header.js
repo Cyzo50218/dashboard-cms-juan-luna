@@ -82,27 +82,7 @@ const exampleRecentPeople = [
 }];
 
 const exampleRecentMessages = [
-  {
-    id: 'msg_001',
-    title: 'Project Alpha Weekly Sync Notes',
-    sender: { name: 'John Doe', initials: 'JD' },
-    date: '2025-06-28',
-    preview: 'Key decisions from the meeting: Resource allocation, deadline adjustments...'
-  },
-  {
-    id: 'msg_002',
-    title: 'Team Vacation Schedule - July',
-    sender: { name: 'Jane Smith', initials: 'JS' },
-    date: '2025-06-25',
-    preview: 'Please submit your vacation requests by end of week. Reminder about policy changes.'
-  },
-  {
-    id: 'msg_003',
-    title: 'Urgent: Server Maintenance Tonight',
-    sender: { name: 'Admin', initials: 'AD' },
-    date: '2025-07-02',
-    preview: 'Expected downtime 10 PM - 12 AM PST. Please save all your work.'
-  }
+  {}
 ];
 
 const exampleRecentProjects = [
@@ -461,7 +441,13 @@ function renderRecentItems(tasks, people, projects, messages, taskLimit = null, 
         `;
     recentContainerDiv.appendChild(itemDiv);
   });
-} 
+}else {
+  // Display a message if no recent messages
+  const noMessagesDiv = document.createElement('div');
+  noMessagesDiv.className = 'search-no-results'; // Reusing no results style
+  noMessagesDiv.innerHTML = `<p>No recent messages to display.</p>`;
+  recentContainerDiv.appendChild(noMessagesDiv);
+}
   } 
   
   
