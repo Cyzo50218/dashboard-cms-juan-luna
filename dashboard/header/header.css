@@ -1513,13 +1513,14 @@ margin-left: 6px;
 .enter-search-results-hint {
     display: flex;
     align-items: center;
-    gap: 10px; /* Space between icon and text */
-    padding: 12px 15px;
-    background-color: var(--search-background-color, #202124); /* Dark background like in the image */
+    gap: 6px; /* Space between icon and text */
+    padding-left: 18px;
+    padding-top: 8px;
+    width: 428px;
     color: var(--search-text-color, #e8eaed); /* Light text color */
     border-radius: 8px; /* Slightly rounded corners */
     font-family: 'Roboto', sans-serif; /* Or your preferred font */
-    font-size: 0.95em;
+    font-size: 11px;
     margin: 10px; /* Optional: Space around the hint */
 }
 .enter-search-results-hint .search-icon-wrapper {
