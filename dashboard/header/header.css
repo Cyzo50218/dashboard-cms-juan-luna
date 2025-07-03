@@ -590,6 +590,10 @@
   z-index: 1000;               
 }
 
+.scrollable-results{
+  height: 500px;
+}
+
 input.form-control {
     background-color: transparent !important;
     color: #FFFFFF;
