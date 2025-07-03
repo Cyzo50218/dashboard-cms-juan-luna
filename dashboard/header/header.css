@@ -1516,7 +1516,7 @@ margin-left: 6px;
     align-items: center;
     gap: 6px; /* Space between icon and text */
     padding-left: 4px;
-    padding-top: 8px;
+    margin-top: 8px;
     width: 408px;
     color: var(--search-text-color, #e8eaed); /* Light text color */
     border-radius: 8px; /* Slightly rounded corners */
