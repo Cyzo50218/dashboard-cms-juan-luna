@@ -1072,7 +1072,7 @@ onAuthStateChanged(auth, (user) => {
       savedSearchText.classList.remove("hidden");
       savedSearchContainer.classList.remove("hidden");
       
-      renderRecentItems(exampleRecentTasks, exampleRecentPeople, []);
+      renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], [], 4, false, false, false);
     } else {
       // --- Is NOT selected, now selecting "My Tasks" ---
       selectedOptionBtnIndex = 0;
@@ -1086,7 +1086,7 @@ onAuthStateChanged(auth, (user) => {
           b.classList.remove("selected");
         }
       });
-      renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], 4, true, false);
+      renderRecentItems(exampleRecentTasks, [], [], [], 4, true, false, false);
     }
     input.value = ''; // Clear input on option selection
 cancelIcon.classList.add('hidden'); // Hide cancel icon
@@ -1113,7 +1113,7 @@ mytaskdisplay.classList.add("hidden"); // Hide mytask display
       searchOptions.classList.remove("hidden");
       recentContainer.classList.remove("hidden");
       emailContainerId.classList.add('hidden');
-      renderRecentItems(exampleRecentTasks, exampleRecentPeople, []);
+      renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], [], 4, false, false, false);
     } else {
       selectedOptionBtnIndex = 1;
       btn.classList.add("selected");
@@ -1126,7 +1126,7 @@ mytaskdisplay.classList.add("hidden"); // Hide mytask display
           b.classList.remove("selected");
         }
       });
-      renderRecentItems([], [], exampleRecentProjects, null, true, false);
+      renderRecentItems([], [], exampleRecentProjects, [], 4, true, false, false);
     }
   input.value = ''; // Clear input on option selection
 cancelIcon.classList.add('hidden'); // Hide cancel icon
@@ -1164,7 +1164,7 @@ mytaskdisplay.classList.add("hidden"); // Hide mytask display
       b.classList.remove("hide"); // Ensure no option button is hidden
       b.classList.remove("selected");
     });
-    renderRecentItems(exampleRecentTasks,  exampleRecentPeople, [], null, false, false); // show general invite
+    renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], [], 4, false, false, false);
     
   } else {
     selectedOptionBtnIndex = 2;
@@ -1207,7 +1207,7 @@ mytaskdisplay.classList.add("hidden"); // Hide mytask display
       emailContainerPeopleId.classList.remove('hidden'); // Show invite button
     }
     */
-    renderRecentItems([], exampleRecentPeople, [], null, false, true); // show general invite
+    renderRecentItems([], exampleRecentPeople, [], [], 4, false, true, false); // show general invite
     
   }
 input.value = ''; // Clear input on option selection
@@ -1235,8 +1235,7 @@ projectdisplay.classList.add("hidden"); // Hide project display
       searchOptions.classList.remove("hidden");
       recentContainer.classList.remove("hidden");
       emailContainerId.classList.add('hidden');
-      renderRecentItems(exampleRecentTasks,  exampleRecentPeople, [], null, false, false); // show general invite
-    
+      renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], [], 4, false, false, false);
     } else {
       selectedOptionBtnIndex = 3;
       btn.classList.add("selected");
@@ -1251,7 +1250,7 @@ projectdisplay.classList.add("hidden"); // Hide project display
           b.classList.remove("selected");
         }
       });
-      renderRecentItems([], [], [], exampleRecentMessages, null, false, false, true); 
+      renderRecentItems([], [], [], exampleRecentMessages, 4, true, false, true); 
     }
   input.value = ''; // Clear input on option selection
 cancelIcon.classList.add('hidden'); // Hide cancel icon
@@ -1427,20 +1426,20 @@ peopleEmptyState.classList.add("hidden"); // Hide people empty state
       mytaskdisplay.classList.add("hidden");
       messagesEmptyState.classList.add("hidden");
       peopleEmptyState.classList.add("hidden");
-      renderRecentItems([], [], exampleRecentProjects, [], null, true, false, false); // Updated call
+      renderRecentItems([], [], exampleRecentProjects, [], 4, true, false, false); // Updated call
     } else if (selectedOptionBtnIndex === 2) { // People
       peopleEmptyState.classList.remove("hidden");
       emailContainerPeopleId.classList.remove('hidden');
       mytaskdisplay.classList.add("hidden");
       projectdisplay.classList.add("hidden");
       messagesEmptyState.classList.add("hidden");
-      renderRecentItems([], exampleRecentPeople, [], [], null, false, true, false); // Updated call
+      renderRecentItems([], exampleRecentPeople, [], [], 4, false, true, false); // Updated call
     } else if (selectedOptionBtnIndex === 3) { // NEW: Messages
       messagesEmptyState.classList.remove("hidden");
       mytaskdisplay.classList.add("hidden");
       projectdisplay.classList.add("hidden");
       peopleEmptyState.classList.add("hidden");
-      renderRecentItems([], [], [], exampleRecentMessages, null, false, false, true); // NEW: Show recent messages
+      renderRecentItems([], [], [], exampleRecentMessages, 4, true, false, true); // NEW: Show recent messages
     } else {
       // No specific category selected, show general recents and initial state
       recentContainer.classList.remove("hidden");
@@ -1448,7 +1447,7 @@ peopleEmptyState.classList.add("hidden"); // Hide people empty state
       projectdisplay.classList.add("hidden");
       messagesEmptyState.classList.add("hidden");
       peopleEmptyState.classList.add("hidden");
-      renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], [], true, true, false); // Default view
+      renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], [], 4, false, false, false); // Default view
     }
     
     emailContainerId.classList.add('hidden'); // Ensure general email invite is hidden
@@ -1477,17 +1476,17 @@ peopleEmptyState.classList.add("hidden"); // Hide people empty state
     renderRecentItems(exampleRecentTasks, [], [], [], 4, true, false, false);
   } else if (selectedOptionBtnIndex === 1) { // Projects
     projectdisplay.classList.remove("hidden");
-    renderRecentItems([], [], exampleRecentProjects, [], null, true, false, false);
+    renderRecentItems([], [], exampleRecentProjects, [], 4, true, false, false);
   } else if (selectedOptionBtnIndex === 2) { // People
     peopleEmptyState.classList.remove("hidden");
     emailContainerPeopleId.classList.remove('hidden');
-    renderRecentItems([], exampleRecentPeople, [], [], null, false, true, false); 
+    renderRecentItems([], exampleRecentPeople, [], [], 4, false, true, false); 
   } else if (selectedOptionBtnIndex === 3) { // NEW: Messages
     messagesEmptyState.classList.remove("hidden");
-    renderRecentItems([], [], [], exampleRecentMessages, null, false, false, true);
+    renderRecentItems([], [], [], exampleRecentMessages, 4, true, false, true);
   } else {
     // No specific category selected, show general recents
-    renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], [], true, true, false); // Default view
+    renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], [],4, false, false, false); // Default view
   }
   input.focus();
 });
