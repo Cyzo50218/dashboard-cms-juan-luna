@@ -512,69 +512,61 @@ function attachRealtimeListeners(userId) {
                         renderBoard();
                     });
                     
+                    // ... (previous code) ...
+
                     const tasksQuery = query(collectionGroup(db, 'tasks'), where('projectId', '==', project.projectId));
                     activeListeners.tasks = onSnapshot(tasksQuery, (snapshot) => {
                         allTasksFromSnapshot = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
                         distributeTasksToSections(allTasksFromSnapshot);
                         if (!isMovingTask) renderBoard();
                     });
-                    
+
+                    // --- CORRECTED MESSAGES QUERY AND PROCESSING ---
+                    // The collectionGroup(db, 'Messages') is generally correct for querying
+                    // messages across all task chats. The key is to filter by projectId
+                    // and then correctly extract the taskId and oldest image.
                     const messagesQuery = query(
-    collection(db, 'globalTaskChats', currentTask.id, 'Messages'), // Corrected path
-    where('imageUrl', '!=', null)
-);
-activeListeners.messages = onSnapshot(messagesQuery, (snapshot) => {
-    const newImageMap = {};
-    snapshot.forEach(doc => {
-        const data = doc.data();
-        // The path parsing logic below is no longer strictly needed for filtering
-        // by project and task, as the query now targets the specific task's messages.
-        // However, if you still need to extract taskId or other info from the path,
-        // you can keep it. For this specific fix, it's not directly relevant.
-        
-        // Original path parsing logic (can be simplified or removed if not needed for other purposes)
-        const pathSegments = doc.ref.path.split('/');
-        const projectsIndex = pathSegments.indexOf('globalTaskChats');
-        
-        if (projectsIndex === -1 || pathSegments.length <= projectsIndex + 1) return;
-        
-        const messageProjectId = pathSegments[projectsIndex + 1];
-        
-        if (messageProjectId === project.projectId) { // This check might be redundant if currentTask.id is derived from project.projectId
-            const tasksIndex = pathSegments.indexOf('tasks'); // This part of the path is not in the new query structure
-            if (tasksIndex > -1 && pathSegments.length > tasksIndex + 1) {
-                const taskId = pathSegments[tasksIndex + 1]; // This taskId will be currentTask.id
-                if (taskId && data.imageUrl && data.timestamp) {
-                    const existing = newImageMap[taskId];
-                    if (!existing || data.timestamp.toMillis() < existing.timestamp.toMillis()) {
-                        newImageMap[taskId] = {
-                            imageUrl: data.imageUrl,
-                            timestamp: data.timestamp
-                        };
-                    }
-                }
-            } else { // Simplified logic for the new query path
-                // If you only care about the currentTask.id, you can directly use it
-                // and simplify the extraction of taskId.
-                // Assuming currentTask.id is indeed the taskId for these messages.
-                const taskId = currentTask.id; // Directly use currentTask.id
-                if (data.imageUrl && data.timestamp) {
-                    const existing = newImageMap[taskId];
-                    if (!existing || data.timestamp.toMillis() < existing.timestamp.toMillis()) {
-                        newImageMap[taskId] = {
-                            imageUrl: data.imageUrl,
-                            timestamp: data.timestamp
-                        };
-                    }
-                }
-            }
-        }
-    });
-    taskImageMap = Object.fromEntries(
-        Object.entries(newImageMap).map(([key, value]) => [key, value.imageUrl])
-    );
-    renderBoard();
-});
+                        collectionGroup(db, 'Messages'),
+                        where('imageUrl', '!=', null)
+                    );
+
+                    activeListeners.messages = onSnapshot(messagesQuery, (snapshot) => {
+                        const newImageMap = {};
+                        snapshot.forEach(doc => {
+                            const data = doc.data();
+                            const pathSegments = doc.ref.path.split('/');
+                            // Find the index of 'globalTaskChats' in the path
+                            const globalTaskChatsIndex = pathSegments.indexOf('globalTaskChats');
+
+                            // Ensure 'globalTaskChats' is in the path and there's a segment after it (the taskId)
+                            if (globalTaskChatsIndex === -1 || pathSegments.length <= globalTaskChatsIndex + 1) {
+                                return; // Not a message within a globalTaskChat, or malformed path
+                            }
+
+                            // The segment *after* 'globalTaskChats' should be the taskId
+                            const taskIdFromPath = pathSegments[globalTaskChatsIndex + 1];
+
+                            // Now, we need to verify this taskId belongs to a task within the current project.
+                            // You already have allTasksFromSnapshot. Find if this taskId exists in your current project.
+                            const taskBelongsToCurrentProject = allTasksFromSnapshot.some(task => task.id === taskIdFromPath);
+
+                            // Only process if the task belongs to the current project and has image/timestamp data
+                            if (taskBelongsToCurrentProject && data.imageUrl && data.timestamp) {
+                                const existing = newImageMap[taskIdFromPath];
+                                // Keep the image with the *oldest* timestamp for each taskId
+                                if (!existing || data.timestamp.toMillis() < existing.timestamp.toMillis()) {
+                                    newImageMap[taskIdFromPath] = {
+                                        imageUrl: data.imageUrl,
+                                        timestamp: data.timestamp
+                                    };
+                                }
+                            }
+                        });
+                        taskImageMap = Object.fromEntries(
+                            Object.entries(newImageMap).map(([key, value]) => [key, value.imageUrl])
+                        );
+                        renderBoard();
+                    });
                 });
             } catch (error) {
                 console.error("Error attaching listeners:", error);
