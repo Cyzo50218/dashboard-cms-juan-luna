@@ -1498,3 +1498,19 @@ margin-left: 6px;
 .project-more-icon:hover {
     background-color: var(--hover-bg-color); /* Subtle background on hover */
 }
+.search-results-section-heading {
+    font-size: 0.85em;
+    font-weight: 600;
+    color: #5f6368; /* A darker gray for headings */
+    margin-top: 15px;
+    margin-bottom: 5px;
+    padding-left: 10px; /* Align with search items */
+}
+.search-no-results {
+    text-align: center;
+    padding: 20px;
+    color: #777;
+}
+.search-no-results p {
+    margin-bottom: 5px;
+}

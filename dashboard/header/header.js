@@ -334,40 +334,39 @@ function renderRecentItems(tasks, people, projects, taskLimit = null, hidePeople
     return;
   }
   
-  recentContainerDiv.innerHTML = ''; 
-if (projects && projects.length > 0) {
-  projects.forEach(project => {
-    const itemDiv = document.createElement('div');
-    itemDiv.className = 'headersearches-tasks-recent-item'; // Reusing common item styling
-    itemDiv.dataset.itemId = project.id;
-        let assigneesToDisplay = project.assignees.slice(0, 2); // Show up to 3 assignees
-    let remainingAssigneesCount = project.assignees.length - assigneesToDisplay.length;
-    
-    const assigneesHtml = assigneesToDisplay.map(assignee => `
-                <div class="headersearches-assignee-avatar" ${assignee.avatarUrl ? `style="background-image: url(${assignee.avatarUrl});"` : ''}>
-                    ${!assignee.avatarUrl ? assignee.initials : ''}
-                </div>
-            `).join('');
-    const moreAssigneesHtml = remainingAssigneesCount > 0 ?
-      `<span class="material-icons-outlined project-more-icon">more_horiz</span>` : '';
-
-    
-    itemDiv.innerHTML = `
-                <span class="headersearches-project-square-icon" style="background-color: ${project.color};"></span>
-                <div class="headersearches-tasks-recent-content">
-                    <div class="headersearches-tasks-recent-title">${project.name}</div>
-                </div>
-                <div class="headersearches-assignee-list">
-                    ${assigneesHtml}
-                    ${moreAssigneesHtml} <!-- Insert the "more" icon if applicable -->
-                </div>
-            `;
-    recentContainerDiv.appendChild(itemDiv);
-  });
-  } else { 
+  recentContainerDiv.innerHTML = '';
+  if (projects && projects.length > 0) {
+    projects.forEach(project => {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'headersearches-tasks-recent-item'; // Reusing common item styling
+      itemDiv.dataset.itemId = project.id;
+      let assigneesToDisplay = project.assignees.slice(0, 2); // Show up to 3 assignees
+      let remainingAssigneesCount = project.assignees.length - assigneesToDisplay.length;
+      
+      const assigneesHtml = assigneesToDisplay.map(assignee => `
+                        <div class="headersearches-assignee-avatar" ${assignee.avatarUrl ? `style="background-image: url(${assignee.avatarUrl});"` : ''}>
+                            ${!assignee.avatarUrl ? assignee.initials : ''}
+                        </div>
+                    `).join('');
+      const moreAssigneesHtml = remainingAssigneesCount > 0 ?
+        `<span class="material-icons-outlined project-more-icon">more_horiz</span>` : '';
+      
+      
+      itemDiv.innerHTML = `
+                        <span class="headersearches-project-square-icon" style="background-color: ${project.color};"></span>
+                        <div class="headersearches-tasks-recent-content">
+                            <div class="headersearches-tasks-recent-title">${project.name}</div>
+                        </div>
+                        <div class="headersearches-assignee-list">
+                            ${assigneesHtml}
+                            ${moreAssigneesHtml} </div>
+                    `;
+      recentContainerDiv.appendChild(itemDiv);
+    });
+  } else {
     
     const tasksToRender = taskLimit ? tasks.slice(0, taskLimit) : tasks;
-  
+    
     tasksToRender.forEach(item => {
       const itemDiv = document.createElement('div');
       itemDiv.className = 'headersearches-tasks-recent-item';
@@ -376,24 +375,24 @@ if (projects && projects.length > 0) {
       const statusIcon = item.name.includes("Alert") ? 'error_outline' : 'check_circle';
       
       const assigneesHtml = item.assignees.map(assignee => `
-                <div class="headersearches-assignee-avatar" ${assignee.avatarUrl ? `style="background-image: url(${assignee.avatarUrl});"` : ''}>
-                    ${!assignee.avatarUrl ? assignee.initials : ''}
-                </div>
-            `).join('');
+                        <div class="headersearches-assignee-avatar" ${assignee.avatarUrl ? `style="background-image: url(${assignee.avatarUrl});"` : ''}>
+                            ${!assignee.avatarUrl ? assignee.initials : ''}
+                        </div>
+                    `).join('');
       
       itemDiv.innerHTML = `
-                <span class="material-icons-outlined headersearches-tasks-recent-status-icon">${statusIcon}</span>
-                <div class="headersearches-tasks-recent-content">
-                    <div class="headersearches-tasks-recent-title">${item.name}</div>
-                    <div class="headersearches-tasks-recent-meta">
-                        <span class="headersearches-tasks-project-dot" style="background-color: ${item.project.color};"></span>
-                        <span class="headersearches-tasks-project-name">${item.project.name}</span>
-                    </div>
-                </div>
-                <div class="headersearches-assignee-list">
-                    ${assigneesHtml}
-                </div>
-            `;
+                        <span class="material-icons-outlined headersearches-tasks-recent-status-icon">${statusIcon}</span>
+                        <div class="headersearches-tasks-recent-content">
+                            <div class="headersearches-tasks-recent-title">${item.name}</div>
+                            <div class="headersearches-tasks-recent-meta">
+                                <span class="headersearches-tasks-project-dot" style="background-color: ${item.project.color};"></span>
+                                <span class="headersearches-tasks-project-name">${item.project.name}</span>
+                            </div>
+                        </div>
+                        <div class="headersearches-assignee-list">
+                            ${assigneesHtml}
+                        </div>
+                    `;
       recentContainerDiv.appendChild(itemDiv);
     });
     
@@ -404,24 +403,154 @@ if (projects && projects.length > 0) {
         personDiv.dataset.itemId = person.id;
         
         personDiv.innerHTML = `
-                    <span class="material-icons-outlined headersearches-tasks-recent-status-icon">person</span>
-                    <div class="headersearches-tasks-recent-content">
-                        <div class="headersearches-tasks-recent-title">${person.name}</div>
-                        <div class="headersearches-tasks-recent-meta">${person.email}</div>
-                    </div>
-                    <div class="headersearches-assignee-list">
-                        <div class="headersearches-assignee-avatar">${person.initials}</div>
-                        <span class="material-icons-outlined headersearches-globe-icon">public</span>
-                    </div>
-                `;
+                            <span class="material-icons-outlined headersearches-tasks-recent-status-icon">person</span>
+                            <div class="headersearches-tasks-recent-content">
+                                <div class="headersearches-tasks-recent-title">${person.name}</div>
+                                <div class="headersearches-tasks-recent-meta">${person.email}</div>
+                            </div>
+                            <div class="headersearches-assignee-list">
+                                <div class="headersearches-assignee-avatar">${person.initials}</div>
+                                <span class="material-icons-outlined headersearches-globe-icon">public</span>
+                            </div>
+                        `;
         recentContainerDiv.appendChild(personDiv);
       });
     }
-  } 
+  }
   
   if (showInviteButton) {
     recentContainerDiv.appendChild(createRecentsInviteEmailButton());
   }
+}
+
+function displaySearchResults(tasks, projects, people) {
+  const halfQueryDiv = document.getElementById('half-query');
+  if (!halfQueryDiv) {
+    console.error("half-query div not found for displaying search results!");
+    return;
+  }
+  
+  // Clear previous content
+  halfQueryDiv.innerHTML = '';
+  halfQueryDiv.classList.remove("skeleton-active"); // Ensure skeleton is off
+  
+  const fragment = document.createDocumentFragment();
+  
+  // Helper to create a section heading
+  const createSectionHeading = (title) => {
+    const heading = document.createElement('h5');
+    heading.className = 'search-results-section-heading'; // Add a class for styling
+    heading.textContent = title;
+    return heading;
+  };
+  
+  // 1. Render Projects
+  if (projects && projects.length > 0) {
+    fragment.appendChild(createSectionHeading('Projects'));
+    projects.forEach(project => {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'headersearches-tasks-recent-item search-result-item';
+      itemDiv.dataset.itemId = project.id;
+      
+      let assigneesToDisplay = project.assignees.slice(0, 2);
+      let remainingAssigneesCount = project.assignees.length - assigneesToDisplay.length;
+      
+      const assigneesHtml = assigneesToDisplay.map(assignee => `
+                <div class="headersearches-assignee-avatar" ${assignee.avatarUrl ? `style="background-image: url(${assignee.avatarUrl});"` : ''}>
+                    ${!assignee.avatarUrl ? assignee.initials : ''}
+                </div>
+            `).join('');
+      const moreAssigneesHtml = remainingAssigneesCount > 0 ?
+        `<span class="material-icons-outlined project-more-icon">more_horiz</span>` : '';
+      
+      itemDiv.innerHTML = `
+                <span class="headersearches-project-square-icon" style="background-color: ${project.color};"></span>
+                <div class="headersearches-tasks-recent-content">
+                    <div class="headersearches-tasks-recent-title">${project.name}</div>
+                    <div class="headersearches-tasks-recent-meta">Project</div> </div>
+                <div class="headersearches-assignee-list">
+                    ${assigneesHtml}
+                    ${moreAssigneesHtml}
+                </div>
+            `;
+      fragment.appendChild(itemDiv);
+    });
+  }
+  
+  // 2. Render Tasks
+  if (tasks && tasks.length > 0) {
+    fragment.appendChild(createSectionHeading('Tasks'));
+    tasks.forEach(task => {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'headersearches-tasks-recent-item search-result-item';
+      itemDiv.dataset.itemId = task.id;
+      
+      const statusIcon = task.name.includes("Alert") ? 'error_outline' : 'check_circle';
+      const assigneesHtml = task.assignees.map(assignee => `
+                <div class="headersearches-assignee-avatar" ${assignee.avatarUrl ? `style="background-image: url(${assignee.avatarUrl});"` : ''}>
+                    ${!assignee.avatarUrl ? assignee.initials : ''}
+                </div>
+            `).join('');
+      
+      itemDiv.innerHTML = `
+                <span class="material-icons-outlined headersearches-tasks-recent-status-icon">${statusIcon}</span>
+                <div class="headersearches-tasks-recent-content">
+                    <div class="headersearches-tasks-recent-title">${task.name}</div>
+                    <div class="headersearches-tasks-recent-meta">
+                        <span class="headersearches-tasks-project-dot" style="background-color: ${task.project.color};"></span>
+                        <span class="headersearches-tasks-project-name">${task.project.name}</span>
+                    </div>
+                </div>
+                <div class="headersearches-assignee-list">
+                    ${assigneesHtml}
+                </div>
+            `;
+      fragment.appendChild(itemDiv);
+    });
+  }
+  
+  // 3. Render People
+  if (people && people.length > 0) {
+    fragment.appendChild(createSectionHeading('People'));
+    people.forEach(person => {
+      const personDiv = document.createElement('div');
+      personDiv.className = 'headersearches-tasks-recent-item search-result-item';
+      personDiv.dataset.itemId = person.id;
+      
+      const roleOrEmailHtml = person.workspaceRole ?
+        `<div class="headersearches-person-roles">${person.workspaceRole.charAt(0).toUpperCase() + person.workspaceRole.slice(1)}</div>` :
+        `<div class="headersearches-person-email">${person.email}</div>`;
+      
+      personDiv.innerHTML = `
+                <span class="material-icons-outlined headersearches-tasks-recent-status-icon">person</span>
+                <div class="headersearches-tasks-recent-content">
+                    <div class="headersearches-tasks-recent-title">${person.displayName || person.name}</div>
+                    <div class="headersearches-tasks-recent-meta">${roleOrEmailHtml}</div>
+                </div>
+                <div class="headersearches-assignee-list">
+                    <div class="headersearches-assignee-avatar" ${person.avatarUrl ? `style="background-image: url(${person.avatarUrl});"` : ''}>
+                        ${!person.avatarUrl ? person.initials : ''}
+                    </div>
+                    <span class="material-icons-outlined headersearches-globe-icon">public</span>
+                </div>
+            `;
+      fragment.appendChild(personDiv);
+    });
+  }
+  
+  // If no results, display a message
+  if (tasks.length === 0 && projects.length === 0 && people.length === 0) {
+    const noResultsDiv = document.createElement('div');
+    noResultsDiv.className = 'search-no-results';
+    noResultsDiv.innerHTML = `
+      <p>No results found for your search.</p>
+      <p>Try adjusting your keywords or filters.</p>
+    `;
+    fragment.appendChild(noResultsDiv);
+  }
+  
+  halfQueryDiv.appendChild(fragment);
+  halfQueryDiv.classList.remove('hidden'); // Ensure the container is visible
 }
 
 async function getProcessedWorkspacePeopleData() {
@@ -1076,83 +1205,140 @@ onAuthStateChanged(auth, (user) => {
   
   
   input.addEventListener('input', () => {
+  
+  if (input.value.trim() !== '') {
+    cancelIcon.classList.remove('hidden');
+    savedContainer.classList.add("hidden");
+    recentContainer.classList.add("hidden");
+    halfQuery.classList.remove("hidden");
+    // skeleton loader
+    halfQuery.classList.add("skeleton-active");
     
-    if (input.value.trim() !== '') {
-      cancelIcon.classList.remove('hidden');
-      savedContainer.classList.add("hidden");
-      recentContainer.classList.add("hidden");
-      halfQuery.classList.remove("hidden");
-      // skeleton loader
-      halfQuery.classList.add("skeleton-active");
-      
-      
-      emailContainerPeopleId.classList.add('hidden');
-      
-      document.getElementById('email-container-id').classList.add('hidden');
-      
-      
-      peopleEmptyState.classList.add("hidden");
-      messagesEmptyState.classList.add("hidden");
-      halfQuery.innerHTML = `
+    
+    emailContainerPeopleId.classList.add('hidden');
+    
+    document.getElementById('email-container-id').classList.add('hidden');
+    
+    
+    peopleEmptyState.classList.add("hidden");
+    messagesEmptyState.classList.add("hidden");
+    halfQuery.innerHTML = `
       <div class="skeleton-loader" style="width: 200px;"></div>
       <div class="skeleton-loader" style="width: 500px;"></div>
       <div class="skeleton-loader" style="width: 400px;"></div>
     `;
+    
+    setTimeout(() => {
+      halfQuery.classList.remove("skeleton-active");
+      const value = input.value.trim();
+      // Here, you would typically perform your actual search based on `value`
+      // For demonstration, let's use your mock data to simulate search results
+      let filteredTasks = [];
+      let filteredProjects = [];
+      let filteredPeople = [];
       
-      
-      setTimeout(() => {
-        halfQuery.classList.remove("skeleton-active");
-        const value = input.value.trim();
-        if (value.startsWith('with:') || value.startsWith('assignee:')) {
-          searchOptions.classList.add("hidden");
-          halfQuery.classList.remove("hidden");
-          optionsQuery.classList.remove("hidden");
-          document.getElementById('email-container-id').classList.add('hidden');
-          emailContainerId.classList.remove('hidden');
-        } else if (value.startsWith('in:')) {
-          recentContainer.classList.add("hidden");
-          searchOptions.classList.add("hidden");
-        } else {
-          searchOptions.classList.remove("hidden");
-          halfQuery.classList.add("hidden");
-          optionsQuery.classList.add("hidden");
-          document.getElementById('email-container-id').classList.add('hidden');
-          
-        }
+      // Simple filtering logic (replace with your actual search implementation)
+      if (value.length > 2) { // Only search if input is long enough
+        const lowerCaseValue = value.toLowerCase();
         
-        halfQuery.innerHTML = '';
-      }, 1000);
-      
-    } else {
-      recentContainer.classList.add("hidden");
-      
-      if (selected) {
-        messagesEmptyState.classList.remove("hidden");
-        recentContainer.classList.add("hidden");
-        halfQuery.classList.remove("skeleton-active");
-        console.log('1 not selected');
-      } else if (selectedPeople) {
-        peopleEmptyState.classList.remove("hidden");
-        halfQuery.classList.remove("skeleton-active");
-        emailContainerPeopleId.classList.remove('hidden');
-        savedContainer.classList.add("hidden");
-        console.log('2 not selected');
-      } else {
-        console.log('both not selected');
-        halfQuery.classList.add("hidden");
-        optionsQuery.classList.add("hidden");
-        recentContainer.classList.remove("hidden");
+        // Filter tasks
+        filteredTasks = exampleRecentTasks.filter(task =>
+          task.name.toLowerCase().includes(lowerCaseValue) ||
+          task.project.name.toLowerCase().includes(lowerCaseValue)
+        );
+        
+        // Filter projects
+        filteredProjects = exampleRecentProjects.filter(project =>
+          project.name.toLowerCase().includes(lowerCaseValue)
+        );
+        
+        // Filter people (using mockUsersCollection for searching by name/email)
+        filteredPeople = mockUsersCollection.filter(person =>
+          person.displayName.toLowerCase().includes(lowerCaseValue) ||
+          person.email.toLowerCase().includes(lowerCaseValue)
+        );
       }
       
-      cancelIcon.classList.add('hidden');
-      savedContainer.classList.remove("hidden");
+      if (value.startsWith('with:') || value.startsWith('assignee:')) {
+        searchOptions.classList.add("hidden");
+        halfQuery.classList.remove("hidden");
+        optionsQuery.classList.remove("hidden");
+        document.getElementById('email-container-id').classList.add('hidden');
+        emailContainerId.classList.remove('hidden');
+        // For 'with:' or 'assignee:', you might want to specifically display people
+        displaySearchResults([], [], filteredPeople); // Display only filtered people for these queries
+      } else if (value.startsWith('in:')) {
+        recentContainer.classList.add("hidden");
+        searchOptions.classList.add("hidden");
+        // For 'in:', you might want to specifically display projects or tasks within projects
+        displaySearchResults(filteredTasks, filteredProjects, []); // Display tasks and projects for 'in:'
+      } else {
+        // General search: display all types of results
+        searchOptions.classList.remove("hidden");
+        halfQuery.classList.remove("hidden"); // Keep halfQuery visible to show results
+        optionsQuery.classList.add("hidden");
+        document.getElementById('email-container-id').classList.add('hidden');
+        displaySearchResults(filteredTasks, filteredProjects, filteredPeople);
+      }
       
-      searchOptions.classList.remove("hidden");
-      emailContainerId.classList.add('hidden');
-      halfQuery.innerHTML = ''; // Clear results
+      // If after filtering, no results are found, show the appropriate empty state
+      if (filteredTasks.length === 0 && filteredProjects.length === 0 && filteredPeople.length === 0 && value.trim() !== '') {
+        // This ensures if a search was performed and yielded nothing, a "no results" message is shown.
+        // The displaySearchResults function already handles this if all arrays are empty.
+      } else if (value.trim() === '') {
+        // If input is empty, revert to the default state (recents, saved, etc.)
+        if (selected) {
+          messagesEmptyState.classList.remove("hidden");
+          recentContainer.classList.add("hidden");
+          halfQuery.classList.remove("skeleton-active");
+        } else if (selectedPeople) {
+          peopleEmptyState.classList.remove("hidden");
+          halfQuery.classList.remove("skeleton-active");
+          emailContainerPeopleId.classList.remove('hidden');
+          savedContainer.classList.add("hidden");
+        } else {
+          halfQuery.classList.add("hidden");
+          optionsQuery.classList.add("hidden");
+          recentContainer.classList.remove("hidden");
+        }
+        cancelIcon.classList.add('hidden');
+        savedContainer.classList.remove("hidden");
+        searchOptions.classList.remove("hidden");
+        emailContainerId.classList.add('hidden');
+        halfQuery.innerHTML = '';
+      }
+      
+    }, 1000); // Simulate network delay
+  } else {
+    recentContainer.classList.add("hidden");
+    
+    if (selected) {
+      messagesEmptyState.classList.remove("hidden");
+      recentContainer.classList.add("hidden");
+      halfQuery.classList.remove("skeleton-active");
+      console.log('1 not selected');
+    } else if (selectedPeople) {
+      peopleEmptyState.classList.remove("hidden");
+      halfQuery.classList.remove("skeleton-active");
+      emailContainerPeopleId.classList.remove('hidden');
+      savedContainer.classList.add("hidden");
+      console.log('2 not selected');
+    } else {
+      console.log('both not selected');
+      halfQuery.classList.add("hidden");
+      optionsQuery.classList.add("hidden");
+      recentContainer.classList.remove("hidden");
     }
     
-  });
+    cancelIcon.classList.add('hidden');
+    savedContainer.classList.remove("hidden");
+    
+    searchOptions.classList.remove("hidden");
+    emailContainerId.classList.add('hidden');
+    halfQuery.innerHTML = ''; // Clear results
+  }
+  
+});
   
   document.querySelector('.clear-text').addEventListener('click', function() {
     inputFilter.value = '';
@@ -1160,14 +1346,16 @@ onAuthStateChanged(auth, (user) => {
   });
   
   cancelIcon.addEventListener('click', () => {
-    input.value = '';
-    cancelIcon.classList.add('hidden');
-    savedContainer.classList.remove("hidden");
-    searchOptions.classList.remove("hidden");
-    recentContainer.classList.remove("hidden");
-    emailContainerId.classList.add('hidden');
-    input.focus();
-  });
+  input.value = '';
+  cancelIcon.classList.add('hidden');
+  savedContainer.classList.remove("hidden");
+  searchOptions.classList.remove("hidden");
+  recentContainer.classList.remove("hidden");
+  emailContainerId.classList.add('hidden');
+  halfQuery.classList.add("hidden"); // Hide halfQuery when cleared
+  optionsQuery.classList.add("hidden"); // Hide optionsQuery when cleared
+  input.focus();
+});
   
   emailContainer.forEach(el => {
     el.addEventListener('click', () => {
