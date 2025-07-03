@@ -1128,7 +1128,6 @@ cancelIcon.classList.add('hidden'); // Hide cancel icon
 searchOptions.classList.remove("hidden"); // Always show filter buttons
 emailContainerId.classList.add('hidden'); // Hide specific email invite
 emailContainerPeopleId.classList.add('hidden'); // Hide people email invite
-messagesEmptyState.classList.add("hidden"); // Hide messages empty state
 peopleEmptyState.classList.add("hidden"); // Hide people empty state
 mytaskdisplay.classList.add("hidden"); // Hide mytask display
 });
