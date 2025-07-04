@@ -362,8 +362,6 @@ function renderAllPeople(people, peopleQueryDiv, peopleEmptyState, emailContaine
   }
 }
 
-
-
 export function fetchRecentTasksFromFirestore(
     renderFn,
     peopleData,
@@ -501,82 +499,6 @@ export function loadProjectRecentHistory(
     });
 
     return recentProjectsUnsubscribe;
-}
-
-export function fetchRecentTasksFromFirestore(
-    renderRecentItems, // The renderRecentItems function itself
-    peopleData,
-    projectsData,
-    messagesData,
-    taskLimit = null,
-    hidePeopleContent = false,
-    showInviteButton = false,
-    showRecentMessages = false
-) {
-  if (!currentUserId) {
-    console.warn("No user ID provided to fetch recent tasks.");
-    return null;
-  }
-
-  // If there's an existing listener, unsubscribe from it first
-  if (recentTasksUnsubscribe) {
-    recentTasksUnsubscribe();
-    console.log("Unsubscribed from previous recent tasks listener.");
-  }
-
-  const recentHistoryRef = collection(db, `users/${currentUserId}/recenthistory`);
-  const q = query(recentHistoryRef, orderBy('lastAccessed', 'desc'), limit(10));
-
-  recentTasksUnsubscribe = onSnapshot(q, (querySnapshot) => {
-    const recentTasks = [];
-    querySnapshot.forEach((docSnap) => {
-      const taskData = docSnap.data();
-      const processedTask = {
-        id: docSnap.id,
-        name: taskData.name || 'Untitled Task',
-        status: taskData.status || 'unknown',
-        assignees: [],
-        project: {
-          name: taskData.projectName || 'Unknown Project',
-          color: taskData.projectColor || '#cccccc'
-        }
-      };
-
-      if (taskData.assignees && Array.isArray(taskData.assignees)) {
-        for (const assignee of taskData.assignees) {
-          processedTask.assignees.push({
-            uid: assignee.uid || '',
-            name: assignee.name || 'Unknown User',
-            avatarUrl: assignee.avatarUrl || null,
-            initials: (assignee.name || assignee.uid || '').substring(0, 2).toUpperCase()
-          });
-        }
-      }
-      recentTasks.push(processedTask);
-    });
-
-    console.log("Real-time update: Fetched recent tasks from Firestore:", recentTasks);
-
-    renderRecentItems(
-        recentTasks,
-        peopleData,
-        projectsData,
-        messagesData,
-        taskLimit,
-        hidePeopleContent,
-        showInviteButton,
-        showRecentMessages
-    );
-  }, (error) => {
-    console.error("Error fetching real-time recent tasks:", error);
-    // You might want to render an error message to the user here
-    const recentContainerDiv = document.querySelector("#recent-container > div");
-    if (recentContainerDiv) {
-        recentContainerDiv.innerHTML = `<div class="search-no-results"><p>Error loading recent tasks: ${error.message}</p></div>`;
-    }
-  });
-
-  return recentTasksUnsubscribe; // Return the unsubscribe function
 }
 
 function renderRecentItems(tasks, people, projects, messages, taskLimit = null, hidePeopleContent = false, showInviteButton = false, showRecentMessages = false) { // Added showRecentMessages parameter
