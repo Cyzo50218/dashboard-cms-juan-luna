@@ -1203,7 +1203,7 @@ onAuthStateChanged(auth, (user) => {
     }
   });
   
-  optionBtns[0].addEventListener("click", () => {
+  optionBtns[0].addEventListener("click", async () => {
     const btn = optionBtns[0];
     const isSelected = btn.classList.contains("selected");
     const recentTasksData = await fetchRecentTasksFromFirestore(currentUserId);
@@ -1243,7 +1243,7 @@ onAuthStateChanged(auth, (user) => {
     mytaskdisplay.classList.add("hidden"); // Hide mytask display
   });
   
-  optionBtns[1].addEventListener("click", () => {
+  optionBtns[1].addEventListener("click", async () => {
     const btn = optionBtns[1];
     const isSelected = btn.classList.contains("selected");
     const recentTasksData = await fetchRecentTasksFromFirestore(currentUserId);
@@ -1365,7 +1365,7 @@ onAuthStateChanged(auth, (user) => {
     projectdisplay.classList.add("hidden"); // Hide project display
   });
   
-  optionBtns[3].addEventListener("click", () => {
+  optionBtns[3].addEventListener("click", async () => {
     const btn = optionBtns[3];
     const isSelected = btn.classList.contains("selected");
     // halfQuery.classList.remove("skeleton-active");
@@ -1481,7 +1481,7 @@ onAuthStateChanged(auth, (user) => {
     }
   });
   
-  input.addEventListener('input', () => {
+  input.addEventListener('input', async () => {
     const value = input.value.trim();
     const recentTasksData = await fetchRecentTasksFromFirestore(currentUserId);
     
@@ -1613,7 +1613,7 @@ onAuthStateChanged(auth, (user) => {
     document.querySelector('.search-input-filter').focus(); // Optional: refocus the input
   });
   
-  cancelIcon.addEventListener('click', () => {
+  cancelIcon.addEventListener('click', async () => {
     input.value = '';
     const recentTasksData = await fetchRecentTasksFromFirestore(currentUserId);
     
