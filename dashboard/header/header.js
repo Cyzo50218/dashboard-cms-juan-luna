@@ -399,6 +399,7 @@ function renderRecentItems(tasks, people, projects, messages, taskLimit = null, 
       itemDiv.dataset.itemId = item.id;
       
       let statusIcon;
+      let statusClass = '';
       if (item.status === 'completed') {
         statusIcon = 'check_circle'; // Checked icon for completed/on track
         statusClass = 'status-completed';
