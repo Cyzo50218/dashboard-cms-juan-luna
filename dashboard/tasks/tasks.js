@@ -213,14 +213,14 @@ export function init(params) {
             if (!user) return '';
 
             const zIndex = 50 - index;
-            const displayName = user.displayName || user.name || 'Unknown User';
+            const displayName = user.name || 'Unknown User';
             const initials = (displayName).split(' ').map(n => n[0]).join('').substring(0, 2);
 
 
             if (user.avatarUrl && user.avatarUrl.startsWith('https://')) {
                 return `
                 <div class="user-avatar-tasks" title="${displayName}" style="z-index: ${zIndex};">
-                    <img src="${user.avatarUrl}" alt="${displayName}">
+                    <img src="${user.avatar}" alt="${displayName}">
                 </div>`;
             } else {
                 const bgColor = '#' + (user.uid || '000000').substring(0, 6); // Simple hash based on UID
