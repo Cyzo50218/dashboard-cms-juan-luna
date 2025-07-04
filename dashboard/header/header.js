@@ -420,7 +420,7 @@ export function fetchRecentTasksFromFirestore(
         renderFn(
             tasksRecentHistoryData, // Use the updated global tasks data
             peopleData,
-            projectsData, // Pass the projects data (which will include recent projects)
+            [], // Pass the projects data (which will include recent projects)
             messagesData,
             taskLimit,
             hidePeopleContent,
@@ -481,7 +481,7 @@ export function loadProjectRecentHistory(
 
         // Call the rendering function with ALL relevant data
         renderFn(
-            tasksRecentHistoryData, // Pass the tasks data
+            [], // Pass the tasks data
             peopleData,
             projectsRecentHistoryData, // Pass the updated global projects data
             messagesData,
@@ -1379,7 +1379,6 @@ if (recentProjectsUnsubscribe) {
       searchOptions.classList.remove("hidden");
       recentContainer.classList.remove("hidden");
       emailContainerId.classList.add('hidden');
-      renderRecentItems(recentTasksData, exampleRecentPeople, [], [], 4, false, false, false);
     } else {
       const recentTasksData = await fetchRecentTasksFromFirestore([], [], exampleRecentProjects, [], 4, true, false, false);
     
@@ -2089,7 +2088,7 @@ if (recentProjectsUnsubscribe) {
   
   fetchRecentTasksFromFirestore(
   renderRecentItems,
-  exampleRecentPeople,
+  [],
   [],
   [],
   4
@@ -2097,7 +2096,7 @@ if (recentProjectsUnsubscribe) {
 
 loadProjectRecentHistory(
   renderRecentItems,
-  exampleRecentPeople,
+  [],
   [],
   [],
   4,
