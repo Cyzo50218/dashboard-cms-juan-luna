@@ -245,7 +245,7 @@ export function init(params) {
      * @param {Array<Object>} memberProfiles - The enriched profiles of the project members.
      * @param {string} userId - The UID of the current user.
      */
-    async function saveProjectToRecentHistory(projectData, projectRef, memberProfiles, userId) {
+    async function saveProjectToRecentHistory(projectId, projectData, projectRef, memberProfiles, userId) {
         if (!userId || !projectData || !projectRef) {
             console.error("Cannot save project to recent history: Missing user ID, project data, or project reference.");
             return;
@@ -267,7 +267,7 @@ export function init(params) {
             }
 
             const recentHistoryPayload = {
-                projectId: projectData.projectId;
+                projectId: projectId;
                 projectName: projectData.title || 'Unknown Project',
                 projectColor: projectData.color || '#cccccc',
                 projectRef: projectRef, // Store the actual project DocumentReference
@@ -368,6 +368,7 @@ export function init(params) {
             // --- SAVE TO RECENT HISTORY AFTER LOADING PROJECT HEADER ---
             // Now that we have all the project data and member profiles, save it.
             await saveProjectToRecentHistory(
+                projectId,
                 currentLoadedProjectData,
                 currentLoadedProjectRef,
                 currentLoadedProjectMembers,
@@ -396,47 +397,84 @@ export function init(params) {
         }
     });
 
+/**
+ * Dynamically loads the HTML, CSS, and JS for a specific tab.
+ * @param {string} targetTabId - The ID of the tab to load (e.g., 'list', 'board').
+ */
 async function loadTabContent(targetTabId) {
-    // Now this check will work correctly because currentTabCleanup is declared.
-    if (typeof currentTabCleanup === 'function') {
+    // Cleanup any previously loaded tab's JS module and its listeners
+    if (currentTabCleanup) {
         currentTabCleanup();
         currentTabCleanup = null;
     }
     
     const container = document.getElementById('tab-content-container');
-    if (!container) return;
+    if (!container) {
+        console.error("Tab content container not found!");
+        return;
+    }
     
-    container.innerHTML = '<div class="section-loader"></div>';
+    // IMMEDIATELY show a loading message/spinner
+    container.innerHTML = `
+        <div class="section-loader">
+            <p>Loading ${targetTabId} tab...</p>
+            <div class="spinner"></div> </div>
+    `;
+    
+    // Remove old tab-specific CSS before loading new one
     document.getElementById('tab-specific-css')?.remove();
     
     const htmlPath = `/dashboard/tasks/tabs/${targetTabId}/${targetTabId}.html`;
     const cssPath = `/dashboard/tasks/tabs/${targetTabId}/${targetTabId}.css`;
+    // Add a cache-busting parameter to the JS path to ensure fresh load during development
     const jsPath = `/dashboard/tasks/tabs/${targetTabId}/${targetTabId}.js?v=${new Date().getTime()}`;
     
     try {
-        const htmlRes = await fetch(htmlPath);
-        if (!htmlRes.ok) throw new Error(`HTML not found for tab: ${targetTabId}`);
+        // Fetch all resources concurrently using Promise.all
+        const [htmlRes, cssRes, tabModule] = await Promise.all([
+            fetch(htmlPath),
+            fetch(cssPath),
+            import(jsPath) // Dynamically import the JS module
+        ]);
+        
+        // Check HTML response
+        if (!htmlRes.ok) {
+            throw new Error(`HTML not found for tab: ${targetTabId} (Status: ${htmlRes.status})`);
+        }
         const tabHtml = await htmlRes.text();
         
+        // Check CSS response (optional, but good for debugging)
+        if (!cssRes.ok) {
+            console.warn(`CSS file not found for tab: ${targetTabId} (Status: ${cssRes.status}). Proceeding without it.`);
+            // You might choose to throw an error here depending on criticality
+        }
+        // Append new CSS (no need to await its loading, browser handles it)
         const link = document.createElement("link");
         link.rel = "stylesheet";
         link.href = cssPath;
         link.id = "tab-specific-css";
         document.head.appendChild(link);
         
-        const tabModule = await import(jsPath);
-        
+        // Set the tab's HTML content AFTER all resources are fetched
         container.innerHTML = tabHtml;
         
+        // Initialize the tab's JavaScript module
         if (tabModule.init) {
-            // Store the cleanup function for the NEWLY loaded tab
-            currentTabCleanup = tabModule.init({ accountId, projectId });
+            currentTabCleanup = tabModule.init({
+                accountId,
+                projectId,
+                projectRef: currentLoadedProjectRef,
+                projectData: currentLoadedProjectData
+            });
         }
+        
+        console.log(`Tab '${targetTabId}' loaded successfully.`);
+        
     } catch (err) {
         let userMessage = `<p>An unexpected error occurred while loading the <strong>${targetTabId}</strong> tab.</p>`;
         let logMessage = `Failed to load tab '${targetTabId}':`;
         
-        if (err.message.startsWith('HTML not found for tab')) {
+        if (err.message.includes('HTML not found')) {
             userMessage = `<p>Could not load the necessary HTML file for the <strong>${targetTabId}</strong> tab.</p>`;
             logMessage = `[HTML Load Error] Failed to fetch ${htmlPath}.`;
         } else if (err instanceof SyntaxError) {
@@ -445,13 +483,15 @@ async function loadTabContent(targetTabId) {
         } else if (err.message.includes('Failed to fetch dynamically imported module')) {
             userMessage = `<p>Could not load the necessary script file for the <strong>${targetTabId}</strong> tab.</p>`;
             logMessage = `[JS Load Error] The JavaScript module at ${jsPath} could not be fetched (e.g., 404 Not Found).`;
+        } else if (err.message.includes('CSS file not found')) {
+            userMessage += `<p>The associated styling (CSS) for this tab might be missing.</p>`;
+            logMessage += ` [CSS Load Error] Could not fetch ${cssPath}.`;
         }
         
-        container.innerHTML = userMessage;
+        container.innerHTML = `<div class="error-message-tab">${userMessage}</div>`;
         console.error(logMessage, err);
     }
 }
-
 /**
  * Updates the 'active' class on the tab navigation links.
  * @param {string} targetTabId - The ID of the tab to highlight.
