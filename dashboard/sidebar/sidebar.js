@@ -290,61 +290,6 @@ window.TaskSidebar = (function() {
             const projectDoc = await getDoc(currentProjectRef);
             if (!projectDoc.exists()) throw new Error("The provided project reference is invalid or was deleted.");
             currentProject = { id: projectDoc.id, ...projectDoc.data() };
-            
-            // Find the task using its ID within the known project
-            const userRecentHistoryRef = collection(db, `users/${currentUserId}/recenthistory`);
-const recentHistoryDocRef = doc(userRecentHistoryRef, taskId); // Use taskId as the document ID
-const recentHistoryDoc = await getDoc(recentHistoryDocRef);
-
-// Prepare assignee data for recent history, assuming assignees are ONLY UID strings
-let assigneesForHistory = [];
-if (currentTask.assignees && Array.isArray(currentTask.assignees)) {
-    for (const assigneeUid of currentTask.assignees) { // Renamed to assigneeUid for clarity
-        // Attempt to find in allUsers (already fetched profiles for project members)
-        const foundProfile = allUsers.find(u => u.uid === assigneeUid);
-        if (foundProfile) {
-            assigneesForHistory.push({
-                uid: foundProfile.uid,
-                name: foundProfile.displayName || 'Unknown User',
-                avatarUrl: foundProfile.avatarUrl || null
-            });
-        } else {
-            // Fallback: Fetch directly from 'users' collection if not a project member
-            // or if 'allUsers' wasn't comprehensive
-            const userDocRef = doc(db, `users/${assigneeUid}`);
-            const userDocSnap = await getDoc(userDocRef);
-            if (userDocSnap.exists()) {
-                const userData = userDocSnap.data();
-                assigneesForHistory.push({
-                    uid: assigneeUid,
-                    name: userData.displayName || 'Unknown User', // Prioritize displayName
-                    avatarUrl: userData.avatarUrl || null
-                });
-            } else {
-                // If user profile is not found at all
-                assigneesForHistory.push({ uid: assigneeUid, name: 'Unknown User', avatarUrl: null });
-            }
-        }
-    }
-}
-
-const recentHistoryData = {
-    name: currentTask.name || '',
-    status: currentTask.status || '',
-    assignees: assigneesForHistory, // Store rich assignee objects
-    projectRef: projectRef, // Keep the reference
-    projectName: currentProject.title || 'Unknown Project',
-    projectColor: currentProject.color || '#cccccc',
-    lastAccessed: serverTimestamp()
-};
-
-if (recentHistoryDoc.exists()) {
-    await updateDoc(recentHistoryDocRef, recentHistoryData);
-    console.log("Updated recent history for existing task:", taskId);
-} else {
-    await setDoc(recentHistoryDocRef, recentHistoryData);
-    console.log("Added new recent history entry for task:", taskId);
-}
 
             // --- STEP 3: RENDER THE UI ---
             sidebar.classList.remove('is-loading');
@@ -355,6 +300,61 @@ if (recentHistoryDoc.exists()) {
                 if (doc.exists()) {
                     currentTask = { ...doc.data(), id: doc.id };
                     renderSidebar(currentTask);
+                                // Find the task using its ID within the known project
+            const userRecentHistoryRef = collection(db, `users/${currentUserId}/recenthistory`);
+            const recentHistoryDocRef = doc(userRecentHistoryRef, taskId); // Use taskId as the document ID
+            const recentHistoryDoc = await getDoc(recentHistoryDocRef);
+            
+            // Prepare assignee data for recent history, assuming assignees are ONLY UID strings
+            let assigneesForHistory = [];
+            if (currentTask.assignees && Array.isArray(currentTask.assignees)) {
+                for (const assigneeUid of currentTask.assignees) { // Renamed to assigneeUid for clarity
+                    // Attempt to find in allUsers (already fetched profiles for project members)
+                    const foundProfile = allUsers.find(u => u.uid === assigneeUid);
+                    if (foundProfile) {
+                        assigneesForHistory.push({
+                            uid: foundProfile.uid,
+                            name: foundProfile.displayName || 'Unknown User',
+                            avatarUrl: foundProfile.avatarUrl || null
+                        });
+                    } else {
+                        // Fallback: Fetch directly from 'users' collection if not a project member
+                        // or if 'allUsers' wasn't comprehensive
+                        const userDocRef = doc(db, `users/${assigneeUid}`);
+                        const userDocSnap = await getDoc(userDocRef);
+                        if (userDocSnap.exists()) {
+                            const userData = userDocSnap.data();
+                            assigneesForHistory.push({
+                                uid: assigneeUid,
+                                name: userData.displayName || 'Unknown User', // Prioritize displayName
+                                avatarUrl: userData.avatarUrl || null
+                            });
+                        } else {
+                            // If user profile is not found at all
+                            assigneesForHistory.push({ uid: assigneeUid, name: 'Unknown User', avatarUrl: null });
+                        }
+                    }
+                }
+            }
+            
+            const recentHistoryData = {
+                name: currentTask.name || '',
+                status: currentTask.status || '',
+                assignees: assigneesForHistory, // Store rich assignee objects
+                projectRef: projectRef, // Keep the reference
+                projectName: currentProject.title || 'Unknown Project',
+                projectColor: currentProject.color || '#cccccc',
+                lastAccessed: serverTimestamp()
+            };
+            
+            if (recentHistoryDoc.exists()) {
+                await updateDoc(recentHistoryDocRef, recentHistoryData);
+                console.log("Updated recent history for existing task:", taskId);
+            } else {
+                await setDoc(recentHistoryDocRef, recentHistoryData);
+                console.log("Added new recent history entry for task:", taskId);
+            }
+            
                 } else {
                     close();
                 }
