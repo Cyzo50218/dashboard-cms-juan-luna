@@ -316,23 +316,23 @@ async function open(taskId, projectRef) {
             
 if (foundProfile) {
     assigneesForHistory.push({
-        uid: foundProfile.uid,
+        uid: currentTask.assignees,
         name: foundProfile.name || 'Unknown User',
         avatarUrl: foundProfile.avatar || null
     });
 } else {
     // Fallback: Fetch directly if not a member, or if allUsers wasn't comprehensive
-    const userDocRef = doc(db, `users/${assignee}`);
+    const userDocRef = doc(db, `users/${currentTask.assignees}`);
     const userDocSnap = await getDoc(userDocRef);
     if (userDocSnap.exists()) {
         const userData = userDocSnap.data();
         assigneesForHistory.push({
-            uid: assignee,
-            name: userData.displayName || 'Unknown User',
-            avatarUrl: userData.avatarUrl || null
+            uid: currentTask.assignees,
+            name: userData.name || 'Unknown User',
+            avatarUrl: userData.avatar || null
         });
     } else {
-        assigneesForHistory.push({ uid: assignee, name: 'User Not Found', avatarUrl: null });
+        assigneesForHistory.push({ uid: currentTask.assignees, name: 'User Not Found', avatarUrl: null });
     }
 }
         
