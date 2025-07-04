@@ -211,12 +211,19 @@ button:hover {
 }
 
 
-/* This is the parent container for the avatars */
+.user-avatar-tasks.overflow-dots {
+    background-color: #f0f0f0; /* Lighter background for the dots */
+    color: #888; /* Color for the dots icon */
+    font-size: 1.2em; /* Make the icon slightly larger */
+    padding: 0; /* Remove padding if any */
+}
+.user-avatar-tasks.overflow-dots .material-icons-outlined {
+    font-size: 1.2em; /* Ensure the icon itself is sized correctly */
+}
 .avatar-stack {
   display: flex;
   align-items: center;
 }
-
 .user-avatar-tasks {
   height: 28px;
   width: 28px;
@@ -224,47 +231,32 @@ button:hover {
   border: 2px solid white;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   position: relative;
-  
-  /* For fallback initials */
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 11px;
   font-weight: 600;
-  
-  /* --- THE CSS FIX IS HERE --- */
   overflow: hidden; /* CRITICAL: This clips the square image to the parent's circle. */
   background-color: #e2e8f0; /* A default background for the initials fallback */
-  
   transition: margin 0.2s ease, transform 0.2s ease;
 }
-
-/* This is the new rule for the image tag itself */
 .user-avatar-tasks img {
   width: 100%;
   height: 100%;
-  /* CRITICAL: This scales, crops, and centers the image without stretching it. */
   object-fit: cover; 
 }
-/* --- END OF CSS FIX --- */
-
-
-/* This applies the overlapping effect */
 .user-avatar-tasks:not(:first-child) {
   margin-left: -12px;
 }
-
 /* Style for the overflow count indicator */
 .user-avatar-tasks.overflow {
     background-color: #f1f5f9;
     color: #475569;
 }
-
 /* Interactive hover effect */
 .avatar-stack:hover .user-avatar-tasks {
   margin-left: -4px;
 }
-
 .avatar-stack .user-avatar-tasks:hover {
   z-index: 10;
   transform: scale(1.1);

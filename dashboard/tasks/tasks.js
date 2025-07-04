@@ -194,48 +194,49 @@ export function init(params) {
      * @param {object[]} allUsers - The array of all project members' full profiles (fetched using fetchMemberProfiles).
      * @returns {string} The complete HTML string for the avatar stack.
      */
-    function createAvatarStackHTML(assigneeIds, allUsers) {
-        if (!assigneeIds || assigneeIds.length === 0) {
-            return '';
-        }
-
-        const maxVisible = 5;
-        let visibleAssignees = assigneeIds;
-        let overflowCount = 0;
-
-        if (assigneeIds.length > maxVisible) {
-            visibleAssignees = assigneeIds.slice(0, maxVisible - 1);
-            overflowCount = assigneeIds.length - (maxVisible - 1);
-        }
-
-        const avatarsHTML = visibleAssignees.map((userId, index) => {
-            const user = allUsers.find(u => u.uid === userId);
-            if (!user) return '';
-
-            const zIndex = 50 - index;
-            const displayName = user.name || 'Unknown User';
-            const initials = (displayName).split(' ').map(n => n[0]).join('').substring(0, 2);
-
-
-            if (user.avatarUrl && user.avatarUrl.startsWith('https://')) {
-                return `
-                <div class="user-avatar-tasks" title="${displayName}" style="z-index: ${zIndex};">
-                    <img src="${user.avatar}" alt="${displayName}">
-                </div>`;
-            } else {
-                const bgColor = '#' + (user.uid || '000000').substring(0, 6); // Simple hash based on UID
-                return `<div class="user-avatar-tasks" title="${displayName}" style="background-color: ${bgColor}; color: white; z-index: ${zIndex};">${initials}</div>`;
-            }
-        }).join('');
-
-        let overflowHTML = '';
-        if (overflowCount > 0) {
-            const zIndex = 50 - maxVisible;
-            overflowHTML = `<div class="user-avatar-tasks overflow" style="z-index: ${zIndex};">+${overflowCount}</div>`;
-        }
-
-        return `<div class="avatar-stack">${avatarsHTML}${overflowHTML}</div>`;
+   function createAvatarStackHTML(assigneeIds, allUsers) {
+    if (!assigneeIds || assigneeIds.length === 0) {
+        return '';
     }
+    
+    const maxDisplayAvatars = 3; // Show up to 3 actual avatars
+    let visibleAssignees = assigneeIds.slice(0, maxDisplayAvatars);
+    let overflowCount = assigneeIds.length - maxDisplayAvatars;
+    
+    const avatarsHTML = visibleAssignees.map((userId, index) => {
+        const user = allUsers.find(u => u.uid === userId);
+        if (!user) return '';
+        
+        const zIndex = 50 - index;
+        const displayName = user.name || 'Unknown User';
+        // Changed to use user.initials if available, otherwise generate
+        const initials = user.initials || (displayName).split(' ').map(n => n[0]).join('').substring(0, 2);
+        
+        
+        if (user.avatar && user.avatar.startsWith('https://')) { // Assuming user.avatar is the correct field for URL
+            return `
+            <div class="user-avatar-tasks" title="${displayName}" style="z-index: ${zIndex};">
+                <img src="${user.avatar}" alt="${displayName}">
+            </div>`;
+        } else {
+            const bgColor = '#' + (user.uid || '000000').substring(0, 6); // Simple hash based on UID
+            return `<div class="user-avatar-tasks" title="${displayName}" style="background-color: ${bgColor}; color: white; z-index: ${zIndex};">${initials}</div>`;
+        }
+    }).join('');
+    
+    let overflowHTML = '';
+    if (overflowCount > 0) {
+        const zIndex = 50 - maxDisplayAvatars; // Adjust z-index for the overflow icon
+        // Changed to use a material icon for three dots
+        overflowHTML = `
+            <div class="user-avatar-tasks overflow-dots" title="${overflowCount} more" style="z-index: ${zIndex};">
+                <span class="material-icons-outlined">more_horiz</span>
+            </div>
+        `;
+    }
+    
+    return `<div class="avatar-stack">${avatarsHTML}${overflowHTML}</div>`;
+}
 
     /**
      * Stores the currently loaded project's data in the user's recent history.
