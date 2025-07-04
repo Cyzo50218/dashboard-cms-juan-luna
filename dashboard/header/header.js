@@ -1218,7 +1218,7 @@ onAuthStateChanged(auth, async (user) => {
     const isSelected = btn.classList.contains("selected");
     
     if (isSelected) {
-      const recentTasksData = await fetchRecentTasksFromFirestore(recentTasksData, exampleRecentPeople, [], [], 4, false, false, false);
+      const recentTasksData = await fetchRecentTasksFromFirestore(renderRecentItems, exampleRecentPeople, [], [], 4, false, false, false);
     
       // --- Was selected, now deselecting --
       selectedOptionBtnIndex = -1;
@@ -1230,7 +1230,7 @@ onAuthStateChanged(auth, async (user) => {
       
       renderRecentItems(recentTasksData, exampleRecentPeople, [], [], 4, false, false, false);
     } else {
-      const recentTasksData = await fetchRecentTasksFromFirestore(recentTasksData, [], [], [], 4, true, false, false);
+      const recentTasksData = await fetchRecentTasksFromFirestore(renderRecentItems, [], [], [], 4, true, false, false);
     
       // --- Is NOT selected, now selecting "My Tasks" ---
       selectedOptionBtnIndex = 0;
@@ -1261,7 +1261,7 @@ onAuthStateChanged(auth, async (user) => {
     const isSelected = btn.classList.contains("selected");
     
     if (isSelected) {
-      const recentTasksData = await fetchRecentTasksFromFirestore(recentTasksData, exampleRecentPeople, [], [], 4, false, false, false);
+      const recentTasksData = await fetchRecentTasksFromFirestore(renderRecentItems, exampleRecentPeople, [], [], 4, false, false, false);
     
       selectedOptionBtnIndex = -1;
       btn.classList.remove("selected");
@@ -1304,10 +1304,9 @@ onAuthStateChanged(auth, async (user) => {
     const btn = optionBtns[2];
     const isSelected = btn.classList.contains("selected");
     //halfQuery.classList.remove("skeleton-active"); // Remove skeleton if it was active
-    const recentTasksData = await fetchRecentTasksFromFirestore(currentUserId);
     
     if (isSelected) {
-      const recentTasksData = await fetchRecentTasksFromFirestore(recentTasksData, exampleRecentPeople, [], [], 4, false, false, false);
+      const recentTasksData = await fetchRecentTasksFromFirestore(renderRecentItems, exampleRecentPeople, [], [], 4, false, false, false);
     
       selectedOptionBtnIndex = -1;
       btn.classList.remove("selected");
@@ -1391,7 +1390,7 @@ onAuthStateChanged(auth, async (user) => {
     // halfQuery.classList.remove("skeleton-active");
     
     if (isSelected) {
-      const recentTasksData = await fetchRecentTasksFromFirestore(recentTasksData, exampleRecentPeople, [], [], 4, false, false, false);
+      const recentTasksData = await fetchRecentTasksFromFirestore(renderRecentItems, exampleRecentPeople, [], [], 4, false, false, false);
     
       selectedOptionBtnIndex = -1;
       btn.classList.remove("selected");
@@ -1961,7 +1960,7 @@ onAuthStateChanged(auth, async (user) => {
   
   // --- USER IS LOGGED IN, PROCEED WITH INITIALIZATION ---
   console.log("Header script running for user:", user.uid);
-  const recentTasksData = await fetchRecentTasksFromFirestore(recentTasksData, exampleRecentPeople, [], [], 4, false, false, false);
+  const recentTasksData = await fetchRecentTasksFromFirestore(renderRecentItems, exampleRecentPeople, [], [], 4, false, false, false);
     
   // Update the profile display with the user's info
   updateProfileDisplay(user);
