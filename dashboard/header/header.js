@@ -32,6 +32,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app, "juanluna-cms-01");
 let currentUserId = null;
+let recentTasksUnsubscribe = null;
 
 const exampleRecentTasks = [
   {
@@ -356,76 +357,81 @@ function renderAllPeople(people, peopleQueryDiv, peopleEmptyState, emailContaine
   }
 }
 
-export async function fetchRecentTasksFromFirestore(userId) {
-  const recentTasks = [];
+export function fetchRecentTasksFromFirestore(
+    userId,
+    renderRecentItems, // The renderRecentItems function itself
+    peopleData,
+    projectsData,
+    messagesData,
+    taskLimit = null,
+    hidePeopleContent = false,
+    showInviteButton = false,
+    showRecentMessages = false
+) {
   if (!userId) {
     console.warn("No user ID provided to fetch recent tasks.");
-    return recentTasks;
+    return null;
   }
 
-  try {
-    const recentHistoryRef = collection(db, `users/${userId}/recenthistory`);
-    const q = query(recentHistoryRef, orderBy('lastAccessed', 'desc'), limit(10)); // Get latest 10
-    const querySnapshot = await getDocs(q);
+  // If there's an existing listener, unsubscribe from it first
+  if (recentTasksUnsubscribe) {
+    recentTasksUnsubscribe();
+    console.log("Unsubscribed from previous recent tasks listener.");
+  }
 
-    for (const docSnap of querySnapshot.docs) {
+  const recentHistoryRef = collection(db, `users/${userId}/recenthistory`);
+  const q = query(recentHistoryRef, orderBy('lastAccessed', 'desc'), limit(10));
+
+  recentTasksUnsubscribe = onSnapshot(q, (querySnapshot) => {
+    const recentTasks = [];
+    querySnapshot.forEach((docSnap) => {
       const taskData = docSnap.data();
       const processedTask = {
-        id: docSnap.id, // The taskId is the doc ID
+        id: docSnap.id,
         name: taskData.name || 'Untitled Task',
         status: taskData.status || 'unknown',
-        assignees: [], // Will populate below
-        project: { name: 'Unknown Project', color: '#cccccc' } // Default
+        assignees: [],
+        project: {
+          name: taskData.projectName || 'Unknown Project',
+          color: taskData.projectColor || '#cccccc'
+        }
       };
 
-      // Fetch Project details using projectRef
-      if (taskData.projectRef) {
-        try {
-          const projectDocSnap = await getDoc(taskData.projectRef);
-          if (projectDocSnap.exists()) {
-            const projectData = projectDocSnap.data();
-            processedTask.project = {
-              name: projectData.name || 'Unknown Project',
-              color: projectData.color || '#cccccc'
-            };
-          }
-        } catch (projectError) {
-          console.error("Error fetching project data for recent task:", taskData.projectRef.path, projectError);
-        }
-      }
-
-      // Populate assignees with name and avatar
       if (taskData.assignees && Array.isArray(taskData.assignees)) {
         for (const assignee of taskData.assignees) {
-          if (assignee.uid) { // Ensure assignee object has a UID
-            // Prioritize data from mockUsersCollection for this example
-            const foundUser = mockUsersCollection.find(u => u.id === assignee.uid);
-            if (foundUser) {
-              processedTask.assignees.push({
-                uid: foundUser.id,
-                name: foundUser.displayName,
-                avatarUrl: foundUser.avatarUrl,
-                initials: foundUser.initials
-              });
-            } else {
-              // Fallback to data stored in recent history or default if user profile is not found
-              processedTask.assignees.push({
-                uid: assignee.uid,
-                name: assignee.name || 'User',
-                avatarUrl: assignee.avatarUrl || null,
-                initials: (assignee.name || assignee.uid).substring(0, 2).toUpperCase()
-              });
-            }
-          }
+          processedTask.assignees.push({
+            uid: assignee.uid || '',
+            name: assignee.name || 'Unknown User',
+            avatarUrl: assignee.avatarUrl || null,
+            initials: (assignee.name || assignee.uid || '').substring(0, 2).toUpperCase()
+          });
         }
       }
       recentTasks.push(processedTask);
+    });
+
+    console.log("Real-time update: Fetched recent tasks from Firestore:", recentTasks);
+
+    renderRecentItems(
+        recentTasks,
+        peopleData,
+        projectsData,
+        messagesData,
+        taskLimit,
+        hidePeopleContent,
+        showInviteButton,
+        showRecentMessages
+    );
+  }, (error) => {
+    console.error("Error fetching real-time recent tasks:", error);
+    // You might want to render an error message to the user here
+    const recentContainerDiv = document.querySelector("#recent-container > div");
+    if (recentContainerDiv) {
+        recentContainerDiv.innerHTML = `<div class="search-no-results"><p>Error loading recent tasks: ${error.message}</p></div>`;
     }
-    console.log("Fetched recent tasks from Firestore:", recentTasks);
-  } catch (error) {
-    console.error("Error fetching recent tasks from Firestore:", error);
-  }
-  return recentTasks;
+  });
+
+  return recentTasksUnsubscribe; // Return the unsubscribe function
 }
 
 function renderRecentItems(tasks, people, projects, messages, taskLimit = null, hidePeopleContent = false, showInviteButton = false, showRecentMessages = false) { // Added showRecentMessages parameter
@@ -1208,9 +1214,10 @@ onAuthStateChanged(auth, async (user) => {
   optionBtns[0].addEventListener("click", async () => {
     const btn = optionBtns[0];
     const isSelected = btn.classList.contains("selected");
-    const recentTasksData = await fetchRecentTasksFromFirestore(currentUserId);
     
     if (isSelected) {
+      const recentTasksData = await fetchRecentTasksFromFirestore(recentTasksData, exampleRecentPeople, [], [], 4, false, false, false);
+    
       // --- Was selected, now deselecting --
       selectedOptionBtnIndex = -1;
       btn.classList.remove("selected");
@@ -1221,6 +1228,8 @@ onAuthStateChanged(auth, async (user) => {
       
       renderRecentItems(recentTasksData, exampleRecentPeople, [], [], 4, false, false, false);
     } else {
+      const recentTasksData = await fetchRecentTasksFromFirestore(recentTasksData, [], [], [], 4, true, false, false);
+    
       // --- Is NOT selected, now selecting "My Tasks" ---
       selectedOptionBtnIndex = 0;
       btn.classList.add("selected");
@@ -1248,9 +1257,10 @@ onAuthStateChanged(auth, async (user) => {
   optionBtns[1].addEventListener("click", async () => {
     const btn = optionBtns[1];
     const isSelected = btn.classList.contains("selected");
-    const recentTasksData = await fetchRecentTasksFromFirestore(currentUserId);
     
     if (isSelected) {
+      const recentTasksData = await fetchRecentTasksFromFirestore(recentTasksData, exampleRecentPeople, [], [], 4, false, false, false);
+    
       selectedOptionBtnIndex = -1;
       btn.classList.remove("selected");
       optionBtns.forEach(b => b.classList.remove("hide"));
@@ -1263,6 +1273,8 @@ onAuthStateChanged(auth, async (user) => {
       emailContainerId.classList.add('hidden');
       renderRecentItems(recentTasksData, exampleRecentPeople, [], [], 4, false, false, false);
     } else {
+      const recentTasksData = await fetchRecentTasksFromFirestore([], [], exampleRecentProjects, [], 4, true, false, false);
+    
       selectedOptionBtnIndex = 1;
       btn.classList.add("selected");
       projectdisplay.classList.remove("hidden");
@@ -1293,6 +1305,8 @@ onAuthStateChanged(auth, async (user) => {
     const recentTasksData = await fetchRecentTasksFromFirestore(currentUserId);
     
     if (isSelected) {
+      const recentTasksData = await fetchRecentTasksFromFirestore(recentTasksData, exampleRecentPeople, [], [], 4, false, false, false);
+    
       selectedOptionBtnIndex = -1;
       btn.classList.remove("selected");
       savedSearchText.classList.remove("hidden");
@@ -1316,6 +1330,8 @@ onAuthStateChanged(auth, async (user) => {
       renderRecentItems(recentTasksData, exampleRecentPeople, [], [], 4, false, false, false);
       
     } else {
+      const recentTasksData = await fetchRecentTasksFromFirestore([], exampleRecentPeople, [], [], 4, false, true, false); 
+    
       selectedOptionBtnIndex = 2;
       btn.classList.add("selected");
       savedSearchText.classList.add("hidden");
@@ -1371,9 +1387,10 @@ onAuthStateChanged(auth, async (user) => {
     const btn = optionBtns[3];
     const isSelected = btn.classList.contains("selected");
     // halfQuery.classList.remove("skeleton-active");
-    const recentTasksData = await fetchRecentTasksFromFirestore(currentUserId);
     
     if (isSelected) {
+      const recentTasksData = await fetchRecentTasksFromFirestore(recentTasksData, exampleRecentPeople, [], [], 4, false, false, false);
+    
       selectedOptionBtnIndex = -1;
       btn.classList.remove("selected");
       optionBtns.forEach(b => b.classList.remove("hide"));
@@ -1387,6 +1404,8 @@ onAuthStateChanged(auth, async (user) => {
       emailContainerId.classList.add('hidden');
       renderRecentItems(recentTasksData, exampleRecentPeople, [], [], 4, false, false, false);
     } else {
+      const recentTasksData = await fetchRecentTasksFromFirestore([], [], [], exampleRecentMessages, 4, true, false, true);
+    
       selectedOptionBtnIndex = 3;
       btn.classList.add("selected");
       savedSearchText.classList.add("hidden");
@@ -1940,7 +1959,7 @@ onAuthStateChanged(auth, async (user) => {
   
   // --- USER IS LOGGED IN, PROCEED WITH INITIALIZATION ---
   console.log("Header script running for user:", user.uid);
-  const recentTasksData = await fetchRecentTasksFromFirestore(currentUserId);
+  const recentTasksData = await fetchRecentTasksFromFirestore(recentTasksData, exampleRecentPeople, [], [], 4, false, false, false);
     
   // Update the profile display with the user's info
   updateProfileDisplay(user);
