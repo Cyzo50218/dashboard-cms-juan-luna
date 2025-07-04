@@ -1289,7 +1289,7 @@ onAuthStateChanged(auth, async (user) => {
                   showMessages: true,
                   taskLimit: 4, // No specific limit for general view
                   projectLimit: null,
-                  showInviteButton: true
+                  showInviteButton: false
                 });
                 
               } else {
@@ -1340,7 +1340,7 @@ onAuthStateChanged(auth, async (user) => {
                   showMessages: true,
                   taskLimit: 4, // No specific limit for general view
                   projectLimit: null,
-                  showInviteButton: true
+                  showInviteButton: false
                 });
                 selectedOptionBtnIndex = -1;
                 btn.classList.remove("selected");
@@ -1397,7 +1397,7 @@ onAuthStateChanged(auth, async (user) => {
                   showMessages: true,
                   taskLimit: 4, // No specific limit for general view
                   projectLimit: null,
-                  showInviteButton: true
+                  showInviteButton: false
                 });
                 
                 selectedOptionBtnIndex = -1;
@@ -1494,7 +1494,7 @@ onAuthStateChanged(auth, async (user) => {
                   showMessages: true,
                   taskLimit: 4, // No specific limit for general view
                   projectLimit: null,
-                  showInviteButton: true
+                  showInviteButton: false
                 });
                 
                 selectedOptionBtnIndex = -1;
@@ -2083,7 +2083,7 @@ onAuthStateChanged(auth, async (user) => {
               showMessages: true,
               taskLimit: 4, // No specific limit for general view
               projectLimit: null,
-              showInviteButton: true
+              showInviteButton: false
             });
             
             document.addEventListener("click", (e) => {
