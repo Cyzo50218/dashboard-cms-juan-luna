@@ -300,7 +300,11 @@ window.TaskSidebar = (function() {
                 if (doc.exists()) {
                     currentTask = { ...doc.data(), id: doc.id };
                     renderSidebar(currentTask);
-                                // Find the task using its ID within the known project
+                } else {
+                    close();
+                }
+            });
+            // Find the task using its ID within the known project
             const userRecentHistoryRef = collection(db, `users/${currentUserId}/recenthistory`);
             const recentHistoryDocRef = doc(userRecentHistoryRef, taskId); // Use taskId as the document ID
             const recentHistoryDoc = await getDoc(recentHistoryDocRef);
@@ -354,11 +358,6 @@ window.TaskSidebar = (function() {
                 await setDoc(recentHistoryDocRef, recentHistoryData);
                 console.log("Added new recent history entry for task:", taskId);
             }
-            
-                } else {
-                    close();
-                }
-            });
             listenToActivity();
             listenToMessages();
             
