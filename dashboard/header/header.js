@@ -358,7 +358,6 @@ function renderAllPeople(people, peopleQueryDiv, peopleEmptyState, emailContaine
 }
 
 export function fetchRecentTasksFromFirestore(
-    userId,
     renderRecentItems, // The renderRecentItems function itself
     peopleData,
     projectsData,
@@ -368,7 +367,7 @@ export function fetchRecentTasksFromFirestore(
     showInviteButton = false,
     showRecentMessages = false
 ) {
-  if (!userId) {
+  if (!currentUserId) {
     console.warn("No user ID provided to fetch recent tasks.");
     return null;
   }
@@ -379,7 +378,7 @@ export function fetchRecentTasksFromFirestore(
     console.log("Unsubscribed from previous recent tasks listener.");
   }
 
-  const recentHistoryRef = collection(db, `users/${userId}/recenthistory`);
+  const recentHistoryRef = collection(db, `users/${currentUserId}/recenthistory`);
   const q = query(recentHistoryRef, orderBy('lastAccessed', 'desc'), limit(10));
 
   recentTasksUnsubscribe = onSnapshot(q, (querySnapshot) => {
