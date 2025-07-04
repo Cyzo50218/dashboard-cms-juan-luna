@@ -401,6 +401,7 @@ function renderRecentItems(tasks, people, projects, messages, taskLimit = null, 
       let statusIcon;
       if (item.status === 'completed') {
         statusIcon = 'check_circle'; // Checked icon for completed/on track
+        statusClass = 'status-completed';
       } else {
         statusIcon = 'radio_button_unchecked'; // Default unchecked or pending
       }
@@ -412,7 +413,7 @@ function renderRecentItems(tasks, people, projects, messages, taskLimit = null, 
                     `).join('');
       
       itemDiv.innerHTML = `
-                        <span class="material-icons-outlined headersearches-tasks-recent-status-icon">${statusIcon}</span>
+                        <span class="material-icons-outlined headersearches-tasks-recent-status-icon ${statusClass}">${statusIcon}</span>
                         <div class="headersearches-tasks-recent-content">
                             <div class="headersearches-tasks-recent-title">${item.name}</div>
                             <div class="headersearches-tasks-recent-meta">
@@ -591,8 +592,10 @@ function displaySearchResults(tasks, projects, people, messages) {
           itemDiv.dataset.itemId = task.id;
           
           let statusIcon;
+          let statusClass = '';
           if (item.status === 'completed') {
             statusIcon = 'check_circle'; // Checked icon for completed/on track
+            statusClass = 'status-completed';
           } else {
             statusIcon = 'radio_button_unchecked'; // Default unchecked or pending
           }
@@ -604,7 +607,7 @@ function displaySearchResults(tasks, projects, people, messages) {
                         `).join('');
           
           itemDiv.innerHTML = `
-                            <span class="material-icons-outlined headersearches-tasks-recent-status-icon">${statusIcon}</span>
+                            <span class="material-icons-outlined headersearches-tasks-recent-status-icon ${statusClass}">${statusIcon}</span>
                             <div class="headersearches-tasks-recent-content">
                                 <div class="headersearches-tasks-recent-title">${task.name}</div>
                                 <div class="headersearches-tasks-recent-meta">
