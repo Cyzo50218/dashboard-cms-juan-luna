@@ -467,11 +467,11 @@ export function loadProjectRecentHistory(
             const projectHistoryData = docSnap.data();
             // projectHistoryData now contains projectName, projectColor, memberProfiles, sectionTaskCounts etc.
             processedProjects.push({
-                id: docSnap.id, // The project ID
-                name: projectHistoryData.projectName || 'Untitled Project',
-                color: projectHistoryData.projectColor || '#cccccc',
-                tasksCount: Object.values(projectHistoryData.sectionTaskCounts || {}).reduce((sum, count) => sum + count, 0), // Sum tasks from all sections
-                assignees: projectHistoryData.memberProfiles || [], // Use memberProfiles directly
+                projectId: docSnap.id, // The project ID
+                projectName: projectHistoryData.projectName || 'Untitled Project',
+                projectColor: projectHistoryData.projectColor || '#cccccc',
+                sectionTaskCounts: Object.values(projectHistoryData.sectionTaskCounts || {}).reduce((sum, count) => sum + count, 0), // Sum tasks from all sections
+                memberProfiles: projectHistoryData.memberProfiles || [], // Use memberProfiles directly
                 projectRef: projectHistoryData.projectRef // The actual project reference
             });
         });
@@ -513,13 +513,13 @@ function renderRecentItems(tasks, people, projects, messages, taskLimit = null, 
   if (projects && projects.length > 0) {
     projects.forEach(project => {
       itemDiv.className = 'headersearches-tasks-recent-item'; // Reusing common item styling
-itemDiv.dataset.itemId = project.id;
+itemDiv.dataset.itemId = project.projectId;
 itemDiv.dataset.projectRefPath = project.projectRef?.path; // For navigation
 
 // --- MODIFIED: Assignee display for projects ---
 const maxDisplayAvatars = 3; // Max number of avatars to display before "..."
-let visibleAssignees = project.assignees.slice(0, maxDisplayAvatars);
-let overflowCount = project.assignees.length - maxDisplayAvatars;
+let visibleAssignees = project.memberProfiles.slice(0, maxDisplayAvatars);
+let overflowCount = project.memberProfiles.length - maxDisplayAvatars;
 
 const assigneesHtml = visibleAssignees.map((member, index) => {
   const zIndex = 50 - index;
@@ -553,11 +553,11 @@ const moreAssigneesHtml = overflowCount > 0 ?
 // --- END MODIFIED Assignee display ---
 
 itemDiv.innerHTML = `
-                <span class="headersearches-project-square-icon" style="background-color: ${project.color};"></span>
+                <span class="headersearches-project-square-icon" style="background-color: ${project.projectColor};"></span>
                 <div class="headersearches-tasks-recent-content">
-                    <div class="headersearches-tasks-recent-title">${project.name}</div>
+                    <div class="headersearches-tasks-recent-title">${project.projectName}</div>
                     <div class="headersearches-tasks-recent-meta">
-                        <span>${project.tasksCount} tasks</span> </div>
+                        <span>${project.sectionTaskCounts} tasks</span> </div>
                 </div>
                 <div class="headersearches-assignee-list">
                     ${assigneesHtml}
