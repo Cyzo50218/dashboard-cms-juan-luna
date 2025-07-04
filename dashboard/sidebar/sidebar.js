@@ -769,7 +769,7 @@ window.TaskSidebar = (function() {
         if(!task){
             return;
         }
-                // --- ADDITION FOR RECENT HISTORY ---
+        // --- ADDITION FOR RECENT HISTORY ---
         const userRecentHistoryRef = collection(db, `users/${currentUserId}/recenthistory`);
         const recentHistoryDocRef = doc(userRecentHistoryRef, taskId); // Use taskId as the document ID
         const recentHistoryDoc = await getDoc(recentHistoryDocRef);
