@@ -267,7 +267,7 @@ window.TaskSidebar = (function() {
      * @param {string} taskId - The ID of the task to open.
      * @param {DocumentReference} projectRef - The direct Firestore reference to the project.
      */
-async function open(taskId) {
+async function open(taskId, projectRef) {
         if (!isInitialized) init();
         if (!taskId || !currentUser) return;
         
