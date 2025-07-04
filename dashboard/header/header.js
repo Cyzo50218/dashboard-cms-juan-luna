@@ -1352,8 +1352,6 @@ onAuthStateChanged(auth, async (user) => {
       recentContainer.classList.remove("hidden");
       emailContainerId.classList.add('hidden');
     } else {
-      const recentTasksData = await fetchRecentTasksFromFirestore([], [], exampleRecentProjects, [], 4, true, false, false);
-    
       selectedOptionBtnIndex = 1;
       btn.classList.add("selected");
       projectdisplay.classList.remove("hidden");
