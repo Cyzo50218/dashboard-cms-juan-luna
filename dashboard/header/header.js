@@ -458,7 +458,7 @@ export function loadProjectRecentHistory(
     }
 
     // Path: users/{user.uid}/recent_projects_history
-    const recentProjectsRef = collection(db, `users/${currentUserId}/recent_projects_history`);
+    const recentProjectsRef = collection(db, `users/${currentUserId}/recenthistory`);
     const q = query(recentProjectsRef, orderBy('lastAccessed', 'desc'), limit(5)); // Limit to a reasonable number of recent projects
 
     recentProjectsUnsubscribe = onSnapshot(q, (querySnapshot) => {
