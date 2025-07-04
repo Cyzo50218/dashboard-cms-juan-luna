@@ -424,10 +424,10 @@ export function fetchRecentItemsFromFirestore(renderFn, displayOptions) {
     
     // Call the rendering function with filtered global data based on displayOptions
     renderFn(
-      displayOptions.showTasks ? [],
-      displayOptions.showPeople ? [], // Still using static example for now
-      displayOptions.showProjects ? [],
-      displayOptions.showMessages ? [], // Still using static example for now
+      displayOptions.showTasks ? recentTasksData : [],
+      displayOptions.showPeople ? recentPeopleData : [], // Still using static example for now
+      displayOptions.showProjects ? recentProjectsData : [],
+      displayOptions.showMessages ? recentMessagesData : [], // Still using static example for now
       displayOptions.taskLimit,
       !displayOptions.showPeople, // hidePeopleContent is inverse of showPeople
       displayOptions.showInviteButton,
