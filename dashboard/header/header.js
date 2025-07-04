@@ -30,36 +30,42 @@ const auth = getAuth(app);
 const db = getFirestore(app, "juanluna-cms-01");
 
 const exampleRecentTasks = [
-{
-  id: 'task_abc1',
-  name: 'lol',
-  project: { name: 'Shop Barongg', color: '#66bb6a' }, // Example green color
-  assignees: []
-},
-{
-  id: 'task_abc2',
-  name: 'Draft project brief',
-  project: { name: 'Shop Barongg', color: '#66bb6a' },
-  assignees: [{ id: 'user_cl', initials: 'CI' }]
-},
-{
-  id: 'task_abc3',
-  name: 'Alert: Asana invitation could not be delivered to jezz@gmail....',
-  project: { name: 'Shop Barongg', color: '#66bb6a' },
-  assignees: [{ id: 'user_cl', initials: 'CI' }]
-},
-{
-  id: 'task_abc4',
-  name: 'Schedule kickoff meeting',
-  project: { name: 'Shop Barongg', color: '#66bb6a' },
-  assignees: [{ id: 'user_jw', initials: 'JW' }]
-},
-{
-  id: 'task_abc5',
-  name: 'Share timeline with teammates',
-  project: { name: 'Shop Barongg', color: '#66bb6a' },
-  assignees: []
-}];
+  {
+    id: 'task_abc1',
+    name: 'lol',
+    project: { name: 'Shop Barongg', color: '#66bb6a' },
+    assignees: [],
+    status: 'completed' // Added status
+  },
+  {
+    id: 'task_abc2',
+    name: 'Draft project brief',
+    project: { name: 'Shop Barongg', color: '#66bb6a' },
+    assignees: [{ id: 'user_cl', initials: 'CI' }],
+    status: 'on track' // Added status
+  },
+  {
+    id: 'task_abc3',
+    name: 'Alert: Asana invitation could not be delivered to jezz@gmail....',
+    project: { name: 'Shop Barongg', color: '#66bb6a' },
+    assignees: [{ id: 'user_cl', initials: 'CI' }],
+    status: 'at risk' // Added status (or you can use 'error' or 'attention')
+  },
+  {
+    id: 'task_abc4',
+    name: 'Schedule kickoff meeting',
+    project: { name: 'Shop Barongg', color: '#66bb6a' },
+    assignees: [{ id: 'user_jw', initials: 'JW' }],
+    status: 'completed' // Added status
+  },
+  {
+    id: 'task_abc5',
+    name: 'Share timeline with teammates',
+    project: { name: 'Shop Barongg', color: '#66bb6a' },
+    assignees: [],
+    status: 'on track' // Added status
+  }
+];
 
 const exampleRecentPeople = [
 {
@@ -82,84 +88,80 @@ const exampleRecentPeople = [
 }];
 
 const exampleRecentMessages = [
-  {
-    id: 'msg_001',
-    title: 'Project Alpha Weekly Sync Notes',
-    sender: { name: 'John Doe', initials: 'JD' },
-    date: '2025-06-28',
-    preview: 'Key decisions from the meeting: Resource allocation, deadline adjustments...'
-  },
-  {
-    id: 'msg_002',
-    title: 'Team Vacation Schedule - July',
-    sender: { name: 'Jane Smith', initials: 'JS' },
-    date: '2025-06-25',
-    preview: 'Please submit your vacation requests by end of week. Reminder about policy changes.'
-  },
-  {
-    id: 'msg_003',
-    title: 'Urgent: Server Maintenance Tonight',
-    sender: { name: 'Admin', initials: 'AD' },
-    date: '2025-07-02',
-    preview: 'Expected downtime 10 PM - 12 AM PST. Please save all your work.'
-  }
-];
+{
+  id: 'msg_001',
+  title: 'Project Alpha Weekly Sync Notes',
+  sender: { name: 'John Doe', initials: 'JD' },
+  date: '2025-06-28',
+  preview: 'Key decisions from the meeting: Resource allocation, deadline adjustments...'
+},
+{
+  id: 'msg_002',
+  title: 'Team Vacation Schedule - July',
+  sender: { name: 'Jane Smith', initials: 'JS' },
+  date: '2025-06-25',
+  preview: 'Please submit your vacation requests by end of week. Reminder about policy changes.'
+},
+{
+  id: 'msg_003',
+  title: 'Urgent: Server Maintenance Tonight',
+  sender: { name: 'Admin', initials: 'AD' },
+  date: '2025-07-02',
+  preview: 'Expected downtime 10 PM - 12 AM PST. Please save all your work.'
+}];
 
 
 const exampleRecentProjects = [
-    {
-        id: 'project_req_track_001',
-        name: 'Request tracking',
-        color: '#2196F3', // Blue color matching Asana's project icon
-        tasksCount: 40,
-        assignees: [
-            {
-                id: 'user_john', // Corresponds to user_john's UID
-                initials: 'JW',
-                avatarUrl: 'https://i.pravatar.cc/150?img=68', // Loadable avatar URL
-                role: 'project_lead' // Role within this specific project's context
-            },
-            {
-                id: 'user_cl', // Corresponds to user_clinton's UID
-                initials: 'CI',
-                avatarUrl: 'https://i.pravatar.cc/150?img=33', // Another loadable avatar URL
-                role: 'designer'
-            },
-            {
-                id: 'user_jezz', // Corresponds to user_jezz's UID
-                initials: 'JE',
-                avatarUrl: 'https://i.pravatar.cc/150?img=12',
-                role: 'developer'
-            },
-            { // This assignee will trigger the 'more_horiz' icon if there are more than 3
-                id: 'user_jane',
-                initials: 'JD',
-                avatarUrl: 'https://i.pravatar.cc/150?img=47',
-                role: 'qa_engineer'
-            }
-        ]
-    },
-    {
-        id: 'project_website_redesign_002',
-        name: 'Website Redesign',
-        color: '#FF9800', // Example Orange project color
-        tasksCount: 15,
-        assignees: [
-            {
-                id: 'user_jezz',
-                initials: 'JE',
-                avatarUrl: 'https://i.pravatar.cc/150?img=12',
-                role: 'frontend_dev'
-            },
-            {
-                id: 'user_alex',
-                initials: 'AS',
-                avatarUrl: 'https://i.pravatar.cc/150?img=7',
-                role: 'project_manager'
-            }
-        ]
-    }
-];
+{
+  id: 'project_req_track_001',
+  name: 'Request tracking',
+  color: '#2196F3', // Blue color matching Asana's project icon
+  tasksCount: 40,
+  assignees: [
+  {
+    id: 'user_john', // Corresponds to user_john's UID
+    initials: 'JW',
+    avatarUrl: 'https://i.pravatar.cc/150?img=68', // Loadable avatar URL
+    role: 'project_lead' // Role within this specific project's context
+  },
+  {
+    id: 'user_cl', // Corresponds to user_clinton's UID
+    initials: 'CI',
+    avatarUrl: 'https://i.pravatar.cc/150?img=33', // Another loadable avatar URL
+    role: 'designer'
+  },
+  {
+    id: 'user_jezz', // Corresponds to user_jezz's UID
+    initials: 'JE',
+    avatarUrl: 'https://i.pravatar.cc/150?img=12',
+    role: 'developer'
+  },
+  { // This assignee will trigger the 'more_horiz' icon if there are more than 3
+    id: 'user_jane',
+    initials: 'JD',
+    avatarUrl: 'https://i.pravatar.cc/150?img=47',
+    role: 'qa_engineer'
+  }]
+},
+{
+  id: 'project_website_redesign_002',
+  name: 'Website Redesign',
+  color: '#FF9800', // Example Orange project color
+  tasksCount: 15,
+  assignees: [
+  {
+    id: 'user_jezz',
+    initials: 'JE',
+    avatarUrl: 'https://i.pravatar.cc/150?img=12',
+    role: 'frontend_dev'
+  },
+  {
+    id: 'user_alex',
+    initials: 'AS',
+    avatarUrl: 'https://i.pravatar.cc/150?img=7',
+    role: 'project_manager'
+  }]
+}];
 
 const mockUsersCollection = [
   {
@@ -358,8 +360,8 @@ function renderRecentItems(tasks, people, projects, messages, taskLimit = null, 
   }
   
   recentContainerDiv.innerHTML = '';
-    
-   if (projects && projects.length > 0) {
+  
+  if (projects && projects.length > 0) {
     projects.forEach(project => {
       const itemDiv = document.createElement('div');
       itemDiv.className = 'headersearches-tasks-recent-item'; // Reusing common item styling
@@ -396,8 +398,13 @@ function renderRecentItems(tasks, people, projects, messages, taskLimit = null, 
       itemDiv.className = 'headersearches-tasks-recent-item';
       itemDiv.dataset.itemId = item.id;
       
-      const statusIcon = item.name.includes("Alert") ? 'error_outline' : 'check_circle';
-      
+      let statusIcon;
+      if (item.status === 'completed') {
+        statusIcon = 'check_circle'; // Checked icon for completed/on track
+      } else {
+        statusIcon = 'radio_button_unchecked'; // Default unchecked or pending
+      }
+
       const assigneesHtml = item.assignees.map(assignee => `
                         <div class="headersearches-assignee-avatar" ${assignee.avatarUrl ? `style="background-image: url(${assignee.avatarUrl});"` : ''}>
                             ${!assignee.avatarUrl ? assignee.initials : ''}
@@ -441,13 +448,13 @@ function renderRecentItems(tasks, people, projects, messages, taskLimit = null, 
       });
     }
     
-     if (showRecentMessages && messages.length > 0) {
-  messages.forEach(message => {
-    const itemDiv = document.createElement('div');
-    itemDiv.className = 'headersearches-tasks-recent-item';
-    itemDiv.dataset.itemId = message.id;
-    
-    itemDiv.innerHTML = `
+    if (showRecentMessages && messages.length > 0) {
+      messages.forEach(message => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'headersearches-tasks-recent-item';
+        itemDiv.dataset.itemId = message.id;
+        
+        itemDiv.innerHTML = `
           <span class="material-icons-outlined headersearches-tasks-recent-status-icon">message</span>
           <div class="headersearches-tasks-recent-content">
             <div class="headersearches-tasks-recent-title">${message.title}</div>
@@ -461,16 +468,16 @@ function renderRecentItems(tasks, people, projects, messages, taskLimit = null, 
           </div>
           <span class="material-icons-outlined message-star-icon">star_border</span>
         `;
-    recentContainerDiv.appendChild(itemDiv);
-  });
-}else if (showRecentMessages && messages.length == 0) {
-  // Display a message if no recent messages
-  const noMessagesDiv = document.createElement('div');
-  noMessagesDiv.className = 'search-no-results'; // Reusing no results style
-  noMessagesDiv.innerHTML = `<p>No recent messages to display.</p>`;
-  recentContainerDiv.appendChild(noMessagesDiv);
-}
-  } 
+        recentContainerDiv.appendChild(itemDiv);
+      });
+    } else if (showRecentMessages && messages.length == 0) {
+      // Display a message if no recent messages
+      const noMessagesDiv = document.createElement('div');
+      noMessagesDiv.className = 'search-no-results'; // Reusing no results style
+      noMessagesDiv.innerHTML = `<p>No recent messages to display.</p>`;
+      recentContainerDiv.appendChild(noMessagesDiv);
+    }
+  }
   
   
   if (showInviteButton) {
@@ -583,7 +590,13 @@ function displaySearchResults(tasks, projects, people, messages) {
           itemDiv.className = 'headersearches-tasks-recent-item search-result-item';
           itemDiv.dataset.itemId = task.id;
           
-          const statusIcon = task.name.includes("Alert") ? 'error_outline' : 'check_circle';
+          let statusIcon;
+          if (item.status === 'completed') {
+            statusIcon = 'check_circle'; // Checked icon for completed/on track
+          } else {
+            statusIcon = 'radio_button_unchecked'; // Default unchecked or pending
+          }
+          
           const taskAssigneesHtml = task.assignees.map(assignee => `
                             <div class="headersearches-assignee-avatar" ${assignee.avatarUrl ? `style="background-image: url(${assignee.avatarUrl});"` : ''}>
                                 ${!assignee.avatarUrl ? assignee.initials : ''}
@@ -847,7 +860,7 @@ onAuthStateChanged(auth, (user) => {
   const inputRangeStartDropdown = document.getElementById('dateRangeOneDropdown');
   const inputRangeEndDropdown = document.getElementById('dateRangeTwoDropdown');
   const peopleQueryDiv = document.getElementById('people-query');
-   
+  
   const calendar = document.getElementById('calendar');
   const calendar1 = document.getElementById('calendar1');
   const calendar2 = document.getElementById('calendar2');
@@ -860,8 +873,8 @@ onAuthStateChanged(auth, (user) => {
   const isSelected2 = optionBtns[2].classList.contains("selected");
   
   let selected = false;
-  let searchEmpty= false;
-  let selectedOptionBtnIndex = -1; 
+  let searchEmpty = false;
+  let selectedOptionBtnIndex = -1;
   
   /* search filter */
   /* global */
@@ -1134,15 +1147,15 @@ onAuthStateChanged(auth, (user) => {
       renderRecentItems(exampleRecentTasks, [], [], [], 4, true, false, false);
     }
     input.value = ''; // Clear input on option selection
-cancelIcon.classList.add('hidden'); // Hide cancel icon
-searchOptions.classList.remove("hidden"); // Always show filter buttons
-emailContainerId.classList.add('hidden'); // Hide specific email invite
-emailContainerPeopleId.classList.add('hidden'); // Hide people email invite
-messagesEmptyState.classList.add("hidden"); // Hide messages empty state
-peopleEmptyState.classList.add("hidden"); // Hide people empty state
-mytaskdisplay.classList.add("hidden"); // Hide mytask display
-});
-
+    cancelIcon.classList.add('hidden'); // Hide cancel icon
+    searchOptions.classList.remove("hidden"); // Always show filter buttons
+    emailContainerId.classList.add('hidden'); // Hide specific email invite
+    emailContainerPeopleId.classList.add('hidden'); // Hide people email invite
+    messagesEmptyState.classList.add("hidden"); // Hide messages empty state
+    peopleEmptyState.classList.add("hidden"); // Hide people empty state
+    mytaskdisplay.classList.add("hidden"); // Hide mytask display
+  });
+  
   optionBtns[1].addEventListener("click", () => {
     const btn = optionBtns[1];
     const isSelected = btn.classList.contains("selected");
@@ -1174,99 +1187,99 @@ mytaskdisplay.classList.add("hidden"); // Hide mytask display
       });
       renderRecentItems([], [], exampleRecentProjects, [], 4, true, false, false);
     }
-  input.value = ''; // Clear input on option selection
-cancelIcon.classList.add('hidden'); // Hide cancel icon
-searchOptions.classList.remove("hidden"); // Always show filter buttons
-emailContainerId.classList.add('hidden'); // Hide specific email invite
-emailContainerPeopleId.classList.add('hidden'); // Hide people email invite
-peopleEmptyState.classList.add("hidden"); // Hide people empty state
-mytaskdisplay.classList.add("hidden"); // Hide mytask display
-});
+    input.value = ''; // Clear input on option selection
+    cancelIcon.classList.add('hidden'); // Hide cancel icon
+    searchOptions.classList.remove("hidden"); // Always show filter buttons
+    emailContainerId.classList.add('hidden'); // Hide specific email invite
+    emailContainerPeopleId.classList.add('hidden'); // Hide people email invite
+    peopleEmptyState.classList.add("hidden"); // Hide people empty state
+    mytaskdisplay.classList.add("hidden"); // Hide mytask display
+  });
   
   optionBtns[2].addEventListener("click", async () => { // <<< Ensure 'async' is here!
-  const btn = optionBtns[2];
-  const isSelected = btn.classList.contains("selected");
-  //halfQuery.classList.remove("skeleton-active"); // Remove skeleton if it was active
-  
-  if (isSelected) {
-    selectedOptionBtnIndex = -1;
-    btn.classList.remove("selected");
-    savedSearchText.classList.remove("hidden");
-    savedSearchContainer.classList.remove("hidden");
-    recentContainer.classList.remove("hidden");
-    savedContainer.classList.remove("hidden");
-    emailContainerPeopleId.classList.remove('hidden');
-    searchOptions.classList.remove("hidden"); // Ensure the row of filter buttons is visible
-    if (peopleQueryDiv) peopleQueryDiv.classList.add('hidden'); // This hides the entire #people-query div
+    const btn = optionBtns[2];
+    const isSelected = btn.classList.contains("selected");
+    //halfQuery.classList.remove("skeleton-active"); // Remove skeleton if it was active
+    
+    if (isSelected) {
+      selectedOptionBtnIndex = -1;
+      btn.classList.remove("selected");
+      savedSearchText.classList.remove("hidden");
+      savedSearchContainer.classList.remove("hidden");
+      recentContainer.classList.remove("hidden");
+      savedContainer.classList.remove("hidden");
+      emailContainerPeopleId.classList.remove('hidden');
+      searchOptions.classList.remove("hidden"); // Ensure the row of filter buttons is visible
+      if (peopleQueryDiv) peopleQueryDiv.classList.add('hidden'); // This hides the entire #people-query div
       
-    if (peopleEmptyState) peopleEmptyState.classList.add("hidden");
-    
-  
-    if (recentContainerTitle) {
-      recentContainerTitle.classList.remove("hidden");
-    }
-    optionBtns.forEach(b => {
-      b.classList.remove("hide"); // Ensure no option button is hidden
-      b.classList.remove("selected");
-    });
-    renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], [], 4, false, false, false);
-    
-  } else {
-    selectedOptionBtnIndex = 2;
-    btn.classList.add("selected");
-    savedSearchText.classList.add("hidden");
-    savedSearchContainer.classList.add("hidden");
-    savedContainer.classList.add("hidden");
-    if (recentContainer) recentContainer.classList.remove("hidden");
-    if (peopleQueryDiv) peopleQueryDiv.classList.add('hidden');
-    if (recentContainerTitle) {
-      recentContainerTitle.classList.remove("hidden");
-    }
-    mytaskdisplay.classList.add("hidden");
-    projectdisplay.classList.add("hidden");
-    messagesEmptyState.classList.add("hidden");
-    optionBtns.forEach((b, i) => {
-  if (i !== 2) {
-    b.classList.add("hide");
-    b.classList.remove("selected");
-  }
-});
-    /*
-    const processedPeopleData = await getProcessedWorkspacePeopleData();
-    if (processedPeopleData.length > 0) {
-      console.log("DEBUG: Data is NOT empty. Showing loading spinner then rendering people.");
-      // Data is NOT empty, show loading spinner then render people
-      if (peopleQueryDiv) {
-        peopleQueryDiv.innerHTML = '<div class="loading-spinner"></div>';
+      if (peopleEmptyState) peopleEmptyState.classList.add("hidden");
+      
+      
+      if (recentContainerTitle) {
+        recentContainerTitle.classList.remove("hidden");
       }
-      await new Promise(resolve => setTimeout(resolve, 300));
-      renderAllPeople(processedPeopleData, peopleQueryDiv, peopleEmptyState, emailContainerPeopleId);
+      optionBtns.forEach(b => {
+        b.classList.remove("hide"); // Ensure no option button is hidden
+        b.classList.remove("selected");
+      });
+      renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], [], 4, false, false, false);
+      
     } else {
-      console.log("DEBUG: Data IS empty. Directly showing empty state and invite button.");
-      // Data IS empty, directly show empty state and invite button
-      if (peopleQueryDiv) {
-        peopleQueryDiv.innerHTML = ''; // Clear any loading spinner or old content
-        // peopleQueryDiv.classList.remove('hidden'); // Already unhidden above
+      selectedOptionBtnIndex = 2;
+      btn.classList.add("selected");
+      savedSearchText.classList.add("hidden");
+      savedSearchContainer.classList.add("hidden");
+      savedContainer.classList.add("hidden");
+      if (recentContainer) recentContainer.classList.remove("hidden");
+      if (peopleQueryDiv) peopleQueryDiv.classList.add('hidden');
+      if (recentContainerTitle) {
+        recentContainerTitle.classList.remove("hidden");
       }
-      peopleEmptyState.classList.remove("hidden"); // Show empty state
-      emailContainerPeopleId.classList.remove('hidden'); // Show invite button
+      mytaskdisplay.classList.add("hidden");
+      projectdisplay.classList.add("hidden");
+      messagesEmptyState.classList.add("hidden");
+      optionBtns.forEach((b, i) => {
+        if (i !== 2) {
+          b.classList.add("hide");
+          b.classList.remove("selected");
+        }
+      });
+      /*
+      const processedPeopleData = await getProcessedWorkspacePeopleData();
+      if (processedPeopleData.length > 0) {
+        console.log("DEBUG: Data is NOT empty. Showing loading spinner then rendering people.");
+        // Data is NOT empty, show loading spinner then render people
+        if (peopleQueryDiv) {
+          peopleQueryDiv.innerHTML = '<div class="loading-spinner"></div>';
+        }
+        await new Promise(resolve => setTimeout(resolve, 300));
+        renderAllPeople(processedPeopleData, peopleQueryDiv, peopleEmptyState, emailContainerPeopleId);
+      } else {
+        console.log("DEBUG: Data IS empty. Directly showing empty state and invite button.");
+        // Data IS empty, directly show empty state and invite button
+        if (peopleQueryDiv) {
+          peopleQueryDiv.innerHTML = ''; // Clear any loading spinner or old content
+          // peopleQueryDiv.classList.remove('hidden'); // Already unhidden above
+        }
+        peopleEmptyState.classList.remove("hidden"); // Show empty state
+        emailContainerPeopleId.classList.remove('hidden'); // Show invite button
+      }
+      */
+      renderRecentItems([], exampleRecentPeople, [], [], 4, false, true, false); // show general invite
+      
     }
-    */
-    renderRecentItems([], exampleRecentPeople, [], [], 4, false, true, false); // show general invite
-    
-  }
-input.value = ''; // Clear input on option selection
-cancelIcon.classList.add('hidden'); // Hide cancel icon
-searchOptions.classList.remove("hidden"); // Always show filter buttons
-emailContainerId.classList.add('hidden'); // Hide specific email invite
-mytaskdisplay.classList.add("hidden"); // Hide mytask display
-projectdisplay.classList.add("hidden"); // Hide project display
-});
-
+    input.value = ''; // Clear input on option selection
+    cancelIcon.classList.add('hidden'); // Hide cancel icon
+    searchOptions.classList.remove("hidden"); // Always show filter buttons
+    emailContainerId.classList.add('hidden'); // Hide specific email invite
+    mytaskdisplay.classList.add("hidden"); // Hide mytask display
+    projectdisplay.classList.add("hidden"); // Hide project display
+  });
+  
   optionBtns[3].addEventListener("click", () => {
     const btn = optionBtns[3];
     const isSelected = btn.classList.contains("selected");
-   // halfQuery.classList.remove("skeleton-active");
+    // halfQuery.classList.remove("skeleton-active");
     
     if (isSelected) {
       selectedOptionBtnIndex = -1;
@@ -1286,7 +1299,7 @@ projectdisplay.classList.add("hidden"); // Hide project display
       btn.classList.add("selected");
       savedSearchText.classList.add("hidden");
       messagesEmptyState.classList.remove("hidden");
-
+      
       savedSearchContainer.classList.add("hidden");
       optionBtns.forEach((b, i) => {
         if (i !== 3) {
@@ -1294,17 +1307,17 @@ projectdisplay.classList.add("hidden"); // Hide project display
           b.classList.remove("selected");
         }
       });
-      renderRecentItems([], [], [], exampleRecentMessages, 4, true, false, true); 
+      renderRecentItems([], [], [], exampleRecentMessages, 4, true, false, true);
     }
-  input.value = ''; // Clear input on option selection
-cancelIcon.classList.add('hidden'); // Hide cancel icon
-searchOptions.classList.remove("hidden"); // Always show filter buttons
-emailContainerId.classList.add('hidden'); // Hide specific email invite
-emailContainerPeopleId.classList.add('hidden'); // Hide people email invite
-mytaskdisplay.classList.add("hidden"); // Hide mytask display
-projectdisplay.classList.add("hidden"); // Hide project display
-peopleEmptyState.classList.add("hidden"); // Hide people empty state
-});
+    input.value = ''; // Clear input on option selection
+    cancelIcon.classList.add('hidden'); // Hide cancel icon
+    searchOptions.classList.remove("hidden"); // Always show filter buttons
+    emailContainerId.classList.add('hidden'); // Hide specific email invite
+    emailContainerPeopleId.classList.add('hidden'); // Hide people email invite
+    mytaskdisplay.classList.add("hidden"); // Hide mytask display
+    projectdisplay.classList.add("hidden"); // Hide project display
+    peopleEmptyState.classList.add("hidden"); // Hide people empty state
+  });
   
   //Tasks
   taskOptionBtns[0].addEventListener('click', () => {
@@ -1365,144 +1378,144 @@ peopleEmptyState.classList.add("hidden"); // Hide people empty state
   });
   
   let searchTimeout = null;
-const DEBOUNCE_DELAY = 300;
-
-input.addEventListener('keydown', (event) => {
-  // Check if the "Enter" key was pressed
-  if (event.key === 'Enter') {
-    const value = input.value.trim();
-    // Only redirect if there's actually a search query
-    if (value !== '') {
-      window.location.href = '/searchresults';
+  const DEBOUNCE_DELAY = 300;
+  
+  input.addEventListener('keydown', (event) => {
+    // Check if the "Enter" key was pressed
+    if (event.key === 'Enter') {
+      const value = input.value.trim();
+      // Only redirect if there's actually a search query
+      if (value !== '') {
+        window.location.href = '/searchresults';
+      }
     }
-  }
-});
-
-input.addEventListener('input', () => {
-  const value = input.value.trim();
+  });
   
-  clearTimeout(searchTimeout);
-  
-  if (value !== '') {
-    cancelIcon.classList.remove('hidden');
-    savedContainer.classList.add("hidden");
-    recentContainer.classList.add("hidden");
-    searchOptions.classList.add("hidden");
-    halfQuery.classList.remove("hidden");
-    halfQuery.classList.add("skeleton-active");
+  input.addEventListener('input', () => {
+    const value = input.value.trim();
     
-    emailContainerPeopleId.classList.add('hidden');
-    document.getElementById('email-container-id').classList.add('hidden');
-    peopleEmptyState.classList.add("hidden");
-    messagesEmptyState.classList.add("hidden");
-    mytaskdisplay.classList.add("hidden");
-    projectdisplay.classList.add("hidden");
+    clearTimeout(searchTimeout);
     
-    halfQuery.innerHTML = `
+    if (value !== '') {
+      cancelIcon.classList.remove('hidden');
+      savedContainer.classList.add("hidden");
+      recentContainer.classList.add("hidden");
+      searchOptions.classList.add("hidden");
+      halfQuery.classList.remove("hidden");
+      halfQuery.classList.add("skeleton-active");
+      
+      emailContainerPeopleId.classList.add('hidden');
+      document.getElementById('email-container-id').classList.add('hidden');
+      peopleEmptyState.classList.add("hidden");
+      messagesEmptyState.classList.add("hidden");
+      mytaskdisplay.classList.add("hidden");
+      projectdisplay.classList.add("hidden");
+      
+      halfQuery.innerHTML = `
         <div class="skeleton-loader" style="width: 200px;"></div>
         <div class="skeleton-loader" style="width: 500px;"></div>
         <div class="skeleton-loader" style="width: 400px;"></div>
       `;
-    
-    searchTimeout = setTimeout(() => {
-      halfQuery.classList.remove("skeleton-active");
-      const lowerCaseValue = value.toLowerCase();
       
-      let filteredTasks = [];
-      let filteredProjects = [];
-      let filteredPeople = [];
-      let filteredMessages = [];
-      
-      if (selectedOptionBtnIndex === 0 || selectedOptionBtnIndex === -1) {
-        filteredTasks = exampleRecentTasks.filter(task =>
-          task.name.toLowerCase().includes(lowerCaseValue) ||
-          task.project.name.toLowerCase().includes(lowerCaseValue)
-        );
-      }
-      if (selectedOptionBtnIndex === 1 || selectedOptionBtnIndex === -1) {
-        filteredProjects = exampleRecentProjects.filter(project =>
-          project.name.toLowerCase().includes(lowerCaseValue)
-        );
-      }
-      if (selectedOptionBtnIndex === 2 || selectedOptionBtnIndex === -1) {
-        filteredPeople = mockUsersCollection.filter(person =>
-          (person.displayName && person.displayName.toLowerCase().includes(lowerCaseValue)) ||
-          (person.email && person.email.toLowerCase().includes(lowerCaseValue))
-        );
-      }
-      if (selectedOptionBtnIndex === 3 || selectedOptionBtnIndex === -1) {
-        filteredMessages = exampleRecentMessages.filter(message =>
-          message.title.toLowerCase().includes(lowerCaseValue) ||
-          message.preview.toLowerCase().includes(lowerCaseValue) ||
-          (message.sender && message.sender.name.toLowerCase().includes(lowerCaseValue))
-        );
-      }
-      
-      if (value.startsWith('with:') || value.startsWith('assignee:')) {
-        optionsQuery.classList.remove("hidden");
-        emailContainerId.classList.remove('hidden');
-        displaySearchResults([], [], filteredPeople, []);
-      } else if (value.startsWith('in:')) {
-        optionsQuery.classList.add("hidden");
-        displaySearchResults(filteredTasks, filteredProjects, [], []);
-      } else {
-        optionsQuery.classList.add("hidden");
-        document.getElementById('email-container-id').classList.add('hidden');
-        displaySearchResults(filteredTasks, filteredProjects, filteredPeople, filteredMessages);
-      }
-    }, DEBOUNCE_DELAY);
-  } else {
-    cancelIcon.classList.add('hidden');
-    halfQuery.innerHTML = '';
-    halfQuery.classList.add("hidden");
-    
-    optionsQuery.classList.add("hidden");
-    emailContainerId.classList.add('hidden');
-    emailContainerPeopleId.classList.add('hidden');
-    
-    savedContainer.classList.remove("hidden");
-    searchOptions.classList.remove("hidden");
-    
-    if (selectedOptionBtnIndex === 0) {
-      recentContainer.classList.add("hidden");
-      mytaskdisplay.classList.remove("hidden");
-      projectdisplay.classList.add("hidden");
-      messagesEmptyState.classList.add("hidden");
-      peopleEmptyState.classList.add("hidden");
-      renderRecentItems(exampleRecentTasks, [], [], 4, true, false, false);
-    } else if (selectedOptionBtnIndex === 1) {
-      recentContainer.classList.add("hidden");
-      projectdisplay.classList.remove("hidden");
-      mytaskdisplay.classList.add("hidden");
-      messagesEmptyState.classList.add("hidden");
-      peopleEmptyState.classList.add("hidden");
-      renderRecentItems([], [], exampleRecentProjects, null, true, false, false);
-    } else if (selectedOptionBtnIndex === 2) {
-      recentContainer.classList.add("hidden");
-      peopleEmptyState.classList.remove("hidden");
-      emailContainerPeopleId.classList.remove('hidden');
-      mytaskdisplay.classList.add("hidden");
-      projectdisplay.classList.add("hidden");
-      messagesEmptyState.classList.add("hidden");
-      renderRecentItems([], exampleRecentPeople, [], null, false, true, false);
-    } else if (selectedOptionBtnIndex === 3) {
-      recentContainer.classList.add("hidden");
-      messagesEmptyState.classList.remove("hidden");
-      mytaskdisplay.classList.add("hidden");
-      projectdisplay.classList.add("hidden");
-      peopleEmptyState.classList.add("hidden");
-      renderRecentItems([], [], [], null, false, false, true);
+      searchTimeout = setTimeout(() => {
+        halfQuery.classList.remove("skeleton-active");
+        const lowerCaseValue = value.toLowerCase();
+        
+        let filteredTasks = [];
+        let filteredProjects = [];
+        let filteredPeople = [];
+        let filteredMessages = [];
+        
+        if (selectedOptionBtnIndex === 0 || selectedOptionBtnIndex === -1) {
+          filteredTasks = exampleRecentTasks.filter(task =>
+            task.name.toLowerCase().includes(lowerCaseValue) ||
+            task.project.name.toLowerCase().includes(lowerCaseValue)
+          );
+        }
+        if (selectedOptionBtnIndex === 1 || selectedOptionBtnIndex === -1) {
+          filteredProjects = exampleRecentProjects.filter(project =>
+            project.name.toLowerCase().includes(lowerCaseValue)
+          );
+        }
+        if (selectedOptionBtnIndex === 2 || selectedOptionBtnIndex === -1) {
+          filteredPeople = mockUsersCollection.filter(person =>
+            (person.displayName && person.displayName.toLowerCase().includes(lowerCaseValue)) ||
+            (person.email && person.email.toLowerCase().includes(lowerCaseValue))
+          );
+        }
+        if (selectedOptionBtnIndex === 3 || selectedOptionBtnIndex === -1) {
+          filteredMessages = exampleRecentMessages.filter(message =>
+            message.title.toLowerCase().includes(lowerCaseValue) ||
+            message.preview.toLowerCase().includes(lowerCaseValue) ||
+            (message.sender && message.sender.name.toLowerCase().includes(lowerCaseValue))
+          );
+        }
+        
+        if (value.startsWith('with:') || value.startsWith('assignee:')) {
+          optionsQuery.classList.remove("hidden");
+          emailContainerId.classList.remove('hidden');
+          displaySearchResults([], [], filteredPeople, []);
+        } else if (value.startsWith('in:')) {
+          optionsQuery.classList.add("hidden");
+          displaySearchResults(filteredTasks, filteredProjects, [], []);
+        } else {
+          optionsQuery.classList.add("hidden");
+          document.getElementById('email-container-id').classList.add('hidden');
+          displaySearchResults(filteredTasks, filteredProjects, filteredPeople, filteredMessages);
+        }
+      }, DEBOUNCE_DELAY);
     } else {
-      recentContainer.classList.remove("hidden");
-      mytaskdisplay.classList.add("hidden");
-      projectdisplay.classList.add("hidden");
-      messagesEmptyState.classList.add("hidden");
-      peopleEmptyState.classList.add("hidden");
-      renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], null, false, false, false);
+      cancelIcon.classList.add('hidden');
+      halfQuery.innerHTML = '';
+      halfQuery.classList.add("hidden");
+      
+      optionsQuery.classList.add("hidden");
+      emailContainerId.classList.add('hidden');
+      emailContainerPeopleId.classList.add('hidden');
+      
+      savedContainer.classList.remove("hidden");
+      searchOptions.classList.remove("hidden");
+      
+      if (selectedOptionBtnIndex === 0) {
+        recentContainer.classList.add("hidden");
+        mytaskdisplay.classList.remove("hidden");
+        projectdisplay.classList.add("hidden");
+        messagesEmptyState.classList.add("hidden");
+        peopleEmptyState.classList.add("hidden");
+        renderRecentItems(exampleRecentTasks, [], [], 4, true, false, false);
+      } else if (selectedOptionBtnIndex === 1) {
+        recentContainer.classList.add("hidden");
+        projectdisplay.classList.remove("hidden");
+        mytaskdisplay.classList.add("hidden");
+        messagesEmptyState.classList.add("hidden");
+        peopleEmptyState.classList.add("hidden");
+        renderRecentItems([], [], exampleRecentProjects, null, true, false, false);
+      } else if (selectedOptionBtnIndex === 2) {
+        recentContainer.classList.add("hidden");
+        peopleEmptyState.classList.remove("hidden");
+        emailContainerPeopleId.classList.remove('hidden');
+        mytaskdisplay.classList.add("hidden");
+        projectdisplay.classList.add("hidden");
+        messagesEmptyState.classList.add("hidden");
+        renderRecentItems([], exampleRecentPeople, [], null, false, true, false);
+      } else if (selectedOptionBtnIndex === 3) {
+        recentContainer.classList.add("hidden");
+        messagesEmptyState.classList.remove("hidden");
+        mytaskdisplay.classList.add("hidden");
+        projectdisplay.classList.add("hidden");
+        peopleEmptyState.classList.add("hidden");
+        renderRecentItems([], [], [], null, false, false, true);
+      } else {
+        recentContainer.classList.remove("hidden");
+        mytaskdisplay.classList.add("hidden");
+        projectdisplay.classList.add("hidden");
+        messagesEmptyState.classList.add("hidden");
+        peopleEmptyState.classList.add("hidden");
+        renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], null, false, false, false);
+      }
+      input.focus();
     }
-    input.focus();
-  }
-});
+  });
   
   document.querySelector('.clear-text').addEventListener('click', function() {
     inputFilter.value = '';
@@ -1510,68 +1523,68 @@ input.addEventListener('input', () => {
   });
   
   cancelIcon.addEventListener('click', () => {
-  input.value = '';
-  cancelIcon.classList.add('hidden');
-  savedContainer.classList.remove("hidden");
-  searchOptions.classList.remove("hidden"); // NEW: Show search options on clear
-  recentContainer.classList.remove("hidden"); // NEW: Show recents on clear
-  emailContainerId.classList.add('hidden');
-  halfQuery.classList.add("hidden"); // Hide halfQuery when cleared
-  optionsQuery.classList.add("hidden"); // Hide optionsQuery when cleared
+    input.value = '';
+    cancelIcon.classList.add('hidden');
+    savedContainer.classList.remove("hidden");
+    searchOptions.classList.remove("hidden"); // NEW: Show search options on clear
+    recentContainer.classList.remove("hidden"); // NEW: Show recents on clear
+    emailContainerId.classList.add('hidden');
+    halfQuery.classList.add("hidden"); // Hide halfQuery when cleared
+    optionsQuery.classList.add("hidden"); // Hide optionsQuery when cleared
+    
+    // Reset display based on selected option button after clearing search
+    if (selectedOptionBtnIndex === 0) { // Tasks
+      mytaskdisplay.classList.remove("hidden");
+      renderRecentItems(exampleRecentTasks, [], [], [], 4, true, false, false);
+    } else if (selectedOptionBtnIndex === 1) { // Projects
+      projectdisplay.classList.remove("hidden");
+      renderRecentItems([], [], exampleRecentProjects, [], 4, true, false, false);
+    } else if (selectedOptionBtnIndex === 2) { // People
+      peopleEmptyState.classList.remove("hidden");
+      emailContainerPeopleId.classList.remove('hidden');
+      renderRecentItems([], exampleRecentPeople, [], [], 4, false, true, false);
+    } else if (selectedOptionBtnIndex === 3) { // NEW: Messages
+      messagesEmptyState.classList.remove("hidden");
+      renderRecentItems([], [], [], exampleRecentMessages, 4, true, false, true);
+    } else {
+      // No specific category selected, show general recents
+      renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], [], 4, false, false, false); // Default view
+    }
+    displaySearchResults([], [], [], []);
+    searchEmpty = true;
+    halfQuery.add('hidden');
+    input.focus();
+  });
   
-  // Reset display based on selected option button after clearing search
-  if (selectedOptionBtnIndex === 0) { // Tasks
-    mytaskdisplay.classList.remove("hidden");
-    renderRecentItems(exampleRecentTasks, [], [], [], 4, true, false, false);
-  } else if (selectedOptionBtnIndex === 1) { // Projects
-    projectdisplay.classList.remove("hidden");
-    renderRecentItems([], [], exampleRecentProjects, [], 4, true, false, false);
-  } else if (selectedOptionBtnIndex === 2) { // People
-    peopleEmptyState.classList.remove("hidden");
-    emailContainerPeopleId.classList.remove('hidden');
-    renderRecentItems([], exampleRecentPeople, [], [], 4, false, true, false); 
-  } else if (selectedOptionBtnIndex === 3) { // NEW: Messages
-    messagesEmptyState.classList.remove("hidden");
-    renderRecentItems([], [], [], exampleRecentMessages, 4, true, false, true);
-  } else {
-    // No specific category selected, show general recents
-    renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], [],4, false, false, false); // Default view
-  }
-  displaySearchResults([], [], [], []);
-  searchEmpty = true;
-  halfQuery.add('hidden');
-  input.focus();
-});
-
-cancelIcon.addEventListener('click', () => {
-  input.value = '';
-  input.focus(); // Keep focus on the input after clearing
-  cancelIcon.classList.add('hidden');
-  savedContainer.classList.remove("hidden");
-  searchOptions.classList.remove("hidden");
-  recentContainer.classList.remove("hidden");
-  emailContainerId.classList.add('hidden');
-  halfQuery.classList.add("hidden"); // Corrected
-  optionsQuery.classList.add("hidden");
-  
-  if (selectedOptionBtnIndex === 0) { // Tasks
-  mytaskdisplay.classList.remove("hidden");
-  renderRecentItems(exampleRecentTasks, [], [], [], 4, true, false, false);
-} else if (selectedOptionBtnIndex === 1) { // Projects
-  projectdisplay.classList.remove("hidden");
-  renderRecentItems([], [], exampleRecentProjects, [], 4, true, false, false);
-} else if (selectedOptionBtnIndex === 2) { // People
-  peopleEmptyState.classList.remove("hidden");
-  emailContainerPeopleId.classList.remove('hidden');
-  renderRecentItems([], exampleRecentPeople, [], [], 4, false, true, false);
-} else if (selectedOptionBtnIndex === 3) { // NEW: Messages
-  messagesEmptyState.classList.remove("hidden");
-  renderRecentItems([], [], [], exampleRecentMessages, 4, true, false, true);
-} else {
-  // No specific category selected, show general recents
-  renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], [], 4, false, false, false); // Default view
-}
-});
+  cancelIcon.addEventListener('click', () => {
+    input.value = '';
+    input.focus(); // Keep focus on the input after clearing
+    cancelIcon.classList.add('hidden');
+    savedContainer.classList.remove("hidden");
+    searchOptions.classList.remove("hidden");
+    recentContainer.classList.remove("hidden");
+    emailContainerId.classList.add('hidden');
+    halfQuery.classList.add("hidden"); // Corrected
+    optionsQuery.classList.add("hidden");
+    
+    if (selectedOptionBtnIndex === 0) { // Tasks
+      mytaskdisplay.classList.remove("hidden");
+      renderRecentItems(exampleRecentTasks, [], [], [], 4, true, false, false);
+    } else if (selectedOptionBtnIndex === 1) { // Projects
+      projectdisplay.classList.remove("hidden");
+      renderRecentItems([], [], exampleRecentProjects, [], 4, true, false, false);
+    } else if (selectedOptionBtnIndex === 2) { // People
+      peopleEmptyState.classList.remove("hidden");
+      emailContainerPeopleId.classList.remove('hidden');
+      renderRecentItems([], exampleRecentPeople, [], [], 4, false, true, false);
+    } else if (selectedOptionBtnIndex === 3) { // NEW: Messages
+      messagesEmptyState.classList.remove("hidden");
+      renderRecentItems([], [], [], exampleRecentMessages, 4, true, false, true);
+    } else {
+      // No specific category selected, show general recents
+      renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], [], 4, false, false, false); // Default view
+    }
+  });
   
   emailContainer.forEach(el => {
     el.addEventListener('click', () => {
