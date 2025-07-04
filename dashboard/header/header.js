@@ -36,8 +36,11 @@ let currentUserId = null;
 let recentTasksUnsubscribe = null; 
 let recentProjectsUnsubscribe = null;
 
-let tasksRecentHistoryData = [];
-let projectsRecentHistoryData = [];
+
+let recentTasksData = [];
+let recentProjectsData = [];
+let recentPeopleData = [];
+let recentMessagesData = [];
 
 const exampleRecentTasks = [
   {
@@ -119,7 +122,6 @@ const exampleRecentMessages = [
   date: '2025-07-02',
   preview: 'Expected downtime 10 PM - 12 AM PST. Please save all your work.'
 }];
-
 
 const exampleRecentProjects = [
 {
@@ -362,198 +364,138 @@ function renderAllPeople(people, peopleQueryDiv, peopleEmptyState, emailContaine
   }
 }
 
-export function fetchRecentTasksFromFirestore(
-    renderFn,
-    peopleData,
-    projectsData, // This will include the projectsRecentHistoryData
-    messagesData,
-    taskLimit = null,
-    hidePeopleContent = false,
-    showInviteButton = false,
-    showRecentMessages = false
-) {
-    if (!currentUserId) { // Use the module-level currentUserId
-        console.warn("No user ID available to fetch recent tasks. Skipping listener setup.");
+export function fetchRecentItemsFromFirestore(renderFn, displayOptions) {
+    if (!currentUserId) {
+        console.warn("fetchRecentItemsFromFirestore: No user ID available. Skipping listener setup.");
         return null;
     }
 
-    if (recentTasksUnsubscribe) {
-        recentTasksUnsubscribe();
-        console.log("Unsubscribed from previous recent tasks listener.");
+    // Unsubscribe from any previous single listener for recent items
+    if (recentItemsUnsubscribe) {
+        recentItemsUnsubscribe();
+        console.log("fetchRecentItemsFromFirestore: Unsubscribed from previous unified listener.");
     }
 
     const recentHistoryRef = collection(db, `users/${currentUserId}/recenthistory`);
-    const q = query(recentHistoryRef, orderBy('lastAccessed', 'desc'), limit(10));
+    const q = query(recentHistoryRef, orderBy('lastAccessed', 'desc'), limit(15)); // Fetch a reasonable number to cover both tasks & projects
 
-    recentTasksUnsubscribe = onSnapshot(q, (querySnapshot) => {
-        const processedTasks = [];
+    recentItemsUnsubscribe = onSnapshot(q, (querySnapshot) => {
+        const fetchedTasks = [];
+        const fetchedProjects = [];
+        // Add other types here if you decide to store them in recenthistory
+        // const fetchedPeople = [];
+        // const fetchedMessages = [];
+
         querySnapshot.forEach((docSnap) => {
-            const taskData = docSnap.data();
-            const processedTask = {
-                id: docSnap.id,
-                name: taskData.name || 'Untitled Task',
-                status: taskData.status || 'unknown',
-                assignees: [],
-                project: {
-                    name: taskData.projectName || 'Unknown Project',
-                    color: taskData.projectColor || '#cccccc'
-                }
-            };
-
-            if (taskData.assignees && Array.isArray(taskData.assignees)) {
-                for (const assignee of taskData.assignees) {
-                    processedTask.assignees.push({
-                        uid: assignee.uid || '',
-                        name: assignee.name || 'Unknown User',
-                        avatarUrl: assignee.avatarUrl || null,
-                        initials: (assignee.name || assignee.uid || '').substring(0, 2).toUpperCase()
-                    });
-                }
+            const itemData = docSnap.data();
+            if (itemData.type === 'task') {
+                fetchedTasks.push({
+                    id: docSnap.id,
+                    name: itemData.name || 'Untitled Task',
+                    status: itemData.status || 'unknown',
+                    assignees: itemData.assignees || [], // Already enriched
+                    project: {
+                        name: itemData.projectName || 'Unknown Project',
+                        color: itemData.projectColor || '#cccccc'
+                    },
+                    projectRef: itemData.projectRef // Ensure projectRef is carried through
+                });
+            } else if (itemData.type === 'project') {
+                fetchedProjects.push({
+                    id: docSnap.id, // The project ID
+                    name: itemData.name || 'Untitled Project', // Use 'name' for project title
+                    color: itemData.color || '#cccccc', // Use 'color' for project color
+                    tasksCount: Object.values(itemData.sectionTaskCounts || {}).reduce((sum, count) => sum + count, 0),
+                    assignees: itemData.memberProfiles || [], // Use memberProfiles directly for project assignees
+                    projectRef: itemData.projectRef // The actual project reference
+                });
             }
-            processedTasks.push(processedTask);
+            // Add else if for 'people' or 'message' if you decide to store them in recenthistory
         });
 
-        tasksRecentHistoryData = processedTasks; // Update the module-level array
-        console.log("Real-time update: tasksRecentHistoryData updated:", tasksRecentHistoryData.length);
+        // Update global module-level arrays
+        recentTasksData = fetchedTasks;
+        recentProjectsData = fetchedProjects;
+        // recentPeopleData = fetchedPeople; // If fetched from recenthistory
+        // recentMessagesData = fetchedMessages; // If fetched from recenthistory
 
-        // Call the rendering function with the updated tasks array
-        renderRecentItems(
-            tasksRecentHistoryData, // Use the updated global tasks data
-            peopleData,
-            [], // Pass the projects data (which will include recent projects)
-            messagesData,
-            taskLimit,
-            hidePeopleContent,
-            showInviteButton,
-            showRecentMessages
+        console.log("fetchRecentItemsFromFirestore: Real-time update.");
+        console.log("Tasks:", recentTasksData.length, "Projects:", recentProjectsData.length);
+
+        // Call the rendering function with filtered global data based on displayOptions
+        renderFn(
+            displayOptions.showTasks ? recentTasksData : [],
+            displayOptions.showPeople ? examplePeople : [], // Still using static example for now
+            displayOptions.showProjects ? recentProjectsData : [],
+            displayOptions.showMessages ? exampleMessages : [], // Still using static example for now
+            displayOptions.taskLimit,
+            !displayOptions.showPeople, // hidePeopleContent is inverse of showPeople
+            displayOptions.showInviteButton,
+            displayOptions.showMessages
         );
+
     }, (error) => {
-        console.error("Error fetching real-time recent tasks:", error);
+        console.error("fetchRecentItemsFromFirestore: Error fetching real-time data:", error);
         const recentContainerDiv = document.querySelector("#recent-container > div");
         if (recentContainerDiv) {
-            recentContainerDiv.innerHTML = `<div class="search-no-results"><p>Error loading recent tasks: ${error.message}</p></div>`;
+            recentContainerDiv.innerHTML = `<div class="search-no-results"><p>Error loading recent items: ${error.message}</p></div>`;
         }
     });
 
-    return recentTasksUnsubscribe;
+    return recentItemsUnsubscribe;
 }
 
-export function loadProjectRecentHistory(
-    renderFn,
-    peopleData,
-    messagesData,
-    taskLimit = null, // Task limit is for tasks, not projects in this context
-    hidePeopleContent = false,
-    showInviteButton = false,
-    showRecentMessages = false
-) {
-    if (!currentUserId) {
-        console.warn("No user ID available to fetch recent projects. Skipping listener setup.");
-        return null;
+export function renderRecentItems(tasks, people, projects, messages, taskLimit = null, hidePeopleContent = false, showInviteButton = false, showRecentMessages = false) {
+    const recentContainerDiv = document.querySelector("#recent-container > div");
+    if (!recentContainerDiv) {
+        console.error("renderRecentItems: Recent container div not found!");
+        return;
     }
 
-    if (recentProjectsUnsubscribe) {
-        recentProjectsUnsubscribe();
-        console.log("Unsubscribed from previous recent projects listener.");
-    }
+    recentContainerDiv.innerHTML = ''; // Clear previous content
 
-    // Path: users/{user.uid}/recent_projects_history
-    const recentProjectsRef = collection(db, `users/${currentUserId}/recenthistory`);
-    const q = query(recentProjectsRef, orderBy('lastAccessed', 'desc'), limit(5)); // Limit to a reasonable number of recent projects
+    let hasAnyResults = false; // Flag to track if any section has results
 
-    recentProjectsUnsubscribe = onSnapshot(q, (querySnapshot) => {
-        const processedProjects = [];
-        querySnapshot.forEach((docSnap) => {
-            const projectHistoryData = docSnap.data();
-            // projectHistoryData now contains projectName, projectColor, memberProfiles, sectionTaskCounts etc.
-            processedProjects.push({
-                projectId: docSnap.id, // The project ID
-                projectName: projectHistoryData.projectName || 'Untitled Project',
-                projectColor: projectHistoryData.projectColor || '#cccccc',
-                sectionTaskCounts: Object.values(projectHistoryData.sectionTaskCounts || {}).reduce((sum, count) => sum + count, 0), // Sum tasks from all sections
-                assignees: projectHistoryData.memberProfiles || [], // Use memberProfiles directly
-                projectRef: projectHistoryData.projectRef // The actual project reference
-            });
-        });
+    // --- Render Projects (from the 'projects' array) ---
+    if (projects && projects.length > 0) {
+        hasAnyResults = true;
+        projects.forEach(project => {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'headersearches-tasks-recent-item';
+            itemDiv.dataset.itemId = project.id; // Use project.id
+            itemDiv.dataset.projectRefPath = project.projectRef?.path;
 
-        projectsRecentHistoryData = processedProjects; // Update the module-level array
-        console.log("Real-time update: projectsRecentHistoryData updated:", projectsRecentHistoryData.length);
+            const maxDisplayAvatars = 3;
+            let visibleAssignees = project.assignees.slice(0, maxDisplayAvatars);
+            let overflowCount = project.assignees.length - maxDisplayAvatars;
 
-        // Call the rendering function with ALL relevant data
-        renderRecentItems(
-            [], // Pass the tasks data
-            [],
-            projectsRecentHistoryData, // Pass the updated global projects data
-            messagesData,
-            taskLimit,
-            hidePeopleContent,
-            showInviteButton,
-            showRecentMessages
-        );
-    }, (error) => {
-        console.error("Error fetching real-time recent projects:", error);
-        const recentContainerDiv = document.querySelector("#recent-container > div");
-        if (recentContainerDiv) {
-            recentContainerDiv.innerHTML = `<div class="search-no-results"><p>Error loading recent projects: ${error.message}</p></div>`;
-        }
-    });
+            const assigneesHtml = visibleAssignees.map((member, index) => {
+                const zIndex = 50 - index;
+                const displayName = member.displayName || member.name || 'Unknown User';
+                const initials = member.initials || (displayName).split(' ').map(n => n[0]).join('').substring(0, 2);
 
-    return recentProjectsUnsubscribe;
-}
-
-function renderRecentItems(tasks, people, projects, messages, taskLimit = null, hidePeopleContent = false, showInviteButton = false, showRecentMessages = false) {
-  const recentContainerDiv = document.querySelector("#recent-container > div");
-  if (!recentContainerDiv) {
-    console.error("Recent container div not found!");
-    return;
-  }
-  
-  recentContainerDiv.innerHTML = ''; // Clear previous content
-  
-  let hasAnyResults = false; // Flag to track if any section has results
-  
-  // --- Render Projects ---
-  if (projects && projects.length > 0) {
-    hasAnyResults = true;
-    projects.forEach(project => {
-      const itemDiv = document.createElement('div');
-      itemDiv.className = 'headersearches-tasks-recent-item'; // Reusing common item styling
-      itemDiv.dataset.itemId = project.id; // Corrected: Use project.id as the item ID
-      itemDiv.dataset.projectRefPath = project.projectRef?.path; // For navigation
-      
-      const maxDisplayAvatars = 3;
-      let visibleAssignees = project.assignees.slice(0, maxDisplayAvatars); // project.assignees now holds memberProfiles
-      let overflowCount = project.assignees.length - maxDisplayAvatars;
-      
-      const assigneesHtml = visibleAssignees.map((member, index) => {
-        const zIndex = 50 - index;
-        const displayName = member.displayName || member.name || 'Unknown User';
-        const initials = member.initials || (displayName).split(' ').map(n => n[0]).join('').substring(0, 2);
-        
-        if (member.avatarUrl && member.avatarUrl.startsWith('https://')) {
-          return `
+                if (member.avatarUrl && member.avatarUrl.startsWith('https://')) {
+                    return `
                         <div class="user-avatar-tasks" title="${displayName}" style="z-index: ${zIndex};">
                             <img src="${member.avatarUrl}" alt="${displayName}">
                         </div>`;
-        } else if (member.avatar && member.avatar.startsWith('https://')) { // Check for 'avatar' field too
-          return `
+                } else if (member.avatar && member.avatar.startsWith('https://')) {
+                    return `
                         <div class="headersearches-assignee-avatar" title="${displayName}" style="z-index: ${zIndex};">
                             <img src="${member.avatar}" alt="${displayName}">
                         </div>`;
-        }
-        else {
-          const bgColor = '#' + (member.uid || '000000').substring(0, 6);
-          return `<div class="headersearches-assignee-avatar" title="${displayName}" style="background-color: ${bgColor}; color: white; z-index: ${zIndex};">${initials}</div>`;
-        }
-      }).join('');
-      
-      const moreAssigneesHtml = overflowCount > 0 ?
-        `<div class="user-avatar-tasks overflow-dots" title="${overflowCount} more members" style="z-index: ${50 - maxDisplayAvatars};">
+                } else {
+                    const bgColor = '#' + (member.uid || '000000').substring(0, 6);
+                    return `<div class="user-avatar-tasks" title="${displayName}" style="background-color: ${bgColor}; color: white; z-index: ${zIndex};">${initials}</div>`;
+                }
+            }).join('');
+
+            const moreAssigneesHtml = overflowCount > 0 ?
+                `<div class="user-avatar-tasks overflow-dots" title="${overflowCount} more members" style="z-index: ${50 - maxDisplayAvatars};">
                     <span class="material-icons-outlined">more_horiz</span>
                 </div>` : '';
-      
-      // Note: Use project.projectName and project.projectColor from the processed data
-      itemDiv.innerHTML = `
+
+            itemDiv.innerHTML = `
                 <span class="headersearches-project-square-icon" style="background-color: ${project.color};"></span>
                 <div class="headersearches-tasks-recent-content">
                     <div class="headersearches-tasks-recent-title">${project.name}</div>
@@ -566,41 +508,40 @@ function renderRecentItems(tasks, people, projects, messages, taskLimit = null, 
                     ${moreAssigneesHtml}
                 </div>
             `;
-      recentContainerDiv.appendChild(itemDiv);
-    });
-  }
-  
-  // --- Render Tasks ---
-  const tasksToRender = taskLimit ? tasks.slice(0, taskLimit) : tasks;
-  
-  if (tasksToRender.length > 0) {
-    hasAnyResults = true;
-    tasksToRender.forEach(item => {
-      const itemDiv = document.createElement('div');
-      itemDiv.className = 'headersearches-tasks-recent-item';
-      itemDiv.dataset.itemId = item.id;
-      itemDiv.dataset.projectRefPath = item.projectRef?.path;
-      
-      let statusIcon;
-      let statusClass = '';
-      if (item.status === 'completed') {
-        statusIcon = 'check_circle';
-        statusClass = 'status-completed';
-      } else {
-        statusIcon = 'radio_button_unchecked';
-      }
-      
-      const assigneesHtml = item.assignees.map(assignee => {
-        const displayName = assignee.name || 'Unknown User';
-        const initials = assignee.initials || (displayName).substring(0, 2).toUpperCase();
-        return `
+            recentContainerDiv.appendChild(itemDiv);
+        });
+    }
+
+    // --- Render Tasks (from the 'tasks' array) ---
+    const tasksToRender = taskLimit ? tasks.slice(0, taskLimit) : tasks;
+    if (tasksToRender.length > 0) {
+        hasAnyResults = true;
+        tasksToRender.forEach(item => { // 'item' is a task
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'headersearches-tasks-recent-item';
+            itemDiv.dataset.itemId = item.id;
+            itemDiv.dataset.projectRefPath = item.projectRef?.path;
+
+            let statusIcon;
+            let statusClass = '';
+            if (item.status === 'completed') {
+                statusIcon = 'check_circle';
+                statusClass = 'status-completed';
+            } else {
+                statusIcon = 'radio_button_unchecked';
+            }
+
+            const assigneesHtml = item.assignees.map(assignee => {
+                const displayName = assignee.name || 'Unknown User';
+                const initials = assignee.initials || (displayName).substring(0, 2).toUpperCase();
+                return `
                     <div class="headersearches-assignee-avatar" ${assignee.avatarUrl ? `style="background-image: url(${assignee.avatarUrl});"` : ''}>
                         ${!assignee.avatarUrl ? initials : ''}
                     </div>
                 `;
-      }).join('');
-      
-      itemDiv.innerHTML = `
+            }).join('');
+
+            itemDiv.innerHTML = `
                 <span class="material-icons-outlined headersearches-tasks-recent-status-icon ${statusClass}">${statusIcon}</span>
                 <div class="headersearches-tasks-recent-content">
                     <div class="headersearches-tasks-recent-title">${item.name}</div>
@@ -613,21 +554,21 @@ function renderRecentItems(tasks, people, projects, messages, taskLimit = null, 
                     ${assigneesHtml}
                 </div>
             `;
-      recentContainerDiv.appendChild(itemDiv);
-    });
-  }
-  
-  // --- Render People ---
-  if (people.length > 0 && !hidePeopleContent) {
-    hasAnyResults = true;
-    people.forEach(person => {
-      const personDiv = document.createElement('div');
-      personDiv.className = 'headersearches-tasks-recent-item';
-      personDiv.dataset.itemId = person.id;
-      
-      const displayName = person.displayName || person.name;
-      
-      personDiv.innerHTML = `
+            recentContainerDiv.appendChild(itemDiv);
+        });
+    }
+
+    // --- Render People ---
+    if (people.length > 0 && !hidePeopleContent) {
+        hasAnyResults = true;
+        people.forEach(person => {
+            const personDiv = document.createElement('div');
+            personDiv.className = 'headersearches-tasks-recent-item';
+            personDiv.dataset.itemId = person.id;
+
+            const displayName = person.displayName || person.name;
+
+            personDiv.innerHTML = `
                 <span class="material-icons-outlined headersearches-tasks-recent-status-icon">person</span>
                 <div class="headersearches-tasks-recent-content">
                     <div class="headersearches-tasks-recent-title">${displayName}</div>
@@ -640,19 +581,19 @@ function renderRecentItems(tasks, people, projects, messages, taskLimit = null, 
                     <span class="material-icons-outlined headersearches-globe-icon">public</span>
                 </div>
             `;
-      recentContainerDiv.appendChild(personDiv);
-    });
-  }
-  
-  // --- Render Recent Messages ---
-  if (showRecentMessages && messages.length > 0) {
-    hasAnyResults = true;
-    messages.forEach(message => {
-      const itemDiv = document.createElement('div');
-      itemDiv.className = 'headersearches-tasks-recent-item';
-      itemDiv.dataset.itemId = message.id;
-      
-      itemDiv.innerHTML = `
+            recentContainerDiv.appendChild(personDiv);
+        });
+    }
+
+    // --- Render Recent Messages ---
+    if (showRecentMessages && messages.length > 0) {
+        hasAnyResults = true;
+        messages.forEach(message => {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'headersearches-tasks-recent-item';
+            itemDiv.dataset.itemId = message.id;
+
+            itemDiv.innerHTML = `
                 <span class="material-icons-outlined headersearches-tasks-recent-status-icon">message</span>
                 <div class="headersearches-tasks-recent-content">
                     <div class="headersearches-tasks-recent-title">${message.title}</div>
@@ -666,22 +607,22 @@ function renderRecentItems(tasks, people, projects, messages, taskLimit = null, 
                 </div>
                 <span class="material-icons-outlined message-star-icon">star_border</span>
             `;
-      recentContainerDiv.appendChild(itemDiv);
-    });
-  }
-  
-  // --- Consolidated Empty State Check ---
-  if (!hasAnyResults) {
-    const noResultsDiv = document.createElement('div');
-    noResultsDiv.className = 'search-no-results';
-    noResultsDiv.innerHTML = `<p>No recent items to display. Start working on a task or project!</p>`;
-    recentContainerDiv.appendChild(noResultsDiv);
-  }
-  
-  // --- Render Invite Button (always at the end if applicable) ---
-  if (showInviteButton) {
-    recentContainerDiv.appendChild(createRecentsInviteEmailButton());
-  }
+            recentContainerDiv.appendChild(itemDiv);
+        });
+    }
+
+    // --- Consolidated Empty State Check ---
+    if (!hasAnyResults) {
+        const noResultsDiv = document.createElement('div');
+        noResultsDiv.className = 'search-no-results';
+        noResultsDiv.innerHTML = `<p>No recent items to display. Start working on a task or project!</p>`;
+        recentContainerDiv.appendChild(noResultsDiv);
+    }
+
+    // --- Render Invite Button (always at the end if applicable) ---
+    if (showInviteButton) {
+        recentContainerDiv.appendChild(createRecentsInviteEmailButton());
+    }
 }
 
 function enterSearchResults() {
@@ -1338,11 +1279,6 @@ if (recentProjectsUnsubscribe) {
   optionBtns[0].addEventListener("click", async () => {
     const btn = optionBtns[0];
     const isSelected = btn.classList.contains("selected");
-    
-    if (recentProjectsUnsubscribe) {
-  recentProjectsUnsubscribe();
-  recentProjectsUnsubscribe = null;
-}
 
     if (isSelected) {
       
@@ -1353,13 +1289,17 @@ if (recentProjectsUnsubscribe) {
       mytaskdisplay.classList.add("hidden");
       savedSearchText.classList.remove("hidden");
       savedSearchContainer.classList.remove("hidden");
-      recentTasksUnsubscribe = fetchRecentTasksFromFirestore(
-  renderRecentItems,
-  [], // Pass example people data, needed another feature here
-  [], // Pass the global projects history
-  [], // Pass example messages data
-  4, false, false, false
-);
+      
+      fetchRecentItemsFromFirestore(renderRecentItems, {
+  showTasks: true,
+  showPeople: true,
+  showProjects: true,
+  showMessages: true,
+  taskLimit: 4, // No specific limit for general view
+  projectLimit: null,
+  showInviteButton: true
+});
+
       } else {
           
       // --- Is NOT selected, now selecting "My Tasks" ---
@@ -1374,14 +1314,15 @@ if (recentProjectsUnsubscribe) {
           b.classList.remove("selected");
         }
       });
-      recentTasksUnsubscribe = fetchRecentTasksFromFirestore(
-            renderRecentItems,
-            [], // Only tasks, so pass empty people data initially
-            [], // Only tasks, so pass empty projects data initially
-            [], // Only tasks, so pass empty messages data initially
-            4, true, false, false // Limit tasks, hide people/invite, hide messages
-        );q
-    }
+      fetchRecentItemsFromFirestore(renderRecentItems, {
+  showTasks: true,
+  showPeople: false,
+  showProjects: false,
+  showMessages: false,
+  taskLimit: 4, // Limit tasks
+  projectLimit: null,
+  showInviteButton: false
+});
     input.value = ''; // Clear input on option selection
     cancelIcon.classList.add('hidden'); // Hide cancel icon
     searchOptions.classList.remove("hidden"); // Always show filter buttons
@@ -1396,20 +1337,17 @@ if (recentProjectsUnsubscribe) {
     const btn = optionBtns[1];
     const isSelected = btn.classList.contains("selected");
     
-    if (recentTasksUnsubscribe) {
-        recentTasksUnsubscribe();
-        recentTasksUnsubscribe = null;
-    }
-
+  
     if (isSelected) {
-      recentTasksUnsubscribe = fetchRecentTasksFromFirestore(
-  renderRecentItems,
-  [], // Pass example people data, needed another feature here
-  [], // Pass the global projects history
-  [], // Pass example messages data
-  4, false, false, false
-);
-
+      fetchRecentItemsFromFirestore(renderRecentItems, {
+  showTasks: true,
+  showPeople: true,
+  showProjects: true,
+  showMessages: true,
+  taskLimit: 4, // No specific limit for general view
+  projectLimit: null,
+  showInviteButton: true
+});
       selectedOptionBtnIndex = -1;
       btn.classList.remove("selected");
       optionBtns.forEach(b => b.classList.remove("hide"));
@@ -1435,15 +1373,15 @@ if (recentProjectsUnsubscribe) {
           b.classList.remove("selected");
         }
       });
-      recentProjectsUnsubscribe = loadProjectRecentHistory(
-  renderRecentItems,
-  [], // Only projects, so pass empty people data
-  [], // Only projects, so pass empty messages data
-  4, // Task limit (doesn't apply to projects but kept for function signature)
-  true, // Hide people content
-  false, // Hide invite button
-  false // Hide messages
-);
+      fetchRecentItemsFromFirestore(renderRecentItems, {
+  showTasks: false,
+  showPeople: false,
+  showProjects: true,
+  showMessages: false,
+  taskLimit: 4,
+  projectLimit: 5, // Limit projects
+  showInviteButton: false
+});
 }
     input.value = ''; // Clear input on option selection
     cancelIcon.classList.add('hidden'); // Hide cancel icon
@@ -1460,13 +1398,15 @@ if (recentProjectsUnsubscribe) {
     //halfQuery.classList.remove("skeleton-active"); // Remove skeleton if it was active
     
     if (isSelected) {
-      fetchRecentTasksFromFirestore(
-  renderRecentItems,
-  [], // Pass example people data, needed another feature here
-  [], // Pass the global projects history
-  [], // Pass example messages data
-  4, false, false, false
-);
+      fetchRecentItemsFromFirestore(renderRecentItems, {
+  showTasks: true,
+  showPeople: true,
+  showProjects: true,
+  showMessages: true,
+  taskLimit: 4, // No specific limit for general view
+  projectLimit: null,
+  showInviteButton: true
+});
 
       selectedOptionBtnIndex = -1;
       btn.classList.remove("selected");
@@ -1531,8 +1471,15 @@ if (recentProjectsUnsubscribe) {
         emailContainerPeopleId.classList.remove('hidden'); // Show invite button
       }
       */
-      renderRecentItems([], exampleRecentPeople, [], [], 4, false, true, false); // show general invite
-      
+      fetchRecentItemsFromFirestore(renderRecentItems, {
+  showTasks: false,
+  showPeople: true,
+  showProjects: false,
+  showMessages: false,
+  taskLimit: 4,
+  projectLimit: 5, // Limit projects
+  showInviteButton: true
+});
     }
     input.value = ''; // Clear input on option selection
     cancelIcon.classList.add('hidden'); // Hide cancel icon
@@ -1548,13 +1495,15 @@ if (recentProjectsUnsubscribe) {
     // halfQuery.classList.remove("skeleton-active");
     
     if (isSelected) {
-      fetchRecentTasksFromFirestore(
-  renderRecentItems,
-  [], // Pass example people data, needed another feature here
-  [], // Pass the global projects history
-  [], // Pass example messages data
-  4, false, false, false
-);
+      fetchRecentItemsFromFirestore(renderRecentItems, {
+  showTasks: true,
+  showPeople: true,
+  showProjects: true,
+  showMessages: true,
+  taskLimit: 4, // No specific limit for general view
+  projectLimit: null,
+  showInviteButton: true
+});
 
       selectedOptionBtnIndex = -1;
       btn.classList.remove("selected");
@@ -1583,7 +1532,15 @@ if (recentProjectsUnsubscribe) {
           b.classList.remove("selected");
         }
       });
-      renderRecentItems([], [], [], exampleRecentMessages, 4, true, false, true);
+      fetchRecentItemsFromFirestore(renderRecentItems, {
+  showTasks: false,
+  showPeople: false,
+  showProjects: false,
+  showMessages: true,
+  taskLimit: 4,
+  projectLimit: 5, // Limit projects
+  showInviteButton: true
+});
     }
     input.value = ''; // Clear input on option selection
     cancelIcon.classList.add('hidden'); // Hide cancel icon
@@ -2127,21 +2084,15 @@ if (recentProjectsUnsubscribe) {
   
   updateProfileDisplay(user);
   
-  fetchRecentTasksFromFirestore(
-  renderRecentItems,
-  [],
-  [],
-  [],
-  4
-);
-
-loadProjectRecentHistory(
-  renderRecentItems,
-  [],
-  [],
-  [],
-  4,
-);
+  fetchRecentItemsFromFirestore(renderRecentItems, {
+  showTasks: true,
+  showPeople: true,
+  showProjects: true,
+  showMessages: true,
+  taskLimit: 4, // No specific limit for general view
+  projectLimit: null,
+  showInviteButton: true
+});
 
   document.addEventListener("click", (e) => {
     // --- NEW: Handle Logout and New Workspace clicks ---
