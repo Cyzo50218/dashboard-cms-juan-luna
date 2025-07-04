@@ -1524,6 +1524,9 @@ margin-left: 6px;
     font-size: 10px;
     margin: 10px; /* Optional: Space around the hint */
 }
+.headersearches-tasks-recent-status-icon.status-completed {
+    color: #4CAF50; /* Google's Material Design green */
+}
 .enter-search-results-hint .search-icon-wrapper {
     /* Optional: Style for the wrapper if needed, e.g., to create a circular background */
     display: flex;
