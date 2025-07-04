@@ -904,6 +904,8 @@ async function handleNewWorkspace() {
 // This function runs once Firebase confirms the user's authentication state.
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
+    currentUserId = null;
+    recentTasksUnsubscribe = null;
     window.location.href = '/login/login.html';
     return;
   }
