@@ -17,7 +17,10 @@ import {
   runTransaction,
   doc,
   getDocs,
-  getDoc
+  getDoc,
+  query,
+  orderBy,
+  limit,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "/services/firebase-config.js";
 import { showInviteModal } from '/dashboard/components/showEmailModel.js';
@@ -352,6 +355,78 @@ function renderAllPeople(people, peopleQueryDiv, peopleEmptyState, emailContaine
   }
 }
 
+export async function fetchRecentTasksFromFirestore(userId) {
+  const recentTasks = [];
+  if (!userId) {
+    console.warn("No user ID provided to fetch recent tasks.");
+    return recentTasks;
+  }
+
+  try {
+    const recentHistoryRef = collection(db, `users/${userId}/recenthistory`);
+    const q = query(recentHistoryRef, orderBy('lastAccessed', 'desc'), limit(10)); // Get latest 10
+    const querySnapshot = await getDocs(q);
+
+    for (const docSnap of querySnapshot.docs) {
+      const taskData = docSnap.data();
+      const processedTask = {
+        id: docSnap.id, // The taskId is the doc ID
+        name: taskData.name || 'Untitled Task',
+        status: taskData.status || 'unknown',
+        assignees: [], // Will populate below
+        project: { name: 'Unknown Project', color: '#cccccc' } // Default
+      };
+
+      // Fetch Project details using projectRef
+      if (taskData.projectRef) {
+        try {
+          const projectDocSnap = await getDoc(taskData.projectRef);
+          if (projectDocSnap.exists()) {
+            const projectData = projectDocSnap.data();
+            processedTask.project = {
+              name: projectData.name || 'Unknown Project',
+              color: projectData.color || '#cccccc'
+            };
+          }
+        } catch (projectError) {
+          console.error("Error fetching project data for recent task:", taskData.projectRef.path, projectError);
+        }
+      }
+
+      // Populate assignees with name and avatar
+      if (taskData.assignees && Array.isArray(taskData.assignees)) {
+        for (const assignee of taskData.assignees) {
+          if (assignee.uid) { // Ensure assignee object has a UID
+            // Prioritize data from mockUsersCollection for this example
+            const foundUser = mockUsersCollection.find(u => u.id === assignee.uid);
+            if (foundUser) {
+              processedTask.assignees.push({
+                uid: foundUser.id,
+                name: foundUser.displayName,
+                avatarUrl: foundUser.avatarUrl,
+                initials: foundUser.initials
+              });
+            } else {
+              // Fallback to data stored in recent history or default if user profile is not found
+              processedTask.assignees.push({
+                uid: assignee.uid,
+                name: assignee.name || 'User',
+                avatarUrl: assignee.avatarUrl || null,
+                initials: (assignee.name || assignee.uid).substring(0, 2).toUpperCase()
+              });
+            }
+          }
+        }
+      }
+      recentTasks.push(processedTask);
+    }
+    console.log("Fetched recent tasks from Firestore:", recentTasks);
+  } catch (error) {
+    console.error("Error fetching recent tasks from Firestore:", error);
+  }
+  return recentTasks;
+}
+
 function renderRecentItems(tasks, people, projects, messages, taskLimit = null, hidePeopleContent = false, showInviteButton = false, showRecentMessages = false) { // Added showRecentMessages parameter
   const recentContainerDiv = document.querySelector("#recent-container > div");
   if (!recentContainerDiv) {
@@ -392,42 +467,49 @@ function renderRecentItems(tasks, people, projects, messages, taskLimit = null, 
   } else {
     
     const tasksToRender = taskLimit ? tasks.slice(0, taskLimit) : tasks;
-    
-    tasksToRender.forEach(item => {
-      const itemDiv = document.createElement('div');
-      itemDiv.className = 'headersearches-tasks-recent-item';
-      itemDiv.dataset.itemId = item.id;
-      
-      let statusIcon;
-      let statusClass = '';
-      if (item.status === 'completed') {
-        statusIcon = 'check_circle'; // Checked icon for completed/on track
-        statusClass = 'status-completed';
-      } else {
-        statusIcon = 'radio_button_unchecked'; // Default unchecked or pending
-      }
 
-      const assigneesHtml = item.assignees.map(assignee => `
-                        <div class="headersearches-assignee-avatar" ${assignee.avatarUrl ? `style="background-image: url(${assignee.avatarUrl});"` : ''}>
-                            ${!assignee.avatarUrl ? assignee.initials : ''}
-                        </div>
-                    `).join('');
-      
-      itemDiv.innerHTML = `
-                        <span class="material-icons-outlined headersearches-tasks-recent-status-icon ${statusClass}">${statusIcon}</span>
-                        <div class="headersearches-tasks-recent-content">
-                            <div class="headersearches-tasks-recent-title">${item.name}</div>
-                            <div class="headersearches-tasks-recent-meta">
-                                <span class="headersearches-tasks-project-dot" style="background-color: ${item.project.color};"></span>
-                                <span class="headersearches-tasks-project-name">${item.project.name}</span>
-                            </div>
-                        </div>
-                        <div class="headersearches-assignee-list">
-                            ${assigneesHtml}
-                        </div>
-                    `;
-      recentContainerDiv.appendChild(itemDiv);
-    });
+if (tasksToRender.length > 0) {
+  tasksToRender.forEach(item => {
+    const itemDiv = document.createElement('div');
+    itemDiv.className = 'headersearches-tasks-recent-item';
+    itemDiv.dataset.itemId = item.id;
+    
+    let statusIcon;
+    let statusClass = '';
+    if (item.status === 'completed') {
+      statusIcon = 'check_circle';
+      statusClass = 'status-completed';
+    } else {
+      statusIcon = 'radio_button_unchecked';
+    }
+    
+    const assigneesHtml = item.assignees.map(assignee => `
+        <div class="headersearches-assignee-avatar" ${assignee.avatarUrl ? `style="background-image: url(${assignee.avatarUrl});"` : ''}>
+          ${!assignee.avatarUrl && assignee.initials ? assignee.initials : ''}
+        </div>
+      `).join('');
+    
+    itemDiv.innerHTML = `
+        <span class="material-icons-outlined headersearches-tasks-recent-status-icon ${statusClass}">${statusIcon}</span>
+        <div class="headersearches-tasks-recent-content">
+          <div class="headersearches-tasks-recent-title">${item.name}</div>
+          <div class="headersearches-tasks-recent-meta">
+            <span class="headersearches-tasks-project-dot" style="background-color: ${item.project.color};"></span>
+            <span class="headersearches-tasks-project-name">${item.project.name}</span>
+          </div>
+        </div>
+        <div class="headersearches-assignee-list">
+          ${assigneesHtml}
+        </div>
+      `;
+    recentContainerDiv.appendChild(itemDiv);
+  });
+} else if (projects.length === 0) {
+  const noTasksDiv = document.createElement('div');
+  noTasksDiv.className = 'search-no-results';
+  noTasksDiv.innerHTML = `<p>No recent tasks to display. Start working on something!</p>`;
+  recentContainerDiv.appendChild(noTasksDiv);
+}
     
     if (people.length > 0 && !hidePeopleContent) { // Changed hidePeople to hidePeopleContent for consistency
       people.forEach(person => {
@@ -1124,6 +1206,7 @@ onAuthStateChanged(auth, (user) => {
   optionBtns[0].addEventListener("click", () => {
     const btn = optionBtns[0];
     const isSelected = btn.classList.contains("selected");
+    const recentTasksData = await fetchRecentTasksFromFirestore(currentUserId);
     
     if (isSelected) {
       // --- Was selected, now deselecting --
@@ -1134,7 +1217,7 @@ onAuthStateChanged(auth, (user) => {
       savedSearchText.classList.remove("hidden");
       savedSearchContainer.classList.remove("hidden");
       
-      renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], [], 4, false, false, false);
+      renderRecentItems(recentTasksData, exampleRecentPeople, [], [], 4, false, false, false);
     } else {
       // --- Is NOT selected, now selecting "My Tasks" ---
       selectedOptionBtnIndex = 0;
@@ -1148,7 +1231,7 @@ onAuthStateChanged(auth, (user) => {
           b.classList.remove("selected");
         }
       });
-      renderRecentItems(exampleRecentTasks, [], [], [], 4, true, false, false);
+      renderRecentItems(recentTasksData, [], [], [], 4, true, false, false);
     }
     input.value = ''; // Clear input on option selection
     cancelIcon.classList.add('hidden'); // Hide cancel icon
@@ -1163,6 +1246,7 @@ onAuthStateChanged(auth, (user) => {
   optionBtns[1].addEventListener("click", () => {
     const btn = optionBtns[1];
     const isSelected = btn.classList.contains("selected");
+    const recentTasksData = await fetchRecentTasksFromFirestore(currentUserId);
     
     if (isSelected) {
       selectedOptionBtnIndex = -1;
@@ -1175,7 +1259,7 @@ onAuthStateChanged(auth, (user) => {
       searchOptions.classList.remove("hidden");
       recentContainer.classList.remove("hidden");
       emailContainerId.classList.add('hidden');
-      renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], [], 4, false, false, false);
+      renderRecentItems(recentTasksData, exampleRecentPeople, [], [], 4, false, false, false);
     } else {
       selectedOptionBtnIndex = 1;
       btn.classList.add("selected");
@@ -1204,6 +1288,7 @@ onAuthStateChanged(auth, (user) => {
     const btn = optionBtns[2];
     const isSelected = btn.classList.contains("selected");
     //halfQuery.classList.remove("skeleton-active"); // Remove skeleton if it was active
+    const recentTasksData = await fetchRecentTasksFromFirestore(currentUserId);
     
     if (isSelected) {
       selectedOptionBtnIndex = -1;
@@ -1226,7 +1311,7 @@ onAuthStateChanged(auth, (user) => {
         b.classList.remove("hide"); // Ensure no option button is hidden
         b.classList.remove("selected");
       });
-      renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], [], 4, false, false, false);
+      renderRecentItems(recentTasksData, exampleRecentPeople, [], [], 4, false, false, false);
       
     } else {
       selectedOptionBtnIndex = 2;
@@ -1284,6 +1369,7 @@ onAuthStateChanged(auth, (user) => {
     const btn = optionBtns[3];
     const isSelected = btn.classList.contains("selected");
     // halfQuery.classList.remove("skeleton-active");
+    const recentTasksData = await fetchRecentTasksFromFirestore(currentUserId);
     
     if (isSelected) {
       selectedOptionBtnIndex = -1;
@@ -1297,7 +1383,7 @@ onAuthStateChanged(auth, (user) => {
       searchOptions.classList.remove("hidden");
       recentContainer.classList.remove("hidden");
       emailContainerId.classList.add('hidden');
-      renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], [], 4, false, false, false);
+      renderRecentItems(recentTasksData, exampleRecentPeople, [], [], 4, false, false, false);
     } else {
       selectedOptionBtnIndex = 3;
       btn.classList.add("selected");
@@ -1397,6 +1483,7 @@ onAuthStateChanged(auth, (user) => {
   
   input.addEventListener('input', () => {
     const value = input.value.trim();
+    const recentTasksData = await fetchRecentTasksFromFirestore(currentUserId);
     
     clearTimeout(searchTimeout);
     
@@ -1486,7 +1573,7 @@ onAuthStateChanged(auth, (user) => {
         projectdisplay.classList.add("hidden");
         messagesEmptyState.classList.add("hidden");
         peopleEmptyState.classList.add("hidden");
-        renderRecentItems(exampleRecentTasks, [], [], 4, true, false, false);
+        renderRecentItems(recentTasksData, [], [], 4, true, false, false);
       } else if (selectedOptionBtnIndex === 1) {
         recentContainer.classList.add("hidden");
         projectdisplay.classList.remove("hidden");
@@ -1515,7 +1602,7 @@ onAuthStateChanged(auth, (user) => {
         projectdisplay.classList.add("hidden");
         messagesEmptyState.classList.add("hidden");
         peopleEmptyState.classList.add("hidden");
-        renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], null, false, false, false);
+        renderRecentItems(recentTasksData, exampleRecentPeople, [], null, false, false, false);
       }
       input.focus();
     }
@@ -1528,40 +1615,8 @@ onAuthStateChanged(auth, (user) => {
   
   cancelIcon.addEventListener('click', () => {
     input.value = '';
-    cancelIcon.classList.add('hidden');
-    savedContainer.classList.remove("hidden");
-    searchOptions.classList.remove("hidden"); // NEW: Show search options on clear
-    recentContainer.classList.remove("hidden"); // NEW: Show recents on clear
-    emailContainerId.classList.add('hidden');
-    halfQuery.classList.add("hidden"); // Hide halfQuery when cleared
-    optionsQuery.classList.add("hidden"); // Hide optionsQuery when cleared
+    const recentTasksData = await fetchRecentTasksFromFirestore(currentUserId);
     
-    // Reset display based on selected option button after clearing search
-    if (selectedOptionBtnIndex === 0) { // Tasks
-      mytaskdisplay.classList.remove("hidden");
-      renderRecentItems(exampleRecentTasks, [], [], [], 4, true, false, false);
-    } else if (selectedOptionBtnIndex === 1) { // Projects
-      projectdisplay.classList.remove("hidden");
-      renderRecentItems([], [], exampleRecentProjects, [], 4, true, false, false);
-    } else if (selectedOptionBtnIndex === 2) { // People
-      peopleEmptyState.classList.remove("hidden");
-      emailContainerPeopleId.classList.remove('hidden');
-      renderRecentItems([], exampleRecentPeople, [], [], 4, false, true, false);
-    } else if (selectedOptionBtnIndex === 3) { // NEW: Messages
-      messagesEmptyState.classList.remove("hidden");
-      renderRecentItems([], [], [], exampleRecentMessages, 4, true, false, true);
-    } else {
-      // No specific category selected, show general recents
-      renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], [], 4, false, false, false); // Default view
-    }
-    displaySearchResults([], [], [], []);
-    searchEmpty = true;
-    halfQuery.add('hidden');
-    input.focus();
-  });
-  
-  cancelIcon.addEventListener('click', () => {
-    input.value = '';
     input.focus(); // Keep focus on the input after clearing
     cancelIcon.classList.add('hidden');
     savedContainer.classList.remove("hidden");
@@ -1573,7 +1628,7 @@ onAuthStateChanged(auth, (user) => {
     
     if (selectedOptionBtnIndex === 0) { // Tasks
       mytaskdisplay.classList.remove("hidden");
-      renderRecentItems(exampleRecentTasks, [], [], [], 4, true, false, false);
+      renderRecentItems(recentTasksData, [], [], [], 4, true, false, false);
     } else if (selectedOptionBtnIndex === 1) { // Projects
       projectdisplay.classList.remove("hidden");
       renderRecentItems([], [], exampleRecentProjects, [], 4, true, false, false);
@@ -1586,7 +1641,7 @@ onAuthStateChanged(auth, (user) => {
       renderRecentItems([], [], [], exampleRecentMessages, 4, true, false, true);
     } else {
       // No specific category selected, show general recents
-      renderRecentItems(exampleRecentTasks, exampleRecentPeople, [], [], 4, false, false, false); // Default view
+      renderRecentItems(recentTasksData, exampleRecentPeople, [], [], 4, false, false, false); // Default view
     }
   });
   
