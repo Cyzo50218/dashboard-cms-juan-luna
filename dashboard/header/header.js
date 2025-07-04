@@ -501,170 +501,184 @@ export function loadProjectRecentHistory(
     return recentProjectsUnsubscribe;
 }
 
-function renderRecentItems(tasks, people, projects, messages, taskLimit = null, hidePeopleContent = false, showInviteButton = false, showRecentMessages = false) { // Added showRecentMessages parameter
+function renderRecentItems(tasks, people, projects, messages, taskLimit = null, hidePeopleContent = false, showInviteButton = false, showRecentMessages = false) {
   const recentContainerDiv = document.querySelector("#recent-container > div");
   if (!recentContainerDiv) {
     console.error("Recent container div not found!");
     return;
   }
   
-  recentContainerDiv.innerHTML = '';
+  recentContainerDiv.innerHTML = ''; // Clear previous content
   
+  let hasAnyResults = false; // Flag to track if any section has results
+  
+  // --- Render Projects ---
   if (projects && projects.length > 0) {
+    hasAnyResults = true;
     projects.forEach(project => {
+      const itemDiv = document.createElement('div');
       itemDiv.className = 'headersearches-tasks-recent-item'; // Reusing common item styling
-itemDiv.dataset.itemId = project.projectId;
-itemDiv.dataset.projectRefPath = project.projectRef?.path; // For navigation
-
-// --- MODIFIED: Assignee display for projects ---
-const maxDisplayAvatars = 3; // Max number of avatars to display before "..."
-let visibleAssignees = project.memberProfiles.slice(0, maxDisplayAvatars);
-let overflowCount = project.memberProfiles.length - maxDisplayAvatars;
-
-const assigneesHtml = visibleAssignees.map((member, index) => {
-  const zIndex = 50 - index;
-  // Use displayName or name, and fallback to UID part for initials
-  const displayName = member.displayName || member.name || 'Unknown User';
-  const initials = member.initials || (displayName).split(' ').map(n => n[0]).join('').substring(0, 2);
-  
-  if (member.avatarUrl && member.avatarUrl.startsWith('https://')) {
-    return `
-                        <div class="headersearches-assignee-avatar" title="${displayName}" style="z-index: ${zIndex};">
+      itemDiv.dataset.itemId = project.id; // Corrected: Use project.id as the item ID
+      itemDiv.dataset.projectRefPath = project.projectRef?.path; // For navigation
+      
+      const maxDisplayAvatars = 3;
+      let visibleAssignees = project.assignees.slice(0, maxDisplayAvatars); // project.assignees now holds memberProfiles
+      let overflowCount = project.assignees.length - maxDisplayAvatars;
+      
+      const assigneesHtml = visibleAssignees.map((member, index) => {
+        const zIndex = 50 - index;
+        const displayName = member.displayName || member.name || 'Unknown User';
+        const initials = member.initials || (displayName).split(' ').map(n => n[0]).join('').substring(0, 2);
+        
+        if (member.avatarUrl && member.avatarUrl.startsWith('https://')) {
+          return `
+                        <div class="user-avatar-tasks" title="${displayName}" style="z-index: ${zIndex};">
                             <img src="${member.avatarUrl}" alt="${displayName}">
                         </div>`;
-  } else if (member.avatar && member.avatar.startsWith('https://')) { // Check for 'avatar' field too
-    return `
+        } else if (member.avatar && member.avatar.startsWith('https://')) { // Check for 'avatar' field too
+          return `
                         <div class="headersearches-assignee-avatar" title="${displayName}" style="z-index: ${zIndex};">
                             <img src="${member.avatar}" alt="${displayName}">
                         </div>`;
-  }
-  else {
-    const bgColor = '#' + (member.uid || '000000').substring(0, 6); // Hash color based on UID
-    return `<div class="headersearches-assignee-avatar" title="${displayName}" style="background-color: ${bgColor}; color: white; z-index: ${zIndex};">${initials}</div>`;
-  }
-}).join('');
-
-// This is the line that defines the overflow dots HTML
-const moreAssigneesHtml = overflowCount > 0 ?
-  `<div class="user-avatar-tasks overflow-dots" title="${overflowCount} more members" style="z-index: ${50 - maxDisplayAvatars};">
+        }
+        else {
+          const bgColor = '#' + (member.uid || '000000').substring(0, 6);
+          return `<div class="headersearches-assignee-avatar" title="${displayName}" style="background-color: ${bgColor}; color: white; z-index: ${zIndex};">${initials}</div>`;
+        }
+      }).join('');
+      
+      const moreAssigneesHtml = overflowCount > 0 ?
+        `<div class="user-avatar-tasks overflow-dots" title="${overflowCount} more members" style="z-index: ${50 - maxDisplayAvatars};">
                     <span class="material-icons-outlined">more_horiz</span>
-                </div>` : ''; // Corrected to use div.user-avatar-tasks for consistency
-
-// --- END MODIFIED Assignee display ---
-
-itemDiv.innerHTML = `
-                <span class="headersearches-project-square-icon" style="background-color: ${project.projectColor};"></span>
+                </div>` : '';
+      
+      // Note: Use project.projectName and project.projectColor from the processed data
+      itemDiv.innerHTML = `
+                <span class="headersearches-project-square-icon" style="background-color: ${project.color};"></span>
                 <div class="headersearches-tasks-recent-content">
-                    <div class="headersearches-tasks-recent-title">${project.projectName}</div>
+                    <div class="headersearches-tasks-recent-title">${project.name}</div>
                     <div class="headersearches-tasks-recent-meta">
-                        <span>${project.sectionTaskCounts} tasks</span> </div>
+                        <span>${project.tasksCount} tasks</span>
+                    </div>
                 </div>
                 <div class="headersearches-assignee-list">
                     ${assigneesHtml}
-                    ${moreAssigneesHtml} </div>
+                    ${moreAssigneesHtml}
+                </div>
             `;
-recentContainerDiv.appendChild(itemDiv);
+      recentContainerDiv.appendChild(itemDiv);
     });
-  } else {
-    
-    const tasksToRender = taskLimit ? tasks.slice(0, taskLimit) : tasks;
-
-if (tasksToRender.length > 0) {
-  tasksToRender.forEach(item => {
-    const itemDiv = document.createElement('div');
-    itemDiv.className = 'headersearches-tasks-recent-item';
-    itemDiv.dataset.itemId = item.id;
-    
-    let statusIcon;
-    let statusClass = '';
-    if (item.status === 'completed') {
-      statusIcon = 'check_circle';
-      statusClass = 'status-completed';
-    } else {
-      statusIcon = 'radio_button_unchecked';
-    }
-    
-    const assigneesHtml = item.assignees.map(assignee => `
-        <div class="headersearches-assignee-avatar" ${assignee.avatarUrl ? `style="background-image: url(${assignee.avatarUrl});"` : ''}>
-          ${!assignee.avatarUrl && assignee.initials ? assignee.initials : ''}
-        </div>
-      `).join('');
-    
-    itemDiv.innerHTML = `
-        <span class="material-icons-outlined headersearches-tasks-recent-status-icon ${statusClass}">${statusIcon}</span>
-        <div class="headersearches-tasks-recent-content">
-          <div class="headersearches-tasks-recent-title">${item.name}</div>
-          <div class="headersearches-tasks-recent-meta">
-            <span class="headersearches-tasks-project-dot" style="background-color: ${item.project.color};"></span>
-            <span class="headersearches-tasks-project-name">${item.project.name}</span>
-          </div>
-        </div>
-        <div class="headersearches-assignee-list">
-          ${assigneesHtml}
-        </div>
-      `;
-    recentContainerDiv.appendChild(itemDiv);
-  });
-} else if (projects.length === 0) {
-  const noTasksDiv = document.createElement('div');
-  noTasksDiv.className = 'search-no-results';
-  noTasksDiv.innerHTML = `<p>No recent tasks to display. Start working on something!</p>`;
-  recentContainerDiv.appendChild(noTasksDiv);
-}
-    
-    if (people.length > 0 && !hidePeopleContent) { // Changed hidePeople to hidePeopleContent for consistency
-      people.forEach(person => {
-        const personDiv = document.createElement('div');
-        personDiv.className = 'headersearches-tasks-recent-item';
-        personDiv.dataset.itemId = person.id;
-        
-        personDiv.innerHTML = `
-                            <span class="material-icons-outlined headersearches-tasks-recent-status-icon">person</span>
-                            <div class="headersearches-tasks-recent-content">
-                                <div class="headersearches-tasks-recent-title">${person.name}</div>
-                                <div class="headersearches-tasks-recent-meta">${person.email}</div>
-                            </div>
-                            <div class="headersearches-assignee-list">
-                                <div class="headersearches-assignee-avatar">${person.initials}</div>
-                                <span class="material-icons-outlined headersearches-globe-icon">public</span>
-                            </div>
-                        `;
-        recentContainerDiv.appendChild(personDiv);
-      });
-    }
-    
-    if (showRecentMessages && messages.length > 0) {
-      messages.forEach(message => {
-        const itemDiv = document.createElement('div');
-        itemDiv.className = 'headersearches-tasks-recent-item';
-        itemDiv.dataset.itemId = message.id;
-        
-        itemDiv.innerHTML = `
-          <span class="material-icons-outlined headersearches-tasks-recent-status-icon">message</span>
-          <div class="headersearches-tasks-recent-content">
-            <div class="headersearches-tasks-recent-title">${message.title}</div>
-            <div class="headersearches-tasks-recent-meta">
-              <div class="headersearches-assignee-avatar" ${message.sender.avatarUrl ? `style="background-image: url(${message.sender.avatarUrl});"` : ''}>
-                ${!message.sender.avatarUrl ? message.sender.initials : ''}
-              </div>
-              <span>${message.sender.name}</span>
-              <span class="message-date">${dayjs(message.date).format('MMM D')}</span>
-            </div>
-          </div>
-          <span class="material-icons-outlined message-star-icon">star_border</span>
-        `;
-        recentContainerDiv.appendChild(itemDiv);
-      });
-    } else if (showRecentMessages && messages.length == 0) {
-      // Display a message if no recent messages
-      const noMessagesDiv = document.createElement('div');
-      noMessagesDiv.className = 'search-no-results'; // Reusing no results style
-      noMessagesDiv.innerHTML = `<p>No recent messages to display.</p>`;
-      recentContainerDiv.appendChild(noMessagesDiv);
-    }
   }
   
+  // --- Render Tasks ---
+  const tasksToRender = taskLimit ? tasks.slice(0, taskLimit) : tasks;
   
+  if (tasksToRender.length > 0) {
+    hasAnyResults = true;
+    tasksToRender.forEach(item => {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'headersearches-tasks-recent-item';
+      itemDiv.dataset.itemId = item.id;
+      itemDiv.dataset.projectRefPath = item.projectRef?.path;
+      
+      let statusIcon;
+      let statusClass = '';
+      if (item.status === 'completed') {
+        statusIcon = 'check_circle';
+        statusClass = 'status-completed';
+      } else {
+        statusIcon = 'radio_button_unchecked';
+      }
+      
+      const assigneesHtml = item.assignees.map(assignee => {
+        const displayName = assignee.name || 'Unknown User';
+        const initials = assignee.initials || (displayName).substring(0, 2).toUpperCase();
+        return `
+                    <div class="headersearches-assignee-avatar" ${assignee.avatarUrl ? `style="background-image: url(${assignee.avatarUrl});"` : ''}>
+                        ${!assignee.avatarUrl ? initials : ''}
+                    </div>
+                `;
+      }).join('');
+      
+      itemDiv.innerHTML = `
+                <span class="material-icons-outlined headersearches-tasks-recent-status-icon ${statusClass}">${statusIcon}</span>
+                <div class="headersearches-tasks-recent-content">
+                    <div class="headersearches-tasks-recent-title">${item.name}</div>
+                    <div class="headersearches-tasks-recent-meta">
+                        <span class="headersearches-tasks-project-dot" style="background-color: ${item.project.color};"></span>
+                        <span class="headersearches-tasks-project-name">${item.project.name}</span>
+                    </div>
+                </div>
+                <div class="headersearches-assignee-list">
+                    ${assigneesHtml}
+                </div>
+            `;
+      recentContainerDiv.appendChild(itemDiv);
+    });
+  }
+  
+  // --- Render People ---
+  if (people.length > 0 && !hidePeopleContent) {
+    hasAnyResults = true;
+    people.forEach(person => {
+      const personDiv = document.createElement('div');
+      personDiv.className = 'headersearches-tasks-recent-item';
+      personDiv.dataset.itemId = person.id;
+      
+      const displayName = person.displayName || person.name;
+      
+      personDiv.innerHTML = `
+                <span class="material-icons-outlined headersearches-tasks-recent-status-icon">person</span>
+                <div class="headersearches-tasks-recent-content">
+                    <div class="headersearches-tasks-recent-title">${displayName}</div>
+                    <div class="headersearches-tasks-recent-meta">${person.email || ''}</div>
+                </div>
+                <div class="headersearches-assignee-list">
+                    <div class="headersearches-assignee-avatar" ${person.avatarUrl ? `style="background-image: url(${person.avatarUrl});"` : ''}>
+                        ${!person.avatarUrl ? person.initials : ''}
+                    </div>
+                    <span class="material-icons-outlined headersearches-globe-icon">public</span>
+                </div>
+            `;
+      recentContainerDiv.appendChild(personDiv);
+    });
+  }
+  
+  // --- Render Recent Messages ---
+  if (showRecentMessages && messages.length > 0) {
+    hasAnyResults = true;
+    messages.forEach(message => {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'headersearches-tasks-recent-item';
+      itemDiv.dataset.itemId = message.id;
+      
+      itemDiv.innerHTML = `
+                <span class="material-icons-outlined headersearches-tasks-recent-status-icon">message</span>
+                <div class="headersearches-tasks-recent-content">
+                    <div class="headersearches-tasks-recent-title">${message.title}</div>
+                    <div class="headersearches-tasks-recent-meta">
+                        <div class="headersearches-assignee-avatar" ${message.sender.avatarUrl ? `style="background-image: url(${message.sender.avatarUrl});"` : ''}>
+                            ${!message.sender.avatarUrl ? message.sender.initials : ''}
+                        </div>
+                        <span>${message.sender.name}</span>
+                        <span class="message-date">${dayjs(message.date).format('MMM D')}</span>
+                    </div>
+                </div>
+                <span class="material-icons-outlined message-star-icon">star_border</span>
+            `;
+      recentContainerDiv.appendChild(itemDiv);
+    });
+  }
+  
+  // --- Consolidated Empty State Check ---
+  if (!hasAnyResults) {
+    const noResultsDiv = document.createElement('div');
+    noResultsDiv.className = 'search-no-results';
+    noResultsDiv.innerHTML = `<p>No recent items to display. Start working on a task or project!</p>`;
+    recentContainerDiv.appendChild(noResultsDiv);
+  }
+  
+  // --- Render Invite Button (always at the end if applicable) ---
   if (showInviteButton) {
     recentContainerDiv.appendChild(createRecentsInviteEmailButton());
   }
