@@ -267,104 +267,163 @@ window.TaskSidebar = (function() {
      * @param {string} taskId - The ID of the task to open.
      * @param {DocumentReference} projectRef - The direct Firestore reference to the project.
      */
-    async function open(taskId, projectRef) {
-        if (!isInitialized) init();
-        if (!taskId || !projectRef || !currentUserId) {
-            console.error("Cannot open sidebar: A taskId, projectRef, or currentUser is missing.");
-            return;
+    export async function open(taskId, projectRef) {
+    if (!isInitialized) {
+        // Assuming init() sets up sidebar, rightSidebarContainer etc.
+        // If init() is async or depends on DOMContentLoaded, ensure it's handled properly.
+        // For simplicity, let's assume it's synchronous here or already awaited outside.
+        init();
+    }
+    
+    // IMPORTANT: Make sure currentUserId is set by your auth listener before calling open.
+    // This is a safety fallback for testing, but should be replaced by actual auth logic.
+    if (!currentUserId) {
+        console.warn("currentUserId is not set. Using 'user_john' for demonstration.");
+        currentUserId = 'user_john';
+    }
+    
+    if (!taskId || !projectRef || !currentUserId) {
+        console.error("Cannot open sidebar: A taskId, projectRef, or currentUser is missing.");
+        return;
+    }
+    
+    close(); // Clears previous state, including unsubscribing old listeners
+    
+    // Ensure DOM elements are available before trying to add classes
+    if (sidebar) sidebar.classList.add('is-loading', 'is-visible');
+    if (rightSidebarContainer) rightSidebarContainer.classList.add('sidebar-open');
+    
+    try {
+        // --- STEP 1: USE THE PROVIDED PROJECT REFERENCE ---
+        currentProjectRef = projectRef;
+        console.log("DEBUG: Sidebar opened with direct project path:", currentProjectRef.path);
+        
+        // --- STEP 2: FETCH ALL DATA USING THE CORRECT REFERENCES ---
+        // Get the project data
+        const projectDoc = await getDoc(currentProjectRef);
+        if (!projectDoc.exists()) {
+            throw new Error("The provided project reference is invalid or was deleted.");
+        }
+        currentProject = { id: projectDoc.id, ...projectDoc.data() };
+        console.log("DEBUG: currentProject loaded:", currentProject);
+        
+        // Find the task using its ID within the known project
+        const tasksQuery = query(
+            collectionGroup(db, 'tasks'),
+            where('id', '==', taskId),
+            where('projectId', '==', currentProject.id), // Ensure projectId matches currentProject.id
+            limit(1)
+        );
+        console.log(`DEBUG: Querying for task ID: ${taskId} in project ID: ${currentProject.id}`);
+        
+        const taskSnapshot = await getDocs(tasksQuery);
+        
+        if (taskSnapshot.empty) {
+            throw new Error(`Task ${taskId} not found in project ${currentProject.title}. It might have been moved or deleted.`);
         }
         
-        close(); // Clears previous state
+        currentTaskRef = taskSnapshot.docs[0].ref;
+        // Fetch the task document directly here, so currentTask is immediately available
+        const taskDoc = await getDoc(currentTaskRef);
+        if (!taskDoc.exists()) {
+            // This should ideally be caught by taskSnapshot.empty, but double-check
+            throw new Error(`Task document for ID ${taskId} does not exist at reference ${currentTaskRef.path}.`);
+        }
+        currentTask = { id: taskDoc.id, ...taskDoc.data() };
+        console.log("DEBUG: currentTask loaded:", currentTask); // currentTask is now guaranteed to have data
         
-        sidebar.classList.add('is-loading', 'is-visible');
-        rightSidebarContainer.classList.add('sidebar-open');
+        // Fetch other necessary data after currentTask and currentProject are available
+        if (typeof fetchEligibleMoveProjects === 'function') workspaceProjects = await fetchEligibleMoveProjects(currentUserId);
+        const memberUIDs = currentProject.members?.map(m => m.uid) || [];
+        if (typeof fetchMemberProfiles === 'function') allUsers = await fetchMemberProfiles(memberUIDs);
+        if (typeof updateUserPermissions === 'function') updateUserPermissions(currentProject, currentUserId);
         
-        try {
-            // --- STEP 1: USE THE PROVIDED PROJECT REFERENCE ---
-            currentProjectRef = projectRef;
-            
-            console.log("DEBUG: Sidebar opened with direct project path:", currentProjectRef.path);
-            
-            // --- STEP 2: FETCH ALL DATA USING THE CORRECT REFERENCES ---
-            // Get the project data
-            const projectDoc = await getDoc(currentProjectRef);
-            if (!projectDoc.exists()) throw new Error("The provided project reference is invalid or was deleted.");
-            currentProject = { id: projectDoc.id, ...projectDoc.data() };
-
-            // --- STEP 3: RENDER THE UI ---
-            sidebar.classList.remove('is-loading');
-            
-            // --- STEP 4: ATTACH REAL-TIME LISTENERS ---
-            taskListenerUnsubscribe = onSnapshot(currentTaskRef, (doc) => {
-                if (doc.exists()) {
-                    currentTask = { ...doc.data(), id: doc.id };
-                    renderSidebar(currentTask);
+        // --- ADDITION FOR RECENT HISTORY (NOW currentTask IS DEFINED) ---
+        const userRecentHistoryRef = collection(db, `users/${currentUserId}/recenthistory`);
+        const recentHistoryDocRef = doc(userRecentHistoryRef, taskId);
+        const recentHistoryDoc = await getDoc(recentHistoryDocRef);
+        
+        let assigneesForHistory = [];
+        // Now, currentTask.assignees is safely accessible
+        if (currentTask.assignees && Array.isArray(currentTask.assignees)) {
+            for (const assigneeUid of currentTask.assignees) {
+                const foundProfile = allUsers.find(u => u.uid === assigneeUid);
+                if (foundProfile) {
+                    assigneesForHistory.push({
+                        uid: foundProfile.uid,
+                        name: foundProfile.displayName || 'Unknown User',
+                        avatarUrl: foundProfile.avatarUrl || null
+                    });
                 } else {
-                    close();
-                }
-            });
-            // Find the task using its ID within the known project
-            const userRecentHistoryRef = collection(db, `users/${currentUserId}/recenthistory`);
-            const recentHistoryDocRef = doc(userRecentHistoryRef, taskId); // Use taskId as the document ID
-            const recentHistoryDoc = await getDoc(recentHistoryDocRef);
-            
-            // Prepare assignee data for recent history, assuming assignees are ONLY UID strings
-            let assigneesForHistory = [];
-            if (currentTask.assignees && Array.isArray(currentTask.assignees)) {
-                for (const assigneeUid of currentTask.assignees) { // Renamed to assigneeUid for clarity
-                    // Attempt to find in allUsers (already fetched profiles for project members)
-                    const foundProfile = allUsers.find(u => u.uid === assigneeUid);
-                    if (foundProfile) {
+                    const userDocRef = doc(db, `users/${assigneeUid}`);
+                    const userDocSnap = await getDoc(userDocRef);
+                    if (userDocSnap.exists()) {
+                        const userData = userDocSnap.data();
                         assigneesForHistory.push({
-                            uid: foundProfile.uid,
-                            name: foundProfile.displayName || 'Unknown User',
-                            avatarUrl: foundProfile.avatarUrl || null
+                            uid: assigneeUid,
+                            name: userData.displayName || 'Unknown User',
+                            avatarUrl: userData.avatarUrl || null
                         });
                     } else {
-                        // Fallback: Fetch directly from 'users' collection if not a project member
-                        // or if 'allUsers' wasn't comprehensive
-                        const userDocRef = doc(db, `users/${assigneeUid}`);
-                        const userDocSnap = await getDoc(userDocRef);
-                        if (userDocSnap.exists()) {
-                            const userData = userDocSnap.data();
-                            assigneesForHistory.push({
-                                uid: assigneeUid,
-                                name: userData.displayName || 'Unknown User', // Prioritize displayName
-                                avatarUrl: userData.avatarUrl || null
-                            });
-                        } else {
-                            // If user profile is not found at all
-                            assigneesForHistory.push({ uid: assigneeUid, name: 'Unknown User', avatarUrl: null });
-                        }
+                        assigneesForHistory.push({ uid: assigneeUid, name: 'Unknown User', avatarUrl: null });
                     }
                 }
             }
-            
-            const recentHistoryData = {
-                name: currentTask.name || '',
-                status: currentTask.status || '',
-                assignees: assigneesForHistory, // Store rich assignee objects
-                projectRef: projectRef, // Keep the reference
-                projectName: currentProject.title || 'Unknown Project',
-                projectColor: currentProject.color || '#cccccc',
-                lastAccessed: serverTimestamp()
-            };
-            
-            if (recentHistoryDoc.exists()) {
-                await updateDoc(recentHistoryDocRef, recentHistoryData);
-                console.log("Updated recent history for existing task:", taskId);
-            } else {
-                await setDoc(recentHistoryDocRef, recentHistoryData);
-                console.log("Added new recent history entry for task:", taskId);
-            }
-            listenToActivity();
-            listenToMessages();
-            
-        } catch (error) {
-            console.error("TaskSidebar: Error opening task.", error);
-            close();
         }
+        
+        const recentHistoryData = {
+            name: currentTask.name || '',
+            status: currentTask.status || '',
+            assignees: assigneesForHistory,
+            projectRef: projectRef,
+            projectName: currentProject.title || 'Unknown Project',
+            projectColor: currentProject.color || '#cccccc',
+            lastAccessed: serverTimestamp()
+        };
+        
+        if (recentHistoryDoc.exists()) {
+            await updateDoc(recentHistoryDocRef, recentHistoryData);
+            console.log("Updated recent history for existing task:", taskId);
+        } else {
+            await setDoc(recentHistoryDocRef, recentHistoryData);
+            console.log("Added new recent history entry for task:", taskId);
+        }
+        
+        // --- STEP 3: RENDER THE UI (Initial Render) ---
+        if (sidebar) sidebar.classList.remove('is-loading');
+        if (typeof renderSidebar === 'function') renderSidebar(currentTask);
+        
+        // --- STEP 4: ATTACH REAL-TIME LISTENERS (After currentTaskRef is defined) ---
+        // Ensure to unsubscribe from any previous listeners on currentTaskRef if needed
+        if (taskListenerUnsubscribe) {
+            taskListenerUnsubscribe(); // Stop listening to old task if changing tasks
+        }
+        if (currentTaskRef) {
+            taskListenerUnsubscribe = onSnapshot(currentTaskRef, (doc) => {
+                if (doc.exists()) {
+                    currentTask = { ...doc.data(), id: doc.id };
+                    if (typeof renderSidebar === 'function') renderSidebar(currentTask);
+                } else {
+                    console.warn(`Task document ${currentTaskRef.path} no longer exists. Closing sidebar.`);
+                    close();
+                }
+            }, (error) => {
+                console.error("Real-time task listener error:", error);
+                // Optionally handle specific errors, e.g., permission denied
+                close();
+            });
+        }
+        
+        
+        // Call other listeners if they exist
+        if (typeof listenToActivity === 'function') listenToActivity();
+        if (typeof listenToMessages === 'function') listenToMessages();
+        
+    } catch (error) {
+        console.error("TaskSidebar: Error opening task. Details:", error.message, error);
+        close();
     }
+}
     
     function close() {
         if (sidebar) sidebar.classList.remove('is-visible', 'is-loading');
