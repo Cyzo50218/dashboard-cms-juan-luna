@@ -34,6 +34,7 @@ const auth = getAuth(app);
 const db = getFirestore(app, "juanluna-cms-01");
 let currentUserId = null;
 let recentTasksUnsubscribe = null; 
+let recentItemsUnsubscribe = null; 
 let recentProjectsUnsubscribe = null;
 
 
@@ -956,7 +957,6 @@ onAuthStateChanged(auth, async (user) => {
   recentItemsUnsubscribe();
   recentItemsUnsubscribe = null;
 }
-
 
   if (!user) {
     currentUserId = null;
