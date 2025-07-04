@@ -512,31 +512,58 @@ function renderRecentItems(tasks, people, projects, messages, taskLimit = null, 
   
   if (projects && projects.length > 0) {
     projects.forEach(project => {
-      const itemDiv = document.createElement('div');
       itemDiv.className = 'headersearches-tasks-recent-item'; // Reusing common item styling
-      itemDiv.dataset.itemId = project.id;
-      let assigneesToDisplay = project.assignees.slice(0, 2); // Show up to 3 assignees
-      let remainingAssigneesCount = project.assignees.length - assigneesToDisplay.length;
-      
-      const assigneesHtml = assigneesToDisplay.map(assignee => `
-                        <div class="headersearches-assignee-avatar" ${assignee.avatarUrl ? `style="background-image: url(${assignee.avatarUrl});"` : ''}>
-                            ${!assignee.avatarUrl ? assignee.initials : ''}
-                        </div>
-                    `).join('');
-      const moreAssigneesHtml = remainingAssigneesCount > 0 ?
-        `<span class="material-icons-outlined project-more-icon">more_horiz</span>` : '';
-      
-      
-      itemDiv.innerHTML = `
-                        <span class="headersearches-project-square-icon" style="background-color: ${project.color};"></span>
-                        <div class="headersearches-tasks-recent-content">
-                            <div class="headersearches-tasks-recent-title">${project.name}</div>
-                        </div>
-                        <div class="headersearches-assignee-list">
-                            ${assigneesHtml}
-                            ${moreAssigneesHtml} </div>
-                    `;
-      recentContainerDiv.appendChild(itemDiv);
+itemDiv.dataset.itemId = project.id;
+itemDiv.dataset.projectRefPath = project.projectRef?.path; // For navigation
+
+// --- MODIFIED: Assignee display for projects ---
+const maxDisplayAvatars = 3; // Max number of avatars to display before "..."
+let visibleAssignees = project.assignees.slice(0, maxDisplayAvatars);
+let overflowCount = project.assignees.length - maxDisplayAvatars;
+
+const assigneesHtml = visibleAssignees.map((member, index) => {
+  const zIndex = 50 - index;
+  // Use displayName or name, and fallback to UID part for initials
+  const displayName = member.displayName || member.name || 'Unknown User';
+  const initials = member.initials || (displayName).split(' ').map(n => n[0]).join('').substring(0, 2);
+  
+  if (member.avatarUrl && member.avatarUrl.startsWith('https://')) {
+    return `
+                        <div class="headersearches-assignee-avatar" title="${displayName}" style="z-index: ${zIndex};">
+                            <img src="${member.avatarUrl}" alt="${displayName}">
+                        </div>`;
+  } else if (member.avatar && member.avatar.startsWith('https://')) { // Check for 'avatar' field too
+    return `
+                        <div class="headersearches-assignee-avatar" title="${displayName}" style="z-index: ${zIndex};">
+                            <img src="${member.avatar}" alt="${displayName}">
+                        </div>`;
+  }
+  else {
+    const bgColor = '#' + (member.uid || '000000').substring(0, 6); // Hash color based on UID
+    return `<div class="headersearches-assignee-avatar" title="${displayName}" style="background-color: ${bgColor}; color: white; z-index: ${zIndex};">${initials}</div>`;
+  }
+}).join('');
+
+// This is the line that defines the overflow dots HTML
+const moreAssigneesHtml = overflowCount > 0 ?
+  `<div class="user-avatar-tasks overflow-dots" title="${overflowCount} more members" style="z-index: ${50 - maxDisplayAvatars};">
+                    <span class="material-icons-outlined">more_horiz</span>
+                </div>` : ''; // Corrected to use div.user-avatar-tasks for consistency
+
+// --- END MODIFIED Assignee display ---
+
+itemDiv.innerHTML = `
+                <span class="headersearches-project-square-icon" style="background-color: ${project.color};"></span>
+                <div class="headersearches-tasks-recent-content">
+                    <div class="headersearches-tasks-recent-title">${project.name}</div>
+                    <div class="headersearches-tasks-recent-meta">
+                        <span>${project.tasksCount} tasks</span> </div>
+                </div>
+                <div class="headersearches-assignee-list">
+                    ${assigneesHtml}
+                    ${moreAssigneesHtml} </div>
+            `;
+recentContainerDiv.appendChild(itemDiv);
     });
   } else {
     
