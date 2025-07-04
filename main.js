@@ -166,52 +166,67 @@ function updateActiveNav() {
 async function loadHTML(selector, url) {
     const container = document.querySelector(selector);
     if (!container) return;
-
+    
     // 🛑 Prevent re-loading if already loaded (check by custom attribute)
     if (container.getAttribute("data-loaded-url") === url) {
         console.log(`[loadHTML] Skipping reload of ${url} (already loaded)`);
         return;
     }
-
+    
     try {
         const response = await fetch(url);
-        if (!response.ok) throw new Error(`Failed to fetch ${url}`);
+        if (!response.ok) throw new Error(`Failed to fetch ${url} (HTTP status: ${response.status})`); // More detailed error
+        
         const htmlContent = await response.text();
-
+        
         const folderPath = url.substring(0, url.lastIndexOf('/'));
         const componentName = folderPath.split('/').pop();
-
+        
         const cssPath = `${folderPath}/${componentName}.css`;
         const jsPath = `${folderPath}/${componentName}.js`;
-
+        
         // ✅ Remove previous CSS for this component before adding new
-        const existingLink = document.querySelector(`link[href="${cssPath}"]`);
-        if (!existingLink) {
+        // Check if a link for this specific component already exists
+        let existingLink = document.querySelector(`link[data-component-style="${componentName}"]`);
+        if (existingLink && existingLink.href !== cssPath) { // If it exists but is for a different URL, remove it
+            existingLink.remove();
+            existingLink = null; // Clear reference
+        }
+        if (!existingLink) { // If no existing or if it was removed
             const link = document.createElement("link");
             link.rel = "stylesheet";
             link.href = cssPath;
-            link.setAttribute("data-component-style", componentName);
+            link.setAttribute("data-component-style", componentName); // Use data-attribute for better targeting
             document.head.appendChild(link);
         }
-
+        
         container.innerHTML = htmlContent;
-
+        
         // ✅ Mark this container as having this component
         container.setAttribute("data-loaded-url", url);
-
+        
         // ✅ Import JS module only once by checking window._loadedComponents
+        // Use a more robust check for module loading to prevent double execution if module itself is cached
         window._loadedComponents = window._loadedComponents || {};
         if (!window._loadedComponents[jsPath]) {
-            await import(jsPath);
-            window._loadedComponents[jsPath] = true;
+            // Appending a cache-busting query parameter to the JS path
+            // to ensure a fresh load during development, if needed.
+            // In production, rely on proper caching headers or versioning.
+            const moduleToLoad = `${jsPath}?v=${new Date().getTime()}`;
+            await import(moduleToLoad);
+            window._loadedComponents[jsPath] = true; // Mark base path as loaded
+            console.log(`[loadHTML] Imported JS module: ${jsPath}`);
+        } else {
+            console.log(`[loadHTML] Skipping JS module import for ${jsPath} (already imported)`);
         }
-
+        
     } catch (err) {
-        container.innerHTML = `<p>Error loading component from ${url}</p>`;
-        console.error("Failed to load component:", err);
+        container.innerHTML = `<p style="color: red;">Error loading component from ${url}: ${err.message}</p>`; // Display error message
+        console.error("Failed to load component:", err); // Fix: Corrected to console.error
+        // Provide full error details to console
+        console.error("Full error details:", err.stack);
     }
 }
-
 
 // --- APPLICATION INITIALIZATION ---
 document.addEventListener("DOMContentLoaded", () => {
