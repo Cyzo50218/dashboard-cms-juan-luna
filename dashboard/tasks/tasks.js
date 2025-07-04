@@ -252,7 +252,7 @@ export function init(params) {
         }
 
         try {
-            const userRecentProjectsHistoryRef = collection(db, `users/${userId}/recent_projects_history`);
+            const userRecentProjectsHistoryRef = collection(db, `users/${userId}/recenthistory`);
             const recentProjectDocRef = doc(userRecentProjectsHistoryRef, projectData.projectId); // Use project ID as doc ID
 
             // Count documents in each section (tasks within sections)
@@ -267,6 +267,7 @@ export function init(params) {
             }
 
             const recentHistoryPayload = {
+                projectId: projectData.projectId;
                 projectName: projectData.title || 'Unknown Project',
                 projectColor: projectData.color || '#cccccc',
                 projectRef: projectRef, // Store the actual project DocumentReference
