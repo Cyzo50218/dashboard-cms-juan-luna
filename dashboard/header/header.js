@@ -31,6 +31,7 @@ import { showInviteModal } from '/dashboard/components/showEmailModel.js';
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app, "juanluna-cms-01");
+let currentUserId = null;
 
 const exampleRecentTasks = [
   {
@@ -900,6 +901,7 @@ onAuthStateChanged(auth, async (user) => {
     window.location.href = '/login/login.html';
     return;
   }
+  currentUserId = user.uid;
   
   const menuToggle = document.getElementById("menuToggle");
   const rootdrawer = document.getElementById("rootdrawer");
