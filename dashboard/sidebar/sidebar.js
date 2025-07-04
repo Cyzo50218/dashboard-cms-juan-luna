@@ -267,18 +267,11 @@ window.TaskSidebar = (function() {
      * @param {string} taskId - The ID of the task to open.
      * @param {DocumentReference} projectRef - The direct Firestore reference to the project.
      */
-export async function open(taskId, projectRef) {
-    if (!isInitialized) init();
-    if (!currentUserId) {
-        console.warn("currentUserId is not set. Using 'user_john' for demonstration.");
-        currentUserId = 'user_john'; // !!! REMOVE OR REPLACE WITH ACTUAL AUTHENTICATION LOGIC IN PRODUCTION !!!
-    }
-    
-    if (!taskId || !projectRef || !currentUserId) {
-        console.error("Cannot open sidebar: A taskId, projectRef, or currentUser is missing.");
-        return;
-    }
-    
+async function open(taskId) {
+        if (!isInitialized) init();
+        if (!taskId || !currentUser) return;
+        
+        detachAllListeners();
     close(); // Clears previous state
     
     sidebar.classList.add('is-loading', 'is-visible');
