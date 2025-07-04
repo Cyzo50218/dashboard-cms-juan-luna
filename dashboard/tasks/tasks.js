@@ -396,80 +396,71 @@ export function init(params) {
         }
     });
 
-    /**
-     * Dynamically loads the HTML, CSS, and JS for a specific tab.
-     * @param {string} targetTabId - The ID of the tab to load (e.g., 'list', 'board').
-     */
-    async function loadTabContent(targetTabId) {
-        if (currentTabCleanup && typeof currentTabCleanup === 'function') {
-            currentTabCleanup();
-            currentTabCleanup = null;
-        }
-
-        const container = document.getElementById('tab-content-container');
-        if (!container) return;
-
-        container.innerHTML = '<div class="section-loader"></div>';
-        document.getElementById('tab-specific-css')?.remove();
-
-        const htmlPath = `/dashboard/tasks/tabs/${targetTabId}/${targetTabId}.html`;
-        const cssPath = `/dashboard/tasks/tabs/${targetTabId}/${targetTabId}.css`;
-        const jsPath = `/dashboard/tasks/tabs/${targetTabId}/${targetTabId}.js?v=${new Date().getTime()}`;
-
-        try {
-            const htmlRes = await fetch(htmlPath);
-            if (!htmlRes.ok) throw new Error(`HTML not found for tab: ${targetTabId}`);
-            const tabHtml = await htmlRes.text();
-
-            const link = document.createElement("link");
-            link.rel = "stylesheet";
-            link.href = cssPath;
-            link.id = "tab-specific-css";
-            document.head.appendChild(link);
-
-            const tabModule = await import(jsPath);
-
-            container.innerHTML = tabHtml;
-
-            if (tabModule.init) {
-                // Pass projectRef and projectData to the tab module
-                // This ensures the tab modules have direct access to the project context
-                currentTabCleanup = tabModule.init({
-                    accountId,
-                    projectId,
-                    projectRef: currentLoadedProjectRef, // Pass the DocumentReference
-                    projectData: currentLoadedProjectData // Pass the full project data
-                });
-            }
-        } catch (err) {
-            let userMessage = `<p>An unexpected error occurred while loading the <strong>${targetTabId}</strong> tab.</p>`;
-            let logMessage = `Failed to load tab '${targetTabId}':`;
-
-            if (err.message.startsWith('HTML not found for tab')) {
-                userMessage = `<p>Could not load the necessary HTML file for the <strong>${targetTabId}</strong> tab.</p>`;
-                logMessage = `[HTML Load Error] Failed to fetch ${htmlPath}.`;
-            } else if (err instanceof SyntaxError) {
-                userMessage = `<p>The <strong>${targetTabId}</strong> tab could not be loaded due to a code error.</p><p>Please check the console for details.</p>`;
-                logMessage = `[JS Syntax Error] A syntax error was found in ${jsPath}.`;
-            } else if (err.message.includes('Failed to fetch dynamically imported module')) {
-                userMessage = `<p>Could not load the necessary script file for the <strong>${targetTabId}</strong> tab.</p>`;
-                logMessage = `[JS Load Error] The JavaScript module at ${jsPath} could not be fetched (e.g., 404 Not Found).`;
-            }
-
-            container.innerHTML = userMessage;
-            console.error(logMessage, err);
-        }
+async function loadTabContent(targetTabId) {
+    // Now this check will work correctly because currentTabCleanup is declared.
+    if (typeof currentTabCleanup === 'function') {
+        currentTabCleanup();
+        currentTabCleanup = null;
     }
-
-    /**
-     * Updates the 'active' class on the tab navigation links.
-     * @param {string} targetTabId - The ID of the tab to highlight.
-     */
-    function setActiveTabLink(targetTabId) {
-        tabs.forEach(tab => {
-            tab.classList.toggle('active', tab.getAttribute('data-tab') === targetTabId);
-        });
+    
+    const container = document.getElementById('tab-content-container');
+    if (!container) return;
+    
+    container.innerHTML = '<div class="section-loader"></div>';
+    document.getElementById('tab-specific-css')?.remove();
+    
+    const htmlPath = `/dashboard/tasks/tabs/${targetTabId}/${targetTabId}.html`;
+    const cssPath = `/dashboard/tasks/tabs/${targetTabId}/${targetTabId}.css`;
+    const jsPath = `/dashboard/tasks/tabs/${targetTabId}/${targetTabId}.js?v=${new Date().getTime()}`;
+    
+    try {
+        const htmlRes = await fetch(htmlPath);
+        if (!htmlRes.ok) throw new Error(`HTML not found for tab: ${targetTabId}`);
+        const tabHtml = await htmlRes.text();
+        
+        const link = document.createElement("link");
+        link.rel = "stylesheet";
+        link.href = cssPath;
+        link.id = "tab-specific-css";
+        document.head.appendChild(link);
+        
+        const tabModule = await import(jsPath);
+        
+        container.innerHTML = tabHtml;
+        
+        if (tabModule.init) {
+            // Store the cleanup function for the NEWLY loaded tab
+            currentTabCleanup = tabModule.init({ accountId, projectId });
+        }
+    } catch (err) {
+        let userMessage = `<p>An unexpected error occurred while loading the <strong>${targetTabId}</strong> tab.</p>`;
+        let logMessage = `Failed to load tab '${targetTabId}':`;
+        
+        if (err.message.startsWith('HTML not found for tab')) {
+            userMessage = `<p>Could not load the necessary HTML file for the <strong>${targetTabId}</strong> tab.</p>`;
+            logMessage = `[HTML Load Error] Failed to fetch ${htmlPath}.`;
+        } else if (err instanceof SyntaxError) {
+            userMessage = `<p>The <strong>${targetTabId}</strong> tab could not be loaded due to a code error.</p><p>Please check the console for details.</p>`;
+            logMessage = `[JS Syntax Error] A syntax error was found in ${jsPath}.`;
+        } else if (err.message.includes('Failed to fetch dynamically imported module')) {
+            userMessage = `<p>Could not load the necessary script file for the <strong>${targetTabId}</strong> tab.</p>`;
+            logMessage = `[JS Load Error] The JavaScript module at ${jsPath} could not be fetched (e.g., 404 Not Found).`;
+        }
+        
+        container.innerHTML = userMessage;
+        console.error(logMessage, err);
     }
+}
+
+/**
+ * Updates the 'active' class on the tab navigation links.
+ * @param {string} targetTabId - The ID of the tab to highlight.
+ */
+function setActiveTabLink(targetTabId) {
+    tabs.forEach(tab => {
+        tab.classList.toggle('active', tab.getAttribute('data-tab') === targetTabId);
+    });
+}
 
     // --- 3. Attach Event Listeners ---
 
