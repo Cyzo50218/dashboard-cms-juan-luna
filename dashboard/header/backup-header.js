@@ -1376,13 +1376,9 @@ if (recentProjectsUnsubscribe) {
     const btn = optionBtns[0];
     const isSelected = btn.classList.contains("selected");
     
-    if (recentProjectsUnsubscribe) {
-  recentProjectsUnsubscribe();
-  recentProjectsUnsubscribe = null;
-}
-
     if (isSelected) {
-      
+      const recentTasksData = await fetchRecentTasksFromFirestore(renderRecentItems, exampleRecentPeople, [], [], 4, false, false, false);
+    
       // --- Was selected, now deselecting --
       selectedOptionBtnIndex = -1;
       btn.classList.remove("selected");
@@ -1390,15 +1386,11 @@ if (recentProjectsUnsubscribe) {
       mytaskdisplay.classList.add("hidden");
       savedSearchText.classList.remove("hidden");
       savedSearchContainer.classList.remove("hidden");
-      recentTasksUnsubscribe = fetchRecentTasksFromFirestore(
-  renderRecentItems,
-  [], // Pass example people data, needed another feature here
-  [], // Pass the global projects history
-  [], // Pass example messages data
-  4, false, false, false
-);
-      } else {
-          
+      
+      renderRecentItems(recentTasksData, exampleRecentPeople, [], [], 4, false, false, false);
+    } else {
+      const recentTasksData = await fetchRecentTasksFromFirestore(renderRecentItems, [], [], [], 4, true, false, false);
+    
       // --- Is NOT selected, now selecting "My Tasks" ---
       selectedOptionBtnIndex = 0;
       btn.classList.add("selected");
@@ -1411,13 +1403,7 @@ if (recentProjectsUnsubscribe) {
           b.classList.remove("selected");
         }
       });
-      recentTasksUnsubscribe = fetchRecentTasksFromFirestore(
-            renderRecentItems,
-            [], // Only tasks, so pass empty people data initially
-            [], // Only tasks, so pass empty projects data initially
-            [], // Only tasks, so pass empty messages data initially
-            4, true, false, false // Limit tasks, hide people/invite, hide messages
-        );q
+      renderRecentItems(recentTasksData, [], [], [], 4, true, false, false);
     }
     input.value = ''; // Clear input on option selection
     cancelIcon.classList.add('hidden'); // Hide cancel icon
@@ -1433,20 +1419,9 @@ if (recentProjectsUnsubscribe) {
     const btn = optionBtns[1];
     const isSelected = btn.classList.contains("selected");
     
-    if (recentTasksUnsubscribe) {
-        recentTasksUnsubscribe();
-        recentTasksUnsubscribe = null;
-    }
-
     if (isSelected) {
-      recentTasksUnsubscribe = fetchRecentTasksFromFirestore(
-  renderRecentItems,
-  [], // Pass example people data, needed another feature here
-  [], // Pass the global projects history
-  [], // Pass example messages data
-  4, false, false, false
-);
-
+      const recentTasksData = await fetchRecentTasksFromFirestore(renderRecentItems, exampleRecentPeople, [], [], 4, false, false, false);
+    
       selectedOptionBtnIndex = -1;
       btn.classList.remove("selected");
       optionBtns.forEach(b => b.classList.remove("hide"));
@@ -1473,16 +1448,8 @@ if (recentProjectsUnsubscribe) {
           b.classList.remove("selected");
         }
       });
-      recentProjectsUnsubscribe = loadProjectRecentHistory(
-  renderRecentItems,
-  [], // Only projects, so pass empty people data
-  [], // Only projects, so pass empty messages data
-  4, // Task limit (doesn't apply to projects but kept for function signature)
-  true, // Hide people content
-  false, // Hide invite button
-  false // Hide messages
-);
-}
+      renderRecentItems([], [], exampleRecentProjects, [], 4, true, false, false);
+    }
     input.value = ''; // Clear input on option selection
     cancelIcon.classList.add('hidden'); // Hide cancel icon
     searchOptions.classList.remove("hidden"); // Always show filter buttons
@@ -1498,14 +1465,8 @@ if (recentProjectsUnsubscribe) {
     //halfQuery.classList.remove("skeleton-active"); // Remove skeleton if it was active
     
     if (isSelected) {
-      fetchRecentTasksFromFirestore(
-  renderRecentItems,
-  [], // Pass example people data, needed another feature here
-  [], // Pass the global projects history
-  [], // Pass example messages data
-  4, false, false, false
-);
-
+      const recentTasksData = await fetchRecentTasksFromFirestore(renderRecentItems, exampleRecentPeople, [], [], 4, false, false, false);
+    
       selectedOptionBtnIndex = -1;
       btn.classList.remove("selected");
       savedSearchText.classList.remove("hidden");
@@ -1526,9 +1487,11 @@ if (recentProjectsUnsubscribe) {
         b.classList.remove("hide"); // Ensure no option button is hidden
         b.classList.remove("selected");
       });
+      renderRecentItems(recentTasksData, exampleRecentPeople, [], [], 4, false, false, false);
       
     } else {
-      
+      const recentTasksData = await fetchRecentTasksFromFirestore([], exampleRecentPeople, [], [], 4, false, true, false); 
+    
       selectedOptionBtnIndex = 2;
       btn.classList.add("selected");
       savedSearchText.classList.add("hidden");
@@ -1586,14 +1549,8 @@ if (recentProjectsUnsubscribe) {
     // halfQuery.classList.remove("skeleton-active");
     
     if (isSelected) {
-      fetchRecentTasksFromFirestore(
-  renderRecentItems,
-  [], // Pass example people data, needed another feature here
-  [], // Pass the global projects history
-  [], // Pass example messages data
-  4, false, false, false
-);
-
+      const recentTasksData = await fetchRecentTasksFromFirestore(renderRecentItems, exampleRecentPeople, [], [], 4, false, false, false);
+    
       selectedOptionBtnIndex = -1;
       btn.classList.remove("selected");
       optionBtns.forEach(b => b.classList.remove("hide"));
@@ -1605,10 +1562,10 @@ if (recentProjectsUnsubscribe) {
       searchOptions.classList.remove("hidden");
       recentContainer.classList.remove("hidden");
       emailContainerId.classList.add('hidden');
-      
-      
+      renderRecentItems(recentTasksData, exampleRecentPeople, [], [], 4, false, false, false);
     } else {
-      
+      const recentTasksData = await fetchRecentTasksFromFirestore([], [], [], exampleRecentMessages, 4, true, false, true);
+    
       selectedOptionBtnIndex = 3;
       btn.classList.add("selected");
       savedSearchText.classList.add("hidden");
