@@ -267,7 +267,7 @@ export function init(params) {
             }
 
             const recentHistoryPayload = {
-                projectId: projectId;
+                projectId: projectId,
                 projectName: projectData.title || 'Unknown Project',
                 projectColor: projectData.color || '#cccccc',
                 projectRef: projectRef, // Store the actual project DocumentReference
