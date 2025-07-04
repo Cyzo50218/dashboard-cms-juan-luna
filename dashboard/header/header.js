@@ -482,7 +482,7 @@ export function loadProjectRecentHistory(
         // Call the rendering function with ALL relevant data
         renderFn(
             [], // Pass the tasks data
-            peopleData,
+            [],
             projectsRecentHistoryData, // Pass the updated global projects data
             messagesData,
             taskLimit,
