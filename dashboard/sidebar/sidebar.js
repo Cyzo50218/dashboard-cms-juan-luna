@@ -293,7 +293,6 @@ window.TaskSidebar = (function() {
 
             // --- STEP 3: RENDER THE UI ---
             sidebar.classList.remove('is-loading');
-            renderSidebar(currentTask);
             
             // --- STEP 4: ATTACH REAL-TIME LISTENERS ---
             taskListenerUnsubscribe = onSnapshot(currentTaskRef, (doc) => {
