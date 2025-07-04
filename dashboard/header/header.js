@@ -417,7 +417,7 @@ export function fetchRecentTasksFromFirestore(
         console.log("Real-time update: tasksRecentHistoryData updated:", tasksRecentHistoryData.length);
 
         // Call the rendering function with the updated tasks array
-        renderFn(
+        renderRecentItems(
             tasksRecentHistoryData, // Use the updated global tasks data
             peopleData,
             [], // Pass the projects data (which will include recent projects)
@@ -480,7 +480,7 @@ export function loadProjectRecentHistory(
         console.log("Real-time update: projectsRecentHistoryData updated:", projectsRecentHistoryData.length);
 
         // Call the rendering function with ALL relevant data
-        renderFn(
+        renderRecentItems(
             [], // Pass the tasks data
             [],
             projectsRecentHistoryData, // Pass the updated global projects data
