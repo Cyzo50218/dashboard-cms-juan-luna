@@ -267,7 +267,7 @@ window.TaskSidebar = (function() {
      * @param {string} taskId - The ID of the task to open.
      * @param {DocumentReference} projectRef - The direct Firestore reference to the project.
      */
-    async function open(taskId, projectRef) {
+export async function open(taskId, projectRef) {
     if (!isInitialized) init();
     if (!currentUserId) {
         console.warn("currentUserId is not set. Using 'user_john' for demonstration.");
@@ -304,10 +304,75 @@ window.TaskSidebar = (function() {
         currentTaskRef = taskSnapshot.docs[0].ref;
         const taskDoc = await getDoc(currentTaskRef);
         currentTask = { id: taskDoc.id, ...taskDoc.data() };
+        
+        // ... (remaining data fetches like workspaceProjects, allUsers, updateUserPermissions)
         workspaceProjects = await fetchEligibleMoveProjects(currentUserId);
         const memberUIDs = currentProject.members?.map(m => m.uid) || [];
         allUsers = await fetchMemberProfiles(memberUIDs);
         updateUserPermissions(currentProject, currentUserId);
+        
+        
+        // --- ADDITION FOR RECENT HISTORY ---
+        const userRecentHistoryRef = collection(db, `users/${currentUserId}/recenthistory`);
+        const recentHistoryDocRef = doc(userRecentHistoryRef, taskId); // Use taskId as the document ID
+        const recentHistoryDoc = await getDoc(recentHistoryDocRef);
+        
+        // Prepare assignee data for recent history
+        let assigneesForHistory = [];
+        if (currentTask.assignees && Array.isArray(currentTask.assignees)) {
+            for (const assignee of currentTask.assignees) {
+                if (typeof assignee === 'string') { // If it's a UID string
+                    const foundProfile = allUsers.find(u => u.uid === assignee); // Check already fetched members
+                    if (foundProfile) {
+                        assigneesForHistory.push({
+                            uid: foundProfile.uid,
+                            name: foundProfile.displayName || 'Unknown User',
+                            avatarUrl: foundProfile.avatarUrl || null
+                        });
+                    } else {
+                        // Fallback: Fetch directly if not a member, or if allUsers wasn't comprehensive
+                        const userDocRef = doc(db, `users/${assignee}`);
+                        const userDocSnap = await getDoc(userDocRef);
+                        if (userDocSnap.exists()) {
+                            const userData = userDocSnap.data();
+                            assigneesForHistory.push({
+                                uid: assignee,
+                                name: userData.displayName || 'Unknown User',
+                                avatarUrl: userData.avatarUrl || null
+                            });
+                        } else {
+                            assigneesForHistory.push({ uid: assignee, name: 'User Not Found', avatarUrl: null });
+                        }
+                    }
+                } else if (assignee && typeof assignee === 'object' && assignee.uid) {
+                    assigneesForHistory.push({
+                        uid: assignee.uid,
+                        name: assignee.name || assignee.displayName || 'Unknown User',
+                        avatarUrl: assignee.avatarUrl || null
+                    });
+                }
+            }
+        }
+        
+        const recentHistoryData = {
+            name: currentTask.name || '',
+            status: currentTask.status || '',
+            assignees: assigneesForHistory,
+            projectRef: projectRef, // Keep the reference
+            // Store project title and color directly for quick lookup
+            projectName: currentProject.title || 'Unknown Project', // Assuming 'title' is the name field
+            projectColor: currentProject.color || '#cccccc',
+            lastAccessed: serverTimestamp()
+        };
+        
+        if (recentHistoryDoc.exists()) {
+            await updateDoc(recentHistoryDocRef, recentHistoryData);
+            console.log("Updated recent history for existing task:", taskId);
+        } else {
+            await setDoc(recentHistoryDocRef, recentHistoryData);
+            console.log("Added new recent history entry for task:", taskId);
+        }
+        // --- END ADDITION ---
         
         // --- STEP 3: RENDER THE UI ---
         sidebar.classList.remove('is-loading');
@@ -766,70 +831,6 @@ window.TaskSidebar = (function() {
      * Renders the entire sidebar with the latest task data.
      */
     function renderSidebar(task) {
-        if(!task){
-            return;
-        }
-        // --- ADDITION FOR RECENT HISTORY ---
-        const userRecentHistoryRef = collection(db, `users/${currentUserId}/recenthistory`);
-        const recentHistoryDocRef = doc(userRecentHistoryRef, taskId); // Use taskId as the document ID
-        const recentHistoryDoc = await getDoc(recentHistoryDocRef);
-        
-        // Prepare assignee data for recent history
-        let assigneesForHistory = [];
-        if (currentTask.assignees && Array.isArray(currentTask.assignees)) {
-            for (const assignee of currentTask.assignees) {
-                if (typeof assignee === 'string') { // If it's a UID string
-                    const foundProfile = allUsers.find(u => u.uid === assignee); // Check already fetched members
-                    if (foundProfile) {
-                        assigneesForHistory.push({
-                            uid: foundProfile.uid,
-                            name: foundProfile.displayName || 'Unknown User',
-                            avatarUrl: foundProfile.avatarUrl || null
-                        });
-                    } else {
-                        // Fallback: Fetch directly if not a member, or if allUsers wasn't comprehensive
-                        const userDocRef = doc(db, `users/${assignee}`);
-                        const userDocSnap = await getDoc(userDocRef);
-                        if (userDocSnap.exists()) {
-                            const userData = userDocSnap.data();
-                            assigneesForHistory.push({
-                                uid: assignee,
-                                name: userData.displayName || 'Unknown User',
-                                avatarUrl: userData.avatarUrl || null
-                            });
-                        } else {
-                            assigneesForHistory.push({ uid: assignee, name: 'User Not Found', avatarUrl: null });
-                        }
-                    }
-                } else if (assignee && typeof assignee === 'object' && assignee.uid) {
-                    assigneesForHistory.push({
-                        uid: assignee.uid,
-                        name: assignee.name || assignee.displayName || 'Unknown User',
-                        avatarUrl: assignee.avatarUrl || null
-                    });
-                }
-            }
-        }
-        
-        const recentHistoryData = {
-            name: currentTask.name || '',
-            status: currentTask.status || '',
-            assignees: assigneesForHistory,
-            projectRef: projectRef, // Keep the reference
-            // Store project title and color directly for quick lookup
-            projectName: currentProject.title || 'Unknown Project', // Assuming 'title' is the name field
-            projectColor: currentProject.color || '#cccccc',
-            lastAccessed: serverTimestamp()
-        };
-        
-        if (recentHistoryDoc.exists()) {
-            await updateDoc(recentHistoryDocRef, recentHistoryData);
-            console.log("Updated recent history for existing task:", taskId);
-        } else {
-            await setDoc(recentHistoryDocRef, recentHistoryData);
-            console.log("Added new recent history entry for task:", taskId);
-        }
-        
         // Check the task's status and toggle the CSS class on the main sidebar element
         const isCompleted = task.status === 'Completed';
         sidebar.classList.toggle('is-task-completed', isCompleted);
