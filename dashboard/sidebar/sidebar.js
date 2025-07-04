@@ -301,12 +301,63 @@ window.TaskSidebar = (function() {
             currentTask = { id: taskDoc.id, ...taskDoc.data() };
             
             workspaceProjects = await fetchEligibleMoveProjects(currentUserId);
-
+            
             // Fetch members and set permissions
             const memberUIDs = currentProject.members?.map(m => m.uid) || [];
             allUsers = await fetchMemberProfiles(memberUIDs);
             updateUserPermissions(currentProject, currentUserId);
             
+            const userRecentHistoryRef = collection(db, `users/${currentUserId}/recenthistory`);
+            const recentHistoryDocRef = doc(userRecentHistoryRef, taskId); // Use taskId as the document ID
+            const recentHistoryDoc = await getDoc(recentHistoryDocRef);
+            
+            // Prepare assignee data for recent history
+            let assigneesForHistory = [];
+            if (currentTask.assignees && Array.isArray(currentTask.assignees)) {
+                for (const assignee of currentTask.assignees) {
+                    if (typeof assignee === 'string') { // If it's a UID string
+                        const userDocRef = doc(db, `users/${assignee}`);
+                        const userDocSnap = await getDoc(userDocRef);
+                        if (userDocSnap.exists()) {
+                            const userData = userDocSnap.data();
+                            assigneesForHistory.push({
+                                uid: assignee,
+                                name: userData.name || 'Unknown User', // Assuming 'name' field exists
+                                avatar: userData.avatar || '' // Assuming 'avatar' field exists
+                            });
+                        } else {
+                            // User not found in 'users' collection, but include UID
+                            assigneesForHistory.push({ uid: assignee, name: 'User Not Found', avatar: '' });
+                        }
+                    } else if (assignee && typeof assignee === 'object' && assignee.uid) {
+                        // If assignee is already an object with UID, use its data directly
+                        // This handles cases where assignees might already be rich objects
+                        assigneesForHistory.push({
+                            uid: assignee.uid,
+                            name: assignee.name || 'Unknown User',
+                            avatar: assignee.avatar || ''
+                        });
+                    }
+                }
+            }
+            
+            const recentHistoryData = {
+                name: currentTask.name || '',
+                status: currentTask.status || '',
+                assignees: assigneesForHistory,
+                projectRef: projectRef, // Still store the project reference for full context
+                lastAccessed: serverTimestamp()
+            };
+            
+            if (recentHistoryDoc.exists()) {
+                // Task already in history, update the specific fields and timestamp
+                await updateDoc(recentHistoryDocRef, recentHistoryData);
+                console.log("Updated recent history for existing task:", taskId);
+            } else {
+                // Task not in history, set a new entry
+                await setDoc(recentHistoryDocRef, recentHistoryData);
+                console.log("Added new recent history entry for task:", taskId);
+            }
             // --- STEP 3: RENDER THE UI ---
             sidebar.classList.remove('is-loading');
             renderSidebar(currentTask);
@@ -333,7 +384,7 @@ window.TaskSidebar = (function() {
         if (sidebar) sidebar.classList.remove('is-visible', 'is-loading');
         rightSidebarContainer.classList.remove('sidebar-open');
         const headerRight = getHeaderRight();
-        if(headerRight){
+        if (headerRight) {
             headerRight.classList.remove('hide');
         }
         detachAllListeners();
@@ -362,70 +413,70 @@ window.TaskSidebar = (function() {
             return [];
         }
     }
-
+    
     async function fetchEligibleMoveProjects(userId) {
-    if (!userId) return [];
-    const eligibleProjectsMap = new Map();
-
-    try {
-        const allProjectsQuery = collectionGroup(db, 'projects');
-        const projectsSnapshot = await getDocs(allProjectsQuery);
-
-        projectsSnapshot.forEach(doc => {
-            const projectData = doc.data();
-            const projectId = doc.id;
-
-            // --- THE FIX FOR THE LONG PATH ---
-            // Path: /users/{ownerId}/myworkspace/{workspaceId}/projects/{projectId}
-            const pathParts = doc.ref.path.split('/');
+        if (!userId) return [];
+        const eligibleProjectsMap = new Map();
+        
+        try {
+            const allProjectsQuery = collectionGroup(db, 'projects');
+            const projectsSnapshot = await getDocs(allProjectsQuery);
             
-            // Check if the path has enough parts for our structure
-            if (pathParts.length < 6) {
-                console.warn("Skipping project with unexpected path:", doc.ref.path);
-                return;
-            }
-
-            const ownerId = pathParts[1];       // The project owner's UID
-            const activeWorkspaceId = pathParts[3]; // The workspace ID
-            // --- END OF FIX ---
-
-            const isOwner = projectData.project_super_admin_uid === userId;
-            const memberInfo = projectData.members?.find(member => member.uid === userId);
-            const isEligibleMember = memberInfo && (memberInfo.role === 'Project admin' || memberInfo.role === 'Project Admin' || memberInfo.role === 'Editor');
-
-            if ((isOwner || isEligibleMember) && !eligibleProjectsMap.has(projectId)) {
-                // We save all the parts needed to rebuild the path later
-                eligibleProjectsMap.set(projectId, {
-                    id: projectId,
-                    ownerId: ownerId, // Save the Owner's ID
-                    activeWorkspaceId: activeWorkspaceId, // Save the Workspace ID
-                    ...projectData
-                });
-            }
-        });
-
-        return Array.from(eligibleProjectsMap.values());
-
-    } catch (error) {
-        console.error("Error fetching eligible projects for move:", error);
-        return [];
+            projectsSnapshot.forEach(doc => {
+                const projectData = doc.data();
+                const projectId = doc.id;
+                
+                // --- THE FIX FOR THE LONG PATH ---
+                // Path: /users/{ownerId}/myworkspace/{workspaceId}/projects/{projectId}
+                const pathParts = doc.ref.path.split('/');
+                
+                // Check if the path has enough parts for our structure
+                if (pathParts.length < 6) {
+                    console.warn("Skipping project with unexpected path:", doc.ref.path);
+                    return;
+                }
+                
+                const ownerId = pathParts[1]; // The project owner's UID
+                const activeWorkspaceId = pathParts[3]; // The workspace ID
+                // --- END OF FIX ---
+                
+                const isOwner = projectData.project_super_admin_uid === userId;
+                const memberInfo = projectData.members?.find(member => member.uid === userId);
+                const isEligibleMember = memberInfo && (memberInfo.role === 'Project admin' || memberInfo.role === 'Project Admin' || memberInfo.role === 'Editor');
+                
+                if ((isOwner || isEligibleMember) && !eligibleProjectsMap.has(projectId)) {
+                    // We save all the parts needed to rebuild the path later
+                    eligibleProjectsMap.set(projectId, {
+                        id: projectId,
+                        ownerId: ownerId, // Save the Owner's ID
+                        activeWorkspaceId: activeWorkspaceId, // Save the Workspace ID
+                        ...projectData
+                    });
+                }
+            });
+            
+            return Array.from(eligibleProjectsMap.values());
+            
+        } catch (error) {
+            console.error("Error fetching eligible projects for move:", error);
+            return [];
+        }
     }
-}
     
     async function fetchActiveWorkspace(userId) {
-    try {
-        const userRef = doc(db, 'users', userId);
-        const userSnap = await getDoc(userRef);
-        
-        currentWorkspaceId = userSnap.exists() ? userSnap.data().selectedWorkspace || null : null;
-        
-        console.log(`[DEBUG] Fetched active workspace ID: ${currentWorkspaceId}`);
-        
-    } catch (error) {
-        console.error("Error fetching active workspace:", error);
-        currentWorkspaceId = null;
+        try {
+            const userRef = doc(db, 'users', userId);
+            const userSnap = await getDoc(userRef);
+            
+            currentWorkspaceId = userSnap.exists() ? userSnap.data().selectedWorkspace || null : null;
+            
+            console.log(`[DEBUG] Fetched active workspace ID: ${currentWorkspaceId}`);
+            
+        } catch (error) {
+            console.error("Error fetching active workspace:", error);
+            currentWorkspaceId = null;
+        }
     }
-}
     
     async function updateCustomField(columnId, newValue, column) {
         if (!currentTaskRef || !currentTask) return;
@@ -502,92 +553,92 @@ window.TaskSidebar = (function() {
         } catch (error) { console.error(`Failed to update custom field ${column.name}:`, error); }
     }
     
-async function moveTask(newProjectId) {
-    if (!currentTaskRef || !currentTask || !currentUserId || !currentProject || newProjectId === currentTask.projectId) return;
-
-    const originalProjectTitle = currentProject.title;
-
-    try {
-        const destinationProjectData = workspaceProjects.find(p => p.id === newProjectId);
-
-        if (!destinationProjectData || !destinationProjectData.ownerId || !destinationProjectData.activeWorkspaceId) {
-            console.error("Project data is incomplete:", destinationProjectData);
-            throw new Error("Could not move task because destination project data is missing required path IDs.");
-        }
-
-        const fullPath = `users/${destinationProjectData.ownerId}/myworkspace/${destinationProjectData.activeWorkspaceId}/projects/${newProjectId}`;
-        const newProjectRef = doc(db, fullPath);
-        const projectSnap = await getDoc(newProjectRef);
+    async function moveTask(newProjectId) {
+        if (!currentTaskRef || !currentTask || !currentUserId || !currentProject || newProjectId === currentTask.projectId) return;
         
-        if (!projectSnap.exists()) {
-            console.error("CRITICAL: Final path did not resolve:", fullPath);
-            throw new Error("Destination project not found even with the correct path.");
-        }
-
-        const newProjectData = projectSnap.data();
-        const isOwner = newProjectData.project_super_admin_uid === currentUserId;
-        const memberInfo = newProjectData.members?.find(member => member.uid === currentUserId);
-        const isAdmin = memberInfo?.role === 'Project admin';
-        const isEditor = memberInfo?.role === 'Editor';
-
-        if (!isOwner && !isAdmin && !isEditor) {
-            alert("Permission Denied: You must be an Editor or Admin of the destination project to move this task.");
-            return;
-        }
-
-        const sectionsQuery = query(collection(newProjectRef, 'sections'), orderBy("order", "asc"), limit(1));
-        const sectionsSnapshot = await getDocs(sectionsQuery);
-        if (sectionsSnapshot.empty) {
-            alert("Error: Target project has no sections. Please add a section first.");
-            return;
-        }
-        const newSectionId = sectionsSnapshot.docs[0].id;
-
-        // Prepare the atomic batch write
-        const batch = writeBatch(db);
-
-        // --- NEW LOGIC: ADD ASSIGNEES TO NEW PROJECT ---
-        const assigneesToProcess = currentTask.assignees || [];
-        const existingMemberUIDs = new Set((newProjectData.members || []).map(m => m.uid));
-
-        for (const assigneeId of assigneesToProcess) {
-            // If the assignee is not already a member of the destination project...
-            if (!existingMemberUIDs.has(assigneeId)) {
-                console.log(`Assignee ${assigneeId} is not in the destination project. Adding as 'Viewer'.`);
-                const newMemberPayload = { role: 'Viewer', uid: assigneeId };
-                // ...add them using arrayUnion to prevent duplicates.
-                batch.update(newProjectRef, {
-                    members: arrayUnion(newMemberPayload),
-                    memberUIDs: arrayUnion(assigneeId)
-                });
+        const originalProjectTitle = currentProject.title;
+        
+        try {
+            const destinationProjectData = workspaceProjects.find(p => p.id === newProjectId);
+            
+            if (!destinationProjectData || !destinationProjectData.ownerId || !destinationProjectData.activeWorkspaceId) {
+                console.error("Project data is incomplete:", destinationProjectData);
+                throw new Error("Could not move task because destination project data is missing required path IDs.");
             }
+            
+            const fullPath = `users/${destinationProjectData.ownerId}/myworkspace/${destinationProjectData.activeWorkspaceId}/projects/${newProjectId}`;
+            const newProjectRef = doc(db, fullPath);
+            const projectSnap = await getDoc(newProjectRef);
+            
+            if (!projectSnap.exists()) {
+                console.error("CRITICAL: Final path did not resolve:", fullPath);
+                throw new Error("Destination project not found even with the correct path.");
+            }
+            
+            const newProjectData = projectSnap.data();
+            const isOwner = newProjectData.project_super_admin_uid === currentUserId;
+            const memberInfo = newProjectData.members?.find(member => member.uid === currentUserId);
+            const isAdmin = memberInfo?.role === 'Project admin';
+            const isEditor = memberInfo?.role === 'Editor';
+            
+            if (!isOwner && !isAdmin && !isEditor) {
+                alert("Permission Denied: You must be an Editor or Admin of the destination project to move this task.");
+                return;
+            }
+            
+            const sectionsQuery = query(collection(newProjectRef, 'sections'), orderBy("order", "asc"), limit(1));
+            const sectionsSnapshot = await getDocs(sectionsQuery);
+            if (sectionsSnapshot.empty) {
+                alert("Error: Target project has no sections. Please add a section first.");
+                return;
+            }
+            const newSectionId = sectionsSnapshot.docs[0].id;
+            
+            // Prepare the atomic batch write
+            const batch = writeBatch(db);
+            
+            // --- NEW LOGIC: ADD ASSIGNEES TO NEW PROJECT ---
+            const assigneesToProcess = currentTask.assignees || [];
+            const existingMemberUIDs = new Set((newProjectData.members || []).map(m => m.uid));
+            
+            for (const assigneeId of assigneesToProcess) {
+                // If the assignee is not already a member of the destination project...
+                if (!existingMemberUIDs.has(assigneeId)) {
+                    console.log(`Assignee ${assigneeId} is not in the destination project. Adding as 'Viewer'.`);
+                    const newMemberPayload = { role: 'Viewer', uid: assigneeId };
+                    // ...add them using arrayUnion to prevent duplicates.
+                    batch.update(newProjectRef, {
+                        members: arrayUnion(newMemberPayload),
+                        memberUIDs: arrayUnion(assigneeId)
+                    });
+                }
+            }
+            // --- END OF NEW LOGIC ---
+            
+            // Original task move operations are added to the same batch
+            const newTaskData = { ...currentTask, projectId: newProjectId, sectionId: newSectionId };
+            const newTaskRef = doc(newProjectRef, `sections/${newSectionId}/tasks/${currentTask.id}`);
+            
+            batch.delete(currentTaskRef);
+            batch.set(newTaskRef, newTaskData);
+            
+            // Commit all changes (add members, delete old task, create new task) in one go
+            await batch.commit();
+            
+            logActivity({
+                action: 'moved',
+                field: 'Project',
+                from: originalProjectTitle,
+                to: newProjectData.title
+            });
+            
+            close();
+            
+        } catch (error) {
+            console.error("Failed to move task:", error);
+            alert("An error occurred while moving the task. " + error.message);
         }
-        // --- END OF NEW LOGIC ---
-
-        // Original task move operations are added to the same batch
-        const newTaskData = { ...currentTask, projectId: newProjectId, sectionId: newSectionId };
-        const newTaskRef = doc(newProjectRef, `sections/${newSectionId}/tasks/${currentTask.id}`);
-        
-        batch.delete(currentTaskRef);
-        batch.set(newTaskRef, newTaskData);
-        
-        // Commit all changes (add members, delete old task, create new task) in one go
-        await batch.commit();
-
-        logActivity({
-            action: 'moved',
-            field: 'Project',
-            from: originalProjectTitle,
-            to: newProjectData.title
-        });
-        
-        close();
-
-    } catch (error) {
-        console.error("Failed to move task:", error); 
-        alert("An error occurred while moving the task. " + error.message);
     }
-}
     
     async function logActivity({ action, field, from, to }) {
         if (!currentTaskRef || !currentUser) return;
@@ -806,26 +857,26 @@ async function moveTask(newProjectId) {
         appendFieldToTable(tbody, 'dueDate', 'Due Date', renderDateValue(task.dueDate), 'date', isSidebarFieldEditable('Due Date'));
         
         const priorityValue = task.priority;
-let priorityHTML = '<span>Not set</span>';
-if (priorityValue) {
-    const priorityColumn = currentProject.defaultColumns.find(c => c.id === 'priority');
-    const priorityOption = priorityColumn?.options?.find(p => p.name === priorityValue);
-    const priorityColor = priorityOption?.color;
-    
-    priorityHTML = createTag(priorityValue, priorityColor);
-}
-appendFieldToTable(tbody, 'priority', 'Priority', priorityHTML, 'priority', isSidebarFieldEditable('Priority'));
+        let priorityHTML = '<span>Not set</span>';
+        if (priorityValue) {
+            const priorityColumn = currentProject.defaultColumns.find(c => c.id === 'priority');
+            const priorityOption = priorityColumn?.options?.find(p => p.name === priorityValue);
+            const priorityColor = priorityOption?.color;
+            
+            priorityHTML = createTag(priorityValue, priorityColor);
+        }
+        appendFieldToTable(tbody, 'priority', 'Priority', priorityHTML, 'priority', isSidebarFieldEditable('Priority'));
         
         const statusValue = task.status;
-let statusHTML = '<span>Not set</span>';
-if (statusValue) {
-    const statusColumn = currentProject.defaultColumns.find(c => c.id === 'status');
-    const statusOption = statusColumn?.options?.find(s => s.name === statusValue);
-    const statusColor = statusOption?.color;
-
-    statusHTML = createTag(statusValue, statusColor);
-}
-appendFieldToTable(tbody, 'status', 'Status', statusHTML, 'status', isSidebarFieldEditable('Status'));
+        let statusHTML = '<span>Not set</span>';
+        if (statusValue) {
+            const statusColumn = currentProject.defaultColumns.find(c => c.id === 'status');
+            const statusOption = statusColumn?.options?.find(s => s.name === statusValue);
+            const statusColor = statusOption?.color;
+            
+            statusHTML = createTag(statusValue, statusColor);
+        }
+        appendFieldToTable(tbody, 'status', 'Status', statusHTML, 'status', isSidebarFieldEditable('Status'));
         currentProject.customColumns?.forEach(col => {
             const value = task.customFields ? task.customFields[col.id] : null;
             let displayHTML = '<span>Not set</span>';
@@ -893,67 +944,67 @@ appendFieldToTable(tbody, 'status', 'Status', statusHTML, 'status', isSidebarFie
                 }
                 
                 case 'date':
-        case 'priority':
-        case 'status':
-        case 'custom-field': {
-            // PERMISSION CHECK: Lenient. Allows assigned Viewers/Commentors.
-            if (!canUserEditCurrentTask()) {
-                return;
-            }
-            
-            if (controlType === 'date') {
-                const input = control.querySelector('.flatpickr-input');
-                const fp = flatpickr(input, {
-                    defaultDate: currentTask.dueDate || 'today',
-                    dateFormat: "Y-m-d",
-                    onClose: function(selectedDates) {
-                        const newDate = selectedDates[0] ? flatpickr.formatDate(selectedDates[0], 'Y-m-d') : '';
-                        updateTaskField('dueDate', newDate);
-                        fp.destroy();
+                case 'priority':
+                case 'status':
+                case 'custom-field': {
+                    // PERMISSION CHECK: Lenient. Allows assigned Viewers/Commentors.
+                    if (!canUserEditCurrentTask()) {
+                        return;
                     }
-                });
-                fp.open();
-            } else if (controlType === 'priority' || controlType === 'status') {
-                const column = currentProject.defaultColumns.find(c => c.id === controlType);
-                if (!column || !column.options) {
-                    console.error(`Column '${controlType}' not found or has no options.`);
-                    return;
+                    
+                    if (controlType === 'date') {
+                        const input = control.querySelector('.flatpickr-input');
+                        const fp = flatpickr(input, {
+                            defaultDate: currentTask.dueDate || 'today',
+                            dateFormat: "Y-m-d",
+                            onClose: function(selectedDates) {
+                                const newDate = selectedDates[0] ? flatpickr.formatDate(selectedDates[0], 'Y-m-d') : '';
+                                updateTaskField('dueDate', newDate);
+                                fp.destroy();
+                            }
+                        });
+                        fp.open();
+                    } else if (controlType === 'priority' || controlType === 'status') {
+                        const column = currentProject.defaultColumns.find(c => c.id === controlType);
+                        if (!column || !column.options) {
+                            console.error(`Column '${controlType}' not found or has no options.`);
+                            return;
+                        }
+                        
+                        // 2. The complete options array (with names and colors) is read directly.
+                        const completeOptions = column.options;
+                        
+                        // 3. Call the generic dropdown function with the complete data.
+                        showStatusDropdown(control, completeOptions, (selected) => {
+                            updateTaskField(controlType, selected.name);
+                        });
+                        
+                        // --- OLD LOGIC (REMOVED) ---
+                        /*
+                        const baseOptions = (controlType === 'priority') ? priorityOptions : statusOptions;
+                        const customOptions = (controlType === 'priority') ? currentProject.customPriorities : currentProject.customStatuses;
+                        const allOptions = [...baseOptions.map(name => ({ name })), ...(customOptions || [])];
+                        showStatusDropdown(control, allOptions, (selected) => {
+                            updateTaskField(controlType, selected.name);
+                        });
+                        */
+                        
+                    } else if (controlType === 'custom-field') {
+                        const columnId = key.split('-')[1];
+                        const column = currentProject.customColumns.find(c => c.id == columnId);
+                        if (!column) return;
+                        
+                        if (column.options) { // It's a dropdown type
+                            // The generic showStatusDropdown now works perfectly for custom fields too.
+                            showStatusDropdown(control, column.options, (selected) => {
+                                updateCustomField(columnId, selected.name, column);
+                            });
+                        } else { // It's a text/number/costing field
+                            makeTextFieldEditable(control, columnId, column);
+                        }
+                    }
+                    break;
                 }
-
-                // 2. The complete options array (with names and colors) is read directly.
-                const completeOptions = column.options;
-
-                // 3. Call the generic dropdown function with the complete data.
-                showStatusDropdown(control, completeOptions, (selected) => {
-                    updateTaskField(controlType, selected.name);
-                });
-
-                // --- OLD LOGIC (REMOVED) ---
-                /*
-                const baseOptions = (controlType === 'priority') ? priorityOptions : statusOptions;
-                const customOptions = (controlType === 'priority') ? currentProject.customPriorities : currentProject.customStatuses;
-                const allOptions = [...baseOptions.map(name => ({ name })), ...(customOptions || [])];
-                showStatusDropdown(control, allOptions, (selected) => {
-                    updateTaskField(controlType, selected.name);
-                });
-                */
-               
-            } else if (controlType === 'custom-field') {
-                const columnId = key.split('-')[1];
-                const column = currentProject.customColumns.find(c => c.id == columnId);
-                if (!column) return;
-                
-                if (column.options) { // It's a dropdown type
-                    // The generic showStatusDropdown now works perfectly for custom fields too.
-                    showStatusDropdown(control, column.options, (selected) => {
-                        updateCustomField(columnId, selected.name, column);
-                    });
-                } else { // It's a text/number/costing field
-                    makeTextFieldEditable(control, columnId, column);
-                }
-            }
-            break;
-        }
             }
         });
     }
@@ -1889,7 +1940,7 @@ appendFieldToTable(tbody, 'status', 'Status', statusHTML, 'status', isSidebarFie
         const dialogOverlay = document.createElement('div');
         dialogOverlay.className = 'dialog-overlay';
         
-
+        
         // Determine the correct dialog title based on the option type.
         let dialogTitle = `Edit ${optionType} Option`; // Default title
         
@@ -2076,16 +2127,16 @@ appendFieldToTable(tbody, 'status', 'Status', statusHTML, 'status', isSidebarFie
     }
     
     function showStatusDropdown(targetEl, options, onSelectCallback) {
-    createAdvancedDropdown(targetEl, {
-        options: options,
-        searchable: false,
-        itemRenderer: (option) => {
-            const color = option.color || '#ccc'; // Use gray as a fallback for any malformed data
-            return `<div class="dropdown-color-swatch" style="background-color: ${color}"></div><span>${option.name}</span>`;
-        },
-        onSelect: onSelectCallback
-    });
-}
+        createAdvancedDropdown(targetEl, {
+            options: options,
+            searchable: false,
+            itemRenderer: (option) => {
+                const color = option.color || '#ccc'; // Use gray as a fallback for any malformed data
+                return `<div class="dropdown-color-swatch" style="background-color: ${color}"></div><span>${option.name}</span>`;
+            },
+            onSelect: onSelectCallback
+        });
+    }
     
     function toggleSidebarView() {
         // Toggle the class on the sidebar element
