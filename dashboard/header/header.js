@@ -471,7 +471,7 @@ export function loadProjectRecentHistory(
                 projectName: projectHistoryData.projectName || 'Untitled Project',
                 projectColor: projectHistoryData.projectColor || '#cccccc',
                 sectionTaskCounts: Object.values(projectHistoryData.sectionTaskCounts || {}).reduce((sum, count) => sum + count, 0), // Sum tasks from all sections
-                memberProfiles: projectHistoryData.memberProfiles || [], // Use memberProfiles directly
+                assignees: projectHistoryData.memberProfiles || [], // Use memberProfiles directly
                 projectRef: projectHistoryData.projectRef // The actual project reference
             });
         });
