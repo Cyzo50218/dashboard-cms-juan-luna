@@ -895,7 +895,7 @@ async function handleNewWorkspace() {
 // --- 4. MAIN SCRIPT LOGIC ---
 
 // This function runs once Firebase confirms the user's authentication state.
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
   if (!user) {
     window.location.href = '/login/login.html';
     return;
@@ -1938,10 +1938,11 @@ onAuthStateChanged(auth, (user) => {
   
   // --- USER IS LOGGED IN, PROCEED WITH INITIALIZATION ---
   console.log("Header script running for user:", user.uid);
-  
+  const recentTasksData = await fetchRecentTasksFromFirestore(currentUserId);
+    
   // Update the profile display with the user's info
   updateProfileDisplay(user);
-  renderRecentItems(exampleRecentTasks, exampleRecentPeople, []);
+  renderRecentItems(recentTasksData, exampleRecentPeople, [], []);
   
   document.addEventListener("click", (e) => {
     // --- NEW: Handle Logout and New Workspace clicks ---
