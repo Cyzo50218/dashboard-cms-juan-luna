@@ -952,23 +952,16 @@ async function handleNewWorkspace() {
 
 // This function runs once Firebase confirms the user's authentication state.
 onAuthStateChanged(auth, async (user) => {
-  if (recentTasksUnsubscribe) {
-  recentTasksUnsubscribe();
-  recentTasksUnsubscribe = null;
+  if (recentItemsUnsubscribe) {
+  recentItemsUnsubscribe();
+  recentItemsUnsubscribe = null;
 }
-if (recentProjectsUnsubscribe) {
-  recentProjectsUnsubscribe();
-  recentProjectsUnsubscribe = null;
-}
+
 
   if (!user) {
     currentUserId = null;
-    recentTasksUnsubscribe = null;
-    recentProjectsUnsubscribe = null;
-    tasksRecentHistoryData = [];
-    projectsRecentHistoryData = [];
+    recentItemsUnsubscribe = null;
     renderRecentItems([], [], [], [], null, false, true, true);
-
     window.location.href = '/login/login.html';
     return;
   }
