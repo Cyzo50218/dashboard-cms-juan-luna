@@ -503,7 +503,7 @@ let project = {
                     content = `<div class="status-tag">${rawValue || 'N/A'}</div>`;
                     break;
                 default:
-                    content = `<span class="px-1 w-full" contenteditable="${canEditThisCell}">${rawValue || ''}</span>`;
+                    content = `<span class="px-1 w-full">${rawValue || ''}</span>`;
                     break;
             }
             cell.innerHTML = content;
