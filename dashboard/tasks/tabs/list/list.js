@@ -1967,23 +1967,56 @@ function applySavedWidths() {
     }
 }
 
+function syncColumnWidths() {
+    const table = document.querySelector('.min-w-max.relative');
+    if (!table) return;
+    
+    const headerContainer = table.querySelector('.juanlunacms-spreadsheetlist-sticky-header');
+    if (!headerContainer) return;
+    
+    const allColumnIds = Array.from(headerContainer.querySelectorAll('[data-column-id]')).map(cell => cell.dataset.columnId);
+    
+    allColumnIds.forEach(columnId => {
+        // --- UPDATED: This logic now uses fixed default widths ---
+        let defaultWidth = 150; // A fallback width
+        
+        switch (columnId) {
+            case 'projectInfo':
+                defaultWidth = 200;
+                break;
+            case 'assignees':
+                defaultWidth = 120;
+                break;
+            case 'dueDate':
+                defaultWidth = 100;
+                break;
+            case 'priority':
+                defaultWidth = 120;
+                break;
+            case 'status':
+                defaultWidth = 160;
+                break;
+        }
+        
+        const allCellsInColumn = table.querySelectorAll(`[data-column-id="${columnId}"]`);
+        allCellsInColumn.forEach(cell => {
+            cell.style.width = `${defaultWidth}px`;
+            cell.style.minWidth = `${defaultWidth}px`;
+        });
+    });
+}
+
 function initColumnResizing() {
     const table = document.querySelector('.min-w-max.relative');
     if (!table) return;
     
-    // These variables will be set when a drag operation starts.
     let initialX, initialWidth, columnId;
     let columnSpecificMinWidth;
-    let finalWidth; // ✅ ADDED: To store the width at the end of the drag.
     
     const onDragMove = (e) => {
         const currentX = e.touches ? e.touches[0].clientX : e.clientX;
         const deltaX = currentX - initialX;
-        
         const newWidth = Math.max(columnSpecificMinWidth, initialWidth + deltaX);
-        
-        // ✅ ADDED: Store the calculated width so we can access it on drag end.
-        finalWidth = newWidth;
         
         const cellsToResize = table.querySelectorAll(`[data-column-id="${columnId}"]`);
         cellsToResize.forEach(cell => {
@@ -1992,29 +2025,11 @@ function initColumnResizing() {
         });
     };
     
-    const onDragEnd = async () => { // ✅ Made this function async
+    const onDragEnd = () => {
         document.removeEventListener('mousemove', onDragMove);
         document.removeEventListener('mouseup', onDragEnd);
         document.removeEventListener('touchmove', onDragMove);
         document.removeEventListener('touchend', onDragEnd);
-        
-        // ✅ --- NEW SAVE LOGIC STARTS HERE ---
-        // Only save if the width has actually been calculated and changed.
-        if (finalWidth && Math.round(finalWidth) !== Math.round(initialWidth)) {
-            console.log(`[DEBUG] Saving new width for column '${columnId}': ${finalWidth}px`);
-            
-            try {
-                // Use dot notation to update a specific field within the 'fixedSizing' map.
-                // e.g., it will create a payload like { 'fixedSizing.priority': 150 }
-                await updateProjectInFirebase({
-                    [`fixedSizing.${columnId}`]: Math.round(finalWidth)
-                });
-                console.log("✅ Column width saved successfully.");
-            } catch (error) {
-                console.error("❌ Failed to save column width:", error);
-            }
-        }
-        // ✅ --- NEW SAVE LOGIC ENDS HERE ---
     };
     
     const onDragStart = (e) => {
@@ -2022,20 +2037,29 @@ function initColumnResizing() {
         
         e.preventDefault();
         
-        const headerCell = e.target.parentElement;
+        const headerCell = e.target.closest('[data-column-id]');
+        if (!headerCell) return;
+        
         columnId = headerCell.dataset.columnId;
         initialX = e.touches ? e.touches[0].clientX : e.clientX;
         initialWidth = headerCell.offsetWidth;
-        finalWidth = initialWidth; // ✅ ADDED: Reset finalWidth at the start of a drag.
         
-        // Determine the correct minimum width for THIS specific column.
-        if (columnId === 'priority' || columnId === 'status') {
-            columnSpecificMinWidth = 100;
-        } else if (columnId === 'dueDate' || columnId === 'assignees') {
-            columnSpecificMinWidth = 120;
-        } else {
-            columnSpecificMinWidth = 100; // Default minimum width for custom columns
+        // --- UPDATED: This mirrors the default widths as minimums for resizing ---
+        let minWidth = 100; // A hard minimum for any column
+        
+        switch (columnId) {
+            case 'projectInfo':
+                minWidth = 180;
+                break;
+            case 'assignees':
+                minWidth = 100;
+                break;
+            case 'status':
+                minWidth = 140;
+                break;
         }
+        columnSpecificMinWidth = minWidth;
+        // --- END OF UPDATE ---
         
         document.addEventListener('mousemove', onDragMove);
         document.addEventListener('mouseup', onDragEnd);
@@ -2043,54 +2067,8 @@ function initColumnResizing() {
         document.addEventListener('touchend', onDragEnd);
     };
     
-    // Attach the starting event listeners
     table.addEventListener('mousedown', onDragStart);
     table.addEventListener('touchstart', onDragStart, { passive: false });
-}
-
-function syncColumnWidths() {
-    const table = document.querySelector('.min-w-max.relative');
-    if (!table) return;
-    
-    // Get the header container specifically
-    const headerContainer = table.querySelector('.juanlunacms-spreadsheetlist-sticky-header');
-    if (!headerContainer) return;
-    
-    const allColumnIds = [
-        'assignees', 'dueDate', 'priority', 'status',
-        ...project.customColumns.map(c => c.id)
-    ];
-    
-    allColumnIds.forEach(columnId => {
-        // 1. Find the HEADER cell ONLY for this column.
-        const headerCell = headerContainer.querySelector(`[data-column-id="${columnId}"]`);
-        if (!headerCell) return;
-        
-        // 2. Measure the full, untruncated width of the header's text content.
-        const textElement = headerCell.querySelector('.header-cell-content');
-        const headerContentWidth = textElement ? textElement.scrollWidth : 0;
-        
-        // 3. Define the minimum width for this column type.
-        let minWidth = 100; // Default minimum width
-        if (columnId === 'priority' || columnId === 'status') {
-            minWidth = 100;
-        } else if (columnId === 'dueDate') {
-            minWidth = 120;
-        } else if (columnId === 'assignees') {
-            minWidth = 80;
-        }
-        
-        // 4. The final width is the LARGER of the minimum width or the actual header text width.
-        // We add a buffer to account for padding, icons, etc.
-        const finalWidth = Math.max(minWidth, headerContentWidth) + 32;
-        
-        // 5. Apply this final, calculated width to ALL cells in the column (header and body).
-        const allCellsInColumn = table.querySelectorAll(`[data-column-id="${columnId}"]`);
-        allCellsInColumn.forEach(cell => {
-            cell.style.width = `${finalWidth}px`;
-            cell.style.minWidth = `${finalWidth}px`;
-        });
-    });
 }
 
 function handleMouseMoveDragGhost(e) {
