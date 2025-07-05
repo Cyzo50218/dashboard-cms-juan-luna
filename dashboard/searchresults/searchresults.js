@@ -474,7 +474,7 @@ const project = {
         // --- Create the Left Task Cell (Task Name) - STICKY ---
 // --- Create the Left Task Cell (Task Name) - STICKY ---
 const leftTaskCell = document.createElement('div');
-leftTaskCell.className = 'sticky left-0 z-10 py-0.2 px-1 flex items-center border-r border-slate-200 bg-white group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane';
+leftTaskCell.className = 'sticky left-0 z-10 py-1 px-1 flex items-center border-r border-slate-200 bg-white group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane';
 leftTaskCell.style.width = '300px'; // Using the established fixed width
 leftTaskCell.style.flexShrink = '0';
 
@@ -516,7 +516,7 @@ leftTaskCell.innerHTML = `
             const cell = document.createElement('div');
             // IMPORTANT: Add the data-column-id here so resizing works
             cell.dataset.columnId = col.id; 
-            cell.className = 'py-0.2 px-1 flex items-center text-[9px] whitespace-nowrap border-r border-slate-200';
+            cell.className = 'py-1 px-1 flex items-center text-[9px] whitespace-nowrap border-r border-slate-200';
             
             let content = '';
             const COMPLETED_STYLE = `background-color: #f3f4f6; color: #6b7280;`;
