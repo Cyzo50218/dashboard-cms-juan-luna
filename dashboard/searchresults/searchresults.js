@@ -1,53 +1,49 @@
 import {
-  initializeApp
+    initializeApp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
-  getAuth,
-  onAuthStateChanged
+    getAuth,
+    onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  getFirestore,
-  increment,
-  doc,
-  collection,
-  query,
-  where,
-  onSnapshot,
-  addDoc,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  serverTimestamp,
-  getDoc,
-  getDocs,
-  orderBy,
-  limit,
-  collectionGroup,
-  writeBatch,
-  arrayUnion,
-  arrayRemove
+    getFirestore,
+    increment,
+    doc,
+    collection,
+    query,
+    where,
+    onSnapshot,
+    addDoc,
+    setDoc,
+    updateDoc,
+    deleteDoc,
+    serverTimestamp,
+    getDoc,
+    getDocs,
+    orderBy,
+    limit,
+    collectionGroup,
+    writeBatch,
+    arrayUnion,
+    arrayRemove
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
-  getStorage,
-  ref,
-  uploadBytes,
-  getDownloadURL,
-  deleteObject
+    getStorage,
+    ref,
+    uploadBytes,
+    getDownloadURL,
+    deleteObject
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
 import {
-  firebaseConfig
+    firebaseConfig
 } from "/services/firebase-config.js";
 
+// Firebase services
 let app, auth, db, storage;
 
-app = initializeApp(firebaseConfig);
-auth = getAuth(app);
-db = getFirestore(app, "juanluna-cms-01");
-storage = getStorage(app);
-
-const mockResults = [
-  {
+// Mock Data
+const mockResults = [{
     id: "1",
     type: "task",
     title: "Design landing page for Seasonal Marketing Campaign",
@@ -57,8 +53,7 @@ const mockResults = [
     project: "Creative Production (Data for...)",
     tags: ["Design", "Marketing"],
     status: "assigned",
-  },
-  {
+}, {
     id: "2",
     type: "task",
     title: "Swag for Marketing Team and Biz Kickoff",
@@ -68,8 +63,7 @@ const mockResults = [
     project: "Creative Production (Data for...)",
     tags: ["Promo", "Event"],
     status: "assigned",
-  },
-  {
+}, {
     id: "3",
     type: "task",
     title: "Japanese Launch Assets",
@@ -79,8 +73,7 @@ const mockResults = [
     project: "Creative Production APAC",
     tags: ["Localization", "Design"],
     status: "due",
-  },
-  {
+}, {
     id: "4",
     type: "task",
     title: "Help with graphics for our seasonal marketing campaign",
@@ -90,8 +83,7 @@ const mockResults = [
     project: "Creative Production",
     tags: ["Graphics", "Marketing"],
     status: "completed",
-  },
-  {
+}, {
     id: "5",
     type: "task",
     title: "Estimate global marketing impact",
@@ -101,8 +93,7 @@ const mockResults = [
     project: "Project D4",
     tags: ["Analysis", "Report"],
     status: "due",
-  },
-  {
+}, {
     id: "6",
     type: "task",
     title: "Product Voice — FY23 Seasonal Marketing",
@@ -112,8 +103,7 @@ const mockResults = [
     project: "Creative Production",
     tags: ["Branding", "Copy"],
     status: "assigned",
-  },
-  {
+}, {
     id: "7",
     type: "task",
     title: 'Sony\'s "All Projects" marketing review',
@@ -123,8 +113,7 @@ const mockResults = [
     project: "Customer Experience",
     tags: ["Review", "Client"],
     status: "assigned",
-  },
-  {
+}, {
     id: "8",
     type: "task",
     title: "Core Team Weekly marketing sync",
@@ -134,17 +123,39 @@ const mockResults = [
     project: "Core Team Weekly",
     tags: ["Meeting", "Sync"],
     status: "completed",
-  },
-];
+}, ];
 
-// Mock user data for avatar display
 const mockUsers = {
-  user1: { uid: "user1", name: "Aalifa", avatar: null },
-  user2: { uid: "user2", name: "Asifa", avatar: null },
-  user3: { uid: "user3", name: "Arny Love", avatar: null },
-  user4: { uid: "user4", name: "Any Love", avatar: null },
-  user5: { uid: "user5", name: "Andrew Webster", avatar: null },
-  user6: { uid: "user6", name: "Blake Pham", avatar: null },
+    user1: {
+        uid: "user1",
+        name: "Aalifa",
+        avatar: null
+    },
+    user2: {
+        uid: "user2",
+        name: "Asifa",
+        avatar: null
+    },
+    user3: {
+        uid: "user3",
+        name: "Arny Love",
+        avatar: null
+    },
+    user4: {
+        uid: "user4",
+        name: "Any Love",
+        avatar: null
+    },
+    user5: {
+        uid: "user5",
+        name: "Andrew Webster",
+        avatar: null
+    },
+    user6: {
+        uid: "user6",
+        name: "Blake Pham",
+        avatar: null
+    },
 };
 
 // DOM Elements
@@ -166,7 +177,8 @@ const cancelFeedbackBtn = document.getElementById("cancelFeedbackBtn");
 const submitFeedbackBtn = document.getElementById("submitFeedbackBtn");
 const feedbackText = document.getElementById("feedbackText");
 const stars = document.querySelectorAll(".searchresult-stars i");
-const clearSearchBtn = document.getElementById("clearSearchBtn"); // New element
+const clearSearchBtn = document.getElementById("clearSearchBtn");
+const scrollWrapper = document.querySelector(".horizontal-scrollbar-wrapper");
 
 // State
 let currentFilter = "task";
@@ -176,850 +188,790 @@ let searchTerm = "marketing";
 let isStarred = false;
 let activeAdvancedFilters = ["assignee", "dueDate"];
 let selectedRating = 0;
+let starredSearches = [];
 
 // Counts for filters
 const resultCounts = {
-  task: 25,
-  message: 4,
-  project: 17,
-  portfolio: 2,
-  goal: 0,
-  people: 12,
+    task: 25,
+    message: 4,
+    project: 17,
+    portfolio: 2,
+    goal: 0,
+    people: 12,
 };
 
-// Starred searches
-let starredSearches = JSON.parse(localStorage.getItem("starredSearches")) || [];
+// Abort controller for cleaning up event listeners
+let eventListenersController = new AbortController();
 
-// ==============================================
-// EMPTY FUNCTION FOR CLINTON TO IMPLEMENT
-// ==============================================
-function addSearchQueryToStarred() {
-  /* 
-  EMPTY FUNCTION - CLINTON WILL IMPLEMENT FIREBASE FIRESTORE HERE
-  
-  This will save the current search query to Firestore
-  Parameters to consider:
-    - searchTerm
-    - currentFilter
-    - activeAdvancedFilters
-    - any other relevant search parameters
-  
-  Example implementation (Clinton will add):
+/**
+ * Logs an error with a standardized, descriptive format.
+ * @param {string} context - The context where the error occurred (e.g., function name).
+ * @param {Error} error - The error object.
+ */
+function logError(context, error) {
+    console.error(`[SearchResults Error] in ${context}:`, error);
+}
+
+/**
+ * Main initialization function to set up the search results page.
+ * @param {User} user - The authenticated Firebase user.
+ */
+function init(user) {
+    console.log("Initializing search results component for user:", user.uid);
+    eventListenersController = new AbortController(); // Reset abort controller
+
     try {
-      await db.collection("starredSearches").add({
-        term: searchTerm,
-        filters: activeAdvancedFilters,
-        createdAt: new Date(),
-        userId: currentUser.uid
-      });
-      console.log("Search saved to Firestore");
-    } catch (error) {
-      console.error("Error saving search:", error);
-    }
-  */
-  console.log("Starring search query - Firestore implementation coming soon");
-}
-// ==============================================
+        // Load starred searches from localStorage
+        starredSearches = JSON.parse(localStorage.getItem("starredSearches")) || [];
 
-const scrollWrapper = document.querySelector(
-  ".horizontal-scrollbar-wrapper"
-);
-const resultsContainer = document.getElementById("resultsContainer");
+        // Setup initial UI and state
+        setupInitialUI();
+        attachEventListeners();
 
-scrollWrapper.addEventListener("scroll", () => {
-  resultsContainer.scrollLeft = scrollWrapper.scrollLeft;
-});
-
-resultsContainer.addEventListener("scroll", () => {
-  scrollWrapper.scrollLeft = resultsContainer.scrollLeft;
-});
-
-// Render search results
-function renderResults(results) {
-  resultsContainer.innerHTML = "";
-
-  // Create table header with list.js style columns
-  const header = document.createElement("div");
-  header.className = "searchresult-table-header";
-  header.innerHTML = `
-    <div>Status</div>
-    <div>Task Name</div>
-    <div>Assignee</div>
-    <div>Due Date</div>
-    <div>Projects</div>
-    <div>Tags</div>
-  `;
-  resultsContainer.appendChild(header);
-
-  // Sort results
-  const sortedResults = sortResults([...results]);
-
-  sortedResults.forEach((item) => {
-    const resultItem = document.createElement("div");
-    resultItem.className = "searchresult-item";
-    resultItem.dataset.id = item.id;
-
-    // Format due date
-    const formattedDueDate = formatDueDate(item.dueDate);
-
-    // Highlight search terms
-    let highlightedTitle = item.title;
-    let highlightedProject = item.project;
-
-    if (searchTerm) {
-      const regex = new RegExp(`(${searchTerm})`, "gi");
-      highlightedTitle = item.title.replace(
-        regex,
-        '<span class="searchresult-highlight">$1</span>'
-      );
-      highlightedProject = item.project.replace(
-        regex,
-        '<span class="searchresult-highlight">$1</span>'
-      );
-    }
-
-    // Create tags
-    const tagsHTML = item.tags
-      .map((tag) => `<span class="searchresult-tag">${tag}</span>`)
-      .join("");
-
-    // Status indicator
-    const statusClass = `searchresult-status searchresult-status-${item.status}`;
-    const statusText =
-      item.status === "assigned"
-        ? "Assigned"
-        : item.status === "due"
-        ? "Due Soon"
-        : "Completed";
-
-    // Create avatar stack
-    const avatarHTML = createAvatarStackHTML(item.assigneeIds, mockUsers);
-
-    resultItem.innerHTML = `
-      <div class="searchresult-status-container">
-        <span class="${statusClass}"></span>
-        <span class="status-text">${statusText}</span>
-      </div>
-      <div class="searchresult-title">
-        <span class="title-text">${highlightedTitle}</span>
-      </div>
-      <div class="searchresult-details">
-        ${avatarHTML}
-      </div>
-      <div class="searchresult-details">
-        <i class="fas fa-calendar"></i>
-        ${formattedDueDate}
-      </div>
-      <div class="searchresult-details">
-        <i class="fas fa-layer-group"></i>
-        ${highlightedProject}
-      </div>
-      <div class="searchresult-details">
-        ${tagsHTML}
-      </div>
-    `;
-
-    // Add click handler to make entire row clickable
-    resultItem.addEventListener("click", () => {
-      console.log(`Opening task ${item.id}`);
-      // In a real app: openTaskDetails(item.id);
-    });
-
-    resultsContainer.appendChild(resultItem);
-  });
-}
-
-// Format due date for display
-function formatDueDate(dateString) {
-  const date = new Date(dateString);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(0, 0, 0, 0);
-
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  yesterday.setHours(0, 0, 0, 0);
-
-  const dateWithoutTime = new Date(date);
-  dateWithoutTime.setHours(0, 0, 0, 0);
-
-  if (dateWithoutTime.getTime() === today.getTime()) {
-    return "Today";
-  } else if (dateWithoutTime.getTime() === tomorrow.getTime()) {
-    return "Tomorrow";
-  } else if (dateWithoutTime.getTime() === yesterday.getTime()) {
-    return "Yesterday";
-  } else if (dateWithoutTime < today) {
-    return "Past due";
-  } else {
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  }
-}
-
-// Filter results based on current state
-function filterResults() {
-  let filtered = mockResults;
-
-  // Apply search filter
-  if (searchTerm) {
-    filtered = filtered.filter(
-      (item) =>
-        item.title.toLowerCase().includes(searchTerm) ||
-        item.assignee.toLowerCase().includes(searchTerm) ||
-        item.project.toLowerCase().includes(searchTerm) ||
-        item.tags.some((tag) => tag.toLowerCase().includes(searchTerm))
-    );
-  }
-
-  // Apply type filter
-  if (currentFilter !== "all") {
-    filtered = filtered.filter((item) => item.type === currentFilter);
-  }
-
-  return filtered;
-}
-
-// Sort results based on current sort option
-function sortResults(results) {
-  switch (currentSort) {
-    case "newest":
-      return results.sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate));
-    case "dueDate":
-      return results.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
-    default: // relevance
-      return results;
-  }
-}
-
-// Create avatar stack HTML (from list.js)
-function createAvatarStackHTML(assigneeIds, allUsers) {
-  if (!assigneeIds || assigneeIds.length === 0) return "";
-
-  const maxVisible = 3;
-  let visibleAssignees = assigneeIds;
-  let overflowCount = 0;
-
-  if (assigneeIds.length > maxVisible) {
-    visibleAssignees = assigneeIds.slice(0, maxVisible - 1);
-    overflowCount = assigneeIds.length - (maxVisible - 1);
-  }
-
-  const avatarsHTML = visibleAssignees
-    .map((userId, index) => {
-      const user = allUsers[userId];
-      if (!user) return "";
-
-      const zIndex = 50 - index;
-
-      if (user.avatar && user.avatar.startsWith("https://")) {
-        return `
-      <div class="user-avatar" title="${user.name}" style="z-index: ${zIndex};">
-        <img src="${user.avatar}" alt="${user.name}">
-      </div>`;
-      } else {
-        const initials = (user.name || "?")
-          .split(" ")
-          .map((n) => n[0])
-          .join("")
-          .substring(0, 2);
-        const bgColor = "#" + (user.uid || "000000").substring(0, 6);
-        return `<div class="user-avatar" title="${user.name}" style="background-color: ${bgColor}; color: white; z-index: ${zIndex};">${initials}</div>`;
-      }
-    })
-    .join("");
-
-  let overflowHTML = "";
-  if (overflowCount > 0) {
-    const zIndex = 50 - maxVisible;
-    overflowHTML = `<div class="user-avatar overflow" style="z-index: ${zIndex};">+${overflowCount}</div>`;
-  }
-
-  return `<div class="avatar-stack">${avatarsHTML}${overflowHTML}</div>`;
-}
-
-// Update active filter button
-function setActiveFilter(filter) {
-  filterButtons.forEach((button) => {
-    if (button.dataset.filter === filter) {
-      button.classList.add("active");
-    } else {
-      button.classList.remove("active");
-    }
-  });
-}
-
-// Update active view button
-function setActiveView(view) {
-  viewButtons.forEach((button) => {
-    if (button.dataset.view === view) {
-      button.classList.add("active");
-    } else {
-      button.classList.remove("active");
-    }
-  });
-}
-
-// Update search stats
-function updateStats(count) {
-  const resultCountElement = searchStats.querySelector(
-    ".searchresult-result-count"
-  );
-  if (resultCountElement) {
-    resultCountElement.textContent = count;
-  }
-}
-
-// Render active filters
-function renderActiveFilters() {
-  const container = document.getElementById("activeFiltersContainer");
-  container.innerHTML = "";
-
-  activeAdvancedFilters.forEach((filter) => {
-    const span = document.createElement("span");
-    span.className = "searchresult-tag";
-    span.innerHTML = `
-      ${
-        filter === "collaborator"
-          ? "1 collaborator"
-          : filter === "titleOnly"
-          ? "Title only"
-          : filter === "moreFilters"
-          ? "More filters"
-          : filter.charAt(0).toUpperCase() + filter.slice(1)
-      }
-      <button class="remove-filter" data-filter="${filter}">×</button>
-    `;
-    container.appendChild(span);
-  });
-}
-
-// Update header titles
-function updateHeader() {
-  if (searchTerm) {
-    searchTitle.textContent = `"${searchTerm}" Search Results`;
-  } else {
-    searchTitle.textContent = "My Recent Tasks";
-  }
-
-  // Update subtitle based on active filter
-  let countText = "";
-  switch (currentFilter) {
-    case "task":
-      countText = `Tasks (${resultCounts.task}+)`;
-      break;
-    case "message":
-      countText = `Messages (${resultCounts.message})`;
-      break;
-    case "project":
-      countText = `Projects (${resultCounts.project}+)`;
-      break;
-    case "portfolio":
-      countText = `Portfolios (${resultCounts.portfolio})`;
-      break;
-    case "goal":
-      countText = `Goals (${resultCounts.goal})`;
-      break;
-    default:
-      countText = `Tasks (${resultCounts.task}+)`;
-  }
-  searchSubtitle.textContent = countText;
-}
-
-// Toggle star for current search
-function toggleStar() {
-  const term = searchInput.value.trim();
-  if (!term) return;
-
-  const index = starredSearches.findIndex((s) => s.term === term);
-  if (index === -1) {
-    // Add to starred
-    starredSearches.push({ term, date: new Date().toISOString() });
-    isStarred = true;
-
-    // CALL THE EMPTY FUNCTION FOR CLINTON TO IMPLEMENT
-    addSearchQueryToStarred();
-  } else {
-    // Remove from starred
-    starredSearches.splice(index, 1);
-    isStarred = false;
-  }
-
-  // Save to localStorage
-  localStorage.setItem("starredSearches", JSON.stringify(starredSearches));
-
-  // Update UI
-  updateStarIcon();
-  showToast(
-    isStarred ? "Search saved to starred!" : "Search removed from starred"
-  );
-}
-
-// Update star icon based on current search
-function updateStarIcon() {
-  const term = searchInput.value.trim();
-  const isStarred = starredSearches.some((s) => s.term === term);
-  if (isStarred) {
-    starButton.innerHTML = '<i class="fas fa-star text-yellow-400"></i>';
-  } else {
-    starButton.innerHTML = '<i class="far fa-star"></i>';
-  }
-}
-
-// Populate saved searches dropdown
-function populateSavedSearchesDropdown() {
-  savedSearchesDropdown.innerHTML = "";
-
-  if (starredSearches.length === 0) {
-    const noResults = document.createElement("div");
-    noResults.className = "text-gray-500 p-2";
-    noResults.textContent = "No saved searches";
-    savedSearchesDropdown.appendChild(noResults);
-  } else {
-    // Sort by date (newest first)
-    starredSearches.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-    starredSearches.forEach((search) => {
-      const item = document.createElement("div");
-      item.className = "saved-search-item";
-      item.innerHTML = `
-        <span>${search.term}</span>
-        <i class="fas fa-star"></i>
-      `;
-
-      item.addEventListener("click", () => {
-        searchInput.value = search.term;
-        searchTerm = search.term.toLowerCase();
+        // Initial render of data
         const filteredResults = filterResults();
         renderResults(filteredResults);
         updateStats(filteredResults.length);
         updateHeader();
         updateStarIcon();
-        savedSearchesDropdown.classList.add("hidden");
-        showToast(`Loaded search: ${search.term}`);
-      });
-
-      savedSearchesDropdown.appendChild(item);
-    });
-  }
-
-  // Add divider
-  const divider = document.createElement("div");
-  divider.className = "dropdown-divider";
-  savedSearchesDropdown.appendChild(divider);
-
-  // Add action buttons
-  const actions = [
-    { icon: "copy", text: "Copy search results link", action: copySearchLink },
-    { icon: "print", text: "Print results", action: printSearchResults },
-    { icon: "file-export", text: "Export to CSV", action: exportSearchResults },
-  ];
-
-  actions.forEach((action) => {
-    const button = document.createElement("div");
-    button.className = "action-button";
-    button.innerHTML = `
-      <i class="fas fa-${action.icon} text-gray-500"></i>
-      <span>${action.text}</span>
-    `;
-    button.addEventListener("click", action.action);
-    savedSearchesDropdown.appendChild(button);
-  });
-}
-
-// Show toast notification
-function showToast(message) {
-  // Remove existing toast
-  const existingToast = document.querySelector(".toast");
-  if (existingToast) {
-    existingToast.remove();
-  }
-
-  const toast = document.createElement("div");
-  toast.className = "toast";
-  toast.innerHTML = `
-    <i class="fas fa-check-circle"></i>
-    <span>${message}</span>
-  `;
-
-  document.body.appendChild(toast);
-
-  // Show toast
-  setTimeout(() => {
-    toast.classList.add("show");
-  }, 10);
-
-  // Hide after 3 seconds
-  setTimeout(() => {
-    toast.classList.remove("show");
-    setTimeout(() => {
-      toast.remove();
-    }, 300);
-  }, 3000);
-}
-
-// Copy search link to clipboard
-function copySearchLink() {
-  // Generate URL with current search parameters
-  const params = new URLSearchParams();
-  params.set("search", searchInput.value);
-  params.set("filter", currentFilter);
-  params.set("sort", currentSort);
-  params.set("view", currentView);
-
-  const url = `${window.location.origin}${
-    window.location.pathname
-  }?${params.toString()}`;
-
-  navigator.clipboard
-    .writeText(url)
-    .then(() => {
-      showToast("Link copied to clipboard!");
-      savedSearchesDropdown.classList.add("hidden");
-    })
-    .catch((err) => {
-      console.error("Failed to copy: ", err);
-      showToast("Failed to copy link");
-    });
-}
-
-// Print search results
-function printSearchResults() {
-  // Create a print stylesheet
-  const printStyle = document.createElement("style");
-  printStyle.innerHTML = `
-    @media print {
-      body > *:not(#resultsContainer) {
-        display: none !important;
-      }
-      #resultsContainer {
-        position: static !important;
-        width: 100% !important;
-        height: auto !important;
-        overflow: visible !important;
-      }
-      .searchresult-table-header {
-        position: static !important;
-      }
+        renderActiveFilters();
+    } catch (error) {
+        logError("init", error);
     }
-  `;
-  document.head.appendChild(printStyle);
-
-  window.print();
-
-  // Clean up after printing
-  setTimeout(() => {
-    printStyle.remove();
-  }, 500);
-
-  savedSearchesDropdown.classList.add("hidden");
 }
 
-// Export search results to CSV
-function exportSearchResults() {
-  const results = filterResults();
-
-  if (results.length === 0) {
-    showToast("No results to export");
-    return;
-  }
-
-  // CSV header
-  let csv = "ID,Type,Title,Assignee,Due Date,Project,Tags,Status\n";
-
-  // Add each result as a CSV row
-  results.forEach((item) => {
-    csv += `"${item.id}","${item.type}","${item.title}","${item.assignee}","${
-      item.dueDate
-    }","${item.project}","${item.tags.join(", ")}","${item.status}"\n`;
-  });
-
-  // Create download link
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.setAttribute("href", url);
-  link.setAttribute(
-    "download",
-    `search_results_${new Date().toISOString().slice(0, 10)}.csv`
-  );
-  link.style.visibility = "hidden";
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-
-  showToast("Results exported to CSV");
-  savedSearchesDropdown.classList.add("hidden");
+/**
+ * Cleans up all event listeners and resets the state.
+ */
+function cleanup() {
+    console.log("Cleaning up search results component.");
+    eventListenersController.abort();
+    resultsContainer.innerHTML = "";
+    document.getElementById("activeFiltersContainer").innerHTML = "";
 }
 
-// Open feedback modal
-function openFeedbackModal() {
-  feedbackModal.classList.remove("hidden");
-  feedbackText.value = "";
-  selectedRating = 0;
-  updateStars();
-}
-
-// Close feedback modal
-function closeFeedbackModal() {
-  feedbackModal.classList.add("hidden");
-}
-
-// Update star rating display
-function updateStars() {
-  stars.forEach((star, index) => {
-    if (index < selectedRating) {
-      star.classList.remove("far");
-      star.classList.add("fas", "active");
-    } else {
-      star.classList.remove("fas", "active");
-      star.classList.add("far");
-    }
-  });
-}
-
-// Submit feedback
-function submitFeedback() {
-  const feedback = feedbackText.value.trim();
-
-  if (!feedback) {
-    showToast("Please enter your feedback");
-    return;
-  }
-
-  if (selectedRating === 0) {
-    showToast("Please select a rating");
-    return;
-  }
-
-  // In a real app, you would send this to your server
-  console.log("Feedback submitted:", {
-    feedback,
-    rating: selectedRating,
-  });
-
-  showToast("Thank you for your feedback!");
-  closeFeedbackModal();
-}
-
-onAuthStateChanged(auth, async (user) => {
-  // Initialize counts
-  filterButtons.forEach((button) => {
-    const filter = button.dataset.filter;
-    if (filter && resultCounts[filter] !== undefined) {
-      const countElement = document.createElement("span");
-      countElement.className = "searchresult-filter-count";
-      countElement.textContent =
-        filter === "task" || filter === "project"
-          ? `${resultCounts[filter]}+`
-          : resultCounts[filter];
-      button.appendChild(countElement);
-    }
-  });
-
-  // Set initial active filter
-  setActiveFilter(currentFilter);
-  setActiveView(currentView);
-
-  // Initialize star button
-  starButton.addEventListener("click", toggleStar);
-  updateStarIcon();
-
-  // Initialize saved searches dropdown
-  savedSearchesToggle.addEventListener("click", (e) => {
-    e.stopPropagation();
-    populateSavedSearchesDropdown();
-    savedSearchesDropdown.classList.toggle("hidden");
-  });
-
-  // Close dropdown when clicking outside
-  document.addEventListener("click", (e) => {
-    if (
-      !savedSearchesDropdown.contains(e.target) &&
-      !savedSearchesToggle.contains(e.target)
-    ) {
-      savedSearchesDropdown.classList.add("hidden");
-    }
-  });
-
-  // Initialize advanced filters
-  const advancedFilterButtons = document.querySelectorAll(
-    ".searchresult-filter"
-  );
-  advancedFilterButtons.forEach((button) => {
-    button.addEventListener("click", (e) => {
-      const filter = button.dataset.filter;
-
-      // Skip if it's a main filter
-      if (
-        ["task", "message", "project", "portfolio", "goal"].includes(filter)
-      ) {
-        currentFilter = filter;
+/**
+ * Sets up the initial state of the UI elements.
+ */
+function setupInitialUI() {
+    try {
+        filterButtons.forEach((button) => {
+            const filter = button.dataset.filter;
+            if (filter && resultCounts[filter] !== undefined) {
+                // Avoid adding duplicate count elements
+                if (button.querySelector(".searchresult-filter-count")) {
+                    button.querySelector(".searchresult-filter-count").remove();
+                }
+                const countElement = document.createElement("span");
+                countElement.className = "searchresult-filter-count";
+                countElement.textContent =
+                    filter === "task" || filter === "project" ?
+                    `${resultCounts[filter]}+` :
+                    resultCounts[filter];
+                button.appendChild(countElement);
+            }
+        });
         setActiveFilter(currentFilter);
-      } else {
-        // Toggle advanced filter
-        if (activeAdvancedFilters.includes(filter)) {
-          activeAdvancedFilters = activeAdvancedFilters.filter(
-            (f) => f !== filter
-          );
-        } else {
-          activeAdvancedFilters.push(filter);
-        }
-
-        renderActiveFilters();
-      }
-
-      const filteredResults = filterResults();
-      renderResults(filteredResults);
-      updateStats(filteredResults.length);
-      updateHeader();
-    });
-  });
-
-  // Initialize remove filter buttons
-  document
-    .getElementById("activeFiltersContainer")
-    .addEventListener("click", (e) => {
-      if (e.target.classList.contains("remove-filter")) {
-        const filter = e.target.dataset.filter;
-        activeAdvancedFilters = activeAdvancedFilters.filter(
-          (f) => f !== filter
-        );
-        renderActiveFilters();
-
-        const filteredResults = filterResults();
-        renderResults(filteredResults);
-        updateStats(filteredResults.length);
-      }
-    });
-
-  // Set initial header state
-  updateHeader();
-
-  // Initialize with active advanced filters
-  renderActiveFilters();
-
-  // ==================================================
-  // FIXED: CLEAR SEARCH FUNCTIONALITY
-  // ==================================================
-
-  // Show/hide clear button based on input
-  function updateClearButton() {
-    if (searchInput.value.trim() !== "") {
-      clearSearchBtn.classList.add("visible");
-    } else {
-      clearSearchBtn.classList.remove("visible");
+        setActiveView(currentView);
+        updateClearButton();
+    } catch (error) {
+        logError("setupInitialUI", error);
     }
-  }
+}
 
-  searchInput.addEventListener("input", updateClearButton);
+/**
+ * Attaches all necessary event listeners for the component.
+ */
+function attachEventListeners() {
+    const {
+        signal
+    } = eventListenersController;
 
-  // Clear search functionality
-  clearSearchBtn.addEventListener("click", () => {
+    try {
+        // Search functionality
+        searchInput.addEventListener("keyup", handleSearch, {
+            signal
+        });
+        searchInput.addEventListener("input", updateClearButton, {
+            signal
+        });
+        clearSearchBtn.addEventListener("click", clearSearch, {
+            signal
+        });
+        document.querySelector(".searchresult-btn").addEventListener("click", handleSearchButtonClick, {
+            signal
+        });
+
+        // Filtering, sorting, and view
+        filterButtons.forEach(button => button.addEventListener("click", handleFilterClick, {
+            signal
+        }));
+        sortSelect.addEventListener("change", handleSortChange, {
+            signal
+        });
+        viewButtons.forEach(button => button.addEventListener("click", handleViewChange, {
+            signal
+        }));
+
+        // Starred searches and actions
+        starButton.addEventListener("click", toggleStar, {
+            signal
+        });
+        savedSearchesToggle.addEventListener("click", handleSavedSearchesToggle, {
+            signal
+        });
+        document.addEventListener("click", handleDocumentClickForDropdown, {
+            signal
+        });
+
+        // Advanced filters
+        document.getElementById("activeFiltersContainer").addEventListener("click", handleRemoveFilter, {
+            signal
+        });
+
+        // Feedback modal
+        feedbackBtn.addEventListener("click", openFeedbackModal, {
+            signal
+        });
+        closeModalBtn.addEventListener("click", closeFeedbackModal, {
+            signal
+        });
+        cancelFeedbackBtn.addEventListener("click", closeFeedbackModal, {
+            signal
+        });
+        submitFeedbackBtn.addEventListener("click", submitFeedback, {
+            signal
+        });
+        feedbackModal.addEventListener("click", (e) => e.target === feedbackModal && closeFeedbackModal(), {
+            signal
+        });
+        stars.forEach(star => star.addEventListener("click", handleStarRating, {
+            signal
+        }));
+
+        // Horizontal scroll sync
+        scrollWrapper.addEventListener("scroll", () => (resultsContainer.scrollLeft = scrollWrapper.scrollLeft), {
+            signal
+        });
+        resultsContainer.addEventListener("scroll", () => (scrollWrapper.scrollLeft = resultsContainer.scrollLeft), {
+            signal
+        });
+
+    } catch (error) {
+        logError("attachEventListeners", error);
+    }
+}
+
+// ==============================================
+// EVENT HANDLER FUNCTIONS
+// ==============================================
+
+function handleSearch(e) {
+    if (e.key === "Enter") {
+        searchTerm = e.target.value.toLowerCase();
+        performSearch();
+    }
+}
+
+function handleSearchButtonClick() {
+    searchTerm = searchInput.value.toLowerCase();
+    performSearch();
+}
+
+function clearSearch() {
     searchInput.value = "";
     searchTerm = "";
     updateClearButton();
+    performSearch();
+}
 
-    // Clear and reload results
-    const filteredResults = filterResults();
-    renderResults(filteredResults);
-    updateStats(filteredResults.length);
-    updateHeader();
-    updateStarIcon();
-  });
-
-  // Initialize clear button visibility
-  updateClearButton();
-  // ==================================================
-
-  // ==================================================
-  // FIXED: INITIAL RENDER OF MOCK RESULTS
-  // ==================================================
-  // Render initial results AFTER DOM is ready
-  const filteredResults = filterResults();
-  renderResults(filteredResults);
-  updateStats(filteredResults.length);
-  // ==================================================
-
-  // Search functionality
-  searchInput.addEventListener("keyup", (e) => {
-    if (e.key === "Enter") {
-      searchTerm = e.target.value.toLowerCase();
-      const filteredResults = filterResults();
-      renderResults(filteredResults);
-      updateStats(filteredResults.length);
-      updateHeader();
-      updateStarIcon();
+function handleFilterClick(e) {
+    try {
+        const filter = e.currentTarget.dataset.filter;
+        if (["task", "message", "project", "portfolio", "goal"].includes(filter)) {
+            currentFilter = filter;
+            setActiveFilter(currentFilter);
+        } else {
+            // Toggle advanced filter
+            if (activeAdvancedFilters.includes(filter)) {
+                activeAdvancedFilters = activeAdvancedFilters.filter((f) => f !== filter);
+            } else {
+                activeAdvancedFilters.push(filter);
+            }
+            renderActiveFilters();
+        }
+        performSearch();
+        updateHeader();
+    } catch (error) {
+        logError("handleFilterClick", error);
     }
-  });
+}
 
-  // Search button functionality
-  document.querySelector(".searchresult-btn").addEventListener("click", () => {
-    searchTerm = searchInput.value.toLowerCase();
-    const filteredResults = filterResults();
-    renderResults(filteredResults);
-    updateStats(filteredResults.length);
-    updateHeader();
-    updateStarIcon();
-  });
+function handleRemoveFilter(e) {
+    if (e.target.classList.contains("remove-filter")) {
+        try {
+            const filter = e.target.dataset.filter;
+            activeAdvancedFilters = activeAdvancedFilters.filter((f) => f !== filter);
+            renderActiveFilters();
+            performSearch();
+        } catch (error) {
+            logError("handleRemoveFilter", error);
+        }
+    }
+}
 
-  // Filter button functionality
-  filterButtons.forEach((button) => {
-    button.addEventListener("click", (e) => {
-      // Skip if it's an advanced filter
-      if (
-        !["task", "message", "project", "portfolio", "goal"].includes(
-          button.dataset.filter
-        )
-      ) {
-        return;
-      }
-
-      currentFilter = button.dataset.filter;
-      setActiveFilter(currentFilter);
-      const filteredResults = filterResults();
-      renderResults(filteredResults);
-      updateStats(filteredResults.length);
-      updateHeader();
-    });
-  });
-
-  // Sort functionality
-  sortSelect.addEventListener("change", (e) => {
+function handleSortChange(e) {
     currentSort = e.target.value;
-    const filteredResults = filterResults();
-    renderResults(filteredResults);
-  });
+    performSearch();
+}
 
-  // View functionality
-  viewButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      currentView = button.dataset.view;
-      setActiveView(currentView);
-      // In a real app, this would change the view
-    });
-  });
+function handleViewChange(e) {
+    currentView = e.currentTarget.dataset.view;
+    setActiveView(currentView);
+    // In a real app, this would change the view rendering logic
+    console.log(`View changed to: ${currentView}`);
+}
 
-  // Feedback functionality
-  feedbackBtn.addEventListener("click", openFeedbackModal);
-  closeModalBtn.addEventListener("click", closeFeedbackModal);
-  cancelFeedbackBtn.addEventListener("click", closeFeedbackModal);
-  submitFeedbackBtn.addEventListener("click", submitFeedback);
+function handleSavedSearchesToggle(e) {
+    e.stopPropagation();
+    populateSavedSearchesDropdown();
+    savedSearchesDropdown.classList.toggle("hidden");
+}
 
-  // Star rating functionality
-  stars.forEach((star) => {
-    star.addEventListener("click", (e) => {
-      selectedRating = parseInt(e.target.dataset.rating);
-      updateStars();
-    });
-  });
-
-  // Close modal when clicking outside
-  feedbackModal.addEventListener("click", (e) => {
-    if (e.target === feedbackModal) {
-      closeFeedbackModal();
+function handleDocumentClickForDropdown(e) {
+    if (!savedSearchesDropdown.contains(e.target) && !savedSearchesToggle.contains(e.target)) {
+        savedSearchesDropdown.classList.add("hidden");
     }
-  });
-});
+}
+
+function handleStarRating(e) {
+    try {
+        selectedRating = parseInt(e.target.dataset.rating);
+        updateStars();
+    } catch (error) {
+        logError("handleStarRating", error);
+    }
+}
+
+
+// ==============================================
+// CORE LOGIC FUNCTIONS
+// ==============================================
+
+/**
+ * Executes a search, filters, sorts, and renders the results.
+ */
+function performSearch() {
+    try {
+        const filteredResults = filterResults();
+        renderResults(filteredResults);
+        updateStats(filteredResults.length);
+        updateHeader();
+        updateStarIcon();
+    } catch (error) {
+        logError("performSearch", error);
+    }
+}
+
+/**
+ * Renders the search results in the container.
+ * @param {Array} results - The search results to render.
+ */
+function renderResults(results) {
+    try {
+        resultsContainer.innerHTML = "";
+
+        const header = document.createElement("div");
+        header.className = "searchresult-table-header";
+        header.innerHTML = `
+            <div>Status</div>
+            <div>Task Name</div>
+            <div>Assignee</div>
+            <div>Due Date</div>
+            <div>Projects</div>
+            <div>Tags</div>
+        `;
+        resultsContainer.appendChild(header);
+
+        const sortedResults = sortResults([...results]);
+
+        if (sortedResults.length === 0) {
+            const noResultsMessage = document.createElement('div');
+            noResultsMessage.className = 'searchresult-no-results';
+            noResultsMessage.textContent = 'No results found. Try a different search term or adjust your filters.';
+            resultsContainer.appendChild(noResultsMessage);
+            return;
+        }
+
+        sortedResults.forEach((item) => {
+            const resultItem = document.createElement("div");
+            resultItem.className = "searchresult-item";
+            resultItem.dataset.id = item.id;
+
+            const formattedDueDate = formatDueDate(item.dueDate);
+            let highlightedTitle = item.title;
+            let highlightedProject = item.project;
+
+            if (searchTerm) {
+                const regex = new RegExp(`(${searchTerm})`, "gi");
+                highlightedTitle = item.title.replace(regex, '<span class="searchresult-highlight">$1</span>');
+                highlightedProject = item.project.replace(regex, '<span class="searchresult-highlight">$1</span>');
+            }
+
+            const tagsHTML = item.tags.map((tag) => `<span class="searchresult-tag">${tag}</span>`).join("");
+            const statusClass = `searchresult-status searchresult-status-${item.status}`;
+            const statusText = item.status.charAt(0).toUpperCase() + item.status.slice(1);
+            const avatarHTML = createAvatarStackHTML(item.assigneeIds, mockUsers);
+
+            resultItem.innerHTML = `
+                <div class="searchresult-status-container">
+                    <span class="${statusClass}"></span>
+                    <span class="status-text">${statusText}</span>
+                </div>
+                <div class="searchresult-title">
+                    <span class="title-text">${highlightedTitle}</span>
+                </div>
+                <div class="searchresult-details">${avatarHTML}</div>
+                <div class="searchresult-details"><i class="fas fa-calendar"></i> ${formattedDueDate}</div>
+                <div class="searchresult-details"><i class="fas fa-layer-group"></i> ${highlightedProject}</div>
+                <div class="searchresult-details">${tagsHTML}</div>
+            `;
+            resultItem.addEventListener("click", () => console.log(`Opening task ${item.id}`));
+            resultsContainer.appendChild(resultItem);
+        });
+    } catch (error) {
+        logError("renderResults", error);
+    }
+}
+
+function filterResults() {
+    try {
+        let filtered = mockResults;
+
+        if (searchTerm) {
+            const lowerCaseSearchTerm = searchTerm.toLowerCase();
+            filtered = filtered.filter(
+                (item) =>
+                item.title.toLowerCase().includes(lowerCaseSearchTerm) ||
+                item.assignee.toLowerCase().includes(lowerCaseSearchTerm) ||
+                item.project.toLowerCase().includes(lowerCaseSearchTerm) ||
+                item.tags.some((tag) => tag.toLowerCase().includes(lowerCaseSearchTerm))
+            );
+        }
+
+        if (currentFilter !== "all") {
+            filtered = filtered.filter((item) => item.type === currentFilter);
+        }
+
+        return filtered;
+    } catch (error) {
+        logError("filterResults", error);
+        return [];
+    }
+}
+
+function sortResults(results) {
+    try {
+        switch (currentSort) {
+            case "newest":
+                return results.sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate));
+            case "dueDate":
+                return results.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+            default: // relevance
+                return results;
+        }
+    } catch (error) {
+        logError("sortResults", error);
+        return results;
+    }
+}
+
+
+// ==============================================
+// UTILITY & UI FUNCTIONS
+// ==============================================
+
+function updateHeader() {
+    searchTitle.textContent = searchTerm ? `"${searchTerm}" Search Results` : "My Recent Tasks";
+    const countText = resultCounts[currentFilter] !== undefined ?
+        `${currentFilter.charAt(0).toUpperCase() + currentFilter.slice(1)}s (${resultCounts[currentFilter]}${currentFilter === 'task' || currentFilter === 'project' ? '+' : ''})` :
+        `Tasks (${resultCounts.task}+)`;
+    searchSubtitle.textContent = countText;
+}
+
+function updateStats(count) {
+    const resultCountElement = searchStats.querySelector(".searchresult-result-count");
+    if (resultCountElement) {
+        resultCountElement.textContent = count;
+    }
+}
+
+function renderActiveFilters() {
+    const container = document.getElementById("activeFiltersContainer");
+    container.innerHTML = "";
+    activeAdvancedFilters.forEach((filter) => {
+        const span = document.createElement("span");
+        span.className = "searchresult-tag";
+        span.innerHTML = `${filter.charAt(0).toUpperCase() + filter.slice(1)} <button class="remove-filter" data-filter="${filter}">×</button>`;
+        container.appendChild(span);
+    });
+}
+
+function setActiveFilter(filter) {
+    filterButtons.forEach((button) => {
+        button.classList.toggle("active", button.dataset.filter === filter);
+    });
+}
+
+function setActiveView(view) {
+    viewButtons.forEach((button) => {
+        button.classList.toggle("active", button.dataset.view === view);
+    });
+}
+
+function updateClearButton() {
+    clearSearchBtn.classList.toggle("visible", searchInput.value.trim() !== "");
+}
+
+function formatDueDate(dateString) {
+    try {
+        const date = new Date(dateString);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        if (date.getTime() === today.getTime()) return "Today";
+        if (date.getTime() === tomorrow.getTime()) return "Tomorrow";
+        if (date.getTime() === yesterday.getTime()) return "Yesterday";
+        if (date < today) return "Past due";
+
+        return date.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric"
+        });
+    } catch (error) {
+        logError("formatDueDate", error);
+        return "Invalid Date";
+    }
+}
+
+function createAvatarStackHTML(assigneeIds, allUsers) {
+    if (!assigneeIds || assigneeIds.length === 0) return "";
+
+    const maxVisible = 3;
+    let visibleAssignees = assigneeIds.slice(0, maxVisible);
+    let overflowCount = assigneeIds.length > maxVisible ? assigneeIds.length - (maxVisible - 1) : 0;
+
+
+    const avatarsHTML = visibleAssignees
+        .map((userId, index) => {
+            const user = allUsers[userId];
+            if (!user) return "";
+            const zIndex = 50 - index;
+            if (user.avatar) {
+                return `<div class="user-avatar" title="${user.name}" style="z-index: ${zIndex};"><img src="${user.avatar}" alt="${user.name}"></div>`;
+            } else {
+                const initials = (user.name || "?").split(" ").map(n => n[0]).join("").substring(0, 2);
+                const bgColor = "#" + (user.uid || "000000").substring(0, 6);
+                return `<div class="user-avatar" title="${user.name}" style="background-color: ${bgColor}; color: white; z-index: ${zIndex};">${initials}</div>`;
+            }
+        })
+        .join("");
+
+    const overflowHTML = overflowCount > 0 ? `<div class="user-avatar overflow" style="z-index: ${50 - maxVisible};">+${overflowCount}</div>` : "";
+
+    return `<div class="avatar-stack">${avatarsHTML}${overflowHTML}</div>`;
+}
+
+function showToast(message) {
+    const existingToast = document.querySelector(".toast");
+    if (existingToast) existingToast.remove();
+
+    const toast = document.createElement("div");
+    toast.className = "toast";
+    toast.innerHTML = `<i class="fas fa-check-circle"></i> <span>${message}</span>`;
+    document.body.appendChild(toast);
+
+    setTimeout(() => toast.classList.add("show"), 10);
+    setTimeout(() => {
+        toast.classList.remove("show");
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// ==============================================
+// STARRED SEARCHES & ACTIONS
+// ==============================================
+
+async function addSearchQueryToStarred() {
+    console.log("Starring search query:", {
+        searchTerm,
+        currentFilter,
+        activeAdvancedFilters
+    });
+    try {
+        // This is where Clinton's Firestore implementation will go.
+        // The await call will handle the asynchronous nature of the Firestore operation.
+        // await addDoc(collection(db, "starredSearches"), {
+        //     term: searchTerm,
+        //     filters: activeAdvancedFilters,
+        //     typeFilter: currentFilter,
+        //     createdAt: serverTimestamp(),
+        //     userId: auth.currentUser.uid,
+        // });
+        console.log("Search parameters prepared for saving to Firestore.");
+    } catch (error) {
+        logError("addSearchQueryToStarred", error);
+        showToast("Error: Could not save search.");
+    }
+}
+
+function toggleStar() {
+    const term = searchInput.value.trim();
+    if (!term) return;
+
+    const index = starredSearches.findIndex((s) => s.term === term);
+    if (index === -1) {
+        starredSearches.push({
+            term,
+            date: new Date().toISOString()
+        });
+        isStarred = true;
+        addSearchQueryToStarred(); // Call the async function
+    } else {
+        starredSearches.splice(index, 1);
+        isStarred = false;
+        // Here you might also want a function to remove it from Firestore
+    }
+
+    localStorage.setItem("starredSearches", JSON.stringify(starredSearches));
+    updateStarIcon();
+    showToast(isStarred ? "Search saved to starred!" : "Search removed from starred");
+}
+
+function updateStarIcon() {
+    const term = searchInput.value.trim();
+    const isCurrentlyStarred = starredSearches.some((s) => s.term === term);
+    starButton.innerHTML = isCurrentlyStarred ? '<i class="fas fa-star text-yellow-400"></i>' : '<i class="far fa-star"></i>';
+}
+
+function populateSavedSearchesDropdown() {
+    try {
+        savedSearchesDropdown.innerHTML = "";
+        if (starredSearches.length === 0) {
+            savedSearchesDropdown.innerHTML = '<div class="text-gray-500 p-2">No saved searches</div>';
+            return;
+        }
+
+        starredSearches.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        starredSearches.forEach((search) => {
+            const item = document.createElement("div");
+            item.className = "saved-search-item";
+            item.innerHTML = `
+                <span>${search.term}</span>
+                <i class="fas fa-star"></i>
+            `;
+            item.addEventListener("click", () => {
+                searchInput.value = search.term;
+                searchTerm = search.term.toLowerCase();
+                performSearch();
+                savedSearchesDropdown.classList.add("hidden");
+                showToast(`Loaded search: ${search.term}`);
+            });
+            savedSearchesDropdown.appendChild(item);
+        });
+
+        const divider = document.createElement("div");
+        divider.className = "dropdown-divider";
+        savedSearchesDropdown.appendChild(divider);
+
+        const actions = [{
+            icon: "copy",
+            text: "Copy search results link",
+            action: copySearchLink
+        }, {
+            icon: "print",
+            text: "Print results",
+            action: printSearchResults
+        }, {
+            icon: "file-export",
+            text: "Export to CSV",
+            action: exportSearchResults
+        }, ];
+
+        actions.forEach((action) => {
+            const button = document.createElement("div");
+            button.className = "action-button";
+            button.innerHTML = `
+                <i class="fas fa-${action.icon} text-gray-500"></i>
+                <span>${action.text}</span>
+            `;
+            button.addEventListener("click", action.action);
+            savedSearchesDropdown.appendChild(button);
+        });
+
+    } catch (error) {
+        logError("populateSavedSearchesDropdown", error);
+    }
+}
+
+
+function copySearchLink() {
+    try {
+        const params = new URLSearchParams({
+            search: searchInput.value,
+            filter: currentFilter,
+            sort: currentSort,
+            view: currentView,
+        });
+        const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+        navigator.clipboard.writeText(url).then(() => {
+            showToast("Link copied to clipboard!");
+            savedSearchesDropdown.classList.add("hidden");
+        }).catch(err => {
+            logError("copySearchLink.clipboard", err);
+            showToast("Failed to copy link");
+        });
+    } catch (error) {
+        logError("copySearchLink", error);
+    }
+}
+
+function printSearchResults() {
+    try {
+        const printStyle = document.createElement("style");
+        printStyle.innerHTML = `
+            @media print {
+                body > *:not(#resultsContainer) { display: none !important; }
+                #resultsContainer {
+                    position: static !important;
+                    width: 100% !important;
+                    height: auto !important;
+                    overflow: visible !important;
+                    box-shadow: none !important;
+                    border: none !important;
+                }
+                .searchresult-table-header { position: static !important; }
+            }
+        `;
+        document.head.appendChild(printStyle);
+        window.print();
+        printStyle.remove();
+        savedSearchesDropdown.classList.add("hidden");
+    } catch (error) {
+        logError("printSearchResults", error);
+    }
+}
+
+function exportSearchResults() {
+    try {
+        const results = filterResults();
+        if (results.length === 0) {
+            showToast("No results to export");
+            return;
+        }
+
+        let csv = "ID,Type,Title,Assignee,DueDate,Project,Tags,Status\n";
+        results.forEach((item) => {
+            const assignee = `"${item.assignee.replace(/"/g, '""')}"`;
+            const title = `"${item.title.replace(/"/g, '""')}"`;
+            const project = `"${item.project.replace(/"/g, '""')}"`;
+            const tags = `"${item.tags.join(", ")}"`;
+            csv += `"${item.id}","${item.type}",${title},${assignee},"${item.dueDate}",${project},${tags},"${item.status}"\n`;
+        });
+
+        const blob = new Blob([csv], {
+            type: "text/csv;charset=utf-8;"
+        });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `search_results_${new Date().toISOString().slice(0, 10)}.csv`);
+        link.style.visibility = "hidden";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        showToast("Results exported to CSV");
+        savedSearchesDropdown.classList.add("hidden");
+    } catch (error) {
+        logError("exportSearchResults", error);
+    }
+}
+
+// ==============================================
+// FEEDBACK MODAL FUNCTIONS
+// ==============================================
+
+function openFeedbackModal() {
+    feedbackModal.classList.remove("hidden");
+    feedbackText.value = "";
+    selectedRating = 0;
+    updateStars();
+}
+
+function closeFeedbackModal() {
+    feedbackModal.classList.add("hidden");
+}
+
+function updateStars() {
+    stars.forEach((star, index) => {
+        star.classList.toggle("fas", index < selectedRating);
+        star.classList.toggle("active", index < selectedRating);
+        star.classList.toggle("far", index >= selectedRating);
+    });
+}
+
+function submitFeedback() {
+    try {
+        const feedback = feedbackText.value.trim();
+        if (!feedback || selectedRating === 0) {
+            showToast("Please provide a rating and feedback.");
+            return;
+        }
+
+        console.log("Feedback submitted:", {
+            feedback,
+            rating: selectedRating
+        });
+        // In a real app, you would send this to your server
+        // try { await sendFeedbackToServer({ feedback, rating: selectedRating }); ... } catch ...
+
+        showToast("Thank you for your feedback!");
+        closeFeedbackModal();
+    } catch (error) {
+        logError("submitFeedback", error);
+    }
+}
+
+// ==============================================
+// APP ENTRY POINT
+// ==============================================
+
+try {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app, "juanluna-cms-01");
+    storage = getStorage(app);
+
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            // User is signed in, initialize the component
+            init(user);
+        } else {
+            // User is signed out, clean up listeners and UI
+            cleanup();
+            console.log("User is signed out. Search results component is inactive.");
+            resultsContainer.innerHTML = '<div class="searchresult-no-results">Please log in to see your tasks.</div>';
+        }
+    });
+} catch (error) {
+    logError("Firebase Initialization", error);
+    resultsContainer.innerHTML = '<div class="searchresult-no-results">Error: Could not connect to services. Please refresh the page.</div>';
+}
