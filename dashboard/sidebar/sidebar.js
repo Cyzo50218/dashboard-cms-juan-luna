@@ -314,7 +314,8 @@ async function open(taskId, projectRef) {
         let assigneesForHistory = [];
         const foundProfile = allUsers.find(u => u.id === currentTask.assignees);
             
-if (foundProfile) {
+            if(currentTask.assignees.length === 0){
+                if (foundProfile) {
     assigneesForHistory.push({
         uid: currentTask.assignees,
         name: foundProfile.name || 'Unknown User',
@@ -335,8 +336,11 @@ if (foundProfile) {
         assigneesForHistory.push({ uid: currentTask.assignees, name: 'User Not Found', avatarUrl: null });
     }
 }
+            }
+
         
         const recentHistoryData = {
+            type: 'task',
             name: currentTask.name || '',
             status: currentTask.status || '',
             assignees: assigneesForHistory,

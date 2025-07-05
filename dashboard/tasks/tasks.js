@@ -266,11 +266,21 @@ export function init(params) {
                 const tasksSnapshot = await getDocs(tasksColRef);
                 sectionTaskCounts[sectionDoc.id] = tasksSnapshot.size;
             }
+            
+            let projectHexColor = projectData.color || '#cccccc'; // Default if color is not provided
+// Check if the color format is HSL (e.g., "hsl(120, 100%, 50%)")
+if (projectData.color && projectData.color.startsWith('hsl(')) {
+    const hslValues = projectData.color.match(/\d+(\.\d+)?/g).map(Number);
+    if (hslValues.length === 3) {
+        projectHexColor = hslToHex(hslValues[0], hslValues[1], hslValues[2]);
+    }
+}
 
             const recentHistoryPayload = {
+                type: 'project',
                 projectId: projectId,
                 projectName: projectData.title || 'Unknown Project',
-                projectColor: projectData.color || '#cccccc',
+                projectColor: projectHexColor,
                 projectRef: projectRef, // Store the actual project DocumentReference
                 memberUIDs: projectData.memberUIDs || [], // Original array of UIDs
                 memberProfiles: memberProfiles, // Enriched profiles
