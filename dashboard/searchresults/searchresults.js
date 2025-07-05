@@ -405,7 +405,7 @@ leftHeader.textContent = 'Name';
     const rightHeaderContent = document.createElement('div');
     rightHeaderContent.className = 'flex flex-grow border-b border-slate-200';
     
-    allColumns.forEach(col => {
+    allDataColumns.forEach(col => {
     const cell = document.createElement('div');
     // The main cell is a flex container with relative positioning for the handle
     let cellClasses = 'group relative px-2 py-1 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center text-xs rounded-none';
