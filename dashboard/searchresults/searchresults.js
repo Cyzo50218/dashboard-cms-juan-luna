@@ -460,7 +460,7 @@ let project = {
         leftProductCell.innerHTML = `
             <div class="flex items-center flex-grow min-w-0">
                 <span
-                    class="product-name truncate text-[13px] block outline-none bg-transparent rounded px-1 ${canEditThisProduct ? 'focus:bg-white focus:ring-1 focus:ring-slate-300' : 'cursor-text'}"
+                    class="product-name truncate text-[13px] block outline-none bg-transparent rounded px-1"
                     data-product-id="${product.id}"
                 >${product.name || 'New Product'}</span>
             </div>
@@ -474,13 +474,7 @@ let project = {
             const cell = document.createElement('div');
             let cellClasses = `table-cell px-2 py-1 flex items-center border-r border-slate-200 text-sm`;
             cellClasses += (col.id === 'productImage') ? ' w-20 justify-center' : ' w-44';
-            
-            
-            const canEditThisCell = isCellEditable(col, product);
-
-            if (!canEditThisCell) {
-                cellClasses += ' cell-restricted bg-slate-50 cursor-not-allowed';
-            }
+            cellClasses += ' cell-restricted bg-slate-50 cursor-not-allowed';
             
             cell.className = cellClasses;
             cell.dataset.columnId = col.id;
@@ -495,22 +489,18 @@ let project = {
                                </div>`;
                     break;
                 case 'productSku':
-                    content = `<span class="px-1 w-full" contenteditable="${canEditThisCell}">${rawValue || ''}</span>`;
+                    content = `<span class="px-1 w-full">${rawValue || ''}</span>`;
                     break;
                 case 'supplierCost':
                     const cost = (typeof rawValue === 'number') ? '$' + rawValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
-                    content = `<span class="px-1 w-full" contenteditable="${canEditThisCell}">${cost}</span>`;
+                    content = `<span class="px-1 w-full">${cost}</span>`;
                     break;
                 case 'supplierName':
-                     content = `<span class="px-1 w-full" contenteditable="${canEditThisCell}">${rawValue || ''}</span>`;
+                     content = `<span class="px-1 w-full">${rawValue || ''}</span>`;
                     break;
                 case 'supplierProject':
                     cell.dataset.control = 'supplier-project';
-                    if(canEditThisCell) {
-                       content = `<div class="status-tag cursor-pointer">${rawValue || 'Select Project'}</div>`;
-                    } else {
-                       content = `<div class="status-tag">${rawValue || 'N/A'}</div>`;
-                    }
+                    content = `<div class="status-tag">${rawValue || 'N/A'}</div>`;
                     break;
                 default:
                     content = `<span class="px-1 w-full" contenteditable="${canEditThisCell}">${rawValue || ''}</span>`;
