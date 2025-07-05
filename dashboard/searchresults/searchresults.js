@@ -319,19 +319,11 @@ function render() {
 
 const project = {
     id: 'proj_12345',
-    columnOrder: ['assignees', 'dueDate', 'priority', 'status', 'col_cost_1', 'col_type_1', 'col_text_1'],
-    // --- THIS SECTION HAS BEEN UPDATED ---
+    // 'columnOrder' has been removed as requested.
+    
     defaultColumns: [
-        { 
-            id: 'assignees', 
-            name: 'Assignee',
-            control: "assignee"
-        },
-        { 
-            id: 'dueDate', 
-            name: 'Due Date',
-            control: "due-date"
-        },
+        { id: 'assignees', name: 'Assignee', control: "assignee" },
+        { id: 'dueDate', name: 'Due Date', control: "due-date" },
         {
             id: 'priority',
             name: 'Priority',
@@ -356,36 +348,111 @@ const project = {
             ]
         }
     ],
-    // --- END OF UPDATE ---
+
+    // --- THIS SECTION HAS BEEN UPDATED ---
     customColumns: [
-         { id: 'col_cost_1', name: 'Budget', type: 'Costing' },
-         { id: 'col_type_1', name: 'Task Type', type: 'Type', options: [ { id: 'opt1', name: 'Design', color: '#ec4899' }, { id: 'opt2', name: 'Development', color: '#6366f1' }, { id: 'opt3', name: 'QA', color: '#10b981' }] },
-         { id: 'col_text_1', name: 'Notes', type: 'Text' },
+        {
+            id: 1751340038078,
+            name: "address",
+            type: "Text",
+            isCustom: true
+        },
+        {
+            id: 1751416646551,
+            name: "Order No.",
+            type: "Text",
+            isCustom: true
+        },
+        {
+            id: 1751416667932,
+            name: "EST Amount",
+            type: "Costing",
+            isCustom: true,
+            currency: "$",
+            aggregation: "Sum"
+        },
+        {
+            id: 1751417231966,
+            name: "Type",
+            type: "Type", 
+            isCustom: true,
+            options: [
+                { name: 'Etsy', color: '#c03b02' },
+                { name: 'Shopify', color: '#4caf50' }
+            ]
+        },
+        {
+            id: 1751417276579,
+            name: "Waybill",
+            type: "Text",
+            isCustom: true
+        }
     ],
+    // --- END OF UPDATE ---
+    
     sections: [
         {
-            id: 'sec_1', title: 'Phase 1: Planning & Design',
+            id: 'sec_1',
+            title: 'Unfulfilled Orders',
             tasks: [
-                // Task data is updated to use the new options
-                { id: 'task_101', name: 'Finalize project requirements document for the new mobile application interface', status: 'Completed', priority: 'RUSH', dueDate: '2025-07-20T23:59:59Z', assignees: ['user-A', 'user-B'], customFields: { col_cost_1: 1500, col_type_1: 'Design' }, commentCount: 5, likedAmount: 10 },
-                { id: 'task_102', name: 'Create initial UI/UX mockups and wireframes for all major user flows', status: 'Ready to Ship', priority: 'International', dueDate: '2025-08-10T23:59:59Z', assignees: ['user-A'], customFields: { col_cost_1: 3250.50, col_type_1: 'Design', col_text_1: 'Focus on mobile-first design patterns and accessibility standards.' }, commentCount: 2, likedAmount: 0 },
-                { id: 'task_103', name: 'Develop brand style guide and component library', status: 'Waiting', priority: 'BULK', dueDate: '2025-08-15T23:59:59Z', assignees: ['user-B'], customFields: { col_cost_1: 2000, col_type_1: 'Design' }, commentCount: 0, likedAmount: 1 }
+                // --- Task customFields are updated to match the new columns ---
+                { 
+                    id: 'task_101', 
+                    name: 'Ship order for Jane Doe', 
+                    status: 'Ready to Ship', 
+                    priority: 'RUSH', 
+                    dueDate: '2025-07-20T23:59:59Z', 
+                    assignees: ['user-A', 'user-B'], 
+                    customFields: { 
+                        1751340038078: '123 Maple St, Springfield, IL',
+                        1751416646551: 'ORD-1001',
+                        1751416667932: 149.99,
+                        1751417231966: 'Shopify',
+                        1751417276579: 'WB77889900'
+                    }, 
+                    commentCount: 5, 
+                    likedAmount: 10 
+                },
+                { 
+                    id: 'task_102', 
+                    name: 'Prepare international shipment for John Smith', 
+                    status: 'Waiting', 
+                    priority: 'International', 
+                    dueDate: '2025-08-10T23:59:59Z', 
+                    assignees: ['user-A'], 
+                    customFields: { 
+                        1751340038078: '456 Oak Ave, Vancouver, BC',
+                        1751416646551: 'ORD-1002',
+                        1751416667932: 295.50,
+                        1751417231966: 'Etsy',
+                        1751417276579: 'WB11223344'
+                    }, 
+                    commentCount: 2, 
+                    likedAmount: 0 
+                }
             ]
         },
         {
-            id: 'sec_2', title: 'Phase 2: Development',
+            id: 'sec_2',
+            title: 'Completed Orders',
             tasks: [
-                { id: 'task_201', name: 'Set up database architecture, schemas, and necessary tables', status: 'Waiting', priority: 'RUSH', dueDate: '2025-08-25T23:59:59Z', assignees: ['user-C', 'user-D'], customFields: { col_cost_1: 5000, col_type_1: 'Development' }, commentCount: 7, likedAmount: 15 },
-                { id: 'task_202', name: 'Implement user authentication module with OAuth 2.0 and two-factor auth', status: 'Ready to Ship', priority: 'Cancel', dueDate: '2025-09-01T23:59:59Z', assignees: ['user-D'], customFields: { col_cost_1: 4500, col_type_1: 'Development', col_text_1: 'Waiting on new API keys from the identity provider.' }, commentCount: 1, likedAmount: 1 },
-                { id: 'task_203', name: 'Build the core API endpoints for task management', status: 'Ready to Ship', priority: 'LATE', dueDate: '2025-09-10T23:59:59Z', assignees: ['user-C'], customFields: { col_cost_1: 8000, col_type_1: 'Development' }, commentCount: 0, likedAmount: 0 }
-            ]
-        },
-        {
-            id: 'sec_3', title: 'Phase 3: QA & Deployment',
-            tasks: [
-                { id: 'task_301', name: 'Write end-to-end tests for all critical user paths', status: 'Waiting', priority: 'BULK', dueDate: '2025-09-20T23:59:59Z', assignees: ['user-B'], customFields: { col_cost_1: 3000, col_type_1: 'QA' }, commentCount: 3, likedAmount: 5 },
-                { id: 'task_302', name: 'Perform load testing on the production servers', status: 'Ready to Ship', priority: 'UPS Stock', dueDate: '2025-09-25T23:59:59Z', assignees: ['user-D'], customFields: { col_cost_1: 2500, col_type_1: 'QA' }, commentCount: 1, likedAmount: 2 },
-                { id: 'task_303', name: 'Schedule and execute the final deployment to production', status: 'Completed', priority: 'RUSH', dueDate: '2025-09-30T23:59:59Z', assignees: ['user-C', 'user-D'], customFields: { col_cost_1: 1000, col_type_1: 'Development' }, commentCount: 0, likedAmount: 20 }
+                { 
+                    id: 'task_201', 
+                    name: 'Confirm delivery for Emily White', 
+                    status: 'Completed', 
+                    priority: 'BULK', 
+                    dueDate: '2025-07-01T23:59:59Z', 
+                    assignees: ['user-C'], 
+                    customFields: { 
+                        1751340038078: '789 Pine Ln, Miami, FL',
+                        1751416646551: 'ORD-0955',
+                        1751416667932: 88.00,
+                        1751417231966: 'Shopify',
+                        1751417276579: 'WB55667788'
+                    }, 
+                    commentCount: 1, 
+                    likedAmount: 3
+                }
             ]
         }
     ]
@@ -436,7 +503,7 @@ const project = {
 
     allDataColumns.forEach(col => {
         const cell = document.createElement('div');
-        cell.className = 'group relative py-0.2 py-0.3 px-1 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center text-[11px]';
+        cell.className = 'group relative py-0.2 py-0.3 px-2 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center text-[11px]';
         cell.dataset.columnId = col.id;
     
         const innerWrapper = document.createElement('div');
@@ -470,9 +537,6 @@ const project = {
         
         const isCompleted = task.status === 'Completed';
         const taskNameClass = isCompleted ? 'line-through text-slate-400' : 'text-slate-800';
-
-        // --- Create the Left Task Cell (Task Name) - STICKY ---
-// --- Create the Left Task Cell (Task Name) - STICKY ---
 const leftTaskCell = document.createElement('div');
 leftTaskCell.className = 'sticky left-0 z-10 py-0.6 px-1 flex items-center border-r border-slate-200 bg-white group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane';
 leftTaskCell.style.width = '300px'; // Using the established fixed width
@@ -481,7 +545,9 @@ leftTaskCell.style.flexShrink = '0';
 // Prepare the comment and like icons (they will only render if the count is > 0)
 const commentCount = task.commentCount || 0;
 const likeCount = task.likedAmount || 0;
-
+const canEditThisTask = canUserEditTask(task);
+            const taskNameEditableClass = canEditThisTask ? 'focus:bg-white focus:ring-1 focus:ring-slate-300' : 'cursor-text';
+            
 
 // Set the final HTML for the cell
 leftTaskCell.innerHTML = `
@@ -491,8 +557,9 @@ leftTaskCell.innerHTML = `
   </label>
   <div class="flex items-center flex-grow min-w-0">
       <span
-          class="${taskNameClass} truncate whitespace-nowrap overflow-hidden text-ellipsis text-[9px] block outline-none bg-transparent rounded px-1 transition-all duration-150"
+          class="${taskNameClass} ${taskNameEditableClass}truncate whitespace-nowrap overflow-hidden text-ellipsis text-[9px] block outline-none bg-transparent rounded px-1 transition-all duration-150"
           style="max-width: 100%;"
+          contenteditable="${canEditThisTask}"
           data-task-id="${task.id}"
       >
           ${task.name}
@@ -522,29 +589,227 @@ leftTaskCell.innerHTML = `
             const COMPLETED_STYLE = `background-color: #f3f4f6; color: #6b7280;`;
             const rawValue = task.customFields ? task.customFields[col.id] : undefined;
             
-            switch (col.id) {
-                case 'assignees': content = createAssigneeHTML(task.assignees, mockUsers); break;
-                case 'dueDate':
-                    const dueDateInfo = formatDueDate(task.dueDate);
-                    content = `<span class="font-medium text-${dueDateInfo.color}-600">${dueDateInfo.text}</span>`;
-                    break;
-                case 'priority': case 'status':
-                    const option = col.options?.find(p => p.name === task[col.id]);
-                    if (option) {
-                        const style = isCompleted ? COMPLETED_STYLE : `background-color: ${option.color}20; color: ${option.color};`;
-                        content = `<div class="font-semibold px-2 py-0.5 rounded-full" style="${style}">${option.name}</div>`;
-                    }
-                    break;
-                default:
-                    if (rawValue) {
-    if (col.type === 'Costing' && typeof rawValue === 'number') {
-        content = `$${rawValue.toLocaleString('en-US')}`;
-    } else {
-        content = `<div class="truncate" title="${String(rawValue).replace(/"/g, '&quot;')}">${rawValue}</div>`;
-    }
-}
-                    break;
+            const COMPLETED_TEXT_COLOR = '#6b7280';
+const COMPLETED_BG_COLOR = '#f3f4f6';
+
+switch (col.id) {
+    case 'assignees':
+        cell.dataset.control = 'assignee';
+        content = createAssigneeHTML(task.assignees);
+        
+        const isViewerOrCommentator = currentUserRole === 'Viewer' || currentUserRole === 'Commentor';
+        const isAssigned = Array.isArray(task.assignees) && task.assignees.includes(currentUserId);
+        
+        if (!userCanEditProject && isViewerOrCommentator && isAssigned) {
+            // User is a restricted assignee — do not allow interaction
+            cell.style.pointerEvents = 'none';
+        }
+        
+        break;
+        
+    case 'dueDate':
+        cell.dataset.control = 'due-date';
+        // For due date, we can use a simpler check
+        if (isCompleted) {
+            content = `<span class="date-tag">${formatDueDate(task.dueDate).text}</span>`;
+        } else {
+            const dueDateInfo = formatDueDate(task.dueDate);
+            const className = `date-tag date-${dueDateInfo.color}`;
+            content = `<span class="${className}">${dueDateInfo.text}</span>`;
+        }
+        break;
+        
+    case 'priority':
+        cell.dataset.control = 'priority';
+        if (task.priority) {
+            if (isCompleted) {
+                const grayStyle = `background-color: ${COMPLETED_BG_COLOR}; color: ${COMPLETED_TEXT_COLOR};`;
+                content = `<div class="priority-tag" style="${grayStyle}">${task.priority}</div>`;
+            } else {
+                // ✅ NEW LOGIC: Find the color from the project's column definition
+                const priorityColumn = project.defaultColumns.find(c => c.id === 'priority');
+                const option = priorityColumn?.options?.find(p => p.name === task.priority);
+                const color = option?.color;
+                
+                if (color) {
+                    const style = `background-color: ${color}20; color: ${color};`;
+                    content = `<div class="priority-tag" style="${style}">${task.priority}</div>`;
+                } else {
+                    content = `<span>${task.priority}</span>`;
+                }
             }
+        }
+        break;
+        
+    case 'status':
+        cell.dataset.control = 'status';
+        if (task.status) {
+            if (isCompleted) {
+                const grayStyle = `background-color: ${COMPLETED_BG_COLOR}; color: ${COMPLETED_TEXT_COLOR};`;
+                content = `<div class="status-tag" style="${grayStyle}">Completed</div>`;
+            } else {
+                // ✅ NEW LOGIC: Find the color from the project's column definition
+                const statusColumn = project.defaultColumns.find(c => c.id === 'status');
+                const option = statusColumn?.options?.find(s => s.name === task.status);
+                const color = option?.color;
+                
+                if (color) {
+                    const style = `background-color: ${color}20; color: ${color};`;
+                    content = `<div class="status-tag" style="${style}">${task.status}</div>`;
+                } else {
+                    content = `<span>${task.status}</span>`;
+                }
+            }
+        }
+        break;
+        // This is the updated 'default' case for handling all custom columns.
+    default:
+        // --- FIX: Set the columnId for ALL custom columns right away. ---
+        cell.dataset.control = col.type;
+        
+        const rawValue = task.customFields ? task.customFields[col.id] : undefined;
+        // --- Logic for ALL 'Select' type columns (with options) ---
+        if (col.options && Array.isArray(col.options)) {
+            
+            // If the task is completed, render a gray version of the tag.
+            if (isCompleted) {
+                const grayStyle = `background-color: ${COMPLETED_BG_COLOR}; color: ${COMPLETED_TEXT_COLOR};`;
+                // Only show the tag if there's a value to display
+                if (rawValue) {
+                    content = `<div class="status-tag" style="${grayStyle}">${rawValue}</div>`;
+                } else {
+                    content = ''; // Render empty if no value in a completed task
+                }
+            }
+            // If the task is NOT completed, use the normal color logic.
+            else {
+                
+                cell.dataset.control = 'custom-select';
+                const selectedOption = col.options.find(opt => opt.name === rawValue);
+                
+                if (selectedOption) {
+                    if (selectedOption.color) {
+                        const style = `background-color: ${selectedOption.color}20; color: ${selectedOption.color}; border: 1px solid ${selectedOption.color}80;`;
+                        content = `<div class="status-tag" style="${style}">${selectedOption.name}</div>`;
+                    } else {
+                        const sanitizedName = (selectedOption.name || '').toLowerCase().replace(/\s+/g, '-');
+                        content = `<div class="status-tag status-${sanitizedName}">${selectedOption.name}</div>`;
+                    }
+                } else {
+                    content = '<span class="add-value">+</span>';
+                }
+            }
+            
+            // The click listener should be active regardless of completion status.
+            // This listener is attached to each custom field cell in your list view
+            if (canEditThisTask && canEditThisCell) {
+                cell.addEventListener('click', (e) => {
+                    // Stop the click from propagating to the task row listener, which would open the sidebar
+                    e.stopPropagation();
+                    
+                    // Ensure the column definition and its options exist before proceeding
+                    if (col && col.options) {
+                        
+                        // --- REFACTORED: Call the new universal dropdown function ---
+                        createAdvancedDropdown(cell, {
+                            // targetEl: The cell that was clicked
+                            
+                            // config.options: The list of choices for this specific custom field
+                            options: col.options,
+                            
+                            // config.itemRenderer: Defines how each choice should look in the dropdown
+                            itemRenderer: (option) => {
+                                const color = option.color || '#ccc'; // Use a default color if none is provided
+                                return `<div class="dropdown-color-swatch" style="background-color: ${color}"></div><span>${option.name}</span>`;
+                            },
+                            
+                            // config.onSelect: The action to perform when a choice is clicked
+                            onSelect: (selectedValue) => {
+                                updateTask(task.id, section.id, {
+                                    [`customFields.${col.id}`]: selectedValue.name
+                                });
+                            },
+                            
+                            // config.onEdit: Enables the 'edit' pencil icon next to each option
+                            onEdit: (optionToEdit) => {
+                                // This calls your existing dialog for editing an option
+                                openEditOptionDialog('CustomColumn', optionToEdit, col.id);
+                            },
+                            
+                            // config.onAdd: Enables the 'Add New...' button in the dropdown footer
+                            onAdd: () => {
+                                // This calls your existing dialog for adding a new option
+                                openCustomColumnOptionDialog(col.id);
+                            },
+                            onDelete: (optionToDelete) => {
+                                deleteCustomColumnOption(col.id, optionToDelete);
+                            }
+                        });
+                    }
+                });
+            }
+            
+            
+            // --- Logic for other column types (Text, Costing, etc.) ---
+        } else { // This "else" is for columns that are NOT "Select" type
+            
+            if (canEditThisCell) {
+                cell.addEventListener('click', (e) => {
+                    // Stop the click from opening the task details sidebar
+                    e.stopPropagation();
+                    createFloatingInput(cell, task, col);
+                });
+            }
+            
+            if (!canEditThisCell) {
+                cell.classList.add('cell-restricted'); // Add a class for styling
+            }
+            cell.dataset.control = col.type;
+            
+            
+            
+            let displayValue;
+            // NEW: A variable to hold our placeholder class
+            let placeholderClass = '';
+            
+            const valueExists = rawValue !== null && typeof rawValue !== 'undefined' && rawValue !== '';
+            
+            if (valueExists) {
+                // If a value exists, use the original formatting logic
+                if ((col.type === 'Costing' || col.type === 'Numbers') && typeof rawValue === 'number') {
+                    displayValue = rawValue.toLocaleString('en-US', {
+                        minimumFractionDigits: (rawValue % 1 !== 0) ? 2 : 0,
+                        maximumFractionDigits: 2
+                    });
+                } else {
+                    displayValue = rawValue;
+                }
+            } else {
+                // If the value is empty, apply the new placeholder rules
+                if (col.type === 'Text') {
+                    displayValue = ''; // Still blank for Text type
+                } else if (col.type === 'Costing' || col.type === 'Numbers') {
+                    // MODIFIED: The content is empty, but we add a class
+                    displayValue = '';
+                    placeholderClass = 'numeric-placeholder';
+                } else {
+                    displayValue = '';
+                }
+            }
+            
+            // MODIFIED: The span now includes the placeholderClass if one was set
+            content = `<span class="${placeholderClass}">${displayValue}</span>`;
+            
+            if (col.type === 'Costing' || col.type === 'Numbers') {
+                allowNumericChars(cell);
+                formatNumberOnBlur(cell);
+            }
+            
+            
+            break;
+        }
+}
+
             cell.innerHTML = content || '–';
             rightTaskCells.appendChild(cell);
         });
