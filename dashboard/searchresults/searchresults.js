@@ -317,38 +317,79 @@ function render() {
         return;
     }
 
-    // 1. Mock Project & User Data
-    const project = {
-        id: 'proj_12345',
-        columnOrder: ['assignees', 'dueDate', 'priority', 'status', 'col_cost_1', 'col_type_1', 'col_text_1'],
-        defaultColumns: [
-            { id: 'assignees', name: 'Assignees', type: 'Assignees' },
-            { id: 'dueDate', name: 'Due Date', type: 'Date' },
-            { id: 'priority', name: 'Priority', type: 'Priority', options: [ { name: 'High', color: '#ef4444' }, { name: 'Medium', color: '#f97316' }, { name: 'Low', color: '#3b82f6' }] },
-            { id: 'status', name: 'Status', type: 'Status', options: [ { name: 'In Progress', color: '#3b82f6' }, { name: 'On Hold', color: '#a855f7' }, { name: 'Needs Review', color: '#f59e0b' }, { name: 'Completed', color: '#22c55e' }] }
-        ],
-        customColumns: [
-             { id: 'col_cost_1', name: 'Budget', type: 'Costing' },
-             { id: 'col_type_1', name: 'Task Type', type: 'Type', options: [ { id: 'opt1', name: 'Design', color: '#ec4899' }, { id: 'opt2', name: 'Development', color: '#6366f1' }, { id: 'opt3', name: 'QA', color: '#10b981' }] },
-             { id: 'col_text_1', name: 'Notes', type: 'Text' },
-        ],
-        sections: [
-            {
-                id: 'sec_1', title: 'Phase 1: Planning & Design',
-                tasks: [
-                    { id: 'task_101', name: 'Finalize project requirements document for the new mobile application interface', status: 'Completed', priority: 'High', dueDate: '2025-07-20T23:59:59Z', assignees: ['user-A', 'user-B'], customFields: { col_cost_1: 1500, col_type_1: 'Design' } },
-                    { id: 'task_102', name: 'Create initial UI/UX mockups and wireframes for all major user flows', status: 'In Progress', priority: 'High', dueDate: '2025-08-10T23:59:59Z', assignees: ['user-A'], customFields: { col_cost_1: 3250.50, col_type_1: 'Design', col_text_1: 'Focus on mobile-first design patterns and accessibility standards.' } },
-                ]
-            },
-            {
-                id: 'sec_2', title: 'Phase 2: Development',
-                tasks: [
-                    { id: 'task_201', name: 'Set up database architecture, schemas, and necessary tables', status: 'In Progress', priority: 'High', dueDate: '2025-08-25T23:59:59Z', assignees: ['user-C', 'user-D'], customFields: { col_cost_1: 5000, col_type_1: 'Development' } },
-                    { id: 'task_202', name: 'Implement user authentication module with OAuth 2.0 and two-factor auth', status: 'On Hold', priority: 'Medium', dueDate: '2025-09-01T23:59:59Z', assignees: ['user-D'], customFields: { col_cost_1: 4500, col_type_1: 'Development', col_text_1: 'Waiting on new API keys from the identity provider.' } },
-                ]
-            },
-        ]
-    };
+const project = {
+    id: 'proj_12345',
+    columnOrder: ['assignees', 'dueDate', 'priority', 'status', 'col_cost_1', 'col_type_1', 'col_text_1'],
+    // --- THIS SECTION HAS BEEN UPDATED ---
+    defaultColumns: [
+        { 
+            id: 'assignees', 
+            name: 'Assignee',
+            control: "assignee"
+        },
+        { 
+            id: 'dueDate', 
+            name: 'Due Date',
+            control: "due-date"
+        },
+        {
+            id: 'priority',
+            name: 'Priority',
+            control: "priority",
+            options: [
+                { name: 'RUSH', color: '#ef4d3d' },
+                { name: 'International', color: '#06a5a7' },
+                { name: 'UPS Stock', color: '#59e166' },
+                { name: 'BULK', color: '#4a90e2' },
+                { name: 'Cancel', color: '#5500bd' },
+                { name: 'LATE', color: '#9da800' }
+            ]
+        },
+        {
+            id: 'status',
+            name: 'Type of Shipment',
+            control: "status",
+            options: [
+                { name: 'Ready to Ship', color: '#006eff' },
+                { name: 'Waiting', color: '#00ad99' },
+                { name: 'Completed', color: '#878787' }
+            ]
+        }
+    ],
+    // --- END OF UPDATE ---
+    customColumns: [
+         { id: 'col_cost_1', name: 'Budget', type: 'Costing' },
+         { id: 'col_type_1', name: 'Task Type', type: 'Type', options: [ { id: 'opt1', name: 'Design', color: '#ec4899' }, { id: 'opt2', name: 'Development', color: '#6366f1' }, { id: 'opt3', name: 'QA', color: '#10b981' }] },
+         { id: 'col_text_1', name: 'Notes', type: 'Text' },
+    ],
+    sections: [
+        {
+            id: 'sec_1', title: 'Phase 1: Planning & Design',
+            tasks: [
+                // Task data is updated to use the new options
+                { id: 'task_101', name: 'Finalize project requirements document for the new mobile application interface', status: 'Completed', priority: 'RUSH', dueDate: '2025-07-20T23:59:59Z', assignees: ['user-A', 'user-B'], customFields: { col_cost_1: 1500, col_type_1: 'Design' }, commentCount: 5, likedAmount: 10 },
+                { id: 'task_102', name: 'Create initial UI/UX mockups and wireframes for all major user flows', status: 'Ready to Ship', priority: 'International', dueDate: '2025-08-10T23:59:59Z', assignees: ['user-A'], customFields: { col_cost_1: 3250.50, col_type_1: 'Design', col_text_1: 'Focus on mobile-first design patterns and accessibility standards.' }, commentCount: 2, likedAmount: 0 },
+                { id: 'task_103', name: 'Develop brand style guide and component library', status: 'Waiting', priority: 'BULK', dueDate: '2025-08-15T23:59:59Z', assignees: ['user-B'], customFields: { col_cost_1: 2000, col_type_1: 'Design' }, commentCount: 0, likedAmount: 1 }
+            ]
+        },
+        {
+            id: 'sec_2', title: 'Phase 2: Development',
+            tasks: [
+                { id: 'task_201', name: 'Set up database architecture, schemas, and necessary tables', status: 'Waiting', priority: 'RUSH', dueDate: '2025-08-25T23:59:59Z', assignees: ['user-C', 'user-D'], customFields: { col_cost_1: 5000, col_type_1: 'Development' }, commentCount: 7, likedAmount: 15 },
+                { id: 'task_202', name: 'Implement user authentication module with OAuth 2.0 and two-factor auth', status: 'Ready to Ship', priority: 'Cancel', dueDate: '2025-09-01T23:59:59Z', assignees: ['user-D'], customFields: { col_cost_1: 4500, col_type_1: 'Development', col_text_1: 'Waiting on new API keys from the identity provider.' }, commentCount: 1, likedAmount: 1 },
+                { id: 'task_203', name: 'Build the core API endpoints for task management', status: 'Ready to Ship', priority: 'LATE', dueDate: '2025-09-10T23:59:59Z', assignees: ['user-C'], customFields: { col_cost_1: 8000, col_type_1: 'Development' }, commentCount: 0, likedAmount: 0 }
+            ]
+        },
+        {
+            id: 'sec_3', title: 'Phase 3: QA & Deployment',
+            tasks: [
+                { id: 'task_301', name: 'Write end-to-end tests for all critical user paths', status: 'Waiting', priority: 'BULK', dueDate: '2025-09-20T23:59:59Z', assignees: ['user-B'], customFields: { col_cost_1: 3000, col_type_1: 'QA' }, commentCount: 3, likedAmount: 5 },
+                { id: 'task_302', name: 'Perform load testing on the production servers', status: 'Ready to Ship', priority: 'UPS Stock', dueDate: '2025-09-25T23:59:59Z', assignees: ['user-D'], customFields: { col_cost_1: 2500, col_type_1: 'QA' }, commentCount: 1, likedAmount: 2 },
+                { id: 'task_303', name: 'Schedule and execute the final deployment to production', status: 'Completed', priority: 'RUSH', dueDate: '2025-09-30T23:59:59Z', assignees: ['user-C', 'user-D'], customFields: { col_cost_1: 1000, col_type_1: 'Development' }, commentCount: 0, likedAmount: 20 }
+            ]
+        }
+    ]
+};
     
     const mockUsers = { 'user-A': { name: 'Alice', initial: 'A' }, 'user-B': { name: 'Bob', initial: 'B' }, 'user-C': { name: 'Charlie', initial: 'C' }, 'user-D': { name: 'David', initial: 'D' } };
     
@@ -386,7 +427,7 @@ function render() {
 
     const leftHeader = document.createElement('div');
     leftHeader.className = 'sticky left-0 z-10 px-4 font-semibold text-slate-600 border-b border-r border-slate-200 text-xs flex items-center bg-white juanlunacms-spreadsheetlist-left-sticky-pane';
-    leftHeader.style.width = '460px';
+    leftHeader.style.width = '300px';
     leftHeader.style.flexShrink = '0';
     leftHeader.textContent = 'Task Name';
 
@@ -430,12 +471,41 @@ function render() {
         const isCompleted = task.status === 'Completed';
         const taskNameClass = isCompleted ? 'line-through text-slate-400' : 'text-slate-800';
 
-        const leftTaskCell = document.createElement('div');
-        leftTaskCell.className = 'sticky left-0 z-10 p-2 flex items-center border-r border-slate-200 bg-white group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane';
-        leftTaskCell.style.width = '460px';
-        leftTaskCell.style.flexShrink = '0';
-        leftTaskCell.innerHTML = `<input type="checkbox" ${isCompleted ? 'checked' : ''} disabled class="mr-3 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 flex-shrink-0"><span class="text-[11px] whitespace-nowrap truncate ${taskNameClass}">${task.name}</span>`;
+        // --- Create the Left Task Cell (Task Name) - STICKY ---
+const leftTaskCell = document.createElement('div');
+leftTaskCell.className = 'sticky left-0 z-10 p-2 flex items-center border-r border-slate-200 bg-white group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane';
+leftTaskCell.style.width = '460px'; // Retaining the fixed width
+leftTaskCell.style.flexShrink = '0';
 
+// Prepare the comment and like icons (they will only render if the count is > 0)
+const commentCount = task.commentCount || 0;
+const commentIconHTML = commentCount > 0 ?
+    `<span class="flex items-center text-slate-500" title="${commentCount} comments">
+         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+         <span class="text-[10px] ml-1">${commentCount}</span>
+       </span>` :
+    '';
+
+const likeCount = task.likedAmount || 0;
+const likeIconHTML = likeCount > 0 ?
+    `<span class="flex items-center text-slate-500" title="${likeCount} likes">
+         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+         <span class="text-[10px] ml-1">${likeCount}</span>
+       </span>` :
+    '';
+
+
+// Set the final HTML for the cell
+leftTaskCell.innerHTML = `
+  <input type="checkbox" ${isCompleted ? 'checked' : ''} disabled class="mr-3 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 flex-shrink-0">
+  
+  <span class="text-[11px] whitespace-nowrap truncate ${taskNameClass}">${task.name}</span>
+  
+  <div class="ml-auto pl-4 flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+    ${commentIconHTML}
+    ${likeIconHTML}
+  </div>
+`;
         const rightTaskCells = document.createElement('div');
         rightTaskCells.className = 'flex-grow flex';
         
