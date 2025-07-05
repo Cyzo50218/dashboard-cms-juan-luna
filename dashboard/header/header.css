@@ -1414,7 +1414,6 @@ margin-left: 6px;
     border-radius: 4px; /* Slightly rounded corners for the square */
     margin-right: 12px; /* Space between the icon and project name */
     flex-shrink: 0;
-    background-color: currentColor; /* This will pick up the color from JS style */
 }
 .project-more-icon {
     font-size: 18px; /* Size of the three dots icon */

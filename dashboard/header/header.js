@@ -476,7 +476,7 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
         
         if (member.avatarUrl && member.avatarUrl.startsWith('https://')) {
           return `
-                        <div class="user-avatar-tasks" title="${displayName}" style="z-index: ${zIndex};">
+                        <div class="headersearches-assignee-avatar" title="${displayName}" style="z-index: ${zIndex};">
                             <img src="${member.avatarUrl}" alt="${displayName}">
                         </div>`;
         } else if (member.avatar && member.avatar.startsWith('https://')) {
@@ -486,7 +486,7 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
                         </div>`;
         } else {
           const bgColor = '#' + (member.uid || '000000').substring(0, 6);
-          return `<div class="user-avatar-tasks" title="${displayName}" style="background-color: ${bgColor}; color: white; z-index: ${zIndex};">${initials}</div>`;
+          return `<div class="headersearches-assignee-avatar" title="${displayName}" style="background-color: ${bgColor}; color: white; z-index: ${zIndex};">${initials}</div>`;
         }
       }).join('');
       
