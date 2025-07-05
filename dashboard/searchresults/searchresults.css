@@ -1762,8 +1762,8 @@ Custom class
     display: inline-block;
     position: relative;
     cursor: pointer;
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
     user-select: none;
 }
 
@@ -1779,8 +1779,8 @@ Custom class
     position: absolute;
     top: 0;
     left: 0;
-    height: 18px;
-    width: 18px;
+    height: 8px;
+    width: 8px;
     background-color: #fff;
     border: 1.5px solid #ccc;
     border-radius: 50%;
@@ -1809,7 +1809,7 @@ Custom class
 .juanlunacms-spreadsheetlist-custom-checkbox-container .juanlunacms-spreadsheetlist-custom-checkbox::after {
     left: 5px;
     top: 2px;
-    width: 10px;
+    width: 5px;
     height: 10px;
     border: solid white;
     border-width: 0 2px 2px 0;
@@ -2308,7 +2308,4 @@ Custom class
     color: #666;
     font-size: 1.5rem;
     font-weight: 500;
-}
-.shadow-right-only {
-    box-shadow: 4px 0 8px -2px rgba(0, 0, 0, 0.1);
 }
