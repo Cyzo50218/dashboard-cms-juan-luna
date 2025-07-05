@@ -485,7 +485,7 @@ const likeCount = task.likedAmount || 0;
 
 // Set the final HTML for the cell
 leftTaskCell.innerHTML = `
-    <label class="juanlunacms-spreadsheetlist-custom-checkbox-container text-[10px] px-2 ml-4" data-control="check">
+    <label class="juanlunacms-spreadsheetlist-custom-checkbox-container px-2 ml-4" data-control="check">
         <input type="checkbox" ${isCompleted ? 'checked' : ''} disabled>
         <span class="juanlunacms-spreadsheetlist-custom-checkbox"></span>
     </label>

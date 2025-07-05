@@ -1762,8 +1762,8 @@ Custom class
     display: inline-block;
     position: relative;
     cursor: pointer;
-    width: 18px;
-    height: 18px;
+    width: 10px;
+    height: 10px;
     user-select: none;
 }
 
@@ -1809,7 +1809,7 @@ Custom class
 .juanlunacms-spreadsheetlist-custom-checkbox-container .juanlunacms-spreadsheetlist-custom-checkbox::after {
     left: 5px;
     top: 2px;
-    width: 5px;
+    width: 10px;
     height: 10px;
     border: solid white;
     border-width: 0 2px 2px 0;
