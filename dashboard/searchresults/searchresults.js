@@ -170,6 +170,24 @@ function updateUserPermissions(projectData, userId) {
     console.log(`[Permissions] User: ${userId}, Role: ${currentUserRole}, Can Edit Project: ${userCanEditProject}`);
 }
 
+function canUserEditTask(task) {
+    if (userCanEditProject) {
+        return true;
+    }
+    
+    // Check for the special case: Viewers or Commentators who are assigned to the task.
+    if (currentUserRole === 'Viewer' || currentUserRole === 'Commentor') {
+        const isAssigned = Array.isArray(task.assignees) && task.assignees.includes(currentUserId);
+        if (isAssigned) {
+            console.log(`[Permissions] Granting task edit for assigned ${currentUserRole}.`);
+            return true;
+        }
+    }
+    
+    // Otherwise, no permission.
+    return false;
+}
+
 // --- Main Initialization and Cleanup ---
 
 function initializeListView(params) {
