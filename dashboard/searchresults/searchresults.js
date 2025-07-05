@@ -426,7 +426,7 @@ const project = {
     header.className = 'flex sticky top-0 z-20 bg-white juanlunacms-spreadsheetlist-sticky-header h-8';
 
     const leftHeader = document.createElement('div');
-    leftHeader.className = 'sticky left-0 z-10 px-4 font-semibold text-slate-600 border-b border-r border-slate-200 text-xs flex items-center bg-white juanlunacms-spreadsheetlist-left-sticky-pane';
+    leftHeader.className = 'sticky left-0 z-10 py-0.6 px-1 font-semibold text-slate-600 border-b border-r border-slate-200 text-[11px] flex items-center bg-white juanlunacms-spreadsheetlist-left-sticky-pane';
     leftHeader.style.width = '300px';
     leftHeader.style.flexShrink = '0';
     leftHeader.textContent = 'Task Name';
@@ -436,7 +436,7 @@ const project = {
 
     allDataColumns.forEach(col => {
         const cell = document.createElement('div');
-        cell.className = 'group relative py-0.2 px-1 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center text-xs';
+        cell.className = 'group relative py-0.2 py-0.6 px-1 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center text-[11px]';
         cell.dataset.columnId = col.id;
     
         const innerWrapper = document.createElement('div');
