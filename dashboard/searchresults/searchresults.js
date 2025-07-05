@@ -459,15 +459,13 @@ function render() {
                     }
                     break;
                 default:
-                    if (col.options) {
-                        const selectedOption = col.options.find(opt => opt.name === rawValue);
-                        if (selectedOption) {
-                            const style = isCompleted ? COMPLETED_STYLE : `background-color: ${selectedOption.color}20; color: ${selectedOption.color};`;
-                            content = `<div class="font-semibold px-2 py-0.5 rounded-full" style="${style}">${selectedOption.name}</div>`;
-                        }
-                    } else {
-                        if (rawValue) content = (col.type === 'Costing' && typeof rawValue === 'number') ? `$${rawValue.toLocaleString('en-US')}` : rawValue;
-                    }
+                    if (rawValue) {
+    if (col.type === 'Costing' && typeof rawValue === 'number') {
+        content = `$${rawValue.toLocaleString('en-US')}`;
+    } else {
+        content = `<div class="truncate" title="${String(rawValue).replace(/"/g, '&quot;')}">${rawValue}</div>`;
+    }
+}
                     break;
             }
             cell.innerHTML = content || '–';
