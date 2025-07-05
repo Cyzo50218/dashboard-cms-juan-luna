@@ -148,6 +148,28 @@ async function fetchMemberProfiles(uids) {
     }
 }
 
+function updateUserPermissions(projectData, userId) {
+    if (!projectData || !userId) {
+        userCanEditProject = false;
+        currentUserRole = null;
+        console.warn("[Permissions] Cannot set permissions. Missing project data or user ID.");
+        return;
+    }
+    
+    const members = projectData.members || [];
+    const userMemberInfo = members.find(member => member.uid === userId);
+    
+    currentUserRole = userMemberInfo ? userMemberInfo.role : null;
+    
+    const isMemberWithEditPermission = userMemberInfo && (userMemberInfo.role === "Project Admin" || userMemberInfo.role === "Project admin" || userMemberInfo.role === "Editor");
+    const isSuperAdmin = projectData.project_super_admin_uid === userId;
+    const isAdminUser = projectData.project_admin_user === userId;
+    
+    userCanEditProject = isMemberWithEditPermission || isSuperAdmin || isAdminUser;
+    
+    console.log(`[Permissions] User: ${userId}, Role: ${currentUserRole}, Can Edit Project: ${userCanEditProject}`);
+}
+
 // --- Main Initialization and Cleanup ---
 
 function initializeListView(params) {
@@ -844,6 +866,29 @@ switch (col.id) {
     // --- INITIALIZE RESIZING AND WIDTHS ---
     syncColumnWidths();
     initColumnResizing();
+}
+
+function isCellEditable(column) {
+    // Admins/Owners can always edit any column.
+    if (userCanEditProject) {
+        return true;
+    }
+    
+    // Assigned users (Viewer/Commentator) can edit some fields,
+    // BUT never allowed to modify the "Assignee" column
+    if (column.name === 'Assignee') {
+        return false;
+    }
+    
+    // Respect per-project column restrictions
+    const rules = project.columnRules || [];
+    const columnRule = rules.find(rule => rule.name === column.name);
+    if (columnRule?.isRestricted) {
+        return false;
+    }
+    
+    // All other custom fields allowed
+    return true;
 }
 
 function syncColumnWidths() {
