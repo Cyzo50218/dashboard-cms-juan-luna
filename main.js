@@ -38,7 +38,7 @@ function parseRoute() {
     }
     
     // This handles all simple, single-keyword routes
-    const simpleRoutes = ['home', 'myworkspace', 'inbox', 'inventory', 'reports', 'goals', 'settings'];
+    const simpleRoutes = ['home', 'myworkspace', 'inbox', 'inventory', 'reports', 'searchresults', 'settings'];
     if (simpleRoutes.includes(resourceType)) {
         return { section: resourceType };
     }
