@@ -496,7 +496,7 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
                 </div>` : '';
       
       itemDiv.innerHTML = `
-                <span class="headersearches-project-square-icon" style="background-color: ${project.color};"></span>
+                <span class="headersearches-project-square-icon" style="color: ${project.color};"></span>
                 <div class="headersearches-tasks-recent-content">
                     <div class="headersearches-tasks-recent-title">${project.name}</div>
                     <div class="headersearches-tasks-recent-meta">

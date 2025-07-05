@@ -1442,6 +1442,12 @@ margin-left: 6px;
     box-sizing: border-box;
     position: relative; /* REQUIRED for z-index to work */
 }
+.headersearches-assignee-avatar img {
+    width: 100%; /* Make the image fill the div */
+    height: 100%; /* Make the image fill the div */
+    object-fit: cover; 
+    border-radius: 50%; /* Important: Apply border-radius directly to the image */
+}
 .headersearches-assignee-list .headersearsearches-assignee-avatar + .headersearches-assignee-avatar {
     
 }
