@@ -356,7 +356,7 @@ function render() {
         console.error("Target element #searchListBody not found.");
         return;
     }
-    const showCustomColumns = true; 
+    const showCustomColumns = false; 
 
     const project = {
         id: 'proj_12345',
