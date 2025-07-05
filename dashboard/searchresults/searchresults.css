@@ -2331,31 +2331,31 @@ Custom class
 
 /*
  * 3. Style the custom checkbox box
- * - Size is forced to 10px with !important to prevent overrides.
+ * - Size is now 16px.
+ * - border-radius is 50% to make it a circle.
  */
 .juanluna-cms-searchlist-checkbox {
   position: relative;
   display: inline-block;
-  width: 10px !important;    /* <-- Force width to 10px */
-  height: 10px !important;   /* <-- Force height to 10px */
-  border: 1.5px solid #9ca3af; 
+  width: 16px !important;    /* <-- Increased to 16px */
+  height: 16px !important;   /* <-- Increased to 16px */
   background-color: #ffffff;
-  border-radius: 2px;
+  border-radius: 50%;        /* <-- Changed to 50% for a circle */
   transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
 }
 
 /*
  * 4. Style the checkmark inside the box
- * - Adjusted for the smaller 10px box.
+ * - Adjusted for the larger 16px circle.
  */
 .juanluna-cms-searchlist-checkbox::after {
   content: "";
   position: absolute;
   display: none;
-  left: 2.5px;
-  top: 0.5px;
-  width: 3px;
-  height: 6px;
+  left: 5px;      /* <-- Adjusted for 16px box */
+  top: 2px;       /* <-- Adjusted for 16px box */
+  width: 5px;     /* <-- Adjusted for 16px box */
+  height: 9px;    /* <-- Adjusted for 16px box */
   border: solid white;
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
@@ -2386,9 +2386,7 @@ Custom class
 }
 
 /*
- * 8. --- THIS IS THE KEY FIX ---
- * Style specifically for a checkbox that is BOTH checked AND disabled.
- * This ensures it stays green as you instructed.
+ * 8. Style for a checkbox that is BOTH checked AND disabled
  */
 .juanluna-cms-searchlist-checkbox-container input:checked:disabled ~ .juanluna-cms-searchlist-checkbox {
   background-color: #22c55e; /* Green */
