@@ -409,22 +409,17 @@ rightHeaderContent.className = 'flex flex-grow border-b border-slate-200';
 
     allDataColumns.forEach(col => {
     const cell = document.createElement('div');
-    // The main cell is a flex container with relative positioning for the handle
-    let cellClasses = 'group relative px-2 py-1 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center text-xs rounded-none';
-    cell.className = cellClasses;
+    cell.className = 'group relative px-2 py-1 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center text-xs';
     cell.dataset.columnId = col.id;
     
-    // This inner wrapper will hold the text and menu icon
     const innerWrapper = document.createElement('div');
-    innerWrapper.className = 'flex flex-grow items-center min-w-0'; // min-w-0 is crucial for flex truncation
+    innerWrapper.className = 'flex flex-grow items-center min-w-0';
     
     const cellText = document.createElement('span');
-    // --- FIX #1: The text now grows to push the icon to the end ---
-    cellText.className = 'header-cell-content flex-grow';
+    cellText.className = 'header-cell-content flex-grow truncate';
     cellText.textContent = col.name;
     innerWrapper.appendChild(cellText);
     
-    // Add the inner wrapper and resize handle to the cell
     cell.appendChild(innerWrapper);
     const resizeHandle = document.createElement('div');
     resizeHandle.className = 'resize-handle';
@@ -451,6 +446,7 @@ rightHeaderContent.className = 'flex flex-grow border-b border-slate-200';
         leftTaskCell.className = 'sticky left-0 z-10 p-2 flex items-center border-r border-slate-200 bg-white group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-dynamic-border';
         leftTaskCell.style.width = '460px';
         leftTaskCell.style.flexShrink = '0';
+        
         leftTaskCell.innerHTML = `
             <input type="checkbox" ${isCompleted ? 'checked' : ''} disabled class="mr-3 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 flex-shrink-0">
             <span class="text-[11px] whitespace-nowrap truncate ${taskNameClass}">${task.name}</span>
@@ -532,167 +528,83 @@ container.addEventListener('scroll', checkShadows);
 
 // Run it once on load to set the initial state
 checkShadows();
-}
-
-function isCellEditable(column) {
-    // Admins/Owners can always edit any column.
-    if (userCanEditProject) {
-        return true;
-    }
-    
-    // Assigned users (Viewer/Commentor) can edit some fields,
-    // BUT never allowed to modify the "Assignee" column
-    if (column.name === 'Assignee') {
-        return false;
-    }
-    
-    // Respect per-project column restrictions
-    const rules = project.columnRules || [];
-    const columnRule = rules.find(rule => rule.name === column.name);
-    if (columnRule?.isRestricted) {
-        return false;
-    }
-    
-    // All other custom fields allowed
-    return true;
-}
-
-function initColumnDragging() {
-    const headerContainer = document.querySelector('.juanlunacms-spreadsheetlist-sticky-header .flex-grow');
-    if (!headerContainer) return;
-    
-    Sortable.create(headerContainer, {
-        animation: 150,
-        handle: '.group',
-        filter: '.resize-handle',
-        onEnd: async (evt) => {
-            if (evt.oldIndex === evt.newIndex) return;
-            
-            // --- SIMPLIFIED LOGIC ---
-            
-            // 1. Get the new order of column IDs directly from the DOM after the drop.
-            const newColumnOrder = Array.from(evt.to.children)
-                .map(el => el.dataset.columnId)
-                .filter(id => id); // Filter out any non-column elements
-            
-            // 2. Optimistically update the local state.
-            project.columnOrder = newColumnOrder;
-            
-            // 3. Trigger a re-render immediately for a snappy UI.
-            render();
-            
-            // 4. Save the new array directly to Firestore in the background.
-            try {
-                await updateProjectInFirebase({
-                    columnOrder: newColumnOrder // Just save the one new field
-                });
-                console.log("Column order saved to Firestore successfully.");
-            } catch (error) {
-                console.error("Failed to save new column order:", error);
-            }
-        }
-    });
+initColumnResizing();
+syncColumnWidths();
 }
 
 function syncColumnWidths() {
     const table = document.querySelector('.min-w-max.relative');
     if (!table) return;
-    
+
     const headerContainer = table.querySelector('.juanlunacms-spreadsheetlist-sticky-header');
     if (!headerContainer) return;
 
-    // Get all column IDs directly from the rendered header elements
     const allColumnIds = Array.from(headerContainer.querySelectorAll('[data-column-id]')).map(cell => cell.dataset.columnId);
-    
+
     allColumnIds.forEach(columnId => {
         const headerCell = headerContainer.querySelector(`[data-column-id="${columnId}"]`);
         if (!headerCell) return;
-        
+
         const textElement = headerCell.querySelector('.header-cell-content');
         const headerContentWidth = textElement ? textElement.scrollWidth : 0;
-        
-        // *** MODIFIED: New minimum width logic for product columns ***
-        let minWidth = 150; // A sensible default min-width
-        if (columnId === 'productImage') {
-            minWidth = 80;
-        } else if (columnId === 'supplierCost') {
-            minWidth = 120;
-        } else if (columnId === 'productSku') {
-            minWidth = 160;
-        } else if (columnId === 'supplierName' || columnId === 'supplierProject') {
-            minWidth = 180;
-        }
-        
-        // The final width is the LARGER of the minimum width or the actual header text width.
-        // A 32px buffer is added for padding and icons.
-        const finalWidth = Math.max(minWidth, headerContentWidth) + 32;
-        
+        const finalWidth = Math.max(150, headerContentWidth + 32); // Use a default min-width of 150px or content width
+
         const allCellsInColumn = table.querySelectorAll(`[data-column-id="${columnId}"]`);
         allCellsInColumn.forEach(cell => {
             cell.style.width = `${finalWidth}px`;
-            cell.style.minWidth = `${finalWidth}px`; // Mirror width and min-width
+            cell.style.minWidth = `${finalWidth}px`;
         });
     });
 }
 
+// Initializes the column resizing functionality
 function initColumnResizing() {
     const table = document.querySelector('.min-w-max.relative');
     if (!table) return;
-    
+
     let initialX, initialWidth, columnId;
-    let columnSpecificMinWidth; 
-    
+    const minWidth = 100; // A minimum width for any column
+
     const onDragMove = (e) => {
         const currentX = e.touches ? e.touches[0].clientX : e.clientX;
         const deltaX = currentX - initialX;
-        const newWidth = Math.max(columnSpecificMinWidth, initialWidth + deltaX);
-        
+        const newWidth = Math.max(minWidth, initialWidth + deltaX);
+
         const cellsToResize = table.querySelectorAll(`[data-column-id="${columnId}"]`);
         cellsToResize.forEach(cell => {
             cell.style.width = `${newWidth}px`;
             cell.style.minWidth = `${newWidth}px`;
         });
     };
-    
+
     const onDragEnd = () => {
         document.removeEventListener('mousemove', onDragMove);
         document.removeEventListener('mouseup', onDragEnd);
         document.removeEventListener('touchmove', onDragMove);
         document.removeEventListener('touchend', onDragEnd);
     };
-    
+
     const onDragStart = (e) => {
         if (!e.target.classList.contains('resize-handle')) return;
-        
+
         e.preventDefault();
+        const headerCell = e.target.closest('[data-column-id]');
+        if (!headerCell) return;
         
-        const headerCell = e.target.parentElement;
         columnId = headerCell.dataset.columnId;
         initialX = e.touches ? e.touches[0].clientX : e.clientX;
         initialWidth = headerCell.offsetWidth;
-        
-        // *** MODIFIED: MIRRORED LOGIC for consistent resize behavior ***
-        let minWidth = 150; // Default min-width
-        if (columnId === 'productImage') {
-            minWidth = 80;
-        } else if (columnId === 'supplierCost') {
-            minWidth = 120;
-        } else if (columnId === 'productSku') {
-            minWidth = 160;
-        } else if (columnId === 'supplierName' || columnId === 'supplierProject') {
-            minWidth = 180;
-        }
-        columnSpecificMinWidth = minWidth; // Set the min-width for the drag operation
 
         document.addEventListener('mousemove', onDragMove);
         document.addEventListener('mouseup', onDragEnd);
         document.addEventListener('touchmove', onDragMove);
         document.addEventListener('touchend', onDragEnd);
     };
-    
+
     table.addEventListener('mousedown', onDragStart);
     table.addEventListener('touchstart', onDragStart, { passive: false });
 }
+
 
 function findSectionById(sectionId) {
     // Example implementation:
