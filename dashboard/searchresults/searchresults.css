@@ -757,7 +757,7 @@ body.is-dragging * {
 }
 
 .like-count {
-    font-size: 12px;
+    font-size: 9px;
     margin-left: 4px;
     color: var(--secondary-text-color);
 }
@@ -1908,7 +1908,7 @@ margin-bottom: 4px;
 
 .like-count, .comment-count {
     margin-right: 4px;
-    font-size: 12px;
+    font-size: 9px;
     color: #64748b; /* Tailwind slate-500 */
 }
 
