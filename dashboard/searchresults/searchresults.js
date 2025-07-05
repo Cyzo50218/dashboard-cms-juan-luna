@@ -480,33 +480,35 @@ leftTaskCell.style.flexShrink = '0';
 
 // Prepare the comment and like icons (they will only render if the count is > 0)
 const commentCount = task.commentCount || 0;
-const commentIconHTML =
-    `<span class="flex items-center text-slate-500" title="${commentCount} comments">
-         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-         <span class="text-[10px] ml-1">${commentCount}</span>
-       </span>`;
-
 const likeCount = task.likedAmount || 0;
-const likeIconHTML =
-    `<span class="flex items-center text-slate-500" title="${likeCount} likes">
-         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500 fill-current"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-         <span class="text-[10px] ml-1">${likeCount}</span>
-       </span>`;
 
 
 // Set the final HTML for the cell
 leftTaskCell.innerHTML = `
-    <label class="juanlunacms-spreadsheetlist-custom-checkbox-container px-2 ml-4" data-control="check">
+    <label class="juanlunacms-spreadsheetlist-custom-checkbox-container text-[10px] px-2 ml-4" data-control="check">
         <input type="checkbox" ${isCompleted ? 'checked' : ''} disabled>
         <span class="juanlunacms-spreadsheetlist-custom-checkbox"></span>
     </label>
-    
-  <span class="text-[11px] whitespace-nowrap truncate ${taskNameClass}">${task.name}</span>
-  
-  <div class="ml-auto pl-4 flex items-center gap-3">
-    ${commentIconHTML}
-    ${likeIconHTML}
-  </div>
+    <div class="flex items-center flex-grow min-w-0">
+        <span
+            class="${taskNameClass} truncate whitespace-nowrap overflow-hidden text-ellipsis text-[9px] block outline-none bg-transparent rounded px-1 transition-all duration-150"
+            style="max-width: 100%;"
+            data-task-id="${task.id}"
+            data-control="task-name"
+        >
+            ${task.name}
+        </span>
+        <div class="task-controls flex items-center gap-1 ml-1 transition-opacity duration-150 group-hover:opacity-100">
+            ${commentCount > 0 ? `<span class="comment-count text-[9px] text-slate-500">${commentCount}</span>` : ''}
+             <span class="material-icons text-slate-400 cursor-pointer hover:text-blue-500 transition" style="font-size: 14px;" data-control="comment" data-task-id="${task.id}">
+                chat_bubble_outline
+            </span>
+            ${likeCount > 0 ? `<span class="like-count text-[9px] text-slate-500">${likeCount}</span>` : ''}
+            <span class="material-icons text-slate-400 cursor-pointer hover:text-red-500 transition" style="font-size: 14px;" data-control="like" data-task-id="${task.id}">
+                favorite_border
+            </span>
+        </div>
+    </div>
 `;
         const rightTaskCells = document.createElement('div');
         rightTaskCells.className = 'flex-grow flex';
