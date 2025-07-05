@@ -154,16 +154,27 @@ function initializeListView(params) {
     mainContainer = document.querySelector('.search-results-container');
     productListBody = document.getElementById('searchresult-list-body');
     
+    // If essential elements are not found, throw an error to halt execution.
     if (!mainContainer || !productListBody) {
-        console.error("List view could not initialize: Essential containers not found.");
-        return () => {};
+        throw new Error("List view could not initialize: Essential containers not found.");
     }
+    
     render();
-    setupEventListeners();
 }
 
 export function init(params) {
     console.log("Initializing List View Module...", params);
+    
+    try {
+        // Initial view setup is now wrapped in a try...catch block.
+        initializeListView(params);
+    } catch (error) {
+        // If initializeListView throws an error, it will be caught here.
+        console.error("A critical error occurred during list view initialization:", error.message);
+        // You might want to display a user-friendly error message on the UI as well.
+        // For example: document.body.innerHTML = '<h1>Oops! Something went wrong. Please try refreshing the page.</h1>';
+        return () => {}; // Return an empty cleanup function as initialization failed.
+    }
     
     // Listen for authentication state changes
     onAuthStateChanged(auth, (user) => {
@@ -177,27 +188,17 @@ export function init(params) {
         }
     });
     
-    // Initial view setup
-    initializeListView(params);
-    
-    
-    
     // Cleanup
     return function cleanup() {
         console.log("Cleaning up List View Module...");
         detachAllListeners();
         
-        if (headerClickListener) taskListHeaderEl.removeEventListener('click', headerClickListener);
         if (bodyClickListener) productListBody.removeEventListener('click', bodyClickListener);
         if (bodyFocusOutListener) productListBody.removeEventListener('focusout', bodyFocusOutListener);
         if (addProductHeaderBtnListener) addProductHeaderBtn.removeEventListener('click', addProductHeaderBtnListener);
         if (windowClickListener) window.removeEventListener('click', windowClickListener);
         if (filterBtnListener) filterBtn.removeEventListener('click', filterBtnListener);
         if (sortBtnListener) sortBtn.removeEventListener('click', sortBtnListener);
-        
-        if (sortableSections) sortableSections.destroy();
-        sortableTasks.forEach(st => st.destroy());
-        sortableTasks.length = 0;
     };
 }
 
