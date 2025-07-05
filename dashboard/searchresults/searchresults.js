@@ -352,9 +352,8 @@ function formatDueDate(dueDateString) {
 }
 
 function render() {
-    const taskListBody = document.getElementById('taskListBody');
-    if (!taskListBody) {
-        console.error("Target element #taskListBody not found.");
+    if (!searchListBody) {
+        console.error("Target element #searchListBody not found.");
         return;
     }
 
@@ -424,7 +423,7 @@ function render() {
 
     // --- RENDER LOGIC ---
     let scrollState = { top: 0, left: 0 };
-    const oldContainer = taskListBody.querySelector('.juanlunacms-spreadsheetlist-custom-scrollbar');
+    const oldContainer = searchListBody.querySelector('.juanlunacms-spreadsheetlist-custom-scrollbar');
     if (oldContainer) {
         scrollState.top = oldContainer.scrollTop;
         scrollState.left = oldContainer.scrollLeft;
@@ -434,7 +433,7 @@ function render() {
     const allDataColumns = project.defaultColumns;
     const allTasks = project.sections.flatMap(section => section.tasks);
     
-    taskListBody.innerHTML = '';
+    searchListBody.innerHTML = '';
     
     const container = document.createElement('div');
     container.className = 'w-full h-full bg-white overflow-auto juanlunacms-spreadsheetlist-custom-scrollbar';
@@ -547,7 +546,7 @@ function render() {
     table.appendChild(header);
     table.appendChild(body);
     container.appendChild(table);
-    taskListBody.appendChild(container);
+    searchListBody.appendChild(container);
     
     container.scrollTop = scrollState.top;
     container.scrollLeft = scrollState.left;
