@@ -499,11 +499,11 @@ leftTaskCell.innerHTML = `
       </span>
       <div class="task-controls flex items-center gap-1 ml-1 transition-opacity duration-150 group-hover:opacity-100">
           ${commentCount > 0 ? `<span class="comment-count text-[9px] text-slate-500">${commentCount}</span>` : ''}
-          <span class="material-icons text-slate-400 cursor-pointer hover:text-blue-500 transition" style="font-size: 14px;" data-control="comment">
+          <span class="material-icons text-slate-400 cursor-pointer hover:text-blue-500 transition" style="font-size: 11px;" data-control="comment">
               chat_bubble_outline
           </span>
           ${likeCount > 0 ? `<span class="like-count text-[9px] text-slate-500">${likeCount}</span>` : ''}
-          <span class="material-icons text-slate-400 cursor-pointer hover:text-red-500 transition" style="font-size: 14px;" data-control="like">
+          <span class="material-icons text-slate-400 cursor-pointer hover:text-red-500 transition" style="font-size: 11px;" data-control="like">
               favorite_border
           </span>
       </div>
@@ -516,7 +516,7 @@ leftTaskCell.innerHTML = `
             const cell = document.createElement('div');
             // IMPORTANT: Add the data-column-id here so resizing works
             cell.dataset.columnId = col.id; 
-            cell.className = 'py-0.2 px-1 flex items-center text-[11px] whitespace-nowrap border-r border-slate-200';
+            cell.className = 'py-0.2 px-1 flex items-center text-[9px] whitespace-nowrap border-r border-slate-200';
             
             let content = '';
             const COMPLETED_STYLE = `background-color: #f3f4f6; color: #6b7280;`;

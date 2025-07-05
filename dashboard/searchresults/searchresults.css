@@ -1556,8 +1556,8 @@ Custom class
 .add-assignee-btn {
     display: grid;
     place-content: center;
-    width: 28px;
-    height: 28px;
+    width: 18px;
+    height: 18px;
     border: 1px dashed #ccc;
     color: #999;
     border-radius: 50%;
@@ -1877,8 +1877,8 @@ Custom class
 }
 
 .add-assignee-btn {
-    width: 24px;
-    height: 24px;
+    width: 18px;
+    height: 18px;
     border: 1px dashed #ccc;
     border-radius: 50%;
     display: flex;
