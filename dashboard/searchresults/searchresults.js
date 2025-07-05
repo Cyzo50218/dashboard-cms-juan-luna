@@ -151,7 +151,8 @@ async function fetchMemberProfiles(uids) {
 // --- Main Initialization and Cleanup ---
 
 function initializeListView(params) {
-    productListBody = document.getElementById('task-list-body');
+    mainContainer = document.querySelector('.search-results-container');
+    productListBody = document.getElementById('searchresult-list-body');
     
     if (!mainContainer || !productListBody) {
         console.error("List view could not initialize: Essential containers not found.");
@@ -168,7 +169,6 @@ export function init(params) {
     onAuthStateChanged(auth, (user) => {
         if (user) {
             console.log(`User ${user.uid} signed in. Attaching listeners.`);
-            attachRealtimeListeners(user.uid);
         } else {
             console.log("User signed out. Detaching listeners.");
             detachAllListeners();
