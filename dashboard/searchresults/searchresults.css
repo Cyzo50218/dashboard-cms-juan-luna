@@ -2331,33 +2331,34 @@ Custom class
 
 /*
  * 3. Style the custom checkbox box
- * - Size is now 16px.
- * - border-radius is 50% to make it a circle.
+ * - Size is now 14px.
+ * - border-radius is 50% to keep it circular.
  */
 .juanluna-cms-searchlist-checkbox {
   position: relative;
   display: inline-block;
-  width: 16px !important;    /* <-- Increased to 16px */
-  height: 16px !important;   /* <-- Increased to 16px */
+  width: 14px !important;    /* <-- Final size: 14px */
+  height: 14px !important;   /* <-- Final size: 14px */
   background-color: #ffffff;
-  border-radius: 50%;        /* <-- Changed to 50% for a circle */
+  border-radius: 50%;        /* <-- Kept at 50% for a circle */
   transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
 }
 
 /*
  * 4. Style the checkmark inside the box
- * - Adjusted for the larger 16px circle.
+ * - Adjusted for the 14px circle.
+ * - Border-width reduced for a lighter, less bold appearance.
  */
 .juanluna-cms-searchlist-checkbox::after {
   content: "";
   position: absolute;
   display: none;
-  left: 5px;      /* <-- Adjusted for 16px box */
-  top: 2px;       /* <-- Adjusted for 16px box */
-  width: 5px;     /* <-- Adjusted for 16px box */
-  height: 9px;    /* <-- Adjusted for 16px box */
+  left: 4.5px;      /* <-- Adjusted for 14px box */
+  top: 2px;         /* <-- Adjusted for 14px box */
+  width: 4px;       /* <-- Adjusted for 14px box */
+  height: 7px;      /* <-- Adjusted for 14px box */
   border: solid white;
-  border-width: 0 2px 2px 0;
+  border-width: 0 1.5px 1.5px 0; /* <-- Reduced from 2px for a lighter checkmark */
   transform: rotate(45deg);
 }
 
