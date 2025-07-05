@@ -403,8 +403,8 @@ export function fetchRecentItemsFromFirestore(renderFn, displayOptions) {
       } else if (itemData.type === 'project') {
         fetchedProjects.push({
           id: docSnap.id, // The project ID
-          name: itemData.name || 'Untitled Project', // Use 'name' for project title
-          color: itemData.color || '#cccccc', // Use 'color' for project color
+          name: itemData.projectName || 'Untitled Project', // Use 'name' for project title
+          color: itemData.projectColor || '#cccccc', // Use 'color' for project color
           tasksCount: Object.values(itemData.sectionTaskCounts || {}).reduce((sum, count) => sum + count, 0),
           assignees: itemData.memberProfiles || [], // Use memberProfiles directly for project assignees
           projectRef: itemData.projectRef // The actual project reference
@@ -496,7 +496,7 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
                 </div>` : '';
       
       itemDiv.innerHTML = `
-                <span class="headersearches-project-square-icon" style="color: ${project.color};"></span>
+                <span class="headersearches-project-square-icon" style="background-color: ${project.color};"></span>
                 <div class="headersearches-tasks-recent-content">
                     <div class="headersearches-tasks-recent-title">${project.name}</div>
                     <div class="headersearches-tasks-recent-meta">
