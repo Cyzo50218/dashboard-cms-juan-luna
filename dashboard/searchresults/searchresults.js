@@ -351,9 +351,9 @@ function formatDueDate(dueDateString) {
     }
 }
 
-function render() {
-    if (!searchListBody) {
-        console.error("Target element #searchListBody not found.");
+function render() {    
+    if (!taskListBody) {
+        console.error("Target element #taskListBody not found.");
         return;
     }
 
@@ -423,7 +423,7 @@ function render() {
 
     // --- RENDER LOGIC ---
     let scrollState = { top: 0, left: 0 };
-    const oldContainer = searchListBody.querySelector('.juanlunacms-spreadsheetlist-custom-scrollbar');
+    const oldContainer = taskListBody.querySelector('.juanlunacms-spreadsheetlist-custom-scrollbar');
     if (oldContainer) {
         scrollState.top = oldContainer.scrollTop;
         scrollState.left = oldContainer.scrollLeft;
@@ -433,7 +433,7 @@ function render() {
     const allDataColumns = project.defaultColumns;
     const allTasks = project.sections.flatMap(section => section.tasks);
     
-    searchListBody.innerHTML = '';
+    taskListBody.innerHTML = '';
     
     const container = document.createElement('div');
     container.className = 'w-full h-full bg-white overflow-auto juanlunacms-spreadsheetlist-custom-scrollbar';
@@ -491,10 +491,30 @@ function render() {
         leftTaskCell.style.width = '300px';
         leftTaskCell.style.flexShrink = '0';
 
-        leftTaskCell.innerHTML = `<div class="flex items-center flex-grow min-w-0">
-            <input type="checkbox" ${isCompleted ? 'checked' : ''} disabled class="mr-3 h-4 w-4 rounded-full border-gray-300">
-            <span class="truncate ${taskNameClass}">${task.name}</span>
-        </div>`;
+        const commentCount = task.commentCount || 0;
+const likeCount = task.likedAmount || 0;
+const canEditThisTaskValue = canUserEditTask(task);
+const taskNameEditableClass = canEditThisTaskValue ? 'focus:bg-white focus:ring-1 focus:ring-slate-300' : 'cursor-text';
+
+leftTaskCell.innerHTML = `
+          <label class="juanluna-cms-searchlist-checkbox-container px-2 ml-4" data-control="check">
+              <input type="checkbox" ${isCompleted ? 'checked' : ''} ${!canEditThisTaskValue ? 'disabled' : ''}>
+              <span class="juanluna-cms-searchlist-checkbox"></span>
+          </label>
+          <div class="flex items-center flex-grow min-w-0">
+              <span class="${taskNameClass} ${taskNameEditableClass} truncate whitespace-nowrap text-[9px] block outline-none bg-transparent rounded px-1"
+                    style="max-width: 100%;"
+                    contenteditable="${canEditThisTaskValue}"
+                    data-task-id="${task.id}">
+                  ${task.name}
+              </span>
+              <div class="task-controls flex items-center gap-1 ml-1 group-hover:opacity-100 ${ (commentCount > 0 || likeCount > 0) ? 'opacity-100' : 'opacity-0'}">
+                  ${commentCount > 0 ? `<span class="comment-count text-[9px] text-slate-500">${commentCount}</span>` : ''}
+                  <span class="material-icons text-slate-400 cursor-pointer hover:text-blue-500 transition" style="font-size: 11px;" data-control="comment">chat_bubble_outline</span>
+                  ${likeCount > 0 ? `<span class="like-count text-[9px] text-slate-500">${likeCount}</span>` : ''}
+                  <span class="material-icons text-slate-400 cursor-pointer hover:text-red-500 transition" style="font-size: 11px;" data-control="like">favorite_border</span>
+              </div>
+          </div>`;
         
         const rightTaskCells = document.createElement('div');
         rightTaskCells.className = 'flex-grow flex';
@@ -546,7 +566,7 @@ function render() {
     table.appendChild(header);
     table.appendChild(body);
     container.appendChild(table);
-    searchListBody.appendChild(container);
+    taskListBody.appendChild(container);
     
     container.scrollTop = scrollState.top;
     container.scrollLeft = scrollState.left;
@@ -581,20 +601,28 @@ function isCellEditable(column) {
 function syncColumnWidths() {
     const table = document.querySelector('.min-w-max.relative');
     if (!table) return;
-
+    
     const headerContainer = table.querySelector('.juanlunacms-spreadsheetlist-sticky-header');
     if (!headerContainer) return;
-
+    
     const allColumnIds = Array.from(headerContainer.querySelectorAll('[data-column-id]')).map(cell => cell.dataset.columnId);
-
+    
     allColumnIds.forEach(columnId => {
         const headerCell = headerContainer.querySelector(`[data-column-id="${columnId}"]`);
         if (!headerCell) return;
-
+        
         const textElement = headerCell.querySelector('.header-cell-content');
         const headerContentWidth = textElement ? textElement.scrollWidth : 0;
-        const finalWidth = Math.max(150, headerContentWidth + 32); // Use a default min-width of 150px or content width
-
+        
+        // --- UPDATED: Simplified min-width logic and added 'projectInfo' ---
+        let minWidth = 150; // A sensible default min-width
+        if (columnId === 'projectInfo') {
+            minWidth = 180; // Give the new Project column more space
+        }
+        // --- END OF UPDATE ---
+        
+        const finalWidth = Math.max(minWidth, headerContentWidth + 32);
+        
         const allCellsInColumn = table.querySelectorAll(`[data-column-id="${columnId}"]`);
         allCellsInColumn.forEach(cell => {
             cell.style.width = `${finalWidth}px`;
@@ -603,50 +631,59 @@ function syncColumnWidths() {
     });
 }
 
-// Initializes the column resizing functionality
+
 function initColumnResizing() {
     const table = document.querySelector('.min-w-max.relative');
     if (!table) return;
-
+    
     let initialX, initialWidth, columnId;
-    const minWidth = 100; // A minimum width for any column
-
+    let columnSpecificMinWidth;
+    
     const onDragMove = (e) => {
         const currentX = e.touches ? e.touches[0].clientX : e.clientX;
         const deltaX = currentX - initialX;
-        const newWidth = Math.max(minWidth, initialWidth + deltaX);
-
+        const newWidth = Math.max(columnSpecificMinWidth, initialWidth + deltaX);
+        
         const cellsToResize = table.querySelectorAll(`[data-column-id="${columnId}"]`);
         cellsToResize.forEach(cell => {
             cell.style.width = `${newWidth}px`;
             cell.style.minWidth = `${newWidth}px`;
         });
     };
-
+    
     const onDragEnd = () => {
         document.removeEventListener('mousemove', onDragMove);
         document.removeEventListener('mouseup', onDragEnd);
         document.removeEventListener('touchmove', onDragMove);
         document.removeEventListener('touchend', onDragEnd);
     };
-
+    
     const onDragStart = (e) => {
         if (!e.target.classList.contains('resize-handle')) return;
-
+        
         e.preventDefault();
+        
         const headerCell = e.target.closest('[data-column-id]');
         if (!headerCell) return;
         
         columnId = headerCell.dataset.columnId;
         initialX = e.touches ? e.touches[0].clientX : e.clientX;
         initialWidth = headerCell.offsetWidth;
-
+        
+        // --- UPDATED: Simplified min-width logic for the drag operation ---
+        let minWidth = 100; // A hard minimum for any column during resize
+        if (columnId === 'projectInfo') {
+            minWidth = 180; // Match the sync function's min-width
+        }
+        columnSpecificMinWidth = minWidth;
+        // --- END OF UPDATE ---
+        
         document.addEventListener('mousemove', onDragMove);
         document.addEventListener('mouseup', onDragEnd);
         document.addEventListener('touchmove', onDragMove);
         document.addEventListener('touchend', onDragEnd);
     };
-
+    
     table.addEventListener('mousedown', onDragStart);
     table.addEventListener('touchstart', onDragStart, { passive: false });
 }
