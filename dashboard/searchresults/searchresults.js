@@ -42,7 +42,7 @@ console.log("Initialized Firebase on Dashboard.");
 
 // --- Module-Scoped Variables ---
 // DOM Element Holders
-let taskListHeaderEl, drawer, addSectionClassBtn, headerRight, productListBody, taskListFooter, addProductHeaderBtn, mainContainer, assigneeDropdownTemplate, filterBtn, sortBtn;
+let taskListHeaderEl, drawer, addSectionClassBtn, headerRight, searchListBody, taskListFooter, addProductHeaderBtn, mainContainer, assigneeDropdownTemplate, filterBtn, sortBtn;
 
 // Event Handler References
 let headerClickListener, bodyClickListener, bodyFocusOutListener, addProductHeaderBtnListener, windowClickListener, filterBtnListener, sortBtnListener;
@@ -152,10 +152,10 @@ async function fetchMemberProfiles(uids) {
 
 function initializeListView(params) {
     mainContainer = document.querySelector('.search-results-container');
-    productListBody = document.getElementById('searchresult-list-body');
+    searchListBody = document.getElementById('searchresult-list-body');
     
     // If essential elements are not found, throw an error to halt execution.
-    if (!mainContainer || !productListBody) {
+    if (!mainContainer || !searchListBody) {
         throw new Error("List view could not initialize: Essential containers not found.");
     }
     
@@ -193,8 +193,8 @@ export function init(params) {
         console.log("Cleaning up List View Module...");
         detachAllListeners();
         
-        if (bodyClickListener) productListBody.removeEventListener('click', bodyClickListener);
-        if (bodyFocusOutListener) productListBody.removeEventListener('focusout', bodyFocusOutListener);
+        if (bodyClickListener) searchListBody.removeEventListener('click', bodyClickListener);
+        if (bodyFocusOutListener) searchListBody.removeEventListener('focusout', bodyFocusOutListener);
         if (addProductHeaderBtnListener) addProductHeaderBtn.removeEventListener('click', addProductHeaderBtnListener);
         if (windowClickListener) window.removeEventListener('click', windowClickListener);
         if (filterBtnListener) filterBtn.removeEventListener('click', filterBtnListener);
@@ -312,244 +312,168 @@ function formatDueDate(dueDateString) {
 }
 
 function render() {
-let project = {
-    id: 'project_xyz789',
-    name: 'Q3 Product Catalog',
-
-    // A single, flat array of all products for the project.
-    products: [
-        {
-            id: 'prod_1A',
-            // Each product still needs to know its category for database operations.
-            categoryId: 'cat_001', 
-            name: 'Wireless Mechanical Keyboard',
-            imageUrl: 'https://via.placeholder.com/150/8f8f8e/ffffff?text=Keyboard',
-            productSku: 'WMK-K87-RGB',
-            supplierCost: 85.50,
-            supplierName: 'Global Tech Imports',
-            supplierProject: 'Project Alpha',
-            order: 0 // Order within its logical category
-        },
-        {
-            id: 'prod_2A',
-            categoryId: 'cat_002', // This product is in a different category
-            name: 'Ergonomic Office Chair',
-            imageUrl: 'https://via.placeholder.com/150/5c5c5c/ffffff?text=Chair',
-            productSku: 'EOC-BLK-MESH',
-            supplierCost: 195.75,
-            supplierName: 'Comfort Seating Co.',
-            supplierProject: 'Project Alpha',
-            order: 0
-        },
-        {
-            id: 'prod_1B',
-            categoryId: 'cat_001',
-            name: '4K IPS Monitor 27-inch',
-            imageUrl: null,
-            productSku: 'MON-4K-27-IPS',
-            supplierCost: 320.00,
-            supplierName: 'Display Solutions Inc.',
-            supplierProject: 'Project Gamma',
-            order: 1 // This product comes after the keyboard in the same category
-        },
-    ],
-
-    // Column definitions and rules remain the same.
-    customColumns: [
-        { id: 'cc_01', name: 'Warehouse Location', type: 'Text' }
-    ],
-    columnRules: [
-        { name: 'Supplier Cost', isRestricted: true }
-    ],
+    // --- MOCK DATA & HELPERS (Included for a self-contained function) ---
+    // 1. Mock Project & User Data
+    const project = {
+        id: 'proj_12345',
+        columnOrder: ['assignees', 'dueDate', 'priority', 'status', 'col_cost_1', 'col_type_1', 'col_text_1'],
+        defaultColumns: [
+            { id: 'assignees', name: 'Assignees', type: 'Assignees' },
+            { id: 'dueDate', name: 'Due Date', type: 'Date' },
+            {
+                id: 'priority', name: 'Priority', type: 'Priority',
+                options: [ { name: 'High', color: '#ef4444' }, { name: 'Medium', color: '#f97316' }, { name: 'Low', color: '#3b82f6' }]
+            },
+            {
+                id: 'status', name: 'Status', type: 'Status',
+                options: [ { name: 'In Progress', color: '#3b82f6' }, { name: 'On Hold', color: '#a855f7' }, { name: 'Needs Review', color: '#f59e0b' }, { name: 'Completed', color: '#22c55e' }]
+            }
+        ],
+        customColumns: [
+             { id: 'col_cost_1', name: 'Budget', type: 'Costing' },
+             {
+                id: 'col_type_1', name: 'Task Type', type: 'Type',
+                options: [ { id: 'opt1', name: 'Design', color: '#ec4899' }, { id: 'opt2', name: 'Development', color: '#6366f1' }, { id: 'opt3', name: 'QA', color: '#10b981' }]
+             },
+             { id: 'col_text_1', name: 'Notes', type: 'Text' },
+        ],
+        sections: [
+            {
+                id: 'sec_1', title: 'Phase 1: Planning & Design',
+                tasks: [
+                    { id: 'task_101', name: 'Finalize project requirements document', status: 'Completed', priority: 'High', dueDate: '2025-06-20T23:59:59Z', assignees: ['user-A', 'user-B'], customFields: { col_cost_1: 1500, col_type_1: 'Design' } },
+                    { id: 'task_102', name: 'Create initial UI/UX mockups', status: 'In Progress', priority: 'High', dueDate: '2025-07-10T23:59:59Z', assignees: ['user-A'], customFields: { col_cost_1: 3250.50, col_type_1: 'Design', col_text_1: 'Focus on mobile-first design.' } },
+                ]
+            },
+            {
+                id: 'sec_2', title: 'Phase 2: Development',
+                tasks: [
+                    { id: 'task_201', name: 'Set up database architecture', status: 'In Progress', priority: 'High', dueDate: '2025-07-25T23:59:59Z', assignees: ['user-C', 'user-D'], customFields: { col_cost_1: 5000, col_type_1: 'Development' } },
+                    { id: 'task_202', name: 'Implement user authentication module', status: 'On Hold', priority: 'Medium', dueDate: '2025-08-01T23:59:59Z', assignees: ['user-D'], customFields: { col_cost_1: 4500, col_type_1: 'Development', col_text_1: 'Waiting on new API keys.' } },
+                ]
+            },
+        ]
+    };
     
-    // Project metadata remains the same.
-    project_super_admin_uid: 'user_super_admin_id',
-    project_admin_user: 'user_admin_id'
-};
+    const mockUsers = {
+        'user-A': { name: 'Alice', initial: 'A' }, 'user-B': { name: 'Bob', initial: 'B' },
+        'user-C': { name: 'Charlie', initial: 'C' }, 'user-D': { name: 'David', initial: 'D' }
+    };
+    
+    // --- RENDER LOGIC ---
 
-    // 1. --- INITIAL CHECKS & SETUP ---
-    if (!productListBody) {
-        console.error("Render function aborted: productListBody element not found.");
+    if (!project || !project.id) {
+        if (searchListBody) {
+            searchListBody.innerHTML = `<div class="p-4 text-center text-slate-500">Loading project data...</div>`;
+        }
         return;
     }
-
-    let scrollState = { top: 0, left: 0 };
-    const oldContainer = productListBody.querySelector('.juanlunacms-spreadsheetlist-custom-scrollbar');
-    if (oldContainer) {
-        scrollState.top = oldContainer.scrollTop;
-        scrollState.left = oldContainer.scrollLeft;
-    }
     
-    const baseColumns = [
-        { id: 'productImage', name: 'Product Image', type: 'Image' },
-        { id: 'productSku', name: 'Product SKU', type: 'Text' },
-        { id: 'supplierCost', name: 'Supplier Cost', type: 'Costing' },
-        { id: 'supplierName', name: 'Supplier Name', type: 'Text' },
-        { id: 'supplierProject', name: 'Supplier Project', type: 'Dropdown' },
-    ];
-    const customColumns = project.customColumns || [];
-    const allColumns = [...baseColumns, ...customColumns];
-
-
-    productListBody.innerHTML = '';
+    if (!searchListBody) return;
+    
+    // --- Data Preparation ---
+    const columnDefinitions = new Map();
+    // Manually add the "Task Name" as the first column
+    columnDefinitions.set('taskName', { id: 'taskName', name: 'Task Name', type: 'Text' });
+    project.defaultColumns.forEach(col => columnDefinitions.set(String(col.id), col));
+    project.customColumns.forEach(col => columnDefinitions.set(String(col.id), { ...col, isCustom: true }));
+    
+    const orderedIds = ['taskName', ...(project.columnOrder || [])];
+    const allColumns = orderedIds.map(id => columnDefinitions.get(String(id))).filter(Boolean);
+    const allTasks = project.sections.flatMap(section => section.tasks);
+    
+    searchListBody.innerHTML = '';
+    
+    // --- HTML Structure ---
     const container = document.createElement('div');
-    container.className = 'w-full h-full bg-white overflow-auto juanlunacms-spreadsheetlist-custom-scrollbar border border-slate-200 rounded-none shadow-sm';
+    container.className = 'w-full h-full bg-white overflow-auto border border-slate-200 shadow-sm';
     
-    const table = document.createElement('div');
-    table.className = 'min-w-max relative';
+    const table = document.createElement('table');
+    table.className = 'w-full border-collapse';
 
-    // 2. --- HEADER CREATION ---
-    const header = document.createElement('div');
-    header.className = 'flex sticky top-0 z-20 bg-white juanlunacms-spreadsheetlist-sticky-header h-8';
-    
-    const leftHeader = document.createElement('div');
-    leftHeader.className = 'sticky left-0 z-10 w-80 md:w-96 lg:w-[400px] flex-shrink-0 px-4 font-semibold text-slate-600 border-b border-r border-slate-200 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg text-xs rounded-none flex items-center';
-    leftHeader.textContent = 'Product Name';
-    
-    const rightHeaderContent = document.createElement('div');
-    rightHeaderContent.className = 'flex flex-grow border-b border-slate-200';
+    // --- Header ---
+    const thead = table.createTHead();
+    const headerRow = thead.insertRow();
+    headerRow.className = 'sticky top-0 z-10 bg-white shadow-sm';
 
     allColumns.forEach(col => {
-        const cell = document.createElement('div');
-        cell.className = 'group relative px-2 py-1 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center text-xs rounded-none';
-        cell.dataset.columnId = col.id;
-        
-        const innerWrapper = document.createElement('div');
-        innerWrapper.className = 'flex flex-grow items-center min-w-0';
-        innerWrapper.style.userSelect = 'none';
-
-        const cellText = document.createElement('span');
-        cellText.className = 'header-cell-content flex-grow';
-        cellText.textContent = col.name;
-        innerWrapper.appendChild(cellText);
-        
-        cell.appendChild(innerWrapper);
-        const resizeHandle = document.createElement('div');
-        resizeHandle.className = 'resize-handle';
-        cell.appendChild(resizeHandle);
-        
-        rightHeaderContent.appendChild(cell);
-    });
-
-    header.appendChild(leftHeader);
-    header.appendChild(rightHeaderContent);
-
-    // 4. --- BODY CREATION (FLAT PRODUCT LIST) ---
-    const body = document.createElement('div');
-    const productsContainer = document.createElement('div'); 
-    productsContainer.className = 'products-container';
-
-    // The products should be pre-sorted by categoryId and then by order.
-    const sortedProducts = (project.products || []).sort((a, b) => {
-        if (a.categoryId < b.categoryId) return -1;
-        if (a.categoryId > b.categoryId) return 1;
-        return (a.order || 0) - (b.order || 0);
-    });
-
-    sortedProducts.forEach(product => {
-        const productRow = document.createElement('div');
-        productRow.className = 'product-row-wrapper flex group border-b border-slate-200';
-        productRow.dataset.productId = product.id;
-        productRow.dataset.categoryId = product.categoryId; // Still required!
-
-        // Left Pane (Product Name)
-        const leftProductCell = document.createElement('div');
-        leftProductCell.className = 'group sticky left-0 w-80 md:w-96 lg:w-[400px] flex-shrink-0 flex items-center border-r border-transparent group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg juanlunacms-spreadsheetlist-dynamic-border py-0.2';
-        leftProductCell.dataset.control = 'open-sidebar';
-        
-        leftProductCell.innerHTML = `
-            <div class="flex items-center flex-grow min-w-0">
-                <span
-                    class="product-name truncate text-[13px] block outline-none bg-transparent rounded px-1"
-                    data-product-id="${product.id}"
-                >${product.name || 'New Product'}</span>
-            </div>
-        `;
-
-        // Right Pane (Product Data Columns)
-        const rightProductCells = document.createElement('div');
-        rightProductCells.className = 'flex-grow flex group-hover:bg-slate-50';
-
-        allColumns.forEach((col) => {
-            const cell = document.createElement('div');
-            let cellClasses = `table-cell px-2 py-1 flex items-center border-r border-slate-200 text-sm`;
-            cellClasses += (col.id === 'productImage') ? ' w-20 justify-center' : ' w-44';
-            cellClasses += ' cell-restricted bg-slate-50 cursor-not-allowed';
-            
-            cell.className = cellClasses;
-            cell.dataset.columnId = col.id;
-            
-            let content = '';
-            const rawValue = product[col.id] || (product.customFields && product.customFields[col.id]);
-
-            switch (col.id) {
-                case 'productImage':
-                    content = `<div class="w-10 h-10 bg-gray-200 rounded-md flex items-center justify-center overflow-hidden">
-                                   ${product.imageUrl ? `<img src="${product.imageUrl}" class="w-full h-full object-cover" alt="Product Image">` : '<span class="material-icons text-gray-400">photo_camera</span>'}
-                               </div>`;
-                    break;
-                case 'productSku':
-                    content = `<span class="px-1 w-full">${rawValue || ''}</span>`;
-                    break;
-                case 'supplierCost':
-                    const cost = (typeof rawValue === 'number') ? '$' + rawValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
-                    content = `<span class="px-1 w-full">${cost}</span>`;
-                    break;
-                case 'supplierName':
-                     content = `<span class="px-1 w-full">${rawValue || ''}</span>`;
-                    break;
-                case 'supplierProject':
-                    cell.dataset.control = 'supplier-project';
-                    content = `<div class="status-tag">${rawValue || 'N/A'}</div>`;
-                    break;
-                default:
-                    content = `<span class="px-1 w-full">${rawValue || ''}</span>`;
-                    break;
-            }
-            cell.innerHTML = content;
-            rightProductCells.appendChild(cell);
-        });
-        
-        productRow.appendChild(leftProductCell);
-        productRow.appendChild(rightProductCells);
-        productsContainer.appendChild(productRow);
-    });
-    
-    // 5. --- FINAL ASSEMBLY & DYNAMIC BEHAVIORS ---
-    table.appendChild(header);
-    body.appendChild(productsContainer);
-    table.appendChild(body);
-    container.appendChild(table);
-    productListBody.appendChild(container);
-
-    container.scrollTop = scrollState.top;
-    container.scrollLeft = scrollState.left;
-    container.addEventListener('scroll', () => {
-        const scrolled = container.scrollLeft > 0;
-        header.classList.toggle('shadow-md', container.scrollTop > 0);
-        container.querySelectorAll('.juanlunacms-spreadsheetlist-left-sticky-pane').forEach(pane => {
-            pane.classList.toggle('juanlunacms-spreadsheetlist-shadow-right-custom', scrolled);
-        });
-    });
-    
-    if (userCanEditProject) {
-        initColumnDragging();
-    }
-    initColumnResizing();
-    requestAnimationFrame(syncColumnWidths);
-    
-    if (productIdToFocus) {
-        const productToFocusEl = productListBody.querySelector(`[data-product-id="${productIdToFocus}"] .product-name`);
-        if (productToFocusEl) {
-            productToFocusEl.focus();
-            const range = document.createRange();
-            const sel = window.getSelection();
-            range.selectNodeContents(productToFocusEl);
-            sel.removeAllRanges();
-            sel.addRange(range);
+        const th = document.createElement('th');
+        let widthClass = 'w-44'; // Default width
+        if (col.id === 'taskName') widthClass = 'w-96';
+        else if (['Text', 'Numbers', 'Type', 'priority', 'status'].includes(col.type)) {
+            widthClass = 'w-48';
         }
-        productIdToFocus = null;
-    }
+        
+        th.className = `p-2 font-semibold text-slate-600 border-b border-r border-slate-200 text-xs text-left ${widthClass}`;
+        th.textContent = col.name;
+        headerRow.appendChild(th);
+    });
+
+    // --- Body ---
+    const tbody = table.createTBody();
+
+    allTasks.forEach(task => {
+        const taskRow = tbody.insertRow();
+        taskRow.className = 'group hover:bg-slate-50';
+        taskRow.dataset.taskId = task.id;
+
+        const isCompleted = task.status === 'Completed';
+
+        allColumns.forEach(col => {
+            const cell = taskRow.insertCell();
+            cell.className = `p-2 text-sm border-b border-r border-slate-200 ${isCompleted ? 'text-slate-400' : 'text-slate-800'}`;
+
+            let content = '';
+            const COMPLETED_STYLE = `background-color: #f3f4f6; color: #6b7280;`;
+
+            // --- Cell Content Logic ---
+            if (col.id === 'taskName') {
+                content = `<div class="flex items-center">
+                               <input type="checkbox" ${isCompleted ? 'checked' : ''} disabled class="mr-3 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                               <span class="${isCompleted ? 'line-through' : ''}">${task.name}</span>
+                           </div>`;
+            } else {
+                const rawValue = task.customFields ? task.customFields[col.id] : undefined;
+                
+                switch (col.id) {
+                    case 'assignees': 
+                        content = createAssigneeHTML(task.assignees); 
+                        break;
+                    case 'dueDate':
+                        const dueDateInfo = formatDueDate(task.dueDate);
+                        content = `<span class="font-medium text-${dueDateInfo.color}-600">${dueDateInfo.text}</span>`;
+                        break;
+                    case 'priority': 
+                    case 'status':
+                        const option = col.options?.find(p => p.name === task[col.id]);
+                        if (option) {
+                            const style = isCompleted ? COMPLETED_STYLE : `background-color: ${option.color}20; color: ${option.color};`;
+                            content = `<div class="inline-block text-xs font-semibold px-2 py-0.5 rounded-full" style="${style}">${option.name}</div>`;
+                        }
+                        break;
+                    default: // Custom Columns
+                        if (col.options) { // Custom 'Select' type
+                            const selectedOption = col.options.find(opt => opt.name === rawValue);
+                            if (selectedOption) {
+                                const style = isCompleted ? COMPLETED_STYLE : `background-color: ${selectedOption.color}20; color: ${selectedOption.color};`;
+                                content = `<div class="inline-block text-xs font-semibold px-2 py-0.5 rounded-full" style="${style}">${selectedOption.name}</div>`;
+                            }
+                        } else { // Other custom types (Text, Costing)
+                            if (rawValue) {
+                                content = (col.type === 'Costing' && typeof rawValue === 'number')
+                                    ? `$${rawValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                    : rawValue;
+                            }
+                        }
+                        break;
+                }
+            }
+            cell.innerHTML = content || '–'; // Default to a dash if content is empty
+        });
+    });
+
+    container.appendChild(table);
+    searchListBody.appendChild(container);
 }
 
 function isCellEditable(column) {
