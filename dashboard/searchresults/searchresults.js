@@ -578,7 +578,7 @@ const project = {
         const isCompleted = task.status === 'Completed';
         const taskNameClass = isCompleted ? 'line-through text-slate-400' : 'text-slate-800';
 const leftTaskCell = document.createElement('div');
-leftTaskCell.className = 'sticky left-0 z-10 py-0.6 px-1 flex items-center border-r border-slate-200 bg-white group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane';
+leftTaskCell.className = 'sticky left-0 z-10 py-0.6 px-2 flex items-center border-r border-slate-200 bg-white group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane';
 leftTaskCell.style.width = '300px'; // Using the established fixed width
 leftTaskCell.style.flexShrink = '0';
 
@@ -586,7 +586,7 @@ leftTaskCell.style.flexShrink = '0';
 const commentCount = task.commentCount || 0;
 const likeCount = task.likedAmount || 0;
 const canEditThisTask = canUserEditTask(task);
-            const taskNameEditableClass = canEditThisTask ? 'focus:bg-white focus:ring-1 focus:ring-slate-300' : 'cursor-text';
+  const taskNameEditableClass = canEditThisTask ? 'focus:bg-white focus:ring-1 focus:ring-slate-300' : 'cursor-text';
             
 
 // Set the final HTML for the cell
