@@ -312,6 +312,11 @@ function formatDueDate(dueDateString) {
 }
 
 function render() {
+   if (!searchListBody) {
+        console.error("Target element #searchListBody not found.");
+        return;
+    }
+
     // 1. Mock Project & User Data
     const project = {
         id: 'proj_12345',
@@ -319,21 +324,12 @@ function render() {
         defaultColumns: [
             { id: 'assignees', name: 'Assignees', type: 'Assignees' },
             { id: 'dueDate', name: 'Due Date', type: 'Date' },
-            {
-                id: 'priority', name: 'Priority', type: 'Priority',
-                options: [ { name: 'High', color: '#ef4444' }, { name: 'Medium', color: '#f97316' }, { name: 'Low', color: '#3b82f6' }]
-            },
-            {
-                id: 'status', name: 'Status', type: 'Status',
-                options: [ { name: 'In Progress', color: '#3b82f6' }, { name: 'On Hold', color: '#a855f7' }, { name: 'Needs Review', color: '#f59e0b' }, { name: 'Completed', color: '#22c55e' }]
-            }
+            { id: 'priority', name: 'Priority', type: 'Priority', options: [ { name: 'High', color: '#ef4444' }, { name: 'Medium', color: '#f97316' }, { name: 'Low', color: '#3b82f6' }] },
+            { id: 'status', name: 'Status', type: 'Status', options: [ { name: 'In Progress', color: '#3b82f6' }, { name: 'On Hold', color: '#a855f7' }, { name: 'Needs Review', color: '#f59e0b' }, { name: 'Completed', color: '#22c55e' }] }
         ],
         customColumns: [
              { id: 'col_cost_1', name: 'Budget', type: 'Costing' },
-             {
-                id: 'col_type_1', name: 'Task Type', type: 'Type',
-                options: [ { id: 'opt1', name: 'Design', color: '#ec4899' }, { id: 'opt2', name: 'Development', color: '#6366f1' }, { id: 'opt3', name: 'QA', color: '#10b981' }]
-             },
+             { id: 'col_type_1', name: 'Task Type', type: 'Type', options: [ { id: 'opt1', name: 'Design', color: '#ec4899' }, { id: 'opt2', name: 'Development', color: '#6366f1' }, { id: 'opt3', name: 'QA', color: '#10b981' }] },
              { id: 'col_text_1', name: 'Notes', type: 'Text' },
         ],
         sections: [
@@ -354,21 +350,14 @@ function render() {
         ]
     };
     
-    const mockUsers = {
-        'user-A': { name: 'Alice', initial: 'A' }, 'user-B': { name: 'Bob', initial: 'B' },
-        'user-C': { name: 'Charlie', initial: 'C' }, 'user-D': { name: 'David', initial: 'D' }
-    };
+    const mockUsers = { 'user-A': { name: 'Alice', initial: 'A' }, 'user-B': { name: 'Bob', initial: 'B' }, 'user-C': { name: 'Charlie', initial: 'C' }, 'user-D': { name: 'David', initial: 'D' } };
     
     // --- RENDER LOGIC ---
-
     if (!project || !project.id) {
         if (searchListBody) searchListBody.innerHTML = `<div class="p-4 text-center text-slate-500">Loading project data...</div>`;
         return;
     }
     
-    if (!searchListBody) return;
-    
-    // --- Save scroll state ---
     let scrollState = { top: 0, left: 0 };
     const oldContainer = searchListBody.querySelector('.juanlunacms-spreadsheetlist-custom-scrollbar');
     if (oldContainer) {
@@ -376,7 +365,6 @@ function render() {
         scrollState.left = oldContainer.scrollLeft;
     }
 
-    // --- Data Preparation ---
     const columnDefinitions = new Map();
     project.defaultColumns.forEach(col => columnDefinitions.set(String(col.id), col));
     project.customColumns.forEach(col => columnDefinitions.set(String(col.id), { ...col, isCustom: true }));
@@ -387,51 +375,48 @@ function render() {
     
     searchListBody.innerHTML = '';
     
-    // --- HTML Structure ---
     const container = document.createElement('div');
-container.className = 'w-full h-full bg-white overflow-auto juanlunacms-spreadsheetlist-custom-scrollbar border border-slate-200 rounded-none shadow-sm';
+    container.className = 'w-full h-full bg-white overflow-auto juanlunacms-spreadsheetlist-custom-scrollbar border border-slate-200 rounded-none shadow-sm';
 
-const table = document.createElement('div');
-table.className = 'min-w-max relative';
+    const table = document.createElement('div');
+    table.className = 'min-w-max relative';
 
-// --- HEADER ---
-const header = document.createElement('div');
-header.className = 'flex sticky top-0 z-20 bg-white juanlunacms-spreadsheetlist-sticky-header h-8';
+    const header = document.createElement('div');
+    header.className = 'flex sticky top-0 z-20 bg-white juanlunacms-spreadsheetlist-sticky-header h-8';
 
-const leftHeader = document.createElement('div');
-leftHeader.className = 'sticky left-0 z-10 px-4 font-semibold text-slate-600 border-b border-r border-slate-200 text-xs flex items-center bg-white juanlunacms-spreadsheetlist-left-sticky-pane';
-leftHeader.style.width = '460px';
-leftHeader.style.flexShrink = '0';
-leftHeader.textContent = 'Task Name';
+    const leftHeader = document.createElement('div');
+    leftHeader.className = 'sticky left-0 z-10 px-4 font-semibold text-slate-600 border-b border-r border-slate-200 text-xs flex items-center bg-white juanlunacms-spreadsheetlist-left-sticky-pane';
+    leftHeader.style.width = '460px';
+    leftHeader.style.flexShrink = '0';
+    leftHeader.textContent = 'Task Name';
 
-const rightHeaderContent = document.createElement('div');
-rightHeaderContent.className = 'flex flex-grow border-b border-slate-200';
+    const rightHeaderContent = document.createElement('div');
+    rightHeaderContent.className = 'flex flex-grow border-b border-slate-200';
 
     allDataColumns.forEach(col => {
-    const cell = document.createElement('div');
-    cell.className = 'group relative px-2 py-1 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center text-xs';
-    cell.dataset.columnId = col.id;
+        const cell = document.createElement('div');
+        cell.className = 'group relative px-2 py-1 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center text-xs';
+        cell.dataset.columnId = col.id;
     
-    const innerWrapper = document.createElement('div');
-    innerWrapper.className = 'flex flex-grow items-center min-w-0';
+        const innerWrapper = document.createElement('div');
+        innerWrapper.className = 'flex flex-grow items-center min-w-0';
     
-    const cellText = document.createElement('span');
-    cellText.className = 'header-cell-content flex-grow truncate';
-    cellText.textContent = col.name;
-    innerWrapper.appendChild(cellText);
+        const cellText = document.createElement('span');
+        cellText.className = 'header-cell-content flex-grow truncate';
+        cellText.textContent = col.name;
+        innerWrapper.appendChild(cellText);
     
-    cell.appendChild(innerWrapper);
-    const resizeHandle = document.createElement('div');
-    resizeHandle.className = 'resize-handle';
-    cell.appendChild(resizeHandle);
+        cell.appendChild(innerWrapper);
+        const resizeHandle = document.createElement('div');
+        resizeHandle.className = 'resize-handle';
+        cell.appendChild(resizeHandle);
     
-    rightHeaderContent.appendChild(cell);
-});
+        rightHeaderContent.appendChild(cell);
+    });
     
     header.appendChild(leftHeader);
     header.appendChild(rightHeaderContent);
     
-    // --- Body ---
     const body = document.createElement('div');
 
     allTasks.forEach(task => {
@@ -441,31 +426,27 @@ rightHeaderContent.className = 'flex flex-grow border-b border-slate-200';
         const isCompleted = task.status === 'Completed';
         const taskNameClass = isCompleted ? 'line-through text-slate-400' : 'text-slate-800';
 
-        // Left Task Cell (Task Name) - STICKY
         const leftTaskCell = document.createElement('div');
-        leftTaskCell.className = 'sticky left-0 z-10 p-2 flex items-center border-r border-slate-200 bg-white group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-dynamic-border';
+        leftTaskCell.className = 'sticky left-0 z-10 p-2 flex items-center border-r border-slate-200 bg-white group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane';
         leftTaskCell.style.width = '460px';
         leftTaskCell.style.flexShrink = '0';
-        
-        leftTaskCell.innerHTML = `
-            <input type="checkbox" ${isCompleted ? 'checked' : ''} disabled class="mr-3 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 flex-shrink-0">
-            <span class="text-[11px] whitespace-nowrap truncate ${taskNameClass}">${task.name}</span>
-        `;
+        leftTaskCell.innerHTML = `<input type="checkbox" ${isCompleted ? 'checked' : ''} disabled class="mr-3 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 flex-shrink-0"><span class="text-[11px] whitespace-nowrap truncate ${taskNameClass}">${task.name}</span>`;
 
-        // Right Task Cells (Other Columns) - SCROLLABLE
         const rightTaskCells = document.createElement('div');
         rightTaskCells.className = 'flex-grow flex';
         
         allDataColumns.forEach((col) => {
             const cell = document.createElement('div');
-            cell.className = 'p-2 flex items-center text-[11px] whitespace-nowrap border-r border-slate-200 w-44';
+            // IMPORTANT: Add the data-column-id here so resizing works
+            cell.dataset.columnId = col.id; 
+            cell.className = 'p-2 flex items-center text-[11px] whitespace-nowrap border-r border-slate-200';
             
             let content = '';
             const COMPLETED_STYLE = `background-color: #f3f4f6; color: #6b7280;`;
             const rawValue = task.customFields ? task.customFields[col.id] : undefined;
             
             switch (col.id) {
-                case 'assignees': content = createAssigneeHTML(task.assignees); break;
+                case 'assignees': content = createAssigneeHTML(task.assignees, mockUsers); break;
                 case 'dueDate':
                     const dueDateInfo = formatDueDate(task.dueDate);
                     content = `<span class="font-medium text-${dueDateInfo.color}-600">${dueDateInfo.text}</span>`;
@@ -485,9 +466,7 @@ rightHeaderContent.className = 'flex flex-grow border-b border-slate-200';
                             content = `<div class="font-semibold px-2 py-0.5 rounded-full" style="${style}">${selectedOption.name}</div>`;
                         }
                     } else {
-                        if (rawValue) {
-                            content = (col.type === 'Costing' && typeof rawValue === 'number') ? `$${rawValue.toLocaleString('en-US')}` : rawValue;
-                        }
+                        if (rawValue) content = (col.type === 'Costing' && typeof rawValue === 'number') ? `$${rawValue.toLocaleString('en-US')}` : rawValue;
                     }
                     break;
             }
@@ -505,31 +484,26 @@ rightHeaderContent.className = 'flex flex-grow border-b border-slate-200';
     container.appendChild(table);
     searchListBody.appendChild(container);
     
-    // --- DYNAMIC SHADOWS SCRIPT ---
+    // --- DYNAMIC SHADOWS & SCROLL RESTORE ---
     const stickyHeaderEl = container.querySelector('.juanlunacms-spreadsheetlist-sticky-header');
     const allStickyPanes = container.querySelectorAll('.juanlunacms-spreadsheetlist-left-sticky-pane');
     
-    // Restore scroll position
     container.scrollTop = scrollState.top;
     container.scrollLeft = scrollState.left;
     
-const checkShadows = () => {
-    // This checks if the container is scrolled horizontally at all
-    const isHorizontallyScrolled = container.scrollLeft > 0;
-    
-    // This applies the custom right-side shadow class to the sticky panes only when scrolled
-    allStickyPanes.forEach(pane => {
-        pane.classList.toggle('shadow-right-only', isHorizontallyScrolled);
-    });
-};
+    const checkShadows = () => {
+        const isHorizontallyScrolled = container.scrollLeft > 0;
+        allStickyPanes.forEach(pane => {
+            pane.classList.toggle('shadow-right-only', isHorizontallyScrolled);
+        });
+    };
 
-// Attach the event listener
-container.addEventListener('scroll', checkShadows);
+    container.addEventListener('scroll', checkShadows);
+    checkShadows();
 
-// Run it once on load to set the initial state
-checkShadows();
-initColumnResizing();
-syncColumnWidths();
+    // --- INITIALIZE RESIZING AND WIDTHS ---
+    syncColumnWidths();
+    initColumnResizing();
 }
 
 function syncColumnWidths() {
