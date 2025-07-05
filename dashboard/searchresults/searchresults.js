@@ -399,12 +399,14 @@ const header = document.createElement('div');
 header.className = 'flex sticky top-0 z-20 bg-white juanlunacms-spreadsheetlist-sticky-header h-8';
 
 const leftHeader = document.createElement('div');
-leftHeader.className = 'sticky left-0 z-10 w-80 md:w-96 lg:w-[400px] flex-shrink-0 px-4 font-semibold text-slate-600 border-b border-r border-slate-200 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg text-xs rounded-none flex items-center';
-leftHeader.textContent = 'Name';
-    
-    const rightHeaderContent = document.createElement('div');
-    rightHeaderContent.className = 'flex flex-grow border-b border-slate-200';
-    
+leftHeader.className = 'sticky left-0 z-10 px-4 font-semibold text-slate-600 border-b border-r border-slate-200 text-xs flex items-center bg-white juanlunacms-spreadsheetlist-left-sticky-pane';
+leftHeader.style.width = '460px';
+leftHeader.style.flexShrink = '0';
+leftHeader.textContent = 'Task Name';
+
+const rightHeaderContent = document.createElement('div');
+rightHeaderContent.className = 'flex flex-grow border-b border-slate-200';
+
     allDataColumns.forEach(col => {
     const cell = document.createElement('div');
     // The main cell is a flex container with relative positioning for the handle
