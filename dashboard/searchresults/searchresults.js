@@ -351,72 +351,46 @@ function formatDueDate(dueDateString) {
     }
 }
 
-function render() {    
-    if (!searchListBody) {
+function render() {
+ if (!searchListBody) {
         console.error("Target element #searchListBody not found.");
         return;
     }
 
-    // Helper stubs for editable mode
+    // --- Helper stubs for editable mode ---
     const userCanEditProject = true;
     const canUserEditTask = (task) => true;
 
-    // --- MOCK DATA UPDATED ---
+    // --- Mock Data ---
+    const allAvailableProjects = [
+        { name: 'Q3 Retail Shipments', projectRef: 'Q3R-001' },
+        { name: 'Global Logistics', projectRef: 'GL-052' },
+        { name: 'Warehouse Fulfillment', projectRef: 'WH-08A' },
+        { name: 'New Product Launch', projectRef: 'NPL-2025' }
+    ];
+
     const project = {
         id: 'proj_12345',
-        // Default columns now include the new "Project" column
         defaultColumns: [
-            { id: 'projectInfo', name: 'Project', type: 'Project' }, // New column added
+            { id: 'projectInfo', name: 'Project', type: 'Project' },
             { id: 'assignees', name: 'Assignee', control: "assignee" },
             { id: 'dueDate', name: 'Due Date', control: "due-date" },
             { id: 'priority', name: 'Priority', control: "priority", options: [ { name: 'RUSH', color: '#ef4d3d' }, { name: 'International', color: '#06a5a7' }, { name: 'UPS Stock', color: '#59e166' }] },
-            { id: 'status', name: 'Type of Shipment', control: "status", options: [ { name: 'Ready to Ship', color: '#006eff' }, { name: 'Waiting', color: '#00ad99' }, { name: 'Completed', color: '#878787' } ] }
+            { id: 'status', name: 'Type of Shipment', control: "status", options: [ { name: 'Ready to Ship', color: '#006eff' }, { name: 'Waiting', color: '#00ad99' }, { name: 'Completed', color: '#878787' }] }
         ],
-        // Custom columns have been removed
-        customColumns: [], 
+        customColumns: [], // Kept empty as per previous request
         sections: [
             { id: 'sec_1', title: 'Unfulfilled Orders', tasks: [
-                { 
-                    id: 'task_101', 
-                    name: 'Ship order for Jane Doe', 
-                    status: 'Ready to Ship', 
-                    priority: 'RUSH', 
-                    dueDate: '2025-07-20T23:59:59Z', 
-                    assignees: ['user-A', 'user-B'], 
-                    // New project data added to the task
-                    projectInfo: { name: 'Q3 Retail Shipments', projectRef: 'Q3R-001' },
-                    commentCount: 5, 
-                    likedAmount: 10 
-                },
-                { 
-                    id: 'task_102', 
-                    name: 'Prepare international shipment for John Smith', 
-                    status: 'Waiting', 
-                    priority: 'International', 
-                    dueDate: '2025-08-10T23:59:59Z', 
-                    assignees: ['user-A'], 
-                    projectInfo: { name: 'Global Logistics', projectRef: 'GL-052' },
-                    commentCount: 2, 
-                    likedAmount: 0 
-                }
+                { id: 'task_101', name: 'Ship order for Jane Doe', status: 'Ready to Ship', priority: 'RUSH', dueDate: '2025-07-20T23:59:59Z', assignees: ['user-A', 'user-B'], projectInfo: { name: 'Q3 Retail Shipments', projectRef: 'Q3R-001' }, commentCount: 5, likedAmount: 10 },
+                { id: 'task_102', name: 'Prepare international shipment for John Smith', status: 'Waiting', priority: 'International', dueDate: '2025-08-10T23:59:59Z', assignees: ['user-A'], projectInfo: { name: 'Global Logistics', projectRef: 'GL-052' }, commentCount: 2, likedAmount: 0 }
             ]},
             { id: 'sec_2', title: 'Completed Orders', tasks: [
-                { 
-                    id: 'task_201', 
-                    name: 'Confirm delivery for Emily White', 
-                    status: 'Completed', 
-                    priority: 'UPS Stock', 
-                    dueDate: '2025-07-01T23:59:59Z', 
-                    assignees: ['user-C'], 
-                    projectInfo: { name: 'Warehouse Fulfillment', projectRef: 'WH-08A' },
-                    commentCount: 1, 
-                    likedAmount: 3 
-                }
+                { id: 'task_201', name: 'Confirm delivery for Emily White', status: 'Completed', priority: 'UPS Stock', dueDate: '2025-07-01T23:59:59Z', assignees: ['user-C'], projectInfo: { name: 'Warehouse Fulfillment', projectRef: 'WH-08A' }, commentCount: 1, likedAmount: 3 }
             ]}
         ]
     };
-
-    // --- RENDER LOGIC ---
+    
+    // --- Render Logic ---
     let scrollState = { top: 0, left: 0 };
     const oldContainer = searchListBody.querySelector('.juanlunacms-spreadsheetlist-custom-scrollbar');
     if (oldContainer) {
@@ -424,7 +398,6 @@ function render() {
         scrollState.left = oldContainer.scrollLeft;
     }
 
-    // Simplified column processing, as custom columns are removed
     const allDataColumns = project.defaultColumns;
     const allTasks = project.sections.flatMap(section => section.tasks);
     
@@ -452,20 +425,16 @@ function render() {
         const cell = document.createElement('div');
         cell.className = 'group relative py-0.2 px-2 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center text-[11px]';
         cell.dataset.columnId = col.id;
-    
         const innerWrapper = document.createElement('div');
         innerWrapper.className = 'flex flex-grow items-center min-w-0';
-    
         const cellText = document.createElement('span');
         cellText.className = 'header-cell-content flex-grow truncate';
         cellText.textContent = col.name;
         innerWrapper.appendChild(cellText);
-    
         cell.appendChild(innerWrapper);
         const resizeHandle = document.createElement('div');
         resizeHandle.className = 'resize-handle';
         cell.appendChild(resizeHandle);
-    
         rightHeaderContent.appendChild(cell);
     });
     
@@ -487,27 +456,23 @@ function render() {
         leftTaskCell.style.flexShrink = '0';
 
         const commentCount = task.commentCount || 0;
-const likeCount = task.likedAmount || 0;
-const canEditThisTaskValue = canUserEditTask(task);
-const taskNameEditableClass = canEditThisTaskValue ? 'focus:bg-white focus:ring-1 focus:ring-slate-300' : 'cursor-text';
-
-leftTaskCell.innerHTML = `
-          <label class="juanluna-cms-searchlist-checkbox-container px-2 ml-4" data-control="check">
+        const likeCount = task.likedAmount || 0;
+        const canEditThisTaskValue = canUserEditTask(task);
+        const taskNameEditableClass = canEditThisTaskValue ? 'focus:bg-white focus:ring-1 focus:ring-slate-300' : 'cursor-text';
+        
+        leftTaskCell.innerHTML = `
+          <label class="juanluna-cms-searchlist-checkbox-container px-2 ml-4">
               <input type="checkbox" ${isCompleted ? 'checked' : ''} ${!canEditThisTaskValue ? 'disabled' : ''}>
               <span class="juanluna-cms-searchlist-checkbox"></span>
           </label>
           <div class="flex items-center flex-grow min-w-0">
-              <span class="${taskNameClass} ${taskNameEditableClass} truncate whitespace-nowrap text-[9px] block outline-none bg-transparent rounded px-1"
-                    style="max-width: 100%;"
-                    contenteditable="${canEditThisTaskValue}"
-                    data-task-id="${task.id}">
+              <span class="${taskNameClass} ${taskNameEditableClass} truncate whitespace-nowrap text-[9px] block outline-none bg-transparent"
+                    contenteditable="${canEditThisTaskValue}" data-task-id="${task.id}">
                   ${task.name}
               </span>
-              <div class="task-controls flex items-center gap-1 ml-1 group-hover:opacity-100 ${ (commentCount > 0 || likeCount > 0) ? 'opacity-100' : 'opacity-0'}">
-                  ${commentCount > 0 ? `<span class="comment-count text-[9px] text-slate-500">${commentCount}</span>` : ''}
-                  <span class="material-icons text-slate-400 cursor-pointer hover:text-blue-500 transition" style="font-size: 11px;" data-control="comment">chat_bubble_outline</span>
-                  ${likeCount > 0 ? `<span class="like-count text-[9px] text-slate-500">${likeCount}</span>` : ''}
-                  <span class="material-icons text-slate-400 cursor-pointer hover:text-red-500 transition" style="font-size: 11px;" data-control="like">favorite_border</span>
+              <div class="task-controls flex items-center gap-1 ml-1 group-hover:opacity-100 opacity-0">
+                  <span class="material-icons text-slate-400 cursor-pointer text-[11px]">chat_bubble_outline</span>
+                  <span class="material-icons text-slate-400 cursor-pointer text-[11px]">favorite_border</span>
               </div>
           </div>`;
         
@@ -517,36 +482,78 @@ leftTaskCell.innerHTML = `
         allDataColumns.forEach((col) => {
             const cell = document.createElement('div');
             cell.dataset.columnId = col.id;
-            cell.className = 'py-0.6 px-2 flex items-center text-[11px] whitespace-nowrap border-r border-slate-200';
+            cell.className = 'py-0.6 px-2 flex items-center text-[9px] whitespace-nowrap border-r border-slate-200';
             
             let content = '';
+            const COMPLETED_TEXT_COLOR = '#6b7280';
+            const COMPLETED_BG_COLOR = '#f3f4f6';
+            const canEditThisCell = canUserEditTask(task) && isCellEditable(col);
 
-            // --- UPDATED: Switch statement now includes the 'projectInfo' case ---
+            // --- THIS IS YOUR NEW SWITCH LOGIC, NOW INCLUDING THE 'projectInfo' CASE ---
             switch (col.id) {
                 case 'projectInfo':
+                    cell.dataset.control = 'project-select'; // For event handling
                     if (task.projectInfo) {
                         content = `<div class="flex flex-col">
                                        <span class="font-semibold text-slate-700 truncate">${task.projectInfo.name}</span>
                                        <span class="text-slate-500">${task.projectInfo.projectRef}</span>
                                    </div>`;
                     }
-                    break;
-                case 'assignees':
-                    content = createAssigneeHTML(task.assignees);
-                    break;
-                case 'dueDate':
-                    content = `<span class="font-medium text-${formatDueDate(task.dueDate).color}-600">${formatDueDate(task.dueDate).text}</span>`;
-                    break;
-                case 'priority':
-                case 'status':
-                    const option = col.options?.find(p => p.name === task[col.id]);
-                    if (option) {
-                        const style = `background-color:${option.color}20; color:${option.color};`;
-                        content = `<div class="font-semibold px-2 py-0.5 rounded-full" style="${style}">${task[col.id]}</div>`;
+                    if (canEditThisCell) {
+                        cell.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            // Create a dropdown with project options and a "Create New" button
+                            createAdvancedDropdown(cell, {
+                                options: allAvailableProjects,
+                                onSelect: (selectedProject) => {
+                                    updateTask(task.id, null, { projectInfo: selectedProject });
+                                },
+                                onAdd: openCreateProjectDialog // This function would open your "Create Project" modal
+                            });
+                        });
                     }
                     break;
+
+                case 'assignees':
+                    cell.dataset.control = 'assignee';
+                    content = createAssigneeHTML(task.assignees);
+                    if (canEditThisCell) cell.addEventListener('click', () => createAdvancedDropdown(cell, {options: []}));
+                    break;
+                    
+                case 'dueDate':
+                    cell.dataset.control = 'due-date';
+                    const dueDateInfo = formatDueDate(task.dueDate);
+                    content = `<span class="date-tag date-${dueDateInfo.color}">${dueDateInfo.text}</span>`;
+                    if (canEditThisCell) cell.addEventListener('click', () => console.log('Open Date Picker'));
+                    break;
+                    
+                case 'priority':
+                case 'status':
+                    cell.dataset.control = col.id;
+                    if (task[col.id]) {
+                        const option = col.options?.find(p => p.name === task[col.id]);
+                        if (option) {
+                            const style = isCompleted ? `background-color:${COMPLETED_BG_COLOR};color:${COMPLETED_TEXT_COLOR};` : `background-color:${option.color}20;color:${option.color};`;
+                            content = `<div class="priority-tag" style="${style}">${task[col.id]}</div>`;
+                        } else {
+                            content = `<span>${task[col.id]}</span>`;
+                        }
+                    }
+                    if (canEditThisCell) {
+                        cell.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            createAdvancedDropdown(cell, {
+                                options: col.options,
+                                onSelect: (selectedValue) => {
+                                    updateTask(task.id, null, { [col.id]: selectedValue.name });
+                                }
+                            });
+                        });
+                    }
+                    break;
+
                 default:
-                    content = '–'; // Fallback for any other case
+                    content = '–';
                     break;
             }
             cell.innerHTML = content || '–';
@@ -603,29 +610,34 @@ function syncColumnWidths() {
     const allColumnIds = Array.from(headerContainer.querySelectorAll('[data-column-id]')).map(cell => cell.dataset.columnId);
     
     allColumnIds.forEach(columnId => {
-        const headerCell = headerContainer.querySelector(`[data-column-id="${columnId}"]`);
-        if (!headerCell) return;
+        // --- UPDATED: This logic now uses fixed default widths ---
+        let defaultWidth = 150; // A fallback width
         
-        const textElement = headerCell.querySelector('.header-cell-content');
-        const headerContentWidth = textElement ? textElement.scrollWidth : 0;
-        
-        // --- UPDATED: Simplified min-width logic and added 'projectInfo' ---
-        let minWidth = 150; // A sensible default min-width
-        if (columnId === 'projectInfo') {
-            minWidth = 180; // Give the new Project column more space
+        switch (columnId) {
+            case 'projectInfo':
+                defaultWidth = 200;
+                break;
+            case 'assignees':
+                defaultWidth = 120;
+                break;
+            case 'dueDate':
+                defaultWidth = 100;
+                break;
+            case 'priority':
+                defaultWidth = 120;
+                break;
+            case 'status':
+                defaultWidth = 160;
+                break;
         }
-        // --- END OF UPDATE ---
-        
-        const finalWidth = Math.max(minWidth, headerContentWidth + 32);
         
         const allCellsInColumn = table.querySelectorAll(`[data-column-id="${columnId}"]`);
         allCellsInColumn.forEach(cell => {
-            cell.style.width = `${finalWidth}px`;
-            cell.style.minWidth = `${finalWidth}px`;
+            cell.style.width = `${defaultWidth}px`;
+            cell.style.minWidth = `${defaultWidth}px`;
         });
     });
 }
-
 
 function initColumnResizing() {
     const table = document.querySelector('.min-w-max.relative');
@@ -665,10 +677,19 @@ function initColumnResizing() {
         initialX = e.touches ? e.touches[0].clientX : e.clientX;
         initialWidth = headerCell.offsetWidth;
         
-        // --- UPDATED: Simplified min-width logic for the drag operation ---
-        let minWidth = 100; // A hard minimum for any column during resize
-        if (columnId === 'projectInfo') {
-            minWidth = 180; // Match the sync function's min-width
+        // --- UPDATED: This mirrors the default widths as minimums for resizing ---
+        let minWidth = 100; // A hard minimum for any column
+        
+        switch (columnId) {
+            case 'projectInfo':
+                minWidth = 180;
+                break;
+            case 'assignees':
+                minWidth = 100;
+                break;
+            case 'status':
+                minWidth = 140;
+                break;
         }
         columnSpecificMinWidth = minWidth;
         // --- END OF UPDATE ---
