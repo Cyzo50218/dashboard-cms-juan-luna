@@ -312,51 +312,62 @@ function formatDueDate(dueDateString) {
 }
 
 function render() {
-    let project = {
-        id: 'project_xyz789',
-        name: 'Q3 Product Catalog',
-        products: [
-            {
-                id: 'prod_1A',
-                categoryId: 'cat_001',
-                name: 'Wireless Mechanical Keyboard',
-                imageUrl: 'https://via.placeholder.com/150/8f8f8e/ffffff?text=Keyboard',
-                productSku: 'WMK-K87-RGB',
-                supplierCost: 85.50,
-                supplierName: 'Global Tech Imports',
-                supplierProject: 'Project Alpha',
-                order: 0
-            },
-            {
-                id: 'prod_2A',
-                categoryId: 'cat_002',
-                name: 'Ergonomic Office Chair',
-                imageUrl: 'https://via.placeholder.com/150/5c5c5c/ffffff?text=Chair',
-                productSku: 'EOC-BLK-MESH',
-                supplierCost: 195.75,
-                supplierName: 'Comfort Seating Co.',
-                supplierProject: 'Project Alpha',
-                order: 0
-            },
-            {
-                id: 'prod_1B',
-                categoryId: 'cat_001',
-                name: '4K IPS Monitor 27-inch',
-                imageUrl: null,
-                productSku: 'MON-4K-27-IPS',
-                supplierCost: 320.00,
-                supplierName: 'Display Solutions Inc.',
-                supplierProject: 'Project Gamma',
-                order: 1
-            },
-        ],
-        customColumns: [
-            { id: 'cc_01', name: 'Warehouse Location', type: 'Text' }
-        ],
-    };
+let project = {
+    id: 'project_xyz789',
+    name: 'Q3 Product Catalog',
+
+    // A single, flat array of all products for the project.
+    products: [
+        {
+            id: 'prod_1A',
+            // Each product still needs to know its category for database operations.
+            categoryId: 'cat_001', 
+            name: 'Wireless Mechanical Keyboard',
+            imageUrl: 'https://via.placeholder.com/150/8f8f8e/ffffff?text=Keyboard',
+            productSku: 'WMK-K87-RGB',
+            supplierCost: 85.50,
+            supplierName: 'Global Tech Imports',
+            supplierProject: 'Project Alpha',
+            order: 0 // Order within its logical category
+        },
+        {
+            id: 'prod_2A',
+            categoryId: 'cat_002', // This product is in a different category
+            name: 'Ergonomic Office Chair',
+            imageUrl: 'https://via.placeholder.com/150/5c5c5c/ffffff?text=Chair',
+            productSku: 'EOC-BLK-MESH',
+            supplierCost: 195.75,
+            supplierName: 'Comfort Seating Co.',
+            supplierProject: 'Project Alpha',
+            order: 0
+        },
+        {
+            id: 'prod_1B',
+            categoryId: 'cat_001',
+            name: '4K IPS Monitor 27-inch',
+            imageUrl: null,
+            productSku: 'MON-4K-27-IPS',
+            supplierCost: 320.00,
+            supplierName: 'Display Solutions Inc.',
+            supplierProject: 'Project Gamma',
+            order: 1 // This product comes after the keyboard in the same category
+        },
+    ],
+
+    // Column definitions and rules remain the same.
+    customColumns: [
+        { id: 'cc_01', name: 'Warehouse Location', type: 'Text' }
+    ],
+    columnRules: [
+        { name: 'Supplier Cost', isRestricted: true }
+    ],
+    
+    // Project metadata remains the same.
+    project_super_admin_uid: 'user_super_admin_id',
+    project_admin_user: 'user_admin_id'
+};
 
     // 1. --- INITIAL CHECKS & SETUP ---
-    // The global 'productListBody' should be defined elsewhere, we just check for it.
     if (!productListBody) {
         console.error("Render function aborted: productListBody element not found.");
         return;
@@ -368,7 +379,7 @@ function render() {
         scrollState.top = oldContainer.scrollTop;
         scrollState.left = oldContainer.scrollLeft;
     }
-
+    
     const baseColumns = [
         { id: 'productImage', name: 'Product Image', type: 'Image' },
         { id: 'productSku', name: 'Product SKU', type: 'Text' },
@@ -379,30 +390,30 @@ function render() {
     const customColumns = project.customColumns || [];
     const allColumns = [...baseColumns, ...customColumns];
 
+
     productListBody.innerHTML = '';
     const container = document.createElement('div');
     container.className = 'w-full h-full bg-white overflow-auto juanlunacms-spreadsheetlist-custom-scrollbar border border-slate-200 rounded-none shadow-sm';
-
+    
     const table = document.createElement('div');
     table.className = 'min-w-max relative';
 
-    // 2. --- HEADER CREATION (READ-ONLY) ---
+    // 2. --- HEADER CREATION ---
     const header = document.createElement('div');
     header.className = 'flex sticky top-0 z-20 bg-white juanlunacms-spreadsheetlist-sticky-header h-8';
-
+    
     const leftHeader = document.createElement('div');
     leftHeader.className = 'sticky left-0 z-10 w-80 md:w-96 lg:w-[400px] flex-shrink-0 px-4 font-semibold text-slate-600 border-b border-r border-slate-200 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg text-xs rounded-none flex items-center';
     leftHeader.textContent = 'Product Name';
-
+    
     const rightHeaderContent = document.createElement('div');
     rightHeaderContent.className = 'flex flex-grow border-b border-slate-200';
 
     allColumns.forEach(col => {
         const cell = document.createElement('div');
-        // Simplified class, no group or relative positioning needed for menus.
-        cell.className = 'px-2 py-1 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center text-xs rounded-none';
+        cell.className = 'group relative px-2 py-1 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center text-xs rounded-none';
         cell.dataset.columnId = col.id;
-
+        
         const innerWrapper = document.createElement('div');
         innerWrapper.className = 'flex flex-grow items-center min-w-0';
         innerWrapper.style.userSelect = 'none';
@@ -411,20 +422,24 @@ function render() {
         cellText.className = 'header-cell-content flex-grow';
         cellText.textContent = col.name;
         innerWrapper.appendChild(cellText);
-
+        
         cell.appendChild(innerWrapper);
+        const resizeHandle = document.createElement('div');
+        resizeHandle.className = 'resize-handle';
+        cell.appendChild(resizeHandle);
+        
         rightHeaderContent.appendChild(cell);
     });
 
     header.appendChild(leftHeader);
     header.appendChild(rightHeaderContent);
 
-
-    // 3. --- BODY CREATION (READ-ONLY) ---
+    // 4. --- BODY CREATION (FLAT PRODUCT LIST) ---
     const body = document.createElement('div');
-    const productsContainer = document.createElement('div');
+    const productsContainer = document.createElement('div'); 
     productsContainer.className = 'products-container';
 
+    // The products should be pre-sorted by categoryId and then by order.
     const sortedProducts = (project.products || []).sort((a, b) => {
         if (a.categoryId < b.categoryId) return -1;
         if (a.categoryId > b.categoryId) return 1;
@@ -435,19 +450,25 @@ function render() {
         const productRow = document.createElement('div');
         productRow.className = 'product-row-wrapper flex group border-b border-slate-200';
         productRow.dataset.productId = product.id;
-        productRow.dataset.categoryId = product.categoryId;
-
+        productRow.dataset.categoryId = product.categoryId; // Still required!
+        
+        const canEditThisProduct = canUserEditProduct(product);
+        
         // Left Pane (Product Name)
         const leftProductCell = document.createElement('div');
         leftProductCell.className = 'group sticky left-0 w-80 md:w-96 lg:w-[400px] flex-shrink-0 flex items-center border-r border-transparent group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg juanlunacms-spreadsheetlist-dynamic-border py-0.2';
-
+        leftProductCell.dataset.control = 'open-sidebar';
+        
         leftProductCell.innerHTML = `
-            <div class="flex items-center flex-grow min-w-0 pl-4">
+            <div class="drag-handle ${!canEditThisProduct ? 'hidden' : ''} cursor-grab rounded flex items-center justify-center hover:bg-slate-200 user-select-none p-1">
+                <span class="material-icons text-slate-500 select-none" style="font-size: 20px;" draggable="false">drag_indicator</span>
+            </div>
+            <div class="flex items-center flex-grow min-w-0">
                 <span
-                    class="product-name truncate text-[13px] block outline-none bg-transparent rounded px-1 cursor-text"
-                    contenteditable="false" 
+                    class="product-name truncate text-[13px] block outline-none bg-transparent rounded px-1 ${canEditThisProduct ? 'focus:bg-white focus:ring-1 focus:ring-slate-300' : 'cursor-text'}"
+                    contenteditable="${canEditThisProduct}"
                     data-product-id="${product.id}"
-                >${product.name || ''}</span>
+                >${product.name || 'New Product'}</span>
             </div>
         `;
 
@@ -459,51 +480,66 @@ function render() {
             const cell = document.createElement('div');
             let cellClasses = `table-cell px-2 py-1 flex items-center border-r border-slate-200 text-sm`;
             cellClasses += (col.id === 'productImage') ? ' w-20 justify-center' : ' w-44';
+            
+            
+            const canEditThisCell = isCellEditable(col, product);
+
+            if (!canEditThisCell) {
+                cellClasses += ' cell-restricted bg-slate-50 cursor-not-allowed';
+            }
+            
             cell.className = cellClasses;
             cell.dataset.columnId = col.id;
-
+            
             let content = '';
-            const rawValue = product[col.id];
+            const rawValue = product[col.id] || (product.customFields && product.customFields[col.id]);
 
             switch (col.id) {
                 case 'productImage':
                     content = `<div class="w-10 h-10 bg-gray-200 rounded-md flex items-center justify-center overflow-hidden">
-                                    ${product.imageUrl ? `<img src="${product.imageUrl}" class="w-full h-full object-cover" alt="Product Image">` : '<span class="material-icons text-gray-400">photo_camera</span>'}
-                                </div>`;
+                                   ${product.imageUrl ? `<img src="${product.imageUrl}" class="w-full h-full object-cover" alt="Product Image">` : '<span class="material-icons text-gray-400">photo_camera</span>'}
+                               </div>`;
+                    break;
+                case 'productSku':
+                    content = `<span class="px-1 w-full" contenteditable="${canEditThisCell}">${rawValue || ''}</span>`;
                     break;
                 case 'supplierCost':
                     const cost = (typeof rawValue === 'number') ? '$' + rawValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
-                    content = `<span class="px-1 w-full" contenteditable="false">${cost}</span>`;
+                    content = `<span class="px-1 w-full" contenteditable="${canEditThisCell}">${cost}</span>`;
+                    break;
+                case 'supplierName':
+                     content = `<span class="px-1 w-full" contenteditable="${canEditThisCell}">${rawValue || ''}</span>`;
                     break;
                 case 'supplierProject':
-                     content = `<div class="status-tag">${rawValue || 'N/A'}</div>`;
-                     break;
+                    cell.dataset.control = 'supplier-project';
+                    if(canEditThisCell) {
+                       content = `<div class="status-tag cursor-pointer">${rawValue || 'Select Project'}</div>`;
+                    } else {
+                       content = `<div class="status-tag">${rawValue || 'N/A'}</div>`;
+                    }
+                    break;
                 default:
-                    // Default for SKU, Supplier Name, and any custom fields
-                    content = `<span class="px-1 w-full" contenteditable="false">${rawValue || ''}</span>`;
+                    content = `<span class="px-1 w-full" contenteditable="${canEditThisCell}">${rawValue || ''}</span>`;
                     break;
             }
             cell.innerHTML = content;
             rightProductCells.appendChild(cell);
         });
-
+        
         productRow.appendChild(leftProductCell);
         productRow.appendChild(rightProductCells);
         productsContainer.appendChild(productRow);
     });
-
-    // 4. --- FINAL ASSEMBLY & SCROLL BEHAVIORS ---
+    
+    // 5. --- FINAL ASSEMBLY & DYNAMIC BEHAVIORS ---
     table.appendChild(header);
     body.appendChild(productsContainer);
     table.appendChild(body);
     container.appendChild(table);
     productListBody.appendChild(container);
 
-    // Restore scroll position
     container.scrollTop = scrollState.top;
     container.scrollLeft = scrollState.left;
-
-    // Add scroll listeners for sticky header/pane shadows
     container.addEventListener('scroll', () => {
         const scrolled = container.scrollLeft > 0;
         header.classList.toggle('shadow-md', container.scrollTop > 0);
@@ -511,6 +547,25 @@ function render() {
             pane.classList.toggle('juanlunacms-spreadsheetlist-shadow-right-custom', scrolled);
         });
     });
+    
+    if (userCanEditProject) {
+        initColumnDragging();
+    }
+    initColumnResizing();
+    requestAnimationFrame(syncColumnWidths);
+    
+    if (productIdToFocus) {
+        const productToFocusEl = productListBody.querySelector(`[data-product-id="${productIdToFocus}"] .product-name`);
+        if (productToFocusEl) {
+            productToFocusEl.focus();
+            const range = document.createRange();
+            const sel = window.getSelection();
+            range.selectNodeContents(productToFocusEl);
+            sel.removeAllRanges();
+            sel.addRange(range);
+        }
+        productIdToFocus = null;
+    }
 }
 
 function isCellEditable(column) {
