@@ -423,10 +423,10 @@ const project = {
     table.className = 'min-w-max relative';
 
     const header = document.createElement('div');
-    header.className = 'flex sticky top-0 z-20 bg-white juanlunacms-spreadsheetlist-sticky-header h-4';
+    header.className = 'flex sticky top-0 z-20 bg-white juanlunacms-spreadsheetlist-sticky-header h-6';
 
     const leftHeader = document.createElement('div');
-    leftHeader.className = 'sticky left-0 z-10 py-0.3 px-3 font-semibold text-slate-600 border-b border-r border-slate-200 text-[10px] flex items-center bg-white juanlunacms-spreadsheetlist-left-sticky-pane';
+    leftHeader.className = 'sticky left-0 z-10 py-0.3 px-3 font-semibold text-slate-600 border-b border-r border-slate-200 text-[11px] flex items-center bg-white juanlunacms-spreadsheetlist-left-sticky-pane';
     leftHeader.style.width = '300px';
     leftHeader.style.flexShrink = '0';
     leftHeader.textContent = 'Task Name';
@@ -436,7 +436,7 @@ const project = {
 
     allDataColumns.forEach(col => {
         const cell = document.createElement('div');
-        cell.className = 'group relative py-0.2 py-0.3 px-1 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center text-[10px]';
+        cell.className = 'group relative py-0.2 py-0.3 px-1 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center text-[11px]';
         cell.dataset.columnId = col.id;
     
         const innerWrapper = document.createElement('div');
