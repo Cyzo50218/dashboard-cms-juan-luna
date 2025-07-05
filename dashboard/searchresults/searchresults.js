@@ -498,8 +498,11 @@ const likeIconHTML =
 
 // Set the final HTML for the cell
 leftTaskCell.innerHTML = `
-  <input type="checkbox" ${isCompleted ? 'checked' : ''} disabled class="mr-3 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 flex-shrink-0">
-  
+    <label class="juanlunacms-spreadsheetlist-custom-checkbox-container px-2 ml-4" data-control="check">
+        <input type="checkbox" ${isCompleted ? 'checked' : ''} disabled>
+        <span class="juanlunacms-spreadsheetlist-custom-checkbox"></span>
+    </label>
+    
   <span class="text-[11px] whitespace-nowrap truncate ${taskNameClass}">${task.name}</span>
   
   <div class="ml-auto pl-4 flex items-center gap-3">
