@@ -1471,7 +1471,7 @@ margin-left: 6px;
     z-index: 2;
     margin-left: -12px;
 }
-.headersearches-assignee-list .project-more-icon {
+.headersearches-assignee-list.project-more-icon {
     position: relative; /* REQUIRED for z-index to work */
     z-index: 1; /* Higher than any avatar */
     margin-left: -12px; /* Also apply negative margin to stack it correctly with avatars */
