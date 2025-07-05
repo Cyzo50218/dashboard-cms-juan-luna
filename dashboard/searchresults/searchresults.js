@@ -312,7 +312,6 @@ function formatDueDate(dueDateString) {
 }
 
 function render() {
-    // --- MOCK DATA & HELPERS (Included for a self-contained function) ---
     // 1. Mock Project & User Data
     const project = {
         id: 'proj_12345',
@@ -369,30 +368,38 @@ function render() {
     
     if (!searchListBody) return;
     
+    // --- Save scroll state ---
+    let scrollState = { top: 0, left: 0 };
+    const oldContainer = searchListBody.querySelector('.juanlunacms-spreadsheetlist-custom-scrollbar');
+    if (oldContainer) {
+        scrollState.top = oldContainer.scrollTop;
+        scrollState.left = oldContainer.scrollLeft;
+    }
+
     // --- Data Preparation ---
     const columnDefinitions = new Map();
     project.defaultColumns.forEach(col => columnDefinitions.set(String(col.id), col));
     project.customColumns.forEach(col => columnDefinitions.set(String(col.id), { ...col, isCustom: true }));
     
     const orderedIds = project.columnOrder || [];
-    const allColumns = orderedIds.map(id => columnDefinitions.get(String(id))).filter(Boolean);
+    const allDataColumns = orderedIds.map(id => columnDefinitions.get(String(id))).filter(Boolean);
     const allTasks = project.sections.flatMap(section => section.tasks);
     
     searchListBody.innerHTML = '';
     
     // --- HTML Structure ---
     const container = document.createElement('div');
-    container.className = 'w-full h-full bg-white overflow-auto border border-slate-200 shadow-sm';
+    container.className = 'w-full h-full bg-white overflow-auto juanlunacms-spreadsheetlist-custom-scrollbar';
     
     const table = document.createElement('div');
     table.className = 'min-w-max relative';
     
     // --- Header ---
     const header = document.createElement('div');
-    header.className = 'flex bg-white sticky top-0 z-10 shadow-sm';
+    header.className = 'flex sticky top-0 z-20 bg-white juanlunacms-spreadsheetlist-sticky-header';
     
     const leftHeader = document.createElement('div');
-    leftHeader.className = 'px-4 font-semibold text-slate-600 border-b border-r border-slate-200 text-xs flex items-center bg-white';
+    leftHeader.className = 'sticky left-0 z-10 px-4 font-semibold text-slate-600 border-b border-r border-slate-200 text-xs flex items-center bg-white juanlunacms-spreadsheetlist-left-sticky-pane';
     leftHeader.style.width = '460px';
     leftHeader.style.flexShrink = '0';
     leftHeader.textContent = 'Task Name';
@@ -400,15 +407,10 @@ function render() {
     const rightHeaderContent = document.createElement('div');
     rightHeaderContent.className = 'flex flex-grow border-b border-slate-200';
     
-    allColumns.forEach(col => {
+    allDataColumns.forEach(col => {
         const cell = document.createElement('div');
         cell.className = 'px-2 py-1 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center text-xs w-44';
-        
-        const cellText = document.createElement('span');
-        cellText.className = 'header-cell-content flex-grow truncate';
-        cellText.textContent = col.name;
-        cell.appendChild(cellText);
-        
+        cell.innerHTML = `<span class="truncate">${col.name}</span>`;
         rightHeaderContent.appendChild(cell);
     });
     
@@ -421,14 +423,13 @@ function render() {
     allTasks.forEach(task => {
         const taskRow = document.createElement('div');
         taskRow.className = 'flex group border-b border-slate-200 hover:bg-slate-50';
-        taskRow.dataset.taskId = task.id;
         
         const isCompleted = task.status === 'Completed';
         const taskNameClass = isCompleted ? 'line-through text-slate-400' : 'text-slate-800';
 
-        // Left Task Cell (Task Name)
+        // Left Task Cell (Task Name) - STICKY
         const leftTaskCell = document.createElement('div');
-        leftTaskCell.className = 'p-2 flex items-center border-r border-slate-200 bg-white group-hover:bg-slate-50';
+        leftTaskCell.className = 'sticky left-0 z-10 p-2 flex items-center border-r border-slate-200 bg-white group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-dynamic-border';
         leftTaskCell.style.width = '460px';
         leftTaskCell.style.flexShrink = '0';
         leftTaskCell.innerHTML = `
@@ -436,11 +437,11 @@ function render() {
             <span class="text-[11px] whitespace-nowrap truncate ${taskNameClass}">${task.name}</span>
         `;
 
-        // Right Task Cells (Other Columns)
+        // Right Task Cells (Other Columns) - SCROLLABLE
         const rightTaskCells = document.createElement('div');
         rightTaskCells.className = 'flex-grow flex';
         
-        allColumns.forEach((col) => {
+        allDataColumns.forEach((col) => {
             const cell = document.createElement('div');
             cell.className = 'p-2 flex items-center text-[11px] whitespace-nowrap border-r border-slate-200 w-44';
             
@@ -449,33 +450,28 @@ function render() {
             const rawValue = task.customFields ? task.customFields[col.id] : undefined;
             
             switch (col.id) {
-                case 'assignees': 
-                    content = createAssigneeHTML(task.assignees); 
-                    break;
+                case 'assignees': content = createAssigneeHTML(task.assignees); break;
                 case 'dueDate':
                     const dueDateInfo = formatDueDate(task.dueDate);
                     content = `<span class="font-medium text-${dueDateInfo.color}-600">${dueDateInfo.text}</span>`;
                     break;
-                case 'priority': 
-                case 'status':
+                case 'priority': case 'status':
                     const option = col.options?.find(p => p.name === task[col.id]);
                     if (option) {
                         const style = isCompleted ? COMPLETED_STYLE : `background-color: ${option.color}20; color: ${option.color};`;
-                        content = `<div class="inline-block font-semibold px-2 py-0.5 rounded-full" style="${style}">${option.name}</div>`;
+                        content = `<div class="font-semibold px-2 py-0.5 rounded-full" style="${style}">${option.name}</div>`;
                     }
                     break;
-                default: // Custom Columns
-                    if (col.options) { // Custom 'Select' type
+                default:
+                    if (col.options) {
                         const selectedOption = col.options.find(opt => opt.name === rawValue);
                         if (selectedOption) {
                             const style = isCompleted ? COMPLETED_STYLE : `background-color: ${selectedOption.color}20; color: ${selectedOption.color};`;
-                            content = `<div class="inline-block font-semibold px-2 py-0.5 rounded-full" style="${style}">${selectedOption.name}</div>`;
+                            content = `<div class="font-semibold px-2 py-0.5 rounded-full" style="${style}">${selectedOption.name}</div>`;
                         }
-                    } else { // Other custom types (Text, Costing)
+                    } else {
                         if (rawValue) {
-                            content = (col.type === 'Costing' && typeof rawValue === 'number')
-                                ? `$${rawValue.toLocaleString('en-US')}`
-                                : rawValue;
+                            content = (col.type === 'Costing' && typeof rawValue === 'number') ? `$${rawValue.toLocaleString('en-US')}` : rawValue;
                         }
                     }
                     break;
@@ -493,6 +489,30 @@ function render() {
     table.appendChild(body);
     container.appendChild(table);
     searchListBody.appendChild(container);
+    
+    // --- DYNAMIC SHADOWS SCRIPT ---
+    const stickyHeaderEl = container.querySelector('.juanlunacms-spreadsheetlist-sticky-header');
+    const allStickyPanes = container.querySelectorAll('.juanlunacms-spreadsheetlist-left-sticky-pane');
+    
+    // Restore scroll position
+    container.scrollTop = scrollState.top;
+    container.scrollLeft = scrollState.left;
+    
+    // Initial shadow check
+    const checkShadows = () => {
+        const isHorizontallyScrolled = container.scrollLeft > 0;
+        const isVerticallyScrolled = container.scrollTop > 0;
+        
+        if (stickyHeaderEl) stickyHeaderEl.classList.toggle('shadow-md', isVerticallyScrolled);
+        
+        allStickyPanes.forEach(pane => {
+            // This class will now control the right-side shadow on the sticky pane
+            pane.classList.toggle('shadow-lg', isHorizontallyScrolled);
+        });
+    };
+    
+    container.addEventListener('scroll', checkShadows);
+    checkShadows(); // Run once on initial render
 }
 
 function isCellEditable(column) {
