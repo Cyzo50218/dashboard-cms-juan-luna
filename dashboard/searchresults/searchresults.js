@@ -352,89 +352,101 @@ function formatDueDate(dueDateString) {
 }
 
 function render() {
-    if (!searchListBody) {
-        console.error("Target element #searchListBody not found.");
+    const taskListBody = document.getElementById('taskListBody');
+    if (!taskListBody) {
+        console.error("Target element #taskListBody not found.");
         return;
     }
-    const showCustomColumns = false; 
 
+    // Helper stubs for editable mode
+    const userCanEditProject = true;
+    const canUserEditTask = (task) => true;
+    const isCellEditable = (col) => true;
+    const createAssigneeHTML = (ids) => ids?.join(', ') || '';
+    const formatDueDate = (date) => ({ text: date ? new Date(date).toLocaleDateString() : 'No Date', color: 'gray' });
+    const syncColumnWidths = () => console.log("Syncing widths...");
+    const initColumnResizing = () => console.log("Initializing resizing...");
+
+    // --- MOCK DATA UPDATED ---
     const project = {
         id: 'proj_12345',
+        // Default columns now include the new "Project" column
         defaultColumns: [
+            { id: 'projectInfo', name: 'Project', type: 'Project' }, // New column added
             { id: 'assignees', name: 'Assignee', control: "assignee" },
             { id: 'dueDate', name: 'Due Date', control: "due-date" },
-            { id: 'priority', name: 'Priority', control: "priority", options: [ { name: 'RUSH', color: '#ef4d3d' }, { name: 'International', color: '#06a5a7' }, { name: 'UPS Stock', color: '#59e166' }, { name: 'BULK', color: '#4a90e2' }, { name: 'Cancel', color: '#5500bd' }, { name: 'LATE', color: '#9da800' } ] },
+            { id: 'priority', name: 'Priority', control: "priority", options: [ { name: 'RUSH', color: '#ef4d3d' }, { name: 'International', color: '#06a5a7' }, { name: 'UPS Stock', color: '#59e166' }] },
             { id: 'status', name: 'Type of Shipment', control: "status", options: [ { name: 'Ready to Ship', color: '#006eff' }, { name: 'Waiting', color: '#00ad99' }, { name: 'Completed', color: '#878787' } ] }
         ],
-        customColumns: [
-            { id: 1751340038078, name: "address", type: "Text", isCustom: true },
-            { id: 1751416646551, name: "Order No.", type: "Text", isCustom: true },
-            { id: 1751416667932, name: "EST Amount", type: "Costing", isCustom: true, currency: "$", aggregation: "Sum" },
-            { id: 1751417231966, name: "Type", type: "Type", isCustom: true, options: [ { name: 'Etsy', color: '#c03b02' }, { name: 'Shopify', color: '#4caf50' } ] },
-            { id: 1751417276579, name: "Waybill", type: "Text", isCustom: true }
-        ],
+        // Custom columns have been removed
+        customColumns: [], 
         sections: [
             { id: 'sec_1', title: 'Unfulfilled Orders', tasks: [
-                { id: 'task_101', name: 'Ship order for Jane Doe', status: 'Ready to Ship', priority: 'RUSH', dueDate: '2025-07-20T23:59:59Z', assignees: ['user-A', 'user-B'], customFields: { 1751340038078: '123 Maple St, Springfield, IL', 1751416646551: 'ORD-1001', 1751416667932: 149.99, 1751417231966: 'Shopify', 1751417276579: 'WB77889900' }, commentCount: 5, likedAmount: 10 },
-                { id: 'task_102', name: 'Prepare international shipment for John Smith', status: 'Waiting', priority: 'International', dueDate: '2025-08-10T23:59:59Z', assignees: ['user-A'], customFields: { 1751340038078: '456 Oak Ave, Vancouver, BC', 1751416646551: 'ORD-1002', 1751416667932: 295.50, 1751417231966: 'Etsy', 1751417276579: 'WB11223344' }, commentCount: 2, likedAmount: 0 }
+                { 
+                    id: 'task_101', 
+                    name: 'Ship order for Jane Doe', 
+                    status: 'Ready to Ship', 
+                    priority: 'RUSH', 
+                    dueDate: '2025-07-20T23:59:59Z', 
+                    assignees: ['user-A', 'user-B'], 
+                    // New project data added to the task
+                    projectInfo: { name: 'Q3 Retail Shipments', projectRef: 'Q3R-001' },
+                    commentCount: 5, 
+                    likedAmount: 10 
+                },
+                { 
+                    id: 'task_102', 
+                    name: 'Prepare international shipment for John Smith', 
+                    status: 'Waiting', 
+                    priority: 'International', 
+                    dueDate: '2025-08-10T23:59:59Z', 
+                    assignees: ['user-A'], 
+                    projectInfo: { name: 'Global Logistics', projectRef: 'GL-052' },
+                    commentCount: 2, 
+                    likedAmount: 0 
+                }
             ]},
             { id: 'sec_2', title: 'Completed Orders', tasks: [
-                { id: 'task_201', name: 'Confirm delivery for Emily White', status: 'Completed', priority: 'BULK', dueDate: '2025-07-01T23:59:59Z', assignees: ['user-C'], customFields: { 1751340038078: '789 Pine Ln, Miami, FL', 1751416646551: 'ORD-0955', 1751416667932: 88.00, 1751417231966: 'Shopify', 1751417276579: 'WB55667788' }, commentCount: 1, likedAmount: 3 }
+                { 
+                    id: 'task_201', 
+                    name: 'Confirm delivery for Emily White', 
+                    status: 'Completed', 
+                    priority: 'UPS Stock', 
+                    dueDate: '2025-07-01T23:59:59Z', 
+                    assignees: ['user-C'], 
+                    projectInfo: { name: 'Warehouse Fulfillment', projectRef: 'WH-08A' },
+                    commentCount: 1, 
+                    likedAmount: 3 
+                }
             ]}
         ]
     };
 
-    const mockUsers = { 'user-A': { name: 'Alice', initial: 'A' }, 'user-B': { name: 'Bob', initial: 'B' }, 'user-C': { name: 'Charlie', initial: 'C' }, 'user-D': { name: 'David', initial: 'D' } };
-
-    if (!project || !project.id) {
-        if (searchListBody) searchListBody.innerHTML = `<div class="p-4 text-center text-slate-500">Loading project data...</div>`;
-        return;
-    }
-
+    // --- RENDER LOGIC ---
     let scrollState = { top: 0, left: 0 };
-    const oldContainer = searchListBody.querySelector('.juanlunacms-spreadsheetlist-custom-scrollbar');
+    const oldContainer = taskListBody.querySelector('.juanlunacms-spreadsheetlist-custom-scrollbar');
     if (oldContainer) {
         scrollState.top = oldContainer.scrollTop;
         scrollState.left = oldContainer.scrollLeft;
     }
 
-    const columnDefinitions = new Map();
-    project.defaultColumns.forEach(col => columnDefinitions.set(String(col.id), col));
-    project.customColumns.forEach(col => columnDefinitions.set(String(col.id), { ...col, isCustom: true }));
-    
-    // --- UPDATED: This logic now respects the showCustomColumns filter ---
-    const defaultIds = project.defaultColumns.map(c => c.id);
-    let customIds = []; // Default to no custom columns
-
-    if (showCustomColumns) {
-        // If the filter is true, get the custom column IDs
-        customIds = project.customColumns.map(c => c.id);
-        // Optional: shuffle them
-        for (let i = customIds.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [customIds[i], customIds[j]] = [customIds[j], customIds[i]];
-        }
-    }
-    
-    const orderedIds = [...defaultIds, ...customIds];
-    const allDataColumns = orderedIds.map(id => columnDefinitions.get(String(id))).filter(Boolean);
-    // --- END OF UPDATE ---
-    
+    // Simplified column processing, as custom columns are removed
+    const allDataColumns = project.defaultColumns;
     const allTasks = project.sections.flatMap(section => section.tasks);
     
-    searchListBody.innerHTML = '';
+    taskListBody.innerHTML = '';
     
     const container = document.createElement('div');
-    container.className = 'w-full h-full bg-white overflow-auto juanlunacms-spreadsheetlist-custom-scrollbar border border-slate-200 rounded-none shadow-sm';
+    container.className = 'w-full h-full bg-white overflow-auto juanlunacms-spreadsheetlist-custom-scrollbar';
 
     const table = document.createElement('div');
     table.className = 'min-w-max relative';
 
     const header = document.createElement('div');
-    header.className = 'flex sticky top-0 z-20 bg-white juanlunacms-spreadsheetlist-sticky-header h-6';
+    header.className = 'flex sticky top-0 z-20 bg-white h-6';
 
     const leftHeader = document.createElement('div');
-    leftHeader.className = 'sticky left-0 z-10 py-0.3 px-3 font-semibold text-slate-600 border-b border-r border-slate-200 text-[11px] flex items-center bg-white juanlunacms-spreadsheetlist-left-sticky-pane';
+    leftHeader.className = 'sticky left-0 z-10 py-0.3 px-3 font-semibold text-slate-600 border-b border-r border-slate-200 text-[11px] flex items-center bg-white';
     leftHeader.style.width = '300px';
     leftHeader.style.flexShrink = '0';
     leftHeader.textContent = 'Task Name';
@@ -444,7 +456,7 @@ function render() {
 
     allDataColumns.forEach(col => {
         const cell = document.createElement('div');
-        cell.className = 'group relative py-0.2 py-0.3 px-2 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center text-[11px]';
+        cell.className = 'group relative py-0.2 px-2 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center text-[11px]';
         cell.dataset.columnId = col.id;
     
         const innerWrapper = document.createElement('div');
@@ -463,10 +475,6 @@ function render() {
         rightHeaderContent.appendChild(cell);
     });
     
-    const headerSpacer = document.createElement('div');
-    headerSpacer.className = 'w-4 flex-shrink-0';
-    rightHeaderContent.appendChild(headerSpacer);
-    
     header.appendChild(leftHeader);
     header.appendChild(rightHeaderContent);
     
@@ -480,34 +488,14 @@ function render() {
         const taskNameClass = isCompleted ? 'line-through text-slate-400' : 'text-slate-800';
         
         const leftTaskCell = document.createElement('div');
-        leftTaskCell.className = 'sticky left-0 z-10 py-0.6 px-2 flex items-center border-r border-slate-200 bg-white group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane';
+        leftTaskCell.className = 'sticky left-0 z-10 py-0.6 px-2 flex items-center border-r border-slate-200 bg-white group-hover:bg-slate-50';
         leftTaskCell.style.width = '300px';
         leftTaskCell.style.flexShrink = '0';
 
-        const commentCount = task.commentCount || 0;
-        const likeCount = task.likedAmount || 0;
-        const canEditThisTaskValue = canUserEditTask(task);
-        const taskNameEditableClass = canEditThisTaskValue ? 'focus:bg-white focus:ring-1 focus:ring-slate-300' : 'cursor-text';
-        
-        leftTaskCell.innerHTML = `
-          <label class="juanluna-cms-searchlist-checkbox-container px-2 ml-4" data-control="check">
-              <input type="checkbox" ${isCompleted ? 'checked' : ''} ${!canEditThisTaskValue ? 'disabled' : ''}>
-              <span class="juanluna-cms-searchlist-checkbox"></span>
-          </label>
-          <div class="flex items-center flex-grow min-w-0">
-              <span class="${taskNameClass} ${taskNameEditableClass} truncate whitespace-nowrap text-[9px] block outline-none bg-transparent rounded px-1"
-                    style="max-width: 100%;"
-                    contenteditable="${canEditThisTaskValue}"
-                    data-task-id="${task.id}">
-                  ${task.name}
-              </span>
-              <div class="task-controls flex items-center gap-1 ml-1 group-hover:opacity-100 ${ (commentCount > 0 || likeCount > 0) ? 'opacity-100' : 'opacity-0'}">
-                  ${commentCount > 0 ? `<span class="comment-count text-[9px] text-slate-500">${commentCount}</span>` : ''}
-                  <span class="material-icons text-slate-400 cursor-pointer hover:text-blue-500 transition" style="font-size: 11px;" data-control="comment">chat_bubble_outline</span>
-                  ${likeCount > 0 ? `<span class="like-count text-[9px] text-slate-500">${likeCount}</span>` : ''}
-                  <span class="material-icons text-slate-400 cursor-pointer hover:text-red-500 transition" style="font-size: 11px;" data-control="like">favorite_border</span>
-              </div>
-          </div>`;
+        leftTaskCell.innerHTML = `<div class="flex items-center flex-grow min-w-0">
+            <input type="checkbox" ${isCompleted ? 'checked' : ''} disabled class="mr-3 h-4 w-4 rounded-full border-gray-300">
+            <span class="truncate ${taskNameClass}">${task.name}</span>
+        </div>`;
         
         const rightTaskCells = document.createElement('div');
         rightTaskCells.className = 'flex-grow flex';
@@ -515,47 +503,36 @@ function render() {
         allDataColumns.forEach((col) => {
             const cell = document.createElement('div');
             cell.dataset.columnId = col.id;
-            cell.className = 'py-0.6 px-1 flex items-center text-[9px] whitespace-nowrap border-r border-slate-200';
+            cell.className = 'py-0.6 px-2 flex items-center text-[11px] whitespace-nowrap border-r border-slate-200';
             
             let content = '';
-            const rawValue = task.customFields ? task.customFields[col.id] : undefined;
-            const canEditThisCell = canUserEditTask(task) && isCellEditable(col);
-            const section = {id: task.sectionId};
 
+            // --- UPDATED: Switch statement now includes the 'projectInfo' case ---
             switch (col.id) {
+                case 'projectInfo':
+                    if (task.projectInfo) {
+                        content = `<div class="flex flex-col">
+                                       <span class="font-semibold text-slate-700 truncate">${task.projectInfo.name}</span>
+                                       <span class="text-slate-500">${task.projectInfo.projectRef}</span>
+                                   </div>`;
+                    }
+                    break;
                 case 'assignees':
-                    content = createAssigneeHTML(task.assignees, mockUsers);
+                    content = createAssigneeHTML(task.assignees);
                     break;
                 case 'dueDate':
-                    content = `<span class="date-tag date-${formatDueDate(task.dueDate).color}">${formatDueDate(task.dueDate).text}</span>`;
+                    content = `<span class="font-medium text-${formatDueDate(task.dueDate).color}-600">${formatDueDate(task.dueDate).text}</span>`;
                     break;
-                case 'priority': case 'status':
+                case 'priority':
+                case 'status':
                     const option = col.options?.find(p => p.name === task[col.id]);
                     if (option) {
-                        const style = isCompleted ? 'background-color:#f3f4f6;color:#6b7280;' : `background-color:${option.color}20;color:${option.color};`;
-                        content = `<div class="${col.id}-tag" style="${style}">${task[col.id]}</div>`;
-                    } else {
-                        content = `<span>${task[col.id] || ''}</span>`;
+                        const style = `background-color:${option.color}20; color:${option.color};`;
+                        content = `<div class="font-semibold px-2 py-0.5 rounded-full" style="${style}">${task[col.id]}</div>`;
                     }
                     break;
                 default:
-                    if (col.options && Array.isArray(col.options)) {
-                        const selectedOption = col.options.find(opt => opt.name === rawValue);
-                        if(selectedOption) {
-                             const style = `background-color:${selectedOption.color}20;color:${selectedOption.color};`;
-                             content = `<div class="status-tag" style="${style}">${selectedOption.name}</div>`;
-                        } else {
-                            content = '<span class="add-value">+</span>';
-                        }
-                         if (canEditThisCell) {
-                            cell.addEventListener('click', (e) => { e.stopPropagation(); createAdvancedDropdown(cell, { options: col.options, onSelect: (selectedValue) => { updateTask(task.id, section.id, { [`customFields.${col.id}`]: selectedValue.name }); } }); });
-                        }
-                    } else {
-                        if(canEditThisCell) cell.addEventListener('click', (e) => { e.stopPropagation(); createFloatingInput(cell, task, col); });
-                         if (rawValue) {
-                            content = `<div class="truncate" title="${String(rawValue).replace(/"/g, '&quot;')}">${rawValue}</div>`;
-                         }
-                    }
+                    content = '–'; // Fallback for any other case
                     break;
             }
             cell.innerHTML = content || '–';
@@ -570,22 +547,10 @@ function render() {
     table.appendChild(header);
     table.appendChild(body);
     container.appendChild(table);
-    searchListBody.appendChild(container);
-    
-    const allStickyPanes = container.querySelectorAll('.juanlunacms-spreadsheetlist-left-sticky-pane');
+    taskListBody.appendChild(container);
     
     container.scrollTop = scrollState.top;
     container.scrollLeft = scrollState.left;
-    
-    const checkShadows = () => {
-        const isHorizontallyScrolled = container.scrollLeft > 0;
-        allStickyPanes.forEach(pane => {
-            pane.classList.toggle('shadow-right-only', isHorizontallyScrolled);
-        });
-    };
-
-    container.addEventListener('scroll', checkShadows);
-    checkShadows();
 
     syncColumnWidths();
     initColumnResizing();
