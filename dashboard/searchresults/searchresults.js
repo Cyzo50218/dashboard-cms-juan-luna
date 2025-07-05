@@ -40,15 +40,11 @@ import {
 } from "/services/firebase-config.js";
 
 let app, auth, db, storage;
-try {
-  app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
-  db = getFirestore(app, "juanluna-cms-01");
-  storage = getStorage(app);
-} catch (e) {
-  console.error("TaskSidebar: Firebase initialization failed.", e);
-  return { init: () => {}, open: () => {} };
-}
+
+app = initializeApp(firebaseConfig);
+auth = getAuth(app);
+db = getFirestore(app, "juanluna-cms-01");
+storage = getStorage(app);
 
 const mockResults = [
   {
