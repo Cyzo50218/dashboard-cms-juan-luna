@@ -451,22 +451,16 @@ let project = {
         productRow.className = 'product-row-wrapper flex group border-b border-slate-200';
         productRow.dataset.productId = product.id;
         productRow.dataset.categoryId = product.categoryId; // Still required!
-        
-        const canEditThisProduct = canUserEditProduct(product);
-        
+
         // Left Pane (Product Name)
         const leftProductCell = document.createElement('div');
         leftProductCell.className = 'group sticky left-0 w-80 md:w-96 lg:w-[400px] flex-shrink-0 flex items-center border-r border-transparent group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg juanlunacms-spreadsheetlist-dynamic-border py-0.2';
         leftProductCell.dataset.control = 'open-sidebar';
         
         leftProductCell.innerHTML = `
-            <div class="drag-handle ${!canEditThisProduct ? 'hidden' : ''} cursor-grab rounded flex items-center justify-center hover:bg-slate-200 user-select-none p-1">
-                <span class="material-icons text-slate-500 select-none" style="font-size: 20px;" draggable="false">drag_indicator</span>
-            </div>
             <div class="flex items-center flex-grow min-w-0">
                 <span
                     class="product-name truncate text-[13px] block outline-none bg-transparent rounded px-1 ${canEditThisProduct ? 'focus:bg-white focus:ring-1 focus:ring-slate-300' : 'cursor-text'}"
-                    contenteditable="${canEditThisProduct}"
                     data-product-id="${product.id}"
                 >${product.name || 'New Product'}</span>
             </div>
