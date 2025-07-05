@@ -314,7 +314,7 @@ async function open(taskId, projectRef) {
         let assigneesForHistory = [];
         const foundProfile = allUsers.find(u => u.id === currentTask.assignees);
             
-            if(currentTask.assignees.length === 0){
+            if(currentTask.assignees.length > 0){
                 if (foundProfile) {
     assigneesForHistory.push({
         uid: currentTask.assignees,
