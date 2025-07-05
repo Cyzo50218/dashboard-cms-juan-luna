@@ -360,11 +360,6 @@ function render() {
     // Helper stubs for editable mode
     const userCanEditProject = true;
     const canUserEditTask = (task) => true;
-    const isCellEditable = (col) => true;
-    const createAssigneeHTML = (ids) => ids?.join(', ') || '';
-    const formatDueDate = (date) => ({ text: date ? new Date(date).toLocaleDateString() : 'No Date', color: 'gray' });
-    const syncColumnWidths = () => console.log("Syncing widths...");
-    const initColumnResizing = () => console.log("Initializing resizing...");
 
     // --- MOCK DATA UPDATED ---
     const project = {
