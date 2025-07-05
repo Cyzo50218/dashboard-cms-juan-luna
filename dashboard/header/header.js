@@ -491,7 +491,7 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
       }).join('');
       
       const moreAssigneesHtml = overflowCount > 0 ?
-        `<div class="headersearches-assignee-avatar project-more-icon" title="${overflowCount} more members" style="z-index: ${50 - maxDisplayAvatars};">
+        `<div class="headersearches-assignee-list project-more-icon" title="${overflowCount} more members" style="z-index: ${50 - maxDisplayAvatars};">
                     <span class="material-icons-outlined">more_horiz</span>
                 </div>` : '';
       
