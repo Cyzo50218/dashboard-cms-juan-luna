@@ -389,30 +389,47 @@ function render() {
     
     // --- HTML Structure ---
     const container = document.createElement('div');
-    container.className = 'w-full h-full bg-white overflow-auto juanlunacms-spreadsheetlist-custom-scrollbar';
-    
-    const table = document.createElement('div');
-    table.className = 'min-w-max relative';
-    
-    // --- Header ---
-    const header = document.createElement('div');
-    header.className = 'flex sticky top-0 z-20 bg-white juanlunacms-spreadsheetlist-sticky-header';
-    
-    const leftHeader = document.createElement('div');
-    leftHeader.className = 'sticky left-0 z-10 px-4 font-semibold text-slate-600 border-b border-r border-slate-200 text-xs flex items-center bg-white juanlunacms-spreadsheetlist-left-sticky-pane';
-    leftHeader.style.width = '460px';
-    leftHeader.style.flexShrink = '0';
-    leftHeader.textContent = 'Task Name';
+container.className = 'w-full h-full bg-white overflow-auto juanlunacms-spreadsheetlist-custom-scrollbar border border-slate-200 rounded-none shadow-sm';
+
+const table = document.createElement('div');
+table.className = 'min-w-max relative';
+
+// --- HEADER ---
+const header = document.createElement('div');
+header.className = 'flex sticky top-0 z-20 bg-white juanlunacms-spreadsheetlist-sticky-header h-8';
+
+const leftHeader = document.createElement('div');
+leftHeader.className = 'sticky left-0 z-10 w-80 md:w-96 lg:w-[400px] flex-shrink-0 px-4 font-semibold text-slate-600 border-b border-r border-slate-200 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg text-xs rounded-none flex items-center';
+leftHeader.textContent = 'Name';
     
     const rightHeaderContent = document.createElement('div');
     rightHeaderContent.className = 'flex flex-grow border-b border-slate-200';
     
-    allDataColumns.forEach(col => {
-        const cell = document.createElement('div');
-        cell.className = 'px-2 py-1 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center text-xs w-44';
-        cell.innerHTML = `<span class="truncate">${col.name}</span>`;
-        rightHeaderContent.appendChild(cell);
-    });
+    allColumns.forEach(col => {
+    const cell = document.createElement('div');
+    // The main cell is a flex container with relative positioning for the handle
+    let cellClasses = 'group relative px-2 py-1 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center text-xs rounded-none';
+    cell.className = cellClasses;
+    cell.dataset.columnId = col.id;
+    
+    // This inner wrapper will hold the text and menu icon
+    const innerWrapper = document.createElement('div');
+    innerWrapper.className = 'flex flex-grow items-center min-w-0'; // min-w-0 is crucial for flex truncation
+    
+    const cellText = document.createElement('span');
+    // --- FIX #1: The text now grows to push the icon to the end ---
+    cellText.className = 'header-cell-content flex-grow';
+    cellText.textContent = col.name;
+    innerWrapper.appendChild(cellText);
+    
+    // Add the inner wrapper and resize handle to the cell
+    cell.appendChild(innerWrapper);
+    const resizeHandle = document.createElement('div');
+    resizeHandle.className = 'resize-handle';
+    cell.appendChild(resizeHandle);
+    
+    rightHeaderContent.appendChild(cell);
+});
     
     header.appendChild(leftHeader);
     header.appendChild(rightHeaderContent);
@@ -498,21 +515,21 @@ function render() {
     container.scrollTop = scrollState.top;
     container.scrollLeft = scrollState.left;
     
-    // Initial shadow check
-    const checkShadows = () => {
-        const isHorizontallyScrolled = container.scrollLeft > 0;
-        const isVerticallyScrolled = container.scrollTop > 0;
-        
-        if (stickyHeaderEl) stickyHeaderEl.classList.toggle('shadow-md', isVerticallyScrolled);
-        
-        allStickyPanes.forEach(pane => {
-            // This class will now control the right-side shadow on the sticky pane
-            pane.classList.toggle('shadow-lg', isHorizontallyScrolled);
-        });
-    };
+const checkShadows = () => {
+    // This checks if the container is scrolled horizontally at all
+    const isHorizontallyScrolled = container.scrollLeft > 0;
     
-    container.addEventListener('scroll', checkShadows);
-    checkShadows(); // Run once on initial render
+    // This applies the custom right-side shadow class to the sticky panes only when scrolled
+    allStickyPanes.forEach(pane => {
+        pane.classList.toggle('shadow-right-only', isHorizontallyScrolled);
+    });
+};
+
+// Attach the event listener
+container.addEventListener('scroll', checkShadows);
+
+// Run it once on load to set the initial state
+checkShadows();
 }
 
 function isCellEditable(column) {
