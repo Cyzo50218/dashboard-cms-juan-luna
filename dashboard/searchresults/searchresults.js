@@ -414,6 +414,10 @@ function render() {
         rightHeaderContent.appendChild(cell);
     });
     
+    const headerSpacer = document.createElement('div');
+    headerSpacer.className = 'w-4 flex-shrink-0'; 
+    rightHeaderContent.appendChild(headerSpacer);
+    
     header.appendChild(leftHeader);
     header.appendChild(rightHeaderContent);
     
