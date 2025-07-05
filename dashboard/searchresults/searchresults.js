@@ -341,15 +341,15 @@ function render() {
             {
                 id: 'sec_1', title: 'Phase 1: Planning & Design',
                 tasks: [
-                    { id: 'task_101', name: 'Finalize project requirements document', status: 'Completed', priority: 'High', dueDate: '2025-06-20T23:59:59Z', assignees: ['user-A', 'user-B'], customFields: { col_cost_1: 1500, col_type_1: 'Design' } },
-                    { id: 'task_102', name: 'Create initial UI/UX mockups', status: 'In Progress', priority: 'High', dueDate: '2025-07-10T23:59:59Z', assignees: ['user-A'], customFields: { col_cost_1: 3250.50, col_type_1: 'Design', col_text_1: 'Focus on mobile-first design.' } },
+                    { id: 'task_101', name: 'Finalize project requirements document for the new mobile application interface', status: 'Completed', priority: 'High', dueDate: '2025-07-20T23:59:59Z', assignees: ['user-A', 'user-B'], customFields: { col_cost_1: 1500, col_type_1: 'Design' } },
+                    { id: 'task_102', name: 'Create initial UI/UX mockups and wireframes for all major user flows', status: 'In Progress', priority: 'High', dueDate: '2025-08-10T23:59:59Z', assignees: ['user-A'], customFields: { col_cost_1: 3250.50, col_type_1: 'Design', col_text_1: 'Focus on mobile-first design patterns and accessibility standards.' } },
                 ]
             },
             {
                 id: 'sec_2', title: 'Phase 2: Development',
                 tasks: [
-                    { id: 'task_201', name: 'Set up database architecture', status: 'In Progress', priority: 'High', dueDate: '2025-07-25T23:59:59Z', assignees: ['user-C', 'user-D'], customFields: { col_cost_1: 5000, col_type_1: 'Development' } },
-                    { id: 'task_202', name: 'Implement user authentication module', status: 'On Hold', priority: 'Medium', dueDate: '2025-08-01T23:59:59Z', assignees: ['user-D'], customFields: { col_cost_1: 4500, col_type_1: 'Development', col_text_1: 'Waiting on new API keys.' } },
+                    { id: 'task_201', name: 'Set up database architecture, schemas, and necessary tables', status: 'In Progress', priority: 'High', dueDate: '2025-08-25T23:59:59Z', assignees: ['user-C', 'user-D'], customFields: { col_cost_1: 5000, col_type_1: 'Development' } },
+                    { id: 'task_202', name: 'Implement user authentication module with OAuth 2.0 and two-factor auth', status: 'On Hold', priority: 'Medium', dueDate: '2025-09-01T23:59:59Z', assignees: ['user-D'], customFields: { col_cost_1: 4500, col_type_1: 'Development', col_text_1: 'Waiting on new API keys from the identity provider.' } },
                 ]
             },
         ]
@@ -363,9 +363,7 @@ function render() {
     // --- RENDER LOGIC ---
 
     if (!project || !project.id) {
-        if (searchListBody) {
-            searchListBody.innerHTML = `<div class="p-4 text-center text-slate-500">Loading project data...</div>`;
-        }
+        if (searchListBody) searchListBody.innerHTML = `<div class="p-4 text-center text-slate-500">Loading project data...</div>`;
         return;
     }
     
@@ -373,12 +371,10 @@ function render() {
     
     // --- Data Preparation ---
     const columnDefinitions = new Map();
-    // Manually add the "Task Name" as the first column
-    columnDefinitions.set('taskName', { id: 'taskName', name: 'Task Name', type: 'Text' });
     project.defaultColumns.forEach(col => columnDefinitions.set(String(col.id), col));
     project.customColumns.forEach(col => columnDefinitions.set(String(col.id), { ...col, isCustom: true }));
     
-    const orderedIds = ['taskName', ...(project.columnOrder || [])];
+    const orderedIds = project.columnOrder || [];
     const allColumns = orderedIds.map(id => columnDefinitions.get(String(id))).filter(Boolean);
     const allTasks = project.sections.flatMap(section => section.tasks);
     
@@ -388,90 +384,113 @@ function render() {
     const container = document.createElement('div');
     container.className = 'w-full h-full bg-white overflow-auto border border-slate-200 shadow-sm';
     
-    const table = document.createElement('table');
-    table.className = 'w-full border-collapse';
-
+    const table = document.createElement('div');
+    table.className = 'min-w-max relative';
+    
     // --- Header ---
-    const thead = table.createTHead();
-    const headerRow = thead.insertRow();
-    headerRow.className = 'sticky top-0 z-10 bg-white shadow-sm';
-
+    const header = document.createElement('div');
+    header.className = 'flex bg-white sticky top-0 z-10 shadow-sm';
+    
+    const leftHeader = document.createElement('div');
+    leftHeader.className = 'px-4 font-semibold text-slate-600 border-b border-r border-slate-200 text-xs flex items-center bg-white';
+    leftHeader.style.width = '460px';
+    leftHeader.style.flexShrink = '0';
+    leftHeader.textContent = 'Task Name';
+    
+    const rightHeaderContent = document.createElement('div');
+    rightHeaderContent.className = 'flex flex-grow border-b border-slate-200';
+    
     allColumns.forEach(col => {
-        const th = document.createElement('th');
-        let widthClass = 'w-44'; // Default width
-        if (col.id === 'taskName') widthClass = 'w-96';
-        else if (['Text', 'Numbers', 'Type', 'priority', 'status'].includes(col.type)) {
-            widthClass = 'w-48';
-        }
+        const cell = document.createElement('div');
+        cell.className = 'px-2 py-1 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center text-xs w-44';
         
-        th.className = `p-2 font-semibold text-slate-600 border-b border-r border-slate-200 text-xs text-left ${widthClass}`;
-        th.textContent = col.name;
-        headerRow.appendChild(th);
+        const cellText = document.createElement('span');
+        cellText.className = 'header-cell-content flex-grow truncate';
+        cellText.textContent = col.name;
+        cell.appendChild(cellText);
+        
+        rightHeaderContent.appendChild(cell);
     });
-
+    
+    header.appendChild(leftHeader);
+    header.appendChild(rightHeaderContent);
+    
     // --- Body ---
-    const tbody = table.createTBody();
+    const body = document.createElement('div');
 
     allTasks.forEach(task => {
-        const taskRow = tbody.insertRow();
-        taskRow.className = 'group hover:bg-slate-50';
+        const taskRow = document.createElement('div');
+        taskRow.className = 'flex group border-b border-slate-200 hover:bg-slate-50';
         taskRow.dataset.taskId = task.id;
-
+        
         const isCompleted = task.status === 'Completed';
+        const taskNameClass = isCompleted ? 'line-through text-slate-400' : 'text-slate-800';
 
-        allColumns.forEach(col => {
-            const cell = taskRow.insertCell();
-            cell.className = `p-2 text-sm border-b border-r border-slate-200 ${isCompleted ? 'text-slate-400' : 'text-slate-800'}`;
+        // Left Task Cell (Task Name)
+        const leftTaskCell = document.createElement('div');
+        leftTaskCell.className = 'p-2 flex items-center border-r border-slate-200 bg-white group-hover:bg-slate-50';
+        leftTaskCell.style.width = '460px';
+        leftTaskCell.style.flexShrink = '0';
+        leftTaskCell.innerHTML = `
+            <input type="checkbox" ${isCompleted ? 'checked' : ''} disabled class="mr-3 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 flex-shrink-0">
+            <span class="text-[11px] whitespace-nowrap truncate ${taskNameClass}">${task.name}</span>
+        `;
 
+        // Right Task Cells (Other Columns)
+        const rightTaskCells = document.createElement('div');
+        rightTaskCells.className = 'flex-grow flex';
+        
+        allColumns.forEach((col) => {
+            const cell = document.createElement('div');
+            cell.className = 'p-2 flex items-center text-[11px] whitespace-nowrap border-r border-slate-200 w-44';
+            
             let content = '';
             const COMPLETED_STYLE = `background-color: #f3f4f6; color: #6b7280;`;
-
-            // --- Cell Content Logic ---
-            if (col.id === 'taskName') {
-                content = `<div class="flex items-center">
-                               <input type="checkbox" ${isCompleted ? 'checked' : ''} disabled class="mr-3 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
-                               <span class="${isCompleted ? 'line-through' : ''}">${task.name}</span>
-                           </div>`;
-            } else {
-                const rawValue = task.customFields ? task.customFields[col.id] : undefined;
-                
-                switch (col.id) {
-                    case 'assignees': 
-                        content = createAssigneeHTML(task.assignees); 
-                        break;
-                    case 'dueDate':
-                        const dueDateInfo = formatDueDate(task.dueDate);
-                        content = `<span class="font-medium text-${dueDateInfo.color}-600">${dueDateInfo.text}</span>`;
-                        break;
-                    case 'priority': 
-                    case 'status':
-                        const option = col.options?.find(p => p.name === task[col.id]);
-                        if (option) {
-                            const style = isCompleted ? COMPLETED_STYLE : `background-color: ${option.color}20; color: ${option.color};`;
-                            content = `<div class="inline-block text-xs font-semibold px-2 py-0.5 rounded-full" style="${style}">${option.name}</div>`;
+            const rawValue = task.customFields ? task.customFields[col.id] : undefined;
+            
+            switch (col.id) {
+                case 'assignees': 
+                    content = createAssigneeHTML(task.assignees); 
+                    break;
+                case 'dueDate':
+                    const dueDateInfo = formatDueDate(task.dueDate);
+                    content = `<span class="font-medium text-${dueDateInfo.color}-600">${dueDateInfo.text}</span>`;
+                    break;
+                case 'priority': 
+                case 'status':
+                    const option = col.options?.find(p => p.name === task[col.id]);
+                    if (option) {
+                        const style = isCompleted ? COMPLETED_STYLE : `background-color: ${option.color}20; color: ${option.color};`;
+                        content = `<div class="inline-block font-semibold px-2 py-0.5 rounded-full" style="${style}">${option.name}</div>`;
+                    }
+                    break;
+                default: // Custom Columns
+                    if (col.options) { // Custom 'Select' type
+                        const selectedOption = col.options.find(opt => opt.name === rawValue);
+                        if (selectedOption) {
+                            const style = isCompleted ? COMPLETED_STYLE : `background-color: ${selectedOption.color}20; color: ${selectedOption.color};`;
+                            content = `<div class="inline-block font-semibold px-2 py-0.5 rounded-full" style="${style}">${selectedOption.name}</div>`;
                         }
-                        break;
-                    default: // Custom Columns
-                        if (col.options) { // Custom 'Select' type
-                            const selectedOption = col.options.find(opt => opt.name === rawValue);
-                            if (selectedOption) {
-                                const style = isCompleted ? COMPLETED_STYLE : `background-color: ${selectedOption.color}20; color: ${selectedOption.color};`;
-                                content = `<div class="inline-block text-xs font-semibold px-2 py-0.5 rounded-full" style="${style}">${selectedOption.name}</div>`;
-                            }
-                        } else { // Other custom types (Text, Costing)
-                            if (rawValue) {
-                                content = (col.type === 'Costing' && typeof rawValue === 'number')
-                                    ? `$${rawValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                    : rawValue;
-                            }
+                    } else { // Other custom types (Text, Costing)
+                        if (rawValue) {
+                            content = (col.type === 'Costing' && typeof rawValue === 'number')
+                                ? `$${rawValue.toLocaleString('en-US')}`
+                                : rawValue;
                         }
-                        break;
-                }
+                    }
+                    break;
             }
-            cell.innerHTML = content || '–'; // Default to a dash if content is empty
+            cell.innerHTML = content || '–';
+            rightTaskCells.appendChild(cell);
         });
-    });
 
+        taskRow.appendChild(leftTaskCell);
+        taskRow.appendChild(rightTaskCells);
+        body.appendChild(taskRow);
+    });
+    
+    table.appendChild(header);
+    table.appendChild(body);
     container.appendChild(table);
     searchListBody.appendChild(container);
 }
