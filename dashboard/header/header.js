@@ -987,6 +987,7 @@ onAuthStateChanged(auth, async (user) => {
         const projectOptionBtns = document.querySelectorAll('.project-display .option-btn-tasks');
         const savedSearchText = document.getElementById('saved-searches-text');
         const savedSearchContainer = document.querySelector('.saved-searches');
+        const savedSearchTwoContainer = document.querySelector('.saved-searches-two');
         const recentContainer = document.getElementById('recent-container');
         const savedContainer = document.getElementById('saved-container');
         const halfQuery = document.getElementById('half-query');
@@ -1281,7 +1282,7 @@ onAuthStateChanged(auth, async (user) => {
                 mytaskdisplay.classList.add("hidden");
                 savedSearchText.classList.remove("hidden");
                 savedSearchContainer.classList.remove("hidden");
-                
+                savedSearchTwoContainer.classList.remove("hidden");
                 fetchRecentItemsFromFirestore(renderRecentItems, {
                   showTasks: true,
                   showPeople: true,
@@ -1299,6 +1300,7 @@ onAuthStateChanged(auth, async (user) => {
                 btn.classList.add("selected");
                 mytaskdisplay.classList.remove("hidden");
                 savedSearchText.classList.add("hidden");
+                savedSearchTwoContainer.classList.add("hidden");
                 savedSearchContainer.classList.add("hidden");
                 optionBtns.forEach((b, i) => {
                   if (i !== 0) {
@@ -1358,6 +1360,7 @@ onAuthStateChanged(auth, async (user) => {
                 projectdisplay.classList.remove("hidden");
                 savedSearchText.classList.add("hidden");
                 savedSearchContainer.classList.add("hidden");
+                savedSearchTwoContainer.classList.add("hidden");
                 messagesEmptyState.classList.remove("hidden");
                 optionBtns.forEach((b, i) => {
                   if (i !== 1) {
@@ -1404,6 +1407,7 @@ onAuthStateChanged(auth, async (user) => {
                 btn.classList.remove("selected");
                 savedSearchText.classList.remove("hidden");
                 savedSearchContainer.classList.remove("hidden");
+                savedSearchTwoContainer.classList.remove("hidden");
                 recentContainer.classList.remove("hidden");
                 savedContainer.classList.remove("hidden");
                 emailContainerPeopleId.classList.remove('hidden');
@@ -1427,6 +1431,7 @@ onAuthStateChanged(auth, async (user) => {
                 btn.classList.add("selected");
                 savedSearchText.classList.add("hidden");
                 savedSearchContainer.classList.add("hidden");
+                savedSearchTwoContainer.classList.add("hidden");
                 savedContainer.classList.add("hidden");
                 if (recentContainer) recentContainer.classList.remove("hidden");
                 if (peopleQueryDiv) peopleQueryDiv.classList.add('hidden');
@@ -1502,6 +1507,7 @@ onAuthStateChanged(auth, async (user) => {
                 optionBtns.forEach(b => b.classList.remove("hide"));
                 savedSearchText.classList.remove("hidden");
                 savedSearchContainer.classList.remove("hidden");
+                savedSearchTwoContainer.classList.remove("hidden");
                 recentContainer.classList.remove("hidden");
                 messagesEmptyState.classList.add("hidden");
                 savedContainer.classList.remove("hidden");
@@ -1516,7 +1522,7 @@ onAuthStateChanged(auth, async (user) => {
                 btn.classList.add("selected");
                 savedSearchText.classList.add("hidden");
                 messagesEmptyState.classList.remove("hidden");
-                
+                savedSearchTwoContainer.classList.add("hidden");
                 savedSearchContainer.classList.add("hidden");
                 optionBtns.forEach((b, i) => {
                   if (i !== 3) {
