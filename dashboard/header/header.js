@@ -877,7 +877,7 @@ async function renderSearchResultItem(item) {
         `;
         
         itemDiv.addEventListener('click', () => {
-          const projectRef = task.projectRef?.path || '';
+          const projectRef = task.projectRef || '';
 sessionStorage.setItem('pendingProjectRef', projectRef);
 
   const href = `/tasks/${currentUserId}/list/${task.projectId}?openTask=${task.taskId}`;

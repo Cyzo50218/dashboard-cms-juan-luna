@@ -394,7 +394,7 @@ function initializeListView(params) {
       
     console.log(`Opening sidebar from URL param: ${taskIdToOpen}`);
     if (window.TaskSidebar && typeof window.TaskSidebar.open === 'function') {
-        console.log(`Current Project Ref: ${currentProjectRef}`);
+        console.log(`Current Project Ref: ${projectRefPath}`);
       window.TaskSidebar.open(taskIdToOpen, projectRefPath);
       sessionStorage.removeItem('pendingProjectRef');
     } else {
