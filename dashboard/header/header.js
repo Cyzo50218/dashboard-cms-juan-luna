@@ -1299,7 +1299,15 @@ async function handleNewWorkspace() {
   }
 }
 
+function resetHalfQueryContainer() {
+  const old = document.getElementById('half-query');
+  if (!old) return null;
 
+  const replacement = old.cloneNode(false);
+  replacement.id = 'half-query';
+  old.parentNode.replaceChild(replacement, old);
+  return replacement;
+}
 
 function showErrorUI() {
   halfQuery.classList.remove("skeleton-active");
@@ -2002,7 +2010,7 @@ input.addEventListener('input', async () => {
       lastInputValue = value;
 
       // ❌ Clear existing results immediately
-      halfQuery.innerHTML = '';
+      halfQuery = resetHalfQueryContainer();
       halfQuery.classList.remove("hidden");
       halfQuery.classList.add("skeleton-active");
 
@@ -2017,6 +2025,7 @@ input.addEventListener('input', async () => {
 
     // ⏳ Show loading placeholders
     if (halfQuery.innerHTML.trim() === '') {
+      halfQuery = resetHalfQueryContainer();
       halfQuery.innerHTML = `
         <div class="skeleton-loader" style="width: 200px;"></div>
         <div class="skeleton-loader" style="width: 500px;"></div>
@@ -2057,7 +2066,7 @@ input.addEventListener('input', async () => {
 
     displaySearchResults([], [], [], []);
     cancelIcon.classList.add('hidden');
-    halfQuery.innerHTML = '';
+    halfQuery = resetHalfQueryContainer();
     halfQuery.classList.add("hidden");
     halfQuery.classList.remove("skeleton-active");
 
@@ -2128,7 +2137,7 @@ cancelIcon.addEventListener('click', async () => {
     input.value = '';
     displaySearchResults([], [], [], []);
 cancelIcon.classList.add('hidden');
-halfQuery.innerHTML = '';
+halfQuery = resetHalfQueryContainer();
 halfQuery.classList.add("hidden");
 halfQuery.classList.remove("skeleton-active"); // also remove loading state
 recentContainer.classList.remove("hidden");
