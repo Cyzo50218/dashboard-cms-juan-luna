@@ -810,6 +810,7 @@ const optionsQuery = document.getElementById('options-query');
   closeSearchExpand();
   input.value = '';
 lastInputValue = '';
+displaySearchResults([],[],[],[]);
 cancelIcon.classList.add('hidden');
 halfQuery = resetHalfQueryContainer();
 halfQuery.classList.add("hidden");
@@ -823,7 +824,7 @@ selectedOptionBtnIndex = -1;
 fetchRecentItemsFromFirestore(renderRecentItems, {
   showTasks: true,
   showPeople: false,
-  showProjects: false,
+  showProjects: true,
   showMessages: false,
   taskLimit: 4, // Limit tasks
   projectLimit: null,
@@ -930,6 +931,7 @@ fetchRecentItemsFromFirestore(renderRecentItems, {
   input.value = '';
 lastInputValue = '';
 cancelIcon.classList.add('hidden');
+displaySearchResults([],[],[],[]);
 halfQuery = resetHalfQueryContainer();
 halfQuery.classList.add("hidden");
 halfQuery.classList.remove("skeleton-active"); // also remove loading state
@@ -942,7 +944,7 @@ selectedOptionBtnIndex = -1;
 fetchRecentItemsFromFirestore(renderRecentItems, {
   showTasks: true,
   showPeople: false,
-  showProjects: false,
+  showProjects: true,
   showMessages: false,
   taskLimit: 4, // Limit tasks
   projectLimit: null,
