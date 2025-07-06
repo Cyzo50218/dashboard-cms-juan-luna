@@ -1847,31 +1847,79 @@ input.addEventListener('input', async () => {
     `;
 
     searchTimeout = setTimeout(async () => {
-      try {
-        const { results } = await searchClient.search([
-          {
-            indexName: 'projects',
-            query: value,
-            params: { hitsPerPage: 5 }
-          },
-          {
-            indexName: 'tasks',
-            query: value,
-            params: { hitsPerPage: 5 }
-          }
-        ]);
-
-        const projects = results[0]?.hits || [];
-        const tasks = results[1]?.hits || [];
-
-        displaySearchResults(tasks, projects, [], []);
-
-      } catch (err) {
-        console.error("Algolia search error:", err);
-        halfQuery.classList.remove("skeleton-active");
-        halfQuery.innerHTML = `<div class="search-no-results"><p>Error performing search.</p></div>`;
+  try {
+    const { results } = await searchClient.search([
+      {
+        indexName: 'projects',
+        query: value,
+        params: { hitsPerPage: 5 }
+      },
+      {
+        indexName: 'tasks',
+        query: value,
+        params: { hitsPerPage: 5 }
       }
-    }, DEBOUNCE_DELAY);
+    ]);
+
+    let projects = results[0]?.hits || [];
+    let tasks = results[1]?.hits || [];
+
+    // 🔒 Filter by membership before showing results
+    const filteredProjects = [];
+    for (const p of projects) {
+      let memberUIDs = p.memberUIDs || [];
+
+      if (p.projectRef) {
+        try {
+          const snap = await getDoc(doc(db, p.projectRef));
+          if (snap.exists()) {
+            const data = snap.data();
+            if (Array.isArray(data.memberUIDs)) {
+              memberUIDs = data.memberUIDs;
+            }
+          }
+        } catch (e) {
+          console.warn('Error loading projectRef for filtering', e);
+        }
+      }
+
+      if (memberUIDs.includes(currentUserId)) {
+        filteredProjects.push(p);
+      }
+    }
+
+    const filteredTasks = [];
+    for (const t of tasks) {
+      if (t.projectRef) {
+        try {
+          const snap = await getDoc(doc(db, t.projectRef));
+          if (snap.exists()) {
+            const data = snap.data();
+            if (Array.isArray(data.memberUIDs) && data.memberUIDs.includes(currentUserId)) {
+              filteredTasks.push(t);
+            }
+          }
+        } catch (e) {
+          console.warn('Error loading task.projectRef for filtering', e);
+        }
+      }
+    }
+
+    const showTasks = selectedOptionBtnIndex === 0 || selectedOptionBtnIndex === -1;
+    const showProjects = selectedOptionBtnIndex === 1 || selectedOptionBtnIndex === -1;
+
+    displaySearchResults(
+      showTasks ? filteredTasks : [],
+      showProjects ? filteredProjects : [],
+      [], []
+    );
+
+  } catch (err) {
+    console.error("Algolia search error:", err);
+    halfQuery.classList.remove("skeleton-active");
+    halfQuery.innerHTML = `<div class="search-no-results"><p>Error performing search.</p></div>`;
+  }
+}, DEBOUNCE_DELAY);
 
   } else {
     displaySearchResults([], [], [], []);
@@ -1885,15 +1933,63 @@ input.addEventListener('input', async () => {
     savedContainer.classList.remove("hidden");
     searchOptions.classList.remove("hidden");
 
-    fetchRecentItemsFromFirestore(renderRecentItems, {
-      showTasks: true,
-      showPeople: true,
-      showProjects: true,
-      showMessages: true,
-      taskLimit: 4,
-      projectLimit: null,
-      showInviteButton: false
-    });
+    if (selectedOptionBtnIndex === 0) { // Tasks
+  mytaskdisplay.classList.remove("hidden");
+  fetchRecentItemsFromFirestore(renderRecentItems, {
+    showTasks: true,
+    showPeople: false,
+    showProjects: false,
+    showMessages: false,
+    taskLimit: 4, // Limit tasks
+    projectLimit: null,
+    showInviteButton: false
+  });
+} else if (selectedOptionBtnIndex === 1) { // Projects
+  projectdisplay.classList.remove("hidden");
+  fetchRecentItemsFromFirestore(renderRecentItems, {
+    showTasks: false,
+    showPeople: false,
+    showProjects: true,
+    showMessages: false,
+    taskLimit: 4,
+    projectLimit: 5, // Limit projects
+    showInviteButton: false
+  });
+} else if (selectedOptionBtnIndex === 2) { // People
+  peopleEmptyState.classList.remove("hidden");
+  emailContainerPeopleId.classList.remove('hidden');
+  fetchRecentItemsFromFirestore(renderRecentItems, {
+    showTasks: false,
+    showPeople: true,
+    showProjects: false,
+    showMessages: false,
+    taskLimit: 4,
+    projectLimit: 5, // Limit projects
+    showInviteButton: true
+  });
+} else if (selectedOptionBtnIndex === 3) { // NEW: Messages
+  messagesEmptyState.classList.remove("hidden");
+  fetchRecentItemsFromFirestore(renderRecentItems, {
+    showTasks: false,
+    showPeople: false,
+    showProjects: false,
+    showMessages: true,
+    taskLimit: 4,
+    projectLimit: 5, // Limit projects
+    showInviteButton: true
+  });
+} else {
+  fetchRecentItemsFromFirestore(renderRecentItems, {
+    showTasks: true,
+    showPeople: true,
+    showProjects: true,
+    showMessages: true,
+    taskLimit: 4,
+    projectLimit: null,
+    showInviteButton: false
+  });
+}
+
   }
 });
 
@@ -1905,15 +2001,20 @@ input.addEventListener('input', async () => {
   
   cancelIcon.addEventListener('click', async () => {
     input.value = '';
-    
+    displaySearchResults([], [], [], []);
+cancelIcon.classList.add('hidden');
+halfQuery.innerHTML = '';
+halfQuery.classList.add("hidden");
+halfQuery.classList.remove("skeleton-active"); // also remove loading state
+recentContainer.classList.remove("hidden");
+
+optionsQuery.classList.add("hidden");
+savedContainer.classList.remove("hidden");
+searchOptions.classList.remove("hidden");
+
     input.focus(); // Keep focus on the input after clearing
-    cancelIcon.classList.add('hidden');
-    savedContainer.classList.remove("hidden");
-    searchOptions.classList.remove("hidden");
-    recentContainer.classList.remove("hidden");
     emailContainerId.classList.add('hidden');
-    halfQuery.classList.add("hidden"); // Corrected
-    optionsQuery.classList.add("hidden");
+    
     
     if (selectedOptionBtnIndex === 0) { // Tasks
       mytaskdisplay.classList.remove("hidden");
