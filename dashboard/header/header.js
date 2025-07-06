@@ -2011,9 +2011,10 @@ input.addEventListener('input', async () => {
 
       // ❌ Clear existing results immediately
       halfQuery = resetHalfQueryContainer();
+      displaySearchResults([],[],[],[]);
       halfQuery.classList.remove("hidden");
       halfQuery.classList.add("skeleton-active");
-
+      
       // Reset pagination state
       displayOffset = 0;
       halfQuery.innerHTML = `
@@ -2063,13 +2064,12 @@ input.addEventListener('input', async () => {
     lastInputValue = '';
     clearTimeout(searchTimeout);
     displayOffset = 0;
-
-    displaySearchResults([], [], [], []);
     cancelIcon.classList.add('hidden');
     halfQuery = resetHalfQueryContainer();
+    displaySearchResults([], [], [], []);
     halfQuery.classList.add("hidden");
     halfQuery.classList.remove("skeleton-active");
-
+    recentContainer.classList.remove("hidden");
     optionsQuery.classList.add("hidden");
     savedContainer.classList.remove("hidden");
     searchOptions.classList.remove("hidden");
@@ -2135,9 +2135,10 @@ input.addEventListener('input', async () => {
 
 cancelIcon.addEventListener('click', async () => {
     input.value = '';
-    displaySearchResults([], [], [], []);
+    
 cancelIcon.classList.add('hidden');
 halfQuery = resetHalfQueryContainer();
+displaySearchResults([], [], [], []);
 halfQuery.classList.add("hidden");
 halfQuery.classList.remove("skeleton-active"); // also remove loading state
 recentContainer.classList.remove("hidden");
