@@ -1137,10 +1137,10 @@ async function runSearch(value) {
 
   const queries = [];
   if (searchProjects) {
-    queries.push({ indexName: 'projects', query: value, params: { hitsPerPage: 10 } });
+    queries.push({ indexName: 'projects', query: value, params: { hitsPerPage: 1000 } });
   }
   if (searchTasks) {
-    queries.push({ indexName: 'tasks', query: (isInQuery || isAssigneeQuery) ? '' : value, params: { hitsPerPage: 10 } });
+    queries.push({ indexName: 'tasks', query: (isInQuery || isAssigneeQuery) ? '' : value, params: { hitsPerPage: 1000 } });
   }
 
   console.log('Algolia Query Payload:', JSON.stringify(queries, null, 2));
