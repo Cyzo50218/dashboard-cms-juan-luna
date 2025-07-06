@@ -759,7 +759,7 @@ const moreAssigneesHtml = remainingAssigneesCount > 0 ?
   `<span class="material-icons-outlined project-more-icon">more_horiz</span>` : '';
 
 itemDiv.innerHTML = `
-            <span class="headersearches-project-square-icon" style="background-color: ${project.color || '#cccccc'};"></span>
+            <span class="headersearches-project-square-icon" style="background-color: ${projectHexColor || '#cccccc'};"></span>
             <div class="headersearches-tasks-recent-content">
                 <div class="headersearches-tasks-recent-title">${project.name}</div>
                 <div class="headersearches-tasks-recent-meta">Project</div>
@@ -828,11 +828,11 @@ if (task.projectRef) {
   }
 }
 
-let projectHexColor = projectColor || '#cccccc';
+let taskProjectHexColor = projectColor || '#cccccc';
 if (projectColor && projectColor.startsWith('hsl(')) {
   const hslValues = projectColor.match(/\d+(\.\d+)?/g).map(Number);
   if (hslValues.length === 3) {
-    projectHexColor = hslToHex(hslValues[0], hslValues[1], hslValues[2]);
+    taskProjectHexColor = hslToHex(hslValues[0], hslValues[1], hslValues[2]);
   }
 }
 
@@ -841,7 +841,7 @@ itemDiv.innerHTML = `
           <div class="headersearches-tasks-recent-content">
               <div class="headersearches-tasks-recent-title">${task.title || 'Untitled Task'}</div>
               <div class="headersearches-tasks-recent-meta">
-                  <span class="headersearches-tasks-project-dot" style="background-color: ${projectHexColor};"></span>
+                  <span class="headersearches-tasks-project-dot" style="background-color: ${taskProjectHexColor};"></span>
                   <span class="headersearches-tasks-project-name">${projectName}</span>
               </div>
           </div>
