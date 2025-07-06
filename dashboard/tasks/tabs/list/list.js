@@ -385,6 +385,25 @@ function initializeListView(params) {
     }
     render();
     setupEventListeners();
+    
+  const urlParams = new URLSearchParams(window.location.search);
+  const taskIdToOpen = urlParams.get('openTask');
+
+  if (taskIdToOpen) {
+    console.log(`Opening sidebar from URL param: ${taskIdToOpen}`);
+    if (window.TaskSidebar && typeof window.TaskSidebar.open === 'function') {
+      window.TaskSidebar.open(taskIdToOpen, currentProjectRef);
+    } else if (typeof displaySideBarTasks === 'function') {
+      displaySideBarTasks(taskIdToOpen);
+    } else {
+      console.warn('No sidebar function found for openTask param.');
+    }
+
+    // Optional: remove query param from URL after opening
+    const newUrl = window.location.pathname;
+    window.history.replaceState({}, document.title, newUrl);
+  }
+
 }
 
 export function getHeaderRight() {

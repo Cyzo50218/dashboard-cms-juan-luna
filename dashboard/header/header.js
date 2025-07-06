@@ -790,6 +790,11 @@ async function renderSearchResultItem(item) {
       ${moreAssigneesHtml}
     </div>
   `;
+  itemDiv.addEventListener('click', () => {
+  const href = `/tasks/${currentUserId}/list/${task.projectId}`;
+  window.location.href = href;
+});
+
     break;
     
   case 'task':
@@ -870,6 +875,11 @@ async function renderSearchResultItem(item) {
               ${taskAssigneesHtml}
           </div>
         `;
+        
+        itemDiv.addEventListener('click', () => {
+  const href = `/tasks/${currentUserId}/list/${task.projectId}?openTask=${task.taskId}`;
+  window.location.href = href;
+});
     break;
     
   case 'person':

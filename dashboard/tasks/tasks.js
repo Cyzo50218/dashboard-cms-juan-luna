@@ -191,57 +191,71 @@ function hslToHex(h, s, l) {
      * This function is crucial as it determines which project's tasks are shown.
      */
     async function fetchCurrentProjectData() {
-        const user = auth.currentUser;
-        if (!user) {
-            console.error("User not authenticated.");
-            throw new Error("User not authenticated.");
-        }
+  const user = auth.currentUser;
+  if (!user) {
+    console.error("User not authenticated.");
+    throw new Error("User not authenticated.");
+  }
 
-        // 1. Find the selected workspace ID from the user document
-        const userRef = doc(db, 'users', user.uid);
-        const userSnap = await getDoc(userRef);
+  const userRef = doc(db, 'users', user.uid);
+  const userSnap = await getDoc(userRef);
 
-        if (!userSnap.exists() || !userSnap.data().selectedWorkspace) {
-            throw new Error("Could not find user's selected workspace from user document.");
-        }
+  if (!userSnap.exists() || !userSnap.data().selectedWorkspace) {
+    throw new Error("Could not find user's selected workspace.");
+  }
 
-        const selectedWorkspaceId = userSnap.data().selectedWorkspace;
-        const workspaceRef = doc(db, `users/${user.uid}/myworkspace`, selectedWorkspaceId);
-        const workspaceSnapshot = await getDoc(workspaceRef);
+  const selectedWorkspaceId = userSnap.data().selectedWorkspace;
+  const workspaceRef = doc(db, `users/${user.uid}/myworkspace`, selectedWorkspaceId);
+  const workspaceSnapshot = await getDoc(workspaceRef);
 
-        if (!workspaceSnapshot.exists()) {
-            throw new Error("No selected workspace document found for user.");
-        }
+  if (!workspaceSnapshot.exists()) {
+    throw new Error("No selected workspace document found.");
+  }
 
-        const workspaceData = workspaceSnapshot.data();
-        const selectedProjectId = workspaceData.selectedProjectId;
-        if (!selectedProjectId) {
-            throw new Error("No project is currently selected in the user's workspace.");
-        }
+  const workspaceData = workspaceSnapshot.data();
+  let selectedProjectId = workspaceData.selectedProjectId;
 
-        // 2. Find the project document using a secure collectionGroup query
-        // This is necessary because projects are collaborative and might be nested deeply.
-        const projectQuery = query(
-            collectionGroup(db, 'projects'),
-            where('projectId', '==', selectedProjectId),
-            where('memberUIDs', 'array-contains', user.uid)
-        );
-        const projectSnapshot = await getDocs(projectQuery);
+  // ⛳ Fallback if no selected project is stored in Firestore
+  if (!selectedProjectId) {
+    const pathParts = window.location.pathname.split('/');
+    // Assumes format: /tasks/:uid/list/:projectId
+    const fallbackProjectId = pathParts[4]; // Index 4 = projectId
+    if (fallbackProjectId) {
+      selectedProjectId = fallbackProjectId;
 
-        if (projectSnapshot.empty) {
-            throw new Error(`Project with ID ${selectedProjectId} not found or user does not have access.`);
-        }
-
-        const projectDoc = projectSnapshot.docs[0];
-
-        // 3. Return all the necessary data
-        return {
-            data: projectDoc.data(), // The project's data (title, color, memberUIDs, etc.)
-            projectId: projectDoc.id, // The ID of the project document
-            workspaceId: projectDoc.data().workspaceId, // The workspace ID from the project's own data
-            projectRef: projectDoc.ref // The actual DocumentReference to the project
-        };
+      try {
+        await updateDoc(workspaceRef, { selectedProjectId: fallbackProjectId });
+        console.log("Fallback project ID set as selectedProjectId:", fallbackProjectId);
+      } catch (error) {
+        console.error("Failed to set fallback selectedProjectId:", error);
+      }
+    } else {
+      throw new Error("No selected project and no fallback projectId in URL.");
     }
+  }
+
+  // 🔍 Secure project lookup
+  const projectQuery = query(
+    collectionGroup(db, 'projects'),
+    where('projectId', '==', selectedProjectId),
+    where('memberUIDs', 'array-contains', user.uid)
+  );
+  const projectSnapshot = await getDocs(projectQuery);
+
+  if (projectSnapshot.empty) {
+    throw new Error(`Project with ID ${selectedProjectId} not found or user is not a member.`);
+  }
+
+  const projectDoc = projectSnapshot.docs[0];
+
+  return {
+    data: projectDoc.data(),
+    projectId: projectDoc.id,
+    workspaceId: projectDoc.data().workspaceId,
+    projectRef: projectDoc.ref
+  };
+}
+
 
     /**
      * Fetches multiple user profiles by their UIDs.
