@@ -793,7 +793,7 @@ async function renderSearchResultItem(item) {
   itemDiv.addEventListener('click', () => {
   const href = `/tasks/${currentUserId}/list/${task.projectId}`;
   history.pushState({ path: href }, '', href);
-
+  closeSearchExpand();
   // Load the new section dynamically
   router(); // This will call `loadSection()` and initialize `list.js`
 
@@ -891,7 +891,7 @@ async function renderSearchResultItem(item) {
 
   // Update the browser URL without reloading
   history.pushState({ path: href }, '', href);
-
+  closeSearchExpand();
   // Load the new section dynamically
   router(); // This will call `loadSection()` and initialize `list.js`
 });
@@ -1359,6 +1359,16 @@ function showErrorUI() {
   `;
 }
 
+function closeSearchExpand() {
+  const searchExpand = document.querySelector(".search-expand");
+  const searchToggle = document.getElementById("searchToggle");
+  
+  if (!searchExpand.classList.contains("hidden")) {
+    searchExpand.classList.add("hidden");
+    searchToggle.classList.remove("hidden");
+  }
+}
+
 // --- 4. MAIN SCRIPT LOGIC ---
 
 // This function runs once Firebase confirms the user's authentication state.
@@ -1671,8 +1681,7 @@ onAuthStateChanged(auth, async (user) => {
     
     
     if (clickedOutsideSearch && !searchExpand.classList.contains("hidden")) {
-      searchExpand.classList.add("hidden");
-      searchToggle.classList.remove("hidden");
+      closeSearchExpand();
     }
     
     if (clickedOutsideAccount && !profileExpand.classList.contains("hidden")) {
