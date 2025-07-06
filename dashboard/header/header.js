@@ -708,7 +708,7 @@ async function displaySearchResults(tasks, projects, people, messages) {
   
   // Render combined results
   if (hasResults) {
-    resultsToDisplay.forEach(item => {
+    for (const item of resultsToDisplay) { 
       let itemDiv;
       switch (item.type) {
         case 'project':
