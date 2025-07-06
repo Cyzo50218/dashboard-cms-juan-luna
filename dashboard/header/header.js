@@ -1926,11 +1926,14 @@ input.addEventListener('input', async () => {
       }
 
       if (!allow) continue;
-
+      
       // ✅ "in:" → match project title
       if (isInQuery) {
-        const projectTitle = (projectData.title || projectData.name || '').toLowerCase();
-        if (!projectTitle.includes(inQueryTitle)) continue;
+        console.log("Checking task in projectRef:", t.projectRef);
+
+const projectTitle = (projectData.title || projectData.name || '').toLowerCase();
+console.log("Matching project title:", projectTitle, "against:", inQueryTitle);
+ if (!projectTitle.includes(inQueryTitle)) continue;
       }
 
       // ✅ "assignee:" → match user name
