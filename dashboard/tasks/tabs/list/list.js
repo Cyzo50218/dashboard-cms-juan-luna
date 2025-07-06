@@ -92,6 +92,7 @@ let currentProjectId = null;
 
 let activeFilters = {}; // Will hold { visibleSections: [id1, id2] }
 let activeSortState = 'default'; // 'default', 'asc' (oldest), 'desc' (newest)
+let lastOpenedTaskId = null;
 
 let allUsers = [];
 
@@ -385,23 +386,34 @@ function initializeListView(params) {
     }
     render();
     setupEventListeners();
-    
-  const urlParams = new URLSearchParams(window.location.search);
-  const taskIdToOpen = urlParams.get('openTask');
+  startOpenTaskPolling();
 
-  if (taskIdToOpen) {
-      const projectRefPath = sessionStorage.getItem('pendingProjectRef');
-      
-    console.log(`Opening sidebar from URL param: ${taskIdToOpen}`);
-    if (window.TaskSidebar && typeof window.TaskSidebar.open === 'function') {
-        console.log(`Current Project Ref: ${projectRefPath}`);
-      window.TaskSidebar.open(taskIdToOpen, projectRefPath);
-      sessionStorage.removeItem('pendingProjectRef');
-    } else {
-      console.warn('No sidebar function found for openTask param.');
+}
+
+function startOpenTaskPolling() {
+  setInterval(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const taskIdToOpen = urlParams.get('openTask');
+
+    if (taskIdToOpen && taskIdToOpen !== lastOpenedTaskId) {
+      const projectRefPath = sessionStorage.getItem('pendingProjectRef') || '';
+
+      if (window.TaskSidebar && typeof window.TaskSidebar.open === 'function') {
+        console.log(`🔁 Detected openTask change. Opening sidebar: ${taskIdToOpen}`);
+        window.TaskSidebar.open(taskIdToOpen, projectRefPath);
+        lastOpenedTaskId = taskIdToOpen;
+      } else {
+        console.warn('TaskSidebar.open not available.');
+      }
     }
-  }
 
+    // Optional: If openTask param was removed from the URL
+    if (!taskIdToOpen && lastOpenedTaskId !== null) {
+      // You could optionally close the sidebar here
+      console.log("🔁 openTask param removed. Consider closing the sidebar.");
+      lastOpenedTaskId = null;
+    }
+  }, 1000); // Check every 1 second
 }
 
 export function getHeaderRight() {

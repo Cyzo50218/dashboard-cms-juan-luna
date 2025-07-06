@@ -319,7 +319,13 @@
     gap: 12px;               /* Creates space between avatar and input area */
     padding: 16px 24px;
 }
-
+.comment-form-container {
+    display: flex;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    flex-direction: column; /* Stacks the textarea and buttons vertically */
+    width: 100%;            /* Ensures it fills the available width */
+}
 /* --- Refined CSS for the Comment Input Area --- */
 
 /* This is the main container for the entire comment input section */
@@ -342,7 +348,6 @@
 #comment-input {
     width: 100%;
     box-sizing: border-box; /* Ensures padding is included in the width */
-    border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 12px 85px 12px 12px; /* Top, Right (for buttons), Bottom, Left */
     font-family: inherit;
@@ -356,30 +361,30 @@
     outline: none;
     border-color: var(--accent-color);
 }
-
-/* --- Styling for Multi-Image Preview Gallery --- */
-
-/* 1. The main container that holds all the preview thumbnails. */
-#pasted-image-preview-container {
-    display: flex;       /* Arrange thumbnails in a row. */
-    flex-wrap: wrap;     /* Allow items to wrap to the next line. */
-    gap: 12px;           /* Space between each thumbnail. */
-    padding: 8px;
-    border: 1px dashed var(--border-color);
-    border-radius: 8px;
-    margin-bottom: 8px;
-    
-    /* Hide the container entirely if it's empty. */
-    &:empty {
-        display: none;
-    }
+[contenteditable]:empty:before {
+  content: attr(data-placeholder);
+  color: #9b9b9b; 
+  pointer-events: none;
+  display: block; 
 }
-
+/* --- Styling for Multi-Image Preview Gallery --- */
+#pasted-image-preview-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    max-height: 600px;
+    overflow-y: auto;
+}
+#pasted-image-preview-container:empty {
+    display: none;
+}
 /* 2. The wrapper for a SINGLE image thumbnail and its button. */
 .image-preview-item {
     position: relative; /* This is essential for positioning the button. */
-    width: 100px;
-    height: 75px;
+    width: 200px;
+    height: 155px;
 }
 
 /* 3. The thumbnail image itself. */
@@ -520,7 +525,9 @@
     background-color: var(--secondary-bg);
     color: var(--text-color);
 }
-
+.hidden{
+    display: none;
+}
 /* Edit form area, hidden by default */
 .comment-edit-area {
     display: none; /* Hidden by default */
@@ -587,12 +594,12 @@
 }
 
 .btn-cancel-edit {
-    background-color: #6c757d; /* Muted grey for cancel */
+    background-color: #c7c8c9; /* Muted grey for cancel */
     color: white;
 }
 
 .btn-cancel-edit:hover {
-    background-color: #5a6268;
+    background-color: #868a8d;
 }
 
 .btn-save-edit {

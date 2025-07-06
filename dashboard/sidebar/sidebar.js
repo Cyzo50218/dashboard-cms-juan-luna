@@ -45,7 +45,7 @@ import {
 } from "/services/firebase-config.js";
 import { getHeaderRight } from '/dashboard/tasks/tabs/list/list.js';
 
-window.TaskSidebar = (function() {
+window.TaskSidebar = (function () {
     let app, auth, db, storage;
     try {
         app = initializeApp(firebaseConfig);
@@ -54,9 +54,9 @@ window.TaskSidebar = (function() {
         storage = getStorage(app);
     } catch (e) {
         console.error("TaskSidebar: Firebase initialization failed.", e);
-        return { init: () => {}, open: () => {} };
+        return { init: () => { }, open: () => { } };
     }
-    
+
     let isInitialized = false;
     let currentUser = null;
     let currentTask = null;
@@ -69,29 +69,29 @@ window.TaskSidebar = (function() {
     let userCanEditProject = false;
     let currentUserRole = null;
     let workspaceProjects = [];
-    
-    
+
+
     // Listeners & Caches
     let taskListenerUnsubscribe, activityListenerUnsubscribe, messagesListenerUnsubscribe;
     let allMessages = [],
         allActivities = [];
     let pastedFiles = [];
-    
+
     // Color Mappings & Options
     const defaultPriorityColors = { 'High': '#ffccc7', 'Medium': '#ffe7ba', 'Low': '#d9f7be' };
     const defaultStatusColors = { 'On track': '#b7eb8f', 'At risk': '#fff1b8', 'Off track': '#ffccc7', 'Completed': '#d9d9d9' };
     const priorityOptions = ['High', 'Medium', 'Low'];
     const statusOptions = ['On track', 'At risk', 'Off track', 'Completed'];
-    
+
     // DOM Elements
     let sidebar, taskNameEl, taskDescriptionEl, taskFieldsContainer, closeBtn,
         expandBtn, deleteTaskBtn,
         tabsContainer, activityLogContainer, commentInput, sendCommentBtn,
         imagePreviewContainer, currentUserAvatarEl, taskCompleteText, taskCompleteBtn, fileUploadInput, commentInputWrapper;
-    
+
     let rightSidebarContainer;
     let listviewHeaderRight;
-    
+
     function updateUserPermissions(projectData, userId) {
         if (!projectData || !userId) {
             userCanEditProject = false;
@@ -101,14 +101,14 @@ window.TaskSidebar = (function() {
         const members = projectData.members || [];
         const userMemberInfo = members.find(member => member.uid === userId);
         currentUserRole = userMemberInfo ? userMemberInfo.role : null;
-        
+
         const isMemberWithEditPermission = userMemberInfo && (userMemberInfo.role === "Project admin" || userMemberInfo.role === "Project Admin" || userMemberInfo.role === "Editor");
         const isSuperAdmin = projectData.project_super_admin_uid === userId;
         const isAdminUser = projectData.project_admin_user === userId;
-        
+
         userCanEditProject = isMemberWithEditPermission || isSuperAdmin || isAdminUser;
     }
-    
+
     /**
      * Checks if a specific field in the sidebar is editable for the current user.
      * It checks for admin rights, then task assignment, and finally column-specific rules.
@@ -120,49 +120,49 @@ window.TaskSidebar = (function() {
         if (userCanEditProject) {
             return true;
         }
-        
+
         // Rule 2: If the user is NOT an admin, check if they have permission to edit this task at all.
         // (This checks if they are an assigned Viewer/Commentor).
         if (!canUserEditCurrentTask()) {
             return false;
         }
-        
+
         // Rule 3: For assigned Viewers, check the project's columnRules.
         const rules = currentProject.columnRules || [];
         const columnRule = rules.find(rule => rule.name === fieldName);
-        
+
         // If a rule exists for this field and it's set to restricted, block the edit.
         if (columnRule && columnRule.isRestricted) {
             console.log(`[Permissions] Edit blocked for field "${fieldName}" due to column rule.`);
             return false;
         }
-        
+
         // If all checks pass, the assigned user is allowed to edit this field.
         return true;
     }
-    
+
     /**
      * Checks if the current user can edit the task's description.
      * @returns {boolean} - True if the user is an admin/editor OR is assigned to the task.
      */
     function canUserEditDescription() {
         if (!currentTask) return false;
-        
+
         // Rule 1: Admins and Editors can always edit the description.
         if (userCanEditProject) {
             return true;
         }
-        
+
         // Rule 2: A user can also edit if they are assigned to the task.
         const isAssigned = Array.isArray(currentTask.assignees) && currentTask.assignees.includes(currentUserId);
         if (isAssigned) {
             return true;
         }
-        
+
         // Otherwise, they cannot.
         return false;
     }
-    
+
     function canUserEditCurrentTask() {
         if (!currentTask) return false;
         // Rule 1: Admins and Editors can always edit.
@@ -199,22 +199,22 @@ window.TaskSidebar = (function() {
         imagePreviewContainer = document.getElementById('pasted-image-preview-container');
         fileUploadInput = document.getElementById('file-upload-input');
         commentInputWrapper = document.querySelector('.comment-input-wrapper');
-        
+
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUserId = user.uid;
-                
+
                 // 1. Create a reference to the user's profile document in Firestore.
                 const userDocRef = doc(db, "users", user.uid);
-                
+
                 try {
                     // 2. Fetch the document from Firestore.
                     const userDocSnap = await getDoc(userDocRef);
-                    
+
                     if (userDocSnap.exists()) {
                         // 3. If the document exists, get its data.
                         const firestoreUserData = userDocSnap.data();
-                        
+
                         // 4. Construct the currentUser object using Firestore data first,
                         //    with fallbacks to the Auth profile and then a default.
                         currentUser = {
@@ -222,9 +222,9 @@ window.TaskSidebar = (function() {
                             name: firestoreUserData.name || user.displayName || 'Anonymous User',
                             avatar: firestoreUserData.avatar || user.photoURL || 'https://i.imgur.com/k9qRkiG.png'
                         };
-                        
-                        
-                        
+
+
+
                     } else {
                         // If no profile exists in Firestore, fall back to the basic Auth info.
                         console.warn(`No profile document found for user ${user.uid}. Using default auth info.`);
@@ -243,155 +243,155 @@ window.TaskSidebar = (function() {
                         avatar: user.photoURL || 'https://i.imgur.com/k9qRkiG.png'
                     };
                 }
-                
+
                 if (currentUserAvatarEl && currentUser.avatar) {
                     currentUserAvatarEl.style.backgroundImage = `url(${currentUser.avatar})`;
                 }
-                
-                
+
+
             } else {
                 // This part remains the same.
                 currentUser = null;
                 close();
             }
         });
-        
+
         attachEventListeners();
         isInitialized = true;
     }
-    
-    
+
+
     /**
      * Opens the sidebar for a specific task using a direct project reference.
      * This is the most robust and efficient method.
      * @param {string} taskId - The ID of the task to open.
      * @param {DocumentReference} projectRef - The direct Firestore reference to the project.
      */
-async function open(taskId, projectRef) {
+    async function open(taskId, projectRef) {
         if (!isInitialized) init();
         if (!taskId || !currentUser) return;
-        
+
         detachAllListeners();
-    close(); // Clears previous state
-    
-    sidebar.classList.add('is-loading', 'is-visible');
-    rightSidebarContainer.classList.add('sidebar-open');
-    
-    try {
-        // --- STEP 1: USE THE PROVIDED PROJECT REFERENCE ---
-        currentProjectRef = projectRef;
-        
-        console.log("DEBUG: Sidebar opened with direct project path:", currentProjectRef.path);
-        
-        // --- STEP 2: FETCH ALL DATA USING THE CORRECT REFERENCES ---
-        // Get the project data
-        let currentProjectDocRef;
+        close(); // Clears previous state
 
-if (typeof currentProjectRef === 'string') {
-    currentProjectDocRef = doc(db, currentProjectRef);
-} else if (currentProjectRef?.constructor?.name === 'DocumentReference') {
-    currentProjectDocRef = currentProjectRef;
-} else {
-    throw new Error("Invalid project reference");
-}
+        sidebar.classList.add('is-loading', 'is-visible');
+        rightSidebarContainer.classList.add('sidebar-open');
 
-const projectDoc = await getDoc(currentProjectDocRef);
-        if (!projectDoc.exists()) throw new Error("The provided project reference is invalid or was deleted.");
-        currentProject = { id: projectDoc.id, ...projectDoc.data() };
-        
-        // Find the task using its ID within the known project
-        const tasksQuery = query(collectionGroup(db, 'tasks'), where('id', '==', taskId), where('projectId', '==', currentProject.id), limit(1));
-        const taskSnapshot = await getDocs(tasksQuery);
-        if (taskSnapshot.empty) throw new Error(`Task ${taskId} not found in project ${currentProject.title}.`);
-        
-        currentTaskRef = taskSnapshot.docs[0].ref;
-        const taskDoc = await getDoc(currentTaskRef);
-        currentTask = { id: taskDoc.id, ...taskDoc.data() };
-        
-        // ... (remaining data fetches like workspaceProjects, allUsers, updateUserPermissions)
-        workspaceProjects = await fetchEligibleMoveProjects(currentUserId);
-        const memberUIDs = currentProject.members?.map(m => m.uid) || [];
-        allUsers = await fetchMemberProfiles(memberUIDs);
-        updateUserPermissions(currentProject, currentUserId);
-        
-        
-        // --- ADDITION FOR RECENT HISTORY ---
-        const userRecentHistoryRef = collection(db, `users/${currentUserId}/recenthistory`);
-        const recentHistoryDocRef = doc(userRecentHistoryRef, taskId); // Use taskId as the document ID
-        const recentHistoryDoc = await getDoc(recentHistoryDocRef);
-        
-        // Prepare assignee data for recent history
-        let assigneesForHistory = [];
-        const foundProfile = allUsers.find(u => u.id === currentTask.assignees);
-            
-            if(currentTask.assignees.length > 0){
-                if (foundProfile) {
-    assigneesForHistory.push({
-        uid: currentTask.assignees,
-        name: foundProfile.name || 'Unknown User',
-        avatarUrl: foundProfile.avatar || null
-    });
-} else {
-    // Fallback: Fetch directly if not a member, or if allUsers wasn't comprehensive
-    const userDocRef = doc(db, `users/${currentTask.assignees}`);
-    const userDocSnap = await getDoc(userDocRef);
-    if (userDocSnap.exists()) {
-        const userData = userDocSnap.data();
-        assigneesForHistory.push({
-            uid: currentTask.assignees,
-            name: userData.name || 'Unknown User',
-            avatarUrl: userData.avatar || null
-        });
-    } else {
-        assigneesForHistory.push({ uid: currentTask.assignees, name: 'User Not Found', avatarUrl: null });
-    }
-}
-            }
+        try {
+            // --- STEP 1: USE THE PROVIDED PROJECT REFERENCE ---
+            currentProjectRef = projectRef;
 
-        
-        const recentHistoryData = {
-            type: 'task',
-            name: currentTask.name || '',
-            status: currentTask.status || '',
-            assignees: assigneesForHistory,
-            projectRef: projectRef, // Keep the reference
-            // Store project title and color directly for quick lookup
-            projectName: currentProject.title || 'Unknown Project', // Assuming 'title' is the name field
-            projectColor: currentProject.color || '#cccccc',
-            lastAccessed: serverTimestamp()
-        };
-        
-        if (recentHistoryDoc.exists()) {
-            await updateDoc(recentHistoryDocRef, recentHistoryData);
-            console.log("Updated recent history for existing task:", taskId);
-        } else {
-            await setDoc(recentHistoryDocRef, recentHistoryData);
-            console.log("Added new recent history entry for task:", taskId);
-        }
-        // --- END ADDITION ---
-        
-        // --- STEP 3: RENDER THE UI ---
-        sidebar.classList.remove('is-loading');
-        renderSidebar(currentTask);
-        
-        // --- STEP 4: ATTACH REAL-TIME LISTENERS ---
-        taskListenerUnsubscribe = onSnapshot(currentTaskRef, (doc) => {
-            if (doc.exists()) {
-                currentTask = { ...doc.data(), id: doc.id };
-                renderSidebar(currentTask);
+            console.log("DEBUG: Sidebar opened with direct project path:", currentProjectRef.path);
+
+            // --- STEP 2: FETCH ALL DATA USING THE CORRECT REFERENCES ---
+            // Get the project data
+            let currentProjectDocRef;
+
+            if (typeof currentProjectRef === 'string') {
+                currentProjectDocRef = doc(db, currentProjectRef);
+            } else if (currentProjectRef?.constructor?.name === 'DocumentReference') {
+                currentProjectDocRef = currentProjectRef;
             } else {
-                close();
+                throw new Error("Invalid project reference");
             }
-        });
-        listenToActivity();
-        listenToMessages();
-        
-    } catch (error) {
-        console.error("TaskSidebar: Error opening task.", error);
-        close();
+
+            const projectDoc = await getDoc(currentProjectDocRef);
+            if (!projectDoc.exists()) throw new Error("The provided project reference is invalid or was deleted.");
+            currentProject = { id: projectDoc.id, ...projectDoc.data() };
+
+            // Find the task using its ID within the known project
+            const tasksQuery = query(collectionGroup(db, 'tasks'), where('id', '==', taskId), where('projectId', '==', currentProject.id), limit(1));
+            const taskSnapshot = await getDocs(tasksQuery);
+            if (taskSnapshot.empty) throw new Error(`Task ${taskId} not found in project ${currentProject.title}.`);
+
+            currentTaskRef = taskSnapshot.docs[0].ref;
+            const taskDoc = await getDoc(currentTaskRef);
+            currentTask = { id: taskDoc.id, ...taskDoc.data() };
+
+            // ... (remaining data fetches like workspaceProjects, allUsers, updateUserPermissions)
+            workspaceProjects = await fetchEligibleMoveProjects(currentUserId);
+            const memberUIDs = currentProject.members?.map(m => m.uid) || [];
+            allUsers = await fetchMemberProfiles(memberUIDs);
+            updateUserPermissions(currentProject, currentUserId);
+
+
+            // --- ADDITION FOR RECENT HISTORY ---
+            const userRecentHistoryRef = collection(db, `users/${currentUserId}/recenthistory`);
+            const recentHistoryDocRef = doc(userRecentHistoryRef, taskId); // Use taskId as the document ID
+            const recentHistoryDoc = await getDoc(recentHistoryDocRef);
+
+            // Prepare assignee data for recent history
+            let assigneesForHistory = [];
+            const foundProfile = allUsers.find(u => u.id === currentTask.assignees);
+
+            if (currentTask.assignees.length > 0) {
+                if (foundProfile) {
+                    assigneesForHistory.push({
+                        uid: currentTask.assignees,
+                        name: foundProfile.name || 'Unknown User',
+                        avatarUrl: foundProfile.avatar || null
+                    });
+                } else {
+                    // Fallback: Fetch directly if not a member, or if allUsers wasn't comprehensive
+                    const userDocRef = doc(db, `users/${currentTask.assignees}`);
+                    const userDocSnap = await getDoc(userDocRef);
+                    if (userDocSnap.exists()) {
+                        const userData = userDocSnap.data();
+                        assigneesForHistory.push({
+                            uid: currentTask.assignees,
+                            name: userData.name || 'Unknown User',
+                            avatarUrl: userData.avatar || null
+                        });
+                    } else {
+                        assigneesForHistory.push({ uid: currentTask.assignees, name: 'User Not Found', avatarUrl: null });
+                    }
+                }
+            }
+
+
+            const recentHistoryData = {
+                type: 'task',
+                name: currentTask.name || '',
+                status: currentTask.status || '',
+                assignees: assigneesForHistory,
+                projectRef: projectRef, // Keep the reference
+                // Store project title and color directly for quick lookup
+                projectName: currentProject.title || 'Unknown Project', // Assuming 'title' is the name field
+                projectColor: currentProject.color || '#cccccc',
+                lastAccessed: serverTimestamp()
+            };
+
+            if (recentHistoryDoc.exists()) {
+                await updateDoc(recentHistoryDocRef, recentHistoryData);
+                console.log("Updated recent history for existing task:", taskId);
+            } else {
+                await setDoc(recentHistoryDocRef, recentHistoryData);
+                console.log("Added new recent history entry for task:", taskId);
+            }
+            // --- END ADDITION ---
+
+            // --- STEP 3: RENDER THE UI ---
+            sidebar.classList.remove('is-loading');
+            renderSidebar(currentTask);
+
+            // --- STEP 4: ATTACH REAL-TIME LISTENERS ---
+            taskListenerUnsubscribe = onSnapshot(currentTaskRef, (doc) => {
+                if (doc.exists()) {
+                    currentTask = { ...doc.data(), id: doc.id };
+                    renderSidebar(currentTask);
+                } else {
+                    close();
+                }
+            });
+            listenToActivity();
+            listenToMessages();
+
+        } catch (error) {
+            console.error("TaskSidebar: Error opening task.", error);
+            close();
+        }
     }
-}
-    
+
     function close() {
         if (sidebar) sidebar.classList.remove('is-visible', 'is-loading');
         rightSidebarContainer.classList.remove('sidebar-open');
@@ -407,14 +407,14 @@ const projectDoc = await getDoc(currentProjectDocRef);
         const newUrl = window.location.pathname;
         window.history.replaceState({}, document.title, newUrl);
     }
-    
+
     function detachAllListeners() {
         if (taskListenerUnsubscribe) taskListenerUnsubscribe();
         if (activityListenerUnsubscribe) activityListenerUnsubscribe();
         if (messagesListenerUnsubscribe) messagesListenerUnsubscribe();
         taskListenerUnsubscribe = activityListenerUnsubscribe = messagesListenerUnsubscribe = null;
     }
-    
+
     // --- DATA FETCHING ---
     async function fetchMemberProfiles(uids) {
         if (!uids || uids.length === 0) return [];
@@ -427,37 +427,37 @@ const projectDoc = await getDoc(currentProjectDocRef);
             return [];
         }
     }
-    
+
     async function fetchEligibleMoveProjects(userId) {
         if (!userId) return [];
         const eligibleProjectsMap = new Map();
-        
+
         try {
             const allProjectsQuery = collectionGroup(db, 'projects');
             const projectsSnapshot = await getDocs(allProjectsQuery);
-            
+
             projectsSnapshot.forEach(doc => {
                 const projectData = doc.data();
                 const projectId = doc.id;
-                
+
                 // --- THE FIX FOR THE LONG PATH ---
                 // Path: /users/{ownerId}/myworkspace/{workspaceId}/projects/{projectId}
                 const pathParts = doc.ref.path.split('/');
-                
+
                 // Check if the path has enough parts for our structure
                 if (pathParts.length < 6) {
                     console.warn("Skipping project with unexpected path:", doc.ref.path);
                     return;
                 }
-                
+
                 const ownerId = pathParts[1]; // The project owner's UID
                 const activeWorkspaceId = pathParts[3]; // The workspace ID
                 // --- END OF FIX ---
-                
+
                 const isOwner = projectData.project_super_admin_uid === userId;
                 const memberInfo = projectData.members?.find(member => member.uid === userId);
                 const isEligibleMember = memberInfo && (memberInfo.role === 'Project admin' || memberInfo.role === 'Project Admin' || memberInfo.role === 'Editor');
-                
+
                 if ((isOwner || isEligibleMember) && !eligibleProjectsMap.has(projectId)) {
                     // We save all the parts needed to rebuild the path later
                     eligibleProjectsMap.set(projectId, {
@@ -468,30 +468,30 @@ const projectDoc = await getDoc(currentProjectDocRef);
                     });
                 }
             });
-            
+
             return Array.from(eligibleProjectsMap.values());
-            
+
         } catch (error) {
             console.error("Error fetching eligible projects for move:", error);
             return [];
         }
     }
-    
+
     async function fetchActiveWorkspace(userId) {
         try {
             const userRef = doc(db, 'users', userId);
             const userSnap = await getDoc(userRef);
-            
+
             currentWorkspaceId = userSnap.exists() ? userSnap.data().selectedWorkspace || null : null;
-            
+
             console.log(`[DEBUG] Fetched active workspace ID: ${currentWorkspaceId}`);
-            
+
         } catch (error) {
             console.error("Error fetching active workspace:", error);
             currentWorkspaceId = null;
         }
     }
-    
+
     async function updateCustomField(columnId, newValue, column) {
         if (!currentTaskRef || !currentTask) return;
         const fieldKey = `customFields.${columnId}`;
@@ -501,7 +501,7 @@ const projectDoc = await getDoc(currentProjectDocRef);
         }
         const oldValue = currentTask.customFields ? currentTask.customFields[columnId] : null;
         if (oldValue === parsedValue) return;
-        
+
         try {
             await updateDoc(currentTaskRef, {
                 [fieldKey]: parsedValue
@@ -509,7 +509,7 @@ const projectDoc = await getDoc(currentProjectDocRef);
             logActivity({ action: 'updated', field: column.name, from: oldValue, to: parsedValue });
         } catch (error) { console.error(`Failed to update custom field ${column.name}:`, error); }
     }
-    
+
     // --- REAL-TIME LISTENERS ---
     function listenToActivity() {
         activityListenerUnsubscribe = onSnapshot(query(collection(currentTaskRef, "activity"), orderBy("timestamp", "asc")), (snapshot) => {
@@ -517,18 +517,18 @@ const projectDoc = await getDoc(currentProjectDocRef);
             renderActiveTab();
         });
     }
-    
+
     function listenToMessages() {
         if (!currentProject || !currentTask) {
             console.error("DEBUG: listenToMessages stopped: currentProject or currentTask is missing.");
             return;
         }
-        
+
         const messagesPath = `globalTaskChats/${currentTask.id}/Messages`;
         console.log("DEBUG: Attempting to listen for messages at path:", messagesPath);
-        
+
         const messagesQuery = query(collection(db, messagesPath), orderBy("timestamp", "asc"));
-        
+
         messagesListenerUnsubscribe = onSnapshot(messagesQuery, (snapshot) => {
             console.log(`DEBUG: Message snapshot received. Found ${snapshot.size} documents.`);
             if (snapshot.empty) {
@@ -540,7 +540,7 @@ const projectDoc = await getDoc(currentProjectDocRef);
             console.error("DEBUG: CRITICAL ERROR in message listener. This is almost certainly a PERMISSION DENIED error from your Firestore Security Rules.", error);
         });
     }
-    
+
     // --- DATA MUTATION (EDITING & MOVING) ---
     async function updateTaskField(fieldKey, newValue) {
         if (!currentTaskRef || !currentTask) return;
@@ -553,7 +553,7 @@ const projectDoc = await getDoc(currentProjectDocRef);
             logActivity({ action: 'updated', field: fieldKey.charAt(0).toUpperCase() + fieldKey.slice(1), from: oldValue, to: newValue });
         } catch (error) { console.error(`Failed to update field ${fieldKey}:`, error); }
     }
-    
+
     async function updateCustomField(columnId, newValue, column) {
         if (!currentTaskRef || !currentTask) return;
         const fieldKey = `customFields.${columnId}`;
@@ -566,40 +566,40 @@ const projectDoc = await getDoc(currentProjectDocRef);
             logActivity({ action: 'updated', field: column.name, from: oldValue, to: newValue });
         } catch (error) { console.error(`Failed to update custom field ${column.name}:`, error); }
     }
-    
+
     async function moveTask(newProjectId) {
         if (!currentTaskRef || !currentTask || !currentUserId || !currentProject || newProjectId === currentTask.projectId) return;
-        
+
         const originalProjectTitle = currentProject.title;
-        
+
         try {
             const destinationProjectData = workspaceProjects.find(p => p.id === newProjectId);
-            
+
             if (!destinationProjectData || !destinationProjectData.ownerId || !destinationProjectData.activeWorkspaceId) {
                 console.error("Project data is incomplete:", destinationProjectData);
                 throw new Error("Could not move task because destination project data is missing required path IDs.");
             }
-            
+
             const fullPath = `users/${destinationProjectData.ownerId}/myworkspace/${destinationProjectData.activeWorkspaceId}/projects/${newProjectId}`;
             const newProjectRef = doc(db, fullPath);
             const projectSnap = await getDoc(newProjectRef);
-            
+
             if (!projectSnap.exists()) {
                 console.error("CRITICAL: Final path did not resolve:", fullPath);
                 throw new Error("Destination project not found even with the correct path.");
             }
-            
+
             const newProjectData = projectSnap.data();
             const isOwner = newProjectData.project_super_admin_uid === currentUserId;
             const memberInfo = newProjectData.members?.find(member => member.uid === currentUserId);
             const isAdmin = memberInfo?.role === 'Project admin';
             const isEditor = memberInfo?.role === 'Editor';
-            
+
             if (!isOwner && !isAdmin && !isEditor) {
                 alert("Permission Denied: You must be an Editor or Admin of the destination project to move this task.");
                 return;
             }
-            
+
             const sectionsQuery = query(collection(newProjectRef, 'sections'), orderBy("order", "asc"), limit(1));
             const sectionsSnapshot = await getDocs(sectionsQuery);
             if (sectionsSnapshot.empty) {
@@ -607,14 +607,14 @@ const projectDoc = await getDoc(currentProjectDocRef);
                 return;
             }
             const newSectionId = sectionsSnapshot.docs[0].id;
-            
+
             // Prepare the atomic batch write
             const batch = writeBatch(db);
-            
+
             // --- NEW LOGIC: ADD ASSIGNEES TO NEW PROJECT ---
             const assigneesToProcess = currentTask.assignees || [];
             const existingMemberUIDs = new Set((newProjectData.members || []).map(m => m.uid));
-            
+
             for (const assigneeId of assigneesToProcess) {
                 // If the assignee is not already a member of the destination project...
                 if (!existingMemberUIDs.has(assigneeId)) {
@@ -628,32 +628,32 @@ const projectDoc = await getDoc(currentProjectDocRef);
                 }
             }
             // --- END OF NEW LOGIC ---
-            
+
             // Original task move operations are added to the same batch
             const newTaskData = { ...currentTask, projectId: newProjectId, sectionId: newSectionId };
             const newTaskRef = doc(newProjectRef, `sections/${newSectionId}/tasks/${currentTask.id}`);
-            
+
             batch.delete(currentTaskRef);
             batch.set(newTaskRef, newTaskData);
-            
+
             // Commit all changes (add members, delete old task, create new task) in one go
             await batch.commit();
-            
+
             logActivity({
                 action: 'moved',
                 field: 'Project',
                 from: originalProjectTitle,
                 to: newProjectData.title
             });
-            
+
             close();
-            
+
         } catch (error) {
             console.error("Failed to move task:", error);
             alert("An error occurred while moving the task. " + error.message);
         }
     }
-    
+
     async function logActivity({ action, field, from, to }) {
         if (!currentTaskRef || !currentUser) return;
         const details = `<strong>${currentUser.name}</strong> ${action}` +
@@ -669,34 +669,21 @@ const projectDoc = await getDoc(currentProjectDocRef);
             details: details
         });
     }
-    
+
     async function updateMessage(messageId, updates) {
-        const messageRef = doc(db, `globalChatProjects/${currentProject.id}/tasks/${currentTask.id}/Messages`, messageId);
-        
-        // If a new image file is part of the update, handle the upload/delete process
-        if (updates.newImageFile) {
-            // 1. Upload the new image
-            const storagePath = `workspaceProjects/${currentProject.id}/messages-attachments/${Date.now()}-${updates.newImageFile.name}`;
-            const newImageRef = ref(storage, storagePath);
-            const snapshot = await uploadBytes(newImageRef, updates.newImageFile);
-            updates.imageUrl = await getDownloadURL(snapshot.ref);
-            
-            // 2. If there was an old image, delete it from storage
-            if (updates.oldImageUrl) {
-                try { await deleteObject(ref(storage, updates.oldImageUrl)); } catch (e) { console.warn("Old image not found, may have been deleted already."); }
-            }
+        const messageRef = doc(db, `globalTaskChats/${currentTask.id}/Messages`, messageId);
+
+        if (updates.content || updates.message) {
+            updates.editedAt = serverTimestamp();
         }
-        
-        // Remove temporary properties before updating Firestore
-        delete updates.newImageFile;
-        delete updates.oldImageUrl;
-        
-        // Add the 'editedAt' timestamp
-        updates.editedAt = serverTimestamp();
+
         await updateDoc(messageRef, updates);
-        logActivity({ action: 'edited a message' });
+
+        if (updates.content || updates.message) {
+            logActivity({ action: 'edited a message' });
+        }
     }
-    
+
     async function deleteMessage(messageId, imageUrl, messageText) {
         if (imageUrl) {
             try {
@@ -705,126 +692,137 @@ const projectDoc = await getDoc(currentProjectDocRef);
                 if (error.code !== 'storage/object-not-found') console.error("Failed to delete image:", error);
             }
         }
-        
+
         const messageRef = doc(db, `globalChatProjects/${currentProject.id}/tasks/${currentTask.id}/Messages`, messageId);
         const batch = writeBatch(db);
         batch.delete(messageRef);
         batch.update(currentTaskRef, { commentCount: increment(-1) });
-        
+
         await batch.commit();
-        
+
         logActivity({ action: 'deleted a comment', field: `"${messageText.substring(0, 30)}..."` });
     }
-    
+
     async function toggleReaction(messageId, reactionType) {
         if (!currentUser) return;
-        const messageRef = doc(db, `globalChatProjects/${currentProject.id}/tasks/${currentTask.id}/Messages`, messageId);
+
+        const messageRef = doc(db, `globalTaskChats/${currentTask.id}/Messages`, messageId);
+
         const messageDoc = await getDoc(messageRef);
-        if (!messageDoc.exists()) return;
+        if (!messageDoc.exists()) {
+            console.error("Failed to find message to react to. Path may be wrong.");
+            return;
+        }
+
         const reactions = messageDoc.data().reactions?.[reactionType] || [];
         const fieldPath = `reactions.${reactionType}`;
+
         if (reactions.includes(currentUser.id)) {
+            // User is removing their reaction (unlike)
             await updateDoc(messageRef, {
                 [fieldPath]: arrayRemove(currentUser.id)
             });
         } else {
+            // User is adding a reaction (like)
             await updateDoc(messageRef, {
                 [fieldPath]: arrayUnion(currentUser.id)
             });
-            logActivity({ action: 'liked', field: 'a comment' });
+            logActivity({ action: 'liked a comment' }); // Corrected log message
         }
     }
-    
-    async function sendMessage(messageText, messageNote, imageUrl) {
+
+    async function sendMessage(htmlContent) {
         if (!currentProject || !currentTask || !currentUser) return;
-        
-        // The path to the global chat collection remains the same.
+
+        // The only content we need to save is the final HTML string.
+        if (!htmlContent.trim()) return;
+
         const messagesPath = `globalTaskChats/${currentTask.id}/Messages`;
-        
-        // Create a reference for the new message document.
         const newMessageRef = doc(collection(db, messagesPath));
-        
+        const batch = writeBatch(db);
+
+        // --- Logic from your old function ---
         const adminUIDs = [
             currentProject.project_super_admin_uid,
             currentProject.project_admin_user
         ].filter(Boolean);
-        // Check if the parent task has a chatuuid field yet.
+
+        // Check if the parent task has a chatuuid field yet and add it to the batch.
         if (!currentTask.chatuuid) {
-            // If not, update the task document. Use the task's own ID as the
-            // stable, unique identifier for its chat thread.
-            await updateDoc(currentTaskRef, { chatuuid: currentTask.id });
+            batch.update(currentTaskRef, { chatuuid: currentTask.id });
         }
-        
-        // Save the new message document.
-        const batch = writeBatch(db);
-        
+        // --- End of merged logic ---
+
         batch.set(newMessageRef, {
-            id: newMessageRef.id, // The message's own unique ID
-            message: messageText,
-            messageNote: messageNote,
-            imageUrl: imageUrl,
+            id: newMessageRef.id,
+            // The new `content` field holds the entire comment.
+            content: htmlContent,
             senderId: currentUser.id,
             senderName: currentUser.name,
             senderAvatar: currentUser.avatar,
             timestamp: serverTimestamp(),
             reactions: { "like": [] },
+            // Added the missing projectAdmins field.
             projectAdmins: adminUIDs
         });
-        
+
         batch.update(currentTaskRef, { commentCount: increment(1) });
-        
+
         await batch.commit();
-        // The activity logging works perfectly.
-        const logText = imageUrl ? 'attached an image' : `commented: "${messageText.substring(0, 20)}..."`;
-        logActivity({ action: logText });
+
+        // A simple but effective log for the new format.
+        logActivity({ action: 'added a comment' });
     }
-    
-    /**
-     * Handles sending a message. It intelligently determines if the typed text
-     * should be the main message or a note for an attached image.
-     */
+
     async function handleCommentSubmit() {
-        // 1. Get text from input and staged files from the preview.
-        const inputText = commentInput.value.trim();
-        const files = [...pastedFiles];
-        
-        // 2. Do nothing if there's no text and no files.
-        if (!inputText && files.length === 0) return;
-        
-        // 3. Clear the inputs immediately for a responsive feel.
-        commentInput.value = '';
-        clearImagePreview();
-        
+        const commentInputEl = document.getElementById('comment-input');
+
+        // Create a clone of the input to safely manipulate it without affecting the live view.
+        const contentClone = commentInputEl.cloneNode(true);
+        const imageEl = contentClone.querySelector('img');
+
+        // Exit if there is no text and no image.
+        if (!commentInputEl.innerText.trim() && !imageEl) {
+            return;
+        }
+
+        sendCommentBtn.disabled = true;
+
         try {
-            let message = '';
-            let messageNote = null;
-            let imageUrl = null;
-            
-            // 4. Handle image upload if a file is present.
-            if (files.length > 0) {
-                const file = files[0];
-                // If an image is present, the input text becomes the note for that image.
-                message = inputText;
-                
-                const storagePath = `workspaceProjects/${currentProject.id}/messages-attachments/${Date.now()}-${file.name}`;
+            let finalHtml = contentClone.innerHTML;
+
+            // If an image was found in the comment...
+            if (imageEl && imageEl._file) {
+                // 1. Upload the file to get the permanent URL.
+                const fileToUpload = imageEl._file;
+                const storagePath = `workspaceProjects/${currentProject.id}/messages-attachments/${Date.now()}-${fileToUpload.name}`;
                 const storageRef = ref(storage, storagePath);
-                const snapshot = await uploadBytes(storageRef, file);
-                imageUrl = await getDownloadURL(snapshot.ref);
-            } else {
-                // If there's no image, the input text is the main message.
-                message = inputText;
+                const snapshot = await uploadBytes(storageRef, fileToUpload);
+                const finalImageUrl = await getDownloadURL(snapshot.ref);
+
+                // 2. Replace the temporary src in our cloned image with the final URL.
+                imageEl.src = finalImageUrl;
+                // Remove the temporary file property and any inline styles we don't need to store.
+                delete imageEl._file;
+                imageEl.removeAttribute('style');
+
+                // 3. Get the final HTML from our modified clone.
+                finalHtml = contentClone.innerHTML;
             }
-            
-            // 5. Send the message to Firestore with the prepared data.
-            await sendMessage(message, messageNote, imageUrl);
-            
+
+            // 4. Send the complete HTML to be saved.
+            await sendMessage(finalHtml);
+
+            // Clear the live input box on success.
+            commentInputEl.innerHTML = '';
+
         } catch (error) {
             console.error("Failed to send message:", error);
-            // Optionally, you could restore the input text if sending fails
-            commentInput.value = inputText;
+        } finally {
+            sendCommentBtn.disabled = false;
         }
     }
-    
+
     /**
      * Renders the entire sidebar with the latest task data.
      */
@@ -832,21 +830,21 @@ const projectDoc = await getDoc(currentProjectDocRef);
         // Check the task's status and toggle the CSS class on the main sidebar element
         const isCompleted = task.status === 'Completed';
         sidebar.classList.toggle('is-task-completed', isCompleted);
-        
+
         // Update the main completion button's appearance and text
         taskCompleteBtn.classList.toggle('completed', isCompleted);
         taskCompleteText.textContent = isCompleted ? 'Completed' : 'Mark complete';
-        
+
         // Render the rest of the sidebar
         taskNameEl.textContent = task.name;
         const isDescriptionEditable = canUserEditDescription();
-        
+
         taskDescriptionEl.contentEditable = isDescriptionEditable;
         taskDescriptionEl.textContent = task.description || "Add a description...";
         renderTaskFields(task);
         renderActiveTab();
     }
-    
+
     /**
      * Renders all task fields and attaches click listeners with baked-in permission checks.
      * This is the central function for controlling interactivity within the sidebar.
@@ -858,36 +856,36 @@ const projectDoc = await getDoc(currentProjectDocRef);
             console.error("renderTaskFields cannot run: currentProject is not loaded.");
             return;
         }
-        
+
         const table = document.createElement('table');
         table.className = 'task-fields-table';
         const tbody = document.createElement('tbody');
-        
+
         // 1. RENDER ALL FIELDS (This part builds the static view)
         // =======================================================
         const currentProjectTitle = currentProject.title || '...';
         appendFieldToTable(tbody, 'project', 'Project', `<span>${currentProjectTitle}</span>`, 'project', isSidebarFieldEditable('Project'));
         appendFieldToTable(tbody, 'assignees', 'Assignee', renderAssigneeValue(task.assignees), 'assignee', isSidebarFieldEditable('Assignee'));
         appendFieldToTable(tbody, 'dueDate', 'Due Date', renderDateValue(task.dueDate), 'date', isSidebarFieldEditable('Due Date'));
-        
+
         const priorityValue = task.priority;
         let priorityHTML = '<span>Not set</span>';
         if (priorityValue) {
             const priorityColumn = currentProject.defaultColumns.find(c => c.id === 'priority');
             const priorityOption = priorityColumn?.options?.find(p => p.name === priorityValue);
             const priorityColor = priorityOption?.color;
-            
+
             priorityHTML = createTag(priorityValue, priorityColor);
         }
         appendFieldToTable(tbody, 'priority', 'Priority', priorityHTML, 'priority', isSidebarFieldEditable('Priority'));
-        
+
         const statusValue = task.status;
         let statusHTML = '<span>Not set</span>';
         if (statusValue) {
             const statusColumn = currentProject.defaultColumns.find(c => c.id === 'status');
             const statusOption = statusColumn?.options?.find(s => s.name === statusValue);
             const statusColor = statusOption?.color;
-            
+
             statusHTML = createTag(statusValue, statusColor);
         }
         appendFieldToTable(tbody, 'status', 'Status', statusHTML, 'status', isSidebarFieldEditable('Status'));
@@ -906,17 +904,17 @@ const projectDoc = await getDoc(currentProjectDocRef);
             }
             appendFieldToTable(tbody, `custom-${col.id}`, col.name, displayHTML, 'custom-field', isSidebarFieldEditable(col.name));
         });
-        
+
         table.appendChild(tbody);
         taskFieldsContainer.appendChild(table);
         table.addEventListener('click', (e) => {
             const control = e.target.closest('.field-control');
             if (!control) return;
-            
+
             const key = control.dataset.key;
             const controlType = control.dataset.control;
             const label = control.closest('tr').querySelector('.sidebarprojectfield-label').textContent;
-            
+
             if (!isSidebarFieldEditable(label)) {
                 // Silently return, as the .is-readonly class already provides visual feedback.
                 return;
@@ -926,10 +924,10 @@ const projectDoc = await getDoc(currentProjectDocRef);
                 case 'assignee': {
                     // PERMISSION CHECK: Strict. Only project admins/editors can perform these actions.
                     if (!userCanEditProject) {
-                        
+
                         return;
                     }
-                    
+
                     if (controlType === 'project') {
                         // This logic assumes `workspaceProjects` is populated when the sidebar opens.
                         createAdvancedDropdown(control, {
@@ -956,7 +954,7 @@ const projectDoc = await getDoc(currentProjectDocRef);
                     }
                     break;
                 }
-                
+
                 case 'date':
                 case 'priority':
                 case 'status':
@@ -965,13 +963,13 @@ const projectDoc = await getDoc(currentProjectDocRef);
                     if (!canUserEditCurrentTask()) {
                         return;
                     }
-                    
+
                     if (controlType === 'date') {
                         const input = control.querySelector('.flatpickr-input');
                         const fp = flatpickr(input, {
                             defaultDate: currentTask.dueDate || 'today',
                             dateFormat: "Y-m-d",
-                            onClose: function(selectedDates) {
+                            onClose: function (selectedDates) {
                                 const newDate = selectedDates[0] ? flatpickr.formatDate(selectedDates[0], 'Y-m-d') : '';
                                 updateTaskField('dueDate', newDate);
                                 fp.destroy();
@@ -984,15 +982,15 @@ const projectDoc = await getDoc(currentProjectDocRef);
                             console.error(`Column '${controlType}' not found or has no options.`);
                             return;
                         }
-                        
+
                         // 2. The complete options array (with names and colors) is read directly.
                         const completeOptions = column.options;
-                        
+
                         // 3. Call the generic dropdown function with the complete data.
                         showStatusDropdown(control, completeOptions, (selected) => {
                             updateTaskField(controlType, selected.name);
                         });
-                        
+
                         // --- OLD LOGIC (REMOVED) ---
                         /*
                         const baseOptions = (controlType === 'priority') ? priorityOptions : statusOptions;
@@ -1002,12 +1000,12 @@ const projectDoc = await getDoc(currentProjectDocRef);
                             updateTaskField(controlType, selected.name);
                         });
                         */
-                        
+
                     } else if (controlType === 'custom-field') {
                         const columnId = key.split('-')[1];
                         const column = currentProject.customColumns.find(c => c.id == columnId);
                         if (!column) return;
-                        
+
                         if (column.options) { // It's a dropdown type
                             // The generic showStatusDropdown now works perfectly for custom fields too.
                             showStatusDropdown(control, column.options, (selected) => {
@@ -1022,7 +1020,7 @@ const projectDoc = await getDoc(currentProjectDocRef);
             }
         });
     }
-    
+
     /**
      * Creates and appends a styled table row.
      * (This helper function remains unchanged)
@@ -1030,23 +1028,23 @@ const projectDoc = await getDoc(currentProjectDocRef);
     function appendFieldToTable(tbody, key, label, controlHTML, controlType, customClass = '') {
         const row = tbody.insertRow();
         row.className = 'sidebarprojectfield-row';
-        
+
         const labelCell = row.insertCell();
         labelCell.className = 'sidebarprojectfield-label';
         labelCell.textContent = label;
-        
+
         const valueCell = row.insertCell();
         valueCell.className = `sidebarprojectfield-value ${customClass}`;
-        
+
         const controlDiv = document.createElement('div');
         controlDiv.className = 'field-control';
         controlDiv.dataset.key = key;
         controlDiv.dataset.control = controlType;
         controlDiv.innerHTML = controlHTML;
-        
+
         valueCell.appendChild(controlDiv);
     }
-    
+
     /**
      * Renders the Due Date field using the advanced formatDueDate function
      * to display relative, color-coded dates like "Today" or "Yesterday".
@@ -1063,7 +1061,7 @@ const projectDoc = await getDoc(currentProjectDocRef);
         </div>
     `;
     }
-    
+
     /**
      * Your provided function to calculate the display format for a due date.
      * (This function does not need any changes)
@@ -1072,26 +1070,26 @@ const projectDoc = await getDoc(currentProjectDocRef);
         // --- Setup ---
         const today = new Date();
         today.setHours(0, 0, 0, 0); // Normalize today for accurate comparisons.
-        
+
         // Handle empty or invalid dates
         if (!dueDateString) {
             return { text: '', color: 'default' };
         }
-        
+
         const dueDate = new Date(dueDateString);
         if (isNaN(dueDate.getTime())) {
             return { text: 'Invalid date', color: 'red' };
         }
         dueDate.setHours(0, 0, 0, 0); // Also normalize the due date
-        
+
         // --- Calculations ---
         const todayYear = today.getFullYear();
         const todayMonth = today.getMonth();
         const dueYear = dueDate.getFullYear();
         const dueMonth = dueDate.getMonth();
-        
+
         const dayDifference = (dueDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
-        
+
         // --- 1. Handle Past Dates ---
         if (dayDifference < 0) {
             if (dayDifference === -1) {
@@ -1112,7 +1110,7 @@ const projectDoc = await getDoc(currentProjectDocRef);
             const MmmDddYyyyFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
             return { text: MmmDddYyyyFormat.format(dueDate), color: 'red' };
         }
-        
+
         // --- 2. Handle Present and Immediate Future ---
         if (dayDifference === 0) {
             return { text: 'Today', color: 'green' };
@@ -1120,7 +1118,7 @@ const projectDoc = await getDoc(currentProjectDocRef);
         if (dayDifference === 1) {
             return { text: 'Tomorrow', color: 'yellow' };
         }
-        
+
         // --- 3. Handle Future Dates ---
         if (dueYear === todayYear) {
             const MmmDddFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
@@ -1130,8 +1128,8 @@ const projectDoc = await getDoc(currentProjectDocRef);
             return { text: MmmDddYyyyFormat.format(dueDate), color: 'default' };
         }
     }
-    
-    
+
+
     /**
      * Creates and shows a dropdown with a search input for assigning users.
      * This version is specifically for the Task Sidebar.
@@ -1139,25 +1137,25 @@ const projectDoc = await getDoc(currentProjectDocRef);
      */
     function showSidebarAssigneeDropdown(targetEl) {
         closePopovers(); // Use the sidebar's own popover closer
-        
+
         if (!currentTask) return; // Guard clause
-        
+
         const dropdown = document.createElement('div');
         dropdown.className = 'context-dropdown';
         dropdown.style.visibility = 'hidden';
-        
+
         // --- Search Input ---
         const searchInput = document.createElement('input');
         searchInput.className = 'dropdown-search-input';
         searchInput.type = 'text';
         searchInput.placeholder = 'Search teammates...';
         dropdown.appendChild(searchInput);
-        
+
         // --- List Container ---
         const listContainer = document.createElement('div');
         listContainer.className = 'dropdown-list';
         dropdown.appendChild(listContainer);
-        
+
         // --- Add "Unassigned" Option ---
         const unassignedItem = document.createElement('div');
         unassignedItem.className = 'dropdown-item';
@@ -1167,16 +1165,16 @@ const projectDoc = await getDoc(currentProjectDocRef);
             closePopovers();
         });
         listContainer.appendChild(unassignedItem);
-        
-        
+
+
         // --- Render Filtered User List ---
         const renderList = (searchTerm = '') => {
             // Clear previous user list (but keep "Unassigned")
             listContainer.querySelectorAll('.user-list-item').forEach(el => el.remove());
-            
+
             const lower = searchTerm.toLowerCase();
             const filtered = allUsers.filter(u => u.name.toLowerCase().includes(lower));
-            
+
             filtered.forEach(user => {
                 const isAssigned = currentTask.assignees && currentTask.assignees.includes(user.id);
                 const item = document.createElement('div');
@@ -1197,22 +1195,22 @@ const projectDoc = await getDoc(currentProjectDocRef);
                 listContainer.appendChild(item);
             });
         };
-        
+
         renderList();
         searchInput.addEventListener('input', () => renderList(searchInput.value));
-        
+
         document.body.appendChild(dropdown);
-        
+
         // Position the dropdown relative to the clicked element
         const rect = targetEl.getBoundingClientRect();
         dropdown.style.top = `${rect.bottom + 4}px`;
         dropdown.style.left = `${rect.left}px`;
         dropdown.style.minWidth = `${rect.width}px`;
         dropdown.style.visibility = 'visible';
-        
+
         searchInput.focus();
     }
-    
+
     function createTag(text, color = '#e0e0e0') {
         if (!text) return '<span>Not set</span>';
         const hex = color.replace('#', '');
@@ -1226,24 +1224,24 @@ const projectDoc = await getDoc(currentProjectDocRef);
      * Renders the HTML for the assignee field with the correct design.
      * Shows the assigned user's avatar and name, or a circular plus button if unassigned.
      */
-    
+
     function renderAssigneeValue(assignees) {
         console.log('--- renderAssigneeValue called ---');
         console.log('Received assignees array:', assignees);
-        
+
         // If an assignee exists (and the array isn't empty), show their avatar and name.
         if (assignees && assignees.length > 0) {
             const assigneeId = assignees[0];
             console.log(`Processing assignee UID: "${assigneeId}"`);
-            
+
             // Log the state of allUsers right before you search it. This is the most important check.
             console.log('Searching for user in `allUsers` array. Current `allUsers`:', allUsers);
-            
+
             const user = allUsers.find(u => u.id === assigneeId);
-            
+
             // Log the result of the find operation.
             console.log('Result of find operation (user object):', user);
-            
+
             if (user) {
                 // This is the HTML for an assigned user
                 console.log(`SUCCESS: Found user "${user.name}". Rendering their details.`);
@@ -1252,115 +1250,131 @@ const projectDoc = await getDoc(currentProjectDocRef);
                         <span>${user.name}</span>
                     </div>`;
             }
-            
+
             // This block runs if the user ID was in the array, but not found in allUsers
             console.error(`FAILURE: User with UID "${assigneeId}" could not be found in the allUsers array.`);
             return '<span>Unknown User</span>';
         }
-        
+
         // This block runs if the assignees array was empty or null
         console.log('No assignees found. Rendering the "add assignee" button.');
         return `<button class="assignee-add-btn" title="Assign task">
                 <i class="fa-solid fa-plus"></i>
             </button>`;
     }
-    
+
     /**
      * Renders the content for the currently active tab (Chat or Activity).
      * This function can now be simplified, as the functions it calls are self-aware.
      */
     function renderActiveTab() {
         if (!tabsContainer || !activityLogContainer) return;
-        
+
         // Simply try to render both. The guard clauses inside each function
         // will ensure that only the content for the currently active tab is actually drawn.
         renderMessages();
         renderActivityLogs();
     }
-    
+
     function renderMessages() {
         const activeTab = tabsContainer.querySelector('.active')?.dataset.tab || 'chat';
         if (activeTab !== 'chat') return;
-        
+
         const addCommentForm = document.getElementById('add-comment-form');
         if (addCommentForm) addCommentForm.style.display = 'flex';
-        
+
         activityLogContainer.innerHTML = '';
         if (allMessages.length === 0) {
             activityLogContainer.innerHTML = `<div class="placeholder-text">No messages yet. Start the conversation!</div>`;
             return;
         }
-        
+
         allMessages.forEach(msg => {
             const item = document.createElement('div');
             item.className = 'comment-item';
             item.dataset.messageId = msg.id;
-            
+
+            // --- Start of Permissions and Reaction Logic (No changes here) ---
             const isAuthor = msg.senderId === currentUser.id;
-            // A user can manage a message if they are the author OR if they have project edit rights.
             const canManageMessage = isAuthor || userCanEditProject;
-            
             const hasLiked = msg.reactions?.like?.includes(currentUser.id);
             const likeCount = msg.reactions?.like?.length || 0;
             const likeIconClass = hasLiked ? 'fa-solid fa-thumbs-up' : 'fa-regular fa-thumbs-up';
-            
             const reactionsHTML = `<button class="react-btn like-btn ${hasLiked ? 'reacted' : ''}" title="Like"><i class="${likeIconClass}"></i> <span class="like-count">${likeCount > 0 ? likeCount : ''}</span></button>`;
-            
-            // Use the new `canManageMessage` variable to decide whether to show the buttons.
+
             let authorActionsHTML = canManageMessage ? `
-            <button class="edit-comment-btn" title="Edit"><i class="fa-solid fa-pencil"></i></button>
-            <button class="delete-comment-btn" title="Delete"><i class="fa-solid fa-trash"></i></button>
-        ` : '';
-            
+        <button class="edit-comment-btn" title="Edit"><i class="fa-solid fa-pencil"></i></button>
+        <button class="delete-comment-btn" title="Delete"><i class="fa-solid fa-trash"></i></button>
+    ` : '';
+
             const iconsHTML = `<div class="sidebarcommenticons">${reactionsHTML}${authorActionsHTML}</div>`;
             const timestamp = msg.timestamp ? new Date(msg.timestamp.toDate()).toLocaleString() : 'Sending...';
-            
-            const displayAreaHTML = `
-            <div class="comment-display-area">
-                <div class="comment-text">${msg.message || ''}</div>
-                ${msg.imageUrl ? `<div class="log-attachment"><img class="scalable-image" src="${msg.imageUrl}" alt="Attachment"></div>` : ''}
-            </div>
-        `;
-            
+
+            let finalDisplayHtml = '';
+
+            if (msg.content) {
+                // NEW format: Sanitize and use the HTML content directly.
+                finalDisplayHtml = DOMPurify.sanitize(msg.content);
+            } else {
+                // OLD format: Rebuild the structure from individual fields.
+                let oldContentHTML = '';
+                if (msg.message) {
+                    oldContentHTML += `<div class="comment-text">${msg.message}</div>`;
+                }
+                if (msg.imageUrl) {
+                    oldContentHTML += `<div class="log-attachment"><img class="scalable-image" src="${msg.imageUrl}" alt="Attachment"></div>`;
+                }
+                if (msg.messageNote) {
+                    oldContentHTML += `<div class="comment-note">${msg.messageNote}</div>`;
+                }
+                finalDisplayHtml = oldContentHTML;
+            }
+
             const editAreaHTML = `
-            <div class="comment-edit-area" style="display: none;">
-                <textarea class="comment-edit-input" placeholder="Edit message...">${msg.message || ''}</textarea>
-                ${msg.imageUrl ? `
+        <div class="comment-edit-area" style="display: none;">
+            <div class="comment-edit-input" contenteditable="true">${msg.content || msg.message || ''}</div>
+            
+            ${(msg.imageUrl && !msg.content) ? `
                     <div class="sidebareditimage-container">
                         <img src="${msg.imageUrl}" class="current-image-preview">
-                        <button class="change-image-btn"><i class="fa-solid fa-camera"></i> Replace Image</button>
                     </div>
-                ` : ''}
-                <div class="comment-edit-actions">
-                    <button class="btn-cancel-edit">Cancel</button>
-                    <button class="btn-save-edit">Save</button>
-                </div>
+                ` : ''
+                }
+
+            <div class="comment-edit-actions">
+                <button class="btn-cancel-edit">Cancel</button>
+                <button class="btn-save-edit">Save</button>
             </div>
-        `;
-            
+        </div>
+    `;
+
+
             item.innerHTML = `
-            <div class="avatar" style="background-image: url(${msg.senderAvatar})"></div>
-            <div class="comment-body">
-                <div class="comment-header">
-                    <div class="comment-meta">
-                        <span class="comment-author">${msg.senderName}</span> 
-                        <span class="comment-timestamp">${timestamp}${msg.editedAt ? ' (edited)' : ''}</span>
-                    </div>
-                    ${iconsHTML}
+        <div class="avatar" style="background-image: url(${msg.senderAvatar})"></div>
+        <div class="comment-body">
+            <div class="comment-header">
+                <div class="comment-meta">
+                    <span class="comment-author">${msg.senderName}</span> 
+                    <span class="comment-timestamp">${timestamp}${msg.editedAt ? ' (edited)' : ''}</span>
                 </div>
-                <div class="comment-content-wrapper">
-                    ${displayAreaHTML}
-                    ${editAreaHTML}
-                </div>
+                ${iconsHTML}
             </div>
-        `;
+            <div class="comment-content-wrapper">
+                <div class="comment-display-area">
+                    ${finalDisplayHtml}  </div>
+                ${editAreaHTML}
+            </div>
+        </div>
+    `;
+
+
             activityLogContainer.appendChild(item);
         });
-        
+
         activityLogContainer.scrollTop = activityLogContainer.scrollHeight;
     }
-    
-    
+
+
     /**
      * Renders all activity logs and ensures the comment form is HIDDEN.
      */
@@ -1368,17 +1382,17 @@ const projectDoc = await getDoc(currentProjectDocRef);
         // This function only runs if the 'activity' tab is active.
         const activeTab = tabsContainer.querySelector('.active')?.dataset.tab || 'chat';
         if (activeTab !== 'activity') return;
-        
+
         const addCommentForm = document.getElementById('add-comment-form');
         if (addCommentForm) addCommentForm.style.display = 'none';
-        
+
         activityLogContainer.innerHTML = '';
-        
+
         if (allActivities.length === 0) {
             activityLogContainer.innerHTML = `<div class="placeholder-text">No activity yet.</div>`;
             return;
         }
-        
+
         allActivities.forEach(log => {
             const item = document.createElement('div');
             item.className = 'log-item';
@@ -1387,75 +1401,82 @@ const projectDoc = await getDoc(currentProjectDocRef);
             activityLogContainer.appendChild(item);
         });
     }
-    
+
     // --- EVENT LISTENERS ---
     function attachEventListeners() {
         if (!sidebar) return;
-        
-        
+
+
         activityLogContainer.addEventListener('click', (e) => {
             const messageItem = e.target.closest('.comment-item');
             if (!messageItem) return;
             const messageId = messageItem.dataset.messageId;
             const messageData = allMessages.find(m => m.id === messageId);
             if (!messageData) return;
-            
+
             const displayArea = messageItem.querySelector('.comment-display-area');
             const editArea = messageItem.querySelector('.comment-edit-area');
-            
+
             // --- Handle Likes ---
             if (e.target.closest('.like-btn')) {
                 toggleReaction(messageId, 'like');
             }
-            
+
             // --- Handle Delete ---
             if (e.target.closest('.delete-comment-btn')) {
                 if (confirm('Are you sure you want to delete this message?')) {
                     deleteMessage(messageId, messageData.imageUrl, messageData.message);
                 }
             }
-            
-            // --- Handle STARTING an Edit ---
-            if (e.target.closest('.edit-comment-btn')) {
-                displayArea.style.display = 'none';
-                editArea.style.display = 'block';
-                editArea.querySelector('.comment-edit-input').focus();
-            }
-            
+
             // --- Handle CANCELING an Edit ---
             if (e.target.closest('.btn-cancel-edit')) {
                 editArea.style.display = 'none';
                 displayArea.style.display = 'block';
                 delete messageItem._stagedFile; // Clear any staged file if cancel
             }
-            
+
             // --- Handle SAVING an Edit ---
             if (e.target.closest('.btn-save-edit')) {
-                // The updates object is now much simpler. It no longer needs to read a note input.
-                const updates = {
-                    message: messageItem.querySelector('.comment-edit-input').value.trim(),
-                    newImageFile: messageItem._stagedFile || null,
-                    oldImageUrl: messageData.imageUrl
-                };
-                updateMessage(messageId, updates);
-                
-                // Reset the UI
+                const editInput = messageItem.querySelector('.comment-edit-input');
+
+                // Check if the original message was in the new HTML format.
+                if (messageData.content !== undefined) {
+                    // NEW FORMAT: Get the innerHTML and update the 'content' field.
+                    const updatedContent = editInput.innerHTML;
+                    updateMessage(messageId, { content: updatedContent });
+                } else {
+                    // OLD FORMAT: Get the innerText and update the old 'message' field.
+                    const updatedText = editInput.innerText;
+                    updateMessage(messageId, { message: updatedText });
+                }
+
+                // Reset the UI after saving
                 editArea.style.display = 'none';
                 displayArea.style.display = 'block';
-                delete messageItem._stagedFile;
+                return; // Action is complete, exit.
             }
-            
+
+            if (e.target.closest('.edit-comment-btn')) {
+                displayArea.style.display = 'none';
+                editArea.style.display = 'block';
+                // Set focus to the contenteditable input
+                const editInput = editArea.querySelector('.comment-edit-input');
+                if (editInput) editInput.focus();
+                return;
+            }
+
             // --- Handle CHANGING an Image ---
             if (e.target.closest('.change-image-btn')) {
                 const editImageInput = document.getElementById('edit-image-upload-input');
-                
+
                 // This listener is temporary and will only fire once for this specific edit
                 editImageInput.onchange = (event) => {
                     const file = event.target.files[0];
                     if (file) {
                         // Stage the file on the DOM element itself to be picked up when "Save" is clicked
                         messageItem._stagedFile = file;
-                        
+
                         // Show a temporary local preview of the new image
                         const newPreviewUrl = URL.createObjectURL(file);
                         // We need to find the image tag in the DISPLAY area to update its preview
@@ -1475,20 +1496,45 @@ const projectDoc = await getDoc(currentProjectDocRef);
         closeBtn.addEventListener('click', close);
         expandBtn.addEventListener('click', toggleSidebarView);
         deleteTaskBtn.addEventListener('click', deleteCurrentTask);
-        
+
         sendCommentBtn.addEventListener('click', handleCommentSubmit);
         commentInput.addEventListener('keydown', e => {
-            if (e.key === 'Enter' && !e.shiftKey) {
+            // This condition now handles both 'Enter' and 'Shift+Enter' for creating a new line.
+            if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault(); // Stop the default browser action.
+
+                const selection = window.getSelection();
+                if (selection.rangeCount > 0) {
+                    const range = selection.getRangeAt(0);
+                    const br = document.createElement('br');
+
+                    range.deleteContents();
+                    range.insertNode(br);
+
+                    // Move the cursor immediately after the new line break
+                    range.setStartAfter(br);
+                    range.collapse(true);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+
+                    // THIS IS THE FIX:
+                    // Gently scroll the view to keep the new line visible.
+                    br.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }
+
+            // This handles 'Ctrl+Enter' or 'Cmd+Enter' for submitting the message.
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                 e.preventDefault();
                 handleCommentSubmit();
             }
         });
-        
+
         const uploadFileBtn = document.getElementById('upload-file-btn');
         if (uploadFileBtn) {
             uploadFileBtn.addEventListener('click', () => fileUploadInput.click());
         }
-        
+
         fileUploadInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file && file.type.startsWith('image/')) {
@@ -1496,11 +1542,11 @@ const projectDoc = await getDoc(currentProjectDocRef);
                 addImagePreview(file);
             }
         });
-        
+
         commentInput.addEventListener('paste', (e) => {
             const items = e.clipboardData?.items;
             if (!items) return;
-            
+
             for (const item of items) {
                 if (item.type.indexOf('image') !== -1) {
                     const file = item.getAsFile();
@@ -1512,46 +1558,46 @@ const projectDoc = await getDoc(currentProjectDocRef);
                 }
             }
         });
-        
+
         // --- DIAGNOSTIC TAB CLICK LISTENER ---
         tabsContainer.addEventListener('click', (e) => {
             console.log("--- Tab Click Detected ---");
             console.log("Clicked element:", e.target);
-            
+
             // We only care about clicks on elements with the 'tab-btn' class
             if (e.target.matches('.sidebar-task-btn-tab')) {
                 console.log("It's a tab button. Proceeding with state change...");
-                
+
                 // Find the currently active tab before we make changes
                 const oldActive = tabsContainer.querySelector('.active');
                 console.log("1. Old active tab was:", oldActive);
                 if (oldActive) {
                     oldActive.classList.remove('active');
                 }
-                
+
                 // Add the 'active' class to the button that was just clicked
                 console.log("2. Setting new active tab:", e.target);
                 e.target.classList.add('active');
-                
+
                 // Immediately after, let's verify which tab the browser thinks is active
                 const newActive = tabsContainer.querySelector('.active');
                 console.log("3. Verified new active tab is:", newActive);
                 console.log("4. Its data-tab attribute is:", newActive?.dataset.tab);
-                
+
                 console.log("5. Calling renderActiveTab() to update the content...");
                 renderActiveTab();
-                
+
             } else {
                 console.log("The clicked element was not a .tab-btn, so no action was taken.");
             }
         });
-        
+
         // Editable Task Name and Description
         taskNameEl.addEventListener('blur', () => updateTaskField('name', taskNameEl.textContent.trim()));
         taskDescriptionEl.addEventListener('blur', () => updateTaskField('description', taskDescriptionEl.textContent.trim()));
-        
+
         // In the attachEventListeners function...
-        
+
         document.body.addEventListener('click', (e) => {
             if (sidebar.classList.contains('is-visible')) {
                 const safeSelectors = '#task-sidebar, .advanced-dropdown, .flatpickr-calendar, .task-reactions';
@@ -1560,18 +1606,18 @@ const projectDoc = await getDoc(currentProjectDocRef);
                 }
             }
         }, { capture: true });
-        
+
     }
-    
+
     // --- UI HELPERS ---
     function closePopovers() {
         document.querySelectorAll('.context-dropdown').forEach(p => p.remove());
     }
-    
+
     function closeFloatingPanels() {
         document.querySelectorAll('.dialog-overlay, .context-dropdown').forEach(el => el.remove());
     }
-    
+
     /**
      * Creates a robust, self-managing dropdown menu.
      * @param {HTMLElement} targetEl The element to position the dropdown relative to.
@@ -1585,12 +1631,12 @@ const projectDoc = await getDoc(currentProjectDocRef);
     function createAdvancedDropdown(targetEl, config) {
         // Cleanup any existing dropdowns to prevent duplicates
         document.querySelector('.advanced-dropdown')?.remove();
-        
+
         // Create main container and append to body
         const dropdown = document.createElement('div');
         dropdown.className = 'advanced-dropdown';
         document.body.appendChild(dropdown);
-        
+
         // Add an optional search input
         if (config.searchable) {
             const searchInput = document.createElement('input');
@@ -1601,34 +1647,34 @@ const projectDoc = await getDoc(currentProjectDocRef);
             // Add event listener to re-render the list on input
             searchInput.addEventListener('input', () => renderItems(searchInput.value));
         }
-        
+
         // Create the list container
         const listContainer = document.createElement('ul');
         listContainer.className = 'dropdown-list';
         dropdown.appendChild(listContainer);
-        
+
         // Create the function that renders/re-renders the items
         const renderItems = (filter = '') => {
             listContainer.innerHTML = '';
             const lowerFilter = filter.toLowerCase();
-            
+
             // Filter the options based on the search term
             const filteredOptions = config.options.filter(opt =>
                 (opt.name || opt.label || '').toLowerCase().includes(lowerFilter)
             );
-            
+
             if (filteredOptions.length === 0) {
                 listContainer.innerHTML = `<li class="dropdown-item-empty">No results found</li>`;
                 return;
             }
-            
+
             filteredOptions.forEach(option => {
                 const li = document.createElement('li');
                 li.className = 'dropdown-item';
-                
+
                 // Use the provided renderer function to create the item's inner HTML
                 li.innerHTML = config.itemRenderer(option);
-                
+
                 li.addEventListener('click', (e) => {
                     e.stopPropagation();
                     config.onSelect(option);
@@ -1637,15 +1683,15 @@ const projectDoc = await getDoc(currentProjectDocRef);
                 listContainer.appendChild(li);
             });
         };
-        
+
         // Perform the initial rendering of all items
         renderItems();
-        
+
         // Position the dropdown intelligently
         const rect = targetEl.getBoundingClientRect();
         dropdown.style.left = `${rect.left}px`;
         dropdown.style.minWidth = `${rect.width}px`;
-        
+
         // Decide whether to show the dropdown above or below the target element
         const spaceBelow = window.innerHeight - rect.bottom;
         if (spaceBelow < dropdown.offsetHeight && rect.top > dropdown.offsetHeight) {
@@ -1655,7 +1701,7 @@ const projectDoc = await getDoc(currentProjectDocRef);
             // Default: render below
             dropdown.style.top = `${rect.bottom + 4}px`;
         }
-        
+
         // Short timeout to prevent flicker and allow CSS transitions
         setTimeout(() => {
             dropdown.classList.add('visible');
@@ -1663,7 +1709,7 @@ const projectDoc = await getDoc(currentProjectDocRef);
                 dropdown.querySelector('.dropdown-search-input').focus();
             }
         }, 10);
-        
+
         const clickOutsideHandler = (event) => {
             // If the click is outside the dropdown and not on the original target, close it
             if (!dropdown.contains(event.target) && !targetEl.contains(event.target)) {
@@ -1671,11 +1717,11 @@ const projectDoc = await getDoc(currentProjectDocRef);
                 document.removeEventListener('click', clickOutsideHandler, { capture: true });
             }
         };
-        
+
         // Use capture phase to catch the click before anything else
         document.addEventListener('click', clickOutsideHandler, { capture: true });
     }
-    
+
     /**
      * Creates a generic dropdown with color swatches.
      */
@@ -1683,34 +1729,34 @@ const projectDoc = await getDoc(currentProjectDocRef);
         closePopovers();
         const dropdown = document.createElement('div');
         dropdown.className = 'context-dropdown';
-        
+
         options.forEach(option => {
             const item = document.createElement('div');
             item.className = 'dropdown-item';
-            
+
             let itemHTML = '';
-            
+
             // Add a colored swatch if the option has a color property.
             if (option.color) {
                 itemHTML += `<span class="dropdown-color-swatch" style="background-color: ${option.color} !important;"></span>`;
             }
-            
+
             if (option.avatar) {
                 itemHTML += `<div class="avatar" style="background-image: url(${option.avatar})"></div>`;
             }
-            
+
             itemHTML += `<span class="dropdown-item-name">${option.label || option.name}</span>`;
             item.innerHTML = itemHTML;
-            
+
             item.addEventListener('click', (e) => {
                 e.stopPropagation();
                 onSelect(option.value !== undefined ? option.value : option);
                 closePopovers();
             });
-            
+
             dropdown.appendChild(item);
         });
-        
+
         document.body.appendChild(dropdown);
         const rect = targetEl.getBoundingClientRect();
         dropdown.style.top = `${rect.bottom + 4}px`;
@@ -1730,13 +1776,13 @@ const projectDoc = await getDoc(currentProjectDocRef);
         control.innerHTML = '';
         control.appendChild(input);
         input.focus();
-        
+
         const save = () => {
             // If the input is cleared, set the value to null. Otherwise, use the input's value.
             const newValue = input.value.trim() === '' ? null : input.value;
             updateCustomField(columnId, newValue, column);
         };
-        
+
         input.addEventListener('blur', save);
         input.addEventListener('keydown', e => {
             if (e.key === 'Enter') input.blur();
@@ -1746,7 +1792,7 @@ const projectDoc = await getDoc(currentProjectDocRef);
             }
         });
     }
-    
+
     function makeDateFieldEditable(control, fieldKey) {
         const oldValue = currentTask[fieldKey] || '';
         control.innerHTML = `<input type="date" class="field-edit-input" value="${oldValue}">`;
@@ -1756,7 +1802,7 @@ const projectDoc = await getDoc(currentProjectDocRef);
             updateTaskField(fieldKey, input.value);
         });
     }
-    
+
     /**
      * Opens a dialog for creating a new custom dropdown option (Priority or Status).
      * This function handles the UI part.
@@ -1765,7 +1811,7 @@ const projectDoc = await getDoc(currentProjectDocRef);
         closeFloatingPanels();
         const dialogOverlay = document.createElement('div');
         dialogOverlay.className = 'dialog-overlay';
-        
+
         dialogOverlay.innerHTML = `
 <div class="dialog-box">
     <div class="dialog-header">Add Custom ${optionType}</div>
@@ -1784,10 +1830,10 @@ const projectDoc = await getDoc(currentProjectDocRef);
         <button class="dialog-button primary" id="confirm-add-option">Add Option</button>
     </div>
 </div>`;
-        
+
         document.body.appendChild(dialogOverlay);
         document.getElementById('custom-option-name').focus();
-        
+
         document.getElementById('confirm-add-option').addEventListener('click', () => {
             const name = document.getElementById('custom-option-name').value.trim();
             const color = document.getElementById('custom-option-color').value;
@@ -1798,14 +1844,14 @@ const projectDoc = await getDoc(currentProjectDocRef);
                 alert('Please enter a name for the option.');
             }
         });
-        
+
         dialogOverlay.addEventListener('click', e => {
             if (e.target === e.currentTarget || e.target.id === 'cancel-add-option') {
                 closeFloatingPanels();
             }
         });
     }
-    
+
     /**
      * Writes the new custom Priority or Status option to Firebase.
      * @param {string} optionType - 'Priority' or 'Status'.
@@ -1817,7 +1863,7 @@ const projectDoc = await getDoc(currentProjectDocRef);
             [fieldToUpdate]: arrayUnion(newOption)
         });
     }
-    
+
     /**
      * Opens a dialog to add a new option to a specific custom column.
      * This function handles the UI part.
@@ -1827,7 +1873,7 @@ const projectDoc = await getDoc(currentProjectDocRef);
         closeFloatingPanels();
         const dialogOverlay = document.createElement('div');
         dialogOverlay.className = 'dialog-overlay';
-        
+
         dialogOverlay.innerHTML = `
 <div class="dialog-box">
     <div class="dialog-header">Add New Option</div>
@@ -1846,10 +1892,10 @@ const projectDoc = await getDoc(currentProjectDocRef);
         <button class="dialog-button primary" id="confirm-add-option">Add Option</button>
     </div>
 </div>`;
-        
+
         document.body.appendChild(dialogOverlay);
         document.getElementById('custom-option-name').focus();
-        
+
         document.getElementById('confirm-add-option').addEventListener('click', () => {
             const name = document.getElementById('custom-option-name').value.trim();
             const color = document.getElementById('custom-option-color').value;
@@ -1860,14 +1906,14 @@ const projectDoc = await getDoc(currentProjectDocRef);
                 alert('Please enter a name for the option.');
             }
         });
-        
+
         dialogOverlay.addEventListener('click', e => {
             if (e.target === e.currentTarget || e.target.id === 'cancel-add-option') {
                 closeFloatingPanels();
             }
         });
     }
-    
+
     /**
      * Writes a new option to a specific custom column's 'options' array in Firebase.
      * @param {number} columnId - The ID of the column being updated.
@@ -1885,25 +1931,25 @@ const projectDoc = await getDoc(currentProjectDocRef);
             customColumns: newColumns
         });
     }
-    
+
     /**
      * Creates a <style> tag in the head to hold dynamic CSS rules for all custom tags.
      */
     function generateCustomTagStyles(projectData) {
         const styleId = 'custom-tag-styles';
         let styleElement = document.getElementById(styleId);
-        
+
         if (!styleElement) {
             styleElement = document.createElement('style');
             styleElement.id = styleId;
             document.head.appendChild(styleElement);
         }
-        
+
         let cssRules = '';
-        
+
         const generateRules = (items, prefix) => {
             if (!items) return;
-            
+
             // This loop is where the error occurs
             items.forEach(item => {
                 if (item && typeof item.name === 'string') {
@@ -1916,10 +1962,10 @@ const projectDoc = await getDoc(currentProjectDocRef);
                 }
             });
         };
-        
+
         generateRules(projectData.customPriorities, 'priority');
         generateRules(projectData.customStatuses, 'status');
-        
+
         if (projectData.customColumns) {
             projectData.customColumns.forEach(col => {
                 if (col.options && Array.isArray(col.options)) {
@@ -1930,7 +1976,7 @@ const projectDoc = await getDoc(currentProjectDocRef);
         }
         styleElement.innerHTML = cssRules;
     }
-    
+
     /**
      * Determines if text on a colored background should be black or white for readability.
      */
@@ -1942,7 +1988,7 @@ const projectDoc = await getDoc(currentProjectDocRef);
         const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
         return (yiq >= 128) ? '#000000' : '#ffffff';
     }
-    
+
     /**
      * Opens a dialog to edit an existing custom option (Priority, Status, or Custom Column option).
      * @param {string} optionType - 'Priority', 'Status', or 'CustomColumn'.
@@ -1953,11 +1999,11 @@ const projectDoc = await getDoc(currentProjectDocRef);
         closeFloatingPanels();
         const dialogOverlay = document.createElement('div');
         dialogOverlay.className = 'dialog-overlay';
-        
-        
+
+
         // Determine the correct dialog title based on the option type.
         let dialogTitle = `Edit ${optionType} Option`; // Default title
-        
+
         if (optionType === 'CustomColumn' && columnId) {
             // Find the custom column by its ID in our project data
             const column = project.customColumns.find(c => c.id === columnId);
@@ -1966,7 +2012,7 @@ const projectDoc = await getDoc(currentProjectDocRef);
                 dialogTitle = `Edit ${column.name} Option`;
             }
         }
-        
+
         dialogOverlay.innerHTML = `
     <div class="dialog-box">
         <div class="dialog-header">${dialogTitle}</div>
@@ -1985,11 +2031,11 @@ const projectDoc = await getDoc(currentProjectDocRef);
             <button class="dialog-button primary" id="confirm-edit-option">Save Changes</button>
         </div>
     </div>`;
-        
+
         document.body.appendChild(dialogOverlay);
         const nameInput = document.getElementById('edit-option-name');
         nameInput.focus();
-        
+
         document.getElementById('confirm-edit-option').addEventListener('click', () => {
             const newOption = {
                 name: document.getElementById('edit-option-name').value.trim(),
@@ -2003,20 +2049,20 @@ const projectDoc = await getDoc(currentProjectDocRef);
                 showConfirmationModal('Please enter a name for the option.');
             }
         });
-        
+
         dialogOverlay.addEventListener('click', e => {
             if (e.target === e.currentTarget || e.target.id === 'cancel-edit-option') {
                 closeFloatingPanels();
             }
         });
     }
-    
+
     async function updateCustomOptionInFirebase(optionType, originalOption, newOption, columnId = null) {
         // Create a deep copy of the custom fields to safely modify them
         const projectCopy = JSON.parse(JSON.stringify(project));
         let fieldToUpdate = null;
         let newArray = [];
-        
+
         if (optionType === 'Priority') {
             fieldToUpdate = 'customPriorities';
             newArray = projectCopy.customPriorities || [];
@@ -2034,7 +2080,7 @@ const projectDoc = await getDoc(currentProjectDocRef);
             }
             newArray = projectCopy.customColumns;
         }
-        
+
         // For non-column options, find and replace the option in the array
         if (optionType === 'Priority' || optionType === 'Status') {
             const optionIndex = newArray.findIndex(opt => opt.name === originalOption.name && opt.color === originalOption.color);
@@ -2042,7 +2088,7 @@ const projectDoc = await getDoc(currentProjectDocRef);
                 newArray[optionIndex] = newOption;
             }
         }
-        
+
         if (fieldToUpdate) {
             // Update the entire array in Firestore
             await updateProjectInFirebase({
@@ -2050,13 +2096,13 @@ const projectDoc = await getDoc(currentProjectDocRef);
             });
         }
     }
-    
+
     async function updateProjectInFirebase(propertiesToUpdate) {
         // Use the direct reference we saved when the sidebar opened.
         if (!currentProjectRef) {
             return console.error("Cannot update project: The reference to the current project is not available.");
         }
-        
+
         try {
             // This now uses the guaranteed-correct reference.
             await updateDoc(currentProjectRef, propertiesToUpdate);
@@ -2066,63 +2112,92 @@ const projectDoc = await getDoc(currentProjectDocRef);
             alert("Error: Could not update project settings.");
         }
     }
-    
+
+
     function addImagePreview(file) {
+        if (!file.type.startsWith('image/')) return;
+
         const reader = new FileReader();
         reader.onload = (event) => {
-            if (!imagePreviewContainer || !commentInputWrapper) return;
-            commentInputWrapper.classList.add('preview-active');
-            
-            const previewItem = document.createElement('div');
-            previewItem.className = 'image-preview-item';
-            
-            // Use file name and last modified time as a unique key for removal
-            const fileId = file.name + file.lastModified;
-            previewItem.dataset.fileId = fileId;
-            
-            previewItem.innerHTML = `
-            <img src="${event.target.result}" alt="${file.name}">
-            <button class="remove-preview-btn" title="Remove image">&times;</button>
-        `;
-            
-            previewItem.querySelector('.remove-preview-btn').addEventListener('click', () => {
-                pastedFiles = pastedFiles.filter(f => (f.name + f.lastModified) !== fileId);
-                previewItem.remove();
-                if (pastedFiles.length === 0) {
-                    commentInputWrapper.classList.remove('preview-active');
-                }
-            });
-            
-            imagePreviewContainer.appendChild(previewItem);
+            // --- Elements to be inserted ---
+
+            // 1. A line break to create space above the image.
+            const br = document.createElement('br');
+
+            // 2. The image element, styled as a block.
+            const img = document.createElement('img');
+            img.src = event.target.result;
+            img.alt = file.name;
+            // Reverted to block display for left alignment.
+            img.style.display = 'block';
+            img.style.maxWidth = '70%';
+            img.style.maxHeight = '450px';
+            img.style.margin = '10px 0';
+            img.style.borderRadius = '10px';
+
+            // Attach the file to the image for upload.
+            img._file = file;
+
+            // --- Insertion Logic ---
+            const commentInputEl = document.getElementById('comment-input');
+            commentInputEl.focus();
+            const selection = window.getSelection();
+
+            if (selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                range.deleteContents();
+
+                // Insert the line break FIRST, then the image.
+                range.insertNode(br);
+                range.insertNode(img); // Inserting the 'img' directly, not a wrapper.
+
+                // Move the cursor to be immediately after the image.
+                range.setStartAfter(img);
+                range.collapse(true);
+
+                // Add another line break for typing below the image.
+                const finalBr = document.createElement('br');
+                range.insertNode(finalBr);
+
+                // Finally, place the cursor after the last line break.
+                range.setStartAfter(finalBr);
+                range.collapse(true);
+
+                selection.removeAllRanges();
+                selection.addRange(range);
+            } else {
+                // Fallback: If there's no cursor, just append everything.
+                commentInputEl.appendChild(br);
+                commentInputEl.appendChild(img);
+                commentInputEl.appendChild(document.createElement('br'));
+            }
         };
         reader.readAsDataURL(file);
     }
-    
+
     function clearImagePreview() {
         pastedFiles = [];
-        if (imagePreviewContainer) imagePreviewContainer.innerHTML = '';
-        if (commentInputWrapper) commentInputWrapper.classList.remove('preview-active');
     }
-    
+
     async function deleteCurrentTask() {
-        
+
         // Use a confirmation modal to warn the user
         const confirmed = confirm(
             'Are you sure you want to permanently delete this task? This action cannot be undone.'
         );
-        
+
         // If the user clicks "Cancel", stop the function
         if (!confirmed) {
             console.log("Task deletion cancelled by user.");
             return;
         }
-        
+
         try {
             // Perform the delete operation on the current task's document reference
             await deleteDoc(currentTaskRef);
-            
+
             console.log(`Task "${currentTask.name}" (${currentTask.id}) was successfully deleted.`);
-            
+
             // Optional: Log this activity
             if (typeof logActivity === 'function') {
                 logActivity({
@@ -2132,14 +2207,14 @@ const projectDoc = await getDoc(currentProjectDocRef);
                     to: ''
                 });
             }
-            
+
             sidebar.classList.remove('is-active');
         } catch (error) {
             console.error("Failed to delete task:", error);
             // alert("An error occurred while trying to delete the task. Please check the console for details.");
         }
     }
-    
+
     function showStatusDropdown(targetEl, options, onSelectCallback) {
         createAdvancedDropdown(targetEl, {
             options: options,
@@ -2151,11 +2226,11 @@ const projectDoc = await getDoc(currentProjectDocRef);
             onSelect: onSelectCallback
         });
     }
-    
+
     function toggleSidebarView() {
         // Toggle the class on the sidebar element
         sidebar.classList.toggle('is-full-view');
-        
+
         // Check if the sidebar is now in full view to update the icon
         if (sidebar.classList.contains('is-full-view')) {
             // It's expanded, so show the 'compress' icon
