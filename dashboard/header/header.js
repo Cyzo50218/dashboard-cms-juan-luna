@@ -1986,8 +1986,6 @@ onAuthStateChanged(auth, async (user) => {
     }
   }
 });*/
-
-  let searchTimeout = null;
 const DEBOUNCE_DELAY = 150;
 
 
