@@ -811,7 +811,7 @@ async function displaySearchResults(tasks, projects, people, messages) {
   });
 
   const assigneesHtml = (await Promise.all(assigneesHtmlPromises)).join('');
-  const moreAssigneesHtml = remainingAssigneesCount > 0
+  const moreAssigneesHtml = remainingAssigneesCount > 0 ?
   `<div class="headersearches-assignee-list project-more-icon" title="${remainingAssigneesCount} more members" style="z-index: ${50 - MAX_VISIBLE_ASSIGNEES};">
                     <span class="material-icons-outlined">more_horiz</span>
                 </div>`;
