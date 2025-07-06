@@ -1807,7 +1807,8 @@ input.addEventListener('input', async () => {
     halfQuery.innerHTML = '';
     halfQuery.classList.add("hidden");
     halfQuery.classList.remove("skeleton-active"); // also remove loading state
-
+    recentContainer.classList.remove("hidden");
+    
     optionsQuery.classList.add("hidden");
     savedContainer.classList.remove("hidden");
     searchOptions.classList.remove("hidden");

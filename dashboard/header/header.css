@@ -93,7 +93,7 @@
   animation: pulse 2.5s linear infinite;
   height: 30px; /* reasonable height */
   width: 100%;
-  max-width: 430px;
+  max-width: 408px;
   border-radius: 8px;
   margin: 0 auto 12px auto; /* center horizontally and space below */
   color: transparent;
@@ -1508,7 +1508,7 @@ margin-left: 6px;
     padding-left: 10px; /* Align with search items */
 }
 .search-result-item{
-  width: 408px;
+  width: 410px;
 }
 .search-no-results {
     text-align: center;
