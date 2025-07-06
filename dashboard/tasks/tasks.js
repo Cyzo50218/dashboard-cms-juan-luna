@@ -603,21 +603,28 @@ function setActiveTabLink(targetTabId) {
 
     // Define the click listener function
     tabClickListener = (event) => {
-        event.preventDefault();
-        const currentTab = document.querySelector('.tab-link.active')?.getAttribute('data-tab');
-        const newTabId = event.currentTarget.getAttribute('data-tab');
+    event.preventDefault();
 
-        // Prevent redundant loading
-        if (newTabId && newTabId !== currentTab) {
-            // Note: If you dynamically update the URL like this, you'll need
-            // a main router to react to history.pushState and re-call tasks.init()
-            const newUrl = `/tasks/${accountId}/${newTabId}/${projectId}`;
-            history.pushState({ path: newUrl }, '', newUrl);
+    const clickedTabId = event.currentTarget.getAttribute('data-tab');
+    if (!clickedTabId) return;
 
-            setActiveTabLink(newTabId);
-            loadTabContent(newTabId);
-        }
-    };
+    const pathParts = window.location.pathname.split('/').filter(p => p);
+    const currentTabIdFromUrl = pathParts[2]; // /tasks/:uid/:tab/:projectId
+
+    // Prevent redundant reload
+    if (clickedTabId === currentTabIdFromUrl) return;
+
+    const accountId = pathParts[1];
+    const projectId = pathParts[3];
+    const existingQuery = window.location.search; // includes "?openTask=abc123" or ""
+
+    const newUrl = `/tasks/${accountId}/${clickedTabId}/${projectId}${existingQuery}`;
+    history.pushState({ path: newUrl }, '', newUrl);
+
+    setActiveTabLink(clickedTabId);
+    loadTabContent(clickedTabId);
+};
+
 
     tabs.forEach(tab => {
         tab.addEventListener('click', tabClickListener);

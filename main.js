@@ -235,8 +235,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const functions = getFunctions(app); 
     const runBackfill = httpsCallable(functions, "runAlgoliaBackfill");
 
-    let backfillIntervalId = null; // 🕒 Keep reference for cleanup later if needed
-
+    let backfillIntervalId = null;
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             console.log("✅ Authenticated user found. Initializing dashboard...");
