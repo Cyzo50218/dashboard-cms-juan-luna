@@ -404,6 +404,8 @@ const projectDoc = await getDoc(currentProjectDocRef);
         currentTask = currentTaskRef = currentProject = null;
         workspaceProjects = allUsers = allMessages = allActivities = [];
         clearImagePreview();
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
     }
     
     function detachAllListeners() {
