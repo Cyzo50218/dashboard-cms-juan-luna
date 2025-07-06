@@ -727,7 +727,8 @@ async function renderSearchResultItem(item) {
   const savedContainer = document.getElementById('saved-container');
 const searchOptions = document.querySelector('.search-options');
 const emailContainerId = document.getElementById('email-container-id');
-
+const optionsQuery = document.getElementById('options-query');
+  
   switch (item.type) {
   case 'project':
     const project = item.data;
