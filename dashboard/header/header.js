@@ -36,6 +36,11 @@ let currentUserId = null;
 let recentTasksUnsubscribe = null;
 const algoliasearch = window.algoliasearch;
 let selectedOptionBtnIndex = -1;
+const DEBOUNCE_DELAY = 150;
+
+
+let lastInputValue = ''; // 🆕 Track last value
+let searchTimeout;
 
 // Safe api public key
 const searchClient = algoliasearch(
@@ -715,6 +720,7 @@ function hslToHex(h, s, l) {
 
 async function renderSearchResultItem(item) {
   let itemDiv = document.createElement('div');
+  const input = document.querySelector('.search-input');
   switch (item.type) {
   case 'project':
     const project = item.data;
@@ -794,6 +800,9 @@ async function renderSearchResultItem(item) {
   const href = `/tasks/${currentUserId}/list/${task.projectId}`;
   history.pushState({ path: href }, '', href);
   closeSearchExpand();
+  input.value = '';
+lastInputValue = '';
+
   // Load the new section dynamically
   router(); // This will call `loadSection()` and initialize `list.js`
 
@@ -892,6 +901,8 @@ async function renderSearchResultItem(item) {
   // Update the browser URL without reloading
   history.pushState({ path: href }, '', href);
   closeSearchExpand();
+  input.value = '';
+lastInputValue = '';
   // Load the new section dynamically
   router(); // This will call `loadSection()` and initialize `list.js`
 });
@@ -2037,11 +2048,6 @@ onAuthStateChanged(auth, async (user) => {
     }
   }
 });*/
-const DEBOUNCE_DELAY = 150;
-
-
-let lastInputValue = ''; // 🆕 Track last value
-let searchTimeout;
 
 input.addEventListener('input', async () => {
   const value = input.value.trim();
@@ -2183,7 +2189,7 @@ input.addEventListener('input', async () => {
 
 cancelIcon.addEventListener('click', async () => {
     input.value = '';
-    
+    lastInputValue = '';
 cancelIcon.classList.add('hidden');
 halfQuery = resetHalfQueryContainer();
 halfQuery.classList.add("hidden");
