@@ -942,16 +942,18 @@ async function displaySearchResults(tasks, projects, people, messages) {
     console.error("half-query div not found for displaying search results!");
     return;
   }
-  
-  displayOffset = 0;
-  const newHalfQueryDiv = halfQueryDiv.cloneNode(false); // clone to remove scroll listeners
-  
-  halfQueryDiv.parentNode.replaceChild(newHalfQueryDiv, halfQueryDiv);
-  newHalfQueryDiv.innerHTML = '';
-  halfQueryDiv.innerHTML = ''; // Clear previous content
-  halfQueryDiv.classList.remove("skeleton-active");
 
-  // ✅ Deduplicate results by objectID or id
+  displayOffset = 0;
+
+  const newHalfQueryDiv = halfQueryDiv.cloneNode(false);
+  newHalfQueryDiv.id = 'half-query'; // Re-assign ID
+
+  halfQueryDiv.parentNode.replaceChild(newHalfQueryDiv, halfQueryDiv);
+
+  newHalfQueryDiv.innerHTML = '';
+  newHalfQueryDiv.classList.remove("skeleton-active");
+  newHalfQueryDiv.classList.remove('hidden');
+
   const allResultsMap = new Map();
   [...projects, ...tasks, ...people, ...messages].forEach((item) => {
     const id = item.objectID || item.id;
@@ -969,42 +971,219 @@ async function displaySearchResults(tasks, projects, people, messages) {
   const hasResults = filteredResults.length > 0;
 
   if (hasResults) {
-    displayOffset = 0; // Reset scroll pagination
+    await displayNextBatch(filteredResults, newHalfQueryDiv);
 
-    // Initial batch render
-    await displayNextBatch(filteredResults, halfQueryDiv);
-
-    // If there are more results, show enterSearchResults() hint
     if (filteredResults.length > pageSize) {
-      halfQueryDiv.appendChild(enterSearchResults());
+      newHalfQueryDiv.appendChild(enterSearchResults());
     }
 
-    // Scroll listener for pagination
-    halfQueryDiv.addEventListener('scroll', async function onScroll() {
-      const scrollBottom = halfQueryDiv.scrollTop + halfQueryDiv.clientHeight;
-      if (scrollBottom >= halfQueryDiv.scrollHeight - 10) {
-        halfQueryDiv.removeEventListener('scroll', onScroll);
-        await displayNextBatch(filteredResults, halfQueryDiv);
+    newHalfQueryDiv.addEventListener('scroll', async function onScroll() {
+      const scrollBottom = newHalfQueryDiv.scrollTop + newHalfQueryDiv.clientHeight;
+      if (scrollBottom >= newHalfQueryDiv.scrollHeight - 10) {
+        newHalfQueryDiv.removeEventListener('scroll', onScroll);
+        await displayNextBatch(filteredResults, newHalfQueryDiv);
         if (displayOffset < filteredResults.length) {
-          halfQueryDiv.addEventListener('scroll', onScroll);
+          newHalfQueryDiv.addEventListener('scroll', onScroll);
         }
       }
     });
 
   } else {
-    // No results message
     const noResultsDiv = document.createElement('div');
     noResultsDiv.className = 'search-no-results';
     noResultsDiv.innerHTML = `
       <p>No results found for your search.</p>
       <p>Try adjusting your keywords or filters.</p>
     `;
-    halfQueryDiv.appendChild(noResultsDiv);
+    newHalfQueryDiv.appendChild(noResultsDiv);
   }
-
-  halfQueryDiv.classList.remove('hidden');
 }
 
+async function runSearch(value) {
+  console.groupCollapsed('🔍 runSearch started');
+  
+  const isTaskSearch = selectedOptionBtnIndex === 0 || selectedOptionBtnIndex === -1;
+  const isProjectSearch = selectedOptionBtnIndex === 1 || selectedOptionBtnIndex === -1;
+  
+  const isInQuery = value.toLowerCase().startsWith('in:');
+  const isAssigneeQuery = value.toLowerCase().startsWith('assignee:');
+  
+  const inQueryTitle = isInQuery ? value.slice(3).trim().toLowerCase() : null;
+  const assigneeQuery = isAssigneeQuery ? value.slice(9).trim().toLowerCase() : null;
+  
+  const searchTasks = isTaskSearch || isInQuery || isAssigneeQuery;
+  const searchProjects = !isInQuery && !isAssigneeQuery;
+  
+  console.table({
+    'Selected Option Index': selectedOptionBtnIndex,
+    'Is Task Search': isTaskSearch,
+    'Is Project Search': isProjectSearch,
+    'Is "in:" Query': isInQuery,
+    'Is "assignee:" Query': isAssigneeQuery,
+    'Search Tasks': searchTasks,
+    'Search Projects': searchProjects,
+    'inQueryTitle': inQueryTitle,
+    'assigneeQuery': assigneeQuery,
+  });
+  
+  const queries = [];
+  if (searchProjects) {
+    queries.push({ indexName: 'projects', query: value, params: { hitsPerPage: 50 } });
+  }
+  if (searchTasks) {
+    queries.push({ indexName: 'tasks', query: (isInQuery || isAssigneeQuery) ? '' : value, params: { hitsPerPage: 50 } });
+  }
+  
+  console.log('Algolia Query Payload:', JSON.stringify(queries, null, 2));
+  
+  let results;
+  try {
+    const response = await searchClient.search(queries);
+    results = response.results;
+    console.log('Algolia Results:', results);
+  } catch (err) {
+    console.error('Algolia Search Failed:', err);
+    return;
+  }
+  
+  let projects = searchProjects ? results.shift()?.hits || [] : [];
+  let tasks = searchTasks ? results.shift()?.hits || [] : [];
+  
+  console.groupCollapsed('🗂 Project Filtering');
+  const filteredProjects = [];
+  for (const p of projects) {
+    let memberUIDs = p.memberUIDs || [];
+    console.log(`Project "${p.name || p.title}" (ID: ${p.objectID}) initial members:`, memberUIDs);
+    
+    if (p.projectRef) {
+      try {
+        const snap = await getDoc(doc(db, p.projectRef));
+        if (snap.exists()) {
+          const data = snap.data();
+          if (Array.isArray(data.memberUIDs)) {
+            memberUIDs = data.memberUIDs;
+          }
+        }
+      } catch (e) {
+        console.warn(`Failed to fetch projectRef for project ID ${p.objectID}`, e);
+      }
+    }
+    
+    if (memberUIDs.includes(currentUserId)) {
+      console.log(`✔ Project allowed for current user: ${p.name || p.title}`);
+      filteredProjects.push(p);
+    } else {
+      console.log(`✖ Project skipped (not a member): ${p.name || p.title}`);
+    }
+  }
+  console.groupEnd();
+  
+  console.groupCollapsed('📋 Task Filtering');
+  const filteredTasks = [];
+  for (const t of tasks) {
+    console.group(`Task "${t.title || t.name}" (ID: ${t.objectID})`);
+    
+    if (!t.projectRef) {
+      console.warn('Skipped: No projectRef found.');
+      console.groupEnd();
+      continue;
+    }
+    
+    let allow = false;
+    let projectData = {};
+    let memberUIDs = [];
+    
+    try {
+      const snap = await getDoc(doc(db, t.projectRef));
+      if (!snap.exists()) {
+        console.warn(`Skipped: Project not found: ${t.projectRef}`);
+        console.groupEnd();
+        continue;
+      }
+      
+      projectData = snap.data();
+      memberUIDs = Array.isArray(projectData.memberUIDs) ? projectData.memberUIDs : [];
+      
+      if (!memberUIDs.includes(currentUserId)) {
+        console.warn(`Skipped: User not part of project ${t.projectRef}`);
+        console.groupEnd();
+        continue;
+      }
+      
+      allow = true;
+      console.log('✔ User is member of project');
+    } catch (e) {
+      console.error('Error reading task.projectRef', e);
+      console.groupEnd();
+      continue;
+    }
+    
+    if (!allow) {
+      console.groupEnd();
+      continue;
+    }
+    
+    if (isInQuery) {
+      const projectTitle = projectData.title.toLowerCase();
+      console.log(`Checking "in:" project title: "${projectTitle}" vs "${inQueryTitle}"`);
+      
+      if (!projectTitle.includes(inQueryTitle)) {
+        console.warn('Skipped: Project title does not match "in:"');
+        console.groupEnd();
+        continue;
+      } else {
+        console.log('✔ "in:" match');
+      }
+    }
+    
+    if (isAssigneeQuery) {
+      const assignees = Array.isArray(t.assignee) ? t.assignee : [];
+      console.log('Checking assignees:', assignees);
+      let matched = false;
+      
+      for (const uid of assignees) {
+        try {
+          const snap = await getDoc(doc(db, 'users', uid));
+          if (snap.exists()) {
+            const user = snap.data();
+            const name = (user.name || user.displayName || '').toLowerCase();
+            console.log(`Checking assignee "${name}" against "${assigneeQuery}"`);
+            if (name.includes(assigneeQuery)) {
+              matched = true;
+              console.log(`✔ Matched assignee: ${name}`);
+              break;
+            }
+          }
+        } catch (e) {
+          console.warn('Error loading user for assignee:', uid, e);
+        }
+      }
+      
+      if (!matched) {
+        console.warn('Skipped: No assignee matched');
+        console.groupEnd();
+        continue;
+      }
+    }
+    
+    console.log(`✔ Task added to results: "${t.title || t.name}"`);
+    filteredTasks.push(t);
+    console.groupEnd();
+  }
+  console.groupEnd();
+  
+  console.log('✅ Final Filtered Projects:', filteredProjects.map(p => p.name || p.title));
+  console.log('✅ Final Filtered Tasks:', filteredTasks.map(t => t.title || t.name));
+  
+  displaySearchResults(
+    isTaskSearch ? filteredTasks : [],
+    isProjectSearch ? filteredProjects : [],
+    [],
+    []
+  );
+  
+  console.groupEnd(); // runSearch
+}
 async function getProcessedWorkspacePeopleData() {
   const processedPeopleMap = new Map(); // Map to store unique PersonData objects by UID
   
@@ -1120,191 +1299,7 @@ async function handleNewWorkspace() {
   }
 }
 
-async function runSearch(value) {
-  console.groupCollapsed('🔍 runSearch started');
 
-  const isTaskSearch = selectedOptionBtnIndex === 0 || selectedOptionBtnIndex === -1;
-  const isProjectSearch = selectedOptionBtnIndex === 1 || selectedOptionBtnIndex === -1;
-
-  const isInQuery = value.toLowerCase().startsWith('in:');
-  const isAssigneeQuery = value.toLowerCase().startsWith('assignee:');
-
-  const inQueryTitle = isInQuery ? value.slice(3).trim().toLowerCase() : null;
-  const assigneeQuery = isAssigneeQuery ? value.slice(9).trim().toLowerCase() : null;
-
-  const searchTasks = isTaskSearch || isInQuery || isAssigneeQuery;
-  const searchProjects = !isInQuery && !isAssigneeQuery;
-
-  console.table({
-    'Selected Option Index': selectedOptionBtnIndex,
-    'Is Task Search': isTaskSearch,
-    'Is Project Search': isProjectSearch,
-    'Is "in:" Query': isInQuery,
-    'Is "assignee:" Query': isAssigneeQuery,
-    'Search Tasks': searchTasks,
-    'Search Projects': searchProjects,
-    'inQueryTitle': inQueryTitle,
-    'assigneeQuery': assigneeQuery,
-  });
-
-  const queries = [];
-  if (searchProjects) {
-    queries.push({ indexName: 'projects', query: value, params: { hitsPerPage: 50 } });
-  }
-  if (searchTasks) {
-    queries.push({ indexName: 'tasks', query: (isInQuery || isAssigneeQuery) ? '' : value, params: { hitsPerPage: 50 } });
-  }
-
-  console.log('Algolia Query Payload:', JSON.stringify(queries, null, 2));
-
-  let results;
-  try {
-    const response = await searchClient.search(queries);
-    results = response.results;
-    console.log('Algolia Results:', results);
-  } catch (err) {
-    console.error('Algolia Search Failed:', err);
-    return;
-  }
-
-  let projects = searchProjects ? results.shift()?.hits || [] : [];
-  let tasks = searchTasks ? results.shift()?.hits || [] : [];
-
-  console.groupCollapsed('🗂 Project Filtering');
-  const filteredProjects = [];
-  for (const p of projects) {
-    let memberUIDs = p.memberUIDs || [];
-    console.log(`Project "${p.name || p.title}" (ID: ${p.objectID}) initial members:`, memberUIDs);
-
-    if (p.projectRef) {
-      try {
-        const snap = await getDoc(doc(db, p.projectRef));
-        if (snap.exists()) {
-          const data = snap.data();
-          if (Array.isArray(data.memberUIDs)) {
-            memberUIDs = data.memberUIDs;
-          }
-        }
-      } catch (e) {
-        console.warn(`Failed to fetch projectRef for project ID ${p.objectID}`, e);
-      }
-    }
-
-    if (memberUIDs.includes(currentUserId)) {
-      console.log(`✔ Project allowed for current user: ${p.name || p.title}`);
-      filteredProjects.push(p);
-    } else {
-      console.log(`✖ Project skipped (not a member): ${p.name || p.title}`);
-    }
-  }
-  console.groupEnd();
-
-  console.groupCollapsed('📋 Task Filtering');
-  const filteredTasks = [];
-  for (const t of tasks) {
-    console.group(`Task "${t.title || t.name}" (ID: ${t.objectID})`);
-
-    if (!t.projectRef) {
-      console.warn('Skipped: No projectRef found.');
-      console.groupEnd();
-      continue;
-    }
-
-    let allow = false;
-    let projectData = {};
-    let memberUIDs = [];
-
-    try {
-      const snap = await getDoc(doc(db, t.projectRef));
-      if (!snap.exists()) {
-        console.warn(`Skipped: Project not found: ${t.projectRef}`);
-        console.groupEnd();
-        continue;
-      }
-
-      projectData = snap.data();
-      memberUIDs = Array.isArray(projectData.memberUIDs) ? projectData.memberUIDs : [];
-
-      if (!memberUIDs.includes(currentUserId)) {
-        console.warn(`Skipped: User not part of project ${t.projectRef}`);
-        console.groupEnd();
-        continue;
-      }
-
-      allow = true;
-      console.log('✔ User is member of project');
-    } catch (e) {
-      console.error('Error reading task.projectRef', e);
-      console.groupEnd();
-      continue;
-    }
-
-    if (!allow) {
-      console.groupEnd();
-      continue;
-    }
-
-    if (isInQuery) {
-      const projectTitle = projectData.title.toLowerCase();
-      console.log(`Checking "in:" project title: "${projectTitle}" vs "${inQueryTitle}"`);
-
-      if (!projectTitle.includes(inQueryTitle)) {
-        console.warn('Skipped: Project title does not match "in:"');
-        console.groupEnd();
-        continue;
-      } else {
-        console.log('✔ "in:" match');
-      }
-    }
-
-    if (isAssigneeQuery) {
-      const assignees = Array.isArray(t.assignee) ? t.assignee : [];
-      console.log('Checking assignees:', assignees);
-      let matched = false;
-
-      for (const uid of assignees) {
-        try {
-          const snap = await getDoc(doc(db, 'users', uid));
-          if (snap.exists()) {
-            const user = snap.data();
-            const name = (user.name || user.displayName || '').toLowerCase();
-            console.log(`Checking assignee "${name}" against "${assigneeQuery}"`);
-            if (name.includes(assigneeQuery)) {
-              matched = true;
-              console.log(`✔ Matched assignee: ${name}`);
-              break;
-            }
-          }
-        } catch (e) {
-          console.warn('Error loading user for assignee:', uid, e);
-        }
-      }
-
-      if (!matched) {
-        console.warn('Skipped: No assignee matched');
-        console.groupEnd();
-        continue;
-      }
-    }
-
-    console.log(`✔ Task added to results: "${t.title || t.name}"`);
-    filteredTasks.push(t);
-    console.groupEnd();
-  }
-  console.groupEnd();
-
-  console.log('✅ Final Filtered Projects:', filteredProjects.map(p => p.name || p.title));
-  console.log('✅ Final Filtered Tasks:', filteredTasks.map(t => t.title || t.name));
-
-  displaySearchResults(
-    isTaskSearch ? filteredTasks : [],
-    isProjectSearch ? filteredProjects : [],
-    [],
-    []
-  );
-
-  console.groupEnd(); // runSearch
-}
 
 function showErrorUI() {
   halfQuery.classList.remove("skeleton-active");
