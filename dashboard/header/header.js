@@ -812,8 +812,10 @@ async function displaySearchResults(tasks, projects, people, messages) {
 
   const assigneesHtml = (await Promise.all(assigneesHtmlPromises)).join('');
   const moreAssigneesHtml = remainingAssigneesCount > 0
-    ? `<span class="material-icons-outlined project-more-icon">more_horiz</span>` : '';
-
+  `<div class="headersearches-assignee-list project-more-icon" title="${remainingAssigneesCount} more members" style="z-index: ${50 - MAX_VISIBLE_ASSIGNEES};">
+                    <span class="material-icons-outlined">more_horiz</span>
+                </div>`: '';
+                
   itemDiv.innerHTML = `
     <span class="headersearches-project-square-icon" style="background-color: ${projectHexColor};"></span>
     <div class="headersearches-tasks-recent-content">
