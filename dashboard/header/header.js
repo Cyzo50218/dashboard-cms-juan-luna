@@ -2070,7 +2070,6 @@ input.addEventListener('input', async () => {
     displayOffset = 0;
     cancelIcon.classList.add('hidden');
     halfQuery = resetHalfQueryContainer();
-    displaySearchResults([], [], [], []);
     halfQuery.classList.add("hidden");
     halfQuery.classList.remove("skeleton-active");
     recentContainer.classList.remove("hidden");
@@ -2142,7 +2141,6 @@ cancelIcon.addEventListener('click', async () => {
     
 cancelIcon.classList.add('hidden');
 halfQuery = resetHalfQueryContainer();
-displaySearchResults([], [], [], []);
 halfQuery.classList.add("hidden");
 halfQuery.classList.remove("skeleton-active"); // also remove loading state
 recentContainer.classList.remove("hidden");
