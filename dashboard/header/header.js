@@ -1826,7 +1826,8 @@ onAuthStateChanged(auth, async (user) => {
 });*/
 
   let searchTimeout = null;
-const DEBOUNCE_DELAY = 300;
+const DEBOUNCE_DELAY = 150;
+
 
 input.addEventListener('input', async () => {
   const value = input.value.trim();
@@ -1838,14 +1839,15 @@ input.addEventListener('input', async () => {
     recentContainer.classList.add("hidden");
     searchOptions.classList.add("hidden");
     mytaskdisplay.classList.add("hidden");
-    halfQuery.classList.remove("hidden");
-    halfQuery.classList.add("skeleton-active");
-
-    halfQuery.innerHTML = `
-      <div class="skeleton-loader" style="width: 200px;"></div>
-      <div class="skeleton-loader" style="width: 500px;"></div>
-      <div class="skeleton-loader" style="width: 400px;"></div>
-    `;
+    if (halfQuery.innerHTML.trim() === '') {
+  halfQuery.classList.remove("hidden");
+  halfQuery.classList.add("skeleton-active");
+  halfQuery.innerHTML = `
+    <div class="skeleton-loader" style="width: 200px;"></div>
+    <div class="skeleton-loader" style="width: 500px;"></div>
+    <div class="skeleton-loader" style="width: 400px;"></div>
+  `;
+}
 
     searchTimeout = setTimeout(async () => {
   try {
@@ -1853,12 +1855,12 @@ input.addEventListener('input', async () => {
       {
         indexName: 'projects',
         query: value,
-        params: { hitsPerPage: 5 }
+        params: { hitsPerPage: 10 }
       },
       {
         indexName: 'tasks',
         query: value,
-        params: { hitsPerPage: 5 }
+        params: { hitsPerPage: 10 }
       }
     ]);
 
