@@ -234,21 +234,34 @@ document.addEventListener("DOMContentLoaded", () => {
     const auth = getAuth(app);
     const functions = getFunctions(app); 
     const runBackfill = httpsCallable(functions, "runAlgoliaBackfill");
-    
+
+    let backfillIntervalId = null; // 🕒 Keep reference for cleanup later if needed
+
     onAuthStateChanged(auth, async (user) => {
         if (user) {
-            // --- USER IS LOGGED IN ---
-            console.log("Authenticated user found. Initializing dashboard...");
-            
-            // Load persistent layout components.
+            console.log("✅ Authenticated user found. Initializing dashboard...");
+
+            // Load persistent layout components
             await Promise.all([
                 loadHTML("#top-header", "/dashboard/header/header.html"),
                 loadHTML("#rootdrawer", "/dashboard/drawer/drawer.html"),
                 loadHTML("#right-sidebar", "/dashboard/sidebar/sidebar.html"),
             ]);
-            
-            // --- GLOBAL NAVIGATION HANDLER ---
-            // This single listener handles all SPA routing clicks.
+
+            // 🔁 Periodic backfill every 60 seconds
+            const runAndLogBackfill = async () => {
+                try {
+                    const res = await runBackfill();
+                    console.log("✅ Periodic Backfill success:", res.data.message);
+                } catch (err) {
+                    console.error("❌ Periodic Backfill error:", err.message);
+                }
+            };
+
+            runAndLogBackfill(); // Initial run
+            backfillIntervalId = setInterval(runAndLogBackfill, 60_000); // Every 60 seconds
+
+            // Global SPA navigation handler
             document.body.addEventListener('click', e => {
                 const link = e.target.closest('a[data-link]');
                 if (link) {
@@ -259,21 +272,18 @@ document.addEventListener("DOMContentLoaded", () => {
             });
 
             window.TaskSidebar?.init();
-            
-            window.addEventListener('popstate', router); // Handle back/forward buttons
-            router(); // Initial route call for the first page load
-            
-            runBackfill()
-             .then((res) => {
-                 console.log("✅ Backfill success:", res.data.message);
-             })
-             .catch((err) => {
-                 console.error("❌ Backfill error:", err.message);
-            });
+            window.addEventListener('popstate', router);
+            router(); // Initial route load
+
         } else {
-            // --- USER IS NOT LOGGED IN ---
-            console.log("No authenticated user. Redirecting to /login/...");
+            console.log("⛔ No authenticated user. Redirecting to login...");
             window.location.href = '/login/login.html';
+
+            // 🧹 Clean up interval if user logs out before login redirect
+            if (backfillIntervalId) {
+                clearInterval(backfillIntervalId);
+                backfillIntervalId = null;
+            }
         }
     });
 });
