@@ -390,13 +390,13 @@ function initializeListView(params) {
   const taskIdToOpen = urlParams.get('openTask');
 
   if (taskIdToOpen) {
+      const projectRefPath = sessionStorage.getItem('pendingProjectRef');
+      
     console.log(`Opening sidebar from URL param: ${taskIdToOpen}`);
     if (window.TaskSidebar && typeof window.TaskSidebar.open === 'function') {
         console.log(`Current Project Ref: ${currentProjectRef}`);
-      window.TaskSidebar.open(taskIdToOpen, currentProjectRef);
-    } else if (typeof displaySideBarTasks === 'function') {
-        console.log(`Display sidebar tasks, current Project Ref: ${currentProjectRef}`);
-      displaySideBarTasks(taskIdToOpen);
+      window.TaskSidebar.open(taskIdToOpen, projectRefPath);
+      sessionStorage.removeItem('pendingProjectRef');
     } else {
       console.warn('No sidebar function found for openTask param.');
     }
