@@ -2015,7 +2015,6 @@ input.addEventListener('input', async () => {
 
       // Reset pagination state
       displayOffset = 0;
-      displaySearchResults([], [], [], []);
     }
 
     // ⏳ Show loading placeholders
@@ -2030,7 +2029,6 @@ input.addEventListener('input', async () => {
     // 🔁 Debounced search
     searchTimeout = setTimeout(async () => {
       try {
-        displaySearchResults([], [], [], []);
         await runSearch(value); // your main async search trigger
       } catch (err) {
         console.error("Algolia search error:", err);
@@ -2041,7 +2039,6 @@ input.addEventListener('input', async () => {
 
           setTimeout(async () => {
             try {
-              displaySearchResults([], [], [], []);
               await runSearch(value);
             } catch (retryErr) {
               console.error("Retry failed:", retryErr);
