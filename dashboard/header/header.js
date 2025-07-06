@@ -1025,7 +1025,15 @@ async function runSearch(value) {
     'inQueryTitle': inQueryTitle,
     'assigneeQuery': assigneeQuery,
   });
-  
+  halfQuery = resetHalfQueryContainer();
+halfQuery.classList.remove("hidden");
+halfQuery.classList.add("skeleton-active");
+halfQuery.innerHTML = `
+  <div class="skeleton-loader" style="width: 200px;"></div>
+  <div class="skeleton-loader" style="width: 500px;"></div>
+  <div class="skeleton-loader" style="width: 400px;"></div>
+`;
+
   const queries = [];
   if (searchProjects) {
     queries.push({ indexName: 'projects', query: value, params: { hitsPerPage: 50 } });
@@ -1045,7 +1053,7 @@ async function runSearch(value) {
     console.error('Algolia Search Failed:', err);
     return;
   }
-  
+
   let projects = searchProjects ? results.shift()?.hits || [] : [];
   let tasks = searchTasks ? results.shift()?.hits || [] : [];
   
@@ -1181,7 +1189,7 @@ async function runSearch(value) {
     [],
     []
   );
-  
+  halfQuery.classList.remove("skeleton-active");
   console.groupEnd(); // runSearch
 }
 async function getProcessedWorkspacePeopleData() {
