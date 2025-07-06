@@ -1010,6 +1010,7 @@ async function displaySearchResults(tasks, projects, people, messages) {
 }
 
 async function runSearch(value) {
+  const halfQuery = document.getElementById('half-query');
   console.groupCollapsed('🔍 runSearch started');
   
   const isTaskSearch = selectedOptionBtnIndex === 0 || selectedOptionBtnIndex === -1;
