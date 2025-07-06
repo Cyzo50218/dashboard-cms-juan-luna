@@ -1303,18 +1303,16 @@ function resetHalfQueryContainer() {
   const old = document.getElementById('half-query');
   if (!old) return null;
 
-  const replacement = old.cloneNode(false); // false = no child nodes
+  const replacement = old.cloneNode(false);
   replacement.id = 'half-query';
 
-  // ⬇️ Clear and hide the new element
   replacement.innerHTML = '';
-  replacement.classList.add('hidden'); // Optional: add 'hidden' class to hide it
-  replacement.classList.remove('skeleton-active'); // Optional: remove loading style
+  replacement.classList.add('hidden');
+  replacement.classList.remove('skeleton-active');
 
   old.parentNode.replaceChild(replacement, old);
-  return replacement;
+  return document.getElementById('half-query'); // return fresh reference
 }
-
 
 function showErrorUI() {
   halfQuery.classList.remove("skeleton-active");
