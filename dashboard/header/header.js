@@ -942,7 +942,12 @@ async function displaySearchResults(tasks, projects, people, messages) {
     console.error("half-query div not found for displaying search results!");
     return;
   }
-
+  
+  displayOffset = 0;
+  const newHalfQueryDiv = halfQueryDiv.cloneNode(false); // clone to remove scroll listeners
+  
+  halfQueryDiv.parentNode.replaceChild(newHalfQueryDiv, halfQueryDiv);
+  newHalfQueryDiv.innerHTML = '';
   halfQueryDiv.innerHTML = ''; // Clear previous content
   halfQueryDiv.classList.remove("skeleton-active");
 
@@ -1986,8 +1991,12 @@ onAuthStateChanged(auth, async (user) => {
 const DEBOUNCE_DELAY = 150;
 
 
+let lastInputValue = ''; // 🆕 Track last value
+let searchTimeout;
+
 input.addEventListener('input', async () => {
   const value = input.value.trim();
+
   clearTimeout(searchTimeout);
 
   if (value !== '') {
@@ -1996,113 +2005,129 @@ input.addEventListener('input', async () => {
     recentContainer.classList.add("hidden");
     searchOptions.classList.add("hidden");
     mytaskdisplay.classList.add("hidden");
-    if (halfQuery.innerHTML.trim() === '') {
-  halfQuery.classList.remove("hidden");
-  halfQuery.classList.add("skeleton-active");
-  halfQuery.innerHTML = `
-    <div class="skeleton-loader" style="width: 200px;"></div>
-    <div class="skeleton-loader" style="width: 500px;"></div>
-    <div class="skeleton-loader" style="width: 400px;"></div>
-  `;
-}
 
-searchTimeout = setTimeout(async () => {
-  try {
-    await runSearch(value);
-  } catch (err) {
-    console.error("Algolia search error:", err);
+    // 🆕 If the value has changed, reset the halfQuery
+    if (value !== lastInputValue) {
+      lastInputValue = value;
 
-    // Check for unreachable host RetryError
-    if (err.name === 'RetryError' && err.message.includes('Unreachable hosts')) {
-      console.warn("Retrying search after network failure...");
-
-      // Optional: show a retry loader or status
+      // ❌ Clear existing results immediately
+      halfQuery.innerHTML = '';
+      halfQuery.classList.remove("hidden");
       halfQuery.classList.add("skeleton-active");
 
-      // Retry after 1.5 seconds
-      setTimeout(async () => {
-        try {
-          await runSearch(value); // your search logic in a separate function
-        } catch (retryErr) {
-          console.error("Retry failed:", retryErr);
+      // Reset pagination state
+      displayOffset = 0;
+      displaySearchResults([], [], [], []);
+    }
+
+    // ⏳ Show loading placeholders
+    if (halfQuery.innerHTML.trim() === '') {
+      halfQuery.innerHTML = `
+        <div class="skeleton-loader" style="width: 200px;"></div>
+        <div class="skeleton-loader" style="width: 500px;"></div>
+        <div class="skeleton-loader" style="width: 400px;"></div>
+      `;
+    }
+
+    // 🔁 Debounced search
+    searchTimeout = setTimeout(async () => {
+      try {
+        displaySearchResults([], [], [], []);
+        await runSearch(value); // your main async search trigger
+      } catch (err) {
+        console.error("Algolia search error:", err);
+
+        if (err.name === 'RetryError' && err.message.includes('Unreachable hosts')) {
+          console.warn("Retrying search after network failure...");
+          halfQuery.classList.add("skeleton-active");
+
+          setTimeout(async () => {
+            try {
+              displaySearchResults([], [], [], []);
+              await runSearch(value);
+            } catch (retryErr) {
+              console.error("Retry failed:", retryErr);
+              showErrorUI();
+            }
+          }, 1500);
+        } else {
           showErrorUI();
         }
-      }, 1500);
-    } else {
-      showErrorUI();
-    }
-  }
-}, DEBOUNCE_DELAY);
+      }
+    }, DEBOUNCE_DELAY);
 
   } else {
+    // 🔁 Reset everything back if input is cleared
+    lastInputValue = '';
+    clearTimeout(searchTimeout);
+    displayOffset = 0;
+
     displaySearchResults([], [], [], []);
     cancelIcon.classList.add('hidden');
     halfQuery.innerHTML = '';
     halfQuery.classList.add("hidden");
-    halfQuery.classList.remove("skeleton-active"); // also remove loading state
-    recentContainer.classList.remove("hidden");
+    halfQuery.classList.remove("skeleton-active");
 
     optionsQuery.classList.add("hidden");
     savedContainer.classList.remove("hidden");
     searchOptions.classList.remove("hidden");
 
-    if (selectedOptionBtnIndex === 0) { // Tasks
-  mytaskdisplay.classList.remove("hidden");
-  fetchRecentItemsFromFirestore(renderRecentItems, {
-    showTasks: true,
-    showPeople: false,
-    showProjects: false,
-    showMessages: false,
-    taskLimit: 4, // Limit tasks
-    projectLimit: null,
-    showInviteButton: false
-  });
-} else if (selectedOptionBtnIndex === 1) { // Projects
-  projectdisplay.classList.remove("hidden");
-  fetchRecentItemsFromFirestore(renderRecentItems, {
-    showTasks: false,
-    showPeople: false,
-    showProjects: true,
-    showMessages: false,
-    taskLimit: 4,
-    projectLimit: 5, // Limit projects
-    showInviteButton: false
-  });
-} else if (selectedOptionBtnIndex === 2) { // People
-  peopleEmptyState.classList.remove("hidden");
-  emailContainerPeopleId.classList.remove('hidden');
-  fetchRecentItemsFromFirestore(renderRecentItems, {
-    showTasks: false,
-    showPeople: true,
-    showProjects: false,
-    showMessages: false,
-    taskLimit: 4,
-    projectLimit: 5, // Limit projects
-    showInviteButton: true
-  });
-} else if (selectedOptionBtnIndex === 3) { // NEW: Messages
-  messagesEmptyState.classList.remove("hidden");
-  fetchRecentItemsFromFirestore(renderRecentItems, {
-    showTasks: false,
-    showPeople: false,
-    showProjects: false,
-    showMessages: true,
-    taskLimit: 4,
-    projectLimit: 5, // Limit projects
-    showInviteButton: true
-  });
-} else {
-  fetchRecentItemsFromFirestore(renderRecentItems, {
-    showTasks: true,
-    showPeople: true,
-    showProjects: true,
-    showMessages: true,
-    taskLimit: 4,
-    projectLimit: null,
-    showInviteButton: false
-  });
-}
-
+    if (selectedOptionBtnIndex === 0) {
+      mytaskdisplay.classList.remove("hidden");
+      fetchRecentItemsFromFirestore(renderRecentItems, {
+        showTasks: true,
+        showPeople: false,
+        showProjects: false,
+        showMessages: false,
+        taskLimit: 4,
+        projectLimit: null,
+        showInviteButton: false
+      });
+    } else if (selectedOptionBtnIndex === 1) {
+      projectdisplay.classList.remove("hidden");
+      fetchRecentItemsFromFirestore(renderRecentItems, {
+        showTasks: false,
+        showPeople: false,
+        showProjects: true,
+        showMessages: false,
+        taskLimit: 4,
+        projectLimit: 5,
+        showInviteButton: false
+      });
+    } else if (selectedOptionBtnIndex === 2) {
+      peopleEmptyState.classList.remove("hidden");
+      emailContainerPeopleId.classList.remove('hidden');
+      fetchRecentItemsFromFirestore(renderRecentItems, {
+        showTasks: false,
+        showPeople: true,
+        showProjects: false,
+        showMessages: false,
+        taskLimit: 4,
+        projectLimit: 5,
+        showInviteButton: true
+      });
+    } else if (selectedOptionBtnIndex === 3) {
+      messagesEmptyState.classList.remove("hidden");
+      fetchRecentItemsFromFirestore(renderRecentItems, {
+        showTasks: false,
+        showPeople: false,
+        showProjects: false,
+        showMessages: true,
+        taskLimit: 4,
+        projectLimit: 5,
+        showInviteButton: true
+      });
+    } else {
+      fetchRecentItemsFromFirestore(renderRecentItems, {
+        showTasks: true,
+        showPeople: true,
+        showProjects: true,
+        showMessages: true,
+        taskLimit: 4,
+        projectLimit: null,
+        showInviteButton: false
+      });
+    }
   }
 });
 
