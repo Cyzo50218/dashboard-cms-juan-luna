@@ -745,57 +745,10 @@ async function displaySearchResults(tasks, projects, people, messages) {
   const filteredResults = [];
 
 for (const item of allResults) {
-  if (item.type === 'project') {
-    const memberUIDs = item.data.memberUIDs || [];
-    
-    // If projectRef exists, fetch the Firestore doc for up-to-date memberUIDs
-    if (item.data.projectRef) {
-      try {
-        const docRef = doc(db, item.data.projectRef);
-        const snap = await getDoc(docRef);
-        if (snap.exists()) {
-          const projectData = snap.data();
-          if (Array.isArray(projectData.memberUIDs)) {
-            if (projectData.memberUIDs.includes(currentUserId)) {
-              filteredResults.push(item);
-            }
-            continue;
-          }
-        }
-      } catch (err) {
-        console.warn(`Error fetching projectRef for filtering`, err);
-      }
-    }
-    
-    // Fallback to Algolia indexed data
-    if (memberUIDs.includes(currentUserId)) {
-      filteredResults.push(item);
-    }
-  }
-  
-  else if (item.type === 'task') {
-    // Fetch the referenced project to get its memberUIDs
-    if (item.data.projectRef) {
-      try {
-        const docRef = doc(db, item.data.projectRef);
-        const snap = await getDoc(docRef);
-        if (snap.exists()) {
-          const projectData = snap.data();
-          if (Array.isArray(projectData.memberUIDs) && projectData.memberUIDs.includes(currentUserId)) {
-            filteredResults.push(item);
-          }
-        }
-      } catch (err) {
-        console.warn(`Error fetching task.projectRef for filtering`, err);
-      }
-    }
-  }
-  
-  // Include people/messages unconditionally
-  else {
-    filteredResults.push(item);
-  }
+  // Already filtered in searchTimeout
+  filteredResults.push(item);
 }
+
 
   const initialDisplayLimit = 4;
   const hasResults = filteredResults.length > 0;
