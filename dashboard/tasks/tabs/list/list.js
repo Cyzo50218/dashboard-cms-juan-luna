@@ -398,10 +398,6 @@ function initializeListView(params) {
     } else {
       console.warn('No sidebar function found for openTask param.');
     }
-
-    // Optional: remove query param from URL after opening
-    const newUrl = window.location.pathname;
-    window.history.replaceState({}, document.title, newUrl);
   }
 
 }
