@@ -36,9 +36,10 @@ let currentUserId = null;
 let recentTasksUnsubscribe = null;
 const algoliasearch = window.algoliasearch;
 
+// Safe api public key
 const searchClient = algoliasearch(
-  window.ALGOLIA_CONFIG.appId,
-  window.ALGOLIA_CONFIG.searchOnlyKey
+  'PVAIYN3RSK',
+  'fba40703e1406a74dbaaa3042a3baa48'
 );
 
 let recentItemsUnsubscribe = null;
