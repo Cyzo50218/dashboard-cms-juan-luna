@@ -285,7 +285,17 @@ async function open(taskId, projectRef) {
         
         // --- STEP 2: FETCH ALL DATA USING THE CORRECT REFERENCES ---
         // Get the project data
-        const projectDoc = await getDoc(currentProjectRef);
+        let currentProjectDocRef;
+
+if (typeof currentProjectRef === 'string') {
+    currentProjectDocRef = doc(db, currentProjectRef);
+} else if (currentProjectRef?.constructor?.name === 'DocumentReference') {
+    currentProjectDocRef = currentProjectRef;
+} else {
+    throw new Error("Invalid project reference");
+}
+
+const projectDoc = await getDoc(currentProjectDocRef);
         if (!projectDoc.exists()) throw new Error("The provided project reference is invalid or was deleted.");
         currentProject = { id: projectDoc.id, ...projectDoc.data() };
         
