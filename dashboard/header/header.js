@@ -804,7 +804,9 @@ const optionsQuery = document.getElementById('options-query');
       ${moreAssigneesHtml}
     </div>
   `;
-  itemDiv.addEventListener('click', () => {
+  itemDiv.addEventListener('click', async (event) => {
+    event.preventDefault(); // Prevent full page reload
+
   const href = `/tasks/${currentUserId}/list/${project.objectID}`;
   
   try {
@@ -940,7 +942,7 @@ fetchRecentItemsFromFirestore(renderRecentItems, {
           </div>
         `;
         
-        itemDiv.addEventListener('click', (event) => {
+        itemDiv.addEventListener('click', async (event) => {
   event.preventDefault(); // Prevent full page reload
 
 
