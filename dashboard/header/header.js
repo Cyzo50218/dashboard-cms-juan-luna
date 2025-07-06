@@ -1487,7 +1487,7 @@ onAuthStateChanged(auth, async (user) => {
       selectedOptionBtnIndex = -1;
       btn.classList.remove("selected");
       optionBtns.forEach(b => b.classList.remove("hide"));
-      mytaskdisplay.classList.add("hidden");
+      mytaskdisplay.classList.remove("hidden");
       savedSearchText.classList.remove("hidden");
       savedSearchContainer.classList.remove("hidden");
       savedSearchTwoContainer.classList.remove("hidden");
@@ -1506,7 +1506,7 @@ onAuthStateChanged(auth, async (user) => {
       // --- Is NOT selected, now selecting "My Tasks" ---
       selectedOptionBtnIndex = 0;
       btn.classList.add("selected");
-      mytaskdisplay.classList.remove("hidden");
+      mytaskdisplay.classList.add("hidden");
       savedSearchText.classList.add("hidden");
       savedSearchTwoContainer.classList.add("hidden");
       savedSearchContainer.classList.add("hidden");
