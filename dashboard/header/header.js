@@ -713,120 +713,73 @@ function hslToHex(h, s, l) {
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
 
-async function displaySearchResults(tasks, projects, people, messages) {
-  const halfQueryDiv = document.getElementById('half-query');
-  if (!halfQueryDiv) {
-    console.error("half-query div not found for displaying search results!");
-    return;
-  }
-  
-  // Clear previous content
-  
-  
-  const fragment = document.createDocumentFragment();
-  
-  const createSectionHeading = (title) => {
-    const heading = document.createElement('h5');
-    heading.className = 'search-results-section-heading';
-    heading.textContent = title;
-    return heading;
-  };
-  
-  // Combine all results into a single array for initial display logic
-  let allResults = [];
-  
-  // Add projects to allResults, maintaining their type for rendering
-  projects.forEach(project => allResults.push({ type: 'project', data: project }));
-  // Add tasks
-  tasks.forEach(task => allResults.push({ type: 'task', data: task }));
-  // Add people
-  people.forEach(person => allResults.push({ type: 'person', data: person }));
-  // Add messages
-  messages.forEach(message => allResults.push({ type: 'message', data: message }));
-  const filteredResults = [];
-
-for (const item of allResults) {
-  // Already filtered in searchTimeout
-  filteredResults.push(item);
-}
-
-
-  const initialDisplayLimit = 4;
-  const hasResults = filteredResults.length > 0;
-  const resultsToDisplay = filteredResults.slice(0, initialDisplayLimit);
-
-  // Render combined results
-  if (hasResults) {
-    halfQueryDiv.innerHTML = '';
-    halfQueryDiv.classList.remove("skeleton-active");
-
-    for (const item of resultsToDisplay) {
-      let itemDiv;
-      switch (item.type) {
-        case 'project':
-  const project = item.data;
-  itemDiv = document.createElement('div');
-  itemDiv.className = 'headersearches-tasks-recent-item search-result-item';
-  itemDiv.dataset.itemId = project.objectID;
-
-  let memberUIDs = project.memberUIDs || [];
-
-  // 🔄 Try to load fresh memberUIDs from Firestore if projectRef exists
-  if (project.projectRef) {
-    try {
-      const projectDocRef = doc(db, project.projectRef);
-      const projectSnap = await getDoc(projectDocRef);
-      if (projectSnap.exists()) {
-        const projectData = projectSnap.data();
-        memberUIDs = Array.isArray(projectData.memberUIDs) ? projectData.memberUIDs : [];
+async function renderSearchResultItem(item) {
+  let itemDiv = document.createElement('div');
+  switch (item.type) {
+  case 'project':
+    const project = item.data;
+    itemDiv = document.createElement('div');
+    itemDiv.className = 'headersearches-tasks-recent-item search-result-item';
+    itemDiv.dataset.itemId = project.objectID;
+    
+    let memberUIDs = project.memberUIDs || [];
+    
+    // 🔄 Try to load fresh memberUIDs from Firestore if projectRef exists
+    if (project.projectRef) {
+      try {
+        const projectDocRef = doc(db, project.projectRef);
+        const projectSnap = await getDoc(projectDocRef);
+        if (projectSnap.exists()) {
+          const projectData = projectSnap.data();
+          memberUIDs = Array.isArray(projectData.memberUIDs) ? projectData.memberUIDs : [];
+        }
+      } catch (err) {
+        console.error(`Failed to fetch project ${project.projectRef} for members`, err);
       }
-    } catch (err) {
-      console.error(`Failed to fetch project ${project.projectRef} for members`, err);
     }
-  }
-
-  const MAX_VISIBLE_ASSIGNEES = 3;
-  const assigneesToDisplay = memberUIDs.slice(0, MAX_VISIBLE_ASSIGNEES);
-  const remainingAssigneesCount = memberUIDs.length - assigneesToDisplay.length;
-
-  let projectHexColor = project.color || '#cccccc';
-  if (project.color) {
-    const hslValues = project.color.match(/\d+(\.\d+)?/g)?.map(Number);
-    if (hslValues?.length === 3) {
-      projectHexColor = hslToHex(hslValues[0], hslValues[1], hslValues[2]);
-    }
-  }
-
-  const assigneesHtmlPromises = assigneesToDisplay.map(async (uid) => {
-    try {
-      const userDocRef = doc(db, 'users', uid);
-      const userSnap = await getDoc(userDocRef);
-      if (userSnap.exists()) {
-        const userData = userSnap.data();
-        const avatarUrl = userData.avatar;
-        const initials = userData.name
-          ? userData.name.substring(0, 2).toUpperCase()
-          : uid.substring(0, 2).toUpperCase();
-
-        return avatarUrl
-          ? `<div class="headersearches-assignee-avatar" style="background-image: url(${avatarUrl});"></div>`
-          : `<div class="headersearches-assignee-avatar">${initials}</div>`;
+    
+    const MAX_VISIBLE_ASSIGNEES = 3;
+    const assigneesToDisplay = memberUIDs.slice(0, MAX_VISIBLE_ASSIGNEES);
+    const remainingAssigneesCount = memberUIDs.length - assigneesToDisplay.length;
+    
+    let projectHexColor = project.color || '#cccccc';
+    if (project.color) {
+      const hslValues = project.color.match(/\d+(\.\d+)?/g)?.map(Number);
+      if (hslValues?.length === 3) {
+        projectHexColor = hslToHex(hslValues[0], hslValues[1], hslValues[2]);
       }
-    } catch (err) {
-      console.error(`Could not fetch user ${uid}`, err);
     }
-
-    // Fallback
-    return `<div class="headersearches-assignee-avatar">${uid.substring(0, 2).toUpperCase()}</div>`;
-  });
-
-  const assigneesHtml = (await Promise.all(assigneesHtmlPromises)).join('');
-  const moreAssigneesHtml = remainingAssigneesCount > 0
-  ? `<div class="headersearches-assignee-avatar project-more-icon" title="${remainingAssigneesCount} more members">
+    
+    const assigneesHtmlPromises = assigneesToDisplay.map(async (uid) => {
+      try {
+        const userDocRef = doc(db, 'users', uid);
+        const userSnap = await getDoc(userDocRef);
+        if (userSnap.exists()) {
+          const userData = userSnap.data();
+          const avatarUrl = userData.avatar;
+          const initials = userData.name ?
+            userData.name.substring(0, 2).toUpperCase() :
+            uid.substring(0, 2).toUpperCase();
+          
+          return avatarUrl ?
+            `<div class="headersearches-assignee-avatar" style="background-image: url(${avatarUrl});"></div>` :
+            `<div class="headersearches-assignee-avatar">${initials}</div>`;
+        }
+      } catch (err) {
+        console.error(`Could not fetch user ${uid}`, err);
+      }
+      
+      // Fallback
+      return `<div class="headersearches-assignee-avatar">${uid.substring(0, 2).toUpperCase()}</div>`;
+    });
+    
+    const assigneesHtml = (await Promise.all(assigneesHtmlPromises)).join('');
+    const moreAssigneesHtml = remainingAssigneesCount > 0 ?
+      `<div class="headersearches-assignee-avatar project-more-icon" title="${remainingAssigneesCount} more members">
                     <span class="material-icons-outlined">more_horiz</span>
-                </div>`: '';
-                
-  itemDiv.innerHTML = `
+                </div>` : '';
+    
+    itemDiv.innerHTML = `
     <span class="headersearches-project-square-icon" style="background-color: ${projectHexColor};"></span>
     <div class="headersearches-tasks-recent-content">
       <div class="headersearches-tasks-recent-title">${project.name}</div>
@@ -837,74 +790,74 @@ for (const item of allResults) {
       ${moreAssigneesHtml}
     </div>
   `;
-  break;
-
-        case 'task':
-          const task = item.data;
-          itemDiv = document.createElement('div');
-          itemDiv.className = 'headersearches-tasks-recent-item search-result-item';
-          itemDiv.dataset.itemId = task.objectID;
+    break;
+    
+  case 'task':
+    const task = item.data;
+    itemDiv = document.createElement('div');
+    itemDiv.className = 'headersearches-tasks-recent-item search-result-item';
+    itemDiv.dataset.itemId = task.objectID;
+    
+    let statusIcon = (task.status === 'Completed') ? 'check_circle' : 'radio_button_unchecked';
+    let statusClass = (task.status === 'Completed') ? 'status-completed' : '';
+    
+    // --- FIX IS HERE: LOOKUP FOR TASK ASSIGNEES ---
+    const taskAssigneeUIDs = task.assignee || [];
+    
+    // Use Promise.all to fetch all assignee avatars concurrently
+    const taskAssigneesHtmlPromises = taskAssigneeUIDs.map(async (uid) => {
+      try {
+        const userDocRef = doc(db, 'users', uid);
+        const userSnap = await getDoc(userDocRef);
+        
+        if (userSnap.exists()) {
+          const userData = userSnap.data();
+          const avatarUrl = userData.avatar;
+          const initials = userData.name ? userData.name.substring(0, 2).toUpperCase() : uid.substring(0, 2).toUpperCase();
           
-          let statusIcon = (task.status === 'Completed') ? 'check_circle' : 'radio_button_unchecked';
-          let statusClass = (task.status === 'Completed') ? 'status-completed' : '';
-          
-          // --- FIX IS HERE: LOOKUP FOR TASK ASSIGNEES ---
-          const taskAssigneeUIDs = task.assignee || [];
-          
-          // Use Promise.all to fetch all assignee avatars concurrently
-          const taskAssigneesHtmlPromises = taskAssigneeUIDs.map(async (uid) => {
-            try {
-              const userDocRef = doc(db, 'users', uid);
-              const userSnap = await getDoc(userDocRef);
-              
-              if (userSnap.exists()) {
-                const userData = userSnap.data();
-                const avatarUrl = userData.avatar;
-                const initials = userData.name ? userData.name.substring(0, 2).toUpperCase() : uid.substring(0, 2).toUpperCase();
-                
-                if (avatarUrl) {
-                  return `<div class="headersearches-assignee-avatar" style="background-image: url(${avatarUrl});"></div>`;
-                } else {
-                  return `<div class="headersearches-assignee-avatar">${initials}</div>`;
-                }
-              }
-            } catch (err) {
-              console.error(`Could not fetch user ${uid}`, err);
-            }
-            // Fallback for users not found or with errors
-            return `<div class="headersearches-assignee-avatar">${uid.substring(0,2).toUpperCase()}</div>`;
-          });
-          
-          // Wait for all the avatar lookups to finish
-          const taskAssigneesHtml = (await Promise.all(taskAssigneesHtmlPromises)).join('');
-          
-          // --- LOOKUP FOR PROJECT NAME AND COLOR ---
-          let projectName = 'Unknown Project';
-          let projectColor = '#cccccc';
-          
-          if (task.projectRef) {
-            try {
-              const projectDocRef = doc(db, task.projectRef);
-              const projectSnap = await getDoc(projectDocRef);
-              if (projectSnap.exists()) {
-                const projectData = projectSnap.data();
-                projectName = projectData.name || projectData.title || 'Untitled Project';
-                projectColor = projectData.color || '#cccccc';
-              }
-            } catch (err) {
-              console.error(`Could not fetch project ${task.projectRef}`, err);
-            }
+          if (avatarUrl) {
+            return `<div class="headersearches-assignee-avatar" style="background-image: url(${avatarUrl});"></div>`;
+          } else {
+            return `<div class="headersearches-assignee-avatar">${initials}</div>`;
           }
-          
-          let taskProjectHexColor = projectColor || '#cccccc';
-          if (projectColor) {
-            const hslValues = projectColor.match(/\d+(\.\d+)?/g).map(Number);
-            if (hslValues.length === 3) {
-              taskProjectHexColor = hslToHex(hslValues[0], hslValues[1], hslValues[2]);
-            }
-          }
-          
-          itemDiv.innerHTML = `
+        }
+      } catch (err) {
+        console.error(`Could not fetch user ${uid}`, err);
+      }
+      // Fallback for users not found or with errors
+      return `<div class="headersearches-assignee-avatar">${uid.substring(0,2).toUpperCase()}</div>`;
+    });
+    
+    // Wait for all the avatar lookups to finish
+    const taskAssigneesHtml = (await Promise.all(taskAssigneesHtmlPromises)).join('');
+    
+    // --- LOOKUP FOR PROJECT NAME AND COLOR ---
+    let projectName = 'Unknown Project';
+    let projectColor = '#cccccc';
+    
+    if (task.projectRef) {
+      try {
+        const projectDocRef = doc(db, task.projectRef);
+        const projectSnap = await getDoc(projectDocRef);
+        if (projectSnap.exists()) {
+          const projectData = projectSnap.data();
+          projectName = projectData.name || projectData.title || 'Untitled Project';
+          projectColor = projectData.color || '#cccccc';
+        }
+      } catch (err) {
+        console.error(`Could not fetch project ${task.projectRef}`, err);
+      }
+    }
+    
+    let taskProjectHexColor = projectColor || '#cccccc';
+    if (projectColor) {
+      const hslValues = projectColor.match(/\d+(\.\d+)?/g).map(Number);
+      if (hslValues.length === 3) {
+        taskProjectHexColor = hslToHex(hslValues[0], hslValues[1], hslValues[2]);
+      }
+    }
+    
+    itemDiv.innerHTML = `
           <span class="material-icons-outlined headersearches-tasks-recent-status-icon ${statusClass}">${statusIcon}</span>
           <div class="headersearches-tasks-recent-content">
               <div class="headersearches-tasks-recent-title">${task.title || 'Untitled Task'}</div>
@@ -917,19 +870,19 @@ for (const item of allResults) {
               ${taskAssigneesHtml}
           </div>
         `;
-          break;
-          
-        case 'person':
-          const person = item.data;
-          itemDiv = document.createElement('div');
-          itemDiv.className = 'headersearches-tasks-recent-item search-result-item';
-          itemDiv.dataset.itemId = person.id;
-          
-          const roleOrEmailHtml = person.workspaceRole ?
-            `<div class="headersearches-person-roles">${person.workspaceRole.charAt(0).toUpperCase() + person.workspaceRole.slice(1)}</div>` :
-            `<div class="headersearches-person-email">${person.email}</div>`;
-          
-          itemDiv.innerHTML = `
+    break;
+    
+  case 'person':
+    const person = item.data;
+    itemDiv = document.createElement('div');
+    itemDiv.className = 'headersearches-tasks-recent-item search-result-item';
+    itemDiv.dataset.itemId = person.id;
+    
+    const roleOrEmailHtml = person.workspaceRole ?
+      `<div class="headersearches-person-roles">${person.workspaceRole.charAt(0).toUpperCase() + person.workspaceRole.slice(1)}</div>` :
+      `<div class="headersearches-person-email">${person.email}</div>`;
+    
+    itemDiv.innerHTML = `
                             <span class="material-icons-outlined headersearches-tasks-recent-status-icon">person</span>
                             <div class="headersearches-tasks-recent-content">
                                 <div class="headersearches-tasks-recent-title">${person.displayName || person.name}</div>
@@ -942,15 +895,15 @@ for (const item of allResults) {
                                 <span class="material-icons-outlined headersearches-globe-icon">public</span>
                             </div>
                         `;
-          break;
-          
-        case 'message':
-          const message = item.data;
-          itemDiv = document.createElement('div');
-          itemDiv.className = 'headersearches-tasks-recent-item search-result-item';
-          itemDiv.dataset.itemId = message.id;
-          
-          itemDiv.innerHTML = `
+    break;
+    
+  case 'message':
+    const message = item.data;
+    itemDiv = document.createElement('div');
+    itemDiv.className = 'headersearches-tasks-recent-item search-result-item';
+    itemDiv.dataset.itemId = message.id;
+    
+    itemDiv.innerHTML = `
                 <span class="material-icons-outlined headersearches-tasks-recent-status-icon">message</span>
                 <div class="headersearches-tasks-recent-content">
                   <div class="headersearches-tasks-recent-title">${message.title}</div>
@@ -964,33 +917,87 @@ for (const item of allResults) {
                 </div>
                 <span class="material-icons-outlined message-star-icon">star_border</span>
               `;
-          break;
-      }
-      if (itemDiv) {
-        fragment.appendChild(itemDiv);
-      }
+    break;
+}
+  return itemDiv;
+}
+
+let displayOffset = 0;
+const pageSize = 5;
+
+async function displayNextBatch(results, container) {
+  const nextResults = results.slice(displayOffset, displayOffset + pageSize);
+  for (const item of nextResults) {
+    const itemDiv = await renderSearchResultItem(item);
+    if (itemDiv) {
+      container.appendChild(itemDiv);
     }
-  
-  // Add the "Press Enter" hint if there are more results than the display limit
-  if (allResults.length > initialDisplayLimit) {
-    fragment.appendChild(enterSearchResults());
   }
-  
-} else {
-  halfQueryDiv.innerHTML = '';
+  displayOffset += pageSize;
+}
+
+async function displaySearchResults(tasks, projects, people, messages) {
+  const halfQueryDiv = document.getElementById('half-query');
+  if (!halfQueryDiv) {
+    console.error("half-query div not found for displaying search results!");
+    return;
+  }
+
+  halfQueryDiv.innerHTML = ''; // Clear previous content
   halfQueryDiv.classList.remove("skeleton-active");
-  // If no results at all, display a generic "No results found" message
-  const noResultsDiv = document.createElement('div');
-  noResultsDiv.className = 'search-no-results';
-  noResultsDiv.innerHTML = `
+
+  // ✅ Deduplicate results by objectID or id
+  const allResultsMap = new Map();
+  [...projects, ...tasks, ...people, ...messages].forEach((item) => {
+    const id = item.objectID || item.id;
+    if (!allResultsMap.has(id)) {
+      const type =
+        projects.includes(item) ? 'project' :
+        tasks.includes(item) ? 'task' :
+        people.includes(item) ? 'person' :
+        'message';
+      allResultsMap.set(id, { type, data: item });
+    }
+  });
+
+  const filteredResults = Array.from(allResultsMap.values());
+  const hasResults = filteredResults.length > 0;
+
+  if (hasResults) {
+    displayOffset = 0; // Reset scroll pagination
+
+    // Initial batch render
+    await displayNextBatch(filteredResults, halfQueryDiv);
+
+    // If there are more results, show enterSearchResults() hint
+    if (filteredResults.length > pageSize) {
+      halfQueryDiv.appendChild(enterSearchResults());
+    }
+
+    // Scroll listener for pagination
+    halfQueryDiv.addEventListener('scroll', async function onScroll() {
+      const scrollBottom = halfQueryDiv.scrollTop + halfQueryDiv.clientHeight;
+      if (scrollBottom >= halfQueryDiv.scrollHeight - 10) {
+        halfQueryDiv.removeEventListener('scroll', onScroll);
+        await displayNextBatch(filteredResults, halfQueryDiv);
+        if (displayOffset < filteredResults.length) {
+          halfQueryDiv.addEventListener('scroll', onScroll);
+        }
+      }
+    });
+
+  } else {
+    // No results message
+    const noResultsDiv = document.createElement('div');
+    noResultsDiv.className = 'search-no-results';
+    noResultsDiv.innerHTML = `
       <p>No results found for your search.</p>
       <p>Try adjusting your keywords or filters.</p>
     `;
-  fragment.appendChild(noResultsDiv);
-}
+    halfQueryDiv.appendChild(noResultsDiv);
+  }
 
-halfQueryDiv.appendChild(fragment);
-halfQueryDiv.classList.remove('hidden');
+  halfQueryDiv.classList.remove('hidden');
 }
 
 async function getProcessedWorkspacePeopleData() {
