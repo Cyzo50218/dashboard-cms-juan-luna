@@ -754,64 +754,74 @@ async function displaySearchResults(tasks, projects, people, messages) {
       let itemDiv;
       switch (item.type) {
         case 'project':
-          const project = item.data;
-          itemDiv = document.createElement('div');
-          itemDiv.className = 'headersearches-tasks-recent-item search-result-item';
-          itemDiv.dataset.itemId = project.objectID;
-          
-          const projectAssigneeUIDs = project.memberUIDs || [];
-          let assigneesToDisplay = projectAssigneeUIDs.slice(0, 2);
-          let remainingAssigneesCount = projectAssigneeUIDs.length - assigneesToDisplay.length;
-          
-          let projectHexColor = project.color || '#cccccc';
-          if (project.color) {
-            const hslValues = project.color.match(/\d+(\.\d+)?/g).map(Number);
-            if (hslValues.length === 3) {
-              projectHexColor = hslToHex(hslValues[0], hslValues[1], hslValues[2]);
-            }
-          }
-          
-          const assigneesHtmlPromises = assigneesToDisplay.map(async (uid) => {
-            try {
-              const userDocRef = doc(db, 'users', uid);
-              const userSnap = await getDoc(userDocRef);
-              
-              if (userSnap.exists()) {
-                const userData = userSnap.data();
-                const avatarUrl = userData.avatar;
-                const initials = userData.name ? userData.name.substring(0, 2).toUpperCase() : uid.substring(0, 2).toUpperCase();
-                
-                if (avatarUrl) {
-                  return `<div class="headersearches-assignee-avatar" style="background-image: url(${avatarUrl});"></div>`;
-                } else {
-                  return `<div class="headersearches-assignee-avatar">${initials}</div>`;
-                }
-              }
-            } catch (err) {
-              console.error(`Could not fetch user ${uid}`, err);
-            }
-            // Fallback for users not found or with errors
-            return `<div class="headersearches-assignee-avatar">${uid.substring(0,2).toUpperCase()}</div>`;
-          });
-          
-          // Wait for all the avatar lookups to finish
-          const assigneesHtml = (await Promise.all(assigneesHtmlPromises)).join('');
-          
-          const moreAssigneesHtml = remainingAssigneesCount > 0 ?
-            `<span class="material-icons-outlined project-more-icon">more_horiz</span>` : '';
-          
-          itemDiv.innerHTML = `
-            <span class="headersearches-project-square-icon" style="background-color: ${projectHexColor || '#cccccc'};"></span>
-            <div class="headersearches-tasks-recent-content">
-                <div class="headersearches-tasks-recent-title">${project.name}</div>
-                <div class="headersearches-tasks-recent-meta">Project</div>
-            </div>
-            <div class="headersearches-assignee-list">
-                ${assigneesHtml}
-                ${moreAssigneesHtml}
-            </div>
-          `;
-          break;
+  const project = item.data;
+  itemDiv = document.createElement('div');
+  itemDiv.className = 'headersearches-tasks-recent-item search-result-item';
+  itemDiv.dataset.itemId = project.objectID;
+
+  let memberUIDs = project.memberUIDs || [];
+
+  if (project.projectRef) {
+    try {
+      const projectDocRef = doc(db, project.projectRef);
+      const projectSnap = await getDoc(projectDocRef);
+      if (projectSnap.exists()) {
+        const projectData = projectSnap.data();
+        memberUIDs = Array.isArray(projectData.memberUIDs) ? projectData.memberUIDs : [];
+      }
+    } catch (err) {
+      console.error(`Failed to fetch project ${project.projectRef} for members`, err);
+    }
+  }
+
+  const assigneesToDisplay = memberUIDs.slice(0, 2);
+  const remainingAssigneesCount = memberUIDs.length - assigneesToDisplay.length;
+
+  let projectHexColor = project.color || '#cccccc';
+  if (project.color) {
+    const hslValues = project.color.match(/\d+(\.\d+)?/g)?.map(Number);
+    if (hslValues?.length === 3) {
+      projectHexColor = hslToHex(hslValues[0], hslValues[1], hslValues[2]);
+    }
+  }
+
+  const assigneesHtmlPromises = assigneesToDisplay.map(async (uid) => {
+    try {
+      const userDocRef = doc(db, 'users', uid);
+      const userSnap = await getDoc(userDocRef);
+      if (userSnap.exists()) {
+        const userData = userSnap.data();
+        const avatarUrl = userData.avatar;
+        const initials = userData.name ? userData.name.substring(0, 2).toUpperCase() : uid.substring(0, 2).toUpperCase();
+
+        return avatarUrl
+          ? `<div class="headersearches-assignee-avatar" style="background-image: url(${avatarUrl});"></div>`
+          : `<div class="headersearches-assignee-avatar">${initials}</div>`;
+      }
+    } catch (err) {
+      console.error(`Could not fetch user ${uid}`, err);
+    }
+
+    // Fallback if user not found
+    return `<div class="headersearches-assignee-avatar">${uid.substring(0, 2).toUpperCase()}</div>`;
+  });
+
+  const assigneesHtml = (await Promise.all(assigneesHtmlPromises)).join('');
+  const moreAssigneesHtml = remainingAssigneesCount > 0
+    ? `<span class="material-icons-outlined project-more-icon">more_horiz</span>` : '';
+
+  itemDiv.innerHTML = `
+    <span class="headersearches-project-square-icon" style="background-color: ${projectHexColor};"></span>
+    <div class="headersearches-tasks-recent-content">
+      <div class="headersearches-tasks-recent-title">${project.name}</div>
+      <div class="headersearches-tasks-recent-meta">Project</div>
+    </div>
+    <div class="headersearches-assignee-list">
+      ${assigneesHtml}
+      ${moreAssigneesHtml}
+    </div>
+  `;
+  break;
           
         case 'task':
           const task = item.data;
@@ -943,7 +953,7 @@ async function displaySearchResults(tasks, projects, people, messages) {
       if (itemDiv) {
         fragment.appendChild(itemDiv);
       }
-    };
+    }
   
   // Add the "Press Enter" hint if there are more results than the display limit
   if (allResults.length > initialDisplayLimit) {
@@ -1808,7 +1818,7 @@ input.addEventListener('input', async () => {
     halfQuery.classList.add("hidden");
     halfQuery.classList.remove("skeleton-active"); // also remove loading state
     recentContainer.classList.remove("hidden");
-    
+
     optionsQuery.classList.add("hidden");
     savedContainer.classList.remove("hidden");
     searchOptions.classList.remove("hidden");
