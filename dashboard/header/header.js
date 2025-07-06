@@ -1741,98 +1741,89 @@ onAuthStateChanged(auth, async (user) => {
     input.focus();
   });
   
-  let searchTimeout = null;
-  const DEBOUNCE_DELAY = 300;
-  
+  /*
   input.addEventListener('keydown', (event) => {
-    // Check if the "Enter" key was pressed
-    if (event.key === 'Enter') {
-      const value = input.value.trim();
-      // Only redirect if there's actually a search query
-      if (value !== '') {
-        window.location.href = '/searchresults';
-      }
-    }
-  });
-  
-  input.addEventListener('input', async () => {
+  // Check if the "Enter" key was pressed
+  if (event.key === 'Enter') {
     const value = input.value.trim();
-    
-    clearTimeout(searchTimeout);
-    
+    // Only redirect if there's actually a search query
     if (value !== '') {
-      cancelIcon.classList.remove('hidden');
-      savedContainer.classList.add("hidden");
-      recentContainer.classList.add("hidden");
-      searchOptions.classList.add("hidden");
-      halfQuery.classList.remove("hidden");
-      halfQuery.classList.add("skeleton-active");
-      
-      halfQuery.innerHTML = `
+      window.location.href = '/searchresults';
+    }
+  }
+});*/
+
+  let searchTimeout = null;
+const DEBOUNCE_DELAY = 300;
+
+input.addEventListener('input', async () => {
+  const value = input.value.trim();
+  clearTimeout(searchTimeout);
+
+  if (value !== '') {
+    cancelIcon.classList.remove('hidden');
+    savedContainer.classList.add("hidden");
+    recentContainer.classList.add("hidden");
+    searchOptions.classList.add("hidden");
+    halfQuery.classList.remove("hidden");
+    halfQuery.classList.add("skeleton-active");
+
+    halfQuery.innerHTML = `
       <div class="skeleton-loader" style="width: 200px;"></div>
       <div class="skeleton-loader" style="width: 500px;"></div>
       <div class="skeleton-loader" style="width: 400px;"></div>
     `;
-      
-      searchTimeout = setTimeout(async () => {
-        try {
-          // Perform a multi-index search with Algolia
-          const { results } = await searchClient.search([
+
+    searchTimeout = setTimeout(async () => {
+      try {
+        const { results } = await searchClient.search([
           {
             indexName: 'projects',
             query: value,
-            params: { hitsPerPage: 5 } // Limit results for the dropdown
+            params: { hitsPerPage: 5 }
           },
           {
             indexName: 'tasks',
             query: value,
             params: { hitsPerPage: 5 }
-          }]);
-          
-          
-          // Extract the hits from the results
-          const projects = results[0]?.hits || [];
-          const tasks = results[1]?.hits || [];
-          console.log("Found Projects:", projects);
-          console.log("Found Tasks:", tasks);
-          /*
-        const people = results[2]?.hits || [];
-        {
-  indexName: 'users', // For searching people's names
-  query: value,
-  params: { hitsPerPage: 5 }
-}*/
-          // Your existing rendering function will now display the live results from Algolia
-          displaySearchResults(tasks, projects, [], []);
-          
-        } catch (err) {
-          console.error("Algolia search error:", err);
-          halfQuery.classList.remove("skeleton-active");
-          halfQuery.innerHTML = `<div class="search-no-results"><p>Error performing search.</p></div>`;
-        }
-      }, DEBOUNCE_DELAY);
-      
-    } else {
-      // This is the logic to handle when the search input is cleared
-      cancelIcon.classList.add('hidden');
-      halfQuery.innerHTML = '';
-      halfQuery.classList.add("hidden");
-      optionsQuery.classList.add("hidden");
-      savedContainer.classList.remove("hidden");
-      searchOptions.classList.remove("hidden");
-      
-      // Restore the default view (e.g., showing recent items)
-      fetchRecentItemsFromFirestore(renderRecentItems, {
-        showTasks: true,
-        showPeople: true,
-        showProjects: true,
-        showMessages: true,
-        taskLimit: 4,
-        projectLimit: null,
-        showInviteButton: false
-      });
-    }
-  });
+          }
+        ]);
+
+        const projects = results[0]?.hits || [];
+        const tasks = results[1]?.hits || [];
+
+        displaySearchResults(tasks, projects, [], []);
+
+      } catch (err) {
+        console.error("Algolia search error:", err);
+        halfQuery.classList.remove("skeleton-active");
+        halfQuery.innerHTML = `<div class="search-no-results"><p>Error performing search.</p></div>`;
+      }
+    }, DEBOUNCE_DELAY);
+
+  } else {
+    displaySearchResults([], [], [], []);
+    cancelIcon.classList.add('hidden');
+    halfQuery.innerHTML = '';
+    halfQuery.classList.add("hidden");
+    halfQuery.classList.remove("skeleton-active"); // also remove loading state
+
+    optionsQuery.classList.add("hidden");
+    savedContainer.classList.remove("hidden");
+    searchOptions.classList.remove("hidden");
+
+    fetchRecentItemsFromFirestore(renderRecentItems, {
+      showTasks: true,
+      showPeople: true,
+      showProjects: true,
+      showMessages: true,
+      taskLimit: 4,
+      projectLimit: null,
+      showInviteButton: false
+    });
+  }
+});
+
   
   document.querySelector('.clear-text').addEventListener('click', function() {
     inputFilter.value = '';
