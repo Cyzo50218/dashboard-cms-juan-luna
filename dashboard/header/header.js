@@ -34,6 +34,13 @@ const auth = getAuth(app);
 const db = getFirestore(app, "juanluna-cms-01");
 let currentUserId = null;
 let recentTasksUnsubscribe = null;
+const algoliasearch = window.algoliasearch;
+
+const searchClient = algoliasearch(
+  process.env.NEXT_PUBLIC_ALGOLIA_APP_ID,
+  process.env.NEXT_PUBLIC_ALGOLIA_SEARCH_ONLY_KEY
+);
+
 let recentItemsUnsubscribe = null;
 let recentProjectsUnsubscribe = null;
 
@@ -1622,131 +1629,85 @@ onAuthStateChanged(auth, async (user) => {
             });
             
             input.addEventListener('input', async () => {
-              const value = input.value.trim();
-              const recentTasksData = await fetchRecentTasksFromFirestore(currentUserId);
-              
-              clearTimeout(searchTimeout);
-              
-              if (value !== '') {
-                cancelIcon.classList.remove('hidden');
-                savedContainer.classList.add("hidden");
-                recentContainer.classList.add("hidden");
-                searchOptions.classList.add("hidden");
-                halfQuery.classList.remove("hidden");
-                halfQuery.classList.add("skeleton-active");
-                
-                emailContainerPeopleId.classList.add('hidden');
-                document.getElementById('email-container-id').classList.add('hidden');
-                peopleEmptyState.classList.add("hidden");
-                messagesEmptyState.classList.add("hidden");
-                mytaskdisplay.classList.add("hidden");
-                projectdisplay.classList.add("hidden");
-                
-                halfQuery.innerHTML = `
-        <div class="skeleton-loader" style="width: 200px;"></div>
-        <div class="skeleton-loader" style="width: 500px;"></div>
-        <div class="skeleton-loader" style="width: 400px;"></div>
-      `;
-                
-                searchTimeout = setTimeout(() => {
-                  halfQuery.classList.remove("skeleton-active");
-                  const lowerCaseValue = value.toLowerCase();
-                  
-                  let filteredTasks = [];
-                  let filteredProjects = [];
-                  let filteredPeople = [];
-                  let filteredMessages = [];
-                  
-                  if (selectedOptionBtnIndex === 0 || selectedOptionBtnIndex === -1) {
-                    filteredTasks = exampleRecentTasks.filter(task =>
-                      task.name.toLowerCase().includes(lowerCaseValue) ||
-                      task.project.name.toLowerCase().includes(lowerCaseValue)
-                    );
-                  }
-                  if (selectedOptionBtnIndex === 1 || selectedOptionBtnIndex === -1) {
-                    filteredProjects = exampleRecentProjects.filter(project =>
-                      project.name.toLowerCase().includes(lowerCaseValue)
-                    );
-                  }
-                  if (selectedOptionBtnIndex === 2 || selectedOptionBtnIndex === -1) {
-                    filteredPeople = mockUsersCollection.filter(person =>
-                      (person.displayName && person.displayName.toLowerCase().includes(lowerCaseValue)) ||
-                      (person.email && person.email.toLowerCase().includes(lowerCaseValue))
-                    );
-                  }
-                  if (selectedOptionBtnIndex === 3 || selectedOptionBtnIndex === -1) {
-                    filteredMessages = exampleRecentMessages.filter(message =>
-                      message.title.toLowerCase().includes(lowerCaseValue) ||
-                      message.preview.toLowerCase().includes(lowerCaseValue) ||
-                      (message.sender && message.sender.name.toLowerCase().includes(lowerCaseValue))
-                    );
-                  }
-                  
-                  if (value.startsWith('with:') || value.startsWith('assignee:')) {
-                    optionsQuery.classList.remove("hidden");
-                    emailContainerId.classList.remove('hidden');
-                    displaySearchResults([], [], filteredPeople, []);
-                  } else if (value.startsWith('in:')) {
-                    optionsQuery.classList.add("hidden");
-                    displaySearchResults(filteredTasks, filteredProjects, [], []);
-                  } else {
-                    optionsQuery.classList.add("hidden");
-                    document.getElementById('email-container-id').classList.add('hidden');
-                    displaySearchResults(filteredTasks, filteredProjects, filteredPeople, filteredMessages);
-                  }
-                }, DEBOUNCE_DELAY);
-              } else {
-                cancelIcon.classList.add('hidden');
-                halfQuery.innerHTML = '';
-                halfQuery.classList.add("hidden");
-                
-                optionsQuery.classList.add("hidden");
-                emailContainerId.classList.add('hidden');
-                emailContainerPeopleId.classList.add('hidden');
-                
-                savedContainer.classList.remove("hidden");
-                searchOptions.classList.remove("hidden");
-                
-                if (selectedOptionBtnIndex === 0) {
-                  recentContainer.classList.add("hidden");
-                  mytaskdisplay.classList.remove("hidden");
-                  projectdisplay.classList.add("hidden");
-                  messagesEmptyState.classList.add("hidden");
-                  peopleEmptyState.classList.add("hidden");
-                  renderRecentItems(recentTasksData, [], [], 4, true, false, false);
-                } else if (selectedOptionBtnIndex === 1) {
-                  recentContainer.classList.add("hidden");
-                  projectdisplay.classList.remove("hidden");
-                  mytaskdisplay.classList.add("hidden");
-                  messagesEmptyState.classList.add("hidden");
-                  peopleEmptyState.classList.add("hidden");
-                  renderRecentItems([], [], exampleRecentProjects, null, true, false, false);
-                } else if (selectedOptionBtnIndex === 2) {
-                  recentContainer.classList.add("hidden");
-                  peopleEmptyState.classList.remove("hidden");
-                  emailContainerPeopleId.classList.remove('hidden');
-                  mytaskdisplay.classList.add("hidden");
-                  projectdisplay.classList.add("hidden");
-                  messagesEmptyState.classList.add("hidden");
-                  renderRecentItems([], exampleRecentPeople, [], null, false, true, false);
-                } else if (selectedOptionBtnIndex === 3) {
-                  recentContainer.classList.add("hidden");
-                  messagesEmptyState.classList.remove("hidden");
-                  mytaskdisplay.classList.add("hidden");
-                  projectdisplay.classList.add("hidden");
-                  peopleEmptyState.classList.add("hidden");
-                  renderRecentItems([], [], [], null, false, false, true);
-                } else {
-                  recentContainer.classList.remove("hidden");
-                  mytaskdisplay.classList.add("hidden");
-                  projectdisplay.classList.add("hidden");
-                  messagesEmptyState.classList.add("hidden");
-                  peopleEmptyState.classList.add("hidden");
-                  renderRecentItems(recentTasksData, exampleRecentPeople, [], null, false, false, false);
-                }
-                input.focus();
-              }
-            });
+  const value = input.value.trim();
+  
+  clearTimeout(searchTimeout);
+
+  if (value !== '') {
+    cancelIcon.classList.remove('hidden');
+    savedContainer.classList.add("hidden");
+    recentContainer.classList.add("hidden");
+    searchOptions.classList.add("hidden");
+    halfQuery.classList.remove("hidden");
+    halfQuery.classList.add("skeleton-active");
+
+    halfQuery.innerHTML = `
+      <div class="skeleton-loader" style="width: 200px;"></div>
+      <div class="skeleton-loader" style="width: 500px;"></div>
+      <div class="skeleton-loader" style="width: 400px;"></div>
+    `;
+
+    searchTimeout = setTimeout(async () => {
+      try {
+        // Perform a multi-index search with Algolia
+        const { results } = await searchClient.search([
+          {
+            indexName: 'projects',
+            query: value,
+            params: { hitsPerPage: 5 } // Limit results for the dropdown
+          },
+          {
+            indexName: 'tasks',
+            query: value,
+            params: { hitsPerPage: 5 }
+          },
+          
+        ]);
+        
+        
+        // Extract the hits from the results
+        const projects = results[0]?.hits || [];
+        const tasks = results[1]?.hits || [];
+        console.log("Found Projects:", projects);
+console.log("Found Tasks:", tasks);
+        /*
+        const people = results[2]?.hits || [];
+        {
+  indexName: 'users', // For searching people's names
+  query: value,
+  params: { hitsPerPage: 5 }
+}*/
+        // Your existing rendering function will now display the live results from Algolia
+        displaySearchResults(tasks, projects, [], []);
+
+      } catch (err) {
+        console.error("Algolia search error:", err);
+        halfQuery.classList.remove("skeleton-active");
+        halfQuery.innerHTML = `<div class="search-no-results"><p>Error performing search.</p></div>`;
+      }
+    }, DEBOUNCE_DELAY);
+
+  } else {
+    // This is the logic to handle when the search input is cleared
+    cancelIcon.classList.add('hidden');
+    halfQuery.innerHTML = '';
+    halfQuery.classList.add("hidden");
+    optionsQuery.classList.add("hidden");
+    savedContainer.classList.remove("hidden");
+    searchOptions.classList.remove("hidden");
+
+    // Restore the default view (e.g., showing recent items)
+    fetchRecentItemsFromFirestore(renderRecentItems, {
+      showTasks: true,
+      showPeople: true,
+      showProjects: true,
+      showMessages: true,
+      taskLimit: 4,
+      projectLimit: null,
+      showInviteButton: false
+    });
+  }
+});
             
             document.querySelector('.clear-text').addEventListener('click', function() {
               inputFilter.value = '';
@@ -1755,7 +1716,6 @@ onAuthStateChanged(auth, async (user) => {
             
             cancelIcon.addEventListener('click', async () => {
               input.value = '';
-              const recentTasksData = await fetchRecentTasksFromFirestore(currentUserId);
               
               input.focus(); // Keep focus on the input after clearing
               cancelIcon.classList.add('hidden');
@@ -1768,20 +1728,59 @@ onAuthStateChanged(auth, async (user) => {
               
               if (selectedOptionBtnIndex === 0) { // Tasks
                 mytaskdisplay.classList.remove("hidden");
-                renderRecentItems(recentTasksData, [], [], [], 4, true, false, false);
+                fetchRecentItemsFromFirestore(renderRecentItems, {
+  showTasks: true,
+  showPeople: false,
+  showProjects: false,
+  showMessages: false,
+  taskLimit: 4, // Limit tasks
+  projectLimit: null,
+  showInviteButton: false
+});
               } else if (selectedOptionBtnIndex === 1) { // Projects
                 projectdisplay.classList.remove("hidden");
-                renderRecentItems([], [], exampleRecentProjects, [], 4, true, false, false);
+                fetchRecentItemsFromFirestore(renderRecentItems, {
+  showTasks: false,
+  showPeople: false,
+  showProjects: true,
+  showMessages: false,
+  taskLimit: 4,
+  projectLimit: 5, // Limit projects
+  showInviteButton: false
+});
               } else if (selectedOptionBtnIndex === 2) { // People
                 peopleEmptyState.classList.remove("hidden");
                 emailContainerPeopleId.classList.remove('hidden');
-                renderRecentItems([], exampleRecentPeople, [], [], 4, false, true, false);
+                fetchRecentItemsFromFirestore(renderRecentItems, {
+  showTasks: false,
+  showPeople: true,
+  showProjects: false,
+  showMessages: false,
+  taskLimit: 4,
+  projectLimit: 5, // Limit projects
+  showInviteButton: true
+});
               } else if (selectedOptionBtnIndex === 3) { // NEW: Messages
                 messagesEmptyState.classList.remove("hidden");
-                renderRecentItems([], [], [], exampleRecentMessages, 4, true, false, true);
+                fetchRecentItemsFromFirestore(renderRecentItems, {
+  showTasks: false,
+  showPeople: false,
+  showProjects: false,
+  showMessages: true,
+  taskLimit: 4,
+  projectLimit: 5, // Limit projects
+  showInviteButton: true
+});
               } else {
-                // No specific category selected, show general recents
-                renderRecentItems(recentTasksData, exampleRecentPeople, [], [], 4, false, false, false); // Default view
+fetchRecentItemsFromFirestore(renderRecentItems, {
+  showTasks: true,
+  showPeople: true,
+  showProjects: true,
+  showMessages: true,
+  taskLimit: 4,
+  projectLimit: null,
+  showInviteButton: false
+});
               }
             });
             
