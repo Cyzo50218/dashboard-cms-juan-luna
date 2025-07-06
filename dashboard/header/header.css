@@ -1507,6 +1507,9 @@ margin-left: 6px;
     margin-bottom: 5px;
     padding-left: 10px; /* Align with search items */
 }
+.search-result-item{
+  width: 408px;
+}
 .search-no-results {
     text-align: center;
     padding: 20px;

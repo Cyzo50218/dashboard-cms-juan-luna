@@ -532,7 +532,7 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
       
       let statusIcon;
       let statusClass = '';
-      if (item.status === 'completed') {
+      if (item.status === 'Completed') {
         statusIcon = 'check_circle';
         statusClass = 'status-completed';
       } else {
@@ -660,7 +660,17 @@ function enterSearchResults() {
   return containerDiv;
 }
 
-function displaySearchResults(tasks, projects, people, messages) {
+function hslToHex(h, s, l) {
+  const [r, g, b] = hslToRgb(h, s, l);
+  const toHex = (c) => {
+    const hex = c.toString(16);
+    return hex.length === 1 ? "0" + hex : hex;
+  };
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+
+async function displaySearchResults(tasks, projects, people, messages) {
   const halfQueryDiv = document.getElementById('half-query');
   if (!halfQueryDiv) {
     console.error("half-query div not found for displaying search results!");
@@ -702,70 +712,143 @@ function displaySearchResults(tasks, projects, people, messages) {
       let itemDiv;
       switch (item.type) {
         case 'project':
-          const project = item.data;
-          itemDiv = document.createElement('div');
-          itemDiv.className = 'headersearches-tasks-recent-item search-result-item';
-          itemDiv.dataset.itemId = project.id;
-          
-          let assigneesToDisplay = (project.assignees || []).slice(0, 2);
-          let remainingAssigneesCount = project.assignees.length - assigneesToDisplay.length;
-          
-          const assigneesHtml = assigneesToDisplay.map(assignee => `
-                            <div class="headersearches-assignee-avatar" ${assignee.avatarUrl ? `style="background-image: url(${assignee.avatarUrl});"` : ''}>
-                                ${!assignee.avatarUrl ? assignee.initials : ''}
-                            </div>
-                        `).join('');
-          const moreAssigneesHtml = remainingAssigneesCount > 0 ?
-            `<span class="material-icons-outlined project-more-icon">more_horiz</span>` : '';
-          
-          itemDiv.innerHTML = `
-                            <span class="headersearches-project-square-icon" style="background-color: ${project.color};"></span>
-                            <div class="headersearches-tasks-recent-content">
-                                <div class="headersearches-tasks-recent-title">${project.name}</div>
-                                <div class="headersearches-tasks-recent-meta">Project</div>
-                            </div>
-                            <div class="headersearches-assignee-list">
-                                ${assigneesHtml}
-                                ${moreAssigneesHtml}
-                            </div>
-                        `;
-          break;
+const project = item.data;
+itemDiv = document.createElement('div');
+itemDiv.className = 'headersearches-tasks-recent-item search-result-item';
+itemDiv.dataset.itemId = project.objectID;
+
+const projectAssigneeUIDs = project.memberUIDs || [];
+let assigneesToDisplay = projectAssigneeUIDs.slice(0, 2);
+let remainingAssigneesCount = projectAssigneeUIDs.length - assigneesToDisplay.length;
+
+let projectHexColor = project.color || '#cccccc'; 
+if (project.color && project.color.startsWith('hsl(')) {
+  const hslValues = project.color.match(/\d+(\.\d+)?/g).map(Number);
+  if (hslValues.length === 3) {
+    projectHexColor = hslToHex(hslValues[0], hslValues[1], hslValues[2]);
+  }
+}
+
+const assigneesHtmlPromises = assigneesToDisplay.map(async (uid) => {
+  try {
+    const userDocRef = doc(db, 'users', uid);
+    const userSnap = await getDoc(userDocRef);
+    
+    if (userSnap.exists()) {
+      const userData = userSnap.data();
+      const avatarUrl = userData.avatar;
+      const initials = userData.name ? userData.name.substring(0, 2).toUpperCase() : uid.substring(0, 2).toUpperCase();
+      
+      if (avatarUrl) {
+        return `<div class="headersearches-assignee-avatar" style="background-image: url(${avatarUrl});"></div>`;
+      } else {
+        return `<div class="headersearches-assignee-avatar">${initials}</div>`;
+      }
+    }
+  } catch (err) {
+    console.error(`Could not fetch user ${uid}`, err);
+  }
+  // Fallback for users not found or with errors
+  return `<div class="headersearches-assignee-avatar">${uid.substring(0,2).toUpperCase()}</div>`;
+});
+
+// Wait for all the avatar lookups to finish
+const assigneesHtml = (await Promise.all(assigneesHtmlPromises)).join('');
+
+const moreAssigneesHtml = remainingAssigneesCount > 0 ?
+  `<span class="material-icons-outlined project-more-icon">more_horiz</span>` : '';
+
+itemDiv.innerHTML = `
+            <span class="headersearches-project-square-icon" style="background-color: ${project.color || '#cccccc'};"></span>
+            <div class="headersearches-tasks-recent-content">
+                <div class="headersearches-tasks-recent-title">${project.name}</div>
+                <div class="headersearches-tasks-recent-meta">Project</div>
+            </div>
+            <div class="headersearches-assignee-list">
+                ${assigneesHtml}
+                ${moreAssigneesHtml}
+            </div>
+          `;
+break;
           
         case 'task':
 const task = item.data;
 itemDiv = document.createElement('div');
 itemDiv.className = 'headersearches-tasks-recent-item search-result-item';
-itemDiv.dataset.itemId = task.objectID; // Use objectID from Algolia
+itemDiv.dataset.itemId = task.objectID;
 
-let statusIcon;
-let statusClass = '';
-// FIX 1: Check the status from the task data itself
-if (task.status === 'completed' || task.status === 'Ready to Ship') {
-  statusIcon = 'check_circle';
-  statusClass = 'status-completed';
-} else {
-  statusIcon = 'radio_button_unchecked';
+let statusIcon = (task.status === 'Completed') ? 'check_circle' : 'radio_button_unchecked';
+let statusClass = (task.status === 'Completed') ? 'status-completed' : '';
+
+// --- FIX IS HERE: LOOKUP FOR TASK ASSIGNEES ---
+const taskAssigneeUIDs = task.assignee || [];
+
+// Use Promise.all to fetch all assignee avatars concurrently
+const taskAssigneesHtmlPromises = taskAssigneeUIDs.map(async (uid) => {
+  try {
+    const userDocRef = doc(db, 'users', uid);
+    const userSnap = await getDoc(userDocRef);
+    
+    if (userSnap.exists()) {
+      const userData = userSnap.data();
+      const avatarUrl = userData.avatar;
+      const initials = userData.name ? userData.name.substring(0, 2).toUpperCase() : uid.substring(0, 2).toUpperCase();
+      
+      if (avatarUrl) {
+        return `<div class="headersearches-assignee-avatar" style="background-image: url(${avatarUrl});"></div>`;
+      } else {
+        return `<div class="headersearches-assignee-avatar">${initials}</div>`;
+      }
+    }
+  } catch (err) {
+    console.error(`Could not fetch user ${uid}`, err);
+  }
+  // Fallback for users not found or with errors
+  return `<div class="headersearches-assignee-avatar">${uid.substring(0,2).toUpperCase()}</div>`;
+});
+
+// Wait for all the avatar lookups to finish
+const taskAssigneesHtml = (await Promise.all(taskAssigneesHtmlPromises)).join('');
+
+// --- LOOKUP FOR PROJECT NAME AND COLOR ---
+let projectName = 'Unknown Project';
+let projectColor = '#cccccc';
+
+if (task.projectRef) {
+  try {
+    const projectDocRef = doc(db, task.projectRef);
+    const projectSnap = await getDoc(projectDocRef);
+    if (projectSnap.exists()) {
+      const projectData = projectSnap.data();
+      projectName = projectData.name || projectData.title || 'Untitled Project';
+      projectColor = projectData.color || '#cccccc';
+    }
+  } catch (err) {
+    console.error(`Could not fetch project ${task.projectRef}`, err);
+  }
 }
 
-// FIX 2: Use the 'assignee' array of UIDs. A full implementation would need to fetch user details.
-const taskAssigneesHtml = (task.assignee || []).map(uid => {
-  const initials = uid.substring(0, 2).toUpperCase(); // Placeholder initials
-  return `<div class="headersearches-assignee-avatar">${initials}</div>`;
-}).join('');
+let projectHexColor = projectColor || '#cccccc';
+if (projectColor && projectColor.startsWith('hsl(')) {
+  const hslValues = projectColor.match(/\d+(\.\d+)?/g).map(Number);
+  if (hslValues.length === 3) {
+    projectHexColor = hslToHex(hslValues[0], hslValues[1], hslValues[2]);
+  }
+}
 
 itemDiv.innerHTML = `
-            <span class="material-icons-outlined headersearches-tasks-recent-status-icon ${statusClass}">${statusIcon}</span>
-            <div class="headersearches-tasks-recent-content">
-                <div class="headersearches-tasks-recent-title">${task.title || 'Untitled Task'}</div>
-                <div class="headersearches-tasks-recent-meta">
-                    <span class="headersearches-tasks-project-dot" style="background-color: #cccccc;"></span>
-                    <span class="headersearches-tasks-project-name">Project: ${task.projectId}</span>
-                </div>
-            </div>
-            <div class="headersearches-assignee-list">
-                ${taskAssigneesHtml}
-            </div>
-          `;
+          <span class="material-icons-outlined headersearches-tasks-recent-status-icon ${statusClass}">${statusIcon}</span>
+          <div class="headersearches-tasks-recent-content">
+              <div class="headersearches-tasks-recent-title">${task.title || 'Untitled Task'}</div>
+              <div class="headersearches-tasks-recent-meta">
+                  <span class="headersearches-tasks-project-dot" style="background-color: ${projectHexColor};"></span>
+                  <span class="headersearches-tasks-project-name">${projectName}</span>
+              </div>
+          </div>
+          <div class="headersearches-assignee-list">
+              ${taskAssigneesHtml}
+          </div>
+        `;
 break;
           
         case 'person':
