@@ -1925,7 +1925,6 @@ onAuthStateChanged(auth, async (user) => {
   taskOptionBtns[1].addEventListener('click', () => {
     cancelIcon.classList.remove('hidden');
     input.value = 'assignee: '; // assigned_to
-    emailContainerId.classList.remove('hidden');
     savedContainer.classList.add("hidden");
     recentContainer.classList.add("hidden");
     halfQuery.classList.remove("hidden");
@@ -1937,7 +1936,6 @@ onAuthStateChanged(auth, async (user) => {
   taskOptionBtns[2].addEventListener('click', () => {
     cancelIcon.classList.remove('hidden');
     input.value = 'with: '; // with_collaborator
-    emailContainerId.classList.remove('hidden');
     savedContainer.classList.add("hidden");
     recentContainer.classList.add("hidden");
     optionsQuery.classList.remove("hidden");
@@ -2126,13 +2124,7 @@ input.addEventListener('input', async () => {
   }
 });
 
-  
-  document.querySelector('.clear-text').addEventListener('click', function() {
-    inputFilter.value = '';
-    document.querySelector('.search-input-filter').focus(); // Optional: refocus the input
-  });
-  
-  cancelIcon.addEventListener('click', async () => {
+cancelIcon.addEventListener('click', async () => {
     input.value = '';
     displaySearchResults([], [], [], []);
 cancelIcon.classList.add('hidden');
@@ -2206,6 +2198,13 @@ searchOptions.classList.remove("hidden");
       });
     }
   });
+  
+    
+  document.querySelector('.clear-text').addEventListener('click', function() {
+    inputFilter.value = '';
+    document.querySelector('.search-input-filter').focus(); // Optional: refocus the input
+  });
+  
   
   emailContainer.forEach(el => {
     el.addEventListener('click', () => {
