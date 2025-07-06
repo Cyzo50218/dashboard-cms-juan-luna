@@ -12,6 +12,7 @@ import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/fi
 import {
   onSnapshot,
   getFirestore,
+  updateDoc,
   collection,
   addDoc,
   serverTimestamp,
