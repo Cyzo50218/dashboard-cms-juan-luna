@@ -1054,7 +1054,7 @@ margin-right: auto;
   border: 1px solid #989898;
   padding: 2px 6px;
   border-radius: 12px;
-  height: 30px;
+  height: 25px;
   border-radius: 999px;
   cursor: pointer;
   margin-right: 8px;
@@ -1150,7 +1150,7 @@ margin-right: auto;
 }
 
 .option-text {
-  font-size: 12px;
+  font-size: 10px;
   margin-right: 4px;
   margin-left: 6px;
   color: white;

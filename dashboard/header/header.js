@@ -1189,6 +1189,7 @@ onAuthStateChanged(auth, async (user) => {
   
   const cancelIcon = document.querySelector('.cancel-search-icon');
   const mytaskdisplay = document.getElementById("mytask-display");
+  mytaskdisplay.classList.add("hidden");
   const taskOptionBtns = document.querySelectorAll('.mytask-display .option-btn-tasks');
   const projectdisplay = document.getElementById("project-display");
   const projectOptionBtns = document.querySelectorAll('.project-display .option-btn-tasks');
