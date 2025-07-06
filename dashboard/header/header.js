@@ -1035,7 +1035,7 @@ async function runSearch(value) {
     'inQueryTitle': inQueryTitle,
     'assigneeQuery': assigneeQuery,
   });
-  halfQuery = resetHalfQueryContainer();
+  
 halfQuery.classList.remove("hidden");
 halfQuery.classList.add("skeleton-active");
 halfQuery.innerHTML = `
@@ -1199,7 +1199,7 @@ halfQuery.innerHTML = `
     [],
     []
   );
-  halfQuery.classList.remove("skeleton-active");
+
   console.groupEnd(); // runSearch
 }
 async function getProcessedWorkspacePeopleData() {
