@@ -792,7 +792,11 @@ async function renderSearchResultItem(item) {
   `;
   itemDiv.addEventListener('click', () => {
   const href = `/tasks/${currentUserId}/list/${task.projectId}`;
-  window.location.href = href;
+  history.pushState({ path: href }, '', href);
+
+  // Load the new section dynamically
+  router(); // This will call `loadSection()` and initialize `list.js`
+
 });
 
     break;
