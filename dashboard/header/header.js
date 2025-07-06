@@ -1873,10 +1873,14 @@ input.addEventListener('input', async () => {
       queries.push({ indexName: 'tasks', query: (isInQuery || isAssigneeQuery) ? '' : value, params: { hitsPerPage: 10 } });
     }
 
+    console.log('Querying Algolia with:', queries);
+
     const { results } = await searchClient.search(queries);
 
     let projects = searchProjects ? results.shift()?.hits || [] : [];
     let tasks = searchTasks ? results.shift()?.hits || [] : [];
+
+    console.log(`Raw tasks from Algolia:`, tasks);
 
     // 🔒 Filter projects by membership
     const filteredProjects = [];
@@ -1905,7 +1909,10 @@ input.addEventListener('input', async () => {
     // 🔒 Filter tasks by membership + apply "in:" or "assignee:" if used
     const filteredTasks = [];
     for (const t of tasks) {
-      if (!t.projectRef) continue;
+      if (!t.projectRef) {
+        console.warn(`Task "${t.title || t.name}" has no projectRef. Skipping.`);
+        continue;
+      }
 
       let allow = false;
       let projectData = {};
@@ -1913,27 +1920,38 @@ input.addEventListener('input', async () => {
 
       try {
         const snap = await getDoc(doc(db, t.projectRef));
-        if (!snap.exists()) continue;
+        if (!snap.exists()) {
+          console.warn(`No project found for ref ${t.projectRef}`);
+          continue;
+        }
 
         projectData = snap.data();
         memberUIDs = Array.isArray(projectData.memberUIDs) ? projectData.memberUIDs : [];
 
-        if (!memberUIDs.includes(currentUserId)) continue;
+        if (!memberUIDs.includes(currentUserId)) {
+          console.log(`Skipping task "${t.title || t.name}" - current user is not a member of project ${t.projectRef}`);
+          continue;
+        }
+
         allow = true;
+        console.log(`✅ User is member of project ${t.projectRef} for task "${t.title || t.name}"`);
       } catch (e) {
         console.warn('Error loading task.projectRef', e);
         continue;
       }
 
       if (!allow) continue;
-      
+
       // ✅ "in:" → match project title
       if (isInQuery) {
-        console.log("Checking task in projectRef:", t.projectRef);
-
-const projectTitle = (projectData.title || projectData.name || '').toLowerCase();
-console.log("Matching project title:", projectTitle, "against:", inQueryTitle);
- if (!projectTitle.includes(inQueryTitle)) continue;
+        const projectTitle = (projectData.title || projectData.name || '').toLowerCase();
+        console.log(`🔎 Checking "in:" filter — Project: "${projectTitle}" vs "${inQueryTitle}"`);
+        if (!projectTitle.includes(inQueryTitle)) {
+          console.log(`❌ Skipping "${t.title || t.name}" — project title does not match "in:"`);
+          continue;
+        } else {
+          console.log(`✅ "in:" match found for task "${t.title || t.name}"`);
+        }
       }
 
       // ✅ "assignee:" → match user name
@@ -1947,8 +1965,10 @@ console.log("Matching project title:", projectTitle, "against:", inQueryTitle);
             if (snap.exists()) {
               const user = snap.data();
               const name = (user.name || user.displayName || '').toLowerCase();
+              console.log(`🔍 Checking assignee name: "${name}" vs "${assigneeQuery}"`);
               if (name.includes(assigneeQuery)) {
                 matched = true;
+                console.log(`✅ Assignee name match for "${name}"`);
                 break;
               }
             }
@@ -1957,11 +1977,17 @@ console.log("Matching project title:", projectTitle, "against:", inQueryTitle);
           }
         }
 
-        if (!matched) continue;
+        if (!matched) {
+          console.log(`❌ No matching assignee found for task "${t.title || t.name}"`);
+          continue;
+        }
       }
 
+      console.log(`✅ Adding task: "${t.title || t.name}"`);
       filteredTasks.push(t);
     }
+
+    console.log(`Final filtered tasks:`, filteredTasks.map(t => t.title || t.name));
 
     displaySearchResults(
       isTaskSearch ? filteredTasks : [],
