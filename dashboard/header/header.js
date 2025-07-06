@@ -876,13 +876,22 @@ async function renderSearchResultItem(item) {
           </div>
         `;
         
-        itemDiv.addEventListener('click', () => {
-          const projectRef = task.projectRef || '';
-sessionStorage.setItem('pendingProjectRef', projectRef);
+        itemDiv.addEventListener('click', (event) => {
+  event.preventDefault(); // Prevent full page reload
 
+  const projectRef = task.projectRef || '';
   const href = `/tasks/${currentUserId}/list/${task.projectId}?openTask=${task.taskId}`;
-  window.location.href = href;
+
+  // Save the projectRef invisibly
+  sessionStorage.setItem('pendingProjectRef', projectRef);
+
+  // Update the browser URL without reloading
+  history.pushState({ path: href }, '', href);
+
+  // Load the new section dynamically
+  router(); // This will call `loadSection()` and initialize `list.js`
 });
+
     break;
     
   case 'person':
