@@ -1203,6 +1203,7 @@ halfQuery.innerHTML = `
 
   console.groupEnd(); // runSearch
 }
+
 async function getProcessedWorkspacePeopleData() {
   const processedPeopleMap = new Map(); // Map to store unique PersonData objects by UID
   

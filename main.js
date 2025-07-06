@@ -19,33 +19,33 @@ let currentSectionCleanup = null;
  * Parses the browser's URL path into a structured object for the router.
  */
 function parseRoute() {
-    const pathParts = window.location.pathname.split('/').filter(p => p);
-    
-    if (pathParts.length === 0) {
-        return { section: 'home' }; // Default route for "/"
-    }
-    
-    const resourceType = pathParts[0];
-    
-    // This handles complex routes like /tasks/123/list/456
-    if (resourceType === 'tasks' && pathParts.length > 3) {
-        return {
-            section: 'tasks',
-            accountId: pathParts[1] || null,
-            tabId: pathParts[2] || 'list',
-            projectId: pathParts[3] || null
-        };
-    }
-    
-    // This handles all simple, single-keyword routes
-    const simpleRoutes = ['home', 'myworkspace', 'inbox', 'inventory', 'reports', 'searchresults', 'settings'];
-    if (simpleRoutes.includes(resourceType)) {
-        return { section: resourceType };
-    }
-    
-    // Fallback for any unknown URL
+  const pathParts = window.location.pathname.split('/').filter(p => p);
+  const queryParams = new URLSearchParams(window.location.search);
+
+  if (pathParts.length === 0) {
     return { section: 'home' };
+  }
+
+  const resourceType = pathParts[0];
+
+  if (resourceType === 'tasks' && pathParts.length > 3) {
+    return {
+      section: 'tasks',
+      accountId: pathParts[1] || null,
+      tabId: pathParts[2] || 'list',
+      projectId: pathParts[3] || null,
+      openTask: queryParams.get('openTask') || null  // ✅ NEW: support openTask param
+    };
+  }
+
+  const simpleRoutes = ['home', 'myworkspace', 'inbox', 'inventory', 'reports', 'searchresults', 'settings'];
+  if (simpleRoutes.includes(resourceType)) {
+    return { section: resourceType };
+  }
+
+  return { section: 'home' };
 }
+
 
 /**
  * The main router function. It determines the current route and loads the appropriate section.
