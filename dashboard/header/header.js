@@ -720,8 +720,7 @@ async function displaySearchResults(tasks, projects, people, messages) {
   }
   
   // Clear previous content
-  halfQueryDiv.innerHTML = '';
-  halfQueryDiv.classList.remove("skeleton-active");
+  
   
   const fragment = document.createDocumentFragment();
   
@@ -804,7 +803,8 @@ for (const item of allResults) {
 
   // Render combined results
   if (hasResults) {
-    
+    halfQueryDiv.innerHTML = '';
+    halfQueryDiv.classList.remove("skeleton-active");
 
     for (const item of resultsToDisplay) {
       let itemDiv;
@@ -1023,6 +1023,8 @@ for (const item of allResults) {
   }
   
 } else {
+  halfQueryDiv.innerHTML = '';
+  halfQueryDiv.classList.remove("skeleton-active");
   // If no results at all, display a generic "No results found" message
   const noResultsDiv = document.createElement('div');
   noResultsDiv.className = 'search-no-results';
