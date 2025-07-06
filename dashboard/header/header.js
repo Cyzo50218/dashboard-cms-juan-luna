@@ -1534,7 +1534,6 @@ onAuthStateChanged(auth, async (user) => {
     emailContainerPeopleId.classList.add('hidden'); // Hide people email invite
     messagesEmptyState.classList.add("hidden"); // Hide messages empty state
     peopleEmptyState.classList.add("hidden"); // Hide people empty state
-    mytaskdisplay.classList.add("hidden"); // Hide mytask display
   });
   
   optionBtns[1].addEventListener("click", async () => {
