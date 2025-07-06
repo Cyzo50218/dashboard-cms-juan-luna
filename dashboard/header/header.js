@@ -1837,6 +1837,7 @@ input.addEventListener('input', async () => {
     savedContainer.classList.add("hidden");
     recentContainer.classList.add("hidden");
     searchOptions.classList.add("hidden");
+    mytaskdisplay.classList.add("hidden");
     halfQuery.classList.remove("hidden");
     halfQuery.classList.add("skeleton-active");
 
