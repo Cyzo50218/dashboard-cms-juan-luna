@@ -764,7 +764,7 @@ let assigneesToDisplay = projectAssigneeUIDs.slice(0, 2);
 let remainingAssigneesCount = projectAssigneeUIDs.length - assigneesToDisplay.length;
 
 let projectHexColor = project.color || '#cccccc'; 
-if (project.color && project.color.startsWith('hsl(')) {
+if (project.color) {
   const hslValues = project.color.match(/\d+(\.\d+)?/g).map(Number);
   if (hslValues.length === 3) {
     projectHexColor = hslToHex(hslValues[0], hslValues[1], hslValues[2]);
@@ -871,7 +871,7 @@ if (task.projectRef) {
 }
 
 let taskProjectHexColor = projectColor || '#cccccc';
-if (projectColor && projectColor.startsWith('hsl(')) {
+if (projectColor) {
   const hslValues = projectColor.match(/\d+(\.\d+)?/g).map(Number);
   if (hslValues.length === 3) {
     taskProjectHexColor = hslToHex(hslValues[0], hslValues[1], hslValues[2]);
@@ -1787,8 +1787,7 @@ onAuthStateChanged(auth, async (user) => {
             indexName: 'tasks',
             query: value,
             params: { hitsPerPage: 5 }
-          },
-          
+          }
         ]);
         
         
