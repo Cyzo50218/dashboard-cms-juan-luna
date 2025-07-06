@@ -1108,7 +1108,7 @@ async function handleNewWorkspace() {
   }
 }
 
-async function runSearch() {
+async function runSearch(value) {
   console.groupCollapsed('🔍 runSearch started');
 
   const isTaskSearch = selectedOptionBtnIndex === 0 || selectedOptionBtnIndex === -1;
@@ -1294,7 +1294,14 @@ async function runSearch() {
   console.groupEnd(); // runSearch
 }
 
-
+function showErrorUI() {
+  halfQuery.classList.remove("skeleton-active");
+  halfQuery.innerHTML = `
+    <div class="search-no-results">
+      <p>Network error occurred. Please check your connection and try again.</p>
+    </div>
+  `;
+}
 
 // --- 4. MAIN SCRIPT LOGIC ---
 
@@ -1994,7 +2001,7 @@ input.addEventListener('input', async () => {
 
 searchTimeout = setTimeout(async () => {
   try {
-    await runSearch();
+    await runSearch(value);
   } catch (err) {
     console.error("Algolia search error:", err);
 
@@ -2008,7 +2015,7 @@ searchTimeout = setTimeout(async () => {
       // Retry after 1.5 seconds
       setTimeout(async () => {
         try {
-          await runSearch(); // your search logic in a separate function
+          await runSearch(value); // your search logic in a separate function
         } catch (retryErr) {
           console.error("Retry failed:", retryErr);
           showErrorUI();
