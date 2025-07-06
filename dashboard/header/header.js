@@ -815,12 +815,20 @@ halfQuery = resetHalfQueryContainer();
 halfQuery.classList.add("hidden");
 halfQuery.classList.remove("skeleton-active"); // also remove loading state
 recentContainer.classList.remove("hidden");
-
 optionsQuery.classList.add("hidden");
 savedContainer.classList.remove("hidden");
 searchOptions.classList.remove("hidden");
 emailContainerId.classList.add('hidden');
-
+selectedOptionBtnIndex = -1;
+fetchRecentItemsFromFirestore(renderRecentItems, {
+  showTasks: true,
+  showPeople: false,
+  showProjects: false,
+  showMessages: false,
+  taskLimit: 4, // Limit tasks
+  projectLimit: null,
+  showInviteButton: false
+});
   // Load the new section dynamically
   router(); // This will call `loadSection()` and initialize `list.js`
 
@@ -926,11 +934,20 @@ halfQuery = resetHalfQueryContainer();
 halfQuery.classList.add("hidden");
 halfQuery.classList.remove("skeleton-active"); // also remove loading state
 recentContainer.classList.remove("hidden");
-
 optionsQuery.classList.add("hidden");
 savedContainer.classList.remove("hidden");
 searchOptions.classList.remove("hidden");
 emailContainerId.classList.add('hidden');
+selectedOptionBtnIndex = -1;
+fetchRecentItemsFromFirestore(renderRecentItems, {
+  showTasks: true,
+  showPeople: false,
+  showProjects: false,
+  showMessages: false,
+  taskLimit: 4, // Limit tasks
+  projectLimit: null,
+  showInviteButton: false
+});
   // Load the new section dynamically
   router(); // This will call `loadSection()` and initialize `list.js`
 });
