@@ -1853,109 +1853,119 @@ input.addEventListener('input', async () => {
 
     searchTimeout = setTimeout(async () => {
   try {
-    const isTaskSearch = selectedOptionBtnIndex === 0;
+    const isTaskSearch = selectedOptionBtnIndex === 0 || selectedOptionBtnIndex === -1;
+    const isProjectSearch = selectedOptionBtnIndex === 1 || selectedOptionBtnIndex === -1;
+
     const isInQuery = value.toLowerCase().startsWith('in:');
     const isAssigneeQuery = value.toLowerCase().startsWith('assignee:');
 
     const inQueryTitle = isInQuery ? value.slice(3).trim().toLowerCase() : null;
     const assigneeQuery = isAssigneeQuery ? value.slice(9).trim().toLowerCase() : null;
 
-    const results = await searchClient.search([
-      {
-        indexName: 'tasks',
-        query: (isInQuery || isAssigneeQuery) ? '' : value,
-        params: { hitsPerPage: 10 }
+    const searchTasks = isTaskSearch || isInQuery || isAssigneeQuery;
+    const searchProjects = !isInQuery && !isAssigneeQuery;
+
+    const queries = [];
+    if (searchProjects) {
+      queries.push({ indexName: 'projects', query: value, params: { hitsPerPage: 10 } });
+    }
+    if (searchTasks) {
+      queries.push({ indexName: 'tasks', query: (isInQuery || isAssigneeQuery) ? '' : value, params: { hitsPerPage: 10 } });
+    }
+
+    const { results } = await searchClient.search(queries);
+
+    let projects = searchProjects ? results.shift()?.hits || [] : [];
+    let tasks = searchTasks ? results.shift()?.hits || [] : [];
+
+    // 🔒 Filter projects by membership
+    const filteredProjects = [];
+    for (const p of projects) {
+      let memberUIDs = p.memberUIDs || [];
+
+      if (p.projectRef) {
+        try {
+          const snap = await getDoc(doc(db, p.projectRef));
+          if (snap.exists()) {
+            const data = snap.data();
+            if (Array.isArray(data.memberUIDs)) {
+              memberUIDs = data.memberUIDs;
+            }
+          }
+        } catch (e) {
+          console.warn('Error loading projectRef for filtering', e);
+        }
       }
-    ]);
 
-    const tasks = results[0]?.hits || [];
+      if (memberUIDs.includes(currentUserId)) {
+        filteredProjects.push(p);
+      }
+    }
+
+    // 🔒 Filter tasks by membership + apply "in:" or "assignee:" if used
     const filteredTasks = [];
-
     for (const t of tasks) {
       if (!t.projectRef) continue;
+
+      let allow = false;
+      let projectData = {};
+      let memberUIDs = [];
 
       try {
         const snap = await getDoc(doc(db, t.projectRef));
         if (!snap.exists()) continue;
 
-        const projectData = snap.data();
-        const memberUIDs = Array.isArray(projectData.memberUIDs) ? projectData.memberUIDs : [];
+        projectData = snap.data();
+        memberUIDs = Array.isArray(projectData.memberUIDs) ? projectData.memberUIDs : [];
 
-        // 🔐 Membership check
         if (!memberUIDs.includes(currentUserId)) continue;
+        allow = true;
+      } catch (e) {
+        console.warn('Error loading task.projectRef', e);
+        continue;
+      }
 
-        // 🎯 "in:" filter
-        if (isInQuery) {
-          const projectTitle = (projectData.title || projectData.name || '').toLowerCase();
-          if (!projectTitle.includes(inQueryTitle)) continue;
-        }
+      if (!allow) continue;
 
-        // 👤 "assignee:" filter
-        if (isAssigneeQuery) {
-          const assignees = Array.isArray(t.assignee) ? t.assignee : [];
+      // ✅ "in:" → match project title
+      if (isInQuery) {
+        const projectTitle = (projectData.title || projectData.name || '').toLowerCase();
+        if (!projectTitle.includes(inQueryTitle)) continue;
+      }
 
-          let matched = false;
-          for (const uid of assignees) {
-            try {
-              const userSnap = await getDoc(doc(db, 'users', uid));
-              if (!userSnap.exists()) continue;
+      // ✅ "assignee:" → match user name
+      if (isAssigneeQuery) {
+        const assignees = Array.isArray(t.assignee) ? t.assignee : [];
+        let matched = false;
 
-              const user = userSnap.data();
-              const userName = (user.name || user.displayName || '').toLowerCase();
-
-              if (userName.includes(assigneeQuery)) {
+        for (const uid of assignees) {
+          try {
+            const snap = await getDoc(doc(db, 'users', uid));
+            if (snap.exists()) {
+              const user = snap.data();
+              const name = (user.name || user.displayName || '').toLowerCase();
+              if (name.includes(assigneeQuery)) {
                 matched = true;
                 break;
               }
-            } catch (err) {
-              console.warn('Failed to load assignee user', err);
-            }
-          }
-
-          if (!matched) continue;
-        }
-
-        // ✅ Passed all filters
-        filteredTasks.push(t);
-
-      } catch (e) {
-        console.warn('Error reading task.projectRef', e);
-      }
-    }
-
-    if (isTaskSearch) {
-      displaySearchResults(filteredTasks, [], [], []);
-    } else {
-      // fallback search (projects only when not in My Tasks view)
-      const { results: fallbackResults } = await searchClient.search([
-        { indexName: 'projects', query: value, params: { hitsPerPage: 10 } }
-      ]);
-
-      const fallbackProjects = fallbackResults[0]?.hits || [];
-      const filteredProjects = [];
-
-      for (const p of fallbackProjects) {
-        let memberUIDs = p.memberUIDs || [];
-
-        if (p.projectRef) {
-          try {
-            const snap = await getDoc(doc(db, p.projectRef));
-            if (snap.exists()) {
-              const data = snap.data();
-              memberUIDs = Array.isArray(data.memberUIDs) ? data.memberUIDs : [];
             }
           } catch (e) {
-            console.warn('Error reading project.projectRef', e);
+            console.warn('Error loading assignee user', e);
           }
         }
 
-        if (memberUIDs.includes(currentUserId)) {
-          filteredProjects.push(p);
-        }
+        if (!matched) continue;
       }
 
-      displaySearchResults(filteredTasks, filteredProjects, [], []);
+      filteredTasks.push(t);
     }
+
+    displaySearchResults(
+      isTaskSearch ? filteredTasks : [],
+      isProjectSearch ? filteredProjects : [],
+      [], []
+    );
+
   } catch (err) {
     console.error("Algolia search error:", err);
     halfQuery.classList.remove("skeleton-active");
