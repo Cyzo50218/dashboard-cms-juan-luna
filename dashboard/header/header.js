@@ -721,6 +721,13 @@ function hslToHex(h, s, l) {
 async function renderSearchResultItem(item) {
   let itemDiv = document.createElement('div');
   const input = document.querySelector('.search-input');
+  const cancelIcon = document.querySelector('.cancel-search-icon');
+  let halfQuery = document.getElementById('half-query');
+  const recentContainer = document.getElementById('recent-container');
+  const savedContainer = document.getElementById('saved-container');
+const searchOptions = document.querySelector('.search-options');
+const emailContainerId = document.getElementById('email-container-id');
+
   switch (item.type) {
   case 'project':
     const project = item.data;
@@ -802,6 +809,16 @@ async function renderSearchResultItem(item) {
   closeSearchExpand();
   input.value = '';
 lastInputValue = '';
+cancelIcon.classList.add('hidden');
+halfQuery = resetHalfQueryContainer();
+halfQuery.classList.add("hidden");
+halfQuery.classList.remove("skeleton-active"); // also remove loading state
+recentContainer.classList.remove("hidden");
+
+optionsQuery.classList.add("hidden");
+savedContainer.classList.remove("hidden");
+searchOptions.classList.remove("hidden");
+emailContainerId.classList.add('hidden');
 
   // Load the new section dynamically
   router(); // This will call `loadSection()` and initialize `list.js`
@@ -903,6 +920,16 @@ lastInputValue = '';
   closeSearchExpand();
   input.value = '';
 lastInputValue = '';
+cancelIcon.classList.add('hidden');
+halfQuery = resetHalfQueryContainer();
+halfQuery.classList.add("hidden");
+halfQuery.classList.remove("skeleton-active"); // also remove loading state
+recentContainer.classList.remove("hidden");
+
+optionsQuery.classList.add("hidden");
+savedContainer.classList.remove("hidden");
+searchOptions.classList.remove("hidden");
+emailContainerId.classList.add('hidden');
   // Load the new section dynamically
   router(); // This will call `loadSection()` and initialize `list.js`
 });
