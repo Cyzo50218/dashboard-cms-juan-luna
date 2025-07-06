@@ -1233,7 +1233,7 @@ async function runSearch(value) {
     }
 
     if (isInQuery) {
-      const projectTitle = (projectData.title || projectData.name || '').toLowerCase();
+      const projectTitle = projectData.title.toLowerCase();
       console.log(`Checking "in:" project title: "${projectTitle}" vs "${inQueryTitle}"`);
 
       if (!projectTitle.includes(inQueryTitle)) {
