@@ -805,12 +805,36 @@ const optionsQuery = document.getElementById('options-query');
     </div>
   `;
   itemDiv.addEventListener('click', () => {
-  const href = `/tasks/${currentUserId}/list/${task.projectId}`;
+  const href = `/tasks/${currentUserId}/list/${project.objectID}`;
+  
+  try {
+  const userRef = doc(db, 'users', currentUserId);
+  const userSnap = await getDoc(userRef);
+  
+  if (userSnap.exists() && userSnap.data().selectedWorkspace) {
+    const selectedWorkspaceId = userSnap.data().selectedWorkspace;
+    const workspaceRef = doc(db, `users/${currentUserId}/myworkspace/${selectedWorkspaceId}`);
+    const workspaceSnap = await getDoc(workspaceRef);
+    
+    if (workspaceSnap.exists()) {
+      const workspaceData = workspaceSnap.data();
+      const currentSelectedProjectId = workspaceData.selectedProjectId;
+      
+      if (currentSelectedProjectId !== project.objectID) {
+        await updateDoc(workspaceRef, { selectedProjectId: project.objectID });
+        console.log("📌 Updated selectedProjectId to:", project.objectID);
+      }
+    }
+  }
+} catch (error) {
+  console.error("❌ Failed to update selectedProjectId:", error);
+}
+
   history.pushState({ path: href }, '', href);
   closeSearchExpand();
   input.value = '';
 lastInputValue = '';
-displaySearchResults([],[],[],[]);
+
 cancelIcon.classList.add('hidden');
 halfQuery = resetHalfQueryContainer();
 halfQuery.classList.add("hidden");
@@ -919,8 +943,32 @@ fetchRecentItemsFromFirestore(renderRecentItems, {
         itemDiv.addEventListener('click', (event) => {
   event.preventDefault(); // Prevent full page reload
 
+
   const projectRef = task.projectRef || '';
   const href = `/tasks/${currentUserId}/list/${task.projectId}?openTask=${task.taskId}`;
+
+try {
+  const userRef = doc(db, 'users', currentUserId);
+  const userSnap = await getDoc(userRef);
+  
+  if (userSnap.exists() && userSnap.data().selectedWorkspace) {
+    const selectedWorkspaceId = userSnap.data().selectedWorkspace;
+    const workspaceRef = doc(db, `users/${currentUserId}/myworkspace/${selectedWorkspaceId}`);
+    const workspaceSnap = await getDoc(workspaceRef);
+    
+    if (workspaceSnap.exists()) {
+      const workspaceData = workspaceSnap.data();
+      const currentSelectedProjectId = workspaceData.selectedProjectId;
+      
+      if (currentSelectedProjectId !== task.projectId) {
+        await updateDoc(workspaceRef, { selectedProjectId: task.projectId });
+        console.log("📌 Updated selectedProjectId to:", task.projectId);
+      }
+    }
+  }
+} catch (error) {
+  console.error("❌ Failed to update selectedProjectId:", error);
+}
 
   // Save the projectRef invisibly
   sessionStorage.setItem('pendingProjectRef', projectRef);
