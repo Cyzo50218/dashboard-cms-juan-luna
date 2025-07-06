@@ -1303,11 +1303,18 @@ function resetHalfQueryContainer() {
   const old = document.getElementById('half-query');
   if (!old) return null;
 
-  const replacement = old.cloneNode(false);
+  const replacement = old.cloneNode(false); // false = no child nodes
   replacement.id = 'half-query';
+
+  // ⬇️ Clear and hide the new element
+  replacement.innerHTML = '';
+  replacement.classList.add('hidden'); // Optional: add 'hidden' class to hide it
+  replacement.classList.remove('skeleton-active'); // Optional: remove loading style
+
   old.parentNode.replaceChild(replacement, old);
   return replacement;
 }
+
 
 function showErrorUI() {
   halfQuery.classList.remove("skeleton-active");
@@ -2011,7 +2018,6 @@ input.addEventListener('input', async () => {
 
       // ❌ Clear existing results immediately
       halfQuery = resetHalfQueryContainer();
-      displaySearchResults([],[],[],[]);
       halfQuery.classList.remove("hidden");
       halfQuery.classList.add("skeleton-active");
       
