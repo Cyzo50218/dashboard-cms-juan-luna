@@ -826,6 +826,7 @@ async function renderSearchResultItem(item) {
               if (currentSelectedProjectId !== project.objectID) {
                 await updateDoc(workspaceRef, { selectedProjectId: project.objectID });
                 console.log("📌 Updated selectedProjectId to:", project.objectID);
+                router(); // This will call `loadSection()` and initialize `list.js`
               }
             }
           }
@@ -834,6 +835,7 @@ async function renderSearchResultItem(item) {
         }
 
         history.pushState({ path: href }, '', href);
+        displaySearchResults([], [], [], []);
         closeSearchExpand();
         input.value = '';
         lastInputValue = '';
@@ -858,7 +860,7 @@ async function renderSearchResultItem(item) {
           showInviteButton: false
         });
         // Load the new section dynamically
-        router(); // This will call `loadSection()` and initialize `list.js`
+        
 
       });
 
