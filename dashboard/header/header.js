@@ -761,6 +761,7 @@ async function displaySearchResults(tasks, projects, people, messages) {
 
   let memberUIDs = project.memberUIDs || [];
 
+  // 🔄 Try to load fresh memberUIDs from Firestore if projectRef exists
   if (project.projectRef) {
     try {
       const projectDocRef = doc(db, project.projectRef);
@@ -774,7 +775,8 @@ async function displaySearchResults(tasks, projects, people, messages) {
     }
   }
 
-  const assigneesToDisplay = memberUIDs.slice(0, 2);
+  const MAX_VISIBLE_ASSIGNEES = 3;
+  const assigneesToDisplay = memberUIDs.slice(0, MAX_VISIBLE_ASSIGNEES);
   const remainingAssigneesCount = memberUIDs.length - assigneesToDisplay.length;
 
   let projectHexColor = project.color || '#cccccc';
@@ -792,7 +794,9 @@ async function displaySearchResults(tasks, projects, people, messages) {
       if (userSnap.exists()) {
         const userData = userSnap.data();
         const avatarUrl = userData.avatar;
-        const initials = userData.name ? userData.name.substring(0, 2).toUpperCase() : uid.substring(0, 2).toUpperCase();
+        const initials = userData.name
+          ? userData.name.substring(0, 2).toUpperCase()
+          : uid.substring(0, 2).toUpperCase();
 
         return avatarUrl
           ? `<div class="headersearches-assignee-avatar" style="background-image: url(${avatarUrl});"></div>`
@@ -802,7 +806,7 @@ async function displaySearchResults(tasks, projects, people, messages) {
       console.error(`Could not fetch user ${uid}`, err);
     }
 
-    // Fallback if user not found
+    // Fallback
     return `<div class="headersearches-assignee-avatar">${uid.substring(0, 2).toUpperCase()}</div>`;
   });
 
@@ -822,7 +826,7 @@ async function displaySearchResults(tasks, projects, people, messages) {
     </div>
   `;
   break;
-          
+
         case 'task':
           const task = item.data;
           itemDiv = document.createElement('div');
