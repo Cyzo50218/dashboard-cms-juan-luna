@@ -2010,6 +2010,11 @@ input.addEventListener('input', async () => {
 
       // Reset pagination state
       displayOffset = 0;
+      halfQuery.innerHTML = `
+        <div class="skeleton-loader" style="width: 200px;"></div>
+        <div class="skeleton-loader" style="width: 500px;"></div>
+        <div class="skeleton-loader" style="width: 400px;"></div>
+      `;
     }
 
     // ⏳ Show loading placeholders
