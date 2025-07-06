@@ -37,8 +37,8 @@ let recentTasksUnsubscribe = null;
 const algoliasearch = window.algoliasearch;
 
 const searchClient = algoliasearch(
-  process.env.NEXT_PUBLIC_ALGOLIA_APP_ID,
-  process.env.NEXT_PUBLIC_ALGOLIA_SEARCH_ONLY_KEY
+  window.ALGOLIA_CONFIG.appId,
+  window.ALGOLIA_CONFIG.searchOnlyKey
 );
 
 let recentItemsUnsubscribe = null;
