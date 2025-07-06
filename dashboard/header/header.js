@@ -35,6 +35,7 @@ const db = getFirestore(app, "juanluna-cms-01");
 let currentUserId = null;
 let recentTasksUnsubscribe = null;
 const algoliasearch = window.algoliasearch;
+let selectedOptionBtnIndex = -1;
 
 // Safe api public key
 const searchClient = algoliasearch(
@@ -1374,7 +1375,7 @@ onAuthStateChanged(auth, async (user) => {
   
   let selected = false;
   let searchEmpty = false;
-  let selectedOptionBtnIndex = -1;
+  
   
   /* search filter */
   /* global */
