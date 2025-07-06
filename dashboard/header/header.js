@@ -707,7 +707,7 @@ function displaySearchResults(tasks, projects, people, messages) {
           itemDiv.className = 'headersearches-tasks-recent-item search-result-item';
           itemDiv.dataset.itemId = project.id;
           
-          let assigneesToDisplay = project.assignees.slice(0, 2);
+          let assigneesToDisplay = (project.assignees || []).slice(0, 2);
           let remainingAssigneesCount = project.assignees.length - assigneesToDisplay.length;
           
           const assigneesHtml = assigneesToDisplay.map(assignee => `
@@ -732,40 +732,41 @@ function displaySearchResults(tasks, projects, people, messages) {
           break;
           
         case 'task':
-          const task = item.data;
-          itemDiv = document.createElement('div');
-          itemDiv.className = 'headersearches-tasks-recent-item search-result-item';
-          itemDiv.dataset.itemId = task.id;
-          
-          let statusIcon;
-          let statusClass = '';
-          if (item.status === 'completed') {
-            statusIcon = 'check_circle'; // Checked icon for completed/on track
-            statusClass = 'status-completed';
-          } else {
-            statusIcon = 'radio_button_unchecked'; // Default unchecked or pending
-          }
-          
-          const taskAssigneesHtml = task.assignees.map(assignee => `
-                            <div class="headersearches-assignee-avatar" ${assignee.avatarUrl ? `style="background-image: url(${assignee.avatarUrl});"` : ''}>
-                                ${!assignee.avatarUrl ? assignee.initials : ''}
-                            </div>
-                        `).join('');
-          
-          itemDiv.innerHTML = `
-                            <span class="material-icons-outlined headersearches-tasks-recent-status-icon ${statusClass}">${statusIcon}</span>
-                            <div class="headersearches-tasks-recent-content">
-                                <div class="headersearches-tasks-recent-title">${task.name}</div>
-                                <div class="headersearches-tasks-recent-meta">
-                                    <span class="headersearches-tasks-project-dot" style="background-color: ${task.project.color};"></span>
-                                    <span class="headersearches-tasks-project-name">${task.project.name}</span>
-                                </div>
-                            </div>
-                            <div class="headersearches-assignee-list">
-                                ${taskAssigneesHtml}
-                            </div>
-                        `;
-          break;
+const task = item.data;
+itemDiv = document.createElement('div');
+itemDiv.className = 'headersearches-tasks-recent-item search-result-item';
+itemDiv.dataset.itemId = task.objectID; // Use objectID from Algolia
+
+let statusIcon;
+let statusClass = '';
+// FIX 1: Check the status from the task data itself
+if (task.status === 'completed' || task.status === 'Ready to Ship') {
+  statusIcon = 'check_circle';
+  statusClass = 'status-completed';
+} else {
+  statusIcon = 'radio_button_unchecked';
+}
+
+// FIX 2: Use the 'assignee' array of UIDs. A full implementation would need to fetch user details.
+const taskAssigneesHtml = (task.assignee || []).map(uid => {
+  const initials = uid.substring(0, 2).toUpperCase(); // Placeholder initials
+  return `<div class="headersearches-assignee-avatar">${initials}</div>`;
+}).join('');
+
+itemDiv.innerHTML = `
+            <span class="material-icons-outlined headersearches-tasks-recent-status-icon ${statusClass}">${statusIcon}</span>
+            <div class="headersearches-tasks-recent-content">
+                <div class="headersearches-tasks-recent-title">${task.title || 'Untitled Task'}</div>
+                <div class="headersearches-tasks-recent-meta">
+                    <span class="headersearches-tasks-project-dot" style="background-color: #cccccc;"></span>
+                    <span class="headersearches-tasks-project-name">Project: ${task.projectId}</span>
+                </div>
+            </div>
+            <div class="headersearches-assignee-list">
+                ${taskAssigneesHtml}
+            </div>
+          `;
+break;
           
         case 'person':
           const person = item.data;
