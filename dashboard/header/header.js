@@ -628,7 +628,6 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
 function enterSearchResults() {
   const containerDiv = document.createElement('div');
   containerDiv.className = 'enter-search-results-hint';
-  
   containerDiv.innerHTML = `
         <div class="search-icon-wrapper">
             <i class="fas fa-search"></i>
