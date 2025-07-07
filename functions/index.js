@@ -1,11 +1,17 @@
-/* eslint-disable object-curly-spacing, indent, no-undef, max-len, quotes, comma-dangle, no-unused-vars, no-trailing-spaces, eol-last */
+/* eslint-disable no-undef, no-unused-vars */
 import { onCall } from "firebase-functions/v2/https";
 import * as functions from "firebase-functions";
+import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import { initializeApp } from "firebase-admin/app";
 import * as algoliasearch from 'algoliasearch';
 import sgMail from "@sendgrid/mail";
 import { backfillAll } from "./backfillAllAlgolia.js";
+import logger from "firebase-functions/logger";
+import axios from "axios";
+import corsLib from "cors";
+
+const cors = corsLib({ origin: true });
 
 // Init Firebase Admin SDK
 initializeApp();
@@ -13,6 +19,31 @@ initializeApp();
 export const sendgridApiKey = defineSecret("SENDGRID_API_KEY_EMAIL_INVITATION");
 export const ALGOLIA_APP_ID = defineSecret("ALGOLIA_APP_ID");
 export const ALGOLIA_ADMIN_API_KEY = defineSecret("ALGOLIA_ADMIN_API_KEY");
+export const USPS_CONSUMER_KEY = defineSecret("USPS_CONSUMER_KEY");
+export const USPS_CONSUMER_SECRET = defineSecret("USPS_CONSUMER_SECRET");
+export const USPS_TOKEN_URL = defineSecret("USPS_TOKEN_URL");
+export const USPS_TRACKING_URL = defineSecret("USPS_TRACKING_URL");
+
+const getAccessToken = async () => {
+  const consumerKey = USPS_CONSUMER_KEY;
+  const consumerSecret = USPS_CONSUMER_SECRET;
+  const tokenUrl = USPS_TOKEN_URL;
+
+  const params = new URLSearchParams();
+  params.append("grant_type", "client_credentials");
+  params.append("client_id", consumerKey);
+  params.append("client_secret", consumerSecret);
+
+  try {
+    const res = await axios.post(tokenUrl, params, {
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    });
+    return res.data.access_token;
+  } catch (err) {
+    logger.error("Failed to get USPS access token:", err.response?.data || err.message);
+    throw new Error("USPS auth failed.");
+  }
+};
 
 export const sendEmailInvitation = onCall(
   {
@@ -268,3 +299,88 @@ export const runAlgoliaBackfill = onCall(
     }
   }
 );  
+
+/*
+export const getUSPSTracking = onRequest(
+  {
+    secrets: [USPS_CONSUMER_KEY, USPS_CONSUMER_SECRET, USPS_TOKEN_URL, USPS_TRACKING_URL],
+  },
+  async (req, res) => {
+    cors(req, res, async () => {
+      if (req.method !== "POST") {
+        return res.status(405).send("Method Not Allowed");
+      }
+
+      const { trackingNumber } = req.body.data || {};
+      logger.info("Received body:", req.body);
+      if (!trackingNumber) {
+        return res.status(400).send({ error: "Tracking number is required." });
+      }
+
+      try {
+        const accessToken = await getAccessToken();
+        const trackingUrl = process.env.USPS_TRACKING_URL;
+
+        const trackingRes = await axios.post(
+          trackingUrl,
+          { trackingNumbers: [trackingNumber] },
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        logger.log(`Tracking successful for ${trackingNumber}`);
+        return res.status(200).json(trackingRes.data);
+      } catch (err) {
+        logger.error(`Tracking failed for ${trackingNumber}:`, err.response?.data || err.message);
+        const code = err.response?.status || 500;
+        const msg =
+          err.response?.data?.errors?.[0]?.message || "USPS tracking request failed.";
+        return res.status(code).json({ error: msg });
+      }
+    });
+  }
+);
+*/
+
+export const getUSPSTracking = onRequest(
+  {
+    secrets: [USPS_CONSUMER_KEY], 
+  },
+  async (req, res) => {
+    cors(req, res, async () => {
+      if (req.method !== "POST") {
+        return res.status(405).send("Method Not Allowed");
+      }
+
+      const { trackingNumber } = req.body.data || {};
+      logger.info("Received body:", req.body);
+
+      if (!trackingNumber) {
+        return res.status(400).send({ error: "Tracking number is required." });
+      }
+
+      const userId = process.env.USPS_CONSUMER_KEY;
+      logger.info("USPS_CONSUMER_KEY is", process.env.USPS_CONSUMER_KEY);
+
+      const xml = `<TrackRequest USERID="${userId}"><TrackID ID="${trackingNumber}"></TrackID></TrackRequest>`;
+      const url = `https://secure.shippingapis.com/ShippingAPI.dll?API=TrackV2&XML=${encodeURIComponent(xml)}`;
+      logger.info("Final USPS URL:", url);
+      logger.info(`Tracking number: ${trackingNumber}`);
+      try {
+        const uspsRes = await axios.get(url);
+
+        logger.log(`Tracking successful for ${trackingNumber}`);
+        res.status(200).send(uspsRes.data); // Returns raw XML
+
+        // Optional: parse XML to JSON using xml2js if needed
+      } catch (err) {
+        logger.error(`Tracking failed for ${trackingNumber}:`, err.message);
+        return res.status(500).json({ error: "USPS tracking request failed." });
+      }
+    });
+  }
+);

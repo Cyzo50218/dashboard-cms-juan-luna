@@ -2310,6 +2310,34 @@ Custom class
   /* Let the height be determined by its content */
   height: auto; 
 }
+.floating-input-wrapper.tracking-input-mode {
+    padding: 0;
+}
+
+.floating-input-wrapper.tracking-input-mode .floating-input {
+    border-radius: 4px 0 0 4px;
+}
+
+.floating-input-wrapper .floating-input.is-invalid {
+    box-shadow: inset 0 0 0 2px #e74c3c; /* Red inner glow for invalid input */
+}
+
+.floating-input-wrapper .floating-save-btn {
+    border: none;
+    display: none;
+    background-color: #3498db;
+    color: white;
+    padding: 0 12px;
+    cursor: pointer;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.floating-input-wrapper .floating-save-btn:disabled {
+    background-color: #bdc3c7;
+    cursor: not-allowed;
+}
 .floating-input {
   width: 100%;
   height: 100%;
@@ -2360,4 +2388,33 @@ textarea.floating-input {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+.status-explainer {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0; /* A light separator line */
+}
+
+.status-explainer p {
+  font-weight: 600; /* Make "Common statuses include:" bold */
+  margin-bottom: 8px;
+}
+
+.status-explainer ul {
+  list-style: none; /* Remove default bullet points */
+  padding-left: 0;
+  margin: 0;
+}
+
+.status-explainer li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.status-explainer li i {
+  width: 16px; /* Ensure icons are aligned */
+  text-align: center;
+  margin-top: 0;
 }

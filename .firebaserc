@@ -1,5 +1,7 @@
 {
   "projects": {
     "default": "juan-luna-db"
-  }
+  },
+  "targets": {},
+  "etags": {}
 }
