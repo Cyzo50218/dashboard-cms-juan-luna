@@ -205,6 +205,7 @@ import { firebaseConfig } from "/services/firebase-config.js";
             const projectId = projectItem.dataset.projectId;
             if (projectId && projectId !== selectedProjectId) {
                 selectProject(projectId);
+                window.router();
             }
         }
     });

@@ -115,7 +115,7 @@ async function loadSection(routeParams) {
         content.innerHTML = sectionHtml;
 
         if (sectionModule.init) {
-            currentSectionCleanup = sectionModule.init(routeParams);
+            return sectionModule.init(routeParams);
         }
 
         lastLoadedSection = section;
