@@ -386,8 +386,7 @@ function initializeListView(params) {
     }
     render();
     setupEventListeners();
-  startOpenTaskPolling();
-
+    startOpenTaskPolling();
 }
 
 function startOpenTaskPolling() {
