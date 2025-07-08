@@ -77,6 +77,10 @@ window.TaskSidebar = (function () {
         allActivities = [];
     let pastedFiles = [];
 
+    let sidebarHeader;
+    let originalHeaderHTML = '';
+    let isHeaderScrolled = false;
+
     // Color Mappings & Options
     const defaultPriorityColors = { 'High': '#ffccc7', 'Medium': '#ffe7ba', 'Low': '#d9f7be' };
     const defaultStatusColors = { 'On track': '#b7eb8f', 'At risk': '#fff1b8', 'Off track': '#ffccc7', 'Completed': '#d9d9d9' };
@@ -84,7 +88,7 @@ window.TaskSidebar = (function () {
     const statusOptions = ['On track', 'At risk', 'Off track', 'Completed'];
 
     // DOM Elements
-    let sidebar, taskNameEl, taskDescriptionEl, taskFieldsContainer, closeBtn,
+    let sidebar, scrolledTaskNameEl, taskNameEl, taskDescriptionEl, taskFieldsContainer, closeBtn,
         expandBtn, deleteTaskBtn,
         tabsContainer, activityLogContainer, commentInput, sendCommentBtn,
         imagePreviewContainer, currentUserAvatarEl, taskCompleteText, taskCompleteBtn, fileUploadInput, commentInputWrapper;
@@ -183,6 +187,7 @@ window.TaskSidebar = (function () {
         if (isInitialized) return;
         rightSidebarContainer = document.getElementById('right-sidebar');
         sidebar = document.getElementById('task-sidebar');
+        sidebarHeader = document.querySelector('.sidebar-header-task');
         taskNameEl = document.getElementById('task-name');
         taskDescriptionEl = document.getElementById('task-description-text');
         taskFieldsContainer = document.getElementById('task-fields-container');
@@ -199,6 +204,11 @@ window.TaskSidebar = (function () {
         imagePreviewContainer = document.getElementById('pasted-image-preview-container');
         fileUploadInput = document.getElementById('file-upload-input');
         commentInputWrapper = document.querySelector('.comment-input-wrapper');
+        scrolledTaskNameEl = document.querySelector('.scrolled-task-name');
+
+        if (sidebarHeader) {
+            originalHeaderHTML = sidebarHeader.innerHTML;
+        }
 
         onAuthStateChanged(auth, async (user) => {
             if (user) {
@@ -258,6 +268,23 @@ window.TaskSidebar = (function () {
 
         attachEventListeners();
         isInitialized = true;
+    }
+
+    function handleSidebarScroll() {
+        if (!sidebarHeader || !currentTask || !scrolledTaskNameEl) return;
+
+        const scrollPosition = sidebar.scrollTop;
+
+        if (scrollPosition > 15) {
+            // Add the class to trigger the CSS changes
+            sidebarHeader.classList.add('is-scrolled');
+            // Set the task name text inside the hidden span
+            scrolledTaskNameEl.textContent = currentTask.name;
+
+        } else {
+            // Remove the class to revert to the default state
+            sidebarHeader.classList.remove('is-scrolled');
+        }
     }
 
 
@@ -693,7 +720,10 @@ window.TaskSidebar = (function () {
             }
         }
 
-        const messageRef = doc(db, `globalChatProjects/${currentProject.id}/tasks/${currentTask.id}/Messages`, messageId);
+        // THIS IS THE CORRECTED LINE:
+        // It now correctly points to the task-specific chat collection.
+        const messageRef = doc(db, `globalTaskChats/${currentTask.id}/Messages`, messageId);
+
         const batch = writeBatch(db);
         batch.delete(messageRef);
         batch.update(currentTaskRef, { commentCount: increment(-1) });
@@ -1400,6 +1430,7 @@ window.TaskSidebar = (function () {
     function attachEventListeners() {
         if (!sidebar) return;
 
+        sidebar.addEventListener('scroll', handleSidebarScroll);
 
         activityLogContainer.addEventListener('click', (e) => {
             const messageItem = e.target.closest('.comment-item');
@@ -1481,11 +1512,16 @@ window.TaskSidebar = (function () {
                 editImageInput.click();
             }
         });
-        taskCompleteBtn.addEventListener('click', () => {
-            if (!currentTask) return;
-            const newStatus = currentTask.status === 'Completed' ? 'On track' : 'Completed';
-            updateTaskField('status', newStatus);
-        });
+        if (sidebarHeader) {
+            sidebarHeader.addEventListener('click', (e) => {
+                // This will catch clicks on the completion button whether the header is scrolled or not
+                if (e.target.closest('.task-complete-btn')) {
+                    if (!currentTask) return;
+                    const newStatus = currentTask.status === 'Completed' ? 'On track' : 'Completed';
+                    updateTaskField('status', newStatus);
+                }
+            });
+        }
         // Standard listeners
         closeBtn.addEventListener('click', close);
         expandBtn.addEventListener('click', toggleSidebarView);
@@ -2123,7 +2159,7 @@ window.TaskSidebar = (function () {
             img.src = event.target.result;
             img.alt = file.name;
             // Reverted to block display for left alignment.
-            img.style.display = 'block';
+            img.style.display = 'center';
             img.style.maxWidth = '70%';
             img.style.maxHeight = '450px';
             img.style.margin = '10px 0';
