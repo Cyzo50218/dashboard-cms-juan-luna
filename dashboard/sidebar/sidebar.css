@@ -126,7 +126,6 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 60px;
     position: sticky;
     z-index: 1;
     top: 0; 

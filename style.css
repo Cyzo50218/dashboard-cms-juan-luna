@@ -80,6 +80,7 @@ body {
 
 #right-sidebar.sidebar-open {
   width: 600px;
+  margin-top: 60px;
   overflow: auto; /* Show scrollbar only when open */
 }
 
