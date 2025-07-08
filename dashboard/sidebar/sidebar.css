@@ -134,7 +134,52 @@
     padding: 12px 24px;
     border-bottom: 1px solid #e0e0e0;
 }
+/* The sidebar content is visible by default */
+.sidebar-content-task {
+    visibility: visible;
+    opacity: 1;
+    transition: opacity 0.2s ease-in-out;
+}
 
+
+/* --- Default State --- */
+.progress-loading-container.hide {
+    display: none;
+}
+
+/* Spinner and text are visible by default, but won't show because their parent is hidden. */
+.progress-spinner {
+    border: 4px solid #f3f3f3; /* Light grey border */
+    border-top: 4px solid #000000; /* Black border for the "spinning" part */
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite; /* Animation for spinning effect */
+}
+
+.loading-text {
+    color: #333; /* Darker text color */
+    font-size: 1.1em;
+}
+
+/* --- Active Loading State --- */
+
+#task-sidebar.is-loading .sidebar-content-task {
+    visibility: hidden;
+    opacity: 0;
+}
+.progress-loading-container.is-loading {
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+    gap: 10px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
 .task-complete-btn {
     display: flex;
     align-items: center;

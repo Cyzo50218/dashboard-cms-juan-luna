@@ -1,4 +1,6 @@
 <div id="task-sidebar" class="task-sidebar">
+    
+
     <div class="sidebar-header-task">
         <button id="task-complete-btn" class="task-complete-btn">
             <i class="fa-regular fa-circle-check"></i>
@@ -13,7 +15,11 @@
             <i id="close-sidebar-btn" class="fa-solid fa-arrow-right-to-bracket" title="Close sidebar"></i>
         </div>
     </div>
-    
+
+    <div class="progress-loading-container" id="progress-loading-container">
+  <div class="progress-spinner"></div>
+  <p class="loading-text">Fetching task, please wait..</p>
+</div>
 
     <div class="sidebar-content-task">
         <h1 id="task-name" contenteditable="true"></h1>

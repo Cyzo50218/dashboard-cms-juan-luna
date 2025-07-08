@@ -88,7 +88,7 @@ window.TaskSidebar = (function () {
     const statusOptions = ['On track', 'At risk', 'Off track', 'Completed'];
 
     // DOM Elements
-    let sidebar, scrolledTaskNameEl, taskNameEl, taskDescriptionEl, taskFieldsContainer, closeBtn,
+    let sidebar,loadingSpinner, scrolledTaskNameEl, taskNameEl, taskDescriptionEl, taskFieldsContainer, closeBtn,
         expandBtn, deleteTaskBtn,
         tabsContainer, activityLogContainer, commentInput, sendCommentBtn,
         imagePreviewContainer, currentUserAvatarEl, taskCompleteText, taskCompleteBtn, fileUploadInput, commentInputWrapper;
@@ -187,6 +187,7 @@ window.TaskSidebar = (function () {
         if (isInitialized) return;
         rightSidebarContainer = document.getElementById('right-sidebar');
         sidebar = document.getElementById('task-sidebar');
+        loadingSpinner = document.getElementById('progress-loading-container');
         sidebarHeader = document.querySelector('.sidebar-header-task');
         taskNameEl = document.getElementById('task-name');
         taskDescriptionEl = document.getElementById('task-description-text');
@@ -302,6 +303,7 @@ window.TaskSidebar = (function () {
         close(); // Clears previous state
 
         sidebar.classList.add('is-loading', 'is-visible');
+        loadingSpinner.classList.add('is-loading');
         rightSidebarContainer.classList.add('sidebar-open');
 
         try {
@@ -398,7 +400,7 @@ window.TaskSidebar = (function () {
             // --- END ADDITION ---
 
             // --- STEP 3: RENDER THE UI ---
-            sidebar.classList.remove('is-loading');
+            
             renderSidebar(currentTask);
 
             // --- STEP 4: ATTACH REAL-TIME LISTENERS ---
@@ -412,6 +414,7 @@ window.TaskSidebar = (function () {
             });
             listenToActivity();
             listenToMessages();
+            
 
         } catch (error) {
             console.error("TaskSidebar: Error opening task.", error);
@@ -421,6 +424,12 @@ window.TaskSidebar = (function () {
 
     function close() {
         if (sidebar) sidebar.classList.remove('is-visible', 'is-loading');
+               currentTask = currentTaskRef = currentProject = null;
+        workspaceProjects = allUsers = allMessages = allActivities = [];
+        clearImagePreview();
+        loadingSpinner.classList.remove('hide');
+        loadingSpinner.classList.add('is-loading');
+        renderSidebar("");
         rightSidebarContainer.classList.remove('sidebar-open');
         const headerRight = getHeaderRight();
         if (headerRight) {
@@ -428,9 +437,8 @@ window.TaskSidebar = (function () {
         }
         detachAllListeners();
         closePopovers();
-        currentTask = currentTaskRef = currentProject = null;
-        workspaceProjects = allUsers = allMessages = allActivities = [];
-        clearImagePreview();
+ 
+
         const newUrl = window.location.pathname;
         window.history.replaceState({}, document.title, newUrl);
     }
@@ -559,10 +567,14 @@ window.TaskSidebar = (function () {
         messagesListenerUnsubscribe = onSnapshot(messagesQuery, (snapshot) => {
             console.log(`DEBUG: Message snapshot received. Found ${snapshot.size} documents.`);
             if (snapshot.empty) {
+                sidebar.classList.remove('is-loading');
+                loadingSpinner.classList.add('hide');
                 console.warn("DEBUG: Query returned 0 messages. Please check a) data exists at the path, and b) your security rules allow a 'list' operation on this path.");
             }
             allMessages = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
             renderActiveTab();
+            sidebar.classList.remove('is-loading');
+            loadingSpinner.classList.add('hide');
         }, (error) => {
             console.error("DEBUG: CRITICAL ERROR in message listener. This is almost certainly a PERMISSION DENIED error from your Firestore Security Rules.", error);
         });
