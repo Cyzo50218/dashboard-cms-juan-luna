@@ -731,38 +731,33 @@ window.TaskSidebar = (function () {
         }
     }
 
-    async function sendMessage(htmlContent) {
+    // Change the parameter from htmlContent to messageData
+    async function sendMessage(messageData) {
         if (!currentProject || !currentTask || !currentUser) return;
 
-        // The only content we need to save is the final HTML string.
-        if (!htmlContent.trim()) return;
+        if (!messageData.html.trim()) return;
 
         const messagesPath = `globalTaskChats/${currentTask.id}/Messages`;
         const newMessageRef = doc(collection(db, messagesPath));
         const batch = writeBatch(db);
 
-        // --- Logic from your old function ---
         const adminUIDs = [
             currentProject.project_super_admin_uid,
             currentProject.project_admin_user
         ].flat().filter(Boolean);
 
-        // Check if the parent task has a chatuuid field yet and add it to the batch.
         if (!currentTask.chatuuid) {
             batch.update(currentTaskRef, { chatuuid: currentTask.id });
         }
-        // --- End of merged logic ---
 
         batch.set(newMessageRef, {
             id: newMessageRef.id,
-            // The new `content` field holds the entire comment.
-            content: htmlContent,
+            content: messageData.html,
             senderId: currentUser.id,
             senderName: currentUser.name,
             senderAvatar: currentUser.avatar,
             timestamp: serverTimestamp(),
             reactions: { "like": [] },
-            // Added the missing projectAdmins field.
             projectAdmins: adminUIDs
         });
 
@@ -770,7 +765,6 @@ window.TaskSidebar = (function () {
 
         await batch.commit();
 
-        // A simple but effective log for the new format.
         logActivity({ action: 'added a comment' });
     }
 
