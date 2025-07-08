@@ -745,7 +745,7 @@ window.TaskSidebar = (function () {
         const adminUIDs = [
             currentProject.project_super_admin_uid,
             currentProject.project_admin_user
-        ].filter(Boolean);
+        ].flat().filter(Boolean);
 
         // Check if the parent task has a chatuuid field yet and add it to the batch.
         if (!currentTask.chatuuid) {
