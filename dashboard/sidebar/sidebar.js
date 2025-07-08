@@ -811,7 +811,7 @@ window.TaskSidebar = (function () {
             }
 
             // 4. Send the complete HTML to be saved.
-            await sendMessage(finalHtml);
+            await sendMessage({ html: finalHtml });
 
             // Clear the live input box on success.
             commentInputEl.innerHTML = '';
