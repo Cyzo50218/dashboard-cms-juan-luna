@@ -1,8 +1,11 @@
 /* eslint-disable no-undef, no-unused-vars */
 import { onCall } from "firebase-functions/v2/https";
 import * as functions from "firebase-functions";
+import admin from "firebase-admin";
 import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { onDocumentDeleted, onDocumentCreated } from "firebase-functions/v2/firestore";
 import { initializeApp } from "firebase-admin/app";
 import * as algoliasearch from 'algoliasearch';
 import sgMail from "@sendgrid/mail";
@@ -10,11 +13,20 @@ import { backfillAll } from "./backfillAllAlgolia.mjs";
 import logger from "firebase-functions/logger";
 import axios from "axios";
 import corsLib from "cors";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+
+const serviceAccount = require("./credentials/juan-luna-cms-db-account-credentials.json");
 
 const cors = corsLib({ origin: true });
 
-// Init Firebase Admin SDK
-initializeApp();
+
+// 2. Initialize the app with the key
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
+const db = getFirestore();
 
 export const sendgridApiKey = defineSecret("SENDGRID_API_KEY_EMAIL_INVITATION");
 export const ALGOLIA_APP_ID = defineSecret("ALGOLIA_APP_ID");
@@ -24,7 +36,44 @@ export const USPS_CONSUMER_SECRET = defineSecret("USPS_CONSUMER_SECRET");
 export const USPS_TOKEN_URL = defineSecret("USPS_TOKEN_URL");
 export const USPS_TRACKING_URL = defineSecret("USPS_TRACKING_URL");
 
+async function backfillTaskCounts() {
+  console.log("Starting backfill process...");
 
+  const projectsSnapshot = await db.collectionGroup('projects').get();
+
+  if (projectsSnapshot.empty) {
+    console.log("No projects found.");
+    return;
+  }
+
+  console.log(`Found ${projectsSnapshot.size} projects to process.`);
+
+  for (const projectDoc of projectsSnapshot.docs) {
+    const projectId = projectDoc.id;
+    const projectPath = projectDoc.ref.path;
+
+    try {
+      const tasksQuery = db.collectionGroup('tasks').where('projectId', '==', projectId);
+      const tasksSnapshot = await tasksQuery.count().get();
+      const count = tasksSnapshot.data().count;
+
+      await projectDoc.ref.update({ taskCount: count });
+
+      console.log(`Updated ${projectPath} -> taskCount: ${count}`);
+
+    } catch (error) {
+      console.error(`Failed to update ${projectPath}:`, error);
+    }
+  }
+
+  console.log("Backfill process completed!");
+}
+
+
+export const runBackfill = onCall(async (request) => {
+  await backfillTaskCounts();
+  return { status: "Backfill done" };
+});
 
 export const sendEmailInvitation = onCall(
   {
