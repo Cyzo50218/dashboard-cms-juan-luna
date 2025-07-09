@@ -546,6 +546,26 @@ export async function showInviteModal() {
             if (!str) return '';
             return str.split('').map(char => char.charCodeAt(0)).join('');
         }
+        async function getTotalTaskCount(projectId) {
+    try {
+        // 1. Create a query across the 'tasks' collection group
+        const tasksQuery = query(
+            collectionGroup(db, 'tasks'),
+            where('projectId', '==', projectId) // Filter for the specific project
+        );
+
+        // 2. Get the count of documents matching the query
+        const tasksSnapshot = await getCount(tasksQuery);
+        const totalTasks = tasksSnapshot.data().count;
+
+        console.log(`[Task Count] Found ${totalTasks} tasks for project ${projectId}`);
+        return totalTasks;
+
+    } catch (error) {
+        console.error(`[Task Count] Failed to get task count for project ${projectId}:`, error);
+        return 0; // Return 0 if there's an error
+    }
+}
 
         async function processInvites(emails, selectedProjects) {
             const { auth, db } = getFirebaseServices();
@@ -583,6 +603,7 @@ export async function showInviteModal() {
                         const numericUserId = stringToNumericString(currentUser.uid);
                         const numericProjectId = stringToNumericString(projectData.projectId);
                         const invitationUrl = `https://cms.juanlunacollections.com/tasks/${numericUserId}/list/${numericProjectId}`; // Replace with your actual URL
+                        const totalTasks = await getTotalTaskCount(project.id);
 
                         try {
                         // 1. Prepare the payload with the data needed for the email template.
@@ -596,6 +617,7 @@ export async function showInviteModal() {
                             projectName: projectData.title,
                             invitationUrl: invitationUrl,
                             totalTasks: projectData.tasks?.length || 0,
+                            totalTasks: totalTasks,
                             members: membersForEmail,
                             inviterName: inviterProfile?.name, 
                             inviterProfileUrl: inviterProfile?.avatar
