@@ -65,33 +65,6 @@ function injectModalStyles() {
             flex-direction: column;
             font-size: 14px;
         }
-         .tag-color-dot {
-         width: 10px;
-         height: 10px;
-         border-radius: 50%;
-         margin-right: 8px;
-         flex-shrink: 0;
-         border: 1px solid rgba(0, 0, 0, 0.2);
-     }
-     
-     .projectDropdown {
-         position: absolute;
-         background: rgba(55, 55, 55, 0.95);
-         backdrop-filter: blur(10 px);
-         border: 1px solid rgba(255, 255, 255, 0.1);
-         border-radius: 10px;
-         max-height: 200px;
-         overflow-y: auto;
-         z-index: 2001;
-         display: none;
-     }
-        .dropdown-colo-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            margin-right: 10px;
-            flex-shrink: 0;
-        }
         .modalContainer .headerSection { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .modalContainer .closeButton { cursor: pointer; font-size: 22px; color: #aaa; transition: color 0.2s ease; }
         .modalContainer .closeButton:hover { color: #fff; }
@@ -107,10 +80,42 @@ function injectModalStyles() {
         .modalContainer .inputField { flex-grow: 1; background: transparent; border: none; color: #fff; font-size: 15px; outline: none; min-width: 150px; resize: none; padding: 4px; }
         .modalContainer .sendButton { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); padding: 12px 24px; color: #fff; border-radius: 16px; cursor: pointer; font-weight: 600; float: right; transition: background 0.3s ease; margin-top: 20px; }
         .modalContainer .sendButton:hover { background: rgba(255, 255, 255, 0.2); }
-        .projectDropdown { position: fixed; background: rgba(45, 45, 45, 0.95); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; max-height: 200px; overflow-y: auto; z-index: 2001; display: none; }
-        .projectDropdown-item { display: flex; align-items: center; padding: 10px 15px; cursor: pointer; transition: background 0.2s ease; color: #f1f1f1;}
+        .tag-color-dot {
+           width: 10px;
+           height: 10px;
+           border-radius: 50%;
+           margin-right: 8px;
+           flex-shrink: 0;
+           border: 1px solid rgba(0, 0, 0, 0.2);
+        }
+        .projectDropdown {
+            position: absolute;
+            background: rgba(55, 55, 55, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 2001;
+            display: none;
+        }
+        .projectDropdown-item { 
+            display: flex; 
+            align-items: center; 
+            padding: 10px 15px; 
+            cursor: pointer; 
+            transition: background 0.2s ease; 
+            color: #f1f1f1;
+        }
         .projectDropdown-item:hover { background: rgba(255, 255, 255, 0.1); }
         .projectDropdown-item svg { margin-right: 10px; color: #ddd; }
+        .dropdown-color-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
     `;
     document.head.appendChild(style);
 }
