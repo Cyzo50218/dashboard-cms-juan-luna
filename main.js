@@ -295,7 +295,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 backfillIntervalId = null;
             }
             
-            if backfillTaskCountIntervalId {
+            if (backfillTaskCountIntervalId) {
                 clearInterval(backfillTaskCountIntervalId);
                 backfillTaskCountIntervalId = null;
             }
