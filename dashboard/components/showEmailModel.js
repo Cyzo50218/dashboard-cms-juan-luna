@@ -603,7 +603,7 @@ export async function showInviteModal() {
                         const numericUserId = stringToNumericString(currentUser.uid);
                         const numericProjectId = stringToNumericString(projectData.projectId);
                         const invitationUrl = `https://cms.juanlunacollections.com/tasks/${numericUserId}/list/${numericProjectId}`; // Replace with your actual URL
-                        const totalTasks = await getTotalTaskCount(project.id);
+                        const totalTasks = await getTotalTaskCount(project.projectId);
 
                         try {
                         // 1. Prepare the payload with the data needed for the email template.
