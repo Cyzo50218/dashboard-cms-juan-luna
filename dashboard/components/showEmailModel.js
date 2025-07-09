@@ -513,9 +513,6 @@ export async function showInviteModal() {
             if (emails.length === 0) {
                 return alert('Please enter at least one email address.');
             }
-            if (selectedProjects.length === 0) {
-                return alert('Please select at least one project to invite users to.');
-            }
 
             const originalBtnText = sendButton.textContent;
             sendButton.disabled = true;
