@@ -428,6 +428,7 @@ window.TaskSidebar = (function() {
         currentTask = currentTaskRef = currentProject = null;
         workspaceProjects = allUsers = allMessages = allActivities = [];
         clearImagePreview();
+        scrolledTaskNameEl.textContent = 'Mark Complete';
         loadingSpinner.classList.remove('hide');
         loadingSpinner.classList.add('is-loading');
         renderSidebar("");
