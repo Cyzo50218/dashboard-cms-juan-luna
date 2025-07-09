@@ -14,13 +14,15 @@ import { firebaseConfig } from "/services/firebase-config.js";
 
 // List of Lucide icons for a touch of visual variety.
 const lucideProjectIcons = [
-    'anchor', 'archive', 'award', 'axe', 'banknote', 'beaker', 'bell', 'bomb', 'book',
-    'box', 'briefcase', 'building', 'camera', 'clapperboard', 'clipboard', 'cloud',
-    'compass', 'cpu', 'crown', 'diamond', 'dice-5', 'drafting-compass', 'feather', 'flag',
-    'flame', 'folder', 'gem', 'gift', 'graduation-cap', 'hammer', 'hard-hat', 'heart-pulse',
-    'key-round', 'landmark', 'layers', 'leaf', 'lightbulb', 'map', 'medal', 'mouse-pointer',
-    'package', 'palette', 'plane', 'puzzle', 'rocket', 'shield', 'ship', 'sprout', 'star',
-    'swords', 'ticket', 'tractor', 'trophy', 'umbrella', 'wallet', 'wrench'
+    'anchor', 'archive', 'award', 'axe', 'banknote', 'beaker', 'bell',
+    'bomb', 'book', 'box', 'briefcase', 'building', 'camera', 'candy',
+    'clapperboard', 'clipboard', 'cloud', 'compass', 'cpu', 'crown',
+    'diamond', 'dice-5', 'drafting-compass', 'feather', 'flag', 'flame',
+    'folder', 'gem', 'gift', 'graduation-cap', 'hammer', 'hard-hat',
+    'heart-pulse', 'key-round', 'landmark', 'layers', 'leaf', 'lightbulb',
+    'map', 'medal', 'mouse-pointer', 'package', 'palette', 'plane',
+    'puzzle', 'rocket', 'shield', 'ship', 'sprout', 'star', 'swords',
+    'ticket', 'tractor', 'trophy', 'umbrella', 'wallet', 'wrench'
 ];
 
 /**
@@ -160,7 +162,7 @@ export async function showInviteModal() {
         id: doc.id,
         title: doc.data().title || "Untitled Project",
         icon: lucideProjectIcons[randomIndex],
-        color: doc.data().color || '#808080' // Default to gray if no color is set
+        color: doc.data().color || '#808080'
     };
 });
     } catch (error) {
@@ -240,7 +242,6 @@ const positionProjectDropdown = () => {
                 e.preventDefault();
                 const email = emailInputField.value.trim();
                 if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                    // ✅ MODIFIED: Use a Lucide icon for user tags.
                     addTag(emailTagInputContainer, email, 'user-circle-2');
                     emailInputField.value = '';
                 }
