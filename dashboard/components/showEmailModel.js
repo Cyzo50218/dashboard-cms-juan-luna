@@ -98,8 +98,8 @@ function injectModalStyles() {
         .modalContainer .inputGroup { margin-bottom: 18px; }
         .modalContainer .inputGroup label { display: block; margin-bottom: 6px; color: #ccc; font-weight: 500; }
         .modalContainer .tagInputContainer { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; align-items: flex-start; }
-        .modalContainer .emailTagInputContainer { min-height: 80px; }
-        .modalContainer .projectTagInputContainer { min-height: 40px; }
+        .modalContainer .emailTagInputContainer { min-height: 20px; }
+        .modalContainer .projectTagInputContainer { min-height: 20px; }
         .modalContainer .tag { display: flex; align-items: center; padding: 6px 12px; background: rgba(255, 255, 255, 0.15); border-radius: 20px; color: #e0e0e0; font-size: 14px; }
         .modalContainer .tag svg { margin-right: 8px; color: #ddd; }
         .modalContainer .tag .removeTag { margin-left: 8px; cursor: pointer; font-size: 16px; color: #ccc; }
@@ -201,16 +201,20 @@ export async function showInviteModal() {
             const randomIndex = Math.floor(Math.random() * lucideProjectIcons.length);
             const colorData = doc.data().color;
             let finalHexColor = '#808080'; // Set a default fallback color
-        if (colorData && typeof colorData === 'object' &&
+            
+            // Check if colorData is a valid HSL object and convert it.
+            // This prevents errors if a project has no color or an invalid format.
+            if (colorData && typeof colorData === 'object' &&
                 colorData.h !== undefined && colorData.s !== undefined && colorData.l !== undefined)
             {
                 finalHexColor = hslToHex(colorData.h, colorData.s, colorData.l);
             }
+            
             return {
                 id: doc.id,
                 title: doc.data().title || "Untitled Project",
                 icon: lucideProjectIcons[randomIndex],
-                color: finalHexColor // Use the converted hex color
+                color: finalHexColor
             };
         });
     } catch (error) {
