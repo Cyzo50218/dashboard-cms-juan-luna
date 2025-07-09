@@ -65,32 +65,32 @@ function injectModalStyles() {
             flex-direction: column;
             font-size: 14px;
         }
-         .tag - color - dot {
-         width: 10 px;
-         height: 10 px;
-         border - radius: 50 % ;
-         margin - right: 8 px;
-         flex - shrink: 0;
-         border: 1 px solid rgba(0, 0, 0, 0.2);
+         .tag-color-dot {
+         width: 10px;
+         height: 10px;
+         border-radius: 50%;
+         margin-right: 8px;
+         flex-shrink: 0;
+         border: 1px solid rgba(0, 0, 0, 0.2);
      }
      
      .projectDropdown {
          position: absolute;
          background: rgba(55, 55, 55, 0.95);
-         backdrop - filter: blur(10 px);
-         border: 1 px solid rgba(255, 255, 255, 0.1);
-         border - radius: 10 px;
-         max - height: 200 px;
-         overflow - y: auto;
-         z - index: 2001;
+         backdrop-filter: blur(10 px);
+         border: 1px solid rgba(255, 255, 255, 0.1);
+         border-radius: 10px;
+         max-height: 200px;
+         overflow-y: auto;
+         z-index: 2001;
          display: none;
      }
-        .dropdown - color - dot {
-            width: 12 px;
-            height: 12 px;
-            border - radius: 50 % ;
-            margin - right: 10 px;
-            flex - shrink: 0;
+        .dropdown-colo-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+            flex-shrink: 0;
         }
         .modalContainer .headerSection { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .modalContainer .closeButton { cursor: pointer; font-size: 22px; color: #aaa; transition: color 0.2s ease; }
@@ -98,8 +98,8 @@ function injectModalStyles() {
         .modalContainer .inputGroup { margin-bottom: 18px; }
         .modalContainer .inputGroup label { display: block; margin-bottom: 6px; color: #ccc; font-weight: 500; }
         .modalContainer .tagInputContainer { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; align-items: flex-start; }
-        .modalContainer .emailTagInputContainer { min-height: 20px; }
-        .modalContainer .projectTagInputContainer { min-height: 20px; }
+        .modalContainer .emailTagInputContainer { min-height: 10px; }
+        .modalContainer .projectTagInputContainer { min-height: 10px; }
         .modalContainer .tag { display: flex; align-items: center; padding: 6px 12px; background: rgba(255, 255, 255, 0.15); border-radius: 20px; color: #e0e0e0; font-size: 14px; }
         .modalContainer .tag svg { margin-right: 8px; color: #ddd; }
         .modalContainer .tag .removeTag { margin-left: 8px; cursor: pointer; font-size: 16px; color: #ccc; }
