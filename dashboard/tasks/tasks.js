@@ -236,7 +236,28 @@ export function init(params) {
         }
         
         const projectDoc = projectSnapshot.docs[0];
-        
+        const projectData = projectDoc.data();
+        const membersCount = Array.isArray(projectData.members) ? projectData.members.length : 0;
+const rolesCount = projectData.rolesByUID ? Object.keys(projectData.rolesByUID).length : 0;
+
+if (membersCount > 0 && membersCount !== rolesCount) {
+    console.log(`Syncing roles for project: ${projectDoc.id}. Members: ${membersCount}, Roles: ${rolesCount}`);
+    
+    const rolesByUID = {};
+    projectData.members.forEach(member => {
+        if (member.uid && member.role) {
+            rolesByUID[member.uid] = member.role;
+        }
+    });
+    
+    try {
+        await updateDoc(projectDoc.ref, { rolesByUID: rolesByUID });
+        projectData.rolesByUID = rolesByUID; // Update local data
+        console.log(`Successfully synced rolesByUID for project: ${projectDoc.id}`);
+    } catch (updateError) {
+        console.error(`Failed to sync project ${projectDoc.id}:`, updateError);
+    }
+}
         return {
             data: projectDoc.data(),
             projectId: projectDoc.id,
@@ -244,7 +265,6 @@ export function init(params) {
             projectRef: projectDoc.ref
         };
     }
-    
     
     /**
      * Fetches multiple user profiles by their UIDs.

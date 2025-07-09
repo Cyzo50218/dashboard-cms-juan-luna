@@ -39,6 +39,9 @@ function getFirebaseServices() {
 /**
  * Injects the necessary CSS for the modal into the document's head.
  */
+/**
+ * Injects the necessary CSS for the modal into the document's head.
+ */
 function injectModalStyles() {
     if (document.getElementById("inviteModalStyles")) return;
     const style = document.createElement("style");
@@ -70,25 +73,18 @@ function injectModalStyles() {
         .modalContainer .closeButton:hover { color: #fff; }
         .modalContainer .inputGroup { margin-bottom: 18px; }
         .modalContainer .inputGroup label { display: block; margin-bottom: 6px; color: #ccc; font-weight: 500; }
+        .modalContainer .sendButton { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); padding: 12px 24px; color: #fff; border-radius: 16px; cursor: pointer; font-weight: 600; float: right; transition: background 0.3s ease; margin-top: 20px; }
+        .modalContainer .sendButton:hover { background: rgba(255, 255, 255, 0.2); }
         .modalContainer .tagInputContainer { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; align-items: flex-start; }
-        .modalContainer .emailTagInputContainer { min-height: 10px; }
+        .modalContainer .emailTagInputContainer,
         .modalContainer .projectTagInputContainer { min-height: 10px; }
+        .modalContainer .inputField { flex-grow: 1; background: transparent; border: none; color: #fff; font-size: 15px; outline: none; min-width: 150px; resize: none; padding: 4px; }
         .modalContainer .tag { display: flex; align-items: center; padding: 6px 12px; background: rgba(255, 255, 255, 0.15); border-radius: 20px; color: #e0e0e0; font-size: 14px; }
         .modalContainer .tag svg { margin-right: 8px; color: #ddd; }
         .modalContainer .tag .removeTag { margin-left: 8px; cursor: pointer; font-size: 16px; color: #ccc; }
         .modalContainer .tag .removeTag:hover { color: #fff; }
-        .modalContainer .inputField { flex-grow: 1; background: transparent; border: none; color: #fff; font-size: 15px; outline: none; min-width: 150px; resize: none; padding: 4px; }
-        .modalContainer .sendButton { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); padding: 12px 24px; color: #fff; border-radius: 16px; cursor: pointer; font-weight: 600; float: right; transition: background 0.3s ease; margin-top: 20px; }
-        .modalContainer .sendButton:hover { background: rgba(255, 255, 255, 0.2); }
-        .tag-color-dot {
-           width: 10px;
-           height: 10px;
-           border-radius: 50%;
-           margin-right: 8px;
-           flex-shrink: 0;
-           border: 1px solid rgba(0, 0, 0, 0.2);
-        }
-        .projectDropdown {
+        .projectDropdown,
+        .emailDropdown {
             position: absolute;
             background: rgba(55, 55, 55, 0.95);
             backdrop-filter: blur(10px);
@@ -99,22 +95,52 @@ function injectModalStyles() {
             z-index: 2001;
             display: none;
         }
-        .projectDropdown-item { 
-            display: flex; 
-            align-items: center; 
-            padding: 10px 15px; 
-            cursor: pointer; 
-            transition: background 0.2s ease; 
+        .projectDropdown-item,
+        .emailDropdown-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: background 0.2s ease;
             color: #f1f1f1;
         }
-        .projectDropdown-item:hover { background: rgba(255, 255, 255, 0.1); }
-        .projectDropdown-item svg { margin-right: 10px; color: #ddd; }
+        .projectDropdown-item:hover,
+        .emailDropdown-item:hover { background: rgba(255, 255, 255, 0.1); }
+        .projectDropdown-item svg,
+        .emailDropdown-item svg { margin-right: 10px; color: #ddd; }
+        .emailDropdown-item img {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            margin-right: 12px;
+            object-fit: cover;
+        }
+        .emailDropdown-item .user-details {
+            display: flex;
+            flex-direction: column;
+        }
+        .emailDropdown-item .user-details .name {
+            font-weight: 500;
+        }
+        .emailDropdown-item .user-details .email {
+            font-size: 12px;
+            color: #aaa;
+        }
+        .tag-avatar {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 8px;
+            object-fit: cover;
+        }
+        .tag-color-dot,
         .dropdown-color-dot {
-            width: 12px;
             height: 12px;
+            width: 12px;
             border-radius: 50%;
             margin-right: 10px;
             flex-shrink: 0;
+            border: 1px solid rgba(0, 0, 0, 0.2);
         }
     `;
     document.head.appendChild(style);
@@ -146,24 +172,36 @@ function hslToRgb(h, s, l) {
         r = 0,
         g = 0,
         b = 0;
-    if (0 <= h && h < 60) { r = c;
+    if (0 <= h && h < 60) {
+        r = c;
         g = x;
-        b = 0; }
-    else if (60 <= h && h < 120) { r = x;
+        b = 0;
+    }
+    else if (60 <= h && h < 120) {
+        r = x;
         g = c;
-        b = 0; }
-    else if (120 <= h && h < 180) { r = 0;
+        b = 0;
+    }
+    else if (120 <= h && h < 180) {
+        r = 0;
         g = c;
-        b = x; }
-    else if (180 <= h && h < 240) { r = 0;
+        b = x;
+    }
+    else if (180 <= h && h < 240) {
+        r = 0;
         g = x;
-        b = c; }
-    else if (240 <= h && h < 300) { r = x;
+        b = c;
+    }
+    else if (240 <= h && h < 300) {
+        r = x;
         g = 0;
-        b = c; }
-    else if (300 <= h && h < 360) { r = c;
+        b = c;
+    }
+    else if (300 <= h && h < 360) {
+        r = c;
         g = 0;
-        b = x; }
+        b = x;
+    }
     r = Math.round((r + m) * 255);
     g = Math.round((g + m) * 255);
     b = Math.round((b + m) * 255);
@@ -195,13 +233,19 @@ export async function showInviteModal() {
     if (document.querySelector('.modalContainer')) return null;
     
     let projectDataModel = [];
+    let userDataModel = [];
     try {
         const projectsQuery = query(
             collectionGroup(db, 'projects'),
             where('memberUIDs', 'array-contains', currentUser.uid),
             orderBy("createdAt", "desc")
         );
-        const snapshot = await getDocs(projectsQuery);
+        const projectsKnownQuery = query(
+            collectionGroup(db, 'projects'),
+            where(`rolesByUID.${currentUser.uid}`, 'in', ["Project Admin", "Project Owner Admin", "Editor"])
+        );
+        const projectSnapshot = await getDocs(projectsKnownQuery);
+        const projectMembersSnapshot = await getDocs(projectsQuery);
         projectDataModel = snapshot.docs.map(doc => {
             const randomIndex = Math.floor(Math.random() * lucideProjectIcons.length);
             const colorData = doc.data().color;
@@ -220,6 +264,21 @@ export async function showInviteModal() {
                 color: finalHexColor
             };
         });
+        
+        const memberUIDs = new Set();
+        projectMembersSnapshot.docs.forEach(doc => {
+            doc.data().memberUIDs?.forEach(uid => memberUIDs.add(uid));
+        });
+        
+        if (memberUIDs.size > 0) {
+            const userDocs = await getDocs(query(collection(db, 'users'), where('__name__', 'in', Array.from(memberUIDs))));
+            userDataModel = userDocs.docs.map(doc => ({
+                uid: doc.id,
+                name: doc.data().name || 'Unknown User',
+                email: doc.data().email,
+                avatar: doc.data().avatar || null
+            }));
+        }
     } catch (error) {
         console.error("Could not fetch projects for modal:", error);
     }
@@ -250,6 +309,10 @@ export async function showInviteModal() {
         `;
         document.body.appendChild(modal);
         
+        const emailDropdown = document.createElement('div');
+        emailDropdown.className = 'emailDropdown';
+        document.body.appendChild(emailDropdown);
+        
         const projectDropdown = document.createElement('div');
         projectDropdown.className = 'projectDropdown';
         document.body.appendChild(projectDropdown);
@@ -260,19 +323,30 @@ export async function showInviteModal() {
         const projectTagInputContainer = modal.querySelector('.projectTagInputContainer');
         
         const addTag = (container, details) => {
-            const { text, icon, color } = details;
+            const { text, icon, color, avatar } = details;
             const tag = document.createElement('span');
             tag.className = 'tag';
             tag.dataset.value = text;
             
-            // Conditionally add color dot for projects
             const colorDot = color ? `<span class="tag-color-dot" style="background-color: ${color};"></span>` : '';
+            const iconOrAvatar = avatar ?
+                `<img src="${avatar}" class="tag-avatar" />` :
+                `<i data-lucide="${icon || 'user-circle-2'}"></i>`;
             
-            tag.innerHTML = `${colorDot}<i data-lucide="${icon}"></i> ${text} <span class="removeTag" title="Remove">×</span>`;
+            tag.innerHTML = `${colorDot}${iconOrAvatar} ${text} <span class="removeTag" title="Remove">×</span>`;
             
             container.insertBefore(tag, container.querySelector('.inputField'));
             tag.querySelector('.removeTag').addEventListener('click', () => tag.remove());
             renderLucideIcons();
+        };
+        
+        const positionEmailDropdown = () => {
+            if (emailDropdown.style.display === 'block') {
+                const rect = emailTagInputContainer.getBoundingClientRect();
+                emailDropdown.style.top = `${window.scrollY + rect.bottom + 5}px`;
+                emailDropdown.style.left = `${window.scrollX + rect.left}px`;
+                emailDropdown.style.width = `${rect.width}px`;
+            }
         };
         
         const positionProjectDropdown = () => {
@@ -287,18 +361,68 @@ export async function showInviteModal() {
             window.removeEventListener('resize', positionProjectDropdown);
             window.removeEventListener('scroll', positionProjectDropdown, true);
             projectDropdown.remove();
+            emailDropdown.remove();
             modal.remove();
             resolve(value);
         }
         
         // --- Event Listeners ---
+        emailInputField.addEventListener('input', () => {
+            const query = emailInputField.value.trim().toLowerCase();
+            emailDropdown.innerHTML = '';
+            
+            if (!query) {
+                emailDropdown.style.display = 'none';
+                return;
+            }
+            
+            const existingEmails = new Set(Array.from(emailTagInputContainer.querySelectorAll('.tag')).map(tag => tag.dataset.value.toLowerCase()));
+            const filteredUsers = userDataModel.filter(user =>
+                !existingEmails.has(user.email.toLowerCase()) &&
+                (user.name.toLowerCase().includes(query) || user.email.toLowerCase().includes(query))
+            );
+            
+            if (filteredUsers.length > 0) {
+                filteredUsers.forEach(user => {
+                    const item = document.createElement('div');
+                    item.className = 'emailDropdown-item';
+                    const avatarImg = user.avatar ?
+                        `<img src="${user.avatar}" alt="${user.name}">` :
+                        `<i data-lucide="user-circle-2"></i>`;
+                    
+                    item.innerHTML = `
+                        ${avatarImg}
+                        <div class="user-details">
+                            <span class="name">${user.name}</span>
+                            <span class="email">${user.email}</span>
+                        </div>
+                    `;
+                    item.onclick = () => {
+                        addTag(emailTagInputContainer, { text: user.email, avatar: user.avatar });
+                        emailInputField.value = '';
+                        emailDropdown.style.display = 'none';
+                        emailInputField.focus();
+                    };
+                    emailDropdown.appendChild(item);
+                });
+                emailDropdown.style.display = 'block';
+                positionEmailDropdown();
+                renderLucideIcons();
+            } else {
+                emailDropdown.style.display = 'none';
+            }
+        });
+        
         emailInputField.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ',' || e.key === ' ') {
-                e.preventDefault();
-                const email = emailInputField.value.trim();
-                if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                    addTag(emailTagInputContainer, email, 'user-circle-2');
-                    emailInputField.value = '';
+                // Only add tag if dropdown is not active or there's no exact match
+                if (emailDropdown.style.display === 'none') {
+                    e.preventDefault();
+                    const email = emailInputField.value.trim();
+                    if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                        addTag(emailTagInputContainer, { text: email });
+                        emailInputField.value = '';
+                    }
                 }
             }
         });
@@ -345,6 +469,9 @@ export async function showInviteModal() {
         document.addEventListener('click', (event) => {
             if (!projectInputField.contains(event.target) && !projectDropdown.contains(event.target)) {
                 projectDropdown.style.display = 'none';
+            }
+            if (!emailInputField.contains(event.target) && !emailDropdown.contains(event.target)) {
+                emailDropdown.style.display = 'none';
             }
         });
         
