@@ -583,12 +583,31 @@ export async function showInviteModal() {
                         const numericProjectId = stringToNumericString(projectData.projectId);
                         const invitationUrl = `https://cms.juanlunacollections.com/tasks/${numericUserId}/list/${numericProjectId}`; // Replace with your actual URL
 
-                        await sendEmailInvitation({
+                        try {
+                        // 1. Prepare the payload with the data needed for the email template.
+                        const membersForEmail = (projectData.memberUIDs || []).map(uid => ({
+                            avatarUrl: userProfilesMap[uid]?.avatar || null
+                        }));
+                        const inviterProfile = userProfilesMap[currentUser.uid];
+
+                        const payload = {
                             email: email,
                             projectName: projectData.title,
                             invitationUrl: invitationUrl,
-                        });
+                            totalTasks: projectData.tasks?.length || 0,
+                            members: membersForEmail,
+                            inviterName: inviterProfile?.name, 
+                            inviterProfileUrl: inviterProfile?.avatar
+                        };
+                        
+                        // 2. Call the Cloud Function to send the notification.
+                        await sendShareEmail(payload);
                         changesMade++;
+
+                    } catch (e) {
+                        console.error(`Failed to send share notification to ${email}:`, e);
+                        failedInvites.push(email);
+                    }
                     } else {
                         // This is a brand new user not in the workspace/projects. Send an invite.
                         const lowerEmail = email.toLowerCase(); // Use a lowercase version for consistency
@@ -606,8 +625,6 @@ export async function showInviteModal() {
                                     invitationUrl: invitationUrl,
                                 });
 
-                                // ✅ REFINED: The 'invitedBy' object now uses the fetched user profile.
-                                // This ensures the name and email are always up-to-date.
                                 const inviterProfile = userProfilesMap[currentUser.uid];
                                 const mainInviteData = {
                                     invitationId: invitationId,

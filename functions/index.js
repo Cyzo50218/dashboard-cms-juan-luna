@@ -144,47 +144,199 @@ export const sendEmailInvitation = onCall(
     }
   });
 
+export const sendShareExistingProjectInvitation = onCall(
+  {
+    region: "us-central1",
+    secrets: [sendgridApiKey],
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new functions.https.HttpsError("unauthenticated", "You must be logged in.");
+    }
+
+    const data = request.data;
+    if (
+      !data.email ||
+      !data.projectName ||
+      !data.invitationUrl ||
+      !data.members ||
+      data.totalTasks === undefined
+    ) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "Missing required data. Required: email, projectName, invitationUrl, members, totalTasks."
+      );
+    }
+    const recipientEmail = data.email;
+    const projectName = data.projectName;
+    const invitationUrl = data.invitationUrl;
+    const totalTasks = data.totalTasks;
+    const inviterProfileUrl = data.inviterProfileUrl;
+    const inviterName = request.auth.token.name || request.auth.token.email;
+    const members = data.members || [];
+    const membersToDisplay = members.slice(0, 2);
+    const remainingMembersCount = Math.max(0, members.length - 2);
+
+    let membersHtml = membersToDisplay.map((member, index) => 
+      `<td style="padding: 0; margin: 0; border: 2px solid #ffffff; border-radius: 50%; margin-left: ${index > 0 ? '-10px' : '0'};">
+          <img src="${member.avatarUrl || 'https://www.gravatar.com/avatar/?d=mp'}" alt="Member" width="32" height="32" style="border-radius: 50%; display: block;">
+      </td>`
+    ).join('');
+
+    if (remainingMembersCount > 0) {
+      membersHtml += `<td style="padding: 0; margin: 0; margin-left: -10px;">
+        <div style="width: 36px; height: 36px; border-radius: 50%; background-color: #f0f0f0; text-align: center; line-height: 36px; font-size: 12px; color: #555; border: 2px solid #ffffff;">+${remainingMembersCount}</div>
+      </td>`;
+    }
+
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY_EMAIL_INVITATION);
+
+    // --- SendGrid Message Object ---
+    const msg = {
+      to: recipientEmail,
+      from: {
+        name: 'Juan Luna Collections',
+        email: 'collection@juanlunacollections.com' 
+      },
+      subject: `${inviterName} shared "${projectName}" with you on Juan Luna CMS`,
+      html: `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Invitation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body style="margin: 0; padding: 0; background-color: #f8f9fa; font-family: 'Inter', sans-serif;">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+        <tr>
+            <td align="center" style="padding: 40px 20px;">
+                <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; border-collapse: collapse; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px;">
+                    <tr>
+                        <td align="center" style="padding: 40px 0 20px 0;">
+                            <img src="https://cms.juanlunacollections.com/logo.png" alt="Company Logo" width="150" style="display: block;" />
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td style="padding: 0 40px 30px 40px;">
+                             <a href="${inviterProfileUrl}" target="_blank" style="text-decoration: none; display: block; text-align: center;">
+                                <img src="${data.avatarUrl || 'https://www.gravatar.com/avatar/?d=mp'}" alt="Inviter Profile" width="60" height="60" style="display: inline-block; border-radius: 50%;">
+                            </a>
+                            <p style="margin: 15px 0 0 0; color: #374151; font-size: 16px; line-height: 1.6; text-align: center;">
+                                <strong>${inviterName}</strong> has shared a project with you.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td style="padding: 0 40px 40px 40px;">
+                            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8f9fa; border: 1px solid #e5e7eb; border-radius: 8px; padding: 25px;">
+                                <tr>
+                                    <td>
+                                        <p style="margin: 0 0 5px 0; color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">PROJECT</p>
+                                        <p style="margin: 0 0 15px 0; color: #1f2937; font-size: 22px; font-weight: 700;">${projectName}</p>
+                                        
+                                        <p style="margin: 0 0 20px 0; color: #374151; font-size: 14px; font-weight: 500;">
+                                            <span style="display: inline-block; width: 8px; height: 8px; background-color: #22c55e; border-radius: 50%; margin-right: 8px; vertical-align: middle;"></span>
+                                            ${totalTasks} Active Tasks
+                                        </p>
+
+                                        <br>
+                                        
+                                        <a href="${invitationUrl}" target="_blank" style="background-color: #2563eb; color: #ffffff; padding: 14px 0; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 500; display: block; width: 100%; text-align: center; clear: both;">
+                                            View Project
+                                        </a>
+
+                                        <br>
+
+                                        <br>
+
+                                        <table border="0" cellpadding="0" cellspacing="0" align="left" style="margin-bottom: 25px;">
+                                            <tr>
+                                                ${membersHtml}
+                                            </tr>
+                                        </table>
+
+                                        <br>
+
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td style="padding: 0 40px 30px 40px;">
+                            <hr style="border: none; border-top: 1px solid #e5e7eb; margin-bottom: 30px;">
+                            <h2 style="margin: 0 0 15px 0; color: #1f2937; font-size: 24px; font-weight: 700; text-align: center;">A Better Way to Manage Projects</h2>
+                            <p style="margin: 0; text-align: center; font-size: 16px; color: #374151; line-height: 1.6;">
+                                Stop switching between apps. Juan Luna CMS brings your products, suppliers, tasks, and team collaboration into one unified workspace.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td style="padding: 10px 40px 30px 40px;">
+                            <p style="margin: 20px 0 0 0; text-align: center; font-size: 12px; color: #9ca3af;">
+                                Juan Luna Collections | Manila, Philippines
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>`
+    };
+
+    // --- Send Email ---
+    try {
+      await sgMail.send(msg);
+      return { success: true, message: "Invitation sent!" };
+    } catch (error) {
+      console.error("SendGrid error:", error);
+      throw new functions.https.HttpsError("internal", "Failed to send email");
+    }
+  }
+);
+
 export const sendEmailWorkspaceInvitation = onCall(
   {
     region: "us-central1",
     secrets: [sendgridApiKey],
   },
   async (request) => {
-    // Auth check
     if (!request.auth) {
       throw new functions.https.HttpsError(
         "unauthenticated",
         "You must be logged in to send invitations."
       );
     }
-
     const data = request.data;
-    if (!data.email || !data.projectName || !data.invitationUrl) {
+    if (!data.email || !data.workspaceName || !data.invitationUrl) {
       throw new functions.https.HttpsError(
         "invalid-argument",
-        "Missing required email, projectName, or invitationUrl"
+        "Missing required email, workspaceName, or invitationUrl"
       );
     }
-
     const recipientEmail = data.email;
-    const projectName = data.projectName;
+    const workspaceName = data.workspaceName;
     const invitationUrl = data.invitationUrl;
-
     const inviterName = request.auth.token.name || request.auth.token.email;
-    const inviterEmail = request.auth.token.email;
     const recipientName = data.recipientName || recipientEmail.split("@")[0];
 
     sgMail.setApiKey(process.env.SENDGRID_API_KEY_EMAIL_INVITATION);
 
-  // --- SendGrid Message Object ---
-  const msg = {
-    to: recipientEmail,
-    from: {
-      name: 'Juan Luna Collections',
-      email: 'collection@juanlunacollections.com' 
-    },
-    subject: `${inviterName} has invited you to collaborate on ${projectName}`,
-    html: `<!DOCTYPE html>
+    const msg = {
+      to: recipientEmail,
+      from: {
+        name: 'Juan Luna Collections',
+        email: 'collection@juanlunacollections.com' 
+      },
+      subject: `${inviterName} has invited you to join their workspace on Juan Luna CMS`,
+      html: `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -192,48 +344,74 @@ export const sendEmailWorkspaceInvitation = onCall(
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <title>You're invited to collaborate</title>
+    <title>You're Invited to Join a Workspace</title>
+    <style>
+        @media screen and (max-width: 600px) {
+            .content-card {
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+            .feature-column {
+                display: block !important;
+                width: 100% !important;
+                padding: 20px 0 !important;
+            }
+            .feature-table tr {
+                display: contents;
+            }
+            .features-headline {
+                font-size: 30px !important;
+            }
+        }
+    </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f8f9fa; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+<body style="margin: 0; padding: 0; background-color: #f4f4f7; font-family: 'Inter', sans-serif;">
     <table border="0" cellpadding="0" cellspacing="0" width="100%">
         <tr>
             <td align="center" style="padding: 40px 20px 20px 20px;">
-                <img src="https://cms.juanlunacollections.com/logo.png" alt="Company Logo" width="45" style="display: block;" />
+                <img src="https://cms.juanlunacollections.com/logo.png" alt="Juan Luna CMS Logo" width="200" style="display: block;" />
             </td>
         </tr>
         <tr>
             <td align="center" style="padding: 0 20px;">
-                <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; border-collapse: collapse; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+                <table class="content-card" align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; border-collapse: collapse; background-color: #ffffff; border-radius: 16px; box-shadow: 0 6px 24px rgba(0,0,0,0.07);">
                     <tr>
-                        <td align="center" style="padding: 40px 40px 0 40px;">
-                           <img src="${data.avatarUrl}" alt="Inviter Profile" width="64" height="64" style="display: block; border-radius: 50%;">
-                        </td>
-                    </tr>
-                    <tr>
-                        <td align="center" style="padding: 20px 40px 10px 40px;">
-                            <p style="margin: 0; color: #6b7280; font-size: 16px; line-height: 1.6;">
-                                <strong>${inviterName}</strong> invited you to join
-                            </p>
-                            <h1 style="margin: 5px 0 0 0; color: #1f2937; font-size: 28px; font-weight: 700;">
-                                ${projectName}
+                        <td align="center" style="padding: 40px 40px 10px 40px;">
+                            <img src="${data.avatarUrl || 'https://www.gravatar.com/avatar/?d=mp'}" alt="Inviter Profile" width="64" height="64" style="display: block; border-radius: 50%;">
+                            <h1 style="margin: 20px 0 0 0; color: #1a1a1a; font-size: 28px; font-weight: 700;">
+                                You're invited to join ${workspaceName}
                             </h1>
+                            <p style="margin: 8px 0 0 0; color: #666666; font-size: 16px; line-height: 1.6;">
+                                by <strong>${inviterName}</strong>
+                            </p>
                         </td>
                     </tr>
                     <tr>
                         <td align="center" style="padding: 20px 40px;">
                             <a href="${invitationUrl}" target="_blank" style="background-color: #6d28d9; color: #ffffff; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600; display: inline-block;">
-                                Join Team
+                                Accept Invitation
                             </a>
                         </td>
                     </tr>
                     <tr>
-                        <td align="left" style="padding: 20px 40px 40px 40px; border-top: 1px solid #f3f4f6;">
-                             <p style="margin: 0; color: #374151; font-size: 15px; line-height: 1.7;">
-                                Hi ${recipientName},
-                            </p>
-                            <p style="margin: 16px 0 0 0; color: #374151; font-size: 15px; line-height: 1.7;">
-                                You've been invited to collaborate in the <strong>Juan Luna Collections</strong> workspace. Join the team to start contributing!
-                            </p>
+                        <td align="center" style="padding: 20px 40px 40px 40px; border-top: 1px solid #e5e5e5;">
+                            <h2 class="features-headline" style="margin: 0 0 25px 0; color: #333; font-size: 18px; font-weight: 600;">A powerful tool to streamline your work</h2>
+                            <table class="feature-table" border="0" cellpadding="0" cellspacing="0" width="100%">
+                                <tr>
+                                    <td class="feature-column" align="center" style="padding: 10px; vertical-align: top;">
+                                        <p style="margin: 10px 0 0 0; font-size: 20px; font-weight: 600; color: #333;">Unified Product Hub</p>
+                                        <p style="margin: 5px 0 0 0; font-size: 13px; color: #777; line-height: 1.5;">Track products, inventory, and supplier information all in one place.</p>
+                                    </td>
+                                    <td class="feature-column" align="center" style="padding: 10px; vertical-align: top;">
+                                        <p style="margin: 10px 0 0 0; font-size: 20px; font-weight: 600; color: #333;">Contact Management</p>
+                                        <p style="margin: 5px 0 0 0; font-size: 13px; color: #777; line-height: 1.5;">Organize your clients, collaborators, and team contacts effortlessly.</p>
+                                    </td>
+                                    <td class="feature-column" align="center" style="padding: 10px; vertical-align: top;">
+                                        <p style="margin: 10px 0 0 0; font-size: 20px; font-weight: 600; color: #333;">Task Collaboration</p>
+                                        <p style="margin: 5px 0 0 0; font-size: 13px; color: #777; line-height: 1.5;">Assign tasks and monitor progress to keep your team perfectly aligned.</p>
+                                    </td>
+                                </tr>
+                            </table>
                         </td>
                     </tr>
                 </table>
@@ -252,17 +430,16 @@ export const sendEmailWorkspaceInvitation = onCall(
     </table>
 </body>
 </html>`
-  };
-
-  // --- Send Email ---
-  try {
+    };
+    try {
       await sgMail.send(msg);
       return { success: true, message: "Invitation sent!" };
     } catch (error) {
       console.error("SendGrid error:", error);
       throw new functions.https.HttpsError("internal", "Failed to send email");
     }
-  });  
+  }
+);  
 
 export const runAlgoliaBackfill = onCall(
   {
