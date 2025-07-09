@@ -233,9 +233,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const functions = getFunctions(app); 
+    const runBackfill = httpsCallable(functions, "runBackfill");
     const runBackfill = httpsCallable(functions, "runAlgoliaBackfill");
 
     let backfillIntervalId = null;
+    let backfillTaskCountIntervalId = null;
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             console.log("✅ Authenticated user found. Initializing dashboard...");
@@ -256,8 +258,17 @@ document.addEventListener("DOMContentLoaded", () => {
                     console.error("❌ Periodic Backfill error:", err.message);
                 }
             };
-
+            const runTaskCountBackfill = async () => {
+    try {
+        const res = await runBackfill();
+        console.log("✅ Periodic Backfill success:", res.data.message);
+    } catch (err) {
+        console.error("❌ Periodic Backfill error:", err.message);
+    }
+};
             runAndLogBackfill(); // Initial run
+            runTaskCountBackfill(); // Initial run
+            backfillTaskCountIntervalId = setInterval(runTaskCountBackfill, 60_000);
             backfillIntervalId = setInterval(runAndLogBackfill, 60_000); // Every 60 seconds
 
             // Global SPA navigation handler
@@ -282,6 +293,11 @@ document.addEventListener("DOMContentLoaded", () => {
             if (backfillIntervalId) {
                 clearInterval(backfillIntervalId);
                 backfillIntervalId = null;
+            }
+            
+            if backfillTaskCountIntervalId {
+                clearInterval(backfillTaskCountIntervalId);
+                backfillTaskCountIntervalId = null;
             }
         }
     });
