@@ -540,6 +540,11 @@ export async function showInviteModal() {
             }
         });
 
+        function stringToNumericString(str) {
+        if (!str) return '';
+        return str.split('').map(char => char.charCodeAt(0)).join('');
+    }
+
         async function processInvites(emails, selectedProjects) {
             const { auth, db } = getFirebaseServices();
             const currentUser = auth.currentUser;
