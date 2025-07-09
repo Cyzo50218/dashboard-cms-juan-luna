@@ -201,7 +201,13 @@ export async function showInviteModal() {
             const randomIndex = Math.floor(Math.random() * lucideProjectIcons.length);
             const colorData = doc.data().color;
             let finalHexColor = '#808080'; // Set a default fallback color
-            finalHexColor = hslToHex(colorData.h, colorData.s, colorData.l);
+            const matches = colorData.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+            if (matches) {
+                const h = parseInt(matches[1], 10);
+                const s = parseInt(matches[2], 10);
+                const l = parseInt(matches[3], 10);
+                finalHexColor = hslToHex(h, s, l);
+            }
             return {
                 id: doc.id,
                 title: doc.data().title || "Untitled Project",
