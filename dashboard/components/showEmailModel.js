@@ -21,6 +21,8 @@ import {
 const app = initializeApp(firebaseConfig);
 const functions = getFunctions(app);
 const sendEmailInvitation = httpsCallable(functions, "sendEmailInvitation");
+const sendShareExistingProjectInvitation = httpsCallable(functions, "sendShareExistingProjectInvitation");
+
 // List of Lucide icons for a touch of visual variety.
 const lucideProjectIcons = [
     'anchor', 'archive', 'award', 'axe', 'banknote', 'beaker', 'bell',
@@ -553,7 +555,6 @@ export async function showInviteModal() {
             let changesMade = 0;
             const failedInvites = [];
 
-
             for (const project of selectedProjects) {
                 if (!project.path) {
                     console.warn(`Project "${project.title}" is missing a path. Skipping.`);
@@ -600,8 +601,7 @@ export async function showInviteModal() {
                             inviterProfileUrl: inviterProfile?.avatar
                         };
                         
-                        // 2. Call the Cloud Function to send the notification.
-                        await sendShareEmail(payload);
+                        await sendShareExistingProjectInvitation(payload);
                         changesMade++;
 
                     } catch (e) {
