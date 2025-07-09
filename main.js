@@ -258,17 +258,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     console.error("❌ Periodic Backfill error:", err.message);
                 }
             };
-            const runTaskCountBackfill = async () => {
-    try {
-        const res = await runBackfill();
-        console.log("Task Count Backfill success:", res.data.message);
-    } catch (err) {
-        console.error("❌ Periodic Task Count Backfill error:", err.message);
-    }
-};
+            
             runAndLogBackfill(); // Initial run
-            runTaskCountBackfill(); // Initial run
-            backfillTaskCountIntervalId = setInterval(runTaskCountBackfill, 60_000);
             backfillIntervalId = setInterval(runAndLogBackfill, 60_000); // Every 60 seconds
 
             // Global SPA navigation handler
@@ -293,11 +284,6 @@ document.addEventListener("DOMContentLoaded", () => {
             if (backfillIntervalId) {
                 clearInterval(backfillIntervalId);
                 backfillIntervalId = null;
-            }
-            
-            if (backfillTaskCountIntervalId) {
-                clearInterval(backfillTaskCountIntervalId);
-                backfillTaskCountIntervalId = null;
             }
         }
     });
