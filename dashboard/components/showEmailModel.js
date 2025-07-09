@@ -22,6 +22,7 @@ const app = initializeApp(firebaseConfig);
 const functions = getFunctions(app);
 const sendEmailInvitation = httpsCallable(functions, "sendEmailInvitation");
 const sendShareExistingProjectInvitation = httpsCallable(functions, "sendShareExistingProjectInvitation");
+const sendEmailWorkspaceInvitation = httpsCallable(functions, "sendEmailWorkspaceInvitation");
 
 // List of Lucide icons for a touch of visual variety.
 const lucideProjectIcons = [
