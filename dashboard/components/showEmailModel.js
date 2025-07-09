@@ -201,15 +201,7 @@ export async function showInviteModal() {
             const randomIndex = Math.floor(Math.random() * lucideProjectIcons.length);
             const colorData = doc.data().color;
             let finalHexColor = '#808080'; // Set a default fallback color
-            
-            // Check if colorData is a valid HSL object and convert it.
-            // This prevents errors if a project has no color or an invalid format.
-            if (colorData && typeof colorData === 'object' &&
-                colorData.h !== undefined && colorData.s !== undefined && colorData.l !== undefined)
-            {
-                finalHexColor = hslToHex(colorData.h, colorData.s, colorData.l);
-            }
-            
+            finalHexColor = hslToHex(colorData.h, colorData.s, colorData.l);
             return {
                 id: doc.id,
                 title: doc.data().title || "Untitled Project",
