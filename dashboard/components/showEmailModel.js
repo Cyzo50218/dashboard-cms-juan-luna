@@ -14,7 +14,13 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { firebaseConfig } from "/services/firebase-config.js";
+import {
+  getFunctions,
+  httpsCallable,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
 
+const functions = getFunctions(app);
+const sendEmailInvitation = httpsCallable(functions, "sendEmailInvitation");
 // List of Lucide icons for a touch of visual variety.
 const lucideProjectIcons = [
     'anchor', 'archive', 'award', 'axe', 'banknote', 'beaker', 'bell',
