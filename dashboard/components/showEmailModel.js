@@ -529,13 +529,7 @@ export async function showInviteModal() {
                     await sendEmailInvitationMyWorkspace(emails);
                 }
 
-                // After a successful operation, clear the email input for the next batch.
-                emailTagInputContainer.innerHTML = '';
-                const newInput = document.createElement('textarea');
-                newInput.id = 'emailInputField';
-                newInput.className = 'inputField';
-                newInput.placeholder = 'name@gmail.com, name@example.com, ...';
-                emailTagInputContainer.appendChild(newInput);
+                cleanupAndResolve(null);
 
             } catch (e) {
                 console.error("An error occurred during the invitation process:", e);
@@ -623,7 +617,7 @@ export async function showInviteModal() {
 
             if (changesMade > 0) {
                 await batch.commit();
-                alert("Successfully sent invitations and updated projects!");
+                alert("Successfully sent invitations.");
             } else {
                 alert("No new changes were needed. The selected users are already members or have pending invitations.");
             }
