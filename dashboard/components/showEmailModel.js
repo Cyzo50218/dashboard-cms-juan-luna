@@ -695,97 +695,116 @@ export async function showInviteModal() {
         }
 
         async function sendEmailInvitationMyWorkspace(emails) {
-            const { auth, db } = getFirebaseServices();
-            const currentUser = auth.currentUser;
-
-            if (!currentUser) {
-                alert("Authentication error. Cannot send workspace invitations.");
-                return;
-            }
-
+    const { auth, db } = getFirebaseServices();
+    const currentUser = auth.currentUser;
+    
+    if (!currentUser) {
+        alert("Authentication error. Cannot send workspace invitations.");
+        return;
+    }
+    
+    try {
+        // --- Step 1: Get All Necessary Document References ---
+        const userRef = doc(db, 'users', currentUser.uid);
+        const userSnap = await getDoc(userRef);
+        if (!userSnap.exists() || !userSnap.data().selectedWorkspace) {
+            throw new Error("Could not find the user's selected workspace.");
+        }
+        
+        const workspaceId = userSnap.data().selectedWorkspace;
+        const workspaceRef = doc(db, `users/${currentUser.uid}/myworkspace`, workspaceId);
+        const workspaceSnap = await getDoc(workspaceRef);
+        const workspaceName = workspaceSnap.exists() ? workspaceSnap.data().name : "your workspace";
+        
+        // --- Step 2: Prepare a Batched Write ---
+        const batch = writeBatch(db);
+        const successfulInvites = [];
+        const failedInvites = [];
+        
+        // --- Step 3: Loop Through Emails and Queue Operations ---
+        for (const email of emails) {
             try {
-                // --- Step 1: Get All Necessary Document References ---
-                const userRef = doc(db, 'users', currentUser.uid);
-                const userSnap = await getDoc(userRef);
-                if (!userSnap.exists() || !userSnap.data().selectedWorkspace) {
-                    throw new Error("Could not find the user's selected workspace.");
+                // ✨ --- NEW: Check if a user exists with the invited email --- ✨
+                let recipientName = null;
+                let avatarUrl = null;
+                const usersCollectionRef = collection(db, 'users');
+                const q = query(usersCollectionRef, where("email", "==", email));
+                const querySnapshot = await getDocs(q);
+                
+                if (!querySnapshot.empty) {
+                    // A user with this email was found
+                    const foundUserDoc = querySnapshot.docs[0]; // Get the first match
+                    const foundUserData = foundUserDoc.data();
+                    recipientName = foundUserData.name || null; // Use their display name
+                    avatarUrl = foundUserData.avatar || null; // Use their photo URL
                 }
-
-                const workspaceId = userSnap.data().selectedWorkspace;
-                const workspaceRef = doc(db, `users/${currentUser.uid}/myworkspace`, workspaceId);
-                const workspaceSnap = await getDoc(workspaceRef);
-                const workspaceName = workspaceSnap.exists() ? workspaceSnap.data().name : "your workspace";
-
-                // --- Step 2: Prepare a Batched Write ---
-                const batch = writeBatch(db);
-                const successfulInvites = [];
-                const failedInvites = [];
-
-                // --- Step 3: Loop Through Emails and Queue Operations ---
-                for (const email of emails) {
-                    try {
-                        // Generate a new, unique ID for the invitation
-                        const newInviteRef = doc(collection(db, "InvitedWorkspaces"));
-                        const invitationId = newInviteRef.id;
-
-                        // ✅ Operation 1: Define the main invitation document in 'InvitedWorkspaces'
-                        const inviteData = {
-                            invitationId: invitationId,
-                            invitedEmail: email,
-                            workspaceId: workspaceId,
-                            workspaceRefPath: workspaceRef.path,
-                            status: "pending",
-                            invitedBy: {
-                                uid: currentUser.uid,
-                                email: currentUser.email,
-                                name: currentUser.displayName || "Workspace Owner"
-                            },
-                            invitedAt: serverTimestamp()
-                        };
-                        batch.set(newInviteRef, inviteData);
-
-                        // ✅ Operation 2: Define the pending invite marker for the owner's user document
-                        const pendingInviteData = {
-                            email: email,
-                            invitationId: invitationId,
-                            workspaceId: workspaceId,
-                            invitedAt: serverTimestamp()
-                        };
-                        batch.update(userRef, {
-                            workspacePendingInvites: arrayUnion(pendingInviteData) // Assumes an array named 'workspacePendingInvites'
-                        });
-
-                        // Operation 3: Send the actual email (this happens outside the batch)
-                        const invitationUrl = `https://your-app-url.com/workspace-invite/${invitationId}`;
-                        await sendEmailInvitation({
-                            email: email,
-                            workspaceName: workspaceName,
-                            inviterName: currentUser.displayName,
-                            invitationUrl: invitationUrl
-                        });
-
-                        successfulInvites.push(email);
-
-                    } catch (error) {
-                        console.error(`Failed to process invitation for ${email}:`, error);
-                        failedInvites.push(email);
-                    }
-                }
-
-                // --- Step 4: Commit all the queued database operations at once ---
-                if (successfulInvites.length > 0) {
-                    await batch.commit();
-                    alert(`Successfully sent workspace invitations to ${successfulInvites.length} user(s).`);
-                }
-                if (failedInvites.length > 0) {
-                    alert(`Failed to send invitations to: ${failedInvites.join(", ")}.`);
-                }
-
+                // --- End of new logic --- ✨
+                
+                // Generate a new, unique ID for the invitation
+                const newInviteRef = doc(collection(db, "InvitedWorkspaces"));
+                const invitationId = newInviteRef.id;
+                
+                // ✅ Operation 1: Define the main invitation document in 'InvitedWorkspaces'
+                const inviteData = {
+                    invitationId: invitationId,
+                    invitedEmail: email,
+                    workspaceId: workspaceId,
+                    workspaceRefPath: workspaceRef.path,
+                    status: "pending",
+                    invitedBy: {
+                        uid: currentUser.uid,
+                        email: currentUser.email,
+                        name: currentUser.displayName || "Workspace Owner"
+                    },
+                    invitedAt: serverTimestamp()
+                };
+                batch.set(newInviteRef, inviteData);
+                
+                // ✅ Operation 2: Define the pending invite marker for the owner's user document
+                const pendingInviteData = {
+                    email: email,
+                    invitationId: invitationId,
+                    workspaceId: workspaceId,
+                    invitedAt: serverTimestamp()
+                };
+                batch.update(userRef, {
+                    workspacePendingInvites: arrayUnion(pendingInviteData)
+                });
+                
+                // Operation 3: Send the actual email (this happens outside the batch)
+                const invitationUrl = `https://your-app-url.com/workspace-invite/${invitationId}`;
+                await sendEmailWorkspaceInvitation({
+                    email: email,
+                    workspaceName: workspaceName,
+                    recipientName: recipientName,
+                    avatarUrl: avatarUrl,
+                    inviterName: currentUser.displayName,
+                    invitationUrl: invitationUrl
+                });
+                
+                successfulInvites.push(email);
+                
             } catch (error) {
-                console.error("An error occurred during the invitation process:", error);
-                alert("Could not process invitations. Please check the console and try again.");
+                console.error(`Failed to process invitation for ${email}:`, error);
+                failedInvites.push(email);
             }
         }
+        
+        // --- Step 4: Commit all the queued database operations at once ---
+        if (successfulInvites.length > 0) {
+            await batch.commit();
+            alert(`Successfully sent workspace invitations to ${successfulInvites.length} user(s).`);
+        }
+        if (failedInvites.length > 0) {
+            alert(`Failed to send invitations to: ${failedInvites.join(", ")}.`);
+        }
+        
+    } catch (error) {
+        console.error("An error occurred during the invitation process:", error);
+        alert("Could not process invitations. Please check the console and try again.");
+    }
+}
+
         window.addEventListener('resize', positionProjectDropdown);
         window.addEventListener('scroll', positionProjectDropdown, true);
     });
