@@ -8,7 +8,8 @@
  */
 
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, getDocs, query, orderBy, where, collectionGroup } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, getDocs, query, orderBy, where, collectionGroup, 
+doc, getDoc, updateDoc, writeBatch, arrayUnion, arrayRemove, serverTimestamp  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { firebaseConfig } from "/services/firebase-config.js";
 
@@ -225,7 +226,7 @@ export async function showInviteModal() {
     const { auth, db } = getFirebaseServices();
     const currentUser = auth.currentUser;
     
-    if (!currentUser) {
+    if (!currentUser) {l
         alert("Authentication required to invite people.");
         return null;
     }
@@ -234,6 +235,7 @@ export async function showInviteModal() {
     
     let projectDataModel = [];
     let userDataModel = [];
+    let userProfilesMap = {};
     try {
         const projectsQuery = query(
             collectionGroup(db, 'projects'),
@@ -259,6 +261,7 @@ export async function showInviteModal() {
             }
             return {
                 id: doc.id,
+                path: doc.ref.path,
                 title: doc.data().title || "Untitled Project",
                 icon: lucideProjectIcons[randomIndex],
                 color: finalHexColor
@@ -272,12 +275,16 @@ export async function showInviteModal() {
         
         if (memberUIDs.size > 0) {
             const userDocs = await getDocs(query(collection(db, 'users'), where('__name__', 'in', Array.from(memberUIDs))));
-            userDataModel = userDocs.docs.map(doc => ({
-                uid: doc.id,
-                name: doc.data().name || 'Unknown User',
-                email: doc.data().email,
-                avatar: doc.data().avatar || null
-            }));
+            userDataModel = userDocs.docs.map(doc => {
+                const data = {
+                    uid: doc.id,
+                    name: doc.data().name || 'Unknown User',
+                    email: doc.data().email,
+                    avatar: doc.data().avatarUrl || null
+                };
+                userProfilesMap[doc.id] = data; 
+                return data;
+            });
         }
     } catch (error) {
         console.error("Could not fetch projects for modal:", error);
@@ -323,10 +330,12 @@ export async function showInviteModal() {
         const projectTagInputContainer = modal.querySelector('.projectTagInputContainer');
         
         const addTag = (container, details) => {
-            const { text, icon, color, avatar } = details;
-            const tag = document.createElement('span');
-            tag.className = 'tag';
-            tag.dataset.value = text;
+            const { id, path, text, icon, color, avatar } = details;
+const tag = document.createElement('span');
+tag.className = 'tag';
+tag.dataset.value = text;
+if (id) tag.dataset.id = id;
+if (path) tag.dataset.path = path; 
             
             const colorDot = color ? `<span class="tag-color-dot" style="background-color: ${color};"></span>` : '';
             const iconOrAvatar = avatar ?
@@ -448,6 +457,8 @@ export async function showInviteModal() {
                         <span>${project.title}</span>`;
                     item.onclick = () => {
                         addTag(projectTagInputContainer, {
+                            id: project.id,
+                            path: project.path,
                             text: project.title,
                             icon: project.icon,
                             color: project.color
@@ -477,17 +488,231 @@ export async function showInviteModal() {
         
         modal.querySelector('.closeButton').addEventListener('click', () => cleanupAndResolve(null));
         
-        modal.querySelector('.sendButton').addEventListener('click', () => {
-            const emails = Array.from(emailTagInputContainer.querySelectorAll('.tag')).map(tag => tag.dataset.value);
-            const projects = Array.from(projectTagInputContainer.querySelectorAll('.tag')).map(tag => tag.dataset.value);
-            
-            if (emails.length === 0) {
-                return alert('Please enter at least one email address to invite.');
-            }
-            
-            cleanupAndResolve({ emails, projects });
-        });
+        modal.querySelector('.sendButton').addEventListener('click', async () => {
+    const sendButton = modal.querySelector('.sendButton');
+const emails = Array.from(emailTagInputContainer.querySelectorAll('.tag')).map(tag => tag.dataset.value);
+
+// Collect project IDs and titles directly from the tags' dataset
+const selectedProjects = Array.from(projectTagInputContainer.querySelectorAll('.tag')).map(tag => ({
+    id: tag.dataset.id,
+    path: tag.dataset.path,
+    title: tag.dataset.value
+}));
+
+if (emails.length === 0) {
+    return alert('Please enter at least one email address.');
+}
+if (selectedProjects.length === 0) {
+    return alert('Please select at least one project to invite users to.');
+}
+
+const originalBtnText = sendButton.textContent;
+sendButton.disabled = true;
+sendButton.textContent = "Processing...";
+
+    try {
+        // Delegate all the complex work to the new processing function
+        if (selectedProjects.length > 0) {
+    // SCENARIO 1: Projects ARE selected. Run the detailed project invite process.
+    await processInvites(emails, selectedProjects);
+} else {
+    // SCENARIO 2: NO projects selected. Run the workspace-only invite process.
+    await sendEmailInvitationMyWorkspace(emails);
+}
+
+// After a successful operation, clear the email input for the next batch.
+emailTagInputContainer.innerHTML = '';
+const newInput = document.createElement('textarea');
+newInput.id = 'emailInputField';
+newInput.className = 'inputField';
+newInput.placeholder = 'name@gmail.com, name@example.com, ...';
+emailTagInputContainer.appendChild(newInput);
+
+    } catch (e) {
+        console.error("An error occurred during the invitation process:", e);
+        alert("An unexpected error occurred. Please check the console and try again.");
+    } finally {
+        sendButton.disabled = false;
+        sendButton.textContent = originalBtnText;
+    }
+});
         
+        async function processInvites(emails, selectedProjects) {
+    const batch = writeBatch(db);
+const defaultRole = "Editor";
+let changesMade = 0;
+const failedInvites = [];
+
+
+for (const project of selectedProjects) {
+        if (!project.path) { 
+            console.warn(`Project "${project.title}" is missing a path. Skipping.`);
+            continue;
+        }
+
+        // This is now the correct, direct way to get the document reference
+        const projectRef = doc(db, project.path);
+        const projectSnap = await getDoc(projectRef);
+
+        if (!projectSnap.exists()) {
+            console.warn(`Project at path ${project.path} not found. Skipping.`);
+            continue;
+        }
+        
+        const projectData = projectSnap.data();
+    
+    // The inner loop for emails remains the same
+    for (const email of emails) {
+            const lowerEmail = email.toLowerCase();
+            const existingUserUID = Object.keys(userProfilesMap).find(
+                (uid) => userProfilesMap[uid]?.email?.toLowerCase() === lowerEmail
+            );
+            
+            if (existingUserUID) {
+                const isAlreadyMember = projectData.members?.some(m => m.uid === existingUserUID);
+                if (!isAlreadyMember) {
+                    // User exists in the workspace but not in this project, add them.
+                    const newUser = { uid: existingUserUID, role: defaultRole };
+                    batch.update(projectRef, {
+                        members: arrayUnion(newUser),
+                        [`rolesByUID.${newUser.uid}`]: newUser.role
+                    });
+                    changesMade++;
+                }
+                // If they are already a member, we do nothing as per your logic.
+                // For a role change UI, you would add logic here.
+            } else {
+                // This is a brand new user not in the workspace/projects. Send an invite.
+                const isAlreadyPending = projectData.pendingInvites?.some(p => p.email.toLowerCase() === lowerEmail);
+                if (!isAlreadyPending) {
+                    try {
+                        const newInvitationRef = doc(collection(db, "InvitedProjects"));
+                        const invitationId = newInvitationRef.id;
+                        const invitationUrl = `https://your-app-url.com/invitation/${invitationId}`; // Replace with your actual URL
+                        
+                        await sendEmailInvitation({
+                            email: lowerEmail,
+                            projectName: projectData.title,
+                            invitationUrl: invitationUrl,
+                        });
+                        
+                        const newPendingData = { email: lowerEmail, role: defaultRole, invitationId: invitationId, invitedAt: serverTimestamp() };
+                        batch.set(newInvitationRef, { ...newPendingData, projectId: projectRef.id, projectName: projectData.title, invitedBy: currentUser.uid });
+                        batch.update(projectRef, { pendingInvites: arrayUnion(newPendingData) });
+                        changesMade++;
+                    } catch (e) {
+                        failedInvites.push(email);
+                    }
+                }
+            }
+        }
+    }
+    
+    if (changesMade > 0) {
+        await batch.commit();
+        alert("Successfully sent invitations and updated projects!");
+    } else {
+        alert("No new changes were needed. The selected users are already members or have pending invitations.");
+    }
+    
+    if (failedInvites.length > 0) {
+        alert(`Failed to send invitations to: ${failedInvites.join(", ")}`);
+    }
+}
+
+async function sendEmailInvitationMyWorkspace(emails) {
+    const { auth, db } = getFirebaseServices();
+    const currentUser = auth.currentUser;
+    
+    if (!currentUser) {
+    alert("Authentication error. Cannot send workspace invitations.");
+    return;
+}
+    
+    try {
+        // --- Step 1: Get All Necessary Document References ---
+        const userRef = doc(db, 'users', currentUser.uid);
+        const userSnap = await getDoc(userRef);
+        if (!userSnap.exists() || !userSnap.data().selectedWorkspace) {
+            throw new Error("Could not find the user's selected workspace.");
+        }
+        
+        const workspaceId = userSnap.data().selectedWorkspace;
+        const workspaceRef = doc(db, `users/${currentUser.uid}/myworkspace`, workspaceId);
+        const workspaceSnap = await getDoc(workspaceRef);
+        const workspaceName = workspaceSnap.exists() ? workspaceSnap.data().name : "your workspace";
+        
+        // --- Step 2: Prepare a Batched Write ---
+        const batch = writeBatch(db);
+        const successfulInvites = [];
+        const failedInvites = [];
+        
+        // --- Step 3: Loop Through Emails and Queue Operations ---
+        for (const email of emails) {
+            const lowerEmail = email.toLowerCase();
+            try {
+                // Generate a new, unique ID for the invitation
+                const newInviteRef = doc(collection(db, "InvitedWorkspaces"));
+                const invitationId = newInviteRef.id;
+                
+                // ✅ Operation 1: Define the main invitation document in 'InvitedWorkspaces'
+                const inviteData = {
+                    invitationId: invitationId,
+                    invitedEmail: lowerEmail,
+                    workspaceId: workspaceId,
+                    workspaceRefPath: workspaceRef.path,
+                    status: "pending",
+                    invitedBy: {
+                        uid: currentUser.uid,
+                        email: currentUser.email,
+                        name: currentUser.displayName || "Workspace Owner"
+                    },
+                    invitedAt: serverTimestamp()
+                };
+                batch.set(newInviteRef, inviteData);
+                
+                // ✅ Operation 2: Define the pending invite marker for the owner's user document
+                const pendingInviteData = {
+                    email: lowerEmail,
+                    invitationId: invitationId,
+                    workspaceId: workspaceId,
+                    invitedAt: serverTimestamp()
+                };
+                batch.update(userRef, {
+                    workspacePendingInvites: arrayUnion(pendingInviteData) // Assumes an array named 'workspacePendingInvites'
+                });
+                
+                // Operation 3: Send the actual email (this happens outside the batch)
+                const invitationUrl = `https://your-app-url.com/workspace-invite/${invitationId}`;
+                await sendEmailInvitation({
+                    email: lowerEmail,
+                    workspaceName: workspaceName,
+                    inviterName: currentUser.displayName,
+                    invitationUrl: invitationUrl
+                });
+                
+                successfulInvites.push(lowerEmail);
+                
+            } catch (error) {
+                console.error(`Failed to process invitation for ${lowerEmail}:`, error);
+                failedInvites.push(lowerEmail);
+            }
+        }
+        
+        // --- Step 4: Commit all the queued database operations at once ---
+        if (successfulInvites.length > 0) {
+            await batch.commit();
+            alert(`Successfully sent workspace invitations to ${successfulInvites.length} user(s).`);
+        }
+        if (failedInvites.length > 0) {
+            alert(`Failed to send invitations to: ${failedInvites.join(", ")}.`);
+        }
+        
+    } catch (error) {
+        console.error("An error occurred during the invitation process:", error);
+        alert("Could not process invitations. Please check the console and try again.");
+    }
+}
         window.addEventListener('resize', positionProjectDropdown);
         window.addEventListener('scroll', positionProjectDropdown, true);
     });
