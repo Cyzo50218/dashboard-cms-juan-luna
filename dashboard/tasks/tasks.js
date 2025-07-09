@@ -237,12 +237,15 @@ export function init(params) {
         
         const projectDoc = projectSnapshot.docs[0];
         const projectData = projectDoc.data();
-        const membersCount = Array.isArray(projectData.members) ? projectData.members.length : 0;
+const membersCount = Array.isArray(projectData.members) ? projectData.members.length : 0;
 const rolesCount = projectData.rolesByUID ? Object.keys(projectData.rolesByUID).length : 0;
 
-if (membersCount > 0 && membersCount !== rolesCount) {
-    console.log(`Syncing roles for project: ${projectDoc.id}. Members: ${membersCount}, Roles: ${rolesCount}`);
+// Run the update if there are members AND (the map is missing OR the counts don't match)
+if (membersCount > 0 && (!projectData.rolesByUID || membersCount !== rolesCount)) {
     
+    console.log(`Syncing roles for project: ${projectDoc.id}. Reason: Field missing or count mismatch. Members: ${membersCount}, Roles: ${rolesCount}`);
+    
+    // Create the new map from the 'members' array
     const rolesByUID = {};
     projectData.members.forEach(member => {
         if (member.uid && member.role) {
@@ -250,9 +253,10 @@ if (membersCount > 0 && membersCount !== rolesCount) {
         }
     });
     
+    // Write the new/updated field back to the document
     try {
         await updateDoc(projectDoc.ref, { rolesByUID: rolesByUID });
-        projectData.rolesByUID = rolesByUID; // Update local data
+        projectData.rolesByUID = rolesByUID; // Update local data for immediate use
         console.log(`Successfully synced rolesByUID for project: ${projectDoc.id}`);
     } catch (updateError) {
         console.error(`Failed to sync project ${projectDoc.id}:`, updateError);
