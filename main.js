@@ -261,9 +261,9 @@ document.addEventListener("DOMContentLoaded", () => {
             const runTaskCountBackfill = async () => {
     try {
         const res = await runBackfill();
-        console.log("✅ Periodic Backfill success:", res.data.message);
+        console.log("Task Count Backfill success:", res.data.message);
     } catch (err) {
-        console.error("❌ Periodic Backfill error:", err.message);
+        console.error("❌ Periodic Task Count Backfill error:", err.message);
     }
 };
             runAndLogBackfill(); // Initial run
