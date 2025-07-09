@@ -10,7 +10,7 @@
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
     getFirestore, collection, getDocs, query, orderBy, where, collectionGroup,
-    doc, getDoc, updateDoc, writeBatch, arrayUnion, arrayRemove, serverTimestamp
+    doc, getDoc, updateDoc, writeBatch, arrayUnion, arrayRemove, serverTimestamp, getCount
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { firebaseConfig } from "/services/firebase-config.js";
