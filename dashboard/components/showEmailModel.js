@@ -590,51 +590,28 @@ export async function showInviteModal() {
                                 });
                         changesMade++;
                     } else {
-    // This is a brand new user not in the workspace/projects. Send an invite.
-    const isAlreadyPending = projectData.pendingInvites?.some(p => p.email === email);
+                        // This is a brand new user not in the workspace/projects. Send an invite.
+                        const isAlreadyPending = projectData.pendingInvites?.some(p => p.email === email);
+                        if (!isAlreadyPending) {
+                            try {
+                                const newInvitationRef = doc(collection(db, "InvitedProjects"));
+                                            const invitationId = newInvitationRef.id;
+                                            const invitationUrl = `https://cms.juanlunacollections.com/invitation/${invitationId}`;
+                                await sendEmailInvitation({
+                                    email: email,
+                                    projectName: projectData.title,
+                                    invitationUrl: invitationUrl,
+                                });
 
-    // ✅ LOG: Announce the check for pending invites
-    console.log(`[Invite Logic] Checking user "${email}". Is already pending? ${isAlreadyPending}`);
-
-    if (!isAlreadyPending) {
-        // ✅ LOG: Announce the start of the invitation creation process
-        console.log(`[Invite Logic] Starting new invitation process for "${email}".`);
-        try {
-            const newInvitationRef = doc(collection(db, "InvitedProjects"));
-            const invitationId = newInvitationRef.id;
-            const invitationUrl = `https://cms.juanlunacollections.com/invitation/${invitationId}`;
-
-            // ✅ LOG: Log details right before the email is sent
-            console.log(`[Invite Logic] Attempting to send email to "${email}" with invitationId: ${invitationId}`);
-            
-            await sendEmailInvitation({
-                email: email,
-                projectName: projectData.title,
-                invitationUrl: invitationUrl,
-            });
-
-            // ✅ LOG: Confirm that the email function completed without throwing an error
-            console.log(`[Invite Logic] Email send function completed for "${email}".`);
-
-            const newPendingData = { email: email, role: defaultRole, invitationId: invitationId, invitedAt: serverTimestamp() };
-            batch.set(newInvitationRef, { ...newPendingData, projectId: projectRef.id, projectName: projectData.title, invitedBy: currentUser.uid });
-            batch.update(projectRef, { pendingInvites: arrayUnion(newPendingData) });
-            changesMade++;
-
-            // ✅ LOG: Confirm that database operations were successfully queued
-            console.log(`[Invite Logic] Database operations for "${email}" queued successfully.`);
-
-        } catch (e) {
-            // ✅ LOG: This is the most important log. It will show the EXACT error.
-            console.error(`[Invite Logic] FAILED to process invitation for "${email}". See full error below:`);
-            console.error(e);
-            failedInvites.push(email);
-        }
-    } else {
-        // ✅ LOG: Add a log for when an invite is intentionally skipped
-        console.log(`[Invite Logic] SKIPPED: An invitation for "${email}" is already pending for this project.`);
-    }
-}
+                                const newPendingData = { email: email, role: defaultRole, invitationId: invitationId, invitedAt: new Date() };
+                                batch.set(newInvitationRef, { ...newPendingData, projectId: projectRef.id, projectName: projectData.title, invitedBy: currentUser.uid });
+                                batch.update(projectRef, { pendingInvites: arrayUnion(newPendingData) });
+                                changesMade++;
+                            } catch (e) {
+                                failedInvites.push(email);
+                            }
+                        }
+                    }
                 }
             }
 
