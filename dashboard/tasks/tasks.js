@@ -255,14 +255,12 @@ export function init(params) {
                 }
             });
 
-            // Write the new/updated fields back to the document
             try {
                 await updateDoc(projectDoc.ref, {
                     rolesByUID: rolesByUID,
                     memberRoleKeys: memberRoleKeys
                 });
 
-                // Update local data for immediate use
                 projectData.rolesByUID = rolesByUID;
                 projectData.memberRoleKeys = memberRoleKeys;
 

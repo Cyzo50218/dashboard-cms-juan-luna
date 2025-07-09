@@ -103,18 +103,22 @@ passwordForm.addEventListener('submit', async (e) => {
 
 googleSignInBtn.addEventListener('click', async () => {
     isProcessingSignIn = true;
-    
+
     const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({
+        prompt: 'select_account'
+    });
+
     try {
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
         await saveUserData(user, user.displayName, user.email, "google", user.photoURL);
-        
+
         showSuccess('Sign-in successful! Redirecting...');
         setTimeout(() => {
             window.location.href = '/';
         }, 1500);
-        
+
     } catch (error) {
         if (error.code !== 'auth/popup-closed-by-user') {
             console.error("Google Sign-In Error:", error);
@@ -124,6 +128,7 @@ googleSignInBtn.addEventListener('click', async () => {
         isProcessingSignIn = false;
     }
 });
+
 
 
 // --- NEW: FORGOT PASSWORD LOGIC ---
