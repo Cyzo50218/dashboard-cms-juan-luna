@@ -15,8 +15,8 @@ import {
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { firebaseConfig } from "/services/firebase-config.js";
 import {
-  getFunctions,
-  httpsCallable,
+    getFunctions,
+    httpsCallable,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
 const app = initializeApp(firebaseConfig);
 const functions = getFunctions(app);
@@ -541,9 +541,9 @@ export async function showInviteModal() {
         });
 
         function stringToNumericString(str) {
-        if (!str) return '';
-        return str.split('').map(char => char.charCodeAt(0)).join('');
-    }
+            if (!str) return '';
+            return str.split('').map(char => char.charCodeAt(0)).join('');
+        }
 
         async function processInvites(emails, selectedProjects) {
             const { auth, db } = getFirebaseServices();
@@ -583,30 +583,58 @@ export async function showInviteModal() {
                         const numericProjectId = stringToNumericString(projectData.projectId);
                         const invitationUrl = `https://cms.juanlunacollections.com/tasks/${numericUserId}/list/${numericProjectId}`; // Replace with your actual URL
 
-                                await sendEmailInvitation({
-                                    email: email,
-                                    projectName: projectData.title,
-                                    invitationUrl: invitationUrl,
-                                });
+                        await sendEmailInvitation({
+                            email: email,
+                            projectName: projectData.title,
+                            invitationUrl: invitationUrl,
+                        });
                         changesMade++;
                     } else {
                         // This is a brand new user not in the workspace/projects. Send an invite.
-                        const isAlreadyPending = projectData.pendingInvites?.some(p => p.email === email);
+                        const lowerEmail = email.toLowerCase(); // Use a lowercase version for consistency
+                        const isAlreadyPending = projectData.pendingInvites?.some(p => p.email.toLowerCase() === lowerEmail);
+
                         if (!isAlreadyPending) {
                             try {
                                 const newInvitationRef = doc(collection(db, "InvitedProjects"));
-                                            const invitationId = newInvitationRef.id;
-                                            const invitationUrl = `https://cms.juanlunacollections.com/invitation/${invitationId}`;
+                                const invitationId = newInvitationRef.id;
+                                const invitationUrl = `https://cms.juanlunacollections.com/invitation/${invitationId}`;
+
                                 await sendEmailInvitation({
-                                    email: email,
+                                    email: lowerEmail,
                                     projectName: projectData.title,
                                     invitationUrl: invitationUrl,
                                 });
 
-                                const newPendingData = { email: email, role: defaultRole, invitationId: invitationId, invitedAt: new Date() };
-                                batch.set(newInvitationRef, { ...newPendingData, projectId: projectRef.id, projectName: projectData.title, invitedBy: currentUser.uid });
-                                batch.update(projectRef, { pendingInvites: arrayUnion(newPendingData) });
+                                // ✅ REFINED: The 'invitedBy' object now uses the fetched user profile.
+                                // This ensures the name and email are always up-to-date.
+                                const inviterProfile = userProfilesMap[currentUser.uid];
+                                const mainInviteData = {
+                                    invitationId: invitationId,
+                                    projectId: projectRef.id,
+                                    projectName: projectData.title || "Unnamed Project",
+                                    invitedEmail: lowerEmail,
+                                    role: defaultRole,
+                                    status: "pending",
+                                    invitedBy: {
+                                        uid: currentUser.uid,
+                                        name: inviterProfile?.name || "Workspace Owner",
+                                        email: inviterProfile?.email || currentUser.email // Fallback just in case
+                                    },
+                                    invitedAt: serverTimestamp()
+                                };
+
+                                const pendingInviteMarker = {
+                                    email: lowerEmail,
+                                    role: defaultRole,
+                                    invitationId: invitationId,
+                                    invitedAt: new Date()
+                                };
+
+                                batch.set(newInvitationRef, mainInviteData);
+                                batch.update(projectRef, { pendingInvites: arrayUnion(pendingInviteMarker) });
                                 changesMade++;
+
                             } catch (e) {
                                 failedInvites.push(email);
                             }
