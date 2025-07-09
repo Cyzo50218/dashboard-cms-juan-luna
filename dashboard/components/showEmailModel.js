@@ -226,7 +226,6 @@ export async function showInviteModal() {
     const currentUser = auth.currentUser;
 
     if (!currentUser) {
-        l
         alert("Authentication required to invite people.");
         return null;
     }
@@ -542,6 +541,8 @@ export async function showInviteModal() {
         });
 
         async function processInvites(emails, selectedProjects) {
+            const { auth, db } = getFirebaseServices();
+            const currentUser = auth.currentUser;
             const batch = writeBatch(db);
             const defaultRole = "Editor";
             let changesMade = 0;
@@ -567,40 +568,37 @@ export async function showInviteModal() {
 
                 // The inner loop for emails remains the same
                 for (const email of emails) {
-                    const lowerEmail = email.toLowerCase();
                     const existingUserUID = Object.keys(userProfilesMap).find(
-                        (uid) => userProfilesMap[uid]?.email?.toLowerCase() === lowerEmail
+                        (uid) => userProfilesMap[uid]?.email === email
                     );
 
                     if (existingUserUID) {
                         const isAlreadyMember = projectData.members?.some(m => m.uid === existingUserUID);
-                        if (!isAlreadyMember) {
-                            // User exists in the workspace but not in this project, add them.
-                            const newUser = { uid: existingUserUID, role: defaultRole };
-                            batch.update(projectRef, {
-                                members: arrayUnion(newUser),
-                                [`rolesByUID.${newUser.uid}`]: newUser.role
-                            });
-                            changesMade++;
-                        }
-                        // If they are already a member, we do nothing as per your logic.
-                        // For a role change UI, you would add logic here.
+                        const numericUserId = stringToNumericString(currentUser.uid);
+                        const numericProjectId = stringToNumericString(projectData.projectId);
+                        const invitationUrl = `https://cms.juanlunacollections.com/tasks/${numericUserId}/list/${numericProjectId}`; // Replace with your actual URL
+
+                                await sendEmailInvitation({
+                                    email: email,
+                                    projectName: projectData.title,
+                                    invitationUrl: invitationUrl,
+                                });
+                        changesMade++;
                     } else {
                         // This is a brand new user not in the workspace/projects. Send an invite.
-                        const isAlreadyPending = projectData.pendingInvites?.some(p => p.email.toLowerCase() === lowerEmail);
+                        const isAlreadyPending = projectData.pendingInvites?.some(p => p.email === email);
                         if (!isAlreadyPending) {
                             try {
                                 const newInvitationRef = doc(collection(db, "InvitedProjects"));
-                                const invitationId = newInvitationRef.id;
-                                const invitationUrl = `https://your-app-url.com/invitation/${invitationId}`; // Replace with your actual URL
-
+                                            const invitationId = newInvitationRef.id;
+                                            const invitationUrl = `https://cms.juanlunacollections.com/invitation/${invitationId}`;
                                 await sendEmailInvitation({
-                                    email: lowerEmail,
+                                    email: email,
                                     projectName: projectData.title,
                                     invitationUrl: invitationUrl,
                                 });
 
-                                const newPendingData = { email: lowerEmail, role: defaultRole, invitationId: invitationId, invitedAt: serverTimestamp() };
+                                const newPendingData = { email: email, role: defaultRole, invitationId: invitationId, invitedAt: serverTimestamp() };
                                 batch.set(newInvitationRef, { ...newPendingData, projectId: projectRef.id, projectName: projectData.title, invitedBy: currentUser.uid });
                                 batch.update(projectRef, { pendingInvites: arrayUnion(newPendingData) });
                                 changesMade++;
@@ -653,7 +651,6 @@ export async function showInviteModal() {
 
                 // --- Step 3: Loop Through Emails and Queue Operations ---
                 for (const email of emails) {
-                    const lowerEmail = email.toLowerCase();
                     try {
                         // Generate a new, unique ID for the invitation
                         const newInviteRef = doc(collection(db, "InvitedWorkspaces"));
@@ -662,7 +659,7 @@ export async function showInviteModal() {
                         // ✅ Operation 1: Define the main invitation document in 'InvitedWorkspaces'
                         const inviteData = {
                             invitationId: invitationId,
-                            invitedEmail: lowerEmail,
+                            invitedEmail: email,
                             workspaceId: workspaceId,
                             workspaceRefPath: workspaceRef.path,
                             status: "pending",
@@ -677,7 +674,7 @@ export async function showInviteModal() {
 
                         // ✅ Operation 2: Define the pending invite marker for the owner's user document
                         const pendingInviteData = {
-                            email: lowerEmail,
+                            email: email,
                             invitationId: invitationId,
                             workspaceId: workspaceId,
                             invitedAt: serverTimestamp()
@@ -689,17 +686,17 @@ export async function showInviteModal() {
                         // Operation 3: Send the actual email (this happens outside the batch)
                         const invitationUrl = `https://your-app-url.com/workspace-invite/${invitationId}`;
                         await sendEmailInvitation({
-                            email: lowerEmail,
+                            email: email,
                             workspaceName: workspaceName,
                             inviterName: currentUser.displayName,
                             invitationUrl: invitationUrl
                         });
 
-                        successfulInvites.push(lowerEmail);
+                        successfulInvites.push(email);
 
                     } catch (error) {
-                        console.error(`Failed to process invitation for ${lowerEmail}:`, error);
-                        failedInvites.push(lowerEmail);
+                        console.error(`Failed to process invitation for ${email}:`, error);
+                        failedInvites.push(email);
                     }
                 }
 
