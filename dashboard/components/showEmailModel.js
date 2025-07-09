@@ -132,6 +132,47 @@ function renderLucideIcons() {
     }
 }
 
+function hslToRgb(h, s, l) {
+    s /= 100;
+    l /= 100;
+    let c = (1 - Math.abs(2 * l - 1)) * s,
+        x = c * (1 - Math.abs((h / 60) % 2 - 1)),
+        m = l - c / 2,
+        r = 0,
+        g = 0,
+        b = 0;
+    if (0 <= h && h < 60) { r = c;
+        g = x;
+        b = 0; }
+    else if (60 <= h && h < 120) { r = x;
+        g = c;
+        b = 0; }
+    else if (120 <= h && h < 180) { r = 0;
+        g = c;
+        b = x; }
+    else if (180 <= h && h < 240) { r = 0;
+        g = x;
+        b = c; }
+    else if (240 <= h && h < 300) { r = x;
+        g = 0;
+        b = c; }
+    else if (300 <= h && h < 360) { r = c;
+        g = 0;
+        b = x; }
+    r = Math.round((r + m) * 255);
+    g = Math.round((g + m) * 255);
+    b = Math.round((b + m) * 255);
+    return [r, g, b];
+}
+
+function hslToHex(h, s, l) {
+    const [r, g, b] = hslToRgb(h, s, l);
+    const toHex = (c) => {
+        const hex = c.toString(16);
+        return hex.length === 1 ? "0" + hex : hex;
+    };
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
 
 /**
  * Opens a modal for inviting users and adding them to projects.
@@ -158,11 +199,20 @@ export async function showInviteModal() {
         const snapshot = await getDocs(projectsQuery);
         projectDataModel = snapshot.docs.map(doc => {
             const randomIndex = Math.floor(Math.random() * lucideProjectIcons.length);
+            const colorData = doc.data().color;
+            let finalHexColor = '#808080'; // Set a default fallback color
+            
+            if (colorData && typeof colorData === 'object' &&
+                colorData.h !== undefined && colorData.s !== undefined && colorData.l !== undefined)
+            {
+                finalHexColor = hslToHex(colorData.h, colorData.s, colorData.l);
+            }
+            
             return {
                 id: doc.id,
                 title: doc.data().title || "Untitled Project",
                 icon: lucideProjectIcons[randomIndex],
-                color: doc.data().color || '#808080'
+                color: finalHexColor // Use the converted hex color
             };
         });
     } catch (error) {
