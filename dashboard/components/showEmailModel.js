@@ -721,7 +721,6 @@ export async function showInviteModal() {
         // --- Step 3: Loop Through Emails and Queue Operations ---
         for (const email of emails) {
             try {
-                // ✨ --- NEW: Check if a user exists with the invited email --- ✨
                 let recipientName = null;
                 let avatarUrl = null;
                 const usersCollectionRef = collection(db, 'users');
@@ -735,13 +734,11 @@ export async function showInviteModal() {
                     recipientName = foundUserData.name || null; // Use their display name
                     avatarUrl = foundUserData.avatar || null; // Use their photo URL
                 }
-                // --- End of new logic --- ✨
                 
                 // Generate a new, unique ID for the invitation
                 const newInviteRef = doc(collection(db, "InvitedWorkspaces"));
                 const invitationId = newInviteRef.id;
                 
-                // ✅ Operation 1: Define the main invitation document in 'InvitedWorkspaces'
                 const inviteData = {
                     invitationId: invitationId,
                     invitedEmail: email,
@@ -756,13 +753,11 @@ export async function showInviteModal() {
                     invitedAt: serverTimestamp()
                 };
                 batch.set(newInviteRef, inviteData);
-                
-                // ✅ Operation 2: Define the pending invite marker for the owner's user document
-                const pendingInviteData = {
+              const pendingInviteData = {
                     email: email,
                     invitationId: invitationId,
                     workspaceId: workspaceId,
-                    invitedAt: serverTimestamp()
+                    invitedAt: new Date()
                 };
                 batch.update(userRef, {
                     workspacePendingInvites: arrayUnion(pendingInviteData)
