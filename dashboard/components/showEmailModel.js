@@ -157,14 +157,14 @@ export async function showInviteModal() {
         );
         const snapshot = await getDocs(projectsQuery);
         projectDataModel = snapshot.docs.map(doc => {
-    const randomIndex = Math.floor(Math.random() * lucideProjectIcons.length);
-    return {
-        id: doc.id,
-        title: doc.data().title || "Untitled Project",
-        icon: lucideProjectIcons[randomIndex],
-        color: doc.data().color || '#808080'
-    };
-});
+            const randomIndex = Math.floor(Math.random() * lucideProjectIcons.length);
+            return {
+                id: doc.id,
+                title: doc.data().title || "Untitled Project",
+                icon: lucideProjectIcons[randomIndex],
+                color: doc.data().color || '#808080'
+            };
+        });
     } catch (error) {
         console.error("Could not fetch projects for modal:", error);
     }
@@ -205,29 +205,29 @@ export async function showInviteModal() {
         const projectTagInputContainer = modal.querySelector('.projectTagInputContainer');
         
         const addTag = (container, details) => {
-    const { text, icon, color } = details;
-    const tag = document.createElement('span');
-    tag.className = 'tag';
-    tag.dataset.value = text;
-    
-    // Conditionally add color dot for projects
-    const colorDot = color ? `<span class="tag-color-dot" style="background-color: ${color};"></span>` : '';
-    
-    tag.innerHTML = `${colorDot}<i data-lucide="${icon}"></i> ${text} <span class="removeTag" title="Remove">×</span>`;
-    
-    container.insertBefore(tag, container.querySelector('.inputField'));
-    tag.querySelector('.removeTag').addEventListener('click', () => tag.remove());
-    renderLucideIcons();
-};
-
-const positionProjectDropdown = () => {
-    if (projectDropdown.style.display === 'block') {
-        const rect = projectTagInputContainer.getBoundingClientRect();
-        projectDropdown.style.top = `${window.scrollY + rect.bottom + 5}px`;
-        projectDropdown.style.left = `${window.scrollX + rect.left}px`;
-        projectDropdown.style.width = `${rect.width}px`;
-    }
-};
+            const { text, icon, color } = details;
+            const tag = document.createElement('span');
+            tag.className = 'tag';
+            tag.dataset.value = text;
+            
+            // Conditionally add color dot for projects
+            const colorDot = color ? `<span class="tag-color-dot" style="background-color: ${color};"></span>` : '';
+            
+            tag.innerHTML = `${colorDot}<i data-lucide="${icon}"></i> ${text} <span class="removeTag" title="Remove">×</span>`;
+            
+            container.insertBefore(tag, container.querySelector('.inputField'));
+            tag.querySelector('.removeTag').addEventListener('click', () => tag.remove());
+            renderLucideIcons();
+        };
+        
+        const positionProjectDropdown = () => {
+            if (projectDropdown.style.display === 'block') {
+                const rect = projectTagInputContainer.getBoundingClientRect();
+                projectDropdown.style.top = `${window.scrollY + rect.bottom + 5}px`;
+                projectDropdown.style.left = `${window.scrollX + rect.left}px`;
+                projectDropdown.style.width = `${rect.width}px`;
+            }
+        };
         const cleanupAndResolve = (value) => {
             window.removeEventListener('resize', positionProjectDropdown);
             window.removeEventListener('scroll', positionProjectDropdown, true);
@@ -268,7 +268,11 @@ const positionProjectDropdown = () => {
                         <i data-lucide="${project.icon}"></i>
                         <span>${project.title}</span>`;
                     item.onclick = () => {
-                        addTag(projectTagInputContainer, project.title, project.icon);
+                        addTag(projectTagInputContainer, {
+                            text: project.title,
+                            icon: project.icon,
+                            color: project.color
+                        });
                         projectInputField.value = '';
                         projectDropdown.style.display = 'none';
                         projectInputField.focus();
@@ -284,25 +288,25 @@ const positionProjectDropdown = () => {
         });
         
         document.addEventListener('click', (event) => {
-    if (!projectInputField.contains(event.target) && !projectDropdown.contains(event.target)) {
-        projectDropdown.style.display = 'none';
-    }
-});
-
-modal.querySelector('.closeButton').addEventListener('click', () => cleanupAndResolve(null));
-
-modal.querySelector('.sendButton').addEventListener('click', () => {
-    const emails = Array.from(emailTagInputContainer.querySelectorAll('.tag')).map(tag => tag.dataset.value);
-    const projects = Array.from(projectTagInputContainer.querySelectorAll('.tag')).map(tag => tag.dataset.value);
-    
-    if (emails.length === 0) {
-        return alert('Please enter at least one email address to invite.');
-    }
-    
-    cleanupAndResolve({ emails, projects });
-});
-
-window.addEventListener('resize', positionProjectDropdown);
-window.addEventListener('scroll', positionProjectDropdown, true);
-});
+            if (!projectInputField.contains(event.target) && !projectDropdown.contains(event.target)) {
+                projectDropdown.style.display = 'none';
+            }
+        });
+        
+        modal.querySelector('.closeButton').addEventListener('click', () => cleanupAndResolve(null));
+        
+        modal.querySelector('.sendButton').addEventListener('click', () => {
+            const emails = Array.from(emailTagInputContainer.querySelectorAll('.tag')).map(tag => tag.dataset.value);
+            const projects = Array.from(projectTagInputContainer.querySelectorAll('.tag')).map(tag => tag.dataset.value);
+            
+            if (emails.length === 0) {
+                return alert('Please enter at least one email address to invite.');
+            }
+            
+            cleanupAndResolve({ emails, projects });
+        });
+        
+        window.addEventListener('resize', positionProjectDropdown);
+        window.addEventListener('scroll', positionProjectDropdown, true);
+    });
 }
