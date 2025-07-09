@@ -38,7 +38,7 @@ function parseRoute() {
     };
   }
 
-  const simpleRoutes = ['home', 'myworkspace', 'inbox', 'inventory', 'reports', 'searchresults', 'settings'];
+  const simpleRoutes = ['home', 'myworkspace', 'inbox', 'inventory', 'reports', 'products', 'searchresults', 'settings'];
   if (simpleRoutes.includes(resourceType)) {
     return { section: resourceType };
   }
