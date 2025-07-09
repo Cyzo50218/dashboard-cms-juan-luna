@@ -234,7 +234,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const auth = getAuth(app);
     const functions = getFunctions(app); 
     const runBackfill = httpsCallable(functions, "runBackfill");
-    const runBackfill = httpsCallable(functions, "runAlgoliaBackfill");
+    const runAlgoliaBackfill = httpsCallable(functions, "runAlgoliaBackfill");
 
     let backfillIntervalId = null;
     let backfillTaskCountIntervalId = null;
@@ -252,7 +252,7 @@ document.addEventListener("DOMContentLoaded", () => {
             // 🔁 Periodic backfill every 60 seconds
             const runAndLogBackfill = async () => {
                 try {
-                    const res = await runBackfill();
+                    const res = await runAlgoliaBackfill();
                     console.log("✅ Periodic Backfill success:", res.data.message);
                 } catch (err) {
                     console.error("❌ Periodic Backfill error:", err.message);
