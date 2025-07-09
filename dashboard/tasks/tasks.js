@@ -49,14 +49,14 @@ let projectLoadController = new AbortController();
 export function init(params) {
     // --- 1. Get Parameters and DOM Elements ---
     const { tabId = 'list', accountId, projectId } = params;
-
+    
     const projectName = document.getElementById('project-name');
     const projectIconColor = document.getElementById('project-color');
     const shareButton = document.getElementById('share-project-btn');
     const avatarStackContainer = document.getElementById('project-header-members'); // Already declared as a DOM element directly
     const customizeButton = document.querySelector('.customize-btn');
     const tabs = document.querySelectorAll('.tab-link');
-
+    
     /**
      * Sets a random Lucide icon on a specified icon element.
      * @param {HTMLElement} iconContainer - The parent element that holds the icon glyph.
@@ -88,7 +88,7 @@ export function init(params) {
             console.warn("Lucide library not found or createIcons not available.");
         }
     }
-
+    
     /**
      * Converts an HSL color string to a HEX color string.
      * Example: "hsl(210, 40%, 96%)" will be converted to "#f0f5f9"
@@ -104,7 +104,7 @@ export function init(params) {
         let h = parseInt(hslValues[0]);
         let s = parseInt(hslValues[1]);
         let l = parseInt(hslValues[2]);
-
+        
         l /= 100;
         const a = s * Math.min(l, 1 - l) / 100;
         const f = n => {
@@ -114,7 +114,7 @@ export function init(params) {
         };
         return `#${f(0)}${f(8)}${f(4)}`;
     }
-
+    
     /**
      * Converts an HSL color value to RGB. Conversion formula
      * adapted from http://en.wikipedia.org/wiki/HSL_color_space.
@@ -129,14 +129,14 @@ export function init(params) {
     function hslToRgb(h, s, l) {
         s /= 100;
         l /= 100;
-
+        
         let c = (1 - Math.abs(2 * l - 1)) * s,
             x = c * (1 - Math.abs((h / 60) % 2 - 1)),
             m = l - c / 2,
             r = 0,
             g = 0,
             b = 0;
-
+        
         if (0 <= h && h < 60) {
             r = c;
             g = x;
@@ -165,10 +165,10 @@ export function init(params) {
         r = Math.round((r + m) * 255);
         g = Math.round((g + m) * 255);
         b = Math.round((b + m) * 255);
-
+        
         return [r, g, b];
     }
-
+    
     /**
      * Converts an HSL color value to HEX.
      * Assumes h, s, and l are contained in the set [0, 360] and [0, 100] and
@@ -192,60 +192,60 @@ export function init(params) {
      * This function is crucial as it determines which project's tasks are shown.
      */
     async function fetchCurrentProjectData() {
-    const user = auth.currentUser;
-    if (!user) {
-        console.error("User not authenticated.");
-        throw new Error("User not authenticated.");
+        const user = auth.currentUser;
+        if (!user) {
+            console.error("User not authenticated.");
+            throw new Error("User not authenticated.");
+        }
+        
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+        
+        if (!userSnap.exists() || !userSnap.data().selectedWorkspace) {
+            throw new Error("Could not find user's selected workspace.");
+        }
+        
+        const selectedWorkspaceId = userSnap.data().selectedWorkspace;
+        const workspaceRef = doc(db, `users/${user.uid}/myworkspace`, selectedWorkspaceId);
+        const workspaceSnapshot = await getDoc(workspaceRef);
+        
+        if (!workspaceSnapshot.exists()) {
+            throw new Error("No selected workspace document found.");
+        }
+        
+        const workspaceData = workspaceSnapshot.data();
+        const selectedProjectId = workspaceData.selectedProjectId;
+        
+        // ❌ Fallback logic has been removed.
+        // Now, if selectedProjectId is missing, it will throw an error.
+        if (!selectedProjectId) {
+            console.error("No selected project ID is stored in the workspace. Please select a project.");
+            throw new Error("No selected project ID is stored in the workspace, and URL fallback is disabled.");
+        }
+        
+        // 🔍 Secure project lookup
+        const projectQuery = query(
+            collectionGroup(db, 'projects'),
+            where('projectId', '==', selectedProjectId),
+            where('memberUIDs', 'array-contains', user.uid)
+        );
+        const projectSnapshot = await getDocs(projectQuery);
+        
+        if (projectSnapshot.empty) {
+            throw new Error(`Project with ID ${selectedProjectId} not found or user is not a member.`);
+        }
+        
+        const projectDoc = projectSnapshot.docs[0];
+        
+        return {
+            data: projectDoc.data(),
+            projectId: projectDoc.id,
+            workspaceId: projectDoc.data().workspaceId,
+            projectRef: projectDoc.ref
+        };
     }
-
-    const userRef = doc(db, 'users', user.uid);
-    const userSnap = await getDoc(userRef);
-
-    if (!userSnap.exists() || !userSnap.data().selectedWorkspace) {
-        throw new Error("Could not find user's selected workspace.");
-    }
-
-    const selectedWorkspaceId = userSnap.data().selectedWorkspace;
-    const workspaceRef = doc(db, `users/${user.uid}/myworkspace`, selectedWorkspaceId);
-    const workspaceSnapshot = await getDoc(workspaceRef);
-
-    if (!workspaceSnapshot.exists()) {
-        throw new Error("No selected workspace document found.");
-    }
-
-    const workspaceData = workspaceSnapshot.data();
-    const selectedProjectId = workspaceData.selectedProjectId;
-
-    // ❌ Fallback logic has been removed.
-    // Now, if selectedProjectId is missing, it will throw an error.
-    if (!selectedProjectId) {
-        console.error("No selected project ID is stored in the workspace. Please select a project.");
-        throw new Error("No selected project ID is stored in the workspace, and URL fallback is disabled.");
-    }
-
-    // 🔍 Secure project lookup
-    const projectQuery = query(
-        collectionGroup(db, 'projects'),
-        where('projectId', '==', selectedProjectId),
-        where('memberUIDs', 'array-contains', user.uid)
-    );
-    const projectSnapshot = await getDocs(projectQuery);
-
-    if (projectSnapshot.empty) {
-        throw new Error(`Project with ID ${selectedProjectId} not found or user is not a member.`);
-    }
-
-    const projectDoc = projectSnapshot.docs[0];
-
-    return {
-        data: projectDoc.data(),
-        projectId: projectDoc.id,
-        workspaceId: projectDoc.data().workspaceId,
-        projectRef: projectDoc.ref
-    };
-}
-
-
+    
+    
     /**
      * Fetches multiple user profiles by their UIDs.
      * @param {string[]} uids - An array of user UIDs.
@@ -262,7 +262,7 @@ export function init(params) {
             return [];
         }
     }
-
+    
     /**
      * Creates the HTML for a stack of user avatars.
      * @param {string[]} assigneeIds - An array of user UIDs.
@@ -273,21 +273,21 @@ export function init(params) {
         if (!assigneeIds || assigneeIds.length === 0) {
             return '';
         }
-
+        
         const maxDisplayAvatars = 3; // Show up to 3 actual avatars
         let visibleAssignees = assigneeIds.slice(0, maxDisplayAvatars);
         let overflowCount = assigneeIds.length - maxDisplayAvatars;
-
+        
         const avatarsHTML = visibleAssignees.map((userId, index) => {
             const user = allUsers.find(u => u.uid === userId);
             if (!user) return '';
-
+            
             const zIndex = 50 - index;
             const displayName = user.name || 'Unknown User';
             // Changed to use user.initials if available, otherwise generate
             const initials = user.initials || (displayName).split(' ').map(n => n[0]).join('').substring(0, 2);
-
-
+            
+            
             if (user.avatar && user.avatar.startsWith('https://')) { // Assuming user.avatar is the correct field for URL
                 return `
             <div class="user-avatar-tasks" title="${displayName}" style="z-index: ${zIndex};">
@@ -298,7 +298,7 @@ export function init(params) {
                 return `<div class="user-avatar-tasks" title="${displayName}" style="background-color: ${bgColor}; color: white; z-index: ${zIndex};">${initials}</div>`;
             }
         }).join('');
-
+        
         let overflowHTML = '';
         if (overflowCount > 0) {
             const zIndex = 50 - maxDisplayAvatars; // Adjust z-index for the overflow icon
@@ -309,10 +309,10 @@ export function init(params) {
             </div>
         `;
         }
-
+        
         return `<div class="avatar-stack">${avatarsHTML}${overflowHTML}</div>`;
     }
-
+    
     /**
      * Stores the currently loaded project's data in the user's recent history.
      * This is called whenever a project page is loaded or reloaded.
@@ -326,22 +326,22 @@ export function init(params) {
             console.error("Cannot save project to recent history: Missing user ID, project data, or project reference.");
             return;
         }
-
+        
         try {
             const userRecentProjectsHistoryRef = collection(db, `users/${userId}/recenthistory`);
             const recentProjectDocRef = doc(userRecentProjectsHistoryRef, projectData.projectId); // Use project ID as doc ID
-
+            
             // Count documents in each section (tasks within sections)
             const sectionTaskCounts = {};
             const sectionsCollectionRef = collection(projectRef, 'sections');
             const sectionsSnapshot = await getDocs(sectionsCollectionRef); // Fetch all sections
-
+            
             for (const sectionDoc of sectionsSnapshot.docs) {
                 const tasksColRef = collection(sectionDoc.ref, 'tasks');
                 const tasksSnapshot = await getDocs(tasksColRef);
                 sectionTaskCounts[sectionDoc.id] = tasksSnapshot.size;
             }
-
+            
             let projectHexColor = projectData.color || '#cccccc'; // Default if color is not provided
             // Check if the color format is HSL (e.g., "hsl(120, 100%, 50%)")
             if (projectData.color && projectData.color.startsWith('hsl(')) {
@@ -350,7 +350,7 @@ export function init(params) {
                     projectHexColor = hslToHex(hslValues[0], hslValues[1], hslValues[2]);
                 }
             }
-
+            
             const recentHistoryPayload = {
                 type: 'project',
                 projectId: projectId,
@@ -362,7 +362,7 @@ export function init(params) {
                 sectionTaskCounts: sectionTaskCounts, // Tasks count per section
                 lastAccessed: serverTimestamp()
             };
-
+            
             // Use setDoc with { merge: true } to update if exists, create if new
             await setDoc(recentProjectDocRef, recentHistoryPayload, { merge: true });
             console.log(`Project "${projectData.title}" added/updated in recent history.`);
@@ -370,23 +370,23 @@ export function init(params) {
             console.error("Error saving project to recent history:", error);
         }
     }
-
-
+    
+    
     async function loadProjectHeader() {
         console.log("🚀 Kicking off loadProjectHeader...");
-
+        
         projectLoadController.abort();
-
+        
         projectLoadController = new AbortController();
         const signal = projectLoadController.signal;
-
+        
         try {
             // Step 1: Fetch the project data and store the reference.
             console.log("Step 1: Fetching project data...");
             const projectContext = await fetchCurrentProjectData();
             currentLoadedProjectRef = projectContext.projectRef; // Store the correct reference
             currentLoadedProjectData = projectContext.data; // Store the full project data
-
+            
             const { data, projectId, workspaceId } = projectContext;
             const user = auth.currentUser;
             if (!user) {
@@ -394,15 +394,15 @@ export function init(params) {
                 return; // Should already be handled by fetchCurrentProjectData, but good safety
             }
             console.log(`✅ Project data fetched for projectId: ${projectId}`, { data });
-
-
+            
+            
             // Step 2: Fetch members for rendering and recent history.
             console.log("Step 2: Fetching member profiles...");
             const memberUIDs = data.memberUIDs || [];
             currentLoadedProjectMembers = await fetchMemberProfiles(memberUIDs); // Store fetched profiles
             console.log("✅ Member profiles fetched:", { members: currentLoadedProjectMembers });
-
-
+            
+            
             // Step 3: Render the UI with the fetched data.
             console.log("Step 3: Rendering UI components...");
             if (projectName && data.title) {
@@ -411,57 +411,57 @@ export function init(params) {
                     avatarStackContainer.innerHTML = createAvatarStackHTML(memberUIDs, currentLoadedProjectMembers);
                     console.log("✅ Avatar stack updated.");
                 }
-
+                
                 // Determine user's edit permission
                 const isMemberWithEditPermission = data.members?.some(m => m.uid === user.uid && m.role === "Project Admin");
                 const isSuperAdmin = data.project_super_admin_uid === user.uid; // Assuming this field exists
                 const isAdminUser = data.project_admin_user === user.uid; // Assuming this field exists
                 const userCanEdit = isMemberWithEditPermission || isSuperAdmin || isAdminUser;
-
+                
                 console.log(`%cUser Permissions: %cuserCanEdit = ${userCanEdit}`, "font-weight: bold;", "font-weight: normal;", {
                     isMemberWithEditPermission,
                     isSuperAdmin,
                     isAdminUser
                 });
-
-
+                
+                
                 projectName.textContent = data.title;
                 projectName.contentEditable = userCanEdit;
                 projectName.style.cursor = userCanEdit ? "text" : "default";
                 projectName.title = userCanEdit ? "Click to edit project name" : "";
                 shareButton.classList.toggle('display-none', !userCanEdit);
-
+                
                 // Clean up previous listeners to prevent duplicates
                 if (titleBlurListener) projectName.removeEventListener("blur", titleBlurListener);
                 if (titleEnterListener) projectName.removeEventListener("keydown", titleEnterListener);
-
+                
                 if (userCanEdit) {
                     console.log("Attaching event listeners for project title editing...");
-
+                    
                     titleBlurListener = async () => {
                         const newTitle = projectName.textContent.trim();
                         const originalTitle = data.title;
-
+                        
                         if (signal.aborted) {
-                    console.warn("🚫 Aborting stale title update because a new project has loaded.");
-                    return;
-                }
-
+                            console.warn("🚫 Aborting stale title update because a new project has loaded.");
+                            return;
+                        }
+                        
                         if (!newTitle || newTitle === originalTitle) {
                             projectName.textContent = originalTitle;
                             console.log("Title unchanged or empty, reverting.");
                             return;
                         }
-
+                        
                         try {
                             // Ensure projectRef is still valid and has a path
                             if (!currentLoadedProjectRef || !currentLoadedProjectRef.path) {
                                 throw new Error("No valid project reference available for update.");
                             }
-
+                            
                             console.log(`%c🔥 Attempting to update project title to "${newTitle}"...`, 'color: orange; font-weight: bold;');
                             await updateDoc(currentLoadedProjectRef, { title: newTitle });
-
+                            
                             // Modern console log for the update
                             console.log(
                                 `%c✅ Project Title Updated Successfully! %c\nProject ID: %c${projectId}\n%cNew Title: %c"${newTitle}"`,
@@ -471,7 +471,7 @@ export function init(params) {
                                 'color: #6c757d;',
                                 'color: #333; font-style: italic;'
                             );
-
+                            
                             currentLoadedProjectData.title = newTitle; // Update local data
                             console.log("Local project data updated with new title.");
                         } catch (err) {
@@ -479,20 +479,20 @@ export function init(params) {
                             projectName.textContent = originalTitle; // Revert on error
                         }
                     };
-
+                    
                     titleEnterListener = (e) => {
                         if (e.key === "Enter") {
                             e.preventDefault();
                             projectName.blur();
                         }
                     };
-
+                    
                     projectName.addEventListener("blur", titleBlurListener);
                     projectName.addEventListener("keydown", titleEnterListener);
                     console.log("✅ Event listeners attached.");
                 }
             }
-
+            
             if (projectIconColor && data.color) {
                 console.log(`Setting project icon color to: ${data.color}`);
                 const hexColor = hslStringToHex(data.color);
@@ -500,7 +500,7 @@ export function init(params) {
                 setRandomProjectIcon(projectIconColor);
                 console.log("✅ Project icon color set.");
             }
-
+            
             // --- SAVE TO RECENT HISTORY AFTER LOADING PROJECT HEADER ---
             console.log("Saving project to recent history...");
             await saveProjectToRecentHistory(
@@ -511,8 +511,8 @@ export function init(params) {
                 user.uid // Pass current user's UID
             );
             console.log("✅ Project saved to recent history.");
-
-
+            
+            
         } catch (err) {
             console.error("❌ An error occurred in loadProjectHeader:", err);
             if (projectName) {
@@ -524,8 +524,8 @@ export function init(params) {
             console.log("🏁 loadProjectHeader execution finished.");
         }
     }
-
-
+    
+    
     // Share button event listener (uses currentLoadedProjectRef)
     shareButton.addEventListener('click', async () => {
         // Ensure currentLoadedProjectRef is set before opening the modal
@@ -536,7 +536,7 @@ export function init(params) {
             alert("Please load a project first.");
         }
     });
-
+    
     /**
      * Dynamically loads the HTML, CSS, and JS for a specific tab.
      * @param {string} targetTabId - The ID of the tab to load (e.g., 'list', 'board').
@@ -547,28 +547,28 @@ export function init(params) {
             currentTabCleanup();
             currentTabCleanup = null;
         }
-
+        
         const container = document.getElementById('tab-content-container');
         if (!container) {
             console.error("Tab content container not found!");
             return;
         }
-
+        
         // IMMEDIATELY show a loading message/spinner
         container.innerHTML = `
         <div class="section-loader">
             <p>Loading ${targetTabId} tab...</p>
             <div class="spinner"></div> </div>
     `;
-
+        
         // Remove old tab-specific CSS before loading new one
         document.getElementById('tab-specific-css')?.remove();
-
+        
         const htmlPath = `/dashboard/tasks/tabs/${targetTabId}/${targetTabId}.html`;
         const cssPath = `/dashboard/tasks/tabs/${targetTabId}/${targetTabId}.css`;
         // Add a cache-busting parameter to the JS path to ensure fresh load during development
         const jsPath = `/dashboard/tasks/tabs/${targetTabId}/${targetTabId}.js?v=${new Date().getTime()}`;
-
+        
         try {
             // Fetch all resources concurrently using Promise.all
             const [htmlRes, cssRes, tabModule] = await Promise.all([
@@ -576,13 +576,13 @@ export function init(params) {
                 fetch(cssPath),
                 import(jsPath) // Dynamically import the JS module
             ]);
-
+            
             // Check HTML response
             if (!htmlRes.ok) {
                 throw new Error(`HTML not found for tab: ${targetTabId} (Status: ${htmlRes.status})`);
             }
             const tabHtml = await htmlRes.text();
-
+            
             // Check CSS response (optional, but good for debugging)
             if (!cssRes.ok) {
                 console.warn(`CSS file not found for tab: ${targetTabId} (Status: ${cssRes.status}). Proceeding without it.`);
@@ -594,10 +594,10 @@ export function init(params) {
             link.href = cssPath;
             link.id = "tab-specific-css";
             document.head.appendChild(link);
-
+            
             // Set the tab's HTML content AFTER all resources are fetched
             container.innerHTML = tabHtml;
-
+            
             // Initialize the tab's JavaScript module
             if (tabModule.init) {
                 currentTabCleanup = tabModule.init({
@@ -607,13 +607,13 @@ export function init(params) {
                     projectData: currentLoadedProjectData
                 });
             }
-
+            
             console.log(`Tab '${targetTabId}' loaded successfully.`);
-
+            
         } catch (err) {
             let userMessage = `<p>An unexpected error occurred while loading the <strong>${targetTabId}</strong> tab.</p>`;
             let logMessage = `Failed to load tab '${targetTabId}':`;
-
+            
             if (err.message.includes('HTML not found')) {
                 userMessage = `<p>Could not load the necessary HTML file for the <strong>${targetTabId}</strong> tab.</p>`;
                 logMessage = `[HTML Load Error] Failed to fetch ${htmlPath}.`;
@@ -627,7 +627,7 @@ export function init(params) {
                 userMessage += `<p>The associated styling (CSS) for this tab might be missing.</p>`;
                 logMessage += ` [CSS Load Error] Could not fetch ${cssPath}.`;
             }
-
+            
             container.innerHTML = `<div class="error-message-tab">${userMessage}</div>`;
             console.error(logMessage, err);
         }
@@ -641,38 +641,38 @@ export function init(params) {
             tab.classList.toggle('active', tab.getAttribute('data-tab') === targetTabId);
         });
     }
-
+    
     // --- 3. Attach Event Listeners ---
-
+    
     // Define the click listener function
     tabClickListener = (event) => {
         event.preventDefault();
-
+        
         const clickedTabId = event.currentTarget.getAttribute('data-tab');
         if (!clickedTabId) return;
-
+        
         const pathParts = window.location.pathname.split('/').filter(p => p);
         const currentTabIdFromUrl = pathParts[2]; // /tasks/:uid/:tab/:projectId
-
+        
         // Prevent redundant reload
         if (clickedTabId === currentTabIdFromUrl) return;
-
+        
         const accountId = pathParts[1];
         const projectId = pathParts[3];
         const existingQuery = window.location.search; // includes "?openTask=abc123" or ""
-
+        
         const newUrl = `/tasks/${accountId}/${clickedTabId}/${projectId}${existingQuery}`;
         history.pushState({ path: newUrl }, '', newUrl);
-
+        
         setActiveTabLink(clickedTabId);
         loadTabContent(clickedTabId);
     };
-
-
+    
+    
     tabs.forEach(tab => {
         tab.addEventListener('click', tabClickListener);
     });
-
+    
     // --- 4. Initial Load Sequence ---
     // This sequence is crucial for ensuring project data is available before tabs load.
     // Use an IIFE or an async function call to manage the loading sequence.
@@ -690,15 +690,15 @@ export function init(params) {
                     resolve();
                 });
             });
-
+            
             await loadProjectHeader();
-
+            
             // 3. Load the initial tab content (which needs project context)
             setActiveTabLink(tabId);
             await loadTabContent(tabId);
-
+            
             console.log("Tasks section initialized and loaded successfully.");
-
+            
         } catch (error) {
             console.error("Fatal error during tasks section initialization:", error);
             // Display a user-friendly error message if the project cannot be loaded
@@ -711,12 +711,12 @@ export function init(params) {
                                    </div>`;
         }
     })();
-
+    
     // --- 5. Return the Main Cleanup Function ---
     // This cleans up the tasks section itself when navigating away (e.g., to 'home').
     return function cleanup() {
         console.log("🧹 Cleaning up 'tasks' section, its active tab, and project context...");
-
+        
         // --- 1. CLEAR PROJECT CONTEXT ---
         // This is the crucial step to prevent data from one project
         // from appearing in another after navigating.
@@ -724,19 +724,19 @@ export function init(params) {
         currentLoadedProjectData = null;
         currentLoadedProjectMembers = []; // Also clear the members array
         console.log("Nullified project context (Ref, Data, Members).");
-
-
+        
+        
         // --- 2. CLEAN UP TAB-SPECIFIC MODULE ---
         // Clean up the last active tab's JS module (e.g., list.js, board.js)
         if (currentTabCleanup) {
             currentTabCleanup();
             currentTabCleanup = null;
         }
-
+        
         // --- 3. CLEAN UP EVENT LISTENERS ---
         // Clean up the listeners for the main tabs ('List', 'Board', etc.)
         tabs.forEach(tab => tab.removeEventListener('click', tabClickListener));
-
+        
         // Clean up the project title listeners to prevent stale updates
         if (projectName) {
             if (titleBlurListener) {
