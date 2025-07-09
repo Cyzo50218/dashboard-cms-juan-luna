@@ -246,7 +246,7 @@ export async function showInviteModal() {
         );
         const projectSnapshot = await getDocs(projectsKnownQuery);
         const projectMembersSnapshot = await getDocs(projectsQuery);
-        projectDataModel = snapshot.docs.map(doc => {
+        projectDataModel = projectSnapshot.docs.map(doc => {
             const randomIndex = Math.floor(Math.random() * lucideProjectIcons.length);
             const colorData = doc.data().color;
             let finalHexColor = '#808080'; // Set a default fallback color
