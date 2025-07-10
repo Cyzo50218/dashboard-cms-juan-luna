@@ -61,76 +61,92 @@ document.addEventListener('DOMContentLoaded', async () => {
   const path = window.location.pathname;
   const parts = path.split('/');
   
-  // --- A new helper function to show an error and stop ---
   const showInvitationError = (message) => {
     const feedbackElement = document.querySelector(".subtitle");
     console.error("Invitation Error:", message);
-    
-    // 1. Show the browser alert
     alert(message);
-    
-    // 2. Update the on-page feedback element
     feedbackElement.textContent = message;
-    feedbackElement.style.color = "#E53E3E"; // Red color
-    
-    // 3. Disable all forms
+    feedbackElement.style.color = "#E53E3E";
     document.getElementById("registration-form").style.display = 'none';
     document.getElementById("google-signin-btn").style.display = 'none';
     document.getElementById("continue-email-link").style.display = 'none';
     document.getElementById("orText").style.display = 'none';
   };
-  
-  
+
+  const handleRedirectWorkspace = (workspaceId) => {
+    if (workspaceId) {
+      console.log(`Redirecting to workspace: ${workspaceId}`);
+      window.location.href = `/myworkspace/${workspaceId}`;
+    }
+  };
+
   if (parts.length === 3 && parts[1] === 'invitation' && parts[2]) {
     invitationId = parts[2];
-    console.log("Invitation ID found:", invitationId);
-    
+    console.log("Project Invitation ID found:", invitationId);
     const feedbackElement = document.querySelector(".subtitle");
-    
     try {
-      feedbackElement.textContent = "Verifying invitation, please wait...";
+      feedbackElement.textContent = "Verifying project invitation, please wait...";
       const invitationRef = doc(db, "InvitedProjects", invitationId);
       const invitationSnap = await getDoc(invitationRef);
-      
-      // Using the new error handler
-      if (!invitationSnap.exists()) {
-        return showInvitationError("This invitation link is invalid or has expired.");
-      }
-      
+
+      if (!invitationSnap.exists()) return showInvitationError("This project invitation link is invalid or has expired.");
       const invitationData = invitationSnap.data();
-      if (invitationData.status === 'accepted') {
-        return showInvitationError("This invitation has already been accepted.");
-      }
-      
+      if (invitationData.status === 'accepted') return showInvitationError("This project invitation has already been accepted.");
       const invitedEmail = invitationData.invitedEmail;
-      if (!invitedEmail) {
-        return showInvitationError("This invitation is invalid (missing email).");
-      }
-      
-      // Check if a user with this email already exists
+      if (!invitedEmail) return showInvitationError("This project invitation is invalid (missing email).");
+
       const usersRef = collection(db, "users");
       const q = query(usersRef, where("email", "==", invitedEmail));
       const userQuerySnapshot = await getDocs(q);
-      
+
       if (!userQuerySnapshot.empty) {
-        // USER EXISTS
         const existingUserData = userQuerySnapshot.docs[0].data();
         showWelcome(existingUserData.name, existingUserData.avatar, existingUserData.email);
         document.getElementById("welcome-message").textContent = `Welcome back, ${existingUserData.name}!`;
         feedbackElement.textContent = `You've been invited to a project. Please sign in to accept.`;
-        
       } else {
-        // USER DOES NOT EXIST
         emailInput.value = invitedEmail;
         emailInput.readOnly = true;
-        feedbackElement.textContent = `Invited as ${invitedEmail}. Please register or sign in to continue.`;
+        feedbackElement.textContent = `Invited to a project as ${invitedEmail}. Please register or sign in.`;
       }
-      
     } catch (error) {
-      // The catch block will now handle unexpected errors (e.g., network failure)
       showInvitationError("An unexpected error occurred. Please check your connection and try again.");
     }
-    
+  } else if (parts.length === 3 && parts[1] === 'workspace-invite' && parts[2]) {
+    invitationId = parts[2];
+    console.log("Workspace Invitation ID found:", invitationId);
+    const feedbackElement = document.querySelector(".subtitle");
+
+    try {
+      feedbackElement.textContent = "Verifying workspace invitation, please wait...";
+      const invitationRef = doc(db, "InvitedWorkspaces", invitationId);
+      const invitationSnap = await getDoc(invitationRef);
+
+      if (!invitationSnap.exists()) return showInvitationError("This workspace invitation link is invalid or has expired.");
+      const invitationData = invitationSnap.data();
+      if (invitationData.status === 'accepted') return showInvitationError("This workspace invitation has already been accepted.");
+      const invitedEmail = invitationData.invitedEmail;
+      if (!invitedEmail) return showInvitationError("This workspace invitation is invalid (missing email).");
+
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("email", "==", invitedEmail));
+      const userQuerySnapshot = await getDocs(q);
+
+      if (!userQuerySnapshot.empty) {
+        const existingUserData = userQuerySnapshot.docs[0].data();
+        const workspaceId = invitationData.workspaceId;
+        sessionStorage.setItem('pendingWorkspaceId', workspaceId);
+        showWelcome(existingUserData.name, existingUserData.avatar, existingUserData.email);
+        document.getElementById("welcome-message").textContent = `Welcome back, ${existingUserData.name}!`;
+        feedbackElement.textContent = `Please sign in to join the workspace. You will be redirected after login.`;
+      } else {
+        emailInput.value = invitedEmail;
+        emailInput.readOnly = true;
+        feedbackElement.textContent = `Invited to a workspace as ${invitedEmail}. Please register or sign in.`;
+      }
+    } catch (error) {
+      showInvitationError("An unexpected error occurred. Please check your connection and try again.");
+    }
   } else {
     console.log("Not an invitation link.");
     if (document.getElementById("acceptance-view")) {
@@ -168,7 +184,17 @@ acceptInvitationBtn?.addEventListener("click", async () => {
     alert("No invitation ID found. Cannot accept invitation.");
     return;
   }
-  await handleInvitationAcceptance(user, invitationId);
+  
+  const path = window.location.pathname;
+  if (path.includes('/workspace-invite/')) {
+    console.log("Accepting WORKSPACE invitation...");
+    await handleWorkspaceInvitationAcceptance(user, invitationId);
+  } else if (path.includes('/invitation/')) {
+    console.log("Accepting PROJECT invitation...");
+    await handleProjectInvitationAcceptance(user, invitationId);
+  } else {
+    alert("Could not determine invitation type from URL.");
+  }
 });
 
 
@@ -377,6 +403,76 @@ function generateAvatar(initials, backgroundColor = '#333') {
   const dataUrl = canvas.toDataURL("image/png");
   console.log("Avatar generated.");
   return dataUrl;
+}
+
+async function handleWorkspaceInvitationAcceptance(user, invId) {
+  console.log(`Accepting workspace invitation ${invId} for user ${user.uid}`);
+  acceptInvitationBtn.disabled = true;
+  acceptInvitationBtn.textContent = "Processing...";
+
+  const invitationRef = doc(db, "InvitedWorkspaces", invId);
+  const userRef = doc(db, "users", user.uid);
+
+  try {
+    const invitationSnap = await getDoc(invitationRef);
+    if (!invitationSnap.exists()) throw new Error("This invitation is no longer valid or has been deleted.");
+
+    const invitationData = invitationSnap.data();
+    if (invitationData.status === 'accepted') throw new Error("This invitation has already been accepted.");
+    if (invitationData.invitedEmail.toLowerCase() !== user.email.toLowerCase()) {
+      throw new Error("This invitation is for a different email address.");
+    }
+
+    const { workspaceId, workspaceRefPath, invitedBy } = invitationData;
+    if (!workspaceId || !workspaceRefPath) throw new Error("Invitation is corrupted (missing workspace data).");
+
+    const workspaceRef = doc(db, workspaceRefPath);
+    const workspaceSnap = await getDoc(workspaceRef);
+    if (!workspaceSnap.exists()) throw new Error("The workspace associated with this invitation no longer exists.");
+    
+    // Prepare all database changes in a single batch
+    const batch = writeBatch(db);
+
+    // 1. Update the user's document to set their selected workspace
+    batch.update(userRef, { selectedWorkspace: workspaceId });
+
+    // 2. Add the user to the workspace's member list
+    batch.update(workspaceRef, { members: arrayUnion(user.uid) });
+
+    // 3. Update the invitation status to "accepted"
+    batch.update(invitationRef, {
+      status: "accepted",
+      acceptedAt: serverTimestamp(),
+      acceptedBy: { uid: user.uid, name: user.displayName, email: user.email }
+    });
+    
+    // 4. (Optional but good practice) Clean up the pending invite from the inviter's user document
+    if (invitedBy && invitedBy.uid) {
+        const inviterUserRef = doc(db, 'users', invitedBy.uid);
+        const inviterSnap = await getDoc(inviterUserRef);
+        if (inviterSnap.exists()) {
+            const pendingInviteToRemove = (inviterSnap.data().workspacePendingInvites || []).find(p => p.invitationId === invId);
+            if (pendingInviteToRemove) {
+                batch.update(inviterUserRef, { workspacePendingInvites: arrayRemove(pendingInviteToRemove) });
+            }
+        }
+    }
+
+    // Commit all changes at once
+    await batch.commit();
+
+    console.log("✅ Workspace invitation accepted successfully!");
+    alert("Invitation accepted! You are now a member of the workspace.");
+
+    // Redirect the user to the new workspace
+    window.location.href = `/myworkspace/${workspaceId}`;
+
+  } catch (error) {
+    console.error("❌ Error accepting workspace invitation:", error);
+    alert("Error: " + error.message);
+    acceptInvitationBtn.disabled = false;
+    acceptInvitationBtn.textContent = "Accept Invitation";
+  }
 }
 
 // Pick random background color
