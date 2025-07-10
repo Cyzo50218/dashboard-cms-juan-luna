@@ -60,7 +60,7 @@ const fullNameInput = document.getElementById("full-name");
 document.addEventListener('DOMContentLoaded', async () => {
   const path = window.location.pathname;
   const parts = path.split('/');
-  
+
   const showInvitationError = (message) => {
     const feedbackElement = document.querySelector(".subtitle");
     console.error("Invitation Error:", message);
@@ -147,6 +147,77 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (error) {
       showInvitationError("An unexpected error occurred. Please check your connection and try again.");
     }
+  } else if (parts.length === 5 && parts[1] === 'tasks' && parts[3] === 'list') {
+    const numericProjectId = parts[4];
+    console.log("Direct project view link detected for project:", numericProjectId);
+
+    const feedbackElement = document.querySelector(".subtitle");
+    const mainTitle = document.querySelector("h2");
+
+    // Hide all forms initially
+    document.getElementById("registration-form").style.display = 'none';
+    document.getElementById("google-signin-btn").style.display = 'none';
+    document.getElementById("continue-email-link").style.display = 'none';
+    document.getElementById("orText").style.display = 'none';
+
+    feedbackElement.textContent = "Verifying your access, please wait...";
+
+    // Use onAuthStateChanged for a reliable check of the user's login state
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // USER IS LOGGED IN
+        console.log("User is logged in:", user.email);
+        try {
+          // Find the project using its numeric ID (assuming this field exists)
+          const projectsCollectionGroup = collectionGroup(db, 'projects');
+          const q = query(projectsCollectionGroup, where('numericProjectId', '==', numericProjectId));
+          const projectQuerySnapshot = await getDocs(q);
+
+          if (projectQuerySnapshot.empty) {
+            mainTitle.textContent = "Not Found";
+            feedbackElement.textContent = "The project you are looking for does not exist.";
+            return;
+          }
+
+          const projectData = projectQuerySnapshot.docs[0].data();
+          const memberUIDs = projectData.memberUIDs || [];
+
+          // Check if the logged-in user is a member of the project
+          if (memberUIDs.includes(user.uid)) {
+            // This case is unlikely on a register page, but for completeness:
+            // it means the user is logged in and has access, so we can redirect them.
+            mainTitle.textContent = "Access Verified";
+            feedbackElement.textContent = "Redirecting you to the project...";
+            // Redirect them to the page they were trying to access
+            window.location.href = window.location.pathname;
+          } else {
+            // **THIS IS THE KEY LOGIC YOU REQUESTED**
+            // User is logged in but with the WRONG account.
+            mainTitle.textContent = "Access Denied";
+            feedbackElement.textContent = `The account you are signed in with (${user.email}) is not a member of this project. Please sign out and use the correct account.`;
+            feedbackElement.style.color = "#E53E3E"; // Red color for error
+
+            // Optionally, you could show a "Sign Out" button here
+          }
+
+        } catch (error) {
+          console.error("Error verifying project access:", error);
+          mainTitle.textContent = "Error";
+          feedbackElement.textContent = "An error occurred while verifying your access.";
+        }
+
+      } else {
+        // NO USER IS LOGGED IN
+        console.log("No user is logged in.");
+        mainTitle.textContent = "Login Required";
+        feedbackElement.textContent = "Please sign in or create an account to view this project.";
+
+        // Show the login/register options again
+        document.getElementById("google-signin-btn").style.display = 'block';
+        document.getElementById("continue-email-link").style.display = 'block';
+        document.getElementById("orText").style.display = 'block';
+      }
+    });
   } else {
     console.log("Not an invitation link.");
     if (document.getElementById("acceptance-view")) {
@@ -184,7 +255,7 @@ acceptInvitationBtn?.addEventListener("click", async () => {
     alert("No invitation ID found. Cannot accept invitation.");
     return;
   }
-  
+
   const path = window.location.pathname;
   if (path.includes('/workspace-invite/')) {
     console.log("Accepting WORKSPACE invitation...");
@@ -201,30 +272,30 @@ acceptInvitationBtn?.addEventListener("click", async () => {
 // Email Registration Submit
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
-  
+
   const email = emailInput.value.trim();
   const password = passwordInput.value.trim();
   const fullName = fullNameInput.value.trim();
-  
+
   console.log("Starting email registration for:", email, fullName);
-  
+
   try {
     // Step 1: Create the user in Firebase Authentication
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
     console.log("User registered in Auth:", user.uid);
-    
+
     // Step 2: Update the user's profile in Firebase Authentication
     await updateProfile(user, { displayName: fullName });
     console.log("Profile updated with display name.");
-    
+
     // Step 3: Call our single, reusable function to handle ALL database and storage operations.
     // It creates the user doc, generates/uploads the avatar, AND creates the default workspace.
     const photoURL = await saveUserData(user, fullName, email, 'email');
-    
+
     // Step 4: Show the final welcome screen
     showWelcome(fullName, photoURL, email);
-    
+
   } catch (error) {
     console.error("Registration error:", error);
     alert("Error: " + error.message);
@@ -239,10 +310,10 @@ document.querySelectorAll("#google-signin-btn, #google-signin-btn-form").forEach
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-      
+
       // This also calls our single, reusable function.
       await saveUserData(user, user.displayName, user.email, 'google', user.photoURL);
-      
+
       showWelcome(user.displayName, user.photoURL, user.email);
     } catch (error) {
       console.error("Google Sign-in error:", error);
@@ -262,9 +333,9 @@ function showWelcome(name, photoURL, email = '') {
   googleBtn.style.display = "none";
   continueEmailLink.style.display = "none";
   acceptanceView.style.display = "block";
-  
+
   welcomeMessage.textContent = `Welcome, ${name}!`;
-  
+
   const photo = document.getElementById("user-photo");
   if (photoURL) {
     photo.src = photoURL;
@@ -278,8 +349,8 @@ function showWelcome(name, photoURL, email = '') {
   }
 }
 
-async function handleInvitationAcceptance(user, invId) {
-  console.log(`Accepting invitation ${invId} for user ${user.uid}`);
+async function handleProjectInvitationAcceptance(user, invId) {
+  console.log(`Accepting project invitation ${invId} for user ${user.uid}`);
   acceptInvitationBtn.disabled = true;
   acceptInvitationBtn.textContent = "Processing...";
   
@@ -287,14 +358,9 @@ async function handleInvitationAcceptance(user, invId) {
   
   try {
     const invitationSnap = await getDoc(invitationRef);
-    
-    if (!invitationSnap.exists()) {
-      throw new Error("This invitation is no longer valid or has been deleted.");
-    }
+    if (!invitationSnap.exists()) throw new Error("This invitation is no longer valid or has been deleted.");
     
     const invitationData = invitationSnap.data();
-    console.log("Invitation data:", invitationData);
-    
     if (invitationData.invitedEmail.toLowerCase() !== user.email.toLowerCase()) {
       throw new Error("This invitation is for a different email address. Please log in with the correct account.");
     }
@@ -302,84 +368,62 @@ async function handleInvitationAcceptance(user, invId) {
     const projectId = invitationData.projectId;
     const role = invitationData.role;
     const projectsCollectionGroup = collectionGroup(db, 'projects');
-    
     const q = query(projectsCollectionGroup, where('projectId', '==', projectId));
     const projectQuerySnapshot = await getDocs(q);
     
-    if (projectQuerySnapshot.empty) {
-      throw new Error("The project associated with this invitation no longer exists.");
-    }
+    if (projectQuerySnapshot.empty) throw new Error("The project associated with this invitation no longer exists.");
     
     const projectSnap = projectQuerySnapshot.docs[0];
     const projectRef = projectSnap.ref;
     const projectData = projectSnap.data();
     
     const batch = writeBatch(db);
-    
-    // ✅ Get the user's active workspace using the new, direct method.
     const userDocRef = doc(db, 'users', user.uid);
     const userSnap = await getDoc(userDocRef);
     let activeWorkspaceId = null;
     
     if (userSnap.exists() && userSnap.data().selectedWorkspace) {
       activeWorkspaceId = userSnap.data().selectedWorkspace;
-      console.log("Found active workspace:", activeWorkspaceId);
-    } else {
-      console.warn("Could not find an active workspace for the user. Skipping auto-selection of the project.");
     }
     
-    // --- The old query logic has been completely replaced by the block above ---
-    
-    // Find the specific pending invite object to remove
     const pendingInviteToRemove = (projectData.pendingInvites || []).find(p => p.invitationId === invId);
     if (pendingInviteToRemove) {
       batch.update(projectRef, { pendingInvites: arrayRemove(pendingInviteToRemove) });
     }
     
-    // Add the new member to the project
     batch.update(projectRef, {
       members: arrayUnion({ uid: user.uid, role: role }),
       memberUIDs: arrayUnion(user.uid)
     });
     
-    // Update the invitation status
     batch.update(invitationRef, {
       status: "accepted",
       acceptedAt: serverTimestamp(),
-      acceptedBy: {
-        uid: user.uid,
-        name: user.displayName,
-        email: user.email
-      }
+      acceptedBy: { uid: user.uid, name: user.displayName, email: user.email }
     });
     
-    // If an active workspace was found, automatically select the new project for the user.
     if (activeWorkspaceId) {
       const workspaceRef = doc(db, `users/${user.uid}/myworkspace/${activeWorkspaceId}`);
-      batch.set(workspaceRef, {
-        selectedProjectId: projectId
-      }, { merge: true });
+      batch.set(workspaceRef, { selectedProjectId: projectId }, { merge: true });
     }
     
-    // Commit all changes at once
     await batch.commit();
     
-    console.log("✅ Invitation accepted and project updated successfully!");
+    console.log("✅ Project invitation accepted and project updated successfully!");
     alert("Invitation accepted! You are now a member of the project.");
     
     const numericUserId = stringToNumericString(user.uid);
     const numericProjectId = stringToNumericString(projectId);
-    const href = `/tasks/${numericUserId}/list/${numericProjectId}`;
-    console.log(`Redirecting to: ${href}`);
-    window.location.href = href;
+    window.location.href = `/tasks/${numericUserId}/list/${numericProjectId}`;
     
   } catch (error) {
-    console.error("❌ Error accepting invitation:", error);
+    console.error("❌ Error accepting project invitation:", error);
     alert("Error: " + error.message);
     acceptInvitationBtn.disabled = false;
     acceptInvitationBtn.textContent = "Accept Invitation";
   }
 }
+
 
 // Generate initials avatar
 function generateAvatar(initials, backgroundColor = '#333') {
@@ -388,18 +432,18 @@ function generateAvatar(initials, backgroundColor = '#333') {
   const size = 96;
   canvas.width = size;
   canvas.height = size;
-  
+
   const ctx = canvas.getContext("2d");
   ctx.fillStyle = backgroundColor;
   ctx.fillRect(0, 0, size, size);
-  
+
   ctx.font = "bold 40px Roboto, sans-serif";
   ctx.fillStyle = "#fff";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  
+
   ctx.fillText(initials, size / 2, size / 2 + 2);
-  
+
   const dataUrl = canvas.toDataURL("image/png");
   console.log("Avatar generated.");
   return dataUrl;
@@ -429,7 +473,7 @@ async function handleWorkspaceInvitationAcceptance(user, invId) {
     const workspaceRef = doc(db, workspaceRefPath);
     const workspaceSnap = await getDoc(workspaceRef);
     if (!workspaceSnap.exists()) throw new Error("The workspace associated with this invitation no longer exists.");
-    
+
     // Prepare all database changes in a single batch
     const batch = writeBatch(db);
 
@@ -445,17 +489,17 @@ async function handleWorkspaceInvitationAcceptance(user, invId) {
       acceptedAt: serverTimestamp(),
       acceptedBy: { uid: user.uid, name: user.displayName, email: user.email }
     });
-    
+
     // 4. (Optional but good practice) Clean up the pending invite from the inviter's user document
     if (invitedBy && invitedBy.uid) {
-        const inviterUserRef = doc(db, 'users', invitedBy.uid);
-        const inviterSnap = await getDoc(inviterUserRef);
-        if (inviterSnap.exists()) {
-            const pendingInviteToRemove = (inviterSnap.data().workspacePendingInvites || []).find(p => p.invitationId === invId);
-            if (pendingInviteToRemove) {
-                batch.update(inviterUserRef, { workspacePendingInvites: arrayRemove(pendingInviteToRemove) });
-            }
+      const inviterUserRef = doc(db, 'users', invitedBy.uid);
+      const inviterSnap = await getDoc(inviterUserRef);
+      if (inviterSnap.exists()) {
+        const pendingInviteToRemove = (inviterSnap.data().workspacePendingInvites || []).find(p => p.invitationId === invId);
+        if (pendingInviteToRemove) {
+          batch.update(inviterUserRef, { workspacePendingInvites: arrayRemove(pendingInviteToRemove) });
         }
+      }
     }
 
     // Commit all changes at once
@@ -493,13 +537,13 @@ async function saveUserData(user, fullName, email, provider, photoURL = null) {
     console.warn("⚠️ User not authenticated. Cannot write to Firestore.");
     return null;
   }
-  
+
   const userRef = doc(db, "users", user.uid);
   const userSnap = await getDoc(userRef);
   const isNewUser = !userSnap.exists();
-  
+
   console.log(isNewUser ? "New user detected." : "Existing user detected.");
-  
+
   // If the user already exists, we don't need to do anything else here.
   // Just update their data if necessary (e.g., new Google avatar).
   if (!isNewUser) {
@@ -512,11 +556,11 @@ async function saveUserData(user, fullName, email, provider, photoURL = null) {
     console.log(`✅ Existing user data for ${email} refreshed.`);
     return photoURL || existingData.avatar;
   }
-  
+
   // --- Start of New User Setup ---
   console.log("Starting setup for new user...");
   let finalPhotoURL = photoURL;
-  
+
   // 1. Generate an avatar if one doesn't exist (for email signups)
   if (provider === 'email') {
     const initials = fullName.split(' ').slice(0, 2).map(w => w[0].toUpperCase()).join('');
@@ -528,10 +572,10 @@ async function saveUserData(user, fullName, email, provider, photoURL = null) {
     finalPhotoURL = await getDownloadURL(storageRef);
     console.log("Generated and uploaded new avatar.");
   }
-  
+
   // 2. Prepare the batch write to ensure atomicity
   const batch = writeBatch(db);
-  
+
   // 3. Prepare the new workspace document
   // We get its ID *before* committing the batch.
   const workspaceCollectionRef = collection(db, `users/${user.uid}/myworkspace`);
@@ -541,7 +585,7 @@ async function saveUserData(user, fullName, email, provider, photoURL = null) {
     createdAt: serverTimestamp(),
     members: [user.uid]
   };
-  
+
   // 4. Prepare the new user document, now INCLUDING the selectedWorkspace ID
   const newUserData = {
     id: user.uid,
@@ -552,14 +596,14 @@ async function saveUserData(user, fullName, email, provider, photoURL = null) {
     createdAt: serverTimestamp(),
     selectedWorkspace: newWorkspaceRef.id // Assign the ID directly
   };
-  
+
   // 5. Add both operations to the batch
   batch.set(userRef, newUserData); // Operation 1: Create the user doc
   batch.set(newWorkspaceRef, newWorkspaceData); // Operation 2: Create the workspace doc
-  
+
   // 6. Commit the batch
   await batch.commit();
   console.log("✅ New user and default workspace created atomically.");
-  
+
   return finalPhotoURL;
 }

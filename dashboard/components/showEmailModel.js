@@ -765,7 +765,7 @@ export async function showInviteModal() {
                 });
                 
                 // Operation 3: Send the actual email (this happens outside the batch)
-                const invitationUrl = `https://your-app-url.com/workspace-invite/${invitationId}`;
+                const invitationUrl = `https://cms.juanlunacollections.com/workspace-invite/${invitationId}`;
                 await sendEmailWorkspaceInvitation({
                     email: email,
                     workspaceName: workspaceName,

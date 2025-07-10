@@ -67,3 +67,5 @@ node_modules/
 
 # dataconnect generated files
 .dataconnect
+
+functions/credentials/juan-luna-cms-db-account-credentials.json
