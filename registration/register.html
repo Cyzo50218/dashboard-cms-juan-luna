@@ -12,9 +12,10 @@
   <div class="main-container">
     <div class="card">
       <img src="/assets/logo.png" alt="Logo" class="logo" />
-<h2>Welcome to Juan Luna<br> Contact Management System</h2>
-<p class="subtitle">Create your account to get started managing your tasks and projects efficiently.</p>
-<br>
+      <h2>Welcome to Juan Luna<br> Contact Management System</h2>
+      <p class="subtitle">Create your account to get started managing your tasks and projects efficiently.</p>
+      <br>
+
       <button id="google-signin-btn" class="google-btn">
         <i class="fab fa-google"></i>
         Continue with Google
@@ -26,8 +27,7 @@
       <form id="registration-form" style="display: none;">
         <div class="input-group">
           <i class="fa fa-envelope icon"></i>
-<input type="email" id="email" placeholder="Email" autocomplete="email" required>
-
+          <input type="email" id="email" placeholder="Email" autocomplete="email" required>
         </div>
         <div class="input-group">
           <i class="fa fa-user icon"></i>
@@ -41,30 +41,25 @@
         <p class="terms">By clicking Register, you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.</p>
         <button type="submit" class="register-btn">Register</button>
         <div class="divider">
-  <span>or</span>
-</div>
-
-<button id="google-signin-btn-form" class="google-btn">
-  <i class="fab fa-google"></i>
-  Continue with Google
-</button>
-
+          <span>or</span>
+        </div>
+        <button id="google-signin-btn-form" class="google-btn">
+          <i class="fab fa-google"></i>
+          Continue with Google
+        </button>
       </form>
 
       <div id="acceptance-view" style="display: none;">
+        <p id="acceptance-feedback" class="subtitle"></p>
         <p class="welcome-message" id="welcome-message">Welcome!</p>
-<div id="user-profile">
-<img id="user-photo" src="" alt="User Photo" referrerpolicy="no-referrer" width="96" height="96" />
-</div>
+        <div id="user-profile">
+          <img id="user-photo" src="" alt="User Photo" referrerpolicy="no-referrer" width="96" height="96" />
+        </div>
         <button id="accept-invitation-btn" class="accept-btn">Accept Invitation</button>
       </div>
-      
-            <!-- Switch Account Button (Initially Hidden) -->
-      <button id="switch-account-btn" class="google-btn" style="display: none; margin-top: 20px;">
-        <i class="fa-solid fa-right-from-bracket"></i>
-        Switch Account
-      </button>
-      
+
+      <button id="switch-account-btn" class="google-btn" style="display: none; margin-top: 20px;">Switch Account</button>
+
     </div>
   </div>
 
