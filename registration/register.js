@@ -5,9 +5,9 @@ import {
   signInWithPopup,
   onAuthStateChanged,
   createUserWithEmailAndPassword,
+  signOut,
   updateProfile
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-
 import {
   getFirestore,
   doc,
@@ -24,14 +24,12 @@ import {
   where,
   getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
 import {
   getStorage,
   ref,
   uploadString,
   getDownloadURL
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
-
 import { firebaseConfig } from "/services/firebase-config.js";
 
 // Initialize Firebase
@@ -57,21 +55,61 @@ const registrationForm = document.getElementById("registration-form");
 const acceptInvitationBtn = document.getElementById("accept-invitation-btn");
 const emailInput = document.getElementById("email");
 const fullNameInput = document.getElementById("full-name");
+const feedbackElement = document.querySelector(".subtitle");
+const mainTitle = document.querySelector("h2");
+
 
 document.addEventListener('DOMContentLoaded', () => {
   const path = window.location.pathname;
   const parts = path.split('/');
   
+  /**
+   * Shows an invitation error message and optionally a "Switch Account" button.
+   * @param {string} message The error message to display.
+   */
   const showInvitationError = (message) => {
-    const feedbackElement = document.querySelector(".subtitle");
+    // Clear previous dynamic buttons
+    const existingSwitchBtn = document.getElementById('switch-account-btn');
+    if (existingSwitchBtn) {
+      existingSwitchBtn.remove();
+    }
+    
     console.error("Invitation Error:", message);
-    alert(message);
+    mainTitle.textContent = "Access Denied";
     feedbackElement.textContent = message;
-    feedbackElement.style.color = "#E53E3E";
+    feedbackElement.style.color = "#E53E3E"; // Red for error
+    
+    // Hide all standard login/registration UI elements
     document.getElementById("registration-form").style.display = 'none';
     document.getElementById("google-signin-btn").style.display = 'none';
     document.getElementById("continue-email-link").style.display = 'none';
     document.getElementById("orText").style.display = 'none';
+    if (acceptanceView) acceptanceView.style.display = 'none';
+    
+    // **KEY CHANGE**: Check for the specific "wrong account" message
+    if (message.includes("but you are signed in as")) {
+      // Create and show the "Switch Account" button
+      const switchAccountBtn = document.createElement('button');
+      switchAccountBtn.textContent = 'Switch Account';
+      switchAccountBtn.id = 'switch-account-btn'; // Assign an ID for styling
+      switchAccountBtn.className = 'google-signin-btn'; // Reuse existing button style
+      switchAccountBtn.style.marginTop = '20px'; // Add some space
+      
+      // Append the button right after the feedback message
+      feedbackElement.parentNode.insertBefore(switchAccountBtn, feedbackElement.nextSibling);
+      
+      // Add the sign-out functionality
+      switchAccountBtn.onclick = () => {
+        console.log("Switching account: signing out...");
+        signOut(auth).then(() => {
+          console.log("Sign-out successful. Reloading page.");
+          window.location.reload();
+        }).catch((error) => {
+          console.error("Sign-out error", error);
+          alert("Could not sign out. Please try again.");
+        });
+      };
+    }
   };
   
   const handleRedirectWorkspace = (workspaceId) => {
@@ -83,7 +121,6 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Helper function to process project invitations
   const processProjectInvitation = async (invitationId, user) => {
-    const feedbackElement = document.querySelector(".subtitle");
     feedbackElement.textContent = "Verifying project invitation, please wait...";
     
     try {
@@ -106,10 +143,8 @@ document.addEventListener('DOMContentLoaded', () => {
       
       if (user) {
         // User is logged in, check if their email matches
-        if (user.email === invitedEmail) {
-          showWelcome(user.displayName, user.photoURL, user.email);
-          document.getElementById("welcome-message").textContent = `Welcome back, ${user.displayName}!`;
-          feedbackElement.textContent = `You've been invited to a project. Please sign in to accept.`;
+        if (user.email.toLowerCase() === invitedEmail.toLowerCase()) {
+          showWelcome(user.displayName, user.photoURL, user.email, user);
         } else {
           showInvitationError(`This invitation is for ${invitedEmail}, but you are signed in as ${user.email}. Please sign out and use the correct account.`);
         }
@@ -121,13 +156,13 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (!userQuerySnapshot.empty) {
           const existingUserData = userQuerySnapshot.docs[0].data();
-          showWelcome(existingUserData.name, existingUserData.avatar, existingUserData.email);
-          document.getElementById("welcome-message").textContent = `Welcome back, ${existingUserData.name}!`;
-          feedbackElement.textContent = `You've been invited to a project. Please sign in to accept.`;
+          mainTitle.textContent = "Invitation to Project";
+          feedbackElement.textContent = `Welcome back, ${existingUserData.name}! You've been invited to a project. Please sign in to accept.`;
         } else {
           emailInput.value = invitedEmail;
           emailInput.readOnly = true;
-          feedbackElement.textContent = `Invited to a project as ${invitedEmail}. Please register or sign in.`;
+          mainTitle.textContent = "You're Invited!";
+          feedbackElement.textContent = `You've been invited to a project as ${invitedEmail}. Please register or sign in to continue.`;
         }
       }
     } catch (error) {
@@ -138,7 +173,6 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Helper function to process workspace invitations
   const processWorkspaceInvitation = async (invitationId, user) => {
-    const feedbackElement = document.querySelector(".subtitle");
     feedbackElement.textContent = "Verifying workspace invitation, please wait...";
     
     try {
@@ -164,10 +198,8 @@ document.addEventListener('DOMContentLoaded', () => {
       
       if (user) {
         // User is logged in
-        if (user.email === invitedEmail) {
-          showWelcome(user.displayName, user.photoURL, user.email);
-          document.getElementById("welcome-message").textContent = `Welcome back, ${user.displayName}!`;
-          feedbackElement.textContent = `Please sign in to join the workspace. You will be redirected after login.`;
+        if (user.email.toLowerCase() === invitedEmail.toLowerCase()) {
+          showWelcome(user.displayName, user.photoURL, user.email, user);
         } else {
           showInvitationError(`This invitation is for ${invitedEmail}, but you are signed in as ${user.email}. Please sign out and use the correct account.`);
         }
@@ -179,12 +211,12 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (!userQuerySnapshot.empty) {
           const existingUserData = userQuerySnapshot.docs[0].data();
-          showWelcome(existingUserData.name, existingUserData.avatar, existingUserData.email);
-          document.getElementById("welcome-message").textContent = `Welcome back, ${existingUserData.name}!`;
-          feedbackElement.textContent = `Please sign in to join the workspace. You will be redirected after login.`;
+          mainTitle.textContent = "Invitation to Workspace";
+          feedbackElement.textContent = `Welcome back, ${existingUserData.name}! Please sign in to join the workspace.`;
         } else {
           emailInput.value = invitedEmail;
           emailInput.readOnly = true;
+          mainTitle.textContent = "You're Invited!";
           feedbackElement.textContent = `Invited to a workspace as ${invitedEmail}. Please register or sign in.`;
         }
       }
@@ -212,9 +244,6 @@ document.addEventListener('DOMContentLoaded', () => {
   } else if (parts.length === 5 && parts[1] === 'tasks' && parts[3] === 'list') {
     const numericProjectId = parts[4];
     console.log("Direct project view link detected for project:", numericProjectId);
-    
-    const feedbackElement = document.querySelector(".subtitle");
-    const mainTitle = document.querySelector("h2");
     
     // Hide all forms initially
     document.getElementById("registration-form").style.display = 'none';
@@ -247,9 +276,8 @@ document.addEventListener('DOMContentLoaded', () => {
             feedbackElement.textContent = "Redirecting you to the project...";
             window.location.href = window.location.pathname;
           } else {
-            mainTitle.textContent = "Access Denied";
-            feedbackElement.textContent = `The account you are signed in with (${user.email}) is not a member of this project. Please sign out and use the correct account.`;
-            feedbackElement.style.color = "#E53E3E";
+            // This case uses the same logic, so we can reuse the function.
+            showInvitationError(`The account you are signed in with (${user.email}) does not have access to this project. Please sign out and use the correct account.`);
           }
         } catch (error) {
           console.error("Error verifying project access:", error);
@@ -295,58 +323,29 @@ continueEmailLink.addEventListener("click", (e) => {
   orText.style.display = "none";
 });
 
-// Accept invitation
-acceptInvitationBtn?.addEventListener("click", async () => {
-  const user = auth.currentUser;
-  if (!user) {
-    alert("Authentication error. Please sign in again.");
-    return;
-  }
-  if (!invitationId) {
-    alert("No invitation ID found. Cannot accept invitation.");
-    return;
-  }
-
-  const path = window.location.pathname;
-  if (path.includes('/workspace-invite/')) {
-    console.log("Accepting WORKSPACE invitation...");
-    await handleWorkspaceInvitationAcceptance(user, invitationId);
-  } else if (path.includes('/invitation/')) {
-    console.log("Accepting PROJECT invitation...");
-    await handleProjectInvitationAcceptance(user, invitationId);
-  } else {
-    alert("Could not determine invitation type from URL.");
-  }
-});
-
-
 // Email Registration Submit
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
-
+  
   const email = emailInput.value.trim();
   const password = passwordInput.value.trim();
   const fullName = fullNameInput.value.trim();
-
+  
   console.log("Starting email registration for:", email, fullName);
-
+  
   try {
-    // Step 1: Create the user in Firebase Authentication
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
     console.log("User registered in Auth:", user.uid);
-
-    // Step 2: Update the user's profile in Firebase Authentication
+    
     await updateProfile(user, { displayName: fullName });
     console.log("Profile updated with display name.");
-
-    // Step 3: Call our single, reusable function to handle ALL database and storage operations.
-    // It creates the user doc, generates/uploads the avatar, AND creates the default workspace.
+    
     const photoURL = await saveUserData(user, fullName, email, 'email');
-
-    // Step 4: Show the final welcome screen
-    showWelcome(fullName, photoURL, email);
-
+    
+    // After successful registration, we need to pass the full user object
+    showWelcome(fullName, photoURL, email, user);
+    
   } catch (error) {
     console.error("Registration error:", error);
     alert("Error: " + error.message);
@@ -361,11 +360,11 @@ document.querySelectorAll("#google-signin-btn, #google-signin-btn-form").forEach
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-
-      // This also calls our single, reusable function.
+      
       await saveUserData(user, user.displayName, user.email, 'google', user.photoURL);
-
-      showWelcome(user.displayName, user.photoURL, user.email);
+      
+      // After successful sign-in, pass the full user object
+      showWelcome(user.displayName, user.photoURL, user.email, user);
     } catch (error) {
       console.error("Google Sign-in error:", error);
       if (error.code !== 'auth/popup-closed-by-user') {
@@ -374,22 +373,44 @@ document.querySelectorAll("#google-signin-btn, #google-signin-btn-form").forEach
     }
   });
 });
-// Show welcome screen
+
+/**
+ * Shows the final welcome/acceptance screen.
+ * @param {string} name User's full name.
+ * @param {string} photoURL URL for the user's avatar.
+ * @param {string} email User's email.
+ * @param {object} user The full Firebase user object.
+ */
 function showWelcome(name, photoURL, email = '', user) {
   console.log("Showing welcome view for:", name);
-
+  
   // Hide registration/login forms
-  document.querySelector("h2").style.display = "none";
-  document.querySelector(".subtitle").style.display = "none";
+  mainTitle.style.display = "none";
+  feedbackElement.style.display = "none";
   registrationForm.style.display = "none";
   orText.style.display = "none";
   googleBtn.style.display = "none";
   continueEmailLink.style.display = "none";
   
+  // Clear any dynamic buttons like "Switch Account"
+  const existingSwitchBtn = document.getElementById('switch-account-btn');
+  if (existingSwitchBtn) {
+    existingSwitchBtn.remove();
+  }
+  
   // Show the acceptance view
   acceptanceView.style.display = "block";
   welcomeMessage.textContent = `Welcome, ${name}!`;
-
+  
+  const acceptFeedback = document.getElementById('acceptance-feedback');
+  const path = window.location.pathname;
+  if (path.includes('/invitation/')) {
+    acceptFeedback.textContent = "You've been invited to join a new project. Click below to accept.";
+  } else if (path.includes('/workspace-invite/')) {
+    acceptFeedback.textContent = "You've been invited to join a new workspace. Click below to accept.";
+  }
+  
+  
   // Set user photo
   const photo = document.getElementById("user-photo");
   if (photoURL) {
@@ -398,21 +419,18 @@ function showWelcome(name, photoURL, email = '', user) {
     const initials = name.split(' ').slice(0, 2).map(w => w[0].toUpperCase()).join('');
     photo.src = generateAvatar(initials, getRandomColor());
   }
-
-  // **NEW AND IMPROVED LOGIC**
-  // Attach the click listener here, ensuring 'user' is always valid.
+  
+  // Attach the click listener here, ensuring 'user' is valid.
   acceptInvitationBtn.onclick = async () => {
-    // The 'user' object is now guaranteed to be valid from the login/register step.
-    if (!user) {
-      alert("A critical error occurred. Please refresh and try again.");
+    if (!user || !user.uid) {
+      alert("Authentication error. Please refresh and sign in again.");
       return;
     }
     if (!invitationId) {
       alert("No invitation ID found. Cannot accept invitation.");
       return;
     }
-
-    const path = window.location.pathname;
+    
     if (path.includes('/workspace-invite/')) {
       console.log("Accepting WORKSPACE invitation...");
       await handleWorkspaceInvitationAcceptance(user, invitationId);
@@ -429,69 +447,69 @@ async function handleProjectInvitationAcceptance(user, invId) {
   console.log(`Accepting project invitation ${invId} for user ${user.uid}`);
   acceptInvitationBtn.disabled = true;
   acceptInvitationBtn.textContent = "Processing...";
-
+  
   const invitationRef = doc(db, "InvitedProjects", invId);
-
+  
   try {
     const invitationSnap = await getDoc(invitationRef);
     if (!invitationSnap.exists()) throw new Error("This invitation is no longer valid or has been deleted.");
-
+    
     const invitationData = invitationSnap.data();
     if (invitationData.invitedEmail.toLowerCase() !== user.email.toLowerCase()) {
       throw new Error("This invitation is for a different email address. Please log in with the correct account.");
     }
-
+    
     const projectId = invitationData.projectId;
     const role = invitationData.role;
     const projectsCollectionGroup = collectionGroup(db, 'projects');
     const q = query(projectsCollectionGroup, where('projectId', '==', projectId));
     const projectQuerySnapshot = await getDocs(q);
-
+    
     if (projectQuerySnapshot.empty) throw new Error("The project associated with this invitation no longer exists.");
-
+    
     const projectSnap = projectQuerySnapshot.docs[0];
     const projectRef = projectSnap.ref;
     const projectData = projectSnap.data();
-
+    
     const batch = writeBatch(db);
     const userDocRef = doc(db, 'users', user.uid);
     const userSnap = await getDoc(userDocRef);
     let activeWorkspaceId = null;
-
+    
     if (userSnap.exists() && userSnap.data().selectedWorkspace) {
       activeWorkspaceId = userSnap.data().selectedWorkspace;
     }
-
+    
     const pendingInviteToRemove = (projectData.pendingInvites || []).find(p => p.invitationId === invId);
     if (pendingInviteToRemove) {
       batch.update(projectRef, { pendingInvites: arrayRemove(pendingInviteToRemove) });
     }
-
+    
     batch.update(projectRef, {
       members: arrayUnion({ uid: user.uid, role: role }),
       memberUIDs: arrayUnion(user.uid)
     });
-
+    
     batch.update(invitationRef, {
       status: "accepted",
       acceptedAt: serverTimestamp(),
       acceptedBy: { uid: user.uid, name: user.displayName, email: user.email }
     });
-
+    
     if (activeWorkspaceId) {
       const workspaceRef = doc(db, `users/${user.uid}/myworkspace/${activeWorkspaceId}`);
       batch.set(workspaceRef, { selectedProjectId: projectId }, { merge: true });
     }
-
+    
     await batch.commit();
-
+    
     console.log("✅ Project invitation accepted and project updated successfully!");
     alert("Invitation accepted! You are now a member of the project.");
-
+    
     const numericUserId = stringToNumericString(user.uid);
     const numericProjectId = stringToNumericString(projectId);
     window.location.href = `/tasks/${numericUserId}/list/${numericProjectId}`;
-
+    
   } catch (error) {
     console.error("❌ Error accepting project invitation:", error);
     alert("Error: " + error.message);
@@ -508,18 +526,18 @@ function generateAvatar(initials, backgroundColor = '#333') {
   const size = 96;
   canvas.width = size;
   canvas.height = size;
-
+  
   const ctx = canvas.getContext("2d");
   ctx.fillStyle = backgroundColor;
   ctx.fillRect(0, 0, size, size);
-
+  
   ctx.font = "bold 40px Roboto, sans-serif";
   ctx.fillStyle = "#fff";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-
+  
   ctx.fillText(initials, size / 2, size / 2 + 2);
-
+  
   const dataUrl = canvas.toDataURL("image/png");
   console.log("Avatar generated.");
   return dataUrl;
@@ -529,44 +547,37 @@ async function handleWorkspaceInvitationAcceptance(user, invId) {
   console.log(`Accepting workspace invitation ${invId} for user ${user.uid}`);
   acceptInvitationBtn.disabled = true;
   acceptInvitationBtn.textContent = "Processing...";
-
+  
   const invitationRef = doc(db, "InvitedWorkspaces", invId);
   const userRef = doc(db, "users", user.uid);
-
+  
   try {
     const invitationSnap = await getDoc(invitationRef);
     if (!invitationSnap.exists()) throw new Error("This invitation is no longer valid or has been deleted.");
-
+    
     const invitationData = invitationSnap.data();
     if (invitationData.status === 'accepted') throw new Error("This invitation has already been accepted.");
     if (invitationData.invitedEmail.toLowerCase() !== user.email.toLowerCase()) {
       throw new Error("This invitation is for a different email address.");
     }
-
+    
     const { workspaceId, workspaceRefPath, invitedBy } = invitationData;
     if (!workspaceId || !workspaceRefPath) throw new Error("Invitation is corrupted (missing workspace data).");
-
+    
     const workspaceRef = doc(db, workspaceRefPath);
     const workspaceSnap = await getDoc(workspaceRef);
     if (!workspaceSnap.exists()) throw new Error("The workspace associated with this invitation no longer exists.");
-
-    // Prepare all database changes in a single batch
+    
     const batch = writeBatch(db);
-
-    // 1. Update the user's document to set their selected workspace
+    
     batch.update(userRef, { selectedWorkspace: workspaceId });
-
-    // 2. Add the user to the workspace's member list
     batch.update(workspaceRef, { members: arrayUnion(user.uid) });
-
-    // 3. Update the invitation status to "accepted"
     batch.update(invitationRef, {
       status: "accepted",
       acceptedAt: serverTimestamp(),
       acceptedBy: { uid: user.uid, name: user.displayName, email: user.email }
     });
-
-    // 4. (Optional but good practice) Clean up the pending invite from the inviter's user document
+    
     if (invitedBy && invitedBy.uid) {
       const inviterUserRef = doc(db, 'users', invitedBy.uid);
       const inviterSnap = await getDoc(inviterUserRef);
@@ -577,16 +588,14 @@ async function handleWorkspaceInvitationAcceptance(user, invId) {
         }
       }
     }
-
-    // Commit all changes at once
+    
     await batch.commit();
-
+    
     console.log("✅ Workspace invitation accepted successfully!");
     alert("Invitation accepted! You are now a member of the workspace.");
-
-    // Redirect the user to the new workspace
+    
     window.location.href = `/myworkspace/${workspaceId}`;
-
+    
   } catch (error) {
     console.error("❌ Error accepting workspace invitation:", error);
     alert("Error: " + error.message);
@@ -613,31 +622,27 @@ async function saveUserData(user, fullName, email, provider, photoURL = null) {
     console.warn("⚠️ User not authenticated. Cannot write to Firestore.");
     return null;
   }
-
+  
   const userRef = doc(db, "users", user.uid);
   const userSnap = await getDoc(userRef);
   const isNewUser = !userSnap.exists();
-
+  
   console.log(isNewUser ? "New user detected." : "Existing user detected.");
-
-  // If the user already exists, we don't need to do anything else here.
-  // Just update their data if necessary (e.g., new Google avatar).
+  
   if (!isNewUser) {
     const existingData = userSnap.data();
     const updateData = {
-      name: fullName, // Always update name/avatar in case it changed in Google
+      name: fullName,
       avatar: photoURL || existingData.avatar,
     };
     await setDoc(userRef, updateData, { merge: true });
     console.log(`✅ Existing user data for ${email} refreshed.`);
     return photoURL || existingData.avatar;
   }
-
-  // --- Start of New User Setup ---
+  
   console.log("Starting setup for new user...");
   let finalPhotoURL = photoURL;
-
-  // 1. Generate an avatar if one doesn't exist (for email signups)
+  
   if (provider === 'email') {
     const initials = fullName.split(' ').slice(0, 2).map(w => w[0].toUpperCase()).join('');
     const color = getRandomColor();
@@ -648,21 +653,16 @@ async function saveUserData(user, fullName, email, provider, photoURL = null) {
     finalPhotoURL = await getDownloadURL(storageRef);
     console.log("Generated and uploaded new avatar.");
   }
-
-  // 2. Prepare the batch write to ensure atomicity
+  
   const batch = writeBatch(db);
-
-  // 3. Prepare the new workspace document
-  // We get its ID *before* committing the batch.
   const workspaceCollectionRef = collection(db, `users/${user.uid}/myworkspace`);
-  const newWorkspaceRef = doc(workspaceCollectionRef); // Create a reference with a new ID
+  const newWorkspaceRef = doc(workspaceCollectionRef);
   const newWorkspaceData = {
     name: "My First Workspace",
     createdAt: serverTimestamp(),
     members: [user.uid]
   };
-
-  // 4. Prepare the new user document, now INCLUDING the selectedWorkspace ID
+  
   const newUserData = {
     id: user.uid,
     name: fullName,
@@ -670,16 +670,13 @@ async function saveUserData(user, fullName, email, provider, photoURL = null) {
     provider: provider,
     avatar: finalPhotoURL,
     createdAt: serverTimestamp(),
-    selectedWorkspace: newWorkspaceRef.id // Assign the ID directly
+    selectedWorkspace: newWorkspaceRef.id
   };
-
-  // 5. Add both operations to the batch
-  batch.set(userRef, newUserData); // Operation 1: Create the user doc
-  batch.set(newWorkspaceRef, newWorkspaceData); // Operation 2: Create the workspace doc
-
-  // 6. Commit the batch
+  
+  batch.set(userRef, newUserData);
+  batch.set(newWorkspaceRef, newWorkspaceData);
   await batch.commit();
   console.log("✅ New user and default workspace created atomically.");
-
+  
   return finalPhotoURL;
 }
