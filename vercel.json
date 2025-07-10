@@ -24,6 +24,14 @@
       "dest": "/registration/register.html"
     },
     {
+      "src": "/workspace-invite/([^/]+)",
+      "dest": "/registration/register.html"
+    },
+    {
+      "src": "/workspace-invite/([^/]+)",
+      "dest": "/registration/register.html"
+    },
+    {
       "src": "/logo.png",
       "dest": "/assets/logo.png"
     },
