@@ -57,10 +57,10 @@ const acceptInvitationBtn = document.getElementById("accept-invitation-btn");
 const emailInput = document.getElementById("email");
 const fullNameInput = document.getElementById("full-name");
 
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
   const path = window.location.pathname;
   const parts = path.split('/');
-
+  
   const showInvitationError = (message) => {
     const feedbackElement = document.querySelector(".subtitle");
     console.error("Invitation Error:", message);
@@ -72,157 +72,204 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById("continue-email-link").style.display = 'none';
     document.getElementById("orText").style.display = 'none';
   };
-
+  
   const handleRedirectWorkspace = (workspaceId) => {
     if (workspaceId) {
       console.log(`Redirecting to workspace: ${workspaceId}`);
       window.location.href = `/myworkspace/${workspaceId}`;
     }
   };
-
+  
+  // Helper function to process project invitations
+  const processProjectInvitation = async (invitationId, user) => {
+    const feedbackElement = document.querySelector(".subtitle");
+    feedbackElement.textContent = "Verifying project invitation, please wait...";
+    
+    try {
+      const invitationRef = doc(db, "InvitedProjects", invitationId);
+      const invitationSnap = await getDoc(invitationRef);
+      
+      if (!invitationSnap.exists()) {
+        return showInvitationError("This project invitation link is invalid or has expired.");
+      }
+      
+      const invitationData = invitationSnap.data();
+      if (invitationData.status === 'accepted') {
+        return showInvitationError("This project invitation has already been accepted.");
+      }
+      
+      const invitedEmail = invitationData.invitedEmail;
+      if (!invitedEmail) {
+        return showInvitationError("This project invitation is invalid (missing email).");
+      }
+      
+      if (user) {
+        // User is logged in, check if their email matches
+        if (user.email === invitedEmail) {
+          showWelcome(user.displayName, user.photoURL, user.email);
+          document.getElementById("welcome-message").textContent = `Welcome back, ${user.displayName}!`;
+          feedbackElement.textContent = `You've been invited to a project. Please sign in to accept.`;
+        } else {
+          showInvitationError(`This invitation is for ${invitedEmail}, but you are signed in as ${user.email}. Please sign out and use the correct account.`);
+        }
+      } else {
+        // No user is logged in, pre-fill email if it exists
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("email", "==", invitedEmail));
+        const userQuerySnapshot = await getDocs(q);
+        
+        if (!userQuerySnapshot.empty) {
+          const existingUserData = userQuerySnapshot.docs[0].data();
+          showWelcome(existingUserData.name, existingUserData.avatar, existingUserData.email);
+          document.getElementById("welcome-message").textContent = `Welcome back, ${existingUserData.name}!`;
+          feedbackElement.textContent = `You've been invited to a project. Please sign in to accept.`;
+        } else {
+          emailInput.value = invitedEmail;
+          emailInput.readOnly = true;
+          feedbackElement.textContent = `Invited to a project as ${invitedEmail}. Please register or sign in.`;
+        }
+      }
+    } catch (error) {
+      console.error("Firebase Query Failed:", error);
+      showInvitationError("An unexpected error occurred. Please check your connection and try again.");
+    }
+  };
+  
+  // Helper function to process workspace invitations
+  const processWorkspaceInvitation = async (invitationId, user) => {
+    const feedbackElement = document.querySelector(".subtitle");
+    feedbackElement.textContent = "Verifying workspace invitation, please wait...";
+    
+    try {
+      const invitationRef = doc(db, "InvitedWorkspaces", invitationId);
+      const invitationSnap = await getDoc(invitationRef);
+      
+      if (!invitationSnap.exists()) {
+        return showInvitationError("This workspace invitation link is invalid or has expired.");
+      }
+      
+      const invitationData = invitationSnap.data();
+      if (invitationData.status === 'accepted') {
+        return showInvitationError("This workspace invitation has already been accepted.");
+      }
+      
+      const invitedEmail = invitationData.invitedEmail;
+      if (!invitedEmail) {
+        return showInvitationError("This workspace invitation is invalid (missing email).");
+      }
+      
+      const workspaceId = invitationData.workspaceId;
+      sessionStorage.setItem('pendingWorkspaceId', workspaceId);
+      
+      if (user) {
+        // User is logged in
+        if (user.email === invitedEmail) {
+          showWelcome(user.displayName, user.photoURL, user.email);
+          document.getElementById("welcome-message").textContent = `Welcome back, ${user.displayName}!`;
+          feedbackElement.textContent = `Please sign in to join the workspace. You will be redirected after login.`;
+        } else {
+          showInvitationError(`This invitation is for ${invitedEmail}, but you are signed in as ${user.email}. Please sign out and use the correct account.`);
+        }
+      } else {
+        // No user is logged in
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("email", "==", invitedEmail));
+        const userQuerySnapshot = await getDocs(q);
+        
+        if (!userQuerySnapshot.empty) {
+          const existingUserData = userQuerySnapshot.docs[0].data();
+          showWelcome(existingUserData.name, existingUserData.avatar, existingUserData.email);
+          document.getElementById("welcome-message").textContent = `Welcome back, ${existingUserData.name}!`;
+          feedbackElement.textContent = `Please sign in to join the workspace. You will be redirected after login.`;
+        } else {
+          emailInput.value = invitedEmail;
+          emailInput.readOnly = true;
+          feedbackElement.textContent = `Invited to a workspace as ${invitedEmail}. Please register or sign in.`;
+        }
+      }
+    } catch (error) {
+      console.error("Firebase Query Failed:", error);
+      showInvitationError("An unexpected error occurred. Please check your connection and try again.");
+    }
+  };
+  
+  // ROUTING LOGIC
   if (parts.length === 3 && parts[1] === 'invitation' && parts[2]) {
     invitationId = parts[2];
     console.log("Project Invitation ID found:", invitationId);
-    const feedbackElement = document.querySelector(".subtitle");
-    try {
-      feedbackElement.textContent = "Verifying project invitation, please wait...";
-      const invitationRef = doc(db, "InvitedProjects", invitationId);
-      const invitationSnap = await getDoc(invitationRef);
-
-      if (!invitationSnap.exists()) return showInvitationError("This project invitation link is invalid or has expired.");
-      const invitationData = invitationSnap.data();
-      if (invitationData.status === 'accepted') return showInvitationError("This project invitation has already been accepted.");
-      const invitedEmail = invitationData.invitedEmail;
-      if (!invitedEmail) return showInvitationError("This project invitation is invalid (missing email).");
-
-      const usersRef = collection(db, "users");
-      const q = query(usersRef, where("email", "==", invitedEmail));
-      const userQuerySnapshot = await getDocs(q);
-
-      if (!userQuerySnapshot.empty) {
-        const existingUserData = userQuerySnapshot.docs[0].data();
-        showWelcome(existingUserData.name, existingUserData.avatar, existingUserData.email);
-        document.getElementById("welcome-message").textContent = `Welcome back, ${existingUserData.name}!`;
-        feedbackElement.textContent = `You've been invited to a project. Please sign in to accept.`;
-      } else {
-        emailInput.value = invitedEmail;
-        emailInput.readOnly = true;
-        feedbackElement.textContent = `Invited to a project as ${invitedEmail}. Please register or sign in.`;
-      }
-    } catch (error) {
-      showInvitationError("An unexpected error occurred. Please check your connection and try again.");
-    }
+    onAuthStateChanged(auth, (user) => {
+      processProjectInvitation(invitationId, user);
+    });
+    
   } else if (parts.length === 3 && parts[1] === 'workspace-invite' && parts[2]) {
     invitationId = parts[2];
     console.log("Workspace Invitation ID found:", invitationId);
-    const feedbackElement = document.querySelector(".subtitle");
-
-    try {
-      feedbackElement.textContent = "Verifying workspace invitation, please wait...";
-      const invitationRef = doc(db, "InvitedWorkspaces", invitationId);
-      const invitationSnap = await getDoc(invitationRef);
-
-      if (!invitationSnap.exists()) return showInvitationError("This workspace invitation link is invalid or has expired.");
-      const invitationData = invitationSnap.data();
-      if (invitationData.status === 'accepted') return showInvitationError("This workspace invitation has already been accepted.");
-      const invitedEmail = invitationData.invitedEmail;
-      if (!invitedEmail) return showInvitationError("This workspace invitation is invalid (missing email).");
-
-      const usersRef = collection(db, "users");
-      const q = query(usersRef, where("email", "==", invitedEmail));
-      const userQuerySnapshot = await getDocs(q);
-
-      if (!userQuerySnapshot.empty) {
-        const existingUserData = userQuerySnapshot.docs[0].data();
-        const workspaceId = invitationData.workspaceId;
-        sessionStorage.setItem('pendingWorkspaceId', workspaceId);
-        showWelcome(existingUserData.name, existingUserData.avatar, existingUserData.email);
-        document.getElementById("welcome-message").textContent = `Welcome back, ${existingUserData.name}!`;
-        feedbackElement.textContent = `Please sign in to join the workspace. You will be redirected after login.`;
-      } else {
-        emailInput.value = invitedEmail;
-        emailInput.readOnly = true;
-        feedbackElement.textContent = `Invited to a workspace as ${invitedEmail}. Please register or sign in.`;
-      }
-    } catch (error) {
-      // LOG THE ACTUAL ERROR to the console to see the real problem
-      console.error("Firebase Query Failed:", error);
-
-      showInvitationError("An unexpected error occurred. Please check your connection and try again.");
-    }
+    onAuthStateChanged(auth, (user) => {
+      processWorkspaceInvitation(invitationId, user);
+    });
+    
   } else if (parts.length === 5 && parts[1] === 'tasks' && parts[3] === 'list') {
     const numericProjectId = parts[4];
     console.log("Direct project view link detected for project:", numericProjectId);
-
+    
     const feedbackElement = document.querySelector(".subtitle");
     const mainTitle = document.querySelector("h2");
-
+    
     // Hide all forms initially
     document.getElementById("registration-form").style.display = 'none';
     document.getElementById("google-signin-btn").style.display = 'none';
     document.getElementById("continue-email-link").style.display = 'none';
     document.getElementById("orText").style.display = 'none';
-
+    
     feedbackElement.textContent = "Verifying your access, please wait...";
-
-    // Use onAuthStateChanged for a reliable check of the user's login state
+    
     onAuthStateChanged(auth, async (user) => {
       if (user) {
         // USER IS LOGGED IN
         console.log("User is logged in:", user.email);
         try {
-          // Find the project using its numeric ID (assuming this field exists)
           const projectsCollectionGroup = collectionGroup(db, 'projects');
           const q = query(projectsCollectionGroup, where('numericProjectId', '==', numericProjectId));
           const projectQuerySnapshot = await getDocs(q);
-
+          
           if (projectQuerySnapshot.empty) {
             mainTitle.textContent = "Not Found";
             feedbackElement.textContent = "The project you are looking for does not exist.";
             return;
           }
-
+          
           const projectData = projectQuerySnapshot.docs[0].data();
           const memberUIDs = projectData.memberUIDs || [];
-
-          // Check if the logged-in user is a member of the project
+          
           if (memberUIDs.includes(user.uid)) {
-            // This case is unlikely on a register page, but for completeness:
-            // it means the user is logged in and has access, so we can redirect them.
             mainTitle.textContent = "Access Verified";
             feedbackElement.textContent = "Redirecting you to the project...";
-            // Redirect them to the page they were trying to access
             window.location.href = window.location.pathname;
           } else {
-            // **THIS IS THE KEY LOGIC YOU REQUESTED**
-            // User is logged in but with the WRONG account.
             mainTitle.textContent = "Access Denied";
             feedbackElement.textContent = `The account you are signed in with (${user.email}) is not a member of this project. Please sign out and use the correct account.`;
-            feedbackElement.style.color = "#E53E3E"; // Red color for error
-
-            // Optionally, you could show a "Sign Out" button here
+            feedbackElement.style.color = "#E53E3E";
           }
-
         } catch (error) {
           console.error("Error verifying project access:", error);
           mainTitle.textContent = "Error";
           feedbackElement.textContent = "An error occurred while verifying your access.";
         }
-
       } else {
         // NO USER IS LOGGED IN
         console.log("No user is logged in.");
         mainTitle.textContent = "Login Required";
         feedbackElement.textContent = "Please sign in or create an account to view this project.";
-
+        
         // Show the login/register options again
         document.getElementById("google-signin-btn").style.display = 'block';
         document.getElementById("continue-email-link").style.display = 'block';
         document.getElementById("orText").style.display = 'block';
       }
     });
+    
   } else {
-    console.log("Not an invitation link.");
+    console.log("Not an invitation link or direct project link.");
     if (document.getElementById("acceptance-view")) {
       document.getElementById("acceptance-view").style.display = "none";
     }
