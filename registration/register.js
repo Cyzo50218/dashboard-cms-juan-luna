@@ -259,54 +259,32 @@ document.querySelectorAll("#google-signin-btn, #google-signin-btn-form").forEach
   });
 });
 // Show welcome screen
-function showWelcome(name, photoURL, email = '', user) {
-  console.log("Showing welcome view for:", name);
+function showWelcome(name, photoURL) {
+    console.log("Showing welcome/acceptance view for:", name);
 
-  // Hide registration/login forms
-  document.querySelector("h2").style.display = "none";
-  document.querySelector(".subtitle").style.display = "none";
-  registrationForm.style.display = "none";
-  orText.style.display = "none";
-  googleBtn.style.display = "none";
-  continueEmailLink.style.display = "none";
-  
-  // Show the acceptance view
-  acceptanceView.style.display = "block";
-  welcomeMessage.textContent = `Welcome, ${name}!`;
+    // --- HIDE all the individual registration elements ---
+    document.querySelector("h2").style.display = "none";
+    document.querySelector(".subtitle").style.display = "none";
+    document.getElementById("google-signin-btn").style.display = "none";
+    document.getElementById("orText").style.display = "none";
+    document.getElementById("continue-email-link").style.display = "none";
+    document.getElementById("registration-form").style.display = "none";
 
-  // Set user photo
-  const photo = document.getElementById("user-photo");
-  if (photoURL) {
-    photo.src = photoURL;
-  } else {
-    const initials = name.split(' ').slice(0, 2).map(w => w[0].toUpperCase()).join('');
-    photo.src = generateAvatar(initials, getRandomColor());
-  }
+    // --- SHOW the acceptance view ---
+    const acceptanceView = document.getElementById("acceptance-view");
+    const welcomeMessage = document.getElementById("welcome-message");
+    const photo = document.getElementById("user-photo");
 
-  // **NEW AND IMPROVED LOGIC**
-  // Attach the click listener here, ensuring 'user' is always valid.
-  acceptInvitationBtn.onclick = async () => {
-    // The 'user' object is now guaranteed to be valid from the login/register step.
-    if (!user) {
-      alert("A critical error occurred. Please refresh and try again.");
-      return;
-    }
-    if (!invitationId) {
-      alert("No invitation ID found. Cannot accept invitation.");
-      return;
-    }
+    acceptanceView.style.display = "block";
+    welcomeMessage.textContent = `Welcome, ${name}!`;
 
-    const path = window.location.pathname;
-    if (path.includes('/workspace-invite/')) {
-      console.log("Accepting WORKSPACE invitation...");
-      await handleWorkspaceInvitationAcceptance(user, invitationId);
-    } else if (path.includes('/invitation/')) {
-      console.log("Accepting PROJECT invitation...");
-      await handleProjectInvitationAcceptance(user, invitationId);
+    if (photoURL) {
+        photo.src = photoURL;
     } else {
-      alert("Could not determine invitation type from URL.");
+        const initials = name ? name.split(' ').slice(0, 2).map(w => w[0].toUpperCase()).join('') : '';
+        // Make sure you have the generateAvatar and getRandomColor functions in your file
+        photo.src = generateAvatar(initials, getRandomColor()); 
     }
-  };
 }
 
 async function handleProjectInvitationAcceptance(user, invId) {
