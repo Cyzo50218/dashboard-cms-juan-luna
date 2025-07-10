@@ -248,28 +248,7 @@ continueEmailLink.addEventListener("click", (e) => {
 });
 
 // Accept invitation
-acceptInvitationBtn?.addEventListener("click", async () => {
-  const user = auth.currentUser;
-  if (!user) {
-    alert("Authentication error. Please sign in again.");
-    return;
-  }
-  if (!invitationId) {
-    alert("No invitation ID found. Cannot accept invitation.");
-    return;
-  }
 
-  const path = window.location.pathname;
-  if (path.includes('/workspace-invite/')) {
-    console.log("Accepting WORKSPACE invitation...");
-    await handleWorkspaceInvitationAcceptance(user, invitationId);
-  } else if (path.includes('/invitation/')) {
-    console.log("Accepting PROJECT invitation...");
-    await handleProjectInvitationAcceptance(user, invitationId);
-  } else {
-    alert("Could not determine invitation type from URL.");
-  }
-});
 
 
 // Email Registration Submit
@@ -316,8 +295,7 @@ document.querySelectorAll("#google-signin-btn, #google-signin-btn-form").forEach
 
       // This also calls our single, reusable function.
       await saveUserData(user, user.displayName, user.email, 'google', user.photoURL);
-
-      showWelcome(user.displayName, user.photoURL, user.email);
+      showWelcome(user.displayName, user.photoURL, user.email, user);
     } catch (error) {
       console.error("Google Sign-in error:", error);
       if (error.code !== 'auth/popup-closed-by-user') {
@@ -327,29 +305,54 @@ document.querySelectorAll("#google-signin-btn, #google-signin-btn-form").forEach
   });
 });
 // Show welcome screen
-function showWelcome(name, photoURL, email = '') {
-  console.log("Showing welcome view:", name, email);
+function showWelcome(name, photoURL, email = '', user) {
+  console.log("Showing welcome view for:", name);
+
+  // Hide registration/login forms
   document.querySelector("h2").style.display = "none";
   document.querySelector(".subtitle").style.display = "none";
   registrationForm.style.display = "none";
   orText.style.display = "none";
   googleBtn.style.display = "none";
   continueEmailLink.style.display = "none";
+  
+  // Show the acceptance view
   acceptanceView.style.display = "block";
-
   welcomeMessage.textContent = `Welcome, ${name}!`;
 
+  // Set user photo
   const photo = document.getElementById("user-photo");
   if (photoURL) {
     photo.src = photoURL;
-    console.log("Profile photo set:", photoURL);
   } else {
-    // If no photoURL (e.g. email signup without gravatar), generate one
     const initials = name.split(' ').slice(0, 2).map(w => w[0].toUpperCase()).join('');
-    const color = getRandomColor();
-    photo.src = generateAvatar(initials, color);
-    console.log("Generated avatar for welcome screen.");
+    photo.src = generateAvatar(initials, getRandomColor());
   }
+
+  // **NEW AND IMPROVED LOGIC**
+  // Attach the click listener here, ensuring 'user' is always valid.
+  acceptInvitationBtn.onclick = async () => {
+    // The 'user' object is now guaranteed to be valid from the login/register step.
+    if (!user) {
+      alert("A critical error occurred. Please refresh and try again.");
+      return;
+    }
+    if (!invitationId) {
+      alert("No invitation ID found. Cannot accept invitation.");
+      return;
+    }
+
+    const path = window.location.pathname;
+    if (path.includes('/workspace-invite/')) {
+      console.log("Accepting WORKSPACE invitation...");
+      await handleWorkspaceInvitationAcceptance(user, invitationId);
+    } else if (path.includes('/invitation/')) {
+      console.log("Accepting PROJECT invitation...");
+      await handleProjectInvitationAcceptance(user, invitationId);
+    } else {
+      alert("Could not determine invitation type from URL.");
+    }
+  };
 }
 
 async function handleProjectInvitationAcceptance(user, invId) {
