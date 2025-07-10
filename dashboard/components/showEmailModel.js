@@ -600,7 +600,7 @@ export async function showInviteModal() {
                         const isAlreadyMember = projectData.members?.some(m => m.uid === existingUserUID);
                         const numericUserId = stringToNumericString(currentUser.uid);
                         const numericProjectId = stringToNumericString(projectData.projectId);
-                        const invitationUrl = `https://cms.juanlunacollections.com/tasks/${numericUserId}/list/${numericProjectId}`; // Replace with your actual URL
+                        const invitationUrl = `https://cms.juanlunacollections.com/tasks/${numericUserId}/list/${numericProjectId}?viewProject=true`; // Replace with your actual URL
                         const totalTasks = await getTotalTaskCount(projectData.projectId);
 
                         try {
