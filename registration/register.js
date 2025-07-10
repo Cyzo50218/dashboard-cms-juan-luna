@@ -64,30 +64,37 @@ onAuthStateChanged(auth, async (user) => {
         // USER IS SIGNED IN
         console.log("Auth state changed: User is signed in.", user.email);
 
-        // Check if this is the first time the user is signing in
         const isNewUser = user.metadata.creationTime === user.metadata.lastSignInTime;
         if (isNewUser) {
             console.log("New user detected, saving data...");
-            await saveUserData(user, user.displayName, user.email, 'provider', user.photoURL);
+            // Assumes user.displayName is available from provider, otherwise might need adjustment
+            await saveUserData(user, user.displayName || "New User", user.email, 'provider', user.photoURL);
         }
 
-        // Now that the user is definitely logged in, show the welcome/acceptance screen
-        showWelcome(user.displayName, user.photoURL);
+        // Now that the user is logged in, show the welcome/acceptance screen
+        showWelcome(user.displayName || "New User", user.photoURL);
 
         // Handle post-login redirects for workspace invites
         const pendingWorkspaceId = sessionStorage.getItem('pendingWorkspaceId');
         if (pendingWorkspaceId) {
-            sessionStorage.removeItem('pendingWorkspaceId'); // Clean up
-            // This is a good place to automatically accept the workspace invitation
+            sessionStorage.removeItem('pendingWorkspaceId');
             await handleWorkspaceInvitationAcceptance(user, invitationId);
         }
 
     } else {
         // USER IS SIGNED OUT
         console.log("Auth state changed: User is signed out.");
-        // Ensure the registration/login view is visible and acceptance view is hidden
-        registrationView.style.display = 'block';
-        acceptanceView.style.display = 'none';
+
+        // --- CORRECTED CODE FOR SIGNED-OUT STATE ---
+        // Show all the individual registration elements
+        document.querySelector("h2").style.display = 'block';
+        document.querySelector(".subtitle").style.display = 'block';
+        document.getElementById("google-signin-btn").style.display = 'block';
+        document.getElementById("orText").style.display = 'block';
+        document.getElementById("continue-email-link").style.display = 'block';
+
+        // Ensure the acceptance view is hidden
+        document.getElementById("acceptance-view").style.display = 'none';
     }
 });
 
