@@ -565,6 +565,7 @@ async function handleWorkspaceInvitationAcceptance(invId) {
     if (!user) {
       throw new Error("User is not authenticated.");
     }
+    console.log(await user?.getIdTokenResult())
 
     // Optional: Force refresh token if needed
     await user.getIdToken(true);

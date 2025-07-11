@@ -42,11 +42,6 @@ export const acceptWorkspaceInvitation = onCall(async (request) => {
 
   logger.info("🔔 acceptWorkspaceInvitation triggered", { uid, email, invId });
 
-  if (!request.auth || !uid || !email) {
-    logger.warn("❌ Unauthenticated access attempt");
-    throw new functions.https.HttpsError("unauthenticated", "User must be authenticated.");
-  }
-
   if (!invId) {
     logger.warn("❌ Missing invitation ID in request data", { uid, email });
     throw new functions.https.HttpsError("invalid-argument", "Invitation ID is required.");
@@ -73,7 +68,7 @@ export const acceptWorkspaceInvitation = onCall(async (request) => {
       throw new functions.https.HttpsError("already-exists", "Invitation already accepted.");
     }
 
-    if ((invitationData.invitedEmail || "").toLowerCase() !== email.toLowerCase()) {
+    if ((invitationData.invitedEmail || "").toLowerCase() !== (email || "").toLowerCase()) {
       logger.warn("🚫 Email mismatch for invitation", {
         invitedEmail: invitationData.invitedEmail,
         requesterEmail: email,
@@ -98,7 +93,7 @@ export const acceptWorkspaceInvitation = onCall(async (request) => {
     }
 
     // Step 3: Prepare batch
-    logger.info("🛠️ Preparing batch write for invitation acceptance", {
+    logger.info("🛠️ Preparing batch write", {
       userRef: userRef.path,
       workspaceRef: workspaceRef.path,
       invitationRef: invitationRef.path
@@ -111,7 +106,7 @@ export const acceptWorkspaceInvitation = onCall(async (request) => {
       status: "accepted",
       acceptedAt: FieldValue.serverTimestamp(),
       acceptedBy: {
-        uid: String(uid),
+        uid: String(uid || "unknown"),
         name: typeof displayName === "string" ? displayName : "",
         email: typeof email === "string" ? email : ""
       }
@@ -134,6 +129,7 @@ export const acceptWorkspaceInvitation = onCall(async (request) => {
     throw new functions.https.HttpsError("internal", error.message || "Unknown error");
   }
 });
+
 
 async function backfillTaskCounts() {
   console.log("Starting backfill process...");
