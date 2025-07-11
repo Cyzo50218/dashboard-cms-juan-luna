@@ -42,9 +42,9 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app, "juanluna-cms-01");
 const storage = getStorage(app);
-console.log("Firebase initialized.");
 const functions = getFunctions();
 const acceptInvitation = httpsCallable(functions, "acceptWorkspaceInvitation");
+console.log("Firebase initialized.");
 
 let invitationId = null;
 
@@ -449,19 +449,76 @@ function showWelcome(name, photoURL, email = '', user) {
   };
 }
 
-async function handleWorkspaceInvitationAcceptance(invId) {
+async function handleProjectInvitationAcceptance(user, invId) {
+  console.log(`Accepting project invitation ${invId} for user ${user.uid}`);
+  acceptInvitationBtn.disabled = true;
+  acceptInvitationBtn.textContent = "Processing...";
+  
+  const invitationRef = doc(db, "InvitedProjects", invId);
+  
   try {
-    acceptInvitationBtn.disabled = true;
-    acceptInvitationBtn.textContent = "Processing...";
-    const result = await acceptInvitation({ invId });
-    const { workspaceId } = result.data;
-
-    alert("Invitation accepted! You are now a member of the workspace.");
-    window.location.href = `/myworkspace/${workspaceId}`;
-
+    const invitationSnap = await getDoc(invitationRef);
+    if (!invitationSnap.exists()) throw new Error("This invitation is no longer valid or has been deleted.");
+    
+    const invitationData = invitationSnap.data();
+    if (invitationData.invitedEmail.toLowerCase() !== user.email.toLowerCase()) {
+      throw new Error("This invitation is for a different email address. Please log in with the correct account.");
+    }
+    
+    const projectId = invitationData.projectId;
+    const role = invitationData.role;
+    const projectsCollectionGroup = collectionGroup(db, 'projects');
+    const q = query(projectsCollectionGroup, where('projectId', '==', projectId));
+    const projectQuerySnapshot = await getDocs(q);
+    
+    if (projectQuerySnapshot.empty) throw new Error("The project associated with this invitation no longer exists.");
+    
+    const projectSnap = projectQuerySnapshot.docs[0];
+    const projectRef = projectSnap.ref;
+    const projectData = projectSnap.data();
+    
+    const batch = writeBatch(db);
+    const userDocRef = doc(db, 'users', user.uid);
+    const userSnap = await getDoc(userDocRef);
+    let activeWorkspaceId = null;
+    
+    if (userSnap.exists() && userSnap.data().selectedWorkspace) {
+      activeWorkspaceId = userSnap.data().selectedWorkspace;
+    }
+    
+    const pendingInviteToRemove = (projectData.pendingInvites || []).find(p => p.invitationId === invId);
+    if (pendingInviteToRemove) {
+      batch.update(projectRef, { pendingInvites: arrayRemove(pendingInviteToRemove) });
+    }
+    
+    batch.update(projectRef, {
+      members: arrayUnion({ uid: user.uid, role: role }),
+      memberUIDs: arrayUnion(user.uid)
+    });
+    
+    batch.update(invitationRef, {
+      status: "accepted",
+      acceptedAt: serverTimestamp(),
+      acceptedBy: { uid: user.uid, name: user.displayName, email: user.email }
+    });
+    
+    if (activeWorkspaceId) {
+      const workspaceRef = doc(db, `users/${user.uid}/myworkspace/${activeWorkspaceId}`);
+      batch.set(workspaceRef, { selectedProjectId: projectId }, { merge: true });
+    }
+    
+    await batch.commit();
+    
+    console.log("✅ Project invitation accepted and project updated successfully!");
+    alert("Invitation accepted! You are now a member of the project.");
+    
+    const numericUserId = stringToNumericString(user.uid);
+    const numericProjectId = stringToNumericString(projectId);
+    window.location.href = `/tasks/${numericUserId}/list/${numericProjectId}`;
+    
   } catch (error) {
-    console.error("❌ Error accepting invitation:", error);
-    alert("Error: " + (error.message || "Something went wrong"));
+    console.error("❌ Error accepting project invitation:", error);
+    alert("Error: " + error.message);
     acceptInvitationBtn.disabled = false;
     acceptInvitationBtn.textContent = "Accept Invitation";
   }
@@ -492,68 +549,19 @@ function generateAvatar(initials, backgroundColor = '#333') {
   return dataUrl;
 }
 
-async function handleWorkspaceInvitationAcceptance(user, invId) {
-  console.log(`--- Starting invitation acceptance for invId: ${invId} ---`);
-  acceptInvitationBtn.disabled = true;
-  acceptInvitationBtn.textContent = "Processing...";
-  
-  const invitationRef = doc(db, "InvitedWorkspaces", invId);
-  const userRef = doc(db, "users", user.uid);
-  
+async function handleWorkspaceInvitationAcceptance(invId) {
   try {
-    // Step 1: Read the invitation document
-    console.log(`1. Attempting to READ invitation: ${invitationRef.path}`);
-    const invitationSnap = await getDoc(invitationRef);
-    if (!invitationSnap.exists()) throw new Error("This invitation is no longer valid or has been deleted.");
-    console.log("✅ READ successful: Invitation exists.");
-    
-    const invitationData = invitationSnap.data();
-    console.log("... Invitation status:", invitationData.status);
-    console.log("... Invited email:", invitationData.invitedEmail);
-    if (invitationData.status === 'accepted') throw new Error("This invitation has already been accepted.");
-    if (invitationData.invitedEmail.toLowerCase() !== user.email.toLowerCase()) {
-      throw new Error("This invitation is for a different email address.");
-    }
-    
-    const { workspaceId, workspaceRefPath, invitedBy } = invitationData;
-    if (!workspaceId || !workspaceRefPath) throw new Error("Invitation is corrupted (missing workspace data).");
-    
-    // Step 2: Read the workspace document
-    const workspaceRef = doc(db, workspaceRefPath);
-    console.log(`2. Attempting to READ workspace: ${workspaceRef.path}`);
-    const workspaceSnap = await getDoc(workspaceRef);
-    if (!workspaceSnap.exists()) throw new Error("The workspace associated with this invitation no longer exists.");
-    console.log("✅ READ successful: Workspace exists.");
-    
-    const batch = writeBatch(db);
-    
-    // Step 3: Prepare batch writes
-    console.log("3. Preparing batch writes...");
-    batch.update(userRef, { selectedWorkspace: workspaceId });
-    console.log(`   - UPDATE user doc: ${userRef.path}`);
-    
-    batch.update(workspaceRef, { members: arrayUnion(user.uid) });
-    console.log(`   - UPDATE workspace doc: ${workspaceRef.path}`);
-    
-    batch.update(invitationRef, {
-      status: "accepted",
-      acceptedAt: serverTimestamp(),
-      acceptedBy: { uid: user.uid, name: user.displayName, email: user.email }
-    });
-    console.log(`   - UPDATE invitation doc: ${invitationRef.path}`);
-    
-    // Step 5: Commit all writes at once
-    console.log("5. Attempting to COMMIT batch of all prepared writes...");
-    await batch.commit();
-    
-    console.log("✅ COMMIT successful: Workspace invitation accepted!");
+    acceptInvitationBtn.disabled = true;
+    acceptInvitationBtn.textContent = "Processing...";
+    const result = await acceptInvitation({ invId });
+    const { workspaceId } = result.data;
+
     alert("Invitation accepted! You are now a member of the workspace.");
-    
     window.location.href = `/myworkspace/${workspaceId}`;
-    
+
   } catch (error) {
-    console.error("❌ An error occurred during the acceptance process.", error);
-    alert("Error: " + error.message);
+    console.error("❌ Error accepting invitation:", error);
+    alert("Error: " + (error.message || "Something went wrong"));
     acceptInvitationBtn.disabled = false;
     acceptInvitationBtn.textContent = "Accept Invitation";
   }
