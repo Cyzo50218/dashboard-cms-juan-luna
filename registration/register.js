@@ -42,7 +42,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app, "juanluna-cms-01");
 const storage = getStorage(app);
-const functions = getFunctions();
+const functions = getFunctions(app);
 const acceptInvitation = httpsCallable(functions, "acceptWorkspaceInvitation");
 console.log("Firebase initialized.");
 
