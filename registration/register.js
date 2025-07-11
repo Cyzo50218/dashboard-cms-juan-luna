@@ -389,7 +389,7 @@ document.querySelectorAll("#google-signin-btn, #google-signin-btn-form").forEach
  */
 function showWelcome(name, photoURL, email = '', user) {
   console.log("Showing welcome view for:", name);
-  
+
   // Hide registration/login forms
   mainTitle.style.display = "none";
   feedbackElement.style.display = "none";
@@ -397,17 +397,17 @@ function showWelcome(name, photoURL, email = '', user) {
   orText.style.display = "none";
   googleBtn.style.display = "none";
   continueEmailLink.style.display = "none";
-  
+
   // Clear any dynamic buttons like "Switch Account"
   const existingSwitchBtn = document.getElementById('switch-account-btn');
   if (existingSwitchBtn) {
     existingSwitchBtn.remove();
   }
-  
+
   // Show the acceptance view
   acceptanceView.style.display = "block";
   welcomeMessage.textContent = `Welcome, ${name}!`;
-  
+
   const acceptFeedback = document.getElementById('acceptance-feedback');
   const path = window.location.pathname;
   if (path.includes('/invitation/')) {
@@ -415,8 +415,7 @@ function showWelcome(name, photoURL, email = '', user) {
   } else if (path.includes('/workspace-invite/')) {
     acceptFeedback.textContent = "You've been invited to join a new workspace. Click below to accept.";
   }
-  
-  
+
   // Set user photo
   const photo = document.getElementById("user-photo");
   if (photoURL) {
@@ -425,24 +424,24 @@ function showWelcome(name, photoURL, email = '', user) {
     const initials = name.split(' ').slice(0, 2).map(w => w[0].toUpperCase()).join('');
     photo.src = generateAvatar(initials, getRandomColor());
   }
-  
-  // Attach the click listener here, ensuring 'user' is valid.
+
+  // --- THIS IS THE CORRECTED PART ---
+  // Attach the click listener to call the new handler correctly.
   acceptInvitationBtn.onclick = async () => {
-    if (!user || !user.uid) {
-      alert("Authentication error. Please refresh and sign in again.");
-      return;
-    }
+    // The 'invitationId' should be a string that was captured when the page loaded.
     if (!invitationId) {
       alert("No invitation ID found. Cannot accept invitation.");
       return;
     }
-    
+
+    // Call the appropriate handler, passing ONLY the invitation ID.
     if (path.includes('/workspace-invite/')) {
-      console.log("Accepting WORKSPACE invitation...");
-      await handleWorkspaceInvitationAcceptance(user, invitationId);
+      console.log("Accepting WORKSPACE invitation via Cloud Function...");
+      await handleWorkspaceInvitationAcceptance(invitationId);
     } else if (path.includes('/invitation/')) {
-      console.log("Accepting PROJECT invitation...");
-      await handleProjectInvitationAcceptance(user, invitationId);
+      console.log("Accepting PROJECT invitation via Cloud Function...");
+      // Assuming you have a handleProjectInvitationAcceptance function
+      await handleProjectInvitationAcceptance(invitationId);
     } else {
       alert("Could not determine invitation type from URL.");
     }

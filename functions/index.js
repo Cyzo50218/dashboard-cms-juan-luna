@@ -40,11 +40,15 @@ export const acceptWorkspaceInvitation = onCall(async (request) => {
   const { uid, email, displayName } = request.auth?.token || {};
   const { invId } = request.data;
 
+  logger.info("🔔 acceptWorkspaceInvitation triggered", { uid, email, invId });
+
   if (!request.auth || !uid || !email) {
+    logger.warn("❌ Unauthenticated access attempt");
     throw new functions.https.HttpsError("unauthenticated", "User must be authenticated.");
   }
 
   if (!invId) {
+    logger.warn("❌ Missing invitation ID in request data", { uid, email });
     throw new functions.https.HttpsError("invalid-argument", "Invitation ID is required.");
   }
 
@@ -52,31 +56,53 @@ export const acceptWorkspaceInvitation = onCall(async (request) => {
   const userRef = db.doc(`users/${uid}`);
 
   try {
-    // 1. Read invitation
+    // Step 1: Read invitation
+    logger.info("📥 Reading invitation document", { path: invitationRef.path });
     const invitationSnap = await invitationRef.get();
+
     if (!invitationSnap.exists) {
+      logger.warn("❌ Invitation not found", { invId });
       throw new functions.https.HttpsError("not-found", "Invitation not found.");
     }
 
     const invitationData = invitationSnap.data();
+    logger.info("✅ Invitation data retrieved", { invitationData });
+
     if (invitationData.status === 'accepted') {
+      logger.warn("⚠️ Invitation already accepted", { invId });
       throw new functions.https.HttpsError("already-exists", "Invitation already accepted.");
     }
 
     if ((invitationData.invitedEmail || "").toLowerCase() !== email.toLowerCase()) {
+      logger.warn("🚫 Email mismatch for invitation", {
+        invitedEmail: invitationData.invitedEmail,
+        requesterEmail: email,
+      });
       throw new functions.https.HttpsError("permission-denied", "This invitation is not for your email.");
     }
 
     const { workspaceId, workspaceRefPath } = invitationData;
     if (!workspaceId || !workspaceRefPath) {
+      logger.error("❌ Corrupted invitation: missing workspaceId or workspaceRefPath", { invitationData });
       throw new functions.https.HttpsError("invalid-argument", "Corrupted invitation data.");
     }
 
+    // Step 2: Read workspace document
     const workspaceRef = db.doc(workspaceRefPath);
+    logger.info("📥 Reading workspace document", { path: workspaceRef.path });
     const workspaceSnap = await workspaceRef.get();
+
     if (!workspaceSnap.exists) {
+      logger.warn("❌ Workspace not found", { workspaceRefPath });
       throw new functions.https.HttpsError("not-found", "Workspace does not exist.");
     }
+
+    // Step 3: Prepare batch
+    logger.info("🛠️ Preparing batch write for invitation acceptance", {
+      userRef: userRef.path,
+      workspaceRef: workspaceRef.path,
+      invitationRef: invitationRef.path
+    });
 
     const batch = db.batch();
     batch.update(userRef, { selectedWorkspace: workspaceId });
@@ -85,18 +111,26 @@ export const acceptWorkspaceInvitation = onCall(async (request) => {
       status: "accepted",
       acceptedAt: FieldValue.serverTimestamp(),
       acceptedBy: {
-        uid,
-        name: displayName || "",
-        email,
+        uid: String(uid),
+        name: typeof displayName === "string" ? displayName : "",
+        email: typeof email === "string" ? email : ""
       }
     });
 
+    // Step 4: Commit
+    logger.info("📤 Committing batch write...");
     await batch.commit();
+    logger.info("✅ Invitation accepted successfully", { uid, workspaceId });
 
     return { success: true, workspaceId };
 
   } catch (error) {
-    console.error("❌ Error accepting invitation:", error);
+    logger.error("🔥 Error during invitation acceptance", {
+      error: error.message,
+      stack: error.stack,
+      uid,
+      invId
+    });
     throw new functions.https.HttpsError("internal", error.message || "Unknown error");
   }
 });
