@@ -26,7 +26,7 @@ admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
 
-const db = getFirestore();
+const db = admin.firestore(admin.app(), "juanluna-cms-01");
 
 export const sendgridApiKey = defineSecret("SENDGRID_API_KEY_EMAIL_INVITATION");
 export const ALGOLIA_APP_ID = defineSecret("ALGOLIA_APP_ID");
