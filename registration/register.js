@@ -544,7 +544,7 @@ function generateAvatar(initials, backgroundColor = '#333') {
 }
 
 async function handleWorkspaceInvitationAcceptance(user, invId) {
-  console.log(`Accepting workspace invitation ${invId} for user ${user.uid}`);
+  console.log(`--- Starting invitation acceptance for invId: ${invId} ---`);
   acceptInvitationBtn.disabled = true;
   acceptInvitationBtn.textContent = "Processing...";
   
@@ -552,10 +552,15 @@ async function handleWorkspaceInvitationAcceptance(user, invId) {
   const userRef = doc(db, "users", user.uid);
   
   try {
+    // Step 1: Read the invitation document
+    console.log(`1. Attempting to READ invitation: ${invitationRef.path}`);
     const invitationSnap = await getDoc(invitationRef);
     if (!invitationSnap.exists()) throw new Error("This invitation is no longer valid or has been deleted.");
+    console.log("✅ READ successful: Invitation exists.");
     
     const invitationData = invitationSnap.data();
+    console.log("... Invitation status:", invitationData.status);
+    console.log("... Invited email:", invitationData.invitedEmail);
     if (invitationData.status === 'accepted') throw new Error("This invitation has already been accepted.");
     if (invitationData.invitedEmail.toLowerCase() !== user.email.toLowerCase()) {
       throw new Error("This invitation is for a different email address.");
@@ -564,46 +569,63 @@ async function handleWorkspaceInvitationAcceptance(user, invId) {
     const { workspaceId, workspaceRefPath, invitedBy } = invitationData;
     if (!workspaceId || !workspaceRefPath) throw new Error("Invitation is corrupted (missing workspace data).");
     
+    // Step 2: Read the workspace document
     const workspaceRef = doc(db, workspaceRefPath);
+    console.log(`2. Attempting to READ workspace: ${workspaceRef.path}`);
     const workspaceSnap = await getDoc(workspaceRef);
     if (!workspaceSnap.exists()) throw new Error("The workspace associated with this invitation no longer exists.");
+    console.log("✅ READ successful: Workspace exists.");
     
     const batch = writeBatch(db);
     
+    // Step 3: Prepare batch writes
+    console.log("3. Preparing batch writes...");
     batch.update(userRef, { selectedWorkspace: workspaceId });
+    console.log(`   - UPDATE user doc: ${userRef.path}`);
+    
     batch.update(workspaceRef, { members: arrayUnion(user.uid) });
+    console.log(`   - UPDATE workspace doc: ${workspaceRef.path}`);
+    
     batch.update(invitationRef, {
       status: "accepted",
       acceptedAt: serverTimestamp(),
       acceptedBy: { uid: user.uid, name: user.displayName, email: user.email }
     });
+    console.log(`   - UPDATE invitation doc: ${invitationRef.path}`);
     
+    // Optional Step 4: Clean up pending invite on the inviter's document
     if (invitedBy && invitedBy.uid) {
       const inviterUserRef = doc(db, 'users', invitedBy.uid);
+      console.log(`4. Attempting to READ inviter's user doc: ${inviterUserRef.path}`);
       const inviterSnap = await getDoc(inviterUserRef);
       if (inviterSnap.exists()) {
+        console.log("✅ READ successful: Inviter user doc exists.");
         const pendingInviteToRemove = (inviterSnap.data().workspacePendingInvites || []).find(p => p.invitationId === invId);
         if (pendingInviteToRemove) {
           batch.update(inviterUserRef, { workspacePendingInvites: arrayRemove(pendingInviteToRemove) });
+          console.log(`   - UPDATE inviter's user doc to remove pending invite: ${inviterUserRef.path}`);
         }
+      } else {
+        console.log("... Inviter user doc not found, skipping cleanup.");
       }
     }
     
+    // Step 5: Commit all writes at once
+    console.log("5. Attempting to COMMIT batch of all prepared writes...");
     await batch.commit();
     
-    console.log("✅ Workspace invitation accepted successfully!");
+    console.log("✅ COMMIT successful: Workspace invitation accepted!");
     alert("Invitation accepted! You are now a member of the workspace.");
     
     window.location.href = `/myworkspace/${workspaceId}`;
     
   } catch (error) {
-    console.error("❌ Error accepting workspace invitation:", error);
+    console.error("❌ An error occurred during the acceptance process.", error);
     alert("Error: " + error.message);
     acceptInvitationBtn.disabled = false;
     acceptInvitationBtn.textContent = "Accept Invitation";
   }
 }
-
 // Pick random background color
 function getRandomColor() {
   const vibrantColors = ["#F44336", "#E91E63", "#9C27B0", "#3F51B5", "#2196F3", "#009688", "#4CAF50", "#FF9800", "#795548"];
