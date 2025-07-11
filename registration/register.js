@@ -9,6 +9,10 @@ import {
   updateProfile
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
+    getFunctions,
+    httpsCallable,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
+import {
   getFirestore,
   doc,
   setDoc,
@@ -39,6 +43,8 @@ const auth = getAuth(app);
 const db = getFirestore(app, "juanluna-cms-01");
 const storage = getStorage(app);
 console.log("Firebase initialized.");
+const functions = getFunctions();
+const acceptInvitation = httpsCallable(functions, "acceptWorkspaceInvitation");
 
 let invitationId = null;
 
@@ -443,76 +449,19 @@ function showWelcome(name, photoURL, email = '', user) {
   };
 }
 
-async function handleProjectInvitationAcceptance(user, invId) {
-  console.log(`Accepting project invitation ${invId} for user ${user.uid}`);
-  acceptInvitationBtn.disabled = true;
-  acceptInvitationBtn.textContent = "Processing...";
-  
-  const invitationRef = doc(db, "InvitedProjects", invId);
-  
+async function handleWorkspaceInvitationAcceptance(invId) {
   try {
-    const invitationSnap = await getDoc(invitationRef);
-    if (!invitationSnap.exists()) throw new Error("This invitation is no longer valid or has been deleted.");
-    
-    const invitationData = invitationSnap.data();
-    if (invitationData.invitedEmail.toLowerCase() !== user.email.toLowerCase()) {
-      throw new Error("This invitation is for a different email address. Please log in with the correct account.");
-    }
-    
-    const projectId = invitationData.projectId;
-    const role = invitationData.role;
-    const projectsCollectionGroup = collectionGroup(db, 'projects');
-    const q = query(projectsCollectionGroup, where('projectId', '==', projectId));
-    const projectQuerySnapshot = await getDocs(q);
-    
-    if (projectQuerySnapshot.empty) throw new Error("The project associated with this invitation no longer exists.");
-    
-    const projectSnap = projectQuerySnapshot.docs[0];
-    const projectRef = projectSnap.ref;
-    const projectData = projectSnap.data();
-    
-    const batch = writeBatch(db);
-    const userDocRef = doc(db, 'users', user.uid);
-    const userSnap = await getDoc(userDocRef);
-    let activeWorkspaceId = null;
-    
-    if (userSnap.exists() && userSnap.data().selectedWorkspace) {
-      activeWorkspaceId = userSnap.data().selectedWorkspace;
-    }
-    
-    const pendingInviteToRemove = (projectData.pendingInvites || []).find(p => p.invitationId === invId);
-    if (pendingInviteToRemove) {
-      batch.update(projectRef, { pendingInvites: arrayRemove(pendingInviteToRemove) });
-    }
-    
-    batch.update(projectRef, {
-      members: arrayUnion({ uid: user.uid, role: role }),
-      memberUIDs: arrayUnion(user.uid)
-    });
-    
-    batch.update(invitationRef, {
-      status: "accepted",
-      acceptedAt: serverTimestamp(),
-      acceptedBy: { uid: user.uid, name: user.displayName, email: user.email }
-    });
-    
-    if (activeWorkspaceId) {
-      const workspaceRef = doc(db, `users/${user.uid}/myworkspace/${activeWorkspaceId}`);
-      batch.set(workspaceRef, { selectedProjectId: projectId }, { merge: true });
-    }
-    
-    await batch.commit();
-    
-    console.log("✅ Project invitation accepted and project updated successfully!");
-    alert("Invitation accepted! You are now a member of the project.");
-    
-    const numericUserId = stringToNumericString(user.uid);
-    const numericProjectId = stringToNumericString(projectId);
-    window.location.href = `/tasks/${numericUserId}/list/${numericProjectId}`;
-    
+    acceptInvitationBtn.disabled = true;
+    acceptInvitationBtn.textContent = "Processing...";
+    const result = await acceptInvitation({ invId });
+    const { workspaceId } = result.data;
+
+    alert("Invitation accepted! You are now a member of the workspace.");
+    window.location.href = `/myworkspace/${workspaceId}`;
+
   } catch (error) {
-    console.error("❌ Error accepting project invitation:", error);
-    alert("Error: " + error.message);
+    console.error("❌ Error accepting invitation:", error);
+    alert("Error: " + (error.message || "Something went wrong"));
     acceptInvitationBtn.disabled = false;
     acceptInvitationBtn.textContent = "Accept Invitation";
   }

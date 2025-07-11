@@ -36,6 +36,71 @@ export const USPS_CONSUMER_SECRET = defineSecret("USPS_CONSUMER_SECRET");
 export const USPS_TOKEN_URL = defineSecret("USPS_TOKEN_URL");
 export const USPS_TRACKING_URL = defineSecret("USPS_TRACKING_URL");
 
+export const acceptWorkspaceInvitation = onCall(async (request) => {
+  const { uid, email, displayName } = request.auth?.token || {};
+  const { invId } = request.data;
+
+  if (!request.auth || !uid || !email) {
+    throw new functions.https.HttpsError("unauthenticated", "User must be authenticated.");
+  }
+
+  if (!invId) {
+    throw new functions.https.HttpsError("invalid-argument", "Invitation ID is required.");
+  }
+
+  const invitationRef = db.doc(`InvitedWorkspaces/${invId}`);
+  const userRef = db.doc(`users/${uid}`);
+
+  try {
+    // 1. Read invitation
+    const invitationSnap = await invitationRef.get();
+    if (!invitationSnap.exists) {
+      throw new functions.https.HttpsError("not-found", "Invitation not found.");
+    }
+
+    const invitationData = invitationSnap.data();
+    if (invitationData.status === 'accepted') {
+      throw new functions.https.HttpsError("already-exists", "Invitation already accepted.");
+    }
+
+    if ((invitationData.invitedEmail || "").toLowerCase() !== email.toLowerCase()) {
+      throw new functions.https.HttpsError("permission-denied", "This invitation is not for your email.");
+    }
+
+    const { workspaceId, workspaceRefPath } = invitationData;
+    if (!workspaceId || !workspaceRefPath) {
+      throw new functions.https.HttpsError("invalid-argument", "Corrupted invitation data.");
+    }
+
+    const workspaceRef = db.doc(workspaceRefPath);
+    const workspaceSnap = await workspaceRef.get();
+    if (!workspaceSnap.exists) {
+      throw new functions.https.HttpsError("not-found", "Workspace does not exist.");
+    }
+
+    const batch = db.batch();
+    batch.update(userRef, { selectedWorkspace: workspaceId });
+    batch.update(workspaceRef, { members: admin.firestore.FieldValue.arrayUnion(uid) });
+    batch.update(invitationRef, {
+      status: "accepted",
+      acceptedAt: FieldValue.serverTimestamp(),
+      acceptedBy: {
+        uid,
+        name: displayName || "",
+        email,
+      }
+    });
+
+    await batch.commit();
+
+    return { success: true, workspaceId };
+
+  } catch (error) {
+    console.error("❌ Error accepting invitation:", error);
+    throw new functions.https.HttpsError("internal", error.message || "Unknown error");
+  }
+});
+
 async function backfillTaskCounts() {
   console.log("Starting backfill process...");
 
