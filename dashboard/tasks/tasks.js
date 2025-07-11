@@ -192,91 +192,93 @@ export function init(params) {
      * This function is crucial as it determines which project's tasks are shown.
      */
     async function fetchCurrentProjectData() {
-        const user = auth.currentUser;
-        if (!user) {
-            console.error("User not authenticated.");
-            throw new Error("User not authenticated.");
-        }
+    const user = auth.currentUser;
+    if (!user) {
+        console.error("User not authenticated.");
+        throw new Error("User not authenticated.");
+    }
 
-        const userRef = doc(db, 'users', user.uid);
-        const userSnap = await getDoc(userRef);
+    // --- Step 1: Get the selectedWorkspaceId from the user's document (Unchanged) ---
+    const userRef = doc(db, 'users', user.uid);
+    const userSnap = await getDoc(userRef);
 
-        if (!userSnap.exists() || !userSnap.data().selectedWorkspace) {
-            throw new Error("Could not find user's selected workspace.");
-        }
+    if (!userSnap.exists() || !userSnap.data().selectedWorkspace) {
+        throw new Error("Could not find user's selected workspace.");
+    }
+    const selectedWorkspaceId = userSnap.data().selectedWorkspace;
 
-        const selectedWorkspaceId = userSnap.data().selectedWorkspace;
-        const workspaceRef = doc(db, `users/${user.uid}/myworkspace`, selectedWorkspaceId);
-        const workspaceSnapshot = await getDoc(workspaceRef);
 
-        if (!workspaceSnapshot.exists()) {
-            throw new Error("No selected workspace document found.");
-        }
+    // ✅ UPDATED: Fetch selectedProjectId from the new path
+    // --- Step 2: Look in workspaces/{workspaceId}/members/{userId} for the selected project ---
+    const memberDocRef = doc(db, `workspaces/${selectedWorkspaceId}/members`, user.uid);
+    const memberDocSnap = await getDoc(memberDocRef);
 
-        const workspaceData = workspaceSnapshot.data();
-        const selectedProjectId = workspaceData.selectedProjectId;
+    if (!memberDocSnap.exists()) {
+        throw new Error(`Membership document not found for user ${user.uid} in workspace ${selectedWorkspaceId}.`);
+    }
 
-        // ❌ Fallback logic has been removed.
-        // Now, if selectedProjectId is missing, it will throw an error.
-        if (!selectedProjectId) {
-            console.error("No selected project ID is stored in the workspace. Please select a project.");
-            throw new Error("No selected project ID is stored in the workspace, and URL fallback is disabled.");
-        }
+    const selectedProjectId = memberDocSnap.data()?.selectedProjectId;
 
-        // 🔍 Secure project lookup
-        const projectQuery = query(
-            collectionGroup(db, 'projects'),
-            where('projectId', '==', selectedProjectId),
-            where('memberUIDs', 'array-contains', user.uid)
-        );
-        const projectSnapshot = await getDocs(projectQuery);
+    // --- Step 3: Ensure a project is selected (Logic is the same, but now uses the new source) ---
+    if (!selectedProjectId) {
+        console.error("No selected project ID is stored in the workspace membership. Please select a project.");
+        throw new Error("No selected project ID is stored in the workspace membership.");
+    }
 
-        if (projectSnapshot.empty) {
-            throw new Error(`Project with ID ${selectedProjectId} not found or user is not a member.`);
-        }
+    // --- Step 4: Securely find the project and sync roles if needed (Unchanged) ---
+    const projectQuery = query(
+        collectionGroup(db, 'projects'),
+        where('projectId', '==', selectedProjectId),
+        where('memberUIDs', 'array-contains', user.uid)
+    );
+    const projectSnapshot = await getDocs(projectQuery);
 
-        const projectDoc = projectSnapshot.docs[0];
-        const projectData = projectDoc.data();
-        const membersCount = Array.isArray(projectData.members) ? projectData.members.length : 0;
-        const rolesCount = projectData.rolesByUID ? Object.keys(projectData.rolesByUID).length : 0;
+    if (projectSnapshot.empty) {
+        throw new Error(`Project with ID ${selectedProjectId} not found or user is not a member.`);
+    }
 
-        if (membersCount > 0 && (!projectData.rolesByUID || membersCount !== rolesCount)) {
+    const projectDoc = projectSnapshot.docs[0];
+    const projectData = { ...projectDoc.data() }; // Create a mutable copy
+    const membersCount = Array.isArray(projectData.members) ? projectData.members.length : 0;
+    const rolesCount = projectData.rolesByUID ? Object.keys(projectData.rolesByUID).length : 0;
 
-            console.log(`Syncing roles for project: ${projectDoc.id}. Reason: Field missing or count mismatch. Members: ${membersCount}, Roles: ${rolesCount}`);
+    // Syncing logic remains the same
+    if (membersCount > 0 && (!projectData.rolesByUID || membersCount !== rolesCount)) {
+        console.log(`Syncing roles for project: ${projectDoc.id}. Reason: Field missing or count mismatch. Members: ${membersCount}, Roles: ${rolesCount}`);
 
-            const rolesByUID = {};
-            const memberRoleKeys = [];
+        const rolesByUID = {};
+        const memberRoleKeys = [];
 
-            // Build rolesByUID and memberRoleKeys
-            projectData.members.forEach(member => {
-                if (member.uid && member.role) {
-                    rolesByUID[member.uid] = member.role;
-                    memberRoleKeys.push(`${member.uid}:${member.role}`);
-                }
+        projectData.members.forEach(member => {
+            if (member.uid && member.role) {
+                rolesByUID[member.uid] = member.role;
+                memberRoleKeys.push(`${member.uid}:${member.role}`);
+            }
+        });
+
+        try {
+            await updateDoc(projectDoc.ref, {
+                rolesByUID: rolesByUID,
+                memberRoleKeys: memberRoleKeys
             });
 
-            try {
-                await updateDoc(projectDoc.ref, {
-                    rolesByUID: rolesByUID,
-                    memberRoleKeys: memberRoleKeys
-                });
+            // Update the local copy of project data to avoid a re-fetch
+            projectData.rolesByUID = rolesByUID;
+            projectData.memberRoleKeys = memberRoleKeys;
 
-                projectData.rolesByUID = rolesByUID;
-                projectData.memberRoleKeys = memberRoleKeys;
-
-                console.log(`Successfully synced rolesByUID and memberRoleKeys for project: ${projectDoc.id}`);
-            } catch (updateError) {
-                console.error(`Failed to sync project ${projectDoc.id}:`, updateError);
-            }
+            console.log(`Successfully synced rolesByUID and memberRoleKeys for project: ${projectDoc.id}`);
+        } catch (updateError) {
+            console.error(`Failed to sync project ${projectDoc.id}:`, updateError);
         }
-
-        return {
-            data: projectDoc.data(),
-            projectId: projectDoc.id,
-            workspaceId: projectDoc.data().workspaceId,
-            projectRef: projectDoc.ref
-        };
     }
+
+    return {
+        data: projectData, // Return the potentially updated data
+        projectId: projectDoc.id,
+        workspaceId: projectData.workspaceId,
+        projectRef: projectDoc.ref
+    };
+}
 
     /**
      * Fetches multiple user profiles by their UIDs.
