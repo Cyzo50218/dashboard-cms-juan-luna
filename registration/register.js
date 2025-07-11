@@ -43,7 +43,6 @@ const auth = getAuth(app);
 const db = getFirestore(app, "juanluna-cms-01");
 const storage = getStorage(app);
 const functions = getFunctions(app);
-const acceptInvitation = httpsCallable(functions, "acceptWorkspaceInvitation");
 console.log("Firebase initialized.");
 
 let invitationId = null;
@@ -561,6 +560,8 @@ async function handleWorkspaceInvitationAcceptance(invId) {
   try {
     acceptInvitationBtn.disabled = true;
     acceptInvitationBtn.textContent = "Processing...";
+    const acceptInvitation = httpsCallable(functions, 'acceptWorkspaceInvitation');
+    
     const result = await acceptInvitation({ invId });
     const { workspaceId } = result.data;
 
