@@ -556,59 +556,57 @@ function generateAvatar(initials, backgroundColor = '#333') {
   return dataUrl;
 }
 
-async function handleWorkspaceInvitationAcceptance(user, invId) {
+async function handleWorkspaceInvitationAcceptance(uid, invitationId) {
   try {
     acceptInvitationBtn.disabled = true;
     acceptInvitationBtn.textContent = "Processing...";
 
-    const db = getFirestore();
-    const invitationRef = doc(db, "InvitedWorkspaces", invId);
-    const userRef = doc(db, "users", user.uid);
-
-    console.log(`🔍 Fetching invitation: ${invitationRef.path}`);
+    // Get invitation document
+    const invitationRef = doc(db, "InvitedWorkspaces", invitationId);
     const invitationSnap = await getDoc(invitationRef);
     if (!invitationSnap.exists()) {
-      throw new Error("This invitation no longer exists.");
+      throw new Error("Invitation not found.");
     }
 
     const invitationData = invitationSnap.data();
-    if (invitationData.status === 'accepted') {
+    const { workspaceId, workspaceRefPath, invitedEmail, status } = invitationData;
+
+    if (status === 'accepted') {
       throw new Error("This invitation has already been accepted.");
     }
 
-    if ((invitationData.invitedEmail || "").toLowerCase() !== user.email.toLowerCase()) {
-      throw new Error("This invitation is not for your email.");
-    }
-
-    const { workspaceId, workspaceRefPath, invitedBy } = invitationData;
     if (!workspaceId || !workspaceRefPath) {
-      throw new Error("The invitation is missing workspace details.");
+      throw new Error("Corrupted invitation data: missing workspaceId or workspaceRefPath.");
     }
 
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (!user || user.email.toLowerCase() !== invitedEmail.toLowerCase()) {
+      throw new Error(`This invitation is for ${invitedEmail}, but you are signed in as ${user?.email || 'unknown'}`);
+    }
+
+    const userRef = doc(db, "users", uid);
     const workspaceRef = doc(db, workspaceRefPath);
-    const workspaceSnap = await getDoc(workspaceRef);
-    if (!workspaceSnap.exists()) {
-      throw new Error("The workspace associated with this invitation no longer exists.");
-    }
 
+    // Start batch
     const batch = writeBatch(db);
     batch.update(userRef, { selectedWorkspace: workspaceId });
-    batch.update(workspaceRef, { members: arrayUnion(user.uid) });
+    batch.update(workspaceRef, { members: arrayUnion(uid) });
     batch.update(invitationRef, {
       status: "accepted",
       acceptedAt: serverTimestamp(),
       acceptedBy: {
-        uid: user.uid,
+        uid,
         name: user.displayName || "",
-        email: user.email || ""
+        email: user.email || "",
       }
     });
 
     await batch.commit();
 
-    alert("🎉 Invitation accepted! You are now part of the workspace.");
+    alert("🎉 Invitation accepted! Redirecting to workspace...");
     window.location.href = `/myworkspace/${workspaceId}`;
-
   } catch (error) {
     console.error("❌ Error accepting invitation:", error);
     alert("Error: " + error.message);
@@ -616,6 +614,7 @@ async function handleWorkspaceInvitationAcceptance(user, invId) {
     acceptInvitationBtn.textContent = "Accept Invitation";
   }
 }
+
 
 
 // Pick random background color
