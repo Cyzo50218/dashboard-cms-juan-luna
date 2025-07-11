@@ -198,6 +198,7 @@ function attachRealtimeListeners(userId) {
 
     const userDocRef = doc(db, 'users', userId);
 
+    // This listener correctly gets the active workspace ID from the user's profile. (Unchanged)
     activeListeners.user = onSnapshot(userDocRef, (userSnap) => {
         if (!userSnap.exists()) {
             console.error("User document not found.");
@@ -208,23 +209,26 @@ function attachRealtimeListeners(userId) {
         const newActiveWorkspaceId = userSnap.data().selectedWorkspace;
 
         if (newActiveWorkspaceId) {
-            const workspaceRef = doc(db, `users/${userId}/myworkspace`, newActiveWorkspaceId);
 
-            activeListeners.workspace = onSnapshot(workspaceRef, async (workspaceSnapshot) => {
+             const memberDocRef = doc(db, `workspaces/${newActiveWorkspaceId}/members`, userId);
+
+            // This listener now reacts to changes in the membership doc (e.g., a different project is selected).
+            activeListeners.workspace = onSnapshot(memberDocRef, async (memberDocSnap) => {
                 detachProjectSpecificListeners();
                 currentProjectRef = null;
 
-                if (!workspaceSnapshot.exists()) {
-                    console.warn("[DEBUG] No selected workspace. Clearing UI.");
+                if (!memberDocSnap.exists()) {
+                    console.warn("[DEBUG] Membership document not found. Clearing UI.");
                     project = {};
                     render();
                     return;
                 }
 
-                currentWorkspaceId = workspaceSnapshot.id;
-                const workspaceData = workspaceSnapshot.data();
+                // Get the selected project ID from the new membership document.
+                const memberData = memberDocSnap.data();
+                const selectedProjectId = memberData?.selectedProjectId || null; // Safely access the ID
+                currentWorkspaceId = newActiveWorkspaceId;
 
-                const selectedProjectId = workspaceData.selectedProjectId || null;
                 console.log(`[DEBUG] Found workspace '${currentWorkspaceId}'. It points to selectedProjectId: '${selectedProjectId}'`);
 
                 if (!selectedProjectId) {
