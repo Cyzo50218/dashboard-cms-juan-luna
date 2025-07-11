@@ -437,56 +437,71 @@ function detachProjectSpecificListeners() {
 function attachRealtimeListeners(userId) {
     detachAllListeners();
     currentUserId = userId;
-    
+
     const userDocRef = doc(db, 'users', userId);
     activeListeners.user = onSnapshot(userDocRef, (userSnap) => {
         if (!userSnap.exists()) {
             detachAllListeners();
             return;
         }
-        
+
         const newWorkspaceId = userSnap.data().selectedWorkspace;
         if (newWorkspaceId === currentWorkspaceId) return;
-        
+
         currentWorkspaceId = newWorkspaceId;
-        
+
         if (activeListeners.workspace) activeListeners.workspace();
         detachProjectSpecificListeners();
-        
+
         if (!currentWorkspaceId) {
             project = { sections: [] };
             renderBoard();
             return;
         }
-        
-        const workspaceRef = doc(db, `users/${userId}/myworkspace`, currentWorkspaceId);
-        activeListeners.workspace = onSnapshot(workspaceRef, async (workspaceSnap) => {
-            if (!workspaceSnap.exists()) {
+
+        // ✅ UPDATED: Listen to the new membership document path
+        const memberDocRef = doc(db, `workspaces/${currentWorkspaceId}/members`, userId);
+        activeListeners.workspace = onSnapshot(memberDocRef, async (memberDocSnap) => {
+            if (!memberDocSnap.exists()) {
                 project = { sections: [] };
                 renderBoard();
                 return;
             }
-            
-            const newProjectId = workspaceSnap.data().selectedProjectId;
+
+            const memberData = memberDocSnap.data();
+            const newProjectId = memberData?.selectedProjectId;
+            // ✅ GET VISIBILITY: Default to 'private' for safety
+            const visibility = memberData?.selectedProjectWorkspaceVisibility || 'private';
+
             if (newProjectId === currentProjectId) return;
-            
+
             currentProjectId = newProjectId;
             detachProjectSpecificListeners();
-            
+
             if (!currentProjectId) {
                 project = { sections: [] };
                 renderBoard();
                 return;
             }
-            
+
+            // ✅ NEW VISIBILITY CHECK
+            const canAttemptLoad = ['workspace', 'viewer', 'private'].includes(visibility);
+            if (!canAttemptLoad) {
+                console.warn(`Access denied by visibility setting: '${visibility}'`);
+                project = { sections: [] };
+                renderBoard();
+                return;
+            }
+
             try {
+                // This query securely finds the project and enforces membership
                 const projectQuery = query(
                     collectionGroup(db, 'projects'),
                     where('projectId', '==', currentProjectId),
                     where('memberUIDs', 'array-contains', currentUserId)
                 );
                 const projectSnapshot = await getDocs(projectQuery);
-                
+
                 if (projectSnapshot.empty) {
                     project = { sections: [] };
                     renderBoard();
