@@ -560,11 +560,19 @@ async function handleWorkspaceInvitationAcceptance(invId) {
   try {
     acceptInvitationBtn.disabled = true;
     acceptInvitationBtn.textContent = "Processing...";
-    const acceptInvitation = httpsCallable(functions, 'acceptWorkspaceInvitation');
-    
-    const result = await acceptInvitation({ invId });
-    const { workspaceId } = result.data;
 
+    const user = getAuth().currentUser;
+    if (!user) {
+      throw new Error("User is not authenticated.");
+    }
+
+    // Optional: Force refresh token if needed
+    await user.getIdToken(true);
+
+    const acceptInvitation = httpsCallable(functions, 'acceptWorkspaceInvitation');
+    const result = await acceptInvitation({ invId });
+
+    const { workspaceId } = result.data;
     alert("Invitation accepted! You are now a member of the workspace.");
     window.location.href = `/myworkspace/${workspaceId}`;
 
@@ -575,6 +583,7 @@ async function handleWorkspaceInvitationAcceptance(invId) {
     acceptInvitationBtn.textContent = "Accept Invitation";
   }
 }
+
 // Pick random background color
 function getRandomColor() {
   const vibrantColors = ["#F44336", "#E91E63", "#9C27B0", "#3F51B5", "#2196F3", "#009688", "#4CAF50", "#FF9800", "#795548"];
