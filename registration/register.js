@@ -556,34 +556,67 @@ function generateAvatar(initials, backgroundColor = '#333') {
   return dataUrl;
 }
 
-async function handleWorkspaceInvitationAcceptance(invId) {
+async function handleWorkspaceInvitationAcceptance(user, invId) {
   try {
     acceptInvitationBtn.disabled = true;
     acceptInvitationBtn.textContent = "Processing...";
 
-    const user = getAuth().currentUser;
-    if (!user) {
-      throw new Error("User is not authenticated.");
+    const db = getFirestore();
+    const invitationRef = doc(db, "InvitedWorkspaces", invId);
+    const userRef = doc(db, "users", user.uid);
+
+    console.log(`🔍 Fetching invitation: ${invitationRef.path}`);
+    const invitationSnap = await getDoc(invitationRef);
+    if (!invitationSnap.exists()) {
+      throw new Error("This invitation no longer exists.");
     }
-    console.log(await user?.getIdTokenResult())
 
-    // Optional: Force refresh token if needed
-    await user.getIdToken(true);
+    const invitationData = invitationSnap.data();
+    if (invitationData.status === 'accepted') {
+      throw new Error("This invitation has already been accepted.");
+    }
 
-    const acceptInvitation = httpsCallable(functions, 'acceptWorkspaceInvitation');
-    const result = await acceptInvitation({ invId });
+    if ((invitationData.invitedEmail || "").toLowerCase() !== user.email.toLowerCase()) {
+      throw new Error("This invitation is not for your email.");
+    }
 
-    const { workspaceId } = result.data;
-    alert("Invitation accepted! You are now a member of the workspace.");
+    const { workspaceId, workspaceRefPath, invitedBy } = invitationData;
+    if (!workspaceId || !workspaceRefPath) {
+      throw new Error("The invitation is missing workspace details.");
+    }
+
+    const workspaceRef = doc(db, workspaceRefPath);
+    const workspaceSnap = await getDoc(workspaceRef);
+    if (!workspaceSnap.exists()) {
+      throw new Error("The workspace associated with this invitation no longer exists.");
+    }
+
+    const batch = writeBatch(db);
+    batch.update(userRef, { selectedWorkspace: workspaceId });
+    batch.update(workspaceRef, { members: arrayUnion(user.uid) });
+    batch.update(invitationRef, {
+      status: "accepted",
+      acceptedAt: serverTimestamp(),
+      acceptedBy: {
+        uid: user.uid,
+        name: user.displayName || "",
+        email: user.email || ""
+      }
+    });
+
+    await batch.commit();
+
+    alert("🎉 Invitation accepted! You are now part of the workspace.");
     window.location.href = `/myworkspace/${workspaceId}`;
 
   } catch (error) {
     console.error("❌ Error accepting invitation:", error);
-    alert("Error: " + (error.message || "Something went wrong"));
+    alert("Error: " + error.message);
     acceptInvitationBtn.disabled = false;
     acceptInvitationBtn.textContent = "Accept Invitation";
   }
 }
+
 
 // Pick random background color
 function getRandomColor() {
