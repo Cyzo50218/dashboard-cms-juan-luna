@@ -593,23 +593,6 @@ async function handleWorkspaceInvitationAcceptance(user, invId) {
     });
     console.log(`   - UPDATE invitation doc: ${invitationRef.path}`);
     
-    // Optional Step 4: Clean up pending invite on the inviter's document
-    if (invitedBy && invitedBy.uid) {
-      const inviterUserRef = doc(db, 'users', invitedBy.uid);
-      console.log(`4. Attempting to READ inviter's user doc: ${inviterUserRef.path}`);
-      const inviterSnap = await getDoc(inviterUserRef);
-      if (inviterSnap.exists()) {
-        console.log("✅ READ successful: Inviter user doc exists.");
-        const pendingInviteToRemove = (inviterSnap.data().workspacePendingInvites || []).find(p => p.invitationId === invId);
-        if (pendingInviteToRemove) {
-          batch.update(inviterUserRef, { workspacePendingInvites: arrayRemove(pendingInviteToRemove) });
-          console.log(`   - UPDATE inviter's user doc to remove pending invite: ${inviterUserRef.path}`);
-        }
-      } else {
-        console.log("... Inviter user doc not found, skipping cleanup.");
-      }
-    }
-    
     // Step 5: Commit all writes at once
     console.log("5. Attempting to COMMIT batch of all prepared writes...");
     await batch.commit();
