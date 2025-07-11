@@ -209,7 +209,7 @@ async function handleProjectCreate() {
         starred: false,
         createdAt: serverTimestamp(),
         accessLevel: "private",
-        workspaceRole: "Viewer",
+        workspaceRole: "private",
         project_super_admin_uid: currentUser.uid,
         project_admin_user: '',
         members: [{ uid: currentUser.uid, role: "Project Owner Admin" }],

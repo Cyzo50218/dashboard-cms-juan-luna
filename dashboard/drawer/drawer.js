@@ -47,34 +47,43 @@ import { firebaseConfig } from "/services/firebase-config.js";
     }
     
     function renderProjectsList() {
-        // This function body remains unchanged from your provided code
         const projectsListContainer = sidebar.querySelector('#projects-section .section-items');
         if (!projectsListContainer || !currentUser) return;
-        
-        const visibleProjects = projectsData.filter(p =>
-            (p.accessLevel !== 'private' || (p.members && p.members.some(m => m.uid === currentUser.uid)))
-        );
-        
+
+        // Filter projects based on their accessLevel and workspace membership
+        const visibleProjects = projectsData.filter(project => {
+            if (project.accessLevel === 'private') {
+                // For private projects, ensure the current user is a member
+                return project.members && project.members.some(member => member.uid === currentUser.uid);
+            }
+            if (project.accessLevel === 'workspace') {
+                // For workspace projects, show them if they belong to the active workspace
+                return project.workspaceId === activeWorkspaceId;
+            }
+            // By default, don't show projects with unknown access levels
+            return false;
+        });
+
         projectsListContainer.innerHTML = '';
-        
+
         if (visibleProjects.length === 0) {
             projectsListContainer.innerHTML = `<li class="nav-item-empty">No projects yet.</li>`;
             updateMyTasksLink(null);
             return;
         }
-        
+
         const activeProjects = activeWorkspaceId ? visibleProjects.filter(p => p.workspaceId === activeWorkspaceId) : [];
         const otherProjects = activeWorkspaceId ? visibleProjects.filter(p => p.workspaceId !== activeWorkspaceId) : visibleProjects;
-        
+
         const renderProjectItem = (project) => {
             const projectLi = document.createElement('li');
             projectLi.classList.add('nav-item-project', 'projects-item');
-            
+
             if (project.id === selectedProjectId) {
                 projectLi.classList.add('selected');
                 projectLi.style.setProperty('--project-highlight-color', project.color);
             }
-            
+
             projectLi.dataset.projectId = project.id;
             const numericUserId = stringToNumericString(currentUser?.uid);
             const numericProjectId = stringToNumericString(project.id);
@@ -89,10 +98,10 @@ import { firebaseConfig } from "/services/firebase-config.js";
             `;
             projectsListContainer.appendChild(projectLi);
         };
-        
+
         activeProjects.sort((a, b) => a.title.localeCompare(b.title)).forEach(renderProjectItem);
         otherProjects.sort((a, b) => a.title.localeCompare(b.title)).forEach(renderProjectItem);
-        
+
         const selectedProject = visibleProjects.find(p => p.id === selectedProjectId);
         updateMyTasksLink(selectedProject || visibleProjects[0]);
     }
@@ -173,12 +182,39 @@ import { firebaseConfig } from "/services/firebase-config.js";
         }
     }
     
+    async function updateUserWorkspaceMembership(userId, workspaceId, projectId) {
+        // Find the selected project in the local data to get its access level.
+        const selectedProject = projectsData.find(p => p.id === projectId);
+        // Determine the visibility. Defaults to 'private' for safety if the project isn't found.
+        const projectVisibility = selectedProject ? selectedProject.accessLevel : 'private';
+
+        // Reference the specific member document: workspaces/{workspaceId}/members/{userId}
+        const memberDocRef = doc(db, `workspaces/${workspaceId}/members`, userId);
+
+        try {
+            // Atomically create or update the document with the user's selections and project visibility.
+            await setDoc(memberDocRef, {
+                userId: userId,
+                selectedProjectId: projectId,
+                selectedProjectWorkspaceVisibility: projectVisibility,
+                lastAccessed: serverTimestamp()
+            }, { merge: true });
+
+            console.log(`User workspace membership updated with project visibility: ${projectVisibility}`);
+        } catch (error) {
+            console.error("Error updating workspace membership:", error);
+        }
+    }
+
+    // ✅ UPDATED: Now calls updateUserWorkspaceMembership on project selection.
     async function selectProject(projectIdToSelect) {
         if (!currentUser || !activeWorkspaceId) return;
-        
+
         try {
             const workspaceRef = doc(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}`);
-            await updateDoc(workspaceRef, { selectedProjectId: projectIdToSelect });
+            // After successfully setting the project, update the centralized membership document.
+            await updateUserWorkspaceMembership(currentUser.uid, activeWorkspaceId, projectIdToSelect);
+
         } catch (error) {
             console.error("Error setting selected project:", error);
         }
@@ -215,44 +251,43 @@ import { firebaseConfig } from "/services/firebase-config.js";
         if (unsubscribeUserDoc) unsubscribeUserDoc();
         if (unsubscribeProjects) unsubscribeProjects();
         if (unsubscribeWorkspace) unsubscribeWorkspace();
-        
+
         activeWorkspaceId = null;
         selectedProjectId = null;
         projectsData = [];
         isReloading = false;
-        
+
         if (user) {
             currentUser = user;
-            
+
             const userDocRef = doc(db, 'users', user.uid);
             unsubscribeUserDoc = onSnapshot(userDocRef, (userSnap) => {
                 const newActiveWorkspaceId = userSnap.data()?.selectedWorkspace || null;
-                
+
                 if (newActiveWorkspaceId !== activeWorkspaceId) {
                     console.log(`DEBUG: Active workspace changed to: ${newActiveWorkspaceId}`);
                     activeWorkspaceId = newActiveWorkspaceId;
-                    
+
                     if (unsubscribeWorkspace) unsubscribeWorkspace();
-                    
+
                     if (activeWorkspaceId) {
                         const workspaceRef = doc(db, `users/${user.uid}/myworkspace/${activeWorkspaceId}`);
-                        
-                        // ✅ MODIFIED: This listener now handles auto-reselection and reloads the page.
+
                         unsubscribeWorkspace = onSnapshot(workspaceRef, (workspaceSnap) => {
                             if (isReloading) return; // Prevent loops
-                            
+
                             const newSelectedProjectId = workspaceSnap.data()?.selectedProjectId || null;
                             const isStillValid = newSelectedProjectId && projectsData.some(p => p.id === newSelectedProjectId);
-                            
+
                             // --- Auto-reselection and reload logic ---
                             if (!isStillValid) {
                                 console.log(`DEBUG: Selected project ${newSelectedProjectId} is null or invalid.`);
                                 const availableProjects = projectsData.filter(p => p.workspaceId === activeWorkspaceId);
-                                
+
                                 if (availableProjects.length > 0) {
                                     const fallbackProjectId = availableProjects.sort((a, b) => a.title.localeCompare(b.title))[0].id;
                                     console.log(`DEBUG: Found fallback project: ${fallbackProjectId}. Selecting it and reloading.`);
-                                    
+
                                     isReloading = true; // Set flag to prevent loop
                                     selectProject(fallbackProjectId).then(() => {
                                         window.location.reload();
@@ -260,7 +295,7 @@ import { firebaseConfig } from "/services/firebase-config.js";
                                     return; // Exit to wait for reload
                                 }
                             }
-                            
+
                             if (newSelectedProjectId !== selectedProjectId) {
                                 console.log(`DEBUG: Selected project changed to: ${newSelectedProjectId}`);
                                 selectedProjectId = newSelectedProjectId;
@@ -273,18 +308,18 @@ import { firebaseConfig } from "/services/firebase-config.js";
                     }
                 }
             });
-            
+
             const projectsQuery = query(
                 collectionGroup(db, 'projects'),
                 where('memberUIDs', 'array-contains', user.uid),
                 orderBy("createdAt", "desc")
             );
-            
+
             unsubscribeProjects = onSnapshot(projectsQuery, (snapshot) => {
                 projectsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderProjectsList();
             });
-            
+
         } else {
             currentUser = null;
             renderProjectsList();
