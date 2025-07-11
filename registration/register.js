@@ -672,6 +672,7 @@ async function saveUserData(user, fullName, email, provider, photoURL = null) {
   const newWorkspaceRef = doc(workspaceCollectionRef);
   const newWorkspaceData = {
     name: "My First Workspace",
+    workspaceId: newWorkspaceRef.id,
     createdAt: serverTimestamp(),
     members: [user.uid]
   };

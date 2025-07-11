@@ -11,11 +11,11 @@ import {
     getFirestore,
     doc,
     setDoc,
-    getDoc, 
-    collection, 
-    addDoc, 
-    updateDoc, 
-    serverTimestamp 
+    getDoc,
+    collection,
+    addDoc,
+    updateDoc,
+    serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 import {
@@ -32,7 +32,7 @@ console.log("Initializing Firebase...");
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app, "juanluna-cms-01");
-const storage = getStorage(app); 
+const storage = getStorage(app);
 console.log("Firebase initialized.");
 
 
@@ -161,7 +161,7 @@ backArrow.addEventListener('click', () => {
     slideContainer.classList.remove('slide');
 });
 
-togglePassword.addEventListener("click", function() {
+togglePassword.addEventListener("click", function () {
     const icon = this.querySelector("i");
     if (passwordInput.type === "password") {
         passwordInput.type = "text";
@@ -208,15 +208,15 @@ async function saveUserData(user, fullName, email, provider, photoURL = null) {
         console.warn("⚠️ User not authenticated. Cannot write to Firestore.");
         return null;
     }
-    
+
     const userRef = doc(db, "users", user.uid);
-    
+
     // This is the key step: check if the user document already exists.
     const userSnap = await getDoc(userRef);
     const isNewUser = !userSnap.exists();
-    
+
     console.log(isNewUser ? "New user detected." : "Existing user detected.");
-    
+
     let finalPhotoURL = photoURL;
     // Only generate a new avatar if it's a new user signing up with email
     if (provider === 'email' && isNewUser) {
@@ -228,7 +228,7 @@ async function saveUserData(user, fullName, email, provider, photoURL = null) {
         await uploadString(storageRef, dataUrl, 'data_url');
         finalPhotoURL = await getDownloadURL(storageRef);
     }
-    
+
     // Prepare the user data. The 'createdAt' field is only added for new users.
     const userData = {
         id: user.uid,
@@ -238,35 +238,41 @@ async function saveUserData(user, fullName, email, provider, photoURL = null) {
         avatar: finalPhotoURL,
         ...(isNewUser && { createdAt: serverTimestamp() })
     };
-    
+
     // Save the user data. 'merge: true' prevents overwriting existing fields.
     await setDoc(userRef, userData, { merge: true });
     console.log(`✅ User data for ${email} saved successfully.`);
-    
+
     // This block ONLY runs if the user is brand new.
     if (isNewUser) {
         try {
             const workspaceRef = collection(db, `users/${user.uid}/myworkspace`);
+
             const newWorkspace = {
                 name: "My First Workspace",
                 createdAt: serverTimestamp(),
                 members: [user.uid]
             };
-            
+
             // Create the new workspace and get its reference
             const newWorkspaceRef = await addDoc(workspaceRef, newWorkspace);
+
+            await updateDoc(newWorkspaceRef, {
+                workspaceId: newWorkspaceRef.id
+            });
+
             console.log("✅ Default workspace created successfully for new user.");
-            
+
             // Update the main user document with the ID of the new workspace
             await updateDoc(userRef, {
                 selectedWorkspace: newWorkspaceRef.id
             });
             console.log(`✅ Set '${newWorkspaceRef.id}' as the default selected workspace.`);
-            
+
         } catch (error) {
             console.error("❌ Error creating default workspace:", error);
         }
     }
-    
+
     return finalPhotoURL;
 }
