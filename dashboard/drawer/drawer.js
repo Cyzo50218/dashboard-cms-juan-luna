@@ -22,14 +22,14 @@ import { firebaseConfig } from "/services/firebase-config.js";
 
 (function initializeDrawer() {
     if (window.drawerLogicInitialized) return;
-    
+
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app, "juanluna-cms-01");
-    
+
     const sidebar = document.getElementById("dashboardDrawer");
     if (!sidebar) return;
-    
+
     // --- Module-level state variables ---
     let projectsData = [];
     let activeWorkspaceId = null;
@@ -40,27 +40,37 @@ import { firebaseConfig } from "/services/firebase-config.js";
     let unsubscribeWorkspace = null;
     // A flag to prevent multiple reload loops
     let isReloading = false;
-    
+
     function stringToNumericString(str) {
         if (!str) return '';
         return str.split('').map(char => char.charCodeAt(0)).join('');
     }
-    
+
     function renderProjectsList() {
         const projectsListContainer = sidebar.querySelector('#projects-section .section-items');
         if (!projectsListContainer || !currentUser) return;
 
         // Filter projects based on their accessLevel and workspace membership
         const visibleProjects = projectsData.filter(project => {
+            // First, check if the user is an invited member of the project.
+            // This is the main condition for any project to be shown.
+            const isMember = project.memberUIDs && project.memberUIDs.includes(currentUser.uid);
+
+            if (!isMember) {
+                return false; // If they aren't a member, never show the project.
+            }
+
+            // If the user is a member, then decide visibility based on access level.
             if (project.accessLevel === 'private') {
-                // For private projects, ensure the current user is a member
-                return project.members && project.members.some(member => member.uid === currentUser.uid);
+                return true; // Show all private projects they are a member of.
             }
+
             if (project.accessLevel === 'workspace') {
-                // For workspace projects, show them if they belong to the active workspace
-                return project.workspaceId === activeWorkspaceId;
+                return true; // Show all workspace-level projects they are a member of.
+                // The logic below will correctly group them by the active workspace.
             }
-            // By default, don't show projects with unknown access levels
+
+            // By default, hide projects with unknown access levels.
             return false;
         });
 
@@ -105,13 +115,13 @@ import { firebaseConfig } from "/services/firebase-config.js";
         const selectedProject = visibleProjects.find(p => p.id === selectedProjectId);
         updateMyTasksLink(selectedProject || visibleProjects[0]);
     }
-    
+
     // This function and all other helper/event handler functions
     // remain unchanged from your provided code.
     function updateMyTasksLink(targetProject) {
         const myTasksLink = sidebar.querySelector('#my-tasks-link');
         if (!myTasksLink) return;
-        
+
         if (targetProject) {
             const numericUserId = stringToNumericString(currentUser?.uid);
             const numericProjectId = stringToNumericString(targetProject.id);
@@ -122,24 +132,24 @@ import { firebaseConfig } from "/services/firebase-config.js";
             myTasksLink.removeAttribute('data-link');
         }
     }
-    
+
     async function handleAddProject() {
         if (!currentUser) return alert("You must be logged in to add a project.");
-        
+
         const newProjectName = prompt("Enter the name for the new project:");
         if (!newProjectName || !newProjectName.trim()) return;
-        
+
         try {
             const userRef = doc(db, 'users', currentUser.uid);
             const userSnap = await getDoc(userRef);
             const activeWorkspaceId = userSnap.data()?.selectedWorkspace;
-            
+
             if (!activeWorkspaceId) return alert("Cannot add project: No active workspace is selected.");
-            
+
             const workspaceRef = doc(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}`);
             const projectsColRef = collection(workspaceRef, "projects");
             const newProjectRef = doc(projectsColRef);
-            
+
             const defaultColumns = [
                 { id: 'assignees', name: 'Assignee', control: 'assignee' },
                 { id: 'dueDate', name: 'Due Date', control: 'due-date' },
@@ -147,7 +157,7 @@ import { firebaseConfig } from "/services/firebase-config.js";
                 { id: 'status', name: 'Status', control: 'status' }
             ];
             const columnOrder = defaultColumns.map(col => col.id);
-            
+
             const newProjectData = {
                 title: newProjectName.trim(),
                 projectId: newProjectRef.id,
@@ -161,27 +171,27 @@ import { firebaseConfig } from "/services/firebase-config.js";
                 customColumns: [],
                 columnOrder: columnOrder
             };
-            
+
             const sectionsData = [
                 { title: 'Todo', order: 0, sectionType: 'todo', isCollapsed: false, createdAt: serverTimestamp() },
                 { title: 'Doing', order: 1, sectionType: 'doing', isCollapsed: false, createdAt: serverTimestamp() },
                 { title: 'Completed', order: 2, sectionType: 'completed', isCollapsed: true, createdAt: serverTimestamp() }
             ];
-            
+
             await runTransaction(db, async (transaction) => {
                 transaction.set(newProjectRef, newProjectData);
                 transaction.update(workspaceRef, { selectedProjectId: newProjectRef.id });
                 const sectionsColRef = collection(newProjectRef, "sections");
                 sectionsData.forEach(section => transaction.set(doc(sectionsColRef), section));
             });
-            
+
             console.log("Project created and selected successfully!");
-            
+
         } catch (error) {
             console.error("Error adding project:", error);
         }
     }
-    
+
     async function updateUserWorkspaceMembership(userId, workspaceId, projectId) {
         // Find the selected project in the local data to get its access level.
         const selectedProject = projectsData.find(p => p.id === projectId);
@@ -219,21 +229,21 @@ import { firebaseConfig } from "/services/firebase-config.js";
             console.error("Error setting selected project:", error);
         }
     }
-    
+
     sidebar.addEventListener('click', async (e) => {
         const sectionHeader = e.target.closest('.section-header');
         if (sectionHeader) {
             sectionHeader.closest('.nav-section')?.classList.toggle('open');
             return;
         }
-        
+
         if (e.target.closest('.add-project-action')) {
             e.stopPropagation();
             handleAddProject();
             document.querySelector('.drawerprojects-dropdown')?.remove();
             return;
         }
-        
+
         const projectLink = e.target.closest('.projects-item a');
         if (projectLink) {
             e.preventDefault();
@@ -245,7 +255,7 @@ import { firebaseConfig } from "/services/firebase-config.js";
             }
         }
     });
-    
+
     onAuthStateChanged(auth, (user) => {
         console.log("DEBUG: Auth state changed. Cleaning up listeners.");
         if (unsubscribeUserDoc) unsubscribeUserDoc();
@@ -325,7 +335,7 @@ import { firebaseConfig } from "/services/firebase-config.js";
             renderProjectsList();
         }
     });
-    
+
     window.drawerLogicInitialized = true;
     console.log("Drawer Component Initialized with new data model.");
 })();
