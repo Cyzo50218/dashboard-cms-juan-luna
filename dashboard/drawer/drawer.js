@@ -216,14 +216,15 @@ import { firebaseConfig } from "/services/firebase-config.js";
         }
     }
 
-    // ✅ UPDATED: Now calls updateUserWorkspaceMembership on project selection.
     async function selectProject(projectIdToSelect) {
         if (!currentUser || !activeWorkspaceId) return;
 
         try {
             const workspaceRef = doc(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}`);
-            // After successfully setting the project, update the centralized membership document.
-            await updateUserWorkspaceMembership(currentUser.uid, activeWorkspaceId, projectIdToSelect);
+        await updateDoc(workspaceRef, {
+            selectedProjectId: projectIdToSelect
+        });
+        await updateUserWorkspaceMembership(currentUser.uid, activeWorkspaceId, projectIdToSelect);
 
         } catch (error) {
             console.error("Error setting selected project:", error);
