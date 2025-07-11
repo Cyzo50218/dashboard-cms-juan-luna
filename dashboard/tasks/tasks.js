@@ -216,16 +216,26 @@ export function init(params) {
     if (!memberDocSnap.exists()) {
         throw new Error(`Membership document not found for user ${user.uid} in workspace ${selectedWorkspaceId}.`);
     }
+    
+    const memberData = memberDocSnap.data();
+    const selectedProjectId = memberData?.selectedProjectId;
+    // ✅ GET VISIBILITY: Default to 'private' if the field is missing.
+    const visibility = memberData?.selectedProjectWorkspaceVisibility || 'private';
 
-    const selectedProjectId = memberDocSnap.data()?.selectedProjectId;
-
-    // --- Step 3: Ensure a project is selected (Logic is the same, but now uses the new source) ---
+    // --- Step 3: Ensure a project is selected (Unchanged) ---
     if (!selectedProjectId) {
         console.error("No selected project ID is stored in the workspace membership. Please select a project.");
         throw new Error("No selected project ID is stored in the workspace membership.");
     }
 
-    // --- Step 4: Securely find the project and sync roles if needed (Unchanged) ---
+    // --- Step 4: Check if the user is allowed to view based on visibility ---
+    const canAttemptLoad = (visibility === 'workspace' || visibility === 'viewer' || visibility === 'private');
+
+    if (!canAttemptLoad) {
+        throw new Error(`Project access denied due to unknown visibility setting: '${visibility}'.`);
+    }
+
+    // --- Step 5: Securely find the project and sync roles if needed (Unchanged) ---
     const projectQuery = query(
         collectionGroup(db, 'projects'),
         where('projectId', '==', selectedProjectId),

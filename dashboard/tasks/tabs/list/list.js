@@ -236,7 +236,6 @@ function attachRealtimeListeners(userId) {
                     return;
                 }
 
-                // ✅ NEW VISIBILITY CHECK
                 // This block determines if we should even attempt to load the project.
                 const canAttemptLoad = (visibility === 'workspace' || visibility === 'viewer' || visibility === 'private');
 
@@ -248,9 +247,6 @@ function attachRealtimeListeners(userId) {
                 }
 
                 try {
-                    // This query is secure. For the 'private' case, the 'memberUIDs' check is
-                    // what explicitly verifies the user's membership as requested.
-                    // This check also adds a layer of security for the 'workspace' and 'viewer' cases.
                     const projectQuery = query(
                         collectionGroup(db, 'projects'),
                         where('projectId', '==', selectedProjectId),
@@ -264,16 +260,51 @@ function attachRealtimeListeners(userId) {
                         render();
                         return;
                     }
-                    
-                    // --- The rest of the function is unchanged ---
+
                     const projectDoc = projectSnapshot.docs[0];
-                    // ... (rest of the function continues as before) ...
+                    const projectRef = projectDoc.ref;
+                    currentProjectId = projectDoc.id;
+                    currentProjectRef = projectDoc.ref;
+                    console.log(`[DEBUG] Successfully found project at path: ${projectRef.path}`);
+
+                    activeListeners.project = onSnapshot(projectRef, async (projectDetailSnap) => {
+                        if (!projectDetailSnap.exists()) {
+                            console.error("[DEBUG] The selected project was deleted.");
+                            project = { customColumns: [], sections: [], customPriorities: [], customStatuses: [] };
+                            render();
+                            return;
+                        }
+
+                        console.log(`[DEBUG] Project details listener fired for ${projectDetailSnap.id}`);
+                        project = { ...project, ...projectDetailSnap.data(), id: projectDetailSnap.id };
+
+                        updateUserPermissions(projectDetailSnap.data(), currentUserId);
+                        const memberUIDs = projectDetailSnap.data().members?.map(m => m.uid) || [];
+                        allUsers = await fetchMemberProfiles(memberUIDs);
+
+                        const sectionsQuery = query(collection(projectRef, 'sections'), orderBy("order"));
+                        if (activeListeners.sections) activeListeners.sections();
+                        activeListeners.sections = onSnapshot(sectionsQuery, (sectionsSnapshot) => {
+                            project.sections = sectionsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, tasks: [] }));
+                            distributeTasksToSections(allTasksFromSnapshot);
+                            render();
+                        });
+
+                        const tasksGroupQuery = query(collectionGroup(db, 'tasks'), where('projectId', '==', currentProjectId), orderBy('createdAt', 'desc'));
+                        if (activeListeners.tasks) activeListeners.tasks();
+                        activeListeners.tasks = onSnapshot(tasksGroupQuery, (tasksSnapshot) => {
+                            allTasksFromSnapshot = tasksSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+                            distributeTasksToSections(allTasksFromSnapshot);
+                            render();
+                        });
+                    });
+
                 } catch (error) {
-                    // ...
+                    console.error("[DEBUG] Error finding project via collectionGroup query:", error);
                 }
             });
         } else {
-            // ...
+            console.log("[DEBUG] No workspace is selected for this user.");
         }
     });
 }
