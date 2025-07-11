@@ -445,7 +445,7 @@ function showWelcome(name, photoURL, email = '', user) {
     // Call the appropriate handler, passing ONLY the invitation ID.
     if (path.includes('/workspace-invite/')) {
       console.log("Accepting WORKSPACE invitation via Cloud Function...");
-      await handleWorkspaceInvitationAcceptance(invitationId);
+      await handleWorkspaceInvitationAcceptance(currentUser.uid, invitationId);
     } else if (path.includes('/invitation/')) {
       console.log("Accepting PROJECT invitation via Cloud Function...");
       // Assuming you have a handleProjectInvitationAcceptance function
