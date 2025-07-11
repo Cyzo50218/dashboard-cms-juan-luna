@@ -428,6 +428,15 @@ function showWelcome(name, photoURL, email = '', user) {
   // --- THIS IS THE CORRECTED PART ---
   // Attach the click listener to call the new handler correctly.
   acceptInvitationBtn.onclick = async () => {
+    const auth = getAuth(); // Make sure you have access to the auth instance
+    const currentUser = auth.currentUser;
+    console.log("Current user at time of click:", currentUser);
+
+    if (!currentUser) {
+      alert("Your session has expired. Please refresh the page and sign in again.");
+      acceptInvitationBtn.disabled = false;
+      return; // Stop before calling the function
+    }
     // The 'invitationId' should be a string that was captured when the page loaded.
     if (!invitationId) {
       alert("No invitation ID found. Cannot accept invitation.");
