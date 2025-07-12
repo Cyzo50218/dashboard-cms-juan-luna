@@ -145,7 +145,7 @@ const products = [
 // State management
 let selectedProductId = null;
 let isEditing = false;
-
+let searchInput, clearSearchBtn;
 // DOM elements
 let grid,
   addBtn,
@@ -177,10 +177,15 @@ function formatCurrency(amount) {
   }).format(amount);
 }
 
+// Add this separate function for better clarity
+function renderFilteredProducts(filteredProducts) {
+  renderProducts(filteredProducts);
+}
+
 // Initialize the product grid
-function renderProducts() {
+function renderProducts(productsToRender = products) {
   grid.innerHTML = "";
-  products.forEach((product) => {
+  productsToRender.forEach((product) => {
     const card = document.createElement("div");
     card.className = "product-card";
     card.innerHTML = `
@@ -448,9 +453,10 @@ function handleAddClick() {
 }
 
 function handleSettingsClick() {
-  const sidebar = document.querySelector("aside");
+  /*const sidebar = document.querySelector("aside");
   const isVisible = sidebar.style.right === "0px";
-  sidebar.style.right = isVisible ? "-300px" : "0px";
+  sidebar.style.right = isVisible ? "-300px" : "0px";*/
+  
 }
 
 function handleCloseClick() {
@@ -508,10 +514,39 @@ function handleSaveClick(e) {
   }
 }
 
+function filterProducts(searchTerm) {
+  if (!searchTerm) return products;
+
+  const term = searchTerm.toLowerCase();
+  return products.filter(
+    (product) =>
+      product.name.toLowerCase().includes(term) ||
+      product.sku.toLowerCase().includes(term)
+  );
+}
+
+function handleSearchInput(e) {
+  const term = e.target.value.trim();
+  clearSearchBtn.classList.toggle("hidden", !term);
+
+  const filtered = filterProducts(term);
+  renderFilteredProducts(filtered);
+}
+
+function handleClearSearch() {
+  searchInput.value = "";
+  clearSearchBtn.classList.add("hidden");
+  renderProducts(); // Reset to show all products
+}
+
 // UPDATED: Initialize DOM elements
 function initElements() {
-  console.log("%c--- Initializing All DOM Elements ---", "color: yellow; font-weight: bold;");
-
+  console.log(
+    "%c--- Initializing All DOM Elements ---",
+    "color: yellow; font-weight: bold;"
+  );
+  searchInput = document.getElementById("searchInput");
+  clearSearchBtn = document.getElementById("clearSearchBtn");
   // Core App Elements
   grid = document.getElementById("productGridList");
   console.log("grid:", grid);
@@ -535,13 +570,13 @@ function initElements() {
   console.log("cancelBtn:", cancelBtn);
   saveBtn = document.getElementById("saveBtn");
   console.log("saveBtn:", saveBtn);
-  
+
   // Notification Elements
   notification = document.getElementById("notification");
   console.log("notification:", notification);
   notificationMessage = document.getElementById("notificationMessage");
   console.log("notificationMessage:", notificationMessage);
-  
+
   // Image Upload Elements
   imageUploadContainer = document.getElementById("imageUploadContainer");
   console.log("imageUploadContainer:", imageUploadContainer);
@@ -563,7 +598,10 @@ function initElements() {
   productImageInput = document.getElementById("productImage");
   console.log("productImageInput:", productImageInput);
 
-  console.log("%c--- DOM Element Initialization Complete ---", "color: yellow; font-weight: bold;");
+  console.log(
+    "%c--- DOM Element Initialization Complete ---",
+    "color: yellow; font-weight: bold;"
+  );
 }
 
 // Setup event listeners
@@ -582,15 +620,19 @@ function setupEventListeners() {
   imageUploadContainer.addEventListener("drop", handleDrop);
   fileInput.addEventListener("change", handleFileInputChange);
   document.addEventListener("paste", handlePaste);
+
+  searchInput.addEventListener("input", handleSearchInput);
+  clearSearchBtn.addEventListener("click", handleClearSearch);
 }
 
 // Cleanup event listeners
 function cleanup() {
   console.log("[Products Module] Cleaning up old event listeners.");
-  
+
   if (grid) grid.removeEventListener("click", handleGridClick);
   if (addBtn) addBtn.removeEventListener("click", handleAddClick);
-  if (settingsBtn) settingsBtn.removeEventListener("click", handleSettingsClick);
+  if (settingsBtn)
+    settingsBtn.removeEventListener("click", handleSettingsClick);
   if (closeBtn) closeBtn.removeEventListener("click", handleCloseClick);
   if (closeModalBtn) closeModalBtn.removeEventListener("click", hideModal);
   if (cancelBtn) cancelBtn.removeEventListener("click", hideModal);
@@ -603,7 +645,9 @@ function cleanup() {
     imageUploadContainer.removeEventListener("drop", handleDrop);
   }
   if (fileInput) fileInput.removeEventListener("change", handleFileInputChange);
-  
+  if (searchInput) searchInput.removeEventListener("input", handleSearchInput);
+  if (clearSearchBtn)
+    clearSearchBtn.removeEventListener("click", handleClearSearch);
   document.removeEventListener("paste", handlePaste);
 }
 
@@ -614,9 +658,9 @@ export function init(params) {
   setupEventListeners();
   renderProducts();
   const loadingScreen = document.getElementById("loadingScreen");
-  if(loadingScreen) {
+  if (loadingScreen) {
     setTimeout(() => {
-        loadingScreen.classList.add("hidden");
+      loadingScreen.classList.add("hidden");
     }, 1000);
   }
   return cleanup;

@@ -3,23 +3,80 @@
   display: flex;
   flex-direction: column;
 }
+.container {
+  max-width: 1200px;
+  margin: 70px auto;
+}
+.search-bar {
+  width: 50%;
+  max-width: 500px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background-color: #fff;
+  padding: 10px 25px;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.search-bar input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #d3d3d3;
+  border-radius: 6px;
+  font-size: 0.875rem;
+}
+
+.search-bar button {
+  padding: 10px 16px;
+  background-color: #ad4ae2;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  width: auto;
+}
+/* Header adjustments */
 .productlist-header {
+  display: flex;
+  align-items: center;
+  padding-left: 0px; /* 300px + 20px margin */
   margin-top: 60px;
+}
+.productlist-header h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #000000;
+  margin: 0;
+}
+
+/* Update the product grid container */
+#productGridList {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr)); /* 5 equal columns */
+  gap: 4px; /* Very small gap between items */
+  margin-bottom: 10rem;
 }
 
 .product-card {
+  width: 103% !important; /* Full width of grid cell */
+  height: auto; /* Let height be determined by content */
   background-color: #ffffff;
   border: none;
   border-radius: 12px;
-  padding: 16px;
-  width: 180px;
-  height: 240px;
+  min-height: 500px; /* Minimum height */
+  box-sizing: border-box;
+  padding: 6px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   transition: all 0.3s ease;
   position: relative;
   cursor: pointer;
   display: flex;
   flex-direction: column;
+  margin-bottom: 70px; /* Add margin space gap at the bottom */
 }
 .product-card:hover {
   transform: translateY(-4px);
@@ -31,7 +88,7 @@
 }
 .product-image {
   width: 100%;
-  height: 120px;
+  height: 100%;
   background-color: #ffffff;
   border-radius: 8px;
   margin-bottom: 12px;
@@ -291,6 +348,8 @@ textarea.form-input {
   bottom: 20px;
   right: 20px;
   padding: 16px 24px;
+  height: 60px;
+  width: 300px;
   border-radius: 8px;
   background-color: #000000;
   color: white;
@@ -310,7 +369,7 @@ textarea.form-input {
   right: 16px;
   display: flex;
   gap: 8px;
-  z-index: 10;
+  z-index: 1;
 }
 .action-btn {
   width: 28px;
@@ -374,4 +433,63 @@ textarea.form-input {
 .upload-instructions {
   color: #666;
   font-size: 0.875rem;
+}
+
+.search-container1 {
+  position: relative;
+  width: 420px;
+}
+.search-container1 .search-icon {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  left: 1.75rem;
+  pointer-events: none;
+  padding-left: 8px;
+  color: #6B7280; 
+}
+
+.search-input {
+  width: 100%;
+  padding: 10px 40px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  background-color: #f3f4f6;
+  border: 1px solid transparent;
+  color: #111827;
+  transition: all 0.2s ease-in-out;
+}
+
+.search-input::placeholder {
+  color: #6b7280;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #ad4ae2;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(173, 74, 226, 0.2);
+}
+
+.clear-search-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #9ca3af;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clear-search-btn:hover {
+  color: #111827;
+}
+
+.clear-search-btn.hidden {
+  display: none;
 }

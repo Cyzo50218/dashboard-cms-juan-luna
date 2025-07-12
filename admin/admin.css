@@ -1,0 +1,759 @@
+/* --- THEME DEFINITIONS --- */
+:root {
+    /* Light Theme (Default) */
+    --primary-color: #E57373;
+    /* Light Red */
+    --secondary-color: #FFEBEE;
+    /* Very Light Red for hovers/backgrounds */
+    --background-color: #f4f5f7;
+    /* Off-White */
+    --sidebar-bg: #ffffff;
+    --surface-bg: #ffffff;
+    --text-color: #333333;
+    /* Dark Gray */
+    --text-light: #777777;
+    --border-color: #e0e0e0;
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+    --role-user-text-color: #333;
+}
+
+body.dark-mode {
+    /* Dark Theme */
+    --primary-color: #A91D3A;
+    /* Dark Red */
+    --secondary-color: #333333;
+    /* Dark Hover Color */
+    --background-color: #121212;
+    /* Near Black */
+    --sidebar-bg: #1E1E1E;
+    --surface-bg: #242424;
+    --text-color: #FFFFFF;
+    --text-light: #A0A0A0;
+    --border-color: #3A3A3A;
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    --role-user-text-color: #FFFFFF;
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+    margin: 0;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.dashboard-section {
+    margin-top: 30px;
+}
+
+.dashboard-container {
+    display: flex;
+    width: 100%;
+}
+
+/* --- SIDEBAR --- */
+.sidebar {
+    width: 250px;
+    background-color: var(--sidebar-bg);
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border-color);
+}
+
+.sidebar-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--border-color);
+    text-align: center;
+}
+
+.sidebar-header h2 {
+    margin: 0;
+    color: var(--text-color);
+}
+
+.sidebar-nav ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 20px 0;
+}
+
+.sidebar-nav li a {
+    display: flex;
+    align-items: center;
+    padding: 15px 20px;
+    text-decoration: none;
+    color: var(--text-light);
+    font-weight: 500;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.sidebar-nav li a .material-icons {
+    margin-right: 15px;
+}
+
+.sidebar-nav li.active a,
+.sidebar-nav li a:hover {
+    background-color: var(--secondary-color);
+    color: var(--primary-color);
+    border-right: 3px solid var(--primary-color);
+}
+
+.sidebar-footer {
+    margin-top: auto;
+    padding: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.user-profile {
+    display: flex;
+    align-items: center;
+    margin-top: 20px;
+}
+
+.user-profile img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 15px;
+    object-fit: cover;
+}
+
+.user-name {
+    margin: 0;
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+#logout-btn {
+    color: var(--primary-color);
+    font-size: 0.9em;
+    text-decoration: none;
+}
+
+/* --- THEME SWITCHER --- */
+.theme-switcher-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: var(--text-light);
+}
+
+.theme-switcher {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 28px;
+}
+
+.theme-switcher input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+}
+
+input:checked+.slider {
+    background-color: var(--primary-color);
+}
+
+input:checked+.slider:before {
+    transform: translateX(22px);
+}
+
+.slider.round {
+    border-radius: 34px;
+}
+
+.slider.round:before {
+    border-radius: 50%;
+}
+
+
+/* --- MAIN CONTENT --- */
+.main-content {
+    flex-grow: 1;
+    padding: 30px;
+    overflow-y: auto;
+}
+
+.main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.main-header h1 {
+    margin: 0;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.btn-primary:hover {
+    opacity: 0.9;
+}
+
+.tab-container {
+    width: 100%;
+}
+
+.tab-header {
+    display: flex;
+    border-bottom: 2px solid var(--border-color);
+    margin-bottom: 20px;
+}
+
+.tab-link {
+    padding: 10px 20px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-size: 1em;
+    font-weight: 500;
+    color: var(--text-light);
+    border-bottom: 3px solid transparent;
+    transform: translateY(2px);
+}
+
+.tab-link.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* --- USER LIST --- */
+#user-list-container {
+    background-color: var(--surface-bg);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 10px;
+}
+
+.user-list-header {
+    display: grid;
+    grid-template-columns: 2fr 1.5fr 1fr;
+    padding: 10px 20px;
+    font-weight: 500;
+    color: var(--text-light);
+    font-size: 0.9em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.user-list-item {
+    display: grid;
+    grid-template-columns: 2fr 1.5fr 1fr;
+    align-items: center;
+    /* Vertically center content in each cell */
+    padding: 15px 20px;
+    border-top: 1px solid var(--border-color);
+    transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.user-list-item:hover {
+    background-color: var(--secondary-color);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.user-list-item:first-child {
+    border-top: none;
+}
+
+.user-details {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    /* Adds space between image and text */
+}
+
+.user-details img {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    /* Makes the image a circle */
+    object-fit: cover;
+    /* Prevents image distortion */
+    border: 2px solid var(--border-color);
+}
+
+.user-info .user-name {
+    font-weight: 500;
+    color: var(--text-color);
+    margin: 0 0 4px 0;
+}
+
+.user-info .user-email {
+    font-size: 0.9em;
+    color: var(--text-light);
+    margin: 0;
+}
+
+.workgroup-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    /* Adds space between workgroup items */
+}
+
+.workgroup-item {
+    background-color: var(--background-color);
+    padding: 8px 12px;
+    border-radius: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9em;
+}
+
+.workgroup-name {
+    font-weight: 500;
+}
+
+.member-count {
+    font-size: 0.85em;
+    color: var(--text-light);
+    background-color: var(--secondary-color);
+    padding: 3px 8px;
+    border-radius: 10px;
+}
+
+.user-role .role-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8em;
+    font-weight: 700;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.role-badge.admin {
+    background-color: #e57373;
+    color: white;
+}
+
+.role-badge.developer {
+    background-color: #ffb74d;
+    color: white;
+}
+
+.role-badge.user {
+    background-color: #a5d6a7;
+    color: var(--role-user-text-color);
+}
+
+.role-badge.guest {
+    background-color: #81d4fa;
+    color: var(--role-user-text-color);
+}
+
+/* --- UTILITY & ACCESS DENIED --- */
+.hidden {
+    display: none !important;
+}
+
+#access-denied-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.85);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    color: white;
+    text-align: center;
+}
+
+.access-denied-box {
+    background-color: #2c2c2c;
+    padding: 40px;
+    border-radius: 12px;
+    border: 1px solid #444;
+}
+
+.access-denied-box .large-icon {
+    font-size: 60px;
+    color: #E57373;
+    /* Light Red */
+}
+
+.access-denied-box h1 {
+    margin-top: 10px;
+}
+
+.view {
+    width: 100%;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* User Cards Container */
+#user-cards-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+}
+
+.user-card {
+    background-color: var(--surface-bg);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.user-card-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.user-card-header img {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.user-card-header .user-name {
+    font-size: 1.1em;
+    font-weight: 500;
+    margin: 0;
+}
+
+.user-card-header .user-email {
+    font-size: 0.9em;
+    color: var(--text-light);
+    margin: 0;
+}
+
+.user-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 0.9em;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.info-row span:first-child {
+    color: var(--text-light);
+}
+
+.info-row span:last-child {
+    font-weight: 500;
+    background-color: var(--background-color);
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+
+.info-row .role-badge {
+    color: white;
+    /* Ensure text is readable on colored badges */
+    padding: 5px 10px;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+#workspaces-container {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+/* A card for each user who has workspaces */
+.workspace-user-card {
+    background-color: var(--surface-bg);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 20px;
+    border: 1px solid var(--border-color);
+}
+
+.workspace-user-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding-bottom: 15px;
+    margin-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.workspace-user-header img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.workspace-user-header .user-name {
+    font-size: 1.1em;
+    font-weight: 500;
+}
+
+/* The list of workspaces for a user */
+.user-workspaces-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.workspace-item {
+    background-color: var(--background-color);
+    padding: 15px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+.workspace-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.workspace-info .workspace-name {
+    font-weight: 500;
+    font-size: 1.05em;
+}
+
+.workspace-info .member-count {
+    font-size: 0.9em;
+    color: var(--text-light);
+}
+
+/* Permission controls container */
+.permission-controls {
+    display: flex;
+    gap: 25px;
+    font-size: 0.9em;
+}
+
+.permission-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+/* Hiding the default checkbox */
+.permission-control input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+/* Custom checkbox style */
+.permission-control .checkbox-display {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border-color);
+    background-color: var(--surface-bg);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+/* The checkmark icon */
+.permission-control .checkbox-display .material-icons {
+    font-size: 18px;
+    color: white;
+    transform: scale(0);
+    transition: transform 0.2s;
+}
+
+/* Style when the checkbox is checked */
+.permission-control input:checked + .checkbox-display {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.permission-control input:checked + .checkbox-display .material-icons {
+    transform: scale(1);
+}
+
+.settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 25px;
+}
+
+.settings-card {
+    background-color: var(--surface-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+}
+
+.settings-card-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.settings-card-header h3 {
+    margin: 0 0 5px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.settings-card-header p {
+    margin: 0;
+    font-size: 0.9em;
+    color: var(--text-light);
+}
+
+.settings-card-body {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    font-weight: 500;
+    font-size: 0.9em;
+}
+
+.form-control {
+    width: 100%;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background-color: var(--background-color);
+    color: var(--text-color);
+    font-size: 1em;
+}
+
+/* Style for the Danger Zone */
+.danger-zone {
+    border-color: #e53935; /* Red border */
+}
+
+.danger-zone h3 {
+    color: #e53935;
+}
+
+.btn-danger {
+    background-color: #e53935;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.btn-danger:hover {
+    opacity: 0.9;
+}
+
+.form-hint {
+    font-size: 0.85em;
+    color: var(--text-light);
+    margin: -4px 0 0 0;
+}
+
+/* The divider in the danger zone */
+.danger-divider {
+    border: none;
+    height: 1px;
+    background-color: var(--border-color);
+    margin: 10px 0;
+}
+
+.btn-warning {
+    background-color: #ffb74d; /* A warning-yellow/orange color */
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.btn-warning:hover {
+    opacity: 0.9;
+}
+
+.role-badge.banned {
+    background-color: #ff1111; /* Dark Gray */
+    color: white;
+}
+
+.banned-user-name {
+    color: #e53935; /* A danger/error red color */
+    text-decoration: line-through;
+}
