@@ -525,7 +525,7 @@ function attachRealtimeListeners(userId) {
                     return;
                 }
                 
-                currentProjectRef = projectSnapshot.docs[0].ref;
+                currentProjectRef = projectDoc.ref;
                 
                 activeListeners.project = onSnapshot(currentProjectRef, async (projectDetailSnap) => {
                     if (!projectDetailSnap.exists()) return;
