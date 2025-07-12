@@ -323,14 +323,6 @@ function setupEventListeners(modal, projectRef) {
     const target = e.target;
     e.preventDefault(); // Prevent default link/button behavior for all handled actions.
 
-    // A. Handle clicks on role/remove buttons for EXISTING MEMBERS
-    const memberActionBtn = target.closest('#shareproject-member-dropdowns-container .shareproject-dropdown-action');
-    if (memberActionBtn) {
-      console.log("[DEBUG] Member action button clicked:", memberActionBtn.dataset);
-      await handleRoleChangeAction(memberActionBtn, projectRef);
-      return;
-    }
-    
     const workspaceActionBtn = target.closest('#role-dropdown-for-workspace-item .shareproject-dropdown-action');
     if (workspaceActionBtn) {
         const newRole = workspaceActionBtn.dataset.role;
@@ -362,6 +354,14 @@ function setupEventListeners(modal, projectRef) {
         return;
     }
     
+    // A. Handle clicks on role/remove buttons for EXISTING MEMBERS
+    const memberActionBtn = target.closest('#shareproject-member-dropdowns-container .shareproject-dropdown-action');
+    if (memberActionBtn) {
+      console.log("[DEBUG] Member action button clicked:", memberActionBtn.dataset);
+      await handleRoleChangeAction(memberActionBtn, projectRef);
+      return;
+    }
+
     // B. Handle changing the role for a NEW INVITE
     const inviteRoleBtn = target.closest('#shareproject-role-dropdown .shareproject-dropdown-action');
     if (inviteRoleBtn) {
