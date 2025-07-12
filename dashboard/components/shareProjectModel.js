@@ -557,7 +557,7 @@ function renderDynamicContent(
   if (superAdminUID && !membersToRender.some((m) => m.uid === superAdminUID)) {
     membersToRender.unshift({
       uid: superAdminUID,
-      role: "Project Admin"
+      role: "Project Owner Admin"
     });
   }
 
