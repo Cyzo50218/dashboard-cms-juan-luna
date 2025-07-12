@@ -28,6 +28,8 @@ export function init(params) {
   const workspaceSection = document.querySelector('div[data-section="myworkspace"]');
   if (!workspaceSection) return () => { };
 
+  const headerLeft = workspaceSection.querySelector(".header-myworkspace-left");
+  const workspaceTitleEl = workspaceSection.querySelector(".workspace-title");
   const inviteButtonMembers = workspaceSection.querySelector("#invite-btn");
   const invitePlusMembers = workspaceSection.querySelector("#add-staff-btn");
   const staffListContainer = workspaceSection.querySelector("#staff-list");
