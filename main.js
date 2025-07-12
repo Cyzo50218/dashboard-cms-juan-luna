@@ -3,12 +3,18 @@ import {
     getAuth,
     onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { firebaseConfig } from "/services/firebase-config.js";
+import {
+    getFirestore,
+    getDoc,
+    doc,
+    setDoc,
+    serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
     getFunctions,
-    httpsCallable,
+    httpsCallable
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
+import { firebaseConfig } from "/services/firebase-config.js";
 
 
 
