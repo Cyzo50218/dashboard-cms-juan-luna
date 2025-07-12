@@ -493,7 +493,7 @@ window.TaskSidebar = (function() {
                 
                 const isOwner = projectData.project_super_admin_uid === userId;
                 const memberInfo = projectData.members?.find(member => member.uid === userId);
-                const isEligibleMember = memberInfo && (memberInfo.role === 'Project admin' || memberInfo.role === 'Project Admin' || memberInfo.role === 'Editor');
+                const isEligibleMember = memberInfo && (memberInfo.role === 'Project Owner Admin' || memberInfo.role === 'Project Admin' || memberInfo.role === 'Editor');
                 
                 if ((isOwner || isEligibleMember) && !eligibleProjectsMap.has(projectId)) {
                     // We save all the parts needed to rebuild the path later
@@ -633,7 +633,7 @@ window.TaskSidebar = (function() {
             const newProjectData = projectSnap.data();
             const isOwner = newProjectData.project_super_admin_uid === currentUserId;
             const memberInfo = newProjectData.members?.find(member => member.uid === currentUserId);
-            const isAdmin = memberInfo?.role === 'Project admin';
+            const isAdmin = memberInfo?.role === 'Project Admin' || memberInfo?.role === 'Project Owner Admin';
             const isEditor = memberInfo?.role === 'Editor';
             
             if (!isOwner && !isAdmin && !isEditor) {
@@ -804,77 +804,61 @@ window.TaskSidebar = (function() {
         logActivity({ action: 'added a comment' });
     }
     
-    async function handleCommentSubmit() {
-        const commentInputEl = document.getElementById('comment-input');
-        const textContent = commentInputEl.innerHTML;
-        const fileToUpload = pastedFiles.length > 0 ? pastedFiles[0] : null;
-        let messageHasImage = false;
-        // Exit if there is no text and no file to upload.
-        if (!textContent.trim() && !fileToUpload) {
-            return;
-        }
-        
-        sendCommentBtn.disabled = true;
-        
-        try {
-            let finalHtml = textContent;
-            let attachmentHtml = '';
-            
-            // --- UPLOAD LOGIC ---
-            // If a file has been pasted or selected, upload it first.
-            if (fileToUpload) {
-                console.log("File detected, starting upload to Firebase Storage...");
-                
-                // 1. Define the path in Firebase Storage.
-                const storagePath = `workspaceProjects/${currentProject.id}/messages-attachments/${Date.now()}-${fileToUpload.name}`;
-                const storageRef = ref(storage, storagePath);
-                
-                // 2. Upload the file.
-                const snapshot = await uploadBytes(storageRef, fileToUpload);
-                
-                // 3. Get the permanent, public URL for the uploaded file.
-                const finalDownloadURL = await getDownloadURL(snapshot.ref);
-                console.log("Upload complete. URL:", finalDownloadURL);
-                
-                // 4. Build the correct HTML for the permanent attachment.
-                if (fileToUpload.type.startsWith('image/')) {
-                    messageHasImage = true;
-                    attachmentHtml = `<img src="${finalDownloadURL}" alt="${fileToUpload.name}" class="scalable-image">`;
-                } else if (fileToUpload.type === 'application/pdf') {
-                    attachmentHtml = `
-                    <a href="${finalDownloadURL}" target="_blank" class="pdf-attachment-link">
-                        <i class="fa-solid fa-file-pdf pdf-icon"></i>
-                        <span>${fileToUpload.name}</span>
-                    </a>`;
-                }
-            }
-            
-            // --- HTML ASSEMBLY ---
-            // Combine the text from the input with the HTML for the uploaded file.
-            if (textContent.trim() && attachmentHtml) {
-                // Add a line break if there's both text and an attachment.
-                finalHtml = `${textContent}<br>${attachmentHtml}`;
-            } else {
-                // Otherwise, just use whichever one exists.
-                finalHtml = textContent.trim() || attachmentHtml;
-            }
-            
-            // --- SEND MESSAGE ---
-            // Send the final, clean HTML to be saved in Firestore.
-            await sendMessage({ html: finalHtml });
-            
-            // --- CLEANUP ---
-            // Clear the input and the file cache on success.
-            commentInputEl.innerHTML = '';
-            clearImagePreview(); // This clears the pastedFiles array.
-            
-        } catch (error) {
-            console.error("Failed to send message:", error);
-            alert("There was an error sending your message. Please try again.");
-        } finally {
-            sendCommentBtn.disabled = false;
-        }
+async function handleCommentSubmit() {
+    const commentInputEl = document.getElementById('comment-input');
+    // Get the text content separately from any file previews
+    const textContent = commentInputEl.innerText || '';
+    const fileToUpload = pastedFiles.length > 0 ? pastedFiles[0] : null;
+    
+    if (!textContent.trim() && !fileToUpload) {
+        return; // Exit if there's nothing to send
     }
+    
+    sendCommentBtn.disabled = true;
+    
+    try {
+        let finalHtml = textContent.trim().replace(/\n/g, '<br>'); // Start with the text
+        let messageHasImage = false;
+        
+        // --- UPLOAD LOGIC ---
+        if (fileToUpload) {
+            console.log("File detected, uploading to Firebase Storage...");
+            const storagePath = `workspaceProjects/${currentProject.id}/messages-attachments/${Date.now()}-${fileToUpload.name}`;
+            const storageRef = ref(storage, storagePath);
+            const snapshot = await uploadBytes(storageRef, fileToUpload);
+            const finalDownloadURL = await getDownloadURL(snapshot.ref);
+            console.log("Upload complete. Final URL:", finalDownloadURL);
+            
+            let attachmentHtml = '';
+            if (fileToUpload.type.startsWith('image/')) {
+                messageHasImage = true;
+                attachmentHtml = `<img src="${finalDownloadURL}" alt="${fileToUpload.name}" class="scalable-image">`;
+            } else if (fileToUpload.type === 'application/pdf') {
+                attachmentHtml = `<a href="${finalDownloadURL}" target="_blank" class="pdf-attachment-link"><i class="fa-solid fa-file-pdf pdf-icon"></i><span>${fileToUpload.name}</span></a>`;
+            }
+            
+            // Append the attachment HTML to the text content
+            if (finalHtml) {
+                finalHtml += `<br>${attachmentHtml}`;
+            } else {
+                finalHtml = attachmentHtml;
+            }
+        }
+        
+        // --- SEND MESSAGE ---
+        await sendMessage({ html: finalHtml, hasImage: messageHasImage });
+        
+        // --- CLEANUP ---
+        commentInputEl.innerHTML = '';
+        clearImagePreview(); // This clears the pastedFiles array
+        
+    } catch (error) {
+        console.error("Failed to send message:", error);
+        alert("There was an error sending your message.");
+    } finally {
+        sendCommentBtn.disabled = false;
+    }
+}
     
     /**
      * Renders the entire sidebar with the latest task data.
