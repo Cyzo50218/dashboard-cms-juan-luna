@@ -214,22 +214,8 @@ export function init(params) {
 
             // We only proceed if the document is missing OR it exists but lacks the ownerWorkspaceRef field.
             if (!userWorkspaceSnap.exists() || !userWorkspaceSnap.data().ownerWorkspaceRef) {
-
-                // 1. Find the workspace's owner by reading the canonical workspace document.
-                const canonicalWorkspaceRef = doc(db, 'workspaces', selectedWorkspaceId);
-                const canonicalWorkspaceSnap = await getDoc(canonicalWorkspaceRef);
-                const ownerUid = canonicalWorkspaceSnap.data()?.ownerId;
-
-                if (ownerUid) {
-                    // 2. Build the correct DocumentReference using the owner's UID.
-                    const ownerRef = doc(db, `users/${ownerUid}/myworkspace`, selectedWorkspaceId);
-
-                    // 3. Use setDoc with merge:true to safely create or update the document.
-                    await setDoc(userWorkspaceDocRef, { ownerWorkspaceRef: ownerRef }, { merge: true });
+                    await setDoc(userWorkspaceDocRef, { ownerWorkspaceRef: userWorkspaceDocRef }, { merge: true });
                     console.log(`Set ownerWorkspaceRef at: ${userWorkspaceDocRef.path}`);
-                } else {
-                    console.warn(`Could not find ownerId for workspace ${selectedWorkspaceId}. Skipping ownerWorkspaceRef setup.`);
-                }
             }
         } catch (error) {
             console.error("Error during ownerWorkspaceRef setup:", error);
