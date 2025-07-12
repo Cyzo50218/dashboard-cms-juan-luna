@@ -212,17 +212,23 @@ export function init(params) {
         try {
             const userWorkspaceSnap = await getDoc(userWorkspaceDocRef);
 
-            // Check if the document exists but is missing the ownerWorkspaceRef field
-            if (userWorkspaceSnap.exists() && !userWorkspaceSnap.data().ownerWorkspaceRef) {
+            if (userWorkspaceSnap.exists()) {
+                // The document exists, so we check if the field is missing.
+                if (!userWorkspaceSnap.data().ownerWorkspaceRef) {
+                    const ownerRef = doc(db, 'workspaces', selectedWorkspaceId);
+                    await updateDoc(userWorkspaceDocRef, { ownerWorkspaceRef: ownerRef });
+                    console.log(`Added missing ownerWorkspaceRef to: ${userWorkspaceDocRef.path}`);
+                }
+                // If the field already exists, we correctly do nothing.
+            } else {
+                // The document does NOT exist, so we create it with the necessary field.
                 const ownerRef = doc(db, 'workspaces', selectedWorkspaceId);
-                await updateDoc(userWorkspaceDocRef, { ownerWorkspaceRef: ownerRef });
-                console.log(`Added missing ownerWorkspaceRef to: ${userWorkspaceDocRef.path}`);
+                await setDoc(userWorkspaceDocRef, { ownerWorkspaceRef: ownerRef });
+                console.log(`Created document and set ownerWorkspaceRef at: ${userWorkspaceDocRef.path}`);
             }
-            // If the document and field already exist, we correctly do nothing ("just skip").
-
         } catch (error) {
             // Log this error but don't block the main function from running.
-            console.error("Error during ownerWorkspaceRef check:", error);
+            console.error("Error during ownerWorkspaceRef setup:", error);
         }
 
         // --- Step 2: Look in workspaces/{workspaceId}/members/{userId} for the selected project ---
