@@ -194,43 +194,51 @@ import { firebaseConfig } from "/services/firebase-config.js";
     }
 
     async function updateUserWorkspaceMembership(userId, workspaceId, projectId) {
-        // Find the selected project in the local data to get its access level.
         const selectedProject = projectsData.find(p => p.id === projectId);
-        // Determine the visibility. Defaults to 'private' for safety if the project isn't found.
         const projectVisibility = selectedProject ? selectedProject.accessLevel : 'private';
 
-        // Reference the specific member document: workspaces/{workspaceId}/members/{userId}
         const memberDocRef = doc(db, `workspaces/${workspaceId}/members`, userId);
 
         try {
-            // Atomically create or update the document with the user's selections and project visibility.
             await setDoc(memberDocRef, {
-                userId: userId,
+                userId,
                 selectedProjectId: projectId,
                 selectedProjectWorkspaceVisibility: projectVisibility,
                 lastAccessed: serverTimestamp()
             }, { merge: true });
 
-            console.log(`User workspace membership updated with project visibility: ${projectVisibility}`);
+            console.log(`Updated workspace membership`);
+            console.log(`User: ${userId}`);
+            console.log(`Workspace: ${workspaceId}`);
+            console.log(`Project: ${projectId}`);
+            console.log(`Visibility: ${projectVisibility}`);
         } catch (error) {
-            console.error("Error updating workspace membership:", error);
+            console.error(`Error updating workspace membership: ${error.message}`);
         }
     }
 
     async function selectProject(projectIdToSelect) {
-        if (!currentUser || !activeWorkspaceId) return;
+        if (!currentUser || !activeWorkspaceId) {
+            console.warn('Missing currentUser or activeWorkspaceId');
+            return;
+        }
 
         try {
             const workspaceRef = doc(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}`);
             await updateDoc(workspaceRef, {
                 selectedProjectId: projectIdToSelect
             });
-            await updateUserWorkspaceMembership(currentUser.uid, activeWorkspaceId, projectIdToSelect);
+            console.log(`Updated selectedProjectId in user workspace`);
+            console.log(`User: ${currentUser.uid}`);
+            console.log(`Workspace: ${activeWorkspaceId}`);
+            console.log(`Project: ${projectIdToSelect}`);
 
+            await updateUserWorkspaceMembership(currentUser.uid, activeWorkspaceId, projectIdToSelect);
         } catch (error) {
-            console.error("Error setting selected project:", error);
+            console.error(`Error setting selected project: ${error.message}`);
         }
     }
+
 
     sidebar.addEventListener('click', async (e) => {
         const sectionHeader = e.target.closest('.section-header');
