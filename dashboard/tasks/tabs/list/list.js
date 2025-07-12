@@ -218,8 +218,20 @@ function detachProjectSpecificListeners() {
     console.log("[DEBUG] All listeners have been detached.");
 }
 
+function detachDeeperListeners() {
+    console.log("[DEBUG] Detaching deeper listeners (sections, tasks)...");
+    if (activeListeners.sections) {
+        activeListeners.sections();
+        activeListeners.sections = null;
+    }
+    if (activeListeners.tasks) {
+        activeListeners.tasks();
+        activeListeners.tasks = null;
+    }
+}
+
 function attachRealtimeListeners(userId) {
-    detachAllListeners(); // A helper function to clean up old listeners
+    detachAllListeners();
     currentUserId = userId;
     console.log(`[DEBUG] Attaching listeners for user: ${userId}`);
 
@@ -228,7 +240,7 @@ function attachRealtimeListeners(userId) {
     activeListeners.user = onSnapshot(userDocRef, (userSnap) => {
         if (!userSnap.exists()) {
             console.error("User document not found.");
-            if (activeListeners.workspace) activeListeners.workspace();
+            detachAllListeners();
             return;
         }
 
@@ -241,119 +253,99 @@ function attachRealtimeListeners(userId) {
                 detachProjectSpecificListeners();
                 currentProjectRef = null;
 
-                if (!memberDocSnap.exists()) {
-                    console.warn("[DEBUG] Membership document not found. Clearing UI.");
+                if (!memberDocSnap.exists() || !memberDocSnap.data()?.selectedProjectId) {
                     project = {};
-                    render(); // Render empty state
+                    render(); // Render empty state if no membership or selected project
                     return;
                 }
 
                 const memberData = memberDocSnap.data();
-                const selectedProjectId = memberData?.selectedProjectId || null;
+                const selectedProjectId = memberData.selectedProjectId;
                 currentWorkspaceId = newActiveWorkspaceId;
 
-                console.log(`[DEBUG] Workspace '${currentWorkspaceId}' | Project: '${selectedProjectId}'`);
-
-                if (!selectedProjectId) {
-                    console.warn("[DEBUG] The active workspace does not point to a selected project.");
-                    project = {};
-                    render(); // Render empty state
-                    return;
-                }
-
                 try {
+                    // This initial search is still a one-time fetch (getDocs) to find the project's physical location (ref).
                     let projectDoc = null;
-
-                    // Query 1: Check for direct membership
-                    const directMembershipQuery = query(
-                        collectionGroup(db, 'projects'),
-                        where('projectId', '==', selectedProjectId),
-                        where('memberUIDs', 'array-contains', currentUserId)
-                    );
+                    const directMembershipQuery = query(collectionGroup(db, 'projects'), where('projectId', '==', selectedProjectId), where('memberUIDs', 'array-contains', currentUserId));
                     const directMembershipSnapshot = await getDocs(directMembershipQuery);
 
                     if (!directMembershipSnapshot.empty) {
                         projectDoc = directMembershipSnapshot.docs[0];
-                        console.log(`[DEBUG] Access via direct membership for project: ${selectedProjectId}`);
                     } else {
-                        // Query 2: If no direct membership, check for workspace-level access
-                        const workspaceAccessQuery = query(
-                            collectionGroup(db, 'projects'),
-                            where('projectId', '==', selectedProjectId),
-                            where('workspaceId', '==', currentWorkspaceId),
-                            where('accessLevel', '==', 'workspace')
-                        );
+                        // This query is also kept as getDocs, its purpose is just to find the doc path.
+                        const workspaceAccessQuery = query(collectionGroup(db, 'projects'), where('projectId', '==', selectedProjectId), where('workspaceId', '==', currentWorkspaceId), where('accessLevel', '==', 'workspace'));
                         const workspaceAccessSnapshot = await getDocs(workspaceAccessQuery);
-
                         if (!workspaceAccessSnapshot.empty) {
                             projectDoc = workspaceAccessSnapshot.docs[0];
-                            console.log(`[DEBUG] Access via workspace visibility for project: ${selectedProjectId}`);
                         }
                     }
 
-                    // ✅ If project access check fails, render the private view.
                     if (!projectDoc) {
-                        console.error(`[DEBUG] CRITICAL: Project '${selectedProjectId}' not found OR user lacks permission.`);
-                        project = {};
-                        renderPrivateProjectView(); // Call the new function here
+                        renderPrivateProjectView();
                         return;
                     }
 
-                    // ✅ If project access is successful, ensure the normal UI is visible.
-                    showListViewUI();
-
+                    // We found the project, now attach the main, persistent listener to it.
                     const projectRef = projectDoc.ref;
                     currentProjectId = projectDoc.id;
-                    currentProjectRef = projectDoc.ref;
-                    console.log(`[DEBUG] Successfully found project at path: ${projectRef.path}`);
+                    currentProjectRef = projectRef;
+                    console.log(`[DEBUG] Attaching persistent listener to project: ${projectRef.path}`);
 
                     activeListeners.project = onSnapshot(projectRef, async (projectDetailSnap) => {
+                        
+                        // ✅ --- REAL-TIME PERMISSION CHECK --- ✅
+                        // This logic now runs EVERY time the project document changes.
+
                         if (!projectDetailSnap.exists()) {
                             console.error("[DEBUG] The selected project was deleted.");
-                            project = {
-                                customColumns: [],
-                                sections: [],
-                                customPriorities: [],
-                                customStatuses: []
-                            };
-                            renderPrivateProjectView(); // Also show private view if project is deleted mid-session
+                            detachDeeperListeners();
+                            renderPrivateProjectView();
                             return;
                         }
 
-                        console.log(`[DEBUG] Project details listener fired for ${projectDetailSnap.id}`);
-                        project = { ...project,
-                            ...projectDetailSnap.data(),
-                            id: projectDetailSnap.id
-                        };
+                        const projectData = projectDetailSnap.data();
+                        const hasDirectAccess = (projectData.memberUIDs || []).includes(currentUserId);
+                        const hasWorkspaceAccess = projectData.accessLevel === 'workspace' && projectData.workspaceId === currentWorkspaceId;
 
-                        updateUserPermissions(projectDetailSnap.data(), currentUserId);
-                        const memberUIDs = projectDetailSnap.data().members?.map(m => m.uid) || [];
+                        // If the user has neither direct nor workspace access, block them.
+                        if (!hasDirectAccess && !hasWorkspaceAccess) {
+                            console.warn(`[Permissions] User ${currentUserId} lost access to project ${currentProjectId}.`);
+                            detachDeeperListeners();
+                            renderPrivateProjectView();
+                            return;
+                        }
+
+                        // --- If checks pass, proceed with rendering ---
+                        
+                        showListViewUI(); // Ensure the normal UI is visible
+                        
+                        console.log(`[DEBUG] Project details listener fired for ${projectDetailSnap.id}`);
+                        project = { ...project, ...projectData, id: projectDetailSnap.id };
+
+                        updateUserPermissions(projectData, currentUserId);
+                        const memberUIDs = projectData.members?.map(m => m.uid) || [];
                         allUsers = await fetchMemberProfiles(memberUIDs);
 
-                        const sectionsQuery = query(collection(projectRef, 'sections'), orderBy("order"));
+                        // Attach deeper listeners for sections and tasks
                         if (activeListeners.sections) activeListeners.sections();
+                        const sectionsQuery = query(collection(projectRef, 'sections'), orderBy("order"));
                         activeListeners.sections = onSnapshot(sectionsQuery, (sectionsSnapshot) => {
-                            project.sections = sectionsSnapshot.docs.map(doc => ({ ...doc.data(),
-                                id: doc.id,
-                                tasks: []
-                            }));
+                            project.sections = sectionsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, tasks: [] }));
                             distributeTasksToSections(allTasksFromSnapshot);
                             render();
                         });
 
-                        const tasksGroupQuery = query(collectionGroup(db, 'tasks'), where('projectId', '==', currentProjectId), orderBy('createdAt', 'desc'));
                         if (activeListeners.tasks) activeListeners.tasks();
+                        const tasksGroupQuery = query(collectionGroup(db, 'tasks'), where('projectId', '==', currentProjectId), orderBy('createdAt', 'desc'));
                         activeListeners.tasks = onSnapshot(tasksGroupQuery, (tasksSnapshot) => {
-                            allTasksFromSnapshot = tasksSnapshot.docs.map(doc => ({ ...doc.data(),
-                                id: doc.id
-                            }));
+                            allTasksFromSnapshot = tasksSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
                             distributeTasksToSections(allTasksFromSnapshot);
                             render();
                         });
                     });
 
                 } catch (error) {
-                    console.error("[DEBUG] Error finding project via collectionGroup query:", error);
+                    console.error("[DEBUG] Error during project listener setup:", error);
                 }
             });
         } else {
