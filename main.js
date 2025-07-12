@@ -229,75 +229,93 @@ async function loadHTML(selector, url) {
 }
 
 // --- APPLICATION INITIALIZATION ---
-document.addEventListener("DOMContentLoaded", () => {
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const functions = getFunctions(app); 
-    const runBackfill = httpsCallable(functions, "runBackfill");
-    const runAlgoliaBackfill = httpsCallable(functions, "runAlgoliaBackfill");
+onAuthStateChanged(auth, async (user) => {
+    if (user) {
+        console.log("✅ Authenticated user found. Initializing dashboard...");
 
-    let backfillIntervalId = null;
-    let backfillTaskCountIntervalId = null;
-    onAuthStateChanged(auth, async (user) => {
-        if (user) {
-            console.log("✅ Authenticated user found. Initializing dashboard...");
+        // Load layout components
+        await Promise.all([
+            loadHTML("#top-header", "/dashboard/header/header.html"),
+            loadHTML("#rootdrawer", "/dashboard/drawer/drawer.html"),
+            loadHTML("#right-sidebar", "/dashboard/sidebar/sidebar.html"),
+        ]);
 
-            // Load persistent layout components
-            await Promise.all([
-                loadHTML("#top-header", "/dashboard/header/header.html"),
-                loadHTML("#rootdrawer", "/dashboard/drawer/drawer.html"),
-                loadHTML("#right-sidebar", "/dashboard/sidebar/sidebar.html"),
-            ]);
+        // 🔍 After UI loads, ensure member doc exists with empty selectedProjectId
+        try {
+            const userDoc = await getDoc(doc(db, "users", user.uid));
+            const selectedWorkspace = userDoc.data()?.selectedWorkspace;
 
-            // 🔁 Periodic backfill every 60 seconds
-            const runAndLogBackfill = async () => {
-                try {
-                    const res = await runAlgoliaBackfill();
-                    console.log("✅ Periodic Backfill success:", res.data.message);
-                } catch (err) {
-                    console.error("❌ Periodic Backfill error:", err.message);
+            if (selectedWorkspace) {
+                const memberRef = doc(db, `workspaces/${selectedWorkspace}/members/${user.uid}`);
+                const memberSnap = await getDoc(memberRef);
+
+                if (!memberSnap.exists()) {
+                    await setDoc(memberRef, {
+                        userId: user.uid,
+                        selectedProjectId: "", 
+                        selectedProjectWorkspaceVisibility: "workspace",
+                        lastAccessed: serverTimestamp()
+                    });
+                    console.log(`✅ Member doc initialized in workspaces/${selectedWorkspace}/members/${user.uid}`);
+                } else {
+                    console.log(`ℹ️ Member doc already exists.`);
                 }
-            };
-            const runTaskCountBackfill = async () => {
-    try {
-        const res = await runBackfill();
-        console.log("✅ Periodic Backfill success:", res.data.message);
-    } catch (err) {
-        console.error("❌ Periodic Backfill error:", err.message);
-    }
-};
-            runAndLogBackfill(); // Initial run
-            runTaskCountBackfill();
-            backfillIntervalId = setInterval(runAndLogBackfill, 60_000); 
-            backfillTaskCountIntervalId = setInterval(runTaskCountBackfill, 60_000); // Every 60 seconds
-
-            // Global SPA navigation handler
-            document.body.addEventListener('click', e => {
-                const link = e.target.closest('a[data-link]');
-                if (link) {
-                    e.preventDefault();
-                    history.pushState(null, '', link.href);
-                    router();
-                }
-            });
-
-            window.TaskSidebar?.init();
-            window.addEventListener('popstate', router);
-            router(); // Initial route load
-
-        } else {
-            console.log("⛔ No authenticated user. Redirecting to login...");
-            window.location.href = '/login/login.html';
-
-            // 🧹 Clean up interval if user logs out before login redirect
-            if (backfillIntervalId) {
-                clearInterval(backfillIntervalId);
-                backfillIntervalId = null;
+            } else {
+                console.warn("⚠️ No selectedWorkspace found in user doc.");
             }
-            if (backfillTaskCountIntervalId) {
-                clearInterval(backfillTaskCountIntervalId);
-                backfillTaskCountIntervalId = null;
-            }
+        } catch (err) {
+            console.error("❌ Error creating member doc:", err.message);
         }
-    });
+
+        // Periodic backfill setup (unchanged)
+        const runAndLogBackfill = async () => {
+            try {
+                const res = await runAlgoliaBackfill();
+                console.log("✅ Periodic Backfill success:", res.data.message);
+            } catch (err) {
+                console.error("❌ Periodic Backfill error:", err.message);
+            }
+        };
+
+        const runTaskCountBackfill = async () => {
+            try {
+                const res = await runBackfill();
+                console.log("✅ Periodic Task Count Backfill success:", res.data.message);
+            } catch (err) {
+                console.error("❌ Task Count Backfill error:", err.message);
+            }
+        };
+
+        runAndLogBackfill(); // initial run
+        runTaskCountBackfill();
+        backfillIntervalId = setInterval(runAndLogBackfill, 60_000);
+        backfillTaskCountIntervalId = setInterval(runTaskCountBackfill, 60_000);
+
+        // SPA navigation handler
+        document.body.addEventListener('click', e => {
+            const link = e.target.closest('a[data-link]');
+            if (link) {
+                e.preventDefault();
+                history.pushState(null, '', link.href);
+                router();
+            }
+        });
+
+        window.TaskSidebar?.init();
+        window.addEventListener('popstate', router);
+        router(); // Initial route load
+    } else {
+        console.log("⛔ No authenticated user. Redirecting to login...");
+        window.location.href = '/login/login.html';
+
+        if (backfillIntervalId) {
+            clearInterval(backfillIntervalId);
+            backfillIntervalId = null;
+        }
+        if (backfillTaskCountIntervalId) {
+            clearInterval(backfillTaskCountIntervalId);
+            backfillTaskCountIntervalId = null;
+        }
+    }
 });
+
