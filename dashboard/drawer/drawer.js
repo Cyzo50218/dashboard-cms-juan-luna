@@ -221,10 +221,10 @@ import { firebaseConfig } from "/services/firebase-config.js";
 
         try {
             const workspaceRef = doc(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}`);
-        await updateDoc(workspaceRef, {
-            selectedProjectId: projectIdToSelect
-        });
-        await updateUserWorkspaceMembership(currentUser.uid, activeWorkspaceId, projectIdToSelect);
+            await updateDoc(workspaceRef, {
+                selectedProjectId: projectIdToSelect
+            });
+            await updateUserWorkspaceMembership(currentUser.uid, activeWorkspaceId, projectIdToSelect);
 
         } catch (error) {
             console.error("Error setting selected project:", error);
@@ -282,36 +282,60 @@ import { firebaseConfig } from "/services/firebase-config.js";
                     if (unsubscribeWorkspace) unsubscribeWorkspace();
 
                     if (activeWorkspaceId) {
+                        // Try to get current user's workspace doc first
                         const workspaceRef = doc(db, `users/${user.uid}/myworkspace/${activeWorkspaceId}`);
 
-                        unsubscribeWorkspace = onSnapshot(workspaceRef, (workspaceSnap) => {
-                            if (isReloading) return; // Prevent loops
+                        getDoc(workspaceRef).then(async (docSnap) => {
+                            let actualWorkspaceRef = workspaceRef;
 
-                            const newSelectedProjectId = workspaceSnap.data()?.selectedProjectId || null;
-                            const isStillValid = newSelectedProjectId && projectsData.some(p => p.id === newSelectedProjectId);
+                            if (!docSnap.exists()) {
+                                console.warn("DEBUG: No personal workspace doc. Falling back to collectionGroup lookup.");
 
-                            // --- Auto-reselection and reload logic ---
-                            if (!isStillValid) {
-                                console.log(`DEBUG: Selected project ${newSelectedProjectId} is null or invalid.`);
-                                const availableProjects = projectsData.filter(p => p.workspaceId === activeWorkspaceId);
+                                const groupQuery = query(
+                                    collectionGroup(db, 'myworkspace'),
+                                    where('workspaceId', '==', activeWorkspaceId)
+                                );
+                                const groupSnap = await getDocs(groupQuery);
 
-                                if (availableProjects.length > 0) {
-                                    const fallbackProjectId = availableProjects.sort((a, b) => a.title.localeCompare(b.title))[0].id;
-                                    console.log(`DEBUG: Found fallback project: ${fallbackProjectId}. Selecting it and reloading.`);
-
-                                    isReloading = true; // Set flag to prevent loop
-                                    selectProject(fallbackProjectId).then(() => {
-                                        window.location.reload();
-                                    });
-                                    return; // Exit to wait for reload
+                                if (groupSnap.empty) {
+                                    console.error("Workspace not found in any user's collection.");
+                                    return;
                                 }
+
+                                actualWorkspaceRef = groupSnap.docs[0].ref;
                             }
 
-                            if (newSelectedProjectId !== selectedProjectId) {
-                                console.log(`DEBUG: Selected project changed to: ${newSelectedProjectId}`);
-                                selectedProjectId = newSelectedProjectId;
-                                renderProjectsList();
-                            }
+                            // Now listen to the actual workspace (user or fallback)
+                            unsubscribeWorkspace = onSnapshot(actualWorkspaceRef, (workspaceSnap) => {
+                                if (isReloading) return; // Prevent reload loops
+
+                                const newSelectedProjectId = workspaceSnap.data()?.selectedProjectId || null;
+                                const isStillValid = newSelectedProjectId && projectsData.some(p => p.id === newSelectedProjectId);
+
+                                if (!isStillValid) {
+                                    console.log(`DEBUG: Selected project ${newSelectedProjectId} is null or invalid.`);
+
+                                    const availableProjects = projectsData.filter(p => p.workspaceId === activeWorkspaceId);
+
+                                    if (availableProjects.length > 0) {
+                                        const fallbackProjectId = availableProjects.sort((a, b) => a.title.localeCompare(b.title))[0].id;
+                                        console.log(`DEBUG: Found fallback project: ${fallbackProjectId}. Selecting it.`);
+
+                                        isReloading = true;
+                                        selectProject(fallbackProjectId).then(() => {
+                                            // NO RELOAD — only update `selectedProjectId`
+                                            isReloading = false;
+                                        });
+                                        return;
+                                    }
+                                }
+
+                                if (newSelectedProjectId !== selectedProjectId) {
+                                    console.log(`DEBUG: Selected project changed to: ${newSelectedProjectId}`);
+                                    selectedProjectId = newSelectedProjectId;
+                                    renderProjectsList();
+                                }
+                            });
                         });
                     } else {
                         selectedProjectId = null;
@@ -336,6 +360,7 @@ import { firebaseConfig } from "/services/firebase-config.js";
             renderProjectsList();
         }
     });
+
 
     window.drawerLogicInitialized = true;
     console.log("Drawer Component Initialized with new data model.");
