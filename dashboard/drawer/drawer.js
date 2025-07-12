@@ -258,103 +258,75 @@ import { firebaseConfig } from "/services/firebase-config.js";
         }
     });
 
-    onAuthStateChanged(auth, (user) => {
+    onAuthStateChanged(auth, async (user) => {
         console.log("DEBUG: Auth state changed. Cleaning up listeners.");
 
-        // Cleanup old listeners
+        // Clean up any old listeners
         if (unsubscribeUserDoc) unsubscribeUserDoc();
         if (unsubscribeProjects) unsubscribeProjects();
-        if (unsubscribeWorkspace) unsubscribeWorkspace();
 
         activeWorkspaceId = null;
         selectedProjectId = null;
         projectsData = [];
-        isReloading = false;
 
-        if (user) {
-            currentUser = user;
-
-            const userDocRef = doc(db, 'users', user.uid);
-            unsubscribeUserDoc = onSnapshot(userDocRef, async (userSnap) => {
-                const newActiveWorkspaceId = userSnap.data()?.selectedWorkspace || null;
-
-                if (newActiveWorkspaceId !== activeWorkspaceId) {
-                    console.log(`DEBUG: Active workspace changed to: ${newActiveWorkspaceId}`);
-                    activeWorkspaceId = newActiveWorkspaceId;
-
-                    if (unsubscribeWorkspace) unsubscribeWorkspace();
-
-                    if (activeWorkspaceId) {
-                        const userWorkspaceRef = doc(db, `users/${user.uid}/myworkspace/${activeWorkspaceId}`);
-                        const userWorkspaceSnap = await getDoc(userWorkspaceRef);
-
-                        if (userWorkspaceSnap.exists()) {
-                            unsubscribeWorkspace = onSnapshot(userWorkspaceRef, (workspaceSnap) => {
-                                const newSelectedProjectId = workspaceSnap.data()?.selectedProjectId || null;
-                                handleSelectedProjectChange(newSelectedProjectId);
-                            });
-                        } else {
-                            console.warn("DEBUG: No personal workspace doc. Falling back to collectionGroup lookup.");
-
-                            // Fallback to centralized member doc under workspace
-                            const memberDocRef = doc(db, `workspaces/${activeWorkspaceId}/members/${user.uid}`);
-                            const memberSnap = await getDoc(memberDocRef);
-                            const fallbackProjectId = memberSnap.data()?.selectedProjectId || null;
-
-                            console.log(`DEBUG: Fallback selectedProjectId from central member: ${fallbackProjectId}`);
-                            handleSelectedProjectChange(fallbackProjectId);
-                        }
-                    } else {
-                        selectedProjectId = null;
-                        renderProjectsList();
-                    }
-                }
-            });
-
-            const projectsQuery = query(
-                collectionGroup(db, 'projects'),
-                where('memberUIDs', 'array-contains', user.uid),
-                orderBy("createdAt", "desc")
-            );
-
-            unsubscribeProjects = onSnapshot(projectsQuery, (snapshot) => {
-                projectsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderProjectsList();
-            });
-
-        } else {
+        if (!user) {
             currentUser = null;
             renderProjectsList();
-        }
-    });
-
-    function handleSelectedProjectChange(newSelectedProjectId) {
-        const isStillValid = newSelectedProjectId && projectsData.some(p => p.id === newSelectedProjectId);
-
-        if (!isStillValid) {
-            console.log(`DEBUG: Selected project ${newSelectedProjectId} is null or invalid.`);
-            const availableProjects = projectsData.filter(p => p.workspaceId === activeWorkspaceId);
-
-            if (availableProjects.length > 0) {
-                const fallbackId = availableProjects.sort((a, b) => a.title.localeCompare(b.title))[0].id;
-                console.log(`DEBUG: Found fallback project: ${fallbackId}. Selecting and reloading.`);
-
-                if (!isReloading) {
-                    isReloading = true;
-                    selectProject(fallbackId).then(() => {
-                        window.location.reload();
-                    });
-                }
-            }
             return;
         }
 
-        if (newSelectedProjectId !== selectedProjectId) {
-            console.log(`DEBUG: Selected project changed to: ${newSelectedProjectId}`);
-            selectedProjectId = newSelectedProjectId;
-            renderProjectsList();
-        }
-    }
+        currentUser = user;
+
+        // Listen to user's selectedWorkspace field
+        const userDocRef = doc(db, 'users', user.uid);
+        unsubscribeUserDoc = onSnapshot(userDocRef, async (userSnap) => {
+            const newWorkspaceId = userSnap.data()?.selectedWorkspace || null;
+
+            if (!newWorkspaceId || newWorkspaceId === activeWorkspaceId) return;
+
+            activeWorkspaceId = newWorkspaceId;
+            console.log(`DEBUG: Active workspace set to: ${activeWorkspaceId}`);
+
+            const memberDocRef = doc(db, `workspaces/${activeWorkspaceId}/members/${user.uid}`);
+            const memberSnap = await getDoc(memberDocRef);
+
+            if (!memberSnap.exists()) {
+                console.warn("DEBUG: Member doc not found. Cannot determine selected project.");
+                selectedProjectId = null;
+                renderProjectsList();
+                return;
+            }
+
+            const newSelectedProjectId = memberSnap.data()?.selectedProjectId || null;
+            const isValid = newSelectedProjectId && projectsData.some(p => p.id === newSelectedProjectId);
+
+            if (isValid && newSelectedProjectId !== selectedProjectId) {
+                console.log(`DEBUG: Selected project changed to: ${newSelectedProjectId}`);
+                selectedProjectId = newSelectedProjectId;
+                renderProjectsList();
+            } else if (!isValid) {
+                console.log("DEBUG: selectedProjectId is missing or invalid.");
+                selectedProjectId = null;
+                renderProjectsList();
+            }
+        });
+
+        // Listen to projects the user is a member of
+        const projectsQuery = query(
+            collectionGroup(db, 'projects'),
+            where('memberUIDs', 'array-contains', user.uid),
+            orderBy("createdAt", "desc")
+        );
+
+        unsubscribeProjects = onSnapshot(projectsQuery, (snapshot) => {
+            projectsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            // Try to re-render with selectedProjectId if it's valid
+            if (selectedProjectId && projectsData.some(p => p.id === selectedProjectId)) {
+                renderProjectsList();
+            }
+        });
+    });
 
 
 
