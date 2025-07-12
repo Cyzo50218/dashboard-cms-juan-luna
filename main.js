@@ -6,8 +6,8 @@ import {
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "/services/firebase-config.js";
 import {
-  getFunctions,
-  httpsCallable,
+    getFunctions,
+    httpsCallable,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
 
 
@@ -19,31 +19,31 @@ let currentSectionCleanup = null;
  * Parses the browser's URL path into a structured object for the router.
  */
 function parseRoute() {
-  const pathParts = window.location.pathname.split('/').filter(p => p);
-  const queryParams = new URLSearchParams(window.location.search);
+    const pathParts = window.location.pathname.split('/').filter(p => p);
+    const queryParams = new URLSearchParams(window.location.search);
 
-  if (pathParts.length === 0) {
+    if (pathParts.length === 0) {
+        return { section: 'home' };
+    }
+
+    const resourceType = pathParts[0];
+
+    if (resourceType === 'tasks' && pathParts.length > 3) {
+        return {
+            section: 'tasks',
+            accountId: pathParts[1] || null,
+            tabId: pathParts[2] || 'list',
+            projectId: pathParts[3] || null,
+            openTask: queryParams.get('openTask') || null  // ✅ NEW: support openTask param
+        };
+    }
+
+    const simpleRoutes = ['home', 'myworkspace', 'inbox', 'inventory', 'reports', 'products', 'searchresults', 'settings'];
+    if (simpleRoutes.includes(resourceType)) {
+        return { section: resourceType };
+    }
+
     return { section: 'home' };
-  }
-
-  const resourceType = pathParts[0];
-
-  if (resourceType === 'tasks' && pathParts.length > 3) {
-    return {
-      section: 'tasks',
-      accountId: pathParts[1] || null,
-      tabId: pathParts[2] || 'list',
-      projectId: pathParts[3] || null,
-      openTask: queryParams.get('openTask') || null  // ✅ NEW: support openTask param
-    };
-  }
-
-  const simpleRoutes = ['home', 'myworkspace', 'inbox', 'inventory', 'reports', 'products', 'searchresults', 'settings'];
-  if (simpleRoutes.includes(resourceType)) {
-    return { section: resourceType };
-  }
-
-  return { section: 'home' };
 }
 
 
@@ -134,16 +134,16 @@ async function loadSection(routeParams) {
 function updateActiveNav() {
     const drawer = document.getElementById("dashboardDrawer");
     if (!drawer) return;
-    
+
     const currentPath = window.location.pathname;
-    
+
     // First, clear the 'active' class from all navigation items
     drawer.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-    
+
     let linkToActivate = null;
-    
+
     // --- THIS IS THE NEW, SIMPLIFIED LOGIC ---
-    
+
     // 1. Check if the current URL is any kind of tasks page.
     if (currentPath.startsWith('/tasks/')) {
         // If it is, find the "My Tasks" link by its unique ID.
@@ -152,7 +152,7 @@ function updateActiveNav() {
         // 2. For any other page (e.g., "/home", "/inbox"), find the link with an exact href match.
         linkToActivate = drawer.querySelector(`.nav-item a[href="${currentPath}"]`);
     }
-    
+
     // 3. If we found a link to activate, add the 'active' class to its parent <li>.
     if (linkToActivate) {
         linkToActivate.closest('.nav-item').classList.add('active');
@@ -166,25 +166,25 @@ function updateActiveNav() {
 async function loadHTML(selector, url) {
     const container = document.querySelector(selector);
     if (!container) return;
-    
+
     // 🛑 Prevent re-loading if already loaded (check by custom attribute)
     if (container.getAttribute("data-loaded-url") === url) {
         console.log(`[loadHTML] Skipping reload of ${url} (already loaded)`);
         return;
     }
-    
+
     try {
         const response = await fetch(url);
         if (!response.ok) throw new Error(`Failed to fetch ${url} (HTTP status: ${response.status})`); // More detailed error
-        
+
         const htmlContent = await response.text();
-        
+
         const folderPath = url.substring(0, url.lastIndexOf('/'));
         const componentName = folderPath.split('/').pop();
-        
+
         const cssPath = `${folderPath}/${componentName}.css`;
         const jsPath = `${folderPath}/${componentName}.js`;
-        
+
         // ✅ Remove previous CSS for this component before adding new
         // Check if a link for this specific component already exists
         let existingLink = document.querySelector(`link[data-component-style="${componentName}"]`);
@@ -199,12 +199,12 @@ async function loadHTML(selector, url) {
             link.setAttribute("data-component-style", componentName); // Use data-attribute for better targeting
             document.head.appendChild(link);
         }
-        
+
         container.innerHTML = htmlContent;
-        
+
         // ✅ Mark this container as having this component
         container.setAttribute("data-loaded-url", url);
-        
+
         // ✅ Import JS module only once by checking window._loadedComponents
         // Use a more robust check for module loading to prevent double execution if module itself is cached
         window._loadedComponents = window._loadedComponents || {};
@@ -219,7 +219,7 @@ async function loadHTML(selector, url) {
         } else {
             console.log(`[loadHTML] Skipping JS module import for ${jsPath} (already imported)`);
         }
-        
+
     } catch (err) {
         container.innerHTML = `<p style="color: red;">Error loading component from ${url}: ${err.message}</p>`; // Display error message
         console.error("Failed to load component:", err); // Fix: Corrected to console.error
@@ -227,100 +227,109 @@ async function loadHTML(selector, url) {
         console.error("Full error details:", err.stack);
     }
 }
-
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const functions = getFunctions(app);
+const runBackfill = httpsCallable(functions, "runBackfill");
+const runAlgoliaBackfill = httpsCallable(functions, "runAlgoliaBackfill");
 // --- APPLICATION INITIALIZATION ---
-onAuthStateChanged(auth, async (user) => {
+document.addEventListener("DOMContentLoaded", () => {
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const functions = getFunctions(app); 
+    const functions = getFunctions(app);
     const runBackfill = httpsCallable(functions, "runBackfill");
     const runAlgoliaBackfill = httpsCallable(functions, "runAlgoliaBackfill");
-    if (user) {
-        console.log("✅ Authenticated user found. Initializing dashboard...");
 
-        // Load layout components
-        await Promise.all([
-            loadHTML("#top-header", "/dashboard/header/header.html"),
-            loadHTML("#rootdrawer", "/dashboard/drawer/drawer.html"),
-            loadHTML("#right-sidebar", "/dashboard/sidebar/sidebar.html"),
-        ]);
+    let backfillIntervalId = null;
+    let backfillTaskCountIntervalId = null;
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            console.log("✅ Authenticated user found. Initializing dashboard...");
 
-        // 🔍 After UI loads, ensure member doc exists with empty selectedProjectId
-        try {
-            const userDoc = await getDoc(doc(db, "users", user.uid));
-            const selectedWorkspace = userDoc.data()?.selectedWorkspace;
+            // Load layout components
+            await Promise.all([
+                loadHTML("#top-header", "/dashboard/header/header.html"),
+                loadHTML("#rootdrawer", "/dashboard/drawer/drawer.html"),
+                loadHTML("#right-sidebar", "/dashboard/sidebar/sidebar.html"),
+            ]);
 
-            if (selectedWorkspace) {
-                const memberRef = doc(db, `workspaces/${selectedWorkspace}/members/${user.uid}`);
-                const memberSnap = await getDoc(memberRef);
+            // 🔍 After UI loads, ensure member doc exists with empty selectedProjectId
+            try {
+                const userDoc = await getDoc(doc(db, "users", user.uid));
+                const selectedWorkspace = userDoc.data()?.selectedWorkspace;
 
-                if (!memberSnap.exists()) {
-                    await setDoc(memberRef, {
-                        userId: user.uid,
-                        selectedProjectId: "", // ✅ Exists but empty
-                        selectedProjectWorkspaceVisibility: "workspace",
-                        lastAccessed: serverTimestamp()
-                    });
-                    console.log(`✅ Member doc initialized in workspaces/${selectedWorkspace}/members/${user.uid}`);
+                if (selectedWorkspace) {
+                    const memberRef = doc(db, `workspaces/${selectedWorkspace}/members/${user.uid}`);
+                    const memberSnap = await getDoc(memberRef);
+
+                    if (!memberSnap.exists()) {
+                        await setDoc(memberRef, {
+                            userId: user.uid,
+                            selectedProjectId: "", // ✅ Exists but empty
+                            selectedProjectWorkspaceVisibility: "workspace",
+                            lastAccessed: serverTimestamp()
+                        });
+                        console.log(`✅ Member doc initialized in workspaces/${selectedWorkspace}/members/${user.uid}`);
+                    } else {
+                        console.log(`ℹ️ Member doc already exists.`);
+                    }
                 } else {
-                    console.log(`ℹ️ Member doc already exists.`);
+                    console.warn("⚠️ No selectedWorkspace found in user doc.");
                 }
-            } else {
-                console.warn("⚠️ No selectedWorkspace found in user doc.");
-            }
-        } catch (err) {
-            console.error("❌ Error creating member doc:", err.message);
-        }
-
-        // Periodic backfill setup (unchanged)
-        const runAndLogBackfill = async () => {
-            try {
-                const res = await runAlgoliaBackfill();
-                console.log("✅ Periodic Backfill success:", res.data.message);
             } catch (err) {
-                console.error("❌ Periodic Backfill error:", err.message);
+                console.error("❌ Error creating member doc:", err.message);
             }
-        };
 
-        const runTaskCountBackfill = async () => {
-            try {
-                const res = await runBackfill();
-                console.log("✅ Periodic Task Count Backfill success:", res.data.message);
-            } catch (err) {
-                console.error("❌ Task Count Backfill error:", err.message);
+            // Periodic backfill setup (unchanged)
+            const runAndLogBackfill = async () => {
+                try {
+                    const res = await runAlgoliaBackfill();
+                    console.log("✅ Periodic Backfill success:", res.data.message);
+                } catch (err) {
+                    console.error("❌ Periodic Backfill error:", err.message);
+                }
+            };
+
+            const runTaskCountBackfill = async () => {
+                try {
+                    const res = await runBackfill();
+                    console.log("✅ Periodic Task Count Backfill success:", res.data.message);
+                } catch (err) {
+                    console.error("❌ Task Count Backfill error:", err.message);
+                }
+            };
+
+            runAndLogBackfill(); // initial run
+            runTaskCountBackfill();
+            backfillIntervalId = setInterval(runAndLogBackfill, 60_000);
+            backfillTaskCountIntervalId = setInterval(runTaskCountBackfill, 60_000);
+
+            // SPA navigation handler
+            document.body.addEventListener('click', e => {
+                const link = e.target.closest('a[data-link]');
+                if (link) {
+                    e.preventDefault();
+                    history.pushState(null, '', link.href);
+                    router();
+                }
+            });
+
+            window.TaskSidebar?.init();
+            window.addEventListener('popstate', router);
+            router(); // Initial route load
+        } else {
+            console.log("⛔ No authenticated user. Redirecting to login...");
+            window.location.href = '/login/login.html';
+
+            if (backfillIntervalId) {
+                clearInterval(backfillIntervalId);
+                backfillIntervalId = null;
             }
-        };
-
-        runAndLogBackfill(); // initial run
-        runTaskCountBackfill();
-        backfillIntervalId = setInterval(runAndLogBackfill, 60_000);
-        backfillTaskCountIntervalId = setInterval(runTaskCountBackfill, 60_000);
-
-        // SPA navigation handler
-        document.body.addEventListener('click', e => {
-            const link = e.target.closest('a[data-link]');
-            if (link) {
-                e.preventDefault();
-                history.pushState(null, '', link.href);
-                router();
+            if (backfillTaskCountIntervalId) {
+                clearInterval(backfillTaskCountIntervalId);
+                backfillTaskCountIntervalId = null;
             }
-        });
-
-        window.TaskSidebar?.init();
-        window.addEventListener('popstate', router);
-        router(); // Initial route load
-    } else {
-        console.log("⛔ No authenticated user. Redirecting to login...");
-        window.location.href = '/login/login.html';
-
-        if (backfillIntervalId) {
-            clearInterval(backfillIntervalId);
-            backfillIntervalId = null;
         }
-        if (backfillTaskCountIntervalId) {
-            clearInterval(backfillTaskCountIntervalId);
-            backfillTaskCountIntervalId = null;
-        }
-    }
+    });
+
 });
-
