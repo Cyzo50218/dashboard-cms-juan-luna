@@ -206,7 +206,7 @@ export function init(params) {
         starred: false,
         createdAt: serverTimestamp(),
         accessLevel: "private",
-        workspaceRole: "private",
+        workspaceRole: "Viewer",
         project_super_admin_uid: currentUser.uid,
         project_admin_user: '',
         members: [{ uid: currentUser.uid, role: "Project Owner Admin" }],

@@ -78,10 +78,7 @@ function getSanitizedProjectEmails() {
 
 export async function openShareModal(projectRef) {
   invitedEmails = [];
-  if (!projectRef) {
-    alert("Error: Project not specified.");
-    return;
-  }
+  if (!projectRef) return alert("Error: Project not specified.");
   if (isModalOpen) return;
   isModalOpen = true;
   
@@ -96,82 +93,92 @@ export async function openShareModal(projectRef) {
     
     const userDocRef = doc(db, 'users', user.uid);
     const userDocSnap = await getDoc(userDocRef);
-    if (!userDocSnap.exists()) {
-      throw new Error("Current user document not found.");
-    }
+    if (!userDocSnap.exists()) throw new Error("User document not found.");
     
-    const userData = userDocSnap.data();
-    const selectedWorkspaceId = userData.selectedWorkspace;
+    const selectedWorkspaceId = userDocSnap.data()?.selectedWorkspace;
+    if (!selectedWorkspaceId) throw new Error("No selected workspace.");
     
-    if (!selectedWorkspaceId) {
-      console.warn("User has no 'selectedWorkspace' field.");
-    }
+    const myWorkspaceRef = doc(db, `users/${user.uid}/myworkspace/${selectedWorkspaceId}`);
+    const myWorkspaceSnap = await getDoc(myWorkspaceRef);
     
+    let ownerWorkspaceRef = null;
     let workspaceMemberUIDs = [];
-    if (selectedWorkspaceId) {
-      const workspaceRef = doc(db, `users/${user.uid}/myworkspace/${selectedWorkspaceId}`);
-      const workspaceSnap = await getDoc(workspaceRef);
-      if (workspaceSnap.exists()) {
-        workspaceMemberUIDs = workspaceSnap.data().members || [];
+    
+    if (myWorkspaceSnap.exists()) {
+      ownerWorkspaceRef = myWorkspaceRef;
+      workspaceMemberUIDs = myWorkspaceSnap.data()?.members || [];
+    } else {
+      console.log("DEBUG: No personal workspace doc. Falling back to collectionGroup lookup.");
+      const fallbackQuery = query(
+        collectionGroup(db, 'myworkspace'),
+        where('workspaceId', '==', selectedWorkspaceId)
+      );
+      const fallbackSnap = await getDocs(fallbackQuery);
+      if (!fallbackSnap.empty) {
+        ownerWorkspaceRef = fallbackSnap.docs[0].ref;
+        workspaceMemberUIDs = fallbackSnap.docs[0].data().members || [];
       }
     }
     
-    // ✅ ADDED: A flag to track if we've set up the listeners yet.
-    let listenersAttached = false;
+    const workspaceMemberCount = Array.isArray(workspaceMemberUIDs) ?
+      workspaceMemberUIDs.length :
+      0;
     
-    unsubscribeProjectListener = onSnapshot(
-      projectRef,
-      async (projectDocSnap) => {
-        if (!projectDocSnap.exists()) {
-          alert("This project has been deleted.");
-          closeModal();
-          return;
-        }
-        
-        const projectData = { id: projectDocSnap.id, ...projectDocSnap.data() };
-        const memberUIDs = (projectData.members || []).map((m) => m.uid);
-        
-        const allUniqueUIDs = [
-          ...new Set([
-            projectData.project_super_admin_uid,
-            user.uid,
-            ...memberUIDs,
-            ...workspaceMemberUIDs
-          ]),
-        ].filter(Boolean);
-        
-        const userProfilePromises = allUniqueUIDs.map((uid) =>
-          getDoc(doc(db, "users", uid))
-        );
-        const userProfileDocs = await Promise.all(userProfilePromises);
-        const userProfilesMap = userProfileDocs.reduce((acc, docSnap) => {
-          if (docSnap.exists()) acc[docSnap.id] = docSnap.data();
-          return acc;
-        }, {});
-        
-        // The first time data arrives, the DOM is built by this function.
-        renderDynamicContent(modal, {
-          projectData,
-          userProfilesMap,
-          currentUserId: user.uid,
-          workspaceMemberCount: workspaceMemberUIDs.length,
-        });
-        
-        // ✅ THE FIX: Set up event listeners only ONCE, after the first render.
-        if (!listenersAttached) {
-          console.log("[DEBUG] First render complete. Attaching event listeners now.");
-          renderStaticDropdownContent(modal); // Also move static rendering here
-          setupEventListeners(modal, projectRef);
-          listenersAttached = true; // Set the flag so this doesn't run again.
-        }
+    const workspaceMemberDocRef = doc(db, `workspaces/${selectedWorkspaceId}/members/${user.uid}`);
+    const workspaceMemberSnap = await getDoc(workspaceMemberDocRef);
+    
+    const selectedProjectId = workspaceMemberSnap.exists() ?
+      workspaceMemberSnap.data()?.selectedProjectId :
+      null;
+    
+    unsubscribeProjectListener = onSnapshot(projectRef, async (projectDocSnap) => {
+      if (!projectDocSnap.exists()) {
+        alert("This project has been deleted.");
+        closeModal();
+        return;
       }
-    );
+      
+      const projectData = { id: projectDocSnap.id, ...projectDocSnap.data() };
+      const memberUIDs = (projectData.members || []).map((m) => m.uid);
+      
+      const allUniqueUIDs = [...new Set([
+        projectData.project_super_admin_uid,
+        user.uid,
+        ...memberUIDs,
+        ...workspaceMemberUIDs
+      ])].filter(Boolean);
+      
+      const userProfilePromises = allUniqueUIDs.map(uid =>
+        getDoc(doc(db, "users", uid))
+      );
+      const userProfileDocs = await Promise.all(userProfilePromises);
+      const userProfilesMap = userProfileDocs.reduce((acc, docSnap) => {
+        if (docSnap.exists()) acc[docSnap.id] = docSnap.data();
+        return acc;
+      }, {});
+      
+      renderDynamicContent(modal, {
+        projectData,
+        userProfilesMap,
+        currentUserId: user.uid,
+        workspaceMemberCount,
+        selectedProjectId,
+        selectedWorkspaceId
+      });
+      
+      if (!listenersAttached) {
+        renderStaticDropdownContent(modal);
+        setupEventListeners(modal, projectRef);
+        listenersAttached = true;
+      }
+    });
     
   } catch (error) {
-    console.error("Detailed error in openShareModal:", error);
-    const userMessage = `Could not load sharing details. <br><small style="color:#666;">Reason: ${error.message}</small>`;
+    console.error("openShareModal error:", error);
     if (modalBody) {
-      modalBody.innerHTML = `<p style="color: #d93025; font-family: sans-serif; text-align: center; padding: 20px;">${userMessage}</p>`;
+      modalBody.innerHTML = `<p style="color: #d93025; font-family: sans-serif; text-align: center; padding: 20px;">
+        Could not load sharing details.<br>
+        <small style="color:#666;">Reason: ${error.message}</small></p>`;
     }
   }
 }
@@ -339,13 +346,30 @@ function setupEventListeners(modal, projectRef) {
     if (accessActionBtn) {
       const newAccess = accessActionBtn.dataset.access;
       if (newAccess) {
+        const selectedWorkspaceId = modal.dataset.selectedWorkspaceId;
+        const currentUserId = auth.currentUser.uid;
+        
+        if (!selectedWorkspaceId) {
+          return alert("Error: Workspace context is missing. Cannot change visibility.");
+        }
+        
+        // Use a batch to update both documents atomically
+        const batch = writeBatch(db);
+        
+        // 1. Update the project document
+        batch.update(projectRef, { accessLevel: newAccess });
+        
+        // 2. Update the corresponding field in the user's workspace member document
+        const workspaceMemberDocRef = doc(db, `workspaces/${selectedWorkspaceId}/members/${currentUserId}`);
+        batch.update(workspaceMemberDocRef, { selectedProjectWorkspaceVisibility: newAccess });
+        
         try {
-          // Update Firestore. The onSnapshot listener will automatically re-render the UI.
-          await updateDoc(projectRef, { accessLevel: newAccess });
-          console.log(`Project access level changed to: ${newAccess}`);
+          await batch.commit();
+          console.log(`✅ Atomically updated project accessLevel and member selectedProjectWorkspaceVisibility to: ${newAccess}`);
+          // The onSnapshot listener will now automatically re-render the UI with the new state.
         } catch (error) {
-          console.error("Failed to update access level:", error);
-          alert("Error: Could not save the new access setting.");
+          console.error("Failed to commit visibility changes:", error);
+          alert("Error: Could not save the new access setting. Please check the console.");
         }
       }
       // Hide the dropdown
@@ -482,12 +506,15 @@ function renderStaticDropdownContent(modal) {
 }
 
 function renderDynamicContent(
-  modal, { projectData, userProfilesMap, currentUserId, workspaceMemberCount = 0 }
+  modal, { projectData, userProfilesMap, currentUserId, workspaceMemberCount = 0, selectedWorkspaceId }
 ) {
   // Ensure data is stored in modal dataset
   modal.dataset.projectData = JSON.stringify(projectData);
   modal.dataset.userProfilesMap = JSON.stringify(userProfilesMap);
   
+  if (selectedWorkspaceId) {
+    modal.dataset.selectedWorkspaceId = selectedWorkspaceId;
+  }
   const superAdminUID = projectData.project_super_admin_uid;
   let state = {
     members: JSON.parse(JSON.stringify(projectData.members || [])),
