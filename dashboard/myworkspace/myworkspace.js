@@ -132,127 +132,125 @@ export function init(params) {
   });
 
   async function handleProjectCreate() {
-    const name = prompt("Enter new project name:");
-    if (!name?.trim()) return;
-    if (!currentUser) return alert("User not available.");
+  const name = prompt("Enter new project name:");
+  if (!name?.trim()) return;
+  if (!currentUser) return alert("User not available.");
 
-    try {
-      // 1. Get the current user's selectedWorkspaceId (Unchanged)
-      const userRef = doc(db, 'users', currentUser.uid);
-      const userSnap = await getDoc(userRef);
-      const selectedWorkspaceId = userSnap.data()?.selectedWorkspace;
-      if (!selectedWorkspaceId) {
-        return alert("No workspace selected. Please select a workspace first.");
+  try {
+    // 1. Get the current user's selectedWorkspaceId
+    const userRef = doc(db, 'users', currentUser.uid);
+    const userSnap = await getDoc(userRef);
+    const selectedWorkspaceId = userSnap.data()?.selectedWorkspace;
+    if (!selectedWorkspaceId) {
+      return alert("No workspace selected. Please select a workspace first.");
+    }
+
+    // 2. Look for the actual workspace document in any user's collection
+    const workspaceGroupQuery = query(
+      collectionGroup(db, 'myworkspace'),
+      where('workspaceId', '==', selectedWorkspaceId)
+    );
+    const workspaceGroupSnap = await getDocs(workspaceGroupQuery);
+
+    if (workspaceGroupSnap.empty) {
+      return alert("Error: The selected workspace could not be found. It may have been deleted.");
+    }
+
+    // This is the reference to the owner's workspace document
+    const ownerWorkspaceRef = workspaceGroupSnap.docs[0].ref;
+    const projectsColRef = collection(ownerWorkspaceRef, "projects");
+    const newProjectRef = doc(projectsColRef);
+
+    // Default Columns, Sections, etc.
+    const INITIAL_DEFAULT_COLUMNS = [
+      { id: 'assignees', name: 'Assignee', control: 'assignee' },
+      { id: 'dueDate', name: 'Due Date', control: 'due-date' },
+      {
+        id: 'priority',
+        name: 'Priority',
+        control: 'priority',
+        options: [
+          { name: 'High', color: '#EF4D3D' },
+          { name: 'Medium', color: '#FFD15E' },
+          { name: 'Low', color: '#59E166' }
+        ]
+      },
+      {
+        id: 'status',
+        name: 'Status',
+        control: 'status',
+        options: [
+          { name: 'On track', color: '#59E166' },
+          { name: 'At risk', color: '#fff1b8' },
+          { name: 'Off track', color: '#FFD15E' },
+          { name: 'Completed', color: '#878787' }
+        ]
       }
+    ];
 
-      const workspaceGroupQuery = query(
-        collectionGroup(db, 'myworkspace'),
-        where('workspaceId', '==', selectedWorkspaceId)
-      );
-      const workspaceGroupSnap = await getDocs(workspaceGroupQuery);
+    const INITIAL_DEFAULT_SECTIONS = [
+      { title: 'Todo', order: 0, sectionType: 'todo', isCollapsed: false },
+      { title: 'Doing', order: 1, sectionType: 'doing', isCollapsed: false },
+      { title: 'Completed', order: 2, sectionType: 'completed', isCollapsed: true }
+    ];
 
-      if (workspaceGroupSnap.empty) {
-        return alert("Error: The selected workspace could not be found anywhere. It may have been deleted.");
-      }
+    const INITIAL_COLUMN_ORDER = INITIAL_DEFAULT_COLUMNS.map(col => col.id);
 
-      // This is the reference to the owner's actual workspace document.
-      const ownerWorkspaceRef = workspaceGroupSnap.docs[0].ref;
-
-      // ✅ 3. Define the path where the new project will be created.
-      // It's always in the 'projects' subcollection of the owner's workspace document.
-      const projectsColRef = collection(ownerWorkspaceRef, "projects");
-      const newProjectRef = doc(projectsColRef);
-
-      // --- Default Structures (No change) ---
-      const INITIAL_DEFAULT_COLUMNS = [
-        { id: 'assignees', name: 'Assignee', control: 'assignee' },
-        { id: 'dueDate', name: 'Due Date', control: 'due-date' },
-        {
-          id: 'priority',
-          name: 'Priority',
-          control: 'priority',
-          options: [
-            { name: 'High', color: '#EF4D3D' },
-            { name: 'Medium', color: '#FFD15E' },
-            { name: 'Low', color: '#59E166' }
-          ]
-        },
-        {
-          id: 'status',
-          name: 'Status',
-          control: 'status',
-          options: [
-            { name: 'On track', color: '#59E166' },
-            { name: 'At risk', color: '#fff1b8' },
-            { name: 'Off track', color: '#FFD15E' },
-            { name: 'Completed', color: '#878787' }
-          ]
-        }
-      ];
-
-      const INITIAL_DEFAULT_SECTIONS = [
-        { title: 'Todo', order: 0, sectionType: 'todo', isCollapsed: false },
-        { title: 'Doing', order: 1, sectionType: 'doing', isCollapsed: false },
-        { title: 'Completed', order: 2, sectionType: 'completed', isCollapsed: true }
-      ];
-      const INITIAL_COLUMN_ORDER = INITIAL_DEFAULT_COLUMNS.map(col => col.id);
-
-      // Generate the new project's ID upfront
-      // const newProjectRef = doc(projectsColRef); // Removed duplicate declaration
-
-      await runTransaction(db, async (txn) => {
-        // 1. Set the data for the new project document
-        txn.set(newProjectRef, {
-          title: name.trim(),
-          projectId: newProjectRef.id,
-          workspaceId: selectedWorkspaceId, // Store the parent workspace ID
-          memberUIDs: [currentUser.uid],
-          color: generateColorForName(name.trim()),
-          starred: false,
-          createdAt: serverTimestamp(),
-          accessLevel: "private",
-          workspaceRole: "private",
-          project_super_admin_uid: currentUser.uid,
-          project_admin_user: '',
-          members: [{ uid: currentUser.uid, role: "Project Owner Admin" }],
-          pendingInvites: [],
-          defaultColumns: INITIAL_DEFAULT_COLUMNS,
-          customColumns: [],
-          columnOrder: INITIAL_COLUMN_ORDER
-        });
-
-        const currentUserWorkspaceRef = doc(db, `users/${currentUser.uid}/myworkspace`, selectedWorkspaceId);
-        txn.set(currentUserWorkspaceRef, { selectedProjectId: newProjectRef.id }, { merge: true });
-
-        const sectionsColRef = collection(newProjectRef, "sections");
-        INITIAL_DEFAULT_SECTIONS.forEach(sectionData => {
-          const sectionRef = doc(sectionsColRef);
-          txn.set(sectionRef, { ...sectionData, createdAt: serverTimestamp() });
-        });
+    // 3. Transaction: create the project and sections
+    await runTransaction(db, async (txn) => {
+      txn.set(newProjectRef, {
+        title: name.trim(),
+        projectId: newProjectRef.id,
+        workspaceId: selectedWorkspaceId,
+        memberUIDs: [currentUser.uid],
+        color: generateColorForName(name.trim()),
+        starred: false,
+        createdAt: serverTimestamp(),
+        accessLevel: "private",
+        workspaceRole: "private",
+        project_super_admin_uid: currentUser.uid,
+        project_admin_user: '',
+        members: [{ uid: currentUser.uid, role: "Project Owner Admin" }],
+        pendingInvites: [],
+        defaultColumns: INITIAL_DEFAULT_COLUMNS,
+        customColumns: [],
+        columnOrder: INITIAL_COLUMN_ORDER
       });
 
-      console.log("Project created and set as active successfully!");
+      // ✅ Write selectedProjectId to the user's root profile (not inside myworkspace)
+      txn.set(userRef, { selectedProjectId: newProjectRef.id }, { merge: true });
 
-      try {
-        const memberDocRef = doc(db, 'workspaces', selectedWorkspaceId, 'members', currentUser.uid);
-        await setDoc(memberDocRef, {
-          userId: currentUser.uid,
-          selectedProjectId: newProjectRef.id,
-          selectedProjectWorkspaceVisibility: "private", // The default for a new project
-          lastAccessed: serverTimestamp()
-        }, { merge: true });
+      // Create default sections under the new project
+      const sectionsColRef = collection(newProjectRef, "sections");
+      INITIAL_DEFAULT_SECTIONS.forEach(sectionData => {
+        const sectionRef = doc(sectionsColRef);
+        txn.set(sectionRef, { ...sectionData, createdAt: serverTimestamp() });
+      });
+    });
 
-        console.log("Centralized workspace membership updated for the user.");
+    console.log("Project created and set as active successfully!");
 
-      } catch (membershipError) {
-        console.error("Failed to update workspace membership document:", membershipError);
-      }
+    // 4. Update centralized workspace membership (optional/if applicable)
+    try {
+      const memberDocRef = doc(db, 'workspaces', selectedWorkspaceId, 'members', currentUser.uid);
+      await setDoc(memberDocRef, {
+        userId: currentUser.uid,
+        selectedProjectId: newProjectRef.id,
+        selectedProjectWorkspaceVisibility: "private",
+        lastAccessed: serverTimestamp()
+      }, { merge: true });
 
-    } catch (err) {
-      console.error("Project creation failed:", err);
-      alert("Failed to create the project. Please try again.");
+      console.log("Centralized workspace membership updated.");
+    } catch (membershipError) {
+      console.error("Failed to update workspace membership:", membershipError);
     }
+
+  } catch (err) {
+    console.error("Project creation failed:", err);
+    alert("Failed to create the project. Please try again.");
   }
+}
+
 
   /**
    * Handles the logic for selecting a project.
