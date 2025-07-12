@@ -224,10 +224,6 @@ import { firebaseConfig } from "/services/firebase-config.js";
         }
 
         try {
-            const workspaceRef = doc(db, `users/${currentUser.uid}/myworkspace/${activeWorkspaceId}`);
-            await updateDoc(workspaceRef, {
-                selectedProjectId: projectIdToSelect
-            });
             console.log(`Updated selectedProjectId in user workspace`);
             console.log(`User: ${currentUser.uid}`);
             console.log(`Workspace: ${activeWorkspaceId}`);
