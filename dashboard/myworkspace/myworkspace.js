@@ -137,48 +137,31 @@ export function init(params) {
     if (!currentUser) return alert("User not available.");
 
     try {
-      // ✅ 1. Get the current user's document to find the selected workspace ID.
-      const userRef = doc(db, 'users', currentUser.uid);
-      const userSnap = await getDoc(userRef);
-
-      if (!userSnap.exists()) {
-        return alert("Error: Current user data not found.");
-      }
-
-      const selectedWorkspaceId = userSnap.data().selectedWorkspace;
-      if (!selectedWorkspaceId) {
-        return alert("No workspace has been selected. Please select a workspace first.");
-      }
-
-      const workspaceRef = doc(db, `users/${currentUser.uid}/myworkspace/${selectedWorkspaceId}`);
-      const workspaceSnap = await getDoc(workspaceRef);
-
-      let resolvedWorkspaceRef = workspaceRef;
-
-      if (!workspaceSnap.exists()) {
-        console.warn("Workspace not found in user's own collection. Trying collection group fallback...");
-
-        const workspaceGroup = collectionGroup(db, 'myworkspace');
-        const q = query(workspaceGroup, where('workspaceId', '==', selectedWorkspaceId));
-        const groupSnap = await getDocs(q);
-
-        if (groupSnap.empty) {
-          return alert("Workspace not found anywhere. Please ensure the workspace exists and you're a member.");
+        // 1. Get the current user's selectedWorkspaceId (Unchanged)
+        const userRef = doc(db, 'users', currentUser.uid);
+        const userSnap = await getDoc(userRef);
+        const selectedWorkspaceId = userSnap.data()?.selectedWorkspace;
+        if (!selectedWorkspaceId) {
+            return alert("No workspace selected. Please select a workspace first.");
         }
 
-        const matchedDoc = groupSnap.docs[0];
-        const matchedData = matchedDoc.data();
+        const workspaceGroupQuery = query(
+            collectionGroup(db, 'myworkspace'),
+            where('workspaceId', '==', selectedWorkspaceId)
+        );
+        const workspaceGroupSnap = await getDocs(workspaceGroupQuery);
 
-        // ✅ Check if the current user is in the members array
-        const isMember = (matchedData.members || []).includes(currentUser.uid);
-        if (!isMember) {
-          return alert("You do not have access to this workspace. Please join or request access.");
+        if (workspaceGroupSnap.empty) {
+            return alert("Error: The selected workspace could not be found anywhere. It may have been deleted.");
         }
 
-        resolvedWorkspaceRef = matchedDoc.ref;
-      }
+        // This is the reference to the owner's actual workspace document.
+        const ownerWorkspaceRef = workspaceGroupSnap.docs[0].ref;
 
-      const projectsColRef = collection(resolvedWorkspaceRef, "projects");
+        // ✅ 3. Define the path where the new project will be created.
+        // It's always in the 'projects' subcollection of the owner's workspace document.
+        const projectsColRef = collection(ownerWorkspaceRef, "projects");
+        const newProjectRef = doc(projectsColRef);
 
       // --- Default Structures (No change) ---
       const INITIAL_DEFAULT_COLUMNS = [
@@ -215,7 +198,7 @@ export function init(params) {
       const INITIAL_COLUMN_ORDER = INITIAL_DEFAULT_COLUMNS.map(col => col.id);
 
       // Generate the new project's ID upfront
-      const newProjectRef = doc(projectsColRef);
+      // const newProjectRef = doc(projectsColRef); // Removed duplicate declaration
 
       await runTransaction(db, async (txn) => {
         // 1. Set the data for the new project document
