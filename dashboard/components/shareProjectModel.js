@@ -323,7 +323,7 @@ function setupEventListeners(modal, projectRef) {
     const target = e.target;
     e.preventDefault(); // Prevent default link/button behavior for all handled actions.
 
-    const workspaceActionBtn = target.closest('#role-dropdown-for-workspace-item .shareproject-dropdown-action');
+    const workspaceActionBtn = target.closest('#workspace-item .shareproject-dropdown-action');
     if (workspaceActionBtn) {
         const newRole = workspaceActionBtn.dataset.role;
         if (newRole) {
@@ -353,7 +353,7 @@ function setupEventListeners(modal, projectRef) {
         workspaceActionBtn.closest('.shareproject-dropdown-content').classList.add('hidden');
         return;
     }
-    
+
     // A. Handle clicks on role/remove buttons for EXISTING MEMBERS
     const memberActionBtn = target.closest('#shareproject-member-dropdowns-container .shareproject-dropdown-action');
     if (memberActionBtn) {
