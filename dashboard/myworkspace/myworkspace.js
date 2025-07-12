@@ -48,7 +48,7 @@ export function init(params) {
   };
 
   let currentUser = null;
-  let unsubscribeWorkspace = null;
+  let unsubscribeWorkspaces = null;
 
   // Load selected workspace and listen for changes
   async function loadUserWorkspaces(uid) {
