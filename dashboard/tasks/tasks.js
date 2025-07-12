@@ -213,7 +213,7 @@ export function init(params) {
             const userWorkspaceSnap = await getDoc(userWorkspaceDocRef);
 
             // We only proceed if the document is missing OR it exists but lacks the ownerWorkspaceRef field.
-            if (!userWorkspaceSnap.exists() || !userWorkspaceSnap.data().ownerWorkspaceRef) {
+            if (!userWorkspaceSnap.exists()) {
                     await setDoc(userWorkspaceDocRef, { ownerWorkspaceRef: userWorkspaceDocRef }, { merge: true });
                     console.log(`Set ownerWorkspaceRef at: ${userWorkspaceDocRef.path}`);
             }
