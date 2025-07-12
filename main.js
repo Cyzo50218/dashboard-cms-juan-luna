@@ -230,6 +230,11 @@ async function loadHTML(selector, url) {
 
 // --- APPLICATION INITIALIZATION ---
 onAuthStateChanged(auth, async (user) => {
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const functions = getFunctions(app); 
+    const runBackfill = httpsCallable(functions, "runBackfill");
+    const runAlgoliaBackfill = httpsCallable(functions, "runAlgoliaBackfill");
     if (user) {
         console.log("✅ Authenticated user found. Initializing dashboard...");
 
@@ -252,7 +257,7 @@ onAuthStateChanged(auth, async (user) => {
                 if (!memberSnap.exists()) {
                     await setDoc(memberRef, {
                         userId: user.uid,
-                        selectedProjectId: "", 
+                        selectedProjectId: "", // ✅ Exists but empty
                         selectedProjectWorkspaceVisibility: "workspace",
                         lastAccessed: serverTimestamp()
                     });
