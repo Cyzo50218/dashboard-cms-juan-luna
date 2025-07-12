@@ -233,16 +233,12 @@ async function loadHTML(selector, url) {
         console.error("Full error details:", err.stack);
     }
 }
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const functions = getFunctions(app);
-const runBackfill = httpsCallable(functions, "runBackfill");
-const runAlgoliaBackfill = httpsCallable(functions, "runAlgoliaBackfill");
 // --- APPLICATION INITIALIZATION ---
 document.addEventListener("DOMContentLoaded", () => {
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const functions = getFunctions(app);
+    const db = getFirestore(app, "juanluna-cms-01");
     const runBackfill = httpsCallable(functions, "runBackfill");
     const runAlgoliaBackfill = httpsCallable(functions, "runAlgoliaBackfill");
 
