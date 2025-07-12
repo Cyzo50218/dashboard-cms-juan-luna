@@ -28,13 +28,6 @@ export function init(params) {
   const workspaceSection = document.querySelector('div[data-section="myworkspace"]');
   if (!workspaceSection) return () => { };
 
-  const headerLeft = workspaceSection.querySelector(".header-myworkspace-left");
-  const workspaceTitleEl = workspaceSection.querySelector(".workspace-title");
-  const inviteButtonMembers = workspaceSection.querySelector("#invite-btn");
-  const invitePlusMembers = workspaceSection.querySelector("#add-staff-btn");
-  const staffListContainer = workspaceSection.querySelector("#staff-list");
-  const staffCountLink = workspaceSection.querySelector("#staff-count-link");
-  const createWorkBtn = workspaceSection.querySelector("#create-work-btn");
   const generateColorForName = (name) => {
     const hash = (name || '').split("").reduce((a, b) => {
       a = ((a << 5) - a) + b.charCodeAt(0);
@@ -49,10 +42,17 @@ export function init(params) {
     return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
   };
 
+  const mainHeader = workspaceSection.querySelector(".main-header-myworkspace");
+  const headerLeft = workspaceSection.querySelector(".header-myworkspace-left");
+  const workspaceTitleEl = workspaceSection.querySelector(".workspace-title");
+  const teamDescriptionEl = workspaceSection.querySelector("#team-description");
+  const staffListContainer = workspaceSection.querySelector("#staff-list");
+  const staffCountLink = workspaceSection.querySelector("#staff-count-link");
+  const inviteButton = workspaceSection.querySelector("#invite-btn");
+
   let currentUser = null;
   let unsubscribeWorkspaces = null;
 
-  // Load selected workspace and listen for changes
   async function loadAndRenderWorkspaces(uid) {
     if (unsubscribeWorkspaces) unsubscribeWorkspaces();
 
@@ -64,7 +64,6 @@ export function init(params) {
     );
 
     unsubscribeWorkspaces = onSnapshot(workspacesQuery, async (workspacesSnap) => {
-      // Get the user's selected workspace to identify which one is active
       const userSnap = await getDoc(userRef);
       const selectedWorkspaceRef = userSnap.exists() ? userSnap.data().selectedWorkspace : null;
       const selectedWorkspaceId = selectedWorkspaceRef ? selectedWorkspaceRef.id : null;
@@ -74,59 +73,113 @@ export function init(params) {
         staffListContainer.innerHTML = '<p>Create a workspace to begin.</p>';
         return;
       }
-      
+
       let selectedWorkspaceData = null;
       const otherWorkspaces = [];
 
-      // Separate the selected workspace from the others
       workspacesSnap.docs.forEach(doc => {
+        const data = { id: doc.id, ref: doc.ref, ...doc.data() };
         if (doc.id === selectedWorkspaceId) {
-          selectedWorkspaceData = { id: doc.id, ref: doc.ref, ...doc.data() };
+          selectedWorkspaceData = data;
         } else {
-          otherWorkspaces.push({ id: doc.id, ref: doc.ref, ...doc.data() });
+          otherWorkspaces.push(data);
         }
       });
       
-      // Fallback if selected workspace isn't found (e.g., deleted)
       if (!selectedWorkspaceData && !workspacesSnap.empty) {
          selectedWorkspaceData = { id: workspacesSnap.docs[0].id, ref: workspacesSnap.docs[0].ref, ...workspacesSnap.docs[0].data()};
-         // To-do: Auto-select this first one in Firestore for the user.
       }
       
-      updateWorkspaceUI(selectedWorkspaceData);
+      // Pass the currentUser to check for ownership
+      updateWorkspaceUI(selectedWorkspaceData, currentUser);
+      createWorkspaceDropdown(otherWorkspaces, userRef);
     });
   }
 
-  function updateWorkspaceUI(workspace) {
-    if (!workspace) return;
-    
-    // Update header title
+  /**
+   * Updates the main UI elements for the selected workspace and makes fields
+   * editable only if the current user is the owner.
+   */
+  function updateWorkspaceUI(workspace, user) {
+    if (!workspace || !user) return;
+
+    // --- OWNERSHIP CHECK ---
+    // The owner's UID is part of the document's path: /users/{ownerUID}/myworkspace/{workspaceId}
+    const ownerUID = workspace.ref.parent.parent.id;
+    const isOwner = user.uid === ownerUID;
+
+    // Update header title and description
     workspaceTitleEl.textContent = workspace.name;
+    teamDescriptionEl.textContent = workspace.description || "Click to add team description...";
     
-    // Update staff members card
-    staffListContainer.innerHTML = ''; // Clear previous avatars
-    const uids = workspace.members || [];
+    // Remove old save button if it exists
+    const oldSaveBtn = mainHeader.querySelector('.btn-save-changes');
+    if(oldSaveBtn) oldSaveBtn.remove();
     
-    if (staffCountLink) {
-        staffCountLink.textContent = `View all ${uids.length}`;
+    if (isOwner) {
+      // --- If OWNER: Make fields editable ---
+      workspaceTitleEl.contentEditable = "true";
+      teamDescriptionEl.contentEditable = "true";
+      workspaceTitleEl.classList.add('is-editable');
+      teamDescriptionEl.classList.add('is-editable');
+      
+      // Create and add a "Save" button
+      const saveBtn = document.createElement('button');
+      saveBtn.textContent = 'Save Changes';
+      saveBtn.className = 'btn-myworkspace btn-myworkspace-primary btn-save-changes';
+      mainHeader.appendChild(saveBtn);
+      
+      saveBtn.onclick = async () => {
+        const newName = workspaceTitleEl.textContent.trim();
+        const newDescription = teamDescriptionEl.textContent.trim();
+        
+        if (!newName) {
+            alert("Workspace name cannot be empty.");
+            return;
+        }
+        
+        saveBtn.textContent = 'Saving...';
+        saveBtn.disabled = true;
+        
+        try {
+          await updateDoc(workspace.ref, {
+            name: newName,
+            description: newDescription
+          });
+          saveBtn.textContent = 'Saved!';
+          setTimeout(() => { 
+              saveBtn.textContent = 'Save Changes';
+              saveBtn.disabled = false;
+          }, 2000);
+        } catch (error) {
+            console.error("Error updating workspace:", error);
+            alert("Could not save changes. Please try again.");
+            saveBtn.textContent = 'Save Changes';
+            saveBtn.disabled = false;
+        }
+      };
+      
+    } else {
+      // --- If NOT OWNER: Make fields read-only ---
+      workspaceTitleEl.contentEditable = "false";
+      teamDescriptionEl.contentEditable = "false";
+      workspaceTitleEl.classList.remove('is-editable');
+      teamDescriptionEl.classList.remove('is-editable');
     }
 
+    // (The rest of the UI update for members remains the same)
+    staffListContainer.innerHTML = ''; 
+    const uids = workspace.members || [];
+    if (staffCountLink) staffCountLink.textContent = `View all ${uids.length}`;
     uids.slice(0, 6).forEach(async (memberUID) => {
-        try {
-            const userSnap = await getDoc(doc(db, `users/${memberUID}`));
-            if (userSnap.exists()) {
-                const { avatar } = userSnap.data();
-                const img = document.createElement("img");
-                img.src = avatar;
-                img.className = "user-avatar-myworkspace";
-                staffListContainer.appendChild(img);
-            }
-        } catch (e) {
-            console.warn(`Error loading profile for user ${memberUID}`, e);
+        const userSnap = await getDoc(doc(db, `users/${memberUID}`));
+        if (userSnap.exists()) {
+            const img = document.createElement('img');
+            img.src = userSnap.data().avatar;
+            img.className = 'user-avatar-myworkspace';
+            staffListContainer.appendChild(img);
         }
     });
-
-    // Re-add the "+" button
     const plusBtn = document.createElement("div");
     plusBtn.id = "add-staff-btn";
     plusBtn.className = "add-staff-icon";
@@ -135,11 +188,44 @@ export function init(params) {
     plusBtn.addEventListener("click", () => showInviteModal(), { signal: controller.signal });
   }
 
+  function createWorkspaceDropdown(otherWorkspaces, userRef) {
+    const oldDropdown = headerLeft.querySelector('.workspace-dropdown');
+    if (oldDropdown) oldDropdown.remove();
+    workspaceTitleEl.classList.remove('is-switchable');
+    workspaceTitleEl.onclick = null; // Remove previous click listener
 
+    if (otherWorkspaces.length === 0) return;
+
+    const dropdownContainer = document.createElement('div');
+    dropdownContainer.className = 'workspace-dropdown';
+    otherWorkspaces.forEach(ws => {
+      const item = document.createElement('a');
+      item.href = "#";
+      item.className = 'workspace-dropdown-item';
+      item.textContent = ws.name;
+      item.onclick = async (e) => {
+        e.preventDefault();
+        await setDoc(userRef, { selectedWorkspace: ws.ref }, { merge: true });
+        dropdownContainer.classList.remove('visible');
+      };
+      dropdownContainer.appendChild(item);
+    });
+    headerLeft.appendChild(dropdownContainer);
+    
+    workspaceTitleEl.classList.add('is-switchable');
+    workspaceTitleEl.onclick = () => {
+        dropdownContainer.classList.toggle('visible');
+    };
+  }
+  
   onAuthStateChanged(auth, user => {
-    if (!user) return console.warn("Not signed in.");
-    currentUser = user;
-    loadAndRenderWorkspaces(user.uid);
+    if (user) {
+      currentUser = user;
+      loadAndRenderWorkspaces(user.uid);
+    } else {
+      currentUser = null;
+      if(unsubscribeWorkspaces) unsubscribeWorkspaces();
+    }
   });
 
   async function handleProjectCreate() {

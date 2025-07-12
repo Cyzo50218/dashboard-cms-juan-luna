@@ -27,7 +27,7 @@
 
      /* 3. The Main Content Container: Adjusted for the new layout */
      .workspace-container {
-         
+
          max-width: 1200px;
          margin-left: auto;
          /* Use margin auto to center it */
@@ -347,4 +347,86 @@
          width: 0%;
          height: 100%;
          background-color: #b0b0b0;
+     }
+
+     .header-myworkspace-left {
+         position: relative;
+     }
+
+     /* Style the dropdown container */
+     .workspace-dropdown {
+         display: none;
+         /* Hidden by default */
+         position: absolute;
+         top: 100%;
+         /* Position below the header */
+         left: 0;
+         background-color: white;
+         border: 1px solid #ddd;
+         border-radius: 8px;
+         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+         min-width: 250px;
+         z-index: 1000;
+         overflow: hidden;
+         margin-top: 8px;
+     }
+
+     /* Class to show the dropdown */
+     .workspace-dropdown.visible {
+         display: block;
+     }
+
+     /* Style individual items in the dropdown */
+     .workspace-dropdown-item {
+         display: block;
+         padding: 12px 16px;
+         color: #333;
+         text-decoration: none;
+         font-size: 1rem;
+         font-weight: 500;
+     }
+
+     .workspace-dropdown-item:hover {
+         background-color: #f5f5f5;
+     }
+
+     /* Add a pointer and an indicator to show the title is clickable */
+     .workspace-title.is-switchable {
+         cursor: pointer;
+         position: relative;
+         padding-right: 20px;
+     }
+
+     .workspace-title.is-switchable::after {
+         content: '\f0d7';
+         /* Font Awesome down arrow */
+         font-family: 'Font Awesome 5 Free';
+         font-weight: 900;
+         position: absolute;
+         right: 0;
+         top: 50%;
+         transform: translateY(-50%);
+         font-size: 0.8em;
+         color: #888;
+     }
+
+     /* Add a visual indicator to editable fields */
+     .is-editable {
+         outline: none;
+         transition: box-shadow 0.2s;
+     }
+
+     .is-editable:hover {
+         box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+         /* Subtle blue glow on hover */
+     }
+
+     .is-editable:focus {
+         box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.5);
+         /* Stronger glow when editing */
+     }
+
+     /* Style for the dynamically added Save button */
+     .btn-save-changes {
+         margin-left: 1rem;
      }
