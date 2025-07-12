@@ -51,87 +51,93 @@ export function init(params) {
   let unsubscribeWorkspaces = null;
 
   // Load selected workspace and listen for changes
-  async function loadUserWorkspaces(uid) {
-    if (unsubscribeWorkspaces) unsubscribeWorkspaces(); // Stop any previous listener
+  async function loadAndRenderWorkspaces(uid) {
+    if (unsubscribeWorkspaces) unsubscribeWorkspaces();
 
-    // Get the user's currently selected workspace ID for highlighting
     const userRef = doc(db, 'users', uid);
-    const userSnap = await getDoc(userRef);
-    const selectedWorkspaceRef = userSnap.exists() ? userSnap.data().selectedWorkspace : null;
-    const selectedWorkspaceId = selectedWorkspaceRef ? selectedWorkspaceRef.id : null;
 
-    // Query the entire 'myworkspace' group to find all workspaces the user is in.
     const workspacesQuery = query(
       collectionGroup(db, 'myworkspace'),
       where('members', 'array-contains', uid)
     );
 
-    unsubscribeWorkspaces = onSnapshot(workspacesQuery, async (snapshot) => {
-      if (!workspaceListContainer) return;
-      workspaceListContainer.innerHTML = ''; // Clear previous list
+    unsubscribeWorkspaces = onSnapshot(workspacesQuery, async (workspacesSnap) => {
+      // Get the user's selected workspace to identify which one is active
+      const userSnap = await getDoc(userRef);
+      const selectedWorkspaceRef = userSnap.exists() ? userSnap.data().selectedWorkspace : null;
+      const selectedWorkspaceId = selectedWorkspaceRef ? selectedWorkspaceRef.id : null;
 
-      if (snapshot.empty) {
-        workspaceListContainer.innerHTML = '<p>No workspaces found. Create one to get started!</p>';
+      if (workspacesSnap.empty) {
+        workspaceTitleEl.textContent = "No Workspace";
+        staffListContainer.innerHTML = '<p>Create a workspace to begin.</p>';
         return;
       }
+      
+      let selectedWorkspaceData = null;
+      const otherWorkspaces = [];
 
-      for (const workspaceDoc of snapshot.docs) {
-        const workspaceData = workspaceDoc.data();
-        const isSelected = workspaceDoc.id === selectedWorkspaceId;
-
-        // Create the container for each workspace item
-        const workspaceItem = document.createElement('div');
-        workspaceItem.className = `workspace-item ${isSelected ? 'selected' : ''}`;
-        workspaceItem.dataset.workspaceId = workspaceDoc.id;
-
-        // Add workspace name
-        const workspaceName = document.createElement('h4');
-        workspaceName.textContent = workspaceData.name;
-        workspaceItem.appendChild(workspaceName);
-
-        // Add container for member avatars
-        const membersContainer = document.createElement('div');
-        membersContainer.className = 'members-container';
-        workspaceItem.appendChild(membersContainer);
-
-        // Load and display member avatars
-        const memberUIDs = workspaceData.members || [];
-        for (const memberUID of memberUIDs.slice(0, 6)) { // Show first 6 avatars
-          const memberSnap = await getDoc(doc(db, 'users', memberUID));
-          if (memberSnap.exists()) {
-            const img = document.createElement('img');
-            img.src = memberSnap.data().avatar;
-            img.title = memberSnap.data().name; // Show name on hover
-            img.className = 'user-avatar-myworkspace';
-            membersContainer.appendChild(img);
-          }
+      // Separate the selected workspace from the others
+      workspacesSnap.docs.forEach(doc => {
+        if (doc.id === selectedWorkspaceId) {
+          selectedWorkspaceData = { id: doc.id, ref: doc.ref, ...doc.data() };
+        } else {
+          otherWorkspaces.push({ id: doc.id, ref: doc.ref, ...doc.data() });
         }
-        
-        if (memberUIDs.length > 6) {
-           const moreMembers = document.createElement('span');
-           moreMembers.className = 'more-members-indicator';
-           moreMembers.textContent = `+${memberUIDs.length - 6}`;
-           membersContainer.appendChild(moreMembers);
-        }
-
-        // Add click event to select the workspace
-        workspaceItem.addEventListener('click', async () => {
-          if (workspaceDoc.id !== selectedWorkspaceId) {
-            console.log(`Switching selected workspace to: ${workspaceData.name}`);
-            await setDoc(userRef, { selectedWorkspace: workspaceDoc.ref }, { merge: true });
-            // The onSnapshot will re-render and highlight the new selection automatically
-          }
-        }, { signal: controller.signal });
-
-        workspaceListContainer.appendChild(workspaceItem);
+      });
+      
+      // Fallback if selected workspace isn't found (e.g., deleted)
+      if (!selectedWorkspaceData && !workspacesSnap.empty) {
+         selectedWorkspaceData = { id: workspacesSnap.docs[0].id, ref: workspacesSnap.docs[0].ref, ...workspacesSnap.docs[0].data()};
+         // To-do: Auto-select this first one in Firestore for the user.
       }
+      
+      updateWorkspaceUI(selectedWorkspaceData);
     });
   }
+
+  function updateWorkspaceUI(workspace) {
+    if (!workspace) return;
+    
+    // Update header title
+    workspaceTitleEl.textContent = workspace.name;
+    
+    // Update staff members card
+    staffListContainer.innerHTML = ''; // Clear previous avatars
+    const uids = workspace.members || [];
+    
+    if (staffCountLink) {
+        staffCountLink.textContent = `View all ${uids.length}`;
+    }
+
+    uids.slice(0, 6).forEach(async (memberUID) => {
+        try {
+            const userSnap = await getDoc(doc(db, `users/${memberUID}`));
+            if (userSnap.exists()) {
+                const { avatar } = userSnap.data();
+                const img = document.createElement("img");
+                img.src = avatar;
+                img.className = "user-avatar-myworkspace";
+                staffListContainer.appendChild(img);
+            }
+        } catch (e) {
+            console.warn(`Error loading profile for user ${memberUID}`, e);
+        }
+    });
+
+    // Re-add the "+" button
+    const plusBtn = document.createElement("div");
+    plusBtn.id = "add-staff-btn";
+    plusBtn.className = "add-staff-icon";
+    plusBtn.innerHTML = `<i class="fas fa-plus"></i>`;
+    staffListContainer.appendChild(plusBtn);
+    plusBtn.addEventListener("click", () => showInviteModal(), { signal: controller.signal });
+  }
+
 
   onAuthStateChanged(auth, user => {
     if (!user) return console.warn("Not signed in.");
     currentUser = user;
-    loadUserWorkspaces(user.uid);
+    loadAndRenderWorkspaces(user.uid);
   });
 
   async function handleProjectCreate() {
