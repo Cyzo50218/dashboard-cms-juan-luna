@@ -224,19 +224,29 @@ export function init(params) {
         const currentUserWorkspaceRef = doc(db, `users/${currentUser.uid}/myworkspace`, selectedWorkspaceId);
         txn.set(currentUserWorkspaceRef, { selectedProjectId: newProjectRef.id }, { merge: true });
 
-
-        // 3. Create the three default sections
         const sectionsColRef = collection(newProjectRef, "sections");
         INITIAL_DEFAULT_SECTIONS.forEach(sectionData => {
           const sectionRef = doc(sectionsColRef);
-          txn.set(sectionRef, {
-            ...sectionData,
-            createdAt: serverTimestamp()
-          });
+          txn.set(sectionRef, { ...sectionData, createdAt: serverTimestamp() });
         });
       });
 
       console.log("Project created and set as active successfully!");
+
+      try {
+        const memberDocRef = doc(db, 'workspaces', selectedWorkspaceId, 'members', currentUser.uid);
+        await setDoc(memberDocRef, {
+          userId: currentUser.uid,
+          selectedProjectId: newProjectRef.id,
+          selectedProjectWorkspaceVisibility: "private", // The default for a new project
+          lastAccessed: serverTimestamp()
+        }, { merge: true });
+
+        console.log("Centralized workspace membership updated for the user.");
+
+      } catch (membershipError) {
+        console.error("Failed to update workspace membership document:", membershipError);
+      }
 
     } catch (err) {
       console.error("Project creation failed:", err);
