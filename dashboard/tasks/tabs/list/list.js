@@ -247,21 +247,44 @@ function attachRealtimeListeners(userId) {
                 }
 
                 try {
-                    const projectQuery = query(
+                    let projectDoc = null;
+
+                    // Query 1: Check for direct membership
+                    const directMembershipQuery = query(
                         collectionGroup(db, 'projects'),
                         where('projectId', '==', selectedProjectId),
-                        where('memberUIDs', 'array-contains', currentUserId) // This check is vital!
+                        where('memberUIDs', 'array-contains', currentUserId)
                     );
-                    const projectSnapshot = await getDocs(projectQuery);
+                    const directMembershipSnapshot = await getDocs(directMembershipQuery);
 
-                    if (projectSnapshot.empty) {
-                        console.error(`[DEBUG] CRITICAL: Project '${selectedProjectId}' not found OR user lacks member access.`);
+                    if (!directMembershipSnapshot.empty) {
+                        projectDoc = directMembershipSnapshot.docs[0];
+                        console.log(`[DEBUG] Access via direct membership for project: ${selectedProjectId}`);
+                    } else {
+                        // Query 2: If no direct membership, check for workspace-level access
+                        const workspaceAccessQuery = query(
+                            collectionGroup(db, 'projects'),
+                            where('projectId', '==', selectedProjectId),
+                            where('workspaceId', '==', currentWorkspaceId),
+                            where('accessLevel', '==', 'workspace')
+                        );
+                        const workspaceAccessSnapshot = await getDocs(workspaceAccessQuery);
+
+                        if (!workspaceAccessSnapshot.empty) {
+                            projectDoc = workspaceAccessSnapshot.docs[0];
+                            console.log(`[DEBUG] Access via workspace visibility for project: ${selectedProjectId}`);
+                        }
+                    }
+
+                    // ✅ Step 2: If the project is found, attach listeners. Otherwise, stop.
+                    if (!projectDoc) {
+                        console.error(`[DEBUG] CRITICAL: Project '${selectedProjectId}' not found OR user lacks permission.`);
                         project = {};
                         render();
                         return;
                     }
 
-                    const projectDoc = projectSnapshot.docs[0];
+                    // Use the already assigned projectDoc
                     const projectRef = projectDoc.ref;
                     currentProjectId = projectDoc.id;
                     currentProjectRef = projectDoc.ref;
