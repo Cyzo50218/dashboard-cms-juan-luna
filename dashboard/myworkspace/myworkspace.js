@@ -1,5 +1,3 @@
-// File: /dashboard/myworkspace/myworkspace.js
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
@@ -12,6 +10,7 @@ import {
   where,
   collectionGroup,
   getDoc,
+  setDoc,
   runTransaction,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
