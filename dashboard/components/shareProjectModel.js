@@ -320,13 +320,9 @@ function toggleDropdown(dropdownBtn, modal) {
 function setupEventListeners(modal, projectRef) {
   modal.addEventListener('click', async (e) => {
     const target = e.target;
-    // We only prevent default for actions we explicitly handle.
-
-    // --- ✅ CORRECTED LOGIC ORDER ---
-
     // 1. Check for the MOST specific case first: the WORKSPACE role change.
     const workspaceActionBtn = target.closest('#role-dropdown-for-workspace-item .shareproject-dropdown-action');
-    if (workspaceActionBtn) {
+    
       e.preventDefault();
       const newRole = workspaceActionBtn.dataset.role;
       if (newRole) {
@@ -351,8 +347,6 @@ function setupEventListeners(modal, projectRef) {
         }
       }
       workspaceActionBtn.closest('.shareproject-dropdown-content').classList.add('hidden');
-      return; // IMPORTANT: Stop further execution.
-    }
 
     // 2. THEN, check for the general MEMBER role change.
     const memberActionBtn = target.closest('#shareproject-member-dropdowns-container .shareproject-dropdown-action');
