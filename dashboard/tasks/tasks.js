@@ -212,22 +212,26 @@ export function init(params) {
         try {
             const userWorkspaceSnap = await getDoc(userWorkspaceDocRef);
 
-            if (userWorkspaceSnap.exists()) {
-                // The document exists, so we check if the field is missing.
-                if (!userWorkspaceSnap.data().ownerWorkspaceRef) {
-                    const ownerRef = doc(db, 'myworkspaces', selectedWorkspaceId);
-                    await updateDoc(userWorkspaceDocRef, { ownerWorkspaceRef: ownerRef });
-                    console.log(`Added missing ownerWorkspaceRef to: ${userWorkspaceDocRef.path}`);
+            // We only proceed if the document is missing OR it exists but lacks the ownerWorkspaceRef field.
+            if (!userWorkspaceSnap.exists() || !userWorkspaceSnap.data().ownerWorkspaceRef) {
+
+                // 1. Find the workspace's owner by reading the canonical workspace document.
+                const canonicalWorkspaceRef = doc(db, 'workspaces', selectedWorkspaceId);
+                const canonicalWorkspaceSnap = await getDoc(canonicalWorkspaceRef);
+                const ownerUid = canonicalWorkspaceSnap.data()?.ownerId;
+
+                if (ownerUid) {
+                    // 2. Build the correct DocumentReference using the owner's UID.
+                    const ownerRef = doc(db, `users/${ownerUid}/myworkspace`, selectedWorkspaceId);
+
+                    // 3. Use setDoc with merge:true to safely create or update the document.
+                    await setDoc(userWorkspaceDocRef, { ownerWorkspaceRef: ownerRef }, { merge: true });
+                    console.log(`Set ownerWorkspaceRef at: ${userWorkspaceDocRef.path}`);
+                } else {
+                    console.warn(`Could not find ownerId for workspace ${selectedWorkspaceId}. Skipping ownerWorkspaceRef setup.`);
                 }
-                // If the field already exists, we correctly do nothing.
-            } else {
-                // The document does NOT exist, so we create it with the necessary field.
-                const ownerRef = doc(db, 'myworkspaces', selectedWorkspaceId);
-                await setDoc(userWorkspaceDocRef, { ownerWorkspaceRef: ownerRef });
-                console.log(`Created document and set ownerWorkspaceRef at: ${userWorkspaceDocRef.path}`);
             }
         } catch (error) {
-            // Log this error but don't block the main function from running.
             console.error("Error during ownerWorkspaceRef setup:", error);
         }
 
