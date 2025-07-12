@@ -33,6 +33,7 @@ const functions = getFunctions(app);
 const sendEmailInvitation = httpsCallable(functions, "sendEmailInvitation");
 
 let isModalOpen = false;
+let listenersAttached = false;
 let modal = null;
 let unsubscribeProjectListener = null;
 let invitedEmails = [];
@@ -54,6 +55,7 @@ function closeModal() {
   if (unsubscribeProjectListener) {
     unsubscribeProjectListener();
     unsubscribeProjectListener = null;
+    listenersAttached = false;
   }
   isModalOpen = false;
   document.getElementById("shareproject-modal-backdrop")?.remove();
