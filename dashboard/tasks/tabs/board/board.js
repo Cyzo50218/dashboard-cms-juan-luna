@@ -491,15 +491,36 @@ function attachRealtimeListeners(userId) {
             }
             
             try {
-                // This query securely finds the project and enforces membership
-                const projectQuery = query(
+                let projectDoc = null;
+
+                // Query 1: Check for direct membership
+                const directMembershipQuery = query(
                     collectionGroup(db, 'projects'),
                     where('projectId', '==', currentProjectId),
                     where('memberUIDs', 'array-contains', currentUserId)
                 );
-                const projectSnapshot = await getDocs(projectQuery);
+                const directMembershipSnapshot = await getDocs(directMembershipQuery);
+
+                if (!directMembershipSnapshot.empty) {
+                    projectDoc = directMembershipSnapshot.docs[0];
+                } else {
+                    // Query 2: If no direct membership, check for workspace-level access
+                    const workspaceAccessQuery = query(
+                        collectionGroup(db, 'projects'),
+                        where('projectId', '==', currentProjectId),
+                        where('workspaceId', '==', currentWorkspaceId),
+                        where('accessLevel', '==', 'workspace')
+                    );
+                    const workspaceAccessSnapshot = await getDocs(workspaceAccessQuery);
+
+                    if (!workspaceAccessSnapshot.empty) {
+                        projectDoc = workspaceAccessSnapshot.docs[0];
+                    }
+                }
                 
-                if (projectSnapshot.empty) {
+                // ✅ Step 2: If project is found, attach listeners. Otherwise, stop.
+                if (!projectDoc) {
+                    console.error(`Project '${currentProjectId}' not found or user lacks permission.`);
                     project = { sections: [] };
                     renderBoard();
                     return;
