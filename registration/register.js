@@ -635,13 +635,13 @@ async function saveUserData(user, fullName, email, provider, photoURL = null) {
     console.warn("⚠️ User not authenticated. Cannot write to Firestore.");
     return null;
   }
-  
+
   const userRef = doc(db, "users", user.uid);
   const userSnap = await getDoc(userRef);
   const isNewUser = !userSnap.exists();
-  
+
   console.log(isNewUser ? "New user detected." : "Existing user detected.");
-  
+
   if (!isNewUser) {
     const existingData = userSnap.data();
     const updateData = {
@@ -652,31 +652,42 @@ async function saveUserData(user, fullName, email, provider, photoURL = null) {
     console.log(`✅ Existing user data for ${email} refreshed.`);
     return photoURL || existingData.avatar;
   }
-  
+
   console.log("Starting setup for new user...");
   let finalPhotoURL = photoURL;
-  
-  if (provider === 'email') {
-    const initials = fullName.split(' ').slice(0, 2).map(w => w[0].toUpperCase()).join('');
+
+  if (provider === "email") {
+    const initials = fullName
+      .split(" ")
+      .slice(0, 2)
+      .map((w) => w[0].toUpperCase())
+      .join("");
     const color = getRandomColor();
     const dataUrl = generateAvatar(initials, color);
     const avatarPath = `users/${user.uid}/profile-picture/avatar.png`;
     const storageRef = ref(storage, avatarPath);
-    await uploadString(storageRef, dataUrl, 'data_url');
+    await uploadString(storageRef, dataUrl, "data_url");
     finalPhotoURL = await getDownloadURL(storageRef);
     console.log("Generated and uploaded new avatar.");
   }
-  
+
   const batch = writeBatch(db);
   const workspaceCollectionRef = collection(db, `users/${user.uid}/myworkspace`);
   const newWorkspaceRef = doc(workspaceCollectionRef);
+
+  // --- MODIFIED SECTION START ---
+
+  // 1. Define the new workspace data with the updated structure
   const newWorkspaceData = {
     name: "My First Workspace",
     workspaceId: newWorkspaceRef.id,
     createdAt: serverTimestamp(),
-    members: [user.uid]
+    members: [user.uid], // Added second member
+    ownerWorkspaceRef: newWorkspaceRef, // Added reference to self
+    selectedProjectId: "", // Added empty project ID
   };
-  
+
+  // 2. Define the new user data, ensuring selectedWorkspace is a reference
   const newUserData = {
     id: user.uid,
     name: fullName,
@@ -684,13 +695,15 @@ async function saveUserData(user, fullName, email, provider, photoURL = null) {
     provider: provider,
     avatar: finalPhotoURL,
     createdAt: serverTimestamp(),
-    selectedWorkspace: newWorkspaceRef.id
+    selectedWorkspace: newWorkspaceRef, // Changed from ID to a full reference
   };
-  
+
+  // --- MODIFIED SECTION END ---
+
   batch.set(userRef, newUserData);
   batch.set(newWorkspaceRef, newWorkspaceData);
   await batch.commit();
   console.log("✅ New user and default workspace created atomically.");
-  
+
   return finalPhotoURL;
 }

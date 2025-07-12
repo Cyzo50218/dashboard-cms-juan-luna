@@ -1401,49 +1401,39 @@ async function handleNewWorkspace() {
   }
 
   const newWorkspaceName = prompt("Enter a name for your new workspace:");
-  if (!newWorkspaceName || newWorkspaceName.trim() === '') {
+  if (!newWorkspaceName || newWorkspaceName.trim() === "") {
     return;
   }
 
-  const workspacesColRef = collection(db, `users/${currentUser.uid}/myworkspace`);
+  const myWorkspaceCollectionRef = collection(
+    db,
+    `users/${currentUser.uid}/myworkspace`
+  );
+  const newWorkspaceRef = doc(myWorkspaceCollectionRef); // Create a reference for the new workspace first to get the ID
 
   try {
     await runTransaction(db, async (transaction) => {
-      const selectedWorkspaceQuery = query(workspacesColRef, where("isSelected", "==", true));
-      const selectedWorkspacesSnapshot = await transaction.get(selectedWorkspaceQuery);
-
-      if (!selectedWorkspacesSnapshot.empty) {
-        const oldSelectedDoc = selectedWorkspacesSnapshot.docs[0];
-        const oldWorkspaceRef = doc(db, `users/${currentUser.uid}/myworkspace`, oldSelectedDoc.id);
-
-        const allWorkspacesSnapshot = await transaction.get(query(workspacesColRef));
-        const workspaceCount = allWorkspacesSnapshot.size;
-
-        const numberToWord = ["First", "Second", "Third", "Fourth", "Fifth"];
-        const newName = `My ${numberToWord[workspaceCount] || (workspaceCount + 1) + 'th'} Workspace`;
-
-        const updateData = { isSelected: false };
-        if (oldSelectedDoc.data().name.startsWith("My First Workspace")) {
-          updateData.name = newName;
-        }
-
-        transaction.update(oldWorkspaceRef, updateData);
-      }
-
-      const newWorkspaceRef = doc(workspacesColRef);
+      // 1. Create the new workspace document
       transaction.set(newWorkspaceRef, {
-        name: newWorkspaceName.trim(),
-        isSelected: true,
         createdAt: serverTimestamp(),
-        members: [currentUser.uid]
+        members: [currentUser.uid],
+        name: newWorkspaceName.trim(),
+        ownerWorkspaceRef: newWorkspaceRef,
+        selectedProjectId: "",
+        workspaceId: newWorkspaceRef.id,
+      });
+
+      // 2. Update the user's selectedWorkspace field
+      const userDocRef = doc(db, "users", currentUser.uid);
+      transaction.update(userDocRef, {
+        selectedWorkspace: newWorkspaceRef,
       });
     });
 
     alert(`Workspace "${newWorkspaceName.trim()}" created successfully!`);
-    window.location.replace('/');
-
+    window.location.replace("/");
   } catch (error) {
-    console.error("Error creating new workspace in transaction:", error);
+    console.error("Error creating new workspace:", error);
     alert("Failed to create the new workspace. Please try again.");
   }
 }
