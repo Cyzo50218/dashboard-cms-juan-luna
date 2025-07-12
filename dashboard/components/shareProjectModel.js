@@ -330,7 +330,38 @@ function setupEventListeners(modal, projectRef) {
       await handleRoleChangeAction(memberActionBtn, projectRef);
       return;
     }
+    
+    const workspaceActionBtn = target.closest('#role-dropdown-for-workspace-item .shareproject-dropdown-action');
+    if (workspaceActionBtn) {
+        const newRole = workspaceActionBtn.dataset.role;
+        if (newRole) {
+            // Permission check: Only Owner or Project Admins can change this
+            const projectData = JSON.parse(modal.dataset.projectData || '{}');
+            const currentUserId = auth.currentUser.uid;
+            const currentUserMemberInfo = (projectData.members || []).find(m => m.uid === currentUserId);
+            const isOwner = currentUserId === projectData.project_super_admin_uid;
+            const isProjectAdmin = currentUserMemberInfo?.role === 'Project Admin';
 
+            if (!isOwner && !isProjectAdmin) {
+                alert("You do not have permission to change the workspace's default role.");
+                workspaceActionBtn.closest('.shareproject-dropdown-content').classList.add('hidden');
+                return;
+            }
+
+            // Update the project document in Firestore
+            try {
+                await updateDoc(projectRef, { workspaceRole: newRole });
+                console.log(`✅ Updated workspaceRole to: ${newRole}`);
+                // UI will refresh automatically via onSnapshot
+            } catch (error) {
+                console.error("Failed to update workspace role:", error);
+                alert("Error saving workspace role. Please try again.");
+            }
+        }
+        workspaceActionBtn.closest('.shareproject-dropdown-content').classList.add('hidden');
+        return;
+    }
+    
     // B. Handle changing the role for a NEW INVITE
     const inviteRoleBtn = target.closest('#shareproject-role-dropdown .shareproject-dropdown-action');
     if (inviteRoleBtn) {
