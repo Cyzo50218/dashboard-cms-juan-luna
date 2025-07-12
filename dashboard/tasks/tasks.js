@@ -215,14 +215,14 @@ export function init(params) {
             if (userWorkspaceSnap.exists()) {
                 // The document exists, so we check if the field is missing.
                 if (!userWorkspaceSnap.data().ownerWorkspaceRef) {
-                    const ownerRef = doc(db, 'workspaces', selectedWorkspaceId);
+                    const ownerRef = doc(db, 'myworkspaces', selectedWorkspaceId);
                     await updateDoc(userWorkspaceDocRef, { ownerWorkspaceRef: ownerRef });
                     console.log(`Added missing ownerWorkspaceRef to: ${userWorkspaceDocRef.path}`);
                 }
                 // If the field already exists, we correctly do nothing.
             } else {
                 // The document does NOT exist, so we create it with the necessary field.
-                const ownerRef = doc(db, 'workspaces', selectedWorkspaceId);
+                const ownerRef = doc(db, 'myworkspaces', selectedWorkspaceId);
                 await setDoc(userWorkspaceDocRef, { ownerWorkspaceRef: ownerRef });
                 console.log(`Created document and set ownerWorkspaceRef at: ${userWorkspaceDocRef.path}`);
             }
