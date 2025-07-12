@@ -4,59 +4,48 @@ import {
   getFirestore,
   collection,
   doc,
-  getDocs,
   onSnapshot,
   query,
   where,
   collectionGroup,
   getDoc,
   setDoc,
-  runTransaction,
-  serverTimestamp
+  updateDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "/services/firebase-config.js";
 import { showInviteModal } from "/dashboard/components/showEmailModel.js";
 
+// --- Initialize Firebase ---
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app, "juanluna-cms-01");
 
-let projectsData = [];
-
+/**
+ * Initializes all functionality for the My Workspace page.
+ * @param {object} params - Initialization parameters (if any).
+ * @returns {function} A cleanup function to be called when the component is unmounted.
+ */
 export function init(params) {
   const controller = new AbortController();
   const workspaceSection = document.querySelector('div[data-section="myworkspace"]');
-  if (!workspaceSection) return () => { };
+  if (!workspaceSection) return () => {};
 
-  const generateColorForName = (name) => {
-    const hash = (name || '').split("").reduce((a, b) => {
-      a = ((a << 5) - a) + b.charCodeAt(0);
-      return a & a;
-    }, 0);
-
-    // Limit hue to a cooler range (e.g., 180–300: green-blue-purple)
-    const hue = 180 + (hash % 120); // values between 180 and 300
-    const saturation = 50; // softer saturation
-    const lightness = 60; // brighter but not glaring
-
-    return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-  };
-
-  const mainHeader = workspaceSection.querySelector(".main-header-myworkspace");
+  // --- Element Selectors ---
   const headerLeft = workspaceSection.querySelector(".header-myworkspace-left");
   const workspaceTitleEl = workspaceSection.querySelector(".workspace-title");
   const teamDescriptionEl = workspaceSection.querySelector("#team-description");
   const staffListContainer = workspaceSection.querySelector("#staff-list");
   const staffCountLink = workspaceSection.querySelector("#staff-count-link");
   const inviteButton = workspaceSection.querySelector("#invite-btn");
-  const inviteButtonMembers = workspaceSection.querySelector("#invite-btn");
-  const invitePlusMembers = workspaceSection.querySelector("#add-staff-btn");
-  const createWorkBtn = workspaceSection.querySelector("#create-work-btn");
-  
 
+  // --- State Variables ---
   let currentUser = null;
   let unsubscribeWorkspaces = null;
 
+  /**
+   * Loads all workspaces the user is a member of and sets up a real-time listener.
+   * @param {string} uid - The current user's ID.
+   */
   async function loadAndRenderWorkspaces(uid) {
     if (unsubscribeWorkspaces) unsubscribeWorkspaces();
 
@@ -70,14 +59,15 @@ export function init(params) {
     unsubscribeWorkspaces = onSnapshot(workspacesQuery, async (workspacesSnap) => {
       const userSnap = await getDoc(userRef);
       const selectedWorkspaceRef = userSnap.exists() ? userSnap.data().selectedWorkspace : null;
-      const selectedWorkspaceId = selectedWorkspaceRef ? selectedWorkspaceRef.id : null;
+      let selectedWorkspaceId = selectedWorkspaceRef ? selectedWorkspaceRef.id : null;
 
       if (workspacesSnap.empty) {
         workspaceTitleEl.textContent = "No Workspace";
         staffListContainer.innerHTML = '<p>Create a workspace to begin.</p>';
+        updateURL(null);
         return;
       }
-
+      
       let selectedWorkspaceData = null;
       const otherWorkspaces = [];
 
@@ -90,88 +80,88 @@ export function init(params) {
         }
       });
       
-      if (!selectedWorkspaceData && !workspacesSnap.empty) {
+      // Fallback if the selected workspace ID is invalid or not found
+      if (!selectedWorkspaceData) {
          selectedWorkspaceData = { id: workspacesSnap.docs[0].id, ref: workspacesSnap.docs[0].ref, ...workspacesSnap.docs[0].data()};
+         await setDoc(userRef, { selectedWorkspace: selectedWorkspaceData.ref }, { merge: true });
+         return; // Let the snapshot re-trigger with the correct data
       }
       
-      // Pass the currentUser to check for ownership
+      updateURL(selectedWorkspaceData.id);
       updateWorkspaceUI(selectedWorkspaceData, currentUser);
       createWorkspaceDropdown(otherWorkspaces, userRef);
     });
   }
 
   /**
-   * Updates the main UI elements for the selected workspace and makes fields
-   * editable only if the current user is the owner.
+   * Updates the UI with the selected workspace's data and enables editing for owners.
+   * @param {object} workspace - The selected workspace data object.
+   * @param {object} user - The current Firebase user object.
    */
   function updateWorkspaceUI(workspace, user) {
     if (!workspace || !user) return;
 
-    // --- OWNERSHIP CHECK ---
-    // The owner's UID is part of the document's path: /users/{ownerUID}/myworkspace/{workspaceId}
     const ownerUID = workspace.ref.parent.parent.id;
     const isOwner = user.uid === ownerUID;
 
-    // Update header title and description
+    // Detach old listeners to prevent memory leaks
+    workspaceTitleEl.onfocus = null;
+    workspaceTitleEl.onblur = null;
+    teamDescriptionEl.onfocus = null;
+    teamDescriptionEl.onblur = null;
+    
+    // Update content from Firestore
     workspaceTitleEl.textContent = workspace.name;
     teamDescriptionEl.textContent = workspace.description || "Click to add team description...";
-    
-    // Remove old save button if it exists
-    const oldSaveBtn = mainHeader.querySelector('.btn-save-changes');
-    if(oldSaveBtn) oldSaveBtn.remove();
-    
+
     if (isOwner) {
-      // --- If OWNER: Make fields editable ---
+      // If OWNER, make fields editable and add auto-save listeners
       workspaceTitleEl.contentEditable = "true";
       teamDescriptionEl.contentEditable = "true";
       workspaceTitleEl.classList.add('is-editable');
       teamDescriptionEl.classList.add('is-editable');
       
-      // Create and add a "Save" button
-      const saveBtn = document.createElement('button');
-      saveBtn.textContent = 'Save Changes';
-      saveBtn.className = 'btn-myworkspace btn-myworkspace-primary btn-save-changes';
-      mainHeader.appendChild(saveBtn);
-      
-      saveBtn.onclick = async () => {
-        const newName = workspaceTitleEl.textContent.trim();
-        const newDescription = teamDescriptionEl.textContent.trim();
+      const handleBlur = async (event, fieldName) => {
+        const element = event.target;
+        const originalText = element.dataset.originalValue;
+        const newText = element.textContent.trim();
         
-        if (!newName) {
+        if (originalText === newText) return;
+        
+        if (fieldName === 'name' && !newText) {
             alert("Workspace name cannot be empty.");
+            element.textContent = originalText;
             return;
         }
-        
-        saveBtn.textContent = 'Saving...';
-        saveBtn.disabled = true;
-        
+
         try {
-          await updateDoc(workspace.ref, {
-            name: newName,
-            description: newDescription
-          });
-          saveBtn.textContent = 'Saved!';
-          setTimeout(() => { 
-              saveBtn.textContent = 'Save Changes';
-              saveBtn.disabled = false;
-          }, 2000);
+          await updateDoc(workspace.ref, { [fieldName]: newText });
+          element.classList.add('saved');
+          setTimeout(() => element.classList.remove('saved'), 1000);
         } catch (error) {
-            console.error("Error updating workspace:", error);
-            alert("Could not save changes. Please try again.");
-            saveBtn.textContent = 'Save Changes';
-            saveBtn.disabled = false;
+          console.error(`Error updating ${fieldName}:`, error);
+          element.textContent = originalText;
         }
       };
       
+      const handleFocus = (event) => {
+          event.target.dataset.originalValue = event.target.textContent;
+      };
+
+      workspaceTitleEl.onfocus = handleFocus;
+      workspaceTitleEl.onblur = (e) => handleBlur(e, 'name');
+      teamDescriptionEl.onfocus = handleFocus;
+      teamDescriptionEl.onblur = (e) => handleBlur(e, 'description');
+
     } else {
-      // --- If NOT OWNER: Make fields read-only ---
+      // If NOT OWNER, ensure fields are read-only
       workspaceTitleEl.contentEditable = "false";
       teamDescriptionEl.contentEditable = "false";
       workspaceTitleEl.classList.remove('is-editable');
       teamDescriptionEl.classList.remove('is-editable');
     }
 
-    // (The rest of the UI update for members remains the same)
+    // Update staff members list
     staffListContainer.innerHTML = ''; 
     const uids = workspace.members || [];
     if (staffCountLink) staffCountLink.textContent = `View all ${uids.length}`;
@@ -192,11 +182,16 @@ export function init(params) {
     plusBtn.addEventListener("click", () => showInviteModal(), { signal: controller.signal });
   }
 
+  /**
+   * Creates and manages the workspace selection dropdown menu.
+   * @param {Array} otherWorkspaces - An array of workspaces the user is in, excluding the selected one.
+   * @param {DocumentReference} userRef - Firestore reference to the current user's document.
+   */
   function createWorkspaceDropdown(otherWorkspaces, userRef) {
     const oldDropdown = headerLeft.querySelector('.workspace-dropdown');
     if (oldDropdown) oldDropdown.remove();
     workspaceTitleEl.classList.remove('is-switchable');
-    workspaceTitleEl.onclick = null; // Remove previous click listener
+    workspaceTitleEl.onclick = null;
 
     if (otherWorkspaces.length === 0) return;
 
@@ -222,6 +217,22 @@ export function init(params) {
     };
   }
   
+  /**
+   * Updates the browser URL to match the selected workspace without reloading.
+   * @param {string|null} workspaceId - The ID of the current workspace.
+   */
+  function updateURL(workspaceId) {
+    const newPath = workspaceId 
+      ? `/myworkspace?selectedWorkspace=${workspaceId}`
+      : '/myworkspace';
+      
+    if (window.location.pathname + window.location.search !== newPath) {
+        window.history.pushState({ path: newPath }, '', newPath);
+    }
+  }
+  
+  // --- Main Execution Logic ---
+  
   onAuthStateChanged(auth, user => {
     if (user) {
       currentUser = user;
@@ -229,6 +240,9 @@ export function init(params) {
     } else {
       currentUser = null;
       if(unsubscribeWorkspaces) unsubscribeWorkspaces();
+      // Optionally clear the UI for logged-out users
+      workspaceTitleEl.textContent = 'Please log in';
+      staffListContainer.innerHTML = '';
     }
   });
 
@@ -352,102 +366,17 @@ export function init(params) {
   }
 }
 
-
-  /**
-   * Handles the logic for selecting a project.
-   * It finds the user's active workspace, updates the 'selectedProjectId' on it,
-   * and triggers an automatic navigation to the new project route.
-   * @param {string} projectId The ID of the project to select.
-   */
-  async function selectProject(projectId) {
-
-    // --- NEW METHOD (Effective July 24, 2025) ---
-
-    // Guard clause: The function now only needs the currentUser to be available to start.
-    if (!projectId || !currentUser) {
-      console.warn("selectProject aborted: Missing projectId or currentUser.");
-      return;
-    }
-
-    try {
-      // ✅ Step 1: Get the current user's document to find the selected workspace ID.
-      console.log("[selectProject] Finding user's selected workspace ID...");
-      const userRef = doc(db, 'users', currentUser.uid);
-      const userSnap = await getDoc(userRef);
-
-      if (!userSnap.exists()) {
-        console.error("selectProject failed: Current user data not found.");
-        return;
-      }
-
-      const activeWorkspaceId = userSnap.data().selectedWorkspace;
-      if (!activeWorkspaceId) {
-        console.error("selectProject failed: No active workspace found to save the selection.");
-        alert("Please select an active workspace before selecting a project.");
-        return;
-      }
-
-      // ✅ Step 2: Build the direct path to the active workspace document.
-      const workspaceRef = doc(db, `users/${currentUser.uid}/myworkspace`, activeWorkspaceId);
-      const workspaceSnap = await getDoc(workspaceRef);
-
-      if (!workspaceSnap.exists()) {
-        console.error("selectProject failed: The active workspace document does not exist.");
-        return;
-      }
-
-      const currentSelectedId = workspaceSnap.data().selectedProjectId;
-
-      // Guard clause: Don't do anything if the project is already selected.
-      if (projectId === currentSelectedId) {
-        console.log("selectProject aborted: This project is already selected.");
-        return;
-      }
-
-      // ✅ Step 3: Perform the single, efficient write to the correct workspace document.
-      await setDoc(workspaceRef, {
-        selectedProjectId: projectId
-      }, { merge: true });
-
-      console.log(`DEBUG: Set active project to ${projectId} in workspace ${activeWorkspaceId}.`);
-
-      // Step 4: Automatically navigate to the new route.
-      const numericUserId = stringToNumericString(currentUser.uid);
-      const numericProjectId = stringToNumericString(projectId);
-      const newRoute = `/tasks/${numericUserId}/list/${numericProjectId}`;
-
-      navigate(newRoute); // This calls the helper function below
-
-    } catch (error) {
-      console.error("Error during project selection:", error);
-    }
-  }
-
-  function navigate(url) {
-    // Change the URL in the browser's address bar.
-    history.pushState(null, '', url);
-
-    // Dispatch our custom 'locationchange' event. Your router should be
-    // listening for this event to know when to load new content.
-    window.dispatchEvent(new Event('locationchange'));
-  }
-
   if (createWorkBtn) {
     createWorkBtn.addEventListener("click", handleProjectCreate, { signal: controller.signal });
   }
 
-  inviteButtonMembers.addEventListener("click", async () => {
-    const result = await showInviteModal();
-    if (result) console.log("Invite result", result);
-  }, { signal: controller.signal });
+  if (inviteButton) {
+      inviteButton.addEventListener("click", () => showInviteModal(), { signal: controller.signal });
+  }
 
-  invitePlusMembers.addEventListener("click", async () => {
-    const result = await showInviteModal();
-    if (result) console.log("Invite result", result);
-  }, { signal: controller.signal });
-
+  // Return the cleanup function
   return () => {
     controller.abort();
-    if (unsubscribeWorkspace) unsubscribeWorkspace();
+    if (unsubscribeWorkspaces) unsubscribeWorkspaces();
   };
 }
