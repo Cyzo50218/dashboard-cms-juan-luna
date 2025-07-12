@@ -497,7 +497,7 @@ function renderDynamicContent(
     accessLevel: projectData.accessLevel || "private",
     workspaceRole: projectData.workspaceRole || "Viewer",
   };
-  const projectAdmins = state.members.filter((m) => m.role === "Project Admin");
+  const projectAdmins = state.members.filter((m) => m.role === "Project Admin" || m.role === "Project Owner Admin");
   
   let membersToRender = [...(projectData.members || [])];
   if (superAdminUID && !membersToRender.some((m) => m.uid === superAdminUID)) {
@@ -545,11 +545,12 @@ function renderDynamicContent(
     const roleOptions = availableRoles
       .map((role) => {
         let disabled = "";
-        if (role === "Project Admin") {
+        if (role === "Project Admin" || role === "Project Owner Admin") {
           // Prevent assigning more than 2 admins
           const isSelf = id === currentUserId;
           const isAlreadyAdmin =
-            state.members.find((m) => m.uid === id)?.role === "Project Admin";
+            state.members.find((m) => m.uid === id)?.role === "Project Admin" ||
+            state.members.find((m) => m.uid === id)?.role === "Project Owner Admin";
           const maxAdminsReached = projectAdmins.length >= 2 && !isAlreadyAdmin;
           if (maxAdminsReached)
             disabled = 'disabled title="Maximum of 2 Project Admins allowed."';
@@ -599,7 +600,7 @@ function renderDynamicContent(
     
     if (member.uid === superAdminUID) {
       const otherAdmins = state.members.filter(
-        (m) => m.role === "Project Admin" && m.uid !== superAdminUID
+        (m) => m.role === "Project Admin" || m.role === "Project Owner Admin" && m.uid !== superAdminUID
       );
       // Lock super admin if there are no other admins to take over
       isLocked = otherAdmins.length === 0;
@@ -767,7 +768,7 @@ async function handleInvite(modal, projectRef) {
           
         }
         // CHECK 1.2: A user is being promoted to Project Admin.
-        else if (role === "Project Admin") {
+        else if (role === "Project Admin" || role === "Project Owner Admin") {
           console.log('[LOG] Attempting to make user a "Project Admin".');
           const currentAdmins = (projectData.project_admin_user || []);
           console.log('[LOG] Current admins:', currentAdmins, `Count: ${currentAdmins.length}`);
@@ -781,7 +782,7 @@ async function handleInvite(modal, projectRef) {
           batch.update(projectRef, { project_admin_user: arrayUnion(existingUserUID) });
         }
         // CHECK 1.3: A non-owner admin is being changed to a non-admin role.
-        else if (memberInProject.role === "Project Admin") {
+        else if (memberInProject.role === "Project Admin" || memberInProject.role === "Project Owner Admin") {
           console.log('[LOG] Removing non-owner admin from project_admin_user array.');
           batch.update(projectRef, { project_admin_user: arrayRemove(existingUserUID) });
         }

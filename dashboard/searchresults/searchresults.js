@@ -161,7 +161,7 @@ function updateUserPermissions(projectData, userId) {
     
     currentUserRole = userMemberInfo ? userMemberInfo.role : null;
     
-    const isMemberWithEditPermission = userMemberInfo && (userMemberInfo.role === "Project Admin" || userMemberInfo.role === "Project admin" || userMemberInfo.role === "Editor");
+    const isMemberWithEditPermission = userMemberInfo && (userMemberInfo.role === "Project Admin" || userMemberInfo.role === "Project Owner Admin" || userMemberInfo.role === "Editor");
     const isSuperAdmin = projectData.project_super_admin_uid === userId;
     const isAdminUser = projectData.project_admin_user === userId;
     
