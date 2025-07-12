@@ -308,31 +308,16 @@ import { firebaseConfig } from "/services/firebase-config.js";
         });
         
         // Listen to projects the user is a member of
-        if (unsubscribeProjects) unsubscribeProjects();
-        let memberUnsub = null;
-        let workspaceUnsub = null;
+        if (unsubscribeProjects) unsubscribeProjects(); // Clean up
         
-        const updateProjectsRealtime = () => {
-            const allProjectsMap = new Map();
-            
-            return (snapshot, type) => {
-                snapshot.forEach(doc => {
-                    const project = { id: doc.id, ...doc.data() };
-                    allProjectsMap.set(project.id, project);
-                });
-                
-                // Only render when both snapshots arrive
-                if (
-                    (type === 'member' && workspaceUnsub) ||
-                    (type === 'workspace' && memberUnsub)
-                ) {
-                    projectsData = Array.from(allProjectsMap.values());
-                    renderProjectsList();
-                }
-            };
-        };
+        let memberProjectsMap = new Map();
+        let workspaceProjectsMap = new Map();
         
-        const handleProjectUpdates = updateProjectsRealtime();
+        function mergeAndRenderProjects() {
+            const mergedMap = new Map([...memberProjectsMap, ...workspaceProjectsMap]);
+            projectsData = Array.from(mergedMap.values());
+            renderProjectsList();
+        }
         
         const memberProjectsQuery = query(
             collectionGroup(db, "projects"),
@@ -345,19 +330,28 @@ import { firebaseConfig } from "/services/firebase-config.js";
             where("workspaceId", "==", activeWorkspaceId)
         );
         
-        memberUnsub = onSnapshot(memberProjectsQuery, (snapshot) => {
-            handleProjectUpdates(snapshot, 'member');
+        const unsubMember = onSnapshot(memberProjectsQuery, (snapshot) => {
+            memberProjectsMap.clear();
+            snapshot.forEach(doc => {
+                memberProjectsMap.set(doc.id, { id: doc.id, ...doc.data() });
+            });
+            mergeAndRenderProjects();
         });
         
-        workspaceUnsub = onSnapshot(workspaceProjectsQuery, (snapshot) => {
-            handleProjectUpdates(snapshot, 'workspace');
+        const unsubWorkspace = onSnapshot(workspaceProjectsQuery, (snapshot) => {
+            workspaceProjectsMap.clear();
+            snapshot.forEach(doc => {
+                workspaceProjectsMap.set(doc.id, { id: doc.id, ...doc.data() });
+            });
+            mergeAndRenderProjects();
         });
         
-        // Save to unsubscribe later if needed
+        // Save both unsub functions to unsubscribe later
         unsubscribeProjects = () => {
-            if (memberUnsub) memberUnsub();
-            if (workspaceUnsub) workspaceUnsub();
+            unsubMember();
+            unsubWorkspace();
         };
+        
     });
     window.drawerLogicInitialized = true;
     console.log("Drawer Component Initialized with new data model.");
