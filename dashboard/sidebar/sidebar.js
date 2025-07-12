@@ -775,20 +775,13 @@ window.TaskSidebar = (function() {
         }
     }
     
-    // Change the parameter from htmlContent to messageData
     async function sendMessage(messageData) {
         if (!currentProject || !currentTask || !currentUser) return;
-        
         if (!messageData.html.trim()) return;
         
         const messagesPath = `globalTaskChats/${currentTask.id}/Messages`;
         const newMessageRef = doc(collection(db, messagesPath));
         const batch = writeBatch(db);
-        
-        const adminUIDs = [
-            currentProject.project_super_admin_uid,
-            currentProject.project_admin_user
-        ].flat().filter(Boolean);
         
         if (!currentTask.chatuuid) {
             batch.update(currentTaskRef, { chatuuid: currentTask.id });
@@ -802,60 +795,82 @@ window.TaskSidebar = (function() {
             senderAvatar: currentUser.avatar,
             timestamp: serverTimestamp(),
             reactions: { "like": [] },
-            projectAdmins: adminUIDs
+            projectId: currentProject.id,
+            hasImage: messageData.hasImage || false
         });
         
         batch.update(currentTaskRef, { commentCount: increment(1) });
-        
         await batch.commit();
-        
         logActivity({ action: 'added a comment' });
     }
     
     async function handleCommentSubmit() {
         const commentInputEl = document.getElementById('comment-input');
-        
-        // Create a clone of the input to safely manipulate it without affecting the live view.
-        const contentClone = commentInputEl.cloneNode(true);
-        const imageEl = contentClone.querySelector('img');
-        
-        // Exit if there is no text and no image.
-        if (!commentInputEl.innerText.trim() && !imageEl) {
+        const textContent = commentInputEl.innerHTML;
+        const fileToUpload = pastedFiles.length > 0 ? pastedFiles[0] : null;
+        let messageHasImage = false;
+        // Exit if there is no text and no file to upload.
+        if (!textContent.trim() && !fileToUpload) {
             return;
         }
         
         sendCommentBtn.disabled = true;
         
         try {
-            let finalHtml = contentClone.innerHTML;
+            let finalHtml = textContent;
+            let attachmentHtml = '';
             
-            // If an image was found in the comment...
-            if (imageEl && imageEl._file) {
-                // 1. Upload the file to get the permanent URL.
-                const fileToUpload = imageEl._file;
+            // --- UPLOAD LOGIC ---
+            // If a file has been pasted or selected, upload it first.
+            if (fileToUpload) {
+                console.log("File detected, starting upload to Firebase Storage...");
+                
+                // 1. Define the path in Firebase Storage.
                 const storagePath = `workspaceProjects/${currentProject.id}/messages-attachments/${Date.now()}-${fileToUpload.name}`;
                 const storageRef = ref(storage, storagePath);
+                
+                // 2. Upload the file.
                 const snapshot = await uploadBytes(storageRef, fileToUpload);
-                const finalImageUrl = await getDownloadURL(snapshot.ref);
                 
-                // 2. Replace the temporary src in our cloned image with the final URL.
-                imageEl.src = finalImageUrl;
-                // Remove the temporary file property and any inline styles we don't need to store.
-                delete imageEl._file;
-                imageEl.removeAttribute('style');
+                // 3. Get the permanent, public URL for the uploaded file.
+                const finalDownloadURL = await getDownloadURL(snapshot.ref);
+                console.log("Upload complete. URL:", finalDownloadURL);
                 
-                // 3. Get the final HTML from our modified clone.
-                finalHtml = contentClone.innerHTML;
+                // 4. Build the correct HTML for the permanent attachment.
+                if (fileToUpload.type.startsWith('image/')) {
+                    messageHasImage = true;
+                    attachmentHtml = `<img src="${finalDownloadURL}" alt="${fileToUpload.name}" class="scalable-image">`;
+                } else if (fileToUpload.type === 'application/pdf') {
+                    attachmentHtml = `
+                    <a href="${finalDownloadURL}" target="_blank" class="pdf-attachment-link">
+                        <i class="fa-solid fa-file-pdf pdf-icon"></i>
+                        <span>${fileToUpload.name}</span>
+                    </a>`;
+                }
             }
             
-            // 4. Send the complete HTML to be saved.
+            // --- HTML ASSEMBLY ---
+            // Combine the text from the input with the HTML for the uploaded file.
+            if (textContent.trim() && attachmentHtml) {
+                // Add a line break if there's both text and an attachment.
+                finalHtml = `${textContent}<br>${attachmentHtml}`;
+            } else {
+                // Otherwise, just use whichever one exists.
+                finalHtml = textContent.trim() || attachmentHtml;
+            }
+            
+            // --- SEND MESSAGE ---
+            // Send the final, clean HTML to be saved in Firestore.
             await sendMessage({ html: finalHtml });
             
-            // Clear the live input box on success.
+            // --- CLEANUP ---
+            // Clear the input and the file cache on success.
             commentInputEl.innerHTML = '';
+            clearImagePreview(); // This clears the pastedFiles array.
             
         } catch (error) {
             console.error("Failed to send message:", error);
+            alert("There was an error sending your message. Please try again.");
         } finally {
             sendCommentBtn.disabled = false;
         }

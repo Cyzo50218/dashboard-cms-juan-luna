@@ -459,7 +459,6 @@ function attachRealtimeListeners(userId) {
             return;
         }
         
-        // ✅ UPDATED: Listen to the new membership document path
         const memberDocRef = doc(db, `workspaces/${currentWorkspaceId}/members`, userId);
         activeListeners.workspace = onSnapshot(memberDocRef, async (memberDocSnap) => {
             if (!memberDocSnap.exists()) {
@@ -470,7 +469,6 @@ function attachRealtimeListeners(userId) {
             
             const memberData = memberDocSnap.data();
             const newProjectId = memberData?.selectedProjectId;
-            // ✅ GET VISIBILITY: Default to 'private' for safety
             const visibility = memberData?.selectedProjectWorkspaceVisibility || 'private';
             
             if (newProjectId === currentProjectId) return;
@@ -484,7 +482,6 @@ function attachRealtimeListeners(userId) {
                 return;
             }
             
-            // ✅ NEW VISIBILITY CHECK
             const canAttemptLoad = ['workspace', 'viewer', 'private'].includes(visibility);
             if (!canAttemptLoad) {
                 console.warn(`Access denied by visibility setting: '${visibility}'`);
@@ -527,7 +524,6 @@ function attachRealtimeListeners(userId) {
                         renderBoard();
                     });
                     
-                    // ... (previous code) ...
                     
                     const tasksQuery = query(collectionGroup(db, 'tasks'), where('projectId', '==', project.projectId));
                     activeListeners.tasks = onSnapshot(tasksQuery, (snapshot) => {
@@ -538,49 +534,42 @@ function attachRealtimeListeners(userId) {
                     
                     const messagesQuery = query(
                         collectionGroup(db, 'Messages'),
-                        where('projectId', '==', currentProjectId)
+                        where('projectId', '==', currentProjectId),
+                        where('hasImage', '==', true)
                     );
                     
-                    if (activeListeners.messages) activeListeners.messages(); // Detach old messages listener
+                    if (activeListeners.messages) activeListeners.messages();
                     activeListeners.messages = onSnapshot(messagesQuery, (snapshot) => {
                         const newImageMap = {};
                         
                         snapshot.forEach(doc => {
                             const data = doc.data();
-                            const messageContent = data.content || '';
                             
-                            // 1. Check if the message content actually contains an image tag.
-                            if (messageContent.includes('<img')) {
-                                // 2. Create a temporary div to parse the HTML string safely.
-                                const tempDiv = document.createElement('div');
-                                tempDiv.innerHTML = messageContent;
-                                const imgTag = tempDiv.querySelector('img');
+                            const tempDiv = document.createElement('div');
+                            tempDiv.innerHTML = data.content;
+                            const imgTag = tempDiv.querySelector('img');
+                            
+                            if (imgTag && imgTag.src) {
+                                const imageUrl = imgTag.src;
+                                const taskId = doc.ref.parent.parent.id;
+                                const existing = newImageMap[taskId];
                                 
-                                // 3. Ensure an img tag with a src was found.
-                                if (imgTag && imgTag.src) {
-                                    const imageUrl = imgTag.src;
-                                    const taskId = doc.ref.parent.parent.id; // Get taskId from the message's path
-                                    
-                                    const existing = newImageMap[taskId];
-                                    // 4. Compare timestamps to keep only the OLDEST image.
-                                    if (!existing || (data.timestamp && data.timestamp.toMillis() < existing.timestamp.toMillis())) {
-                                        newImageMap[taskId] = {
-                                            imageUrl: imageUrl,
-                                            timestamp: data.timestamp
-                                        };
-                                    }
+                                if (!existing || (data.timestamp && data.timestamp.toMillis() < existing.timestamp.toMillis())) {
+                                    newImageMap[taskId] = {
+                                        imageUrl: imageUrl,
+                                        timestamp: data.timestamp
+                                    };
                                 }
                             }
                         });
                         
-                        // 5. Build the final map with just the image URLs.
                         taskImageMap = Object.fromEntries(
                             Object.entries(newImageMap).map(([key, value]) => [key, value.imageUrl])
                         );
                         
-                        // Re-render the board to show the new image previews
                         renderBoard();
                     });
+                    
                 });
             } catch (error) {
                 console.error("Error attaching listeners:", error);

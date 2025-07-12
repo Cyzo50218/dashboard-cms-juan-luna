@@ -255,104 +255,121 @@ import { firebaseConfig } from "/services/firebase-config.js";
     });
     
     onAuthStateChanged(auth, async (user) => {
-        console.log("DEBUG: Auth state changed. Cleaning up listeners.");
+        console.log("Auth state changed.");
         
-        // Clean up any old listeners
-        if (unsubscribeUserDoc) unsubscribeUserDoc();
-        if (unsubscribeProjects) unsubscribeProjects();
+        // Cleanup previous listeners
+        if (unsubscribeUserDoc) {
+            console.log("Unsubscribing from previous userDoc listener.");
+            unsubscribeUserDoc();
+        }
+        if (unsubscribeProjects) {
+            console.log("Unsubscribing from previous project listeners.");
+            unsubscribeProjects();
+        }
         
         activeWorkspaceId = null;
         selectedProjectId = null;
         projectsData = [];
+        currentUser = user;
         
         if (!user) {
-            currentUser = null;
+            console.log("User is signed out.");
             renderProjectsList();
             return;
         }
         
-        currentUser = user;
+        console.log("User is signed in:", user.uid);
         
-        // Listen to user's selectedWorkspace field
         const userDocRef = doc(db, 'users', user.uid);
+        
         unsubscribeUserDoc = onSnapshot(userDocRef, async (userSnap) => {
             const newWorkspaceId = userSnap.data()?.selectedWorkspace || null;
             
-            if (!newWorkspaceId || newWorkspaceId === activeWorkspaceId) return;
+            if (!newWorkspaceId) {
+                console.warn("No active workspace selected.");
+                return;
+            }
+            
+            if (newWorkspaceId === activeWorkspaceId) {
+                return; // Already listening
+            }
             
             activeWorkspaceId = newWorkspaceId;
-            console.log(`DEBUG: Active workspace set to: ${activeWorkspaceId}`);
+            console.log("Active workspace set:", activeWorkspaceId);
             
             const memberDocRef = doc(db, `workspaces/${activeWorkspaceId}/members/${user.uid}`);
             const memberSnap = await getDoc(memberDocRef);
             
             if (!memberSnap.exists()) {
-                console.warn("DEBUG: Member doc not found. Cannot determine selected project.");
+                console.warn("Workspace membership document not found.");
                 selectedProjectId = null;
                 renderProjectsList();
                 return;
             }
             
             const newSelectedProjectId = memberSnap.data()?.selectedProjectId || null;
-            const isValid = newSelectedProjectId && projectsData.some(p => p.id === newSelectedProjectId);
             
-            if (isValid && newSelectedProjectId !== selectedProjectId) {
-                console.log(`DEBUG: Selected project changed to: ${newSelectedProjectId}`);
-                selectedProjectId = newSelectedProjectId;
-                renderProjectsList();
-            } else if (!isValid) {
-                console.log("DEBUG: selectedProjectId is missing or invalid.");
-                selectedProjectId = null;
-                renderProjectsList();
-            }
+            selectedProjectId = newSelectedProjectId;
+            console.log("Selected project:", selectedProjectId);
+            
+            // Start listening to projects
+            startProjectListeners(user.uid, activeWorkspaceId);
         });
+    });
+    
+    function startProjectListeners(userId, workspaceId) {
+        if (!userId || !workspaceId) {
+            console.warn("Missing user ID or workspace ID. Aborting project listeners.");
+            return;
+        }
         
-        // Listen to projects the user is a member of
-        if (unsubscribeProjects) unsubscribeProjects(); // Clean up
+        console.log("Initializing real-time project listeners...");
+        
+        if (unsubscribeProjects) {
+            unsubscribeProjects(); // Clean up previous
+        }
         
         let memberProjectsMap = new Map();
         let workspaceProjectsMap = new Map();
         
-        function mergeAndRenderProjects() {
-            const mergedMap = new Map([...memberProjectsMap, ...workspaceProjectsMap]);
-            projectsData = Array.from(mergedMap.values());
+        const mergeAndRenderProjects = () => {
+            const allProjectsMap = new Map([...memberProjectsMap, ...workspaceProjectsMap]);
+            projectsData = Array.from(allProjectsMap.values());
+            console.log("Total visible projects:", projectsData.length);
             renderProjectsList();
-        }
+        };
         
         const memberProjectsQuery = query(
             collectionGroup(db, "projects"),
-            where("memberUIDs", "array-contains", user.uid)
+            where("memberUIDs", "array-contains", userId)
         );
         
         const workspaceProjectsQuery = query(
             collectionGroup(db, "projects"),
             where("accessLevel", "==", "workspace"),
-            where("workspaceId", "==", activeWorkspaceId)
+            where("workspaceId", "==", workspaceId)
         );
         
         const unsubMember = onSnapshot(memberProjectsQuery, (snapshot) => {
+            console.log("Member project snapshot updated.");
             memberProjectsMap.clear();
-            snapshot.forEach(doc => {
-                memberProjectsMap.set(doc.id, { id: doc.id, ...doc.data() });
-            });
+            snapshot.forEach(doc => memberProjectsMap.set(doc.id, { id: doc.id, ...doc.data() }));
             mergeAndRenderProjects();
         });
         
         const unsubWorkspace = onSnapshot(workspaceProjectsQuery, (snapshot) => {
+            console.log("Workspace project snapshot updated.");
             workspaceProjectsMap.clear();
-            snapshot.forEach(doc => {
-                workspaceProjectsMap.set(doc.id, { id: doc.id, ...doc.data() });
-            });
+            snapshot.forEach(doc => workspaceProjectsMap.set(doc.id, { id: doc.id, ...doc.data() }));
             mergeAndRenderProjects();
         });
         
-        // Save both unsub functions to unsubscribe later
         unsubscribeProjects = () => {
             unsubMember();
             unsubWorkspace();
         };
-        
-    });
+    }
+    
     window.drawerLogicInitialized = true;
     console.log("Drawer Component Initialized with new data model.");
 })();
