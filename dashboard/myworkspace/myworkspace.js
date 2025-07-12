@@ -49,6 +49,8 @@ export function init(params) {
   const staffListContainer = workspaceSection.querySelector("#staff-list");
   const staffCountLink = workspaceSection.querySelector("#staff-count-link");
   const inviteButton = workspaceSection.querySelector("#invite-btn");
+  const createWorkBtn = workspaceSection.querySelector("#create-work-btn");
+  
 
   let currentUser = null;
   let unsubscribeWorkspaces = null;
