@@ -130,6 +130,33 @@ const defaultStatusColors = {
 };
 
 // --- New Real-time Data Loading Functions ---
+function renderPrivateProjectView() {
+    // Hide the main headers
+    if (taskListHeaderEl) taskListHeaderEl.style.display = 'none';
+    const listViewHeader = document.getElementById('listview-header');
+    if (listViewHeader) listViewHeader.style.display = 'none';
+
+    // Display the "private" message in the body
+    if (taskListBody) {
+        taskListBody.innerHTML = `
+            <div style="text-align: center; padding: 60px 20px; font-family: sans-serif; color: #555;">
+                <i class="material-icons" style="font-size: 48px; margin-bottom: 16px;">lock</i>
+                <h3 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600;">This project is private</h3>
+                <p style="margin: 0; font-size: 14px;">You no longer have permission to access this project. Please contact a Project Admin if you believe this is a mistake.</p>
+            </div>
+        `;
+    }
+}
+
+/**
+ * Ensures the main list view UI elements (like headers) are visible.
+ * This is called when access to a project is confirmed.
+ */
+function showListViewUI() {
+    if (taskListHeaderEl) taskListHeaderEl.style.display = 'flex'; // Or 'block' depending on your CSS
+    const listViewHeader = document.getElementById('listview-header');
+    if (listViewHeader) listViewHeader.style.display = 'flex'; // Or 'block'
+}
 
 /**
  * Detaches all active Firestore listeners to prevent memory leaks.
@@ -217,32 +244,20 @@ function attachRealtimeListeners(userId) {
                 if (!memberDocSnap.exists()) {
                     console.warn("[DEBUG] Membership document not found. Clearing UI.");
                     project = {};
-                    render();
+                    render(); // Render empty state
                     return;
                 }
 
                 const memberData = memberDocSnap.data();
                 const selectedProjectId = memberData?.selectedProjectId || null;
-                // ✅ GET VISIBILITY: Default to 'private' for safety if the field is missing.
-                const visibility = memberData?.selectedProjectWorkspaceVisibility || 'private';
                 currentWorkspaceId = newActiveWorkspaceId;
 
-                console.log(`[DEBUG] Workspace '${currentWorkspaceId}' | Project: '${selectedProjectId}' | Visibility: '${visibility}'`);
+                console.log(`[DEBUG] Workspace '${currentWorkspaceId}' | Project: '${selectedProjectId}'`);
 
                 if (!selectedProjectId) {
                     console.warn("[DEBUG] The active workspace does not point to a selected project.");
                     project = {};
-                    render();
-                    return;
-                }
-
-                // This block determines if we should even attempt to load the project.
-                const canAttemptLoad = (visibility === 'workspace' || visibility === 'viewer' || visibility === 'private');
-
-                if (!canAttemptLoad) {
-                    console.warn(`[DEBUG] Project access denied due to unknown visibility setting: '${visibility}'.`);
-                    project = {};
-                    render();
+                    render(); // Render empty state
                     return;
                 }
 
@@ -276,15 +291,17 @@ function attachRealtimeListeners(userId) {
                         }
                     }
 
-                    // ✅ Step 2: If the project is found, attach listeners. Otherwise, stop.
+                    // ✅ If project access check fails, render the private view.
                     if (!projectDoc) {
                         console.error(`[DEBUG] CRITICAL: Project '${selectedProjectId}' not found OR user lacks permission.`);
                         project = {};
-                        render();
+                        renderPrivateProjectView(); // Call the new function here
                         return;
                     }
 
-                    // Use the already assigned projectDoc
+                    // ✅ If project access is successful, ensure the normal UI is visible.
+                    showListViewUI();
+
                     const projectRef = projectDoc.ref;
                     currentProjectId = projectDoc.id;
                     currentProjectRef = projectDoc.ref;
@@ -293,13 +310,21 @@ function attachRealtimeListeners(userId) {
                     activeListeners.project = onSnapshot(projectRef, async (projectDetailSnap) => {
                         if (!projectDetailSnap.exists()) {
                             console.error("[DEBUG] The selected project was deleted.");
-                            project = { customColumns: [], sections: [], customPriorities: [], customStatuses: [] };
-                            render();
+                            project = {
+                                customColumns: [],
+                                sections: [],
+                                customPriorities: [],
+                                customStatuses: []
+                            };
+                            renderPrivateProjectView(); // Also show private view if project is deleted mid-session
                             return;
                         }
 
                         console.log(`[DEBUG] Project details listener fired for ${projectDetailSnap.id}`);
-                        project = { ...project, ...projectDetailSnap.data(), id: projectDetailSnap.id };
+                        project = { ...project,
+                            ...projectDetailSnap.data(),
+                            id: projectDetailSnap.id
+                        };
 
                         updateUserPermissions(projectDetailSnap.data(), currentUserId);
                         const memberUIDs = projectDetailSnap.data().members?.map(m => m.uid) || [];
@@ -308,7 +333,10 @@ function attachRealtimeListeners(userId) {
                         const sectionsQuery = query(collection(projectRef, 'sections'), orderBy("order"));
                         if (activeListeners.sections) activeListeners.sections();
                         activeListeners.sections = onSnapshot(sectionsQuery, (sectionsSnapshot) => {
-                            project.sections = sectionsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, tasks: [] }));
+                            project.sections = sectionsSnapshot.docs.map(doc => ({ ...doc.data(),
+                                id: doc.id,
+                                tasks: []
+                            }));
                             distributeTasksToSections(allTasksFromSnapshot);
                             render();
                         });
@@ -316,7 +344,9 @@ function attachRealtimeListeners(userId) {
                         const tasksGroupQuery = query(collectionGroup(db, 'tasks'), where('projectId', '==', currentProjectId), orderBy('createdAt', 'desc'));
                         if (activeListeners.tasks) activeListeners.tasks();
                         activeListeners.tasks = onSnapshot(tasksGroupQuery, (tasksSnapshot) => {
-                            allTasksFromSnapshot = tasksSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+                            allTasksFromSnapshot = tasksSnapshot.docs.map(doc => ({ ...doc.data(),
+                                id: doc.id
+                            }));
                             distributeTasksToSections(allTasksFromSnapshot);
                             render();
                         });
@@ -408,7 +438,8 @@ function canUserEditTask(task) {
 // --- Main Initialization and Cleanup ---
 
 function initializeListView(params) {
-    taskListHeaderEl = document.getElementById('task-list-header');
+
+    taskListHeaderEl = document.getElementById('listview-header');
     drawer = document.getElementById('right-sidebar');
     headerRight = document.getElementById('header-right');
     taskListBody = document.getElementById('task-list-body');
