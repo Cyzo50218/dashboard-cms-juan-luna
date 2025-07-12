@@ -260,6 +260,8 @@ import { firebaseConfig } from "/services/firebase-config.js";
 
     onAuthStateChanged(auth, (user) => {
         console.log("DEBUG: Auth state changed. Cleaning up listeners.");
+
+        // Cleanup old listeners
         if (unsubscribeUserDoc) unsubscribeUserDoc();
         if (unsubscribeProjects) unsubscribeProjects();
         if (unsubscribeWorkspace) unsubscribeWorkspace();
@@ -273,7 +275,7 @@ import { firebaseConfig } from "/services/firebase-config.js";
             currentUser = user;
 
             const userDocRef = doc(db, 'users', user.uid);
-            unsubscribeUserDoc = onSnapshot(userDocRef, (userSnap) => {
+            unsubscribeUserDoc = onSnapshot(userDocRef, async (userSnap) => {
                 const newActiveWorkspaceId = userSnap.data()?.selectedWorkspace || null;
 
                 if (newActiveWorkspaceId !== activeWorkspaceId) {
@@ -283,61 +285,25 @@ import { firebaseConfig } from "/services/firebase-config.js";
                     if (unsubscribeWorkspace) unsubscribeWorkspace();
 
                     if (activeWorkspaceId) {
-                        // Try to get current user's workspace doc first
-                        const workspaceRef = doc(db, `users/${user.uid}/myworkspace/${activeWorkspaceId}`);
+                        const userWorkspaceRef = doc(db, `users/${user.uid}/myworkspace/${activeWorkspaceId}`);
+                        const userWorkspaceSnap = await getDoc(userWorkspaceRef);
 
-                        getDoc(workspaceRef).then(async (docSnap) => {
-                            let actualWorkspaceRef = workspaceRef;
-
-                            if (!docSnap.exists()) {
-                                console.warn("DEBUG: No personal workspace doc. Falling back to collectionGroup lookup.");
-
-                                const groupQuery = query(
-                                    collectionGroup(db, 'myworkspace'),
-                                    where('workspaceId', '==', activeWorkspaceId)
-                                );
-                                const groupSnap = await getDocs(groupQuery);
-
-                                if (groupSnap.empty) {
-                                    console.error("Workspace not found in any user's collection.");
-                                    return;
-                                }
-
-                                actualWorkspaceRef = groupSnap.docs[0].ref;
-                            }
-
-                            // Now listen to the actual workspace (user or fallback)
-                            unsubscribeWorkspace = onSnapshot(actualWorkspaceRef, (workspaceSnap) => {
-                                if (isReloading) return; // Prevent reload loops
-
+                        if (userWorkspaceSnap.exists()) {
+                            unsubscribeWorkspace = onSnapshot(userWorkspaceRef, (workspaceSnap) => {
                                 const newSelectedProjectId = workspaceSnap.data()?.selectedProjectId || null;
-                                const isStillValid = newSelectedProjectId && projectsData.some(p => p.id === newSelectedProjectId);
-
-                                if (!isStillValid) {
-                                    console.log(`DEBUG: Selected project ${newSelectedProjectId} is null or invalid.`);
-
-                                    const availableProjects = projectsData.filter(p => p.workspaceId === activeWorkspaceId);
-
-                                    if (availableProjects.length > 0) {
-                                        const fallbackProjectId = availableProjects.sort((a, b) => a.title.localeCompare(b.title))[0].id;
-                                        console.log(`DEBUG: Found fallback project: ${fallbackProjectId}. Selecting it.`);
-
-                                        isReloading = true;
-                                        selectProject(fallbackProjectId).then(() => {
-                                            // NO RELOAD — only update `selectedProjectId`
-                                            isReloading = false;
-                                        });
-                                        return;
-                                    }
-                                }
-
-                                if (newSelectedProjectId !== selectedProjectId) {
-                                    console.log(`DEBUG: Selected project changed to: ${newSelectedProjectId}`);
-                                    selectedProjectId = newSelectedProjectId;
-                                    renderProjectsList();
-                                }
+                                handleSelectedProjectChange(newSelectedProjectId);
                             });
-                        });
+                        } else {
+                            console.warn("DEBUG: No personal workspace doc. Falling back to collectionGroup lookup.");
+
+                            // Fallback to centralized member doc under workspace
+                            const memberDocRef = doc(db, `workspaces/${activeWorkspaceId}/members/${user.uid}`);
+                            const memberSnap = await getDoc(memberDocRef);
+                            const fallbackProjectId = memberSnap.data()?.selectedProjectId || null;
+
+                            console.log(`DEBUG: Fallback selectedProjectId from central member: ${fallbackProjectId}`);
+                            handleSelectedProjectChange(fallbackProjectId);
+                        }
                     } else {
                         selectedProjectId = null;
                         renderProjectsList();
@@ -361,6 +327,35 @@ import { firebaseConfig } from "/services/firebase-config.js";
             renderProjectsList();
         }
     });
+
+    function handleSelectedProjectChange(newSelectedProjectId) {
+        const isStillValid = newSelectedProjectId && projectsData.some(p => p.id === newSelectedProjectId);
+
+        if (!isStillValid) {
+            console.log(`DEBUG: Selected project ${newSelectedProjectId} is null or invalid.`);
+            const availableProjects = projectsData.filter(p => p.workspaceId === activeWorkspaceId);
+
+            if (availableProjects.length > 0) {
+                const fallbackId = availableProjects.sort((a, b) => a.title.localeCompare(b.title))[0].id;
+                console.log(`DEBUG: Found fallback project: ${fallbackId}. Selecting and reloading.`);
+
+                if (!isReloading) {
+                    isReloading = true;
+                    selectProject(fallbackId).then(() => {
+                        window.location.reload();
+                    });
+                }
+            }
+            return;
+        }
+
+        if (newSelectedProjectId !== selectedProjectId) {
+            console.log(`DEBUG: Selected project changed to: ${newSelectedProjectId}`);
+            selectedProjectId = newSelectedProjectId;
+            renderProjectsList();
+        }
+    }
+
 
 
     window.drawerLogicInitialized = true;
