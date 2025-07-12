@@ -37,6 +37,10 @@ export function init(params) {
   const staffListContainer = workspaceSection.querySelector("#staff-list");
   const staffCountLink = workspaceSection.querySelector("#staff-count-link");
   const inviteButton = workspaceSection.querySelector("#invite-btn");
+  const inviteButtonMembers = workspaceSection.querySelector("#invite-btn");
+  const invitePlusMembers = workspaceSection.querySelector("#add-staff-btn");
+  const createWorkBtn = workspaceSection.querySelector("#create-work-btn");
+  
 
   // --- State Variables ---
   let currentUser = null;
