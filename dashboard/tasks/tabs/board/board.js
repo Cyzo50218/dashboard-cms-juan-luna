@@ -518,7 +518,6 @@ function attachRealtimeListeners(userId) {
                     }
                 }
                 
-                // ✅ Step 2: If project is found, attach listeners. Otherwise, stop.
                 if (!projectDoc) {
                     console.error(`Project '${currentProjectId}' not found or user lacks permission.`);
                     project = { sections: [] };
