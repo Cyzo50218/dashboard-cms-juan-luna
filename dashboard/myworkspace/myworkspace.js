@@ -137,31 +137,31 @@ export function init(params) {
     if (!currentUser) return alert("User not available.");
 
     try {
-        // 1. Get the current user's selectedWorkspaceId (Unchanged)
-        const userRef = doc(db, 'users', currentUser.uid);
-        const userSnap = await getDoc(userRef);
-        const selectedWorkspaceId = userSnap.data()?.selectedWorkspace;
-        if (!selectedWorkspaceId) {
-            return alert("No workspace selected. Please select a workspace first.");
-        }
+      // 1. Get the current user's selectedWorkspaceId (Unchanged)
+      const userRef = doc(db, 'users', currentUser.uid);
+      const userSnap = await getDoc(userRef);
+      const selectedWorkspaceId = userSnap.data()?.selectedWorkspace;
+      if (!selectedWorkspaceId) {
+        return alert("No workspace selected. Please select a workspace first.");
+      }
 
-        const workspaceGroupQuery = query(
-            collectionGroup(db, 'myworkspace'),
-            where('workspaceId', '==', selectedWorkspaceId)
-        );
-        const workspaceGroupSnap = await getDocs(workspaceGroupQuery);
+      const workspaceGroupQuery = query(
+        collectionGroup(db, 'myworkspace'),
+        where('workspaceId', '==', selectedWorkspaceId)
+      );
+      const workspaceGroupSnap = await getDocs(workspaceGroupQuery);
 
-        if (workspaceGroupSnap.empty) {
-            return alert("Error: The selected workspace could not be found anywhere. It may have been deleted.");
-        }
+      if (workspaceGroupSnap.empty) {
+        return alert("Error: The selected workspace could not be found anywhere. It may have been deleted.");
+      }
 
-        // This is the reference to the owner's actual workspace document.
-        const ownerWorkspaceRef = workspaceGroupSnap.docs[0].ref;
+      // This is the reference to the owner's actual workspace document.
+      const ownerWorkspaceRef = workspaceGroupSnap.docs[0].ref;
 
-        // ✅ 3. Define the path where the new project will be created.
-        // It's always in the 'projects' subcollection of the owner's workspace document.
-        const projectsColRef = collection(ownerWorkspaceRef, "projects");
-        const newProjectRef = doc(projectsColRef);
+      // ✅ 3. Define the path where the new project will be created.
+      // It's always in the 'projects' subcollection of the owner's workspace document.
+      const projectsColRef = collection(ownerWorkspaceRef, "projects");
+      const newProjectRef = doc(projectsColRef);
 
       // --- Default Structures (No change) ---
       const INITIAL_DEFAULT_COLUMNS = [
@@ -221,8 +221,9 @@ export function init(params) {
           columnOrder: INITIAL_COLUMN_ORDER
         });
 
-        // ✅ 4. The transaction now correctly updates the document at users/{uid}/myworkspace/{id}
-        txn.update(workspaceRef, { selectedProjectId: newProjectRef.id });
+        const currentUserWorkspaceRef = doc(db, `users/${currentUser.uid}/myworkspace`, selectedWorkspaceId);
+        txn.set(currentUserWorkspaceRef, { selectedProjectId: newProjectRef.id }, { merge: true });
+
 
         // 3. Create the three default sections
         const sectionsColRef = collection(newProjectRef, "sections");
