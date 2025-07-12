@@ -214,8 +214,8 @@ export function init(params) {
 
             // We only proceed if the document is missing OR it exists but lacks the ownerWorkspaceRef field.
             if (userWorkspaceSnap.exists()) {
-                    await setDoc(userWorkspaceDocRef, { ownerWorkspaceRef: userWorkspaceDocRef }, { merge: true });
-                    console.log(`Set ownerWorkspaceRef at: ${userWorkspaceDocRef.path}`);
+                await setDoc(userWorkspaceDocRef, { ownerWorkspaceRef: userWorkspaceDocRef }, { merge: true });
+                console.log(`Set ownerWorkspaceRef at: ${userWorkspaceDocRef.path}`);
             }
         } catch (error) {
             console.error("Error during ownerWorkspaceRef setup:", error);
@@ -230,42 +230,58 @@ export function init(params) {
         }
 
         const memberData = memberDocSnap.data();
-        const selectedProjectId = memberData?.selectedProjectId;
-        const visibility = memberData?.selectedProjectWorkspaceVisibility || 'private';
-
-        // --- Step 3: Ensure a project is selected (Unchanged) ---
+        const selectedProjectId = memberDocSnap.data()?.selectedProjectId;
         if (!selectedProjectId) {
-            console.error("No selected project ID is stored in the workspace membership. Please select a project.");
-            throw new Error("No selected project ID is stored in the workspace membership.");
+            console.error("No selected project ID is stored in the workspace membership.");
+            throw new Error("Please select a project to continue.");
         }
 
-        // --- Step 4: Check if the user is allowed to view based on visibility ---
-        const canAttemptLoad = (visibility === 'workspace' || visibility === 'viewer' || visibility === 'private');
+        // --- Step 2: Find the project using combined access logic ---
+        let projectDoc = null;
 
-        if (!canAttemptLoad) {
-            throw new Error(`Project access denied due to unknown visibility setting: '${visibility}'.`);
-        }
-
-        // --- Step 5: Securely find the project and sync roles if needed (Unchanged) ---
-        const projectQuery = query(
+        // Query 1: Check for direct membership in the project
+        const directMembershipQuery = query(
             collectionGroup(db, 'projects'),
             where('projectId', '==', selectedProjectId),
             where('memberUIDs', 'array-contains', user.uid)
         );
-        const projectSnapshot = await getDocs(projectQuery);
+        const directMembershipSnapshot = await getDocs(directMembershipQuery);
 
-        if (projectSnapshot.empty) {
-            throw new Error(`Project with ID ${selectedProjectId} not found or user is not a member.`);
+        if (!directMembershipSnapshot.empty) {
+            projectDoc = directMembershipSnapshot.docs[0];
+            console.log(`Access granted via direct membership for project: ${selectedProjectId}`);
+        } else {
+            // Query 2: If not a direct member, check for workspace-level access
+            console.log(`No direct membership found. Checking for workspace-level access...`);
+            const workspaceAccessQuery = query(
+                collectionGroup(db, 'projects'),
+                where('projectId', '==', selectedProjectId),
+                where('workspaceId', '==', selectedWorkspaceId),
+                where('accessLevel', '==', 'workspace')
+            );
+            const workspaceAccessSnapshot = await getDocs(workspaceAccessQuery);
+
+            if (!workspaceAccessSnapshot.empty) {
+                projectDoc = workspaceAccessSnapshot.docs[0];
+                console.log(`Access granted via workspace visibility for project: ${selectedProjectId}`);
+            }
         }
 
-        const projectDoc = projectSnapshot.docs[0];
-        const projectData = { ...projectDoc.data() }; // Create a mutable copy
+        // If projectDoc is still null after both queries, access is denied.
+        if (!projectDoc) {
+            throw new Error(`Project with ID ${selectedProjectId} not found, or you do not have permission to access it.`);
+        }
+
+        // --- Step 3: Sync roles if needed (Data integrity check) ---
+        const projectData = {
+            ...projectDoc.data()
+        }; // Create a mutable copy
         const membersCount = Array.isArray(projectData.members) ? projectData.members.length : 0;
         const rolesCount = projectData.rolesByUID ? Object.keys(projectData.rolesByUID).length : 0;
 
-        // Syncing logic remains the same
+        // If the legacy `members` array exists but the `rolesByUID` map is missing or out of sync, update it.
         if (membersCount > 0 && (!projectData.rolesByUID || membersCount !== rolesCount)) {
-            console.log(`Syncing roles for project: ${projectDoc.id}. Reason: Field missing or count mismatch. Members: ${membersCount}, Roles: ${rolesCount}`);
+            console.log(`Syncing roles for project: ${projectDoc.id}. Members: ${membersCount}, Roles: ${rolesCount}`);
 
             const rolesByUID = {};
             const memberRoleKeys = [];
@@ -283,18 +299,19 @@ export function init(params) {
                     memberRoleKeys: memberRoleKeys
                 });
 
-                // Update the local copy of project data to avoid a re-fetch
+                // Update the local copy to avoid a re-fetch
                 projectData.rolesByUID = rolesByUID;
                 projectData.memberRoleKeys = memberRoleKeys;
-
-                console.log(`Successfully synced rolesByUID and memberRoleKeys for project: ${projectDoc.id}`);
+                console.log(`Successfully synced roles for project: ${projectDoc.id}`);
             } catch (updateError) {
-                console.error(`Failed to sync project ${projectDoc.id}:`, updateError);
+                console.error(`Failed to sync roles for project ${projectDoc.id}:`, updateError);
+                // Non-critical error, proceed with potentially stale role data
             }
         }
 
+        // --- Step 4: Return the final project data ---
         return {
-            data: projectData, // Return the potentially updated data
+            data: projectData,
             projectId: projectDoc.id,
             workspaceId: projectData.workspaceId,
             projectRef: projectDoc.ref
