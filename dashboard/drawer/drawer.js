@@ -308,71 +308,57 @@ import { firebaseConfig } from "/services/firebase-config.js";
         });
         
         // Listen to projects the user is a member of
-if (unsubscribeProjects) unsubscribeProjects();
-let memberUnsub = null;
-let workspaceUnsub = null;
-
-const updateProjectsRealtime = () => {
-  const allProjectsMap = new Map();
-
-  return (snapshot, type) => {
-    snapshot.forEach(doc => {
-      const project = { id: doc.id, ...doc.data() };
-      allProjectsMap.set(project.id, project);
-    });
-
-    // Only render when both snapshots arrive
-    if (
-      (type === 'member' && workspaceUnsub) ||
-      (type === 'workspace' && memberUnsub)
-    ) {
-      projectsData = Array.from(allProjectsMap.values());
-      renderProjectsList();
-    }
-  };
-};
-
-const handleProjectUpdates = updateProjectsRealtime();
-
-const memberProjectsQuery = query(
-  collectionGroup(db, "projects"),
-  where("memberUIDs", "array-contains", user.uid)
-);
-
-const workspaceProjectsQuery = query(
-  collectionGroup(db, "projects"),
-  where("accessLevel", "==", "workspace"),
-  where("workspaceId", "==", activeWorkspaceId)
-);
-
-memberUnsub = onSnapshot(memberProjectsQuery, (snapshot) => {
-  handleProjectUpdates(snapshot, 'member');
-});
-
-workspaceUnsub = onSnapshot(workspaceProjectsQuery, (snapshot) => {
-  handleProjectUpdates(snapshot, 'workspace');
-});
-
-// Save to unsubscribe later if needed
-unsubscribeProjects = () => {
-  if (memberUnsub) memberUnsub();
-  if (workspaceUnsub) workspaceUnsub();
-};
-
-
+        if (unsubscribeProjects) unsubscribeProjects();
+        let memberUnsub = null;
+        let workspaceUnsub = null;
         
-        unsubscribeProjects = onSnapshot(projectsQuery, (snapshot) => {
-            projectsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const updateProjectsRealtime = () => {
+            const allProjectsMap = new Map();
             
-            // Try to re-render with selectedProjectId if it's valid
-            if (selectedProjectId && projectsData.some(p => p.id === selectedProjectId)) {
-                renderProjectsList();
-            }
+            return (snapshot, type) => {
+                snapshot.forEach(doc => {
+                    const project = { id: doc.id, ...doc.data() };
+                    allProjectsMap.set(project.id, project);
+                });
+                
+                // Only render when both snapshots arrive
+                if (
+                    (type === 'member' && workspaceUnsub) ||
+                    (type === 'workspace' && memberUnsub)
+                ) {
+                    projectsData = Array.from(allProjectsMap.values());
+                    renderProjectsList();
+                }
+            };
+        };
+        
+        const handleProjectUpdates = updateProjectsRealtime();
+        
+        const memberProjectsQuery = query(
+            collectionGroup(db, "projects"),
+            where("memberUIDs", "array-contains", user.uid)
+        );
+        
+        const workspaceProjectsQuery = query(
+            collectionGroup(db, "projects"),
+            where("accessLevel", "==", "workspace"),
+            where("workspaceId", "==", activeWorkspaceId)
+        );
+        
+        memberUnsub = onSnapshot(memberProjectsQuery, (snapshot) => {
+            handleProjectUpdates(snapshot, 'member');
         });
+        
+        workspaceUnsub = onSnapshot(workspaceProjectsQuery, (snapshot) => {
+            handleProjectUpdates(snapshot, 'workspace');
+        });
+        
+        // Save to unsubscribe later if needed
+        unsubscribeProjects = () => {
+            if (memberUnsub) memberUnsub();
+            if (workspaceUnsub) workspaceUnsub();
+        };
     });
-    
-    
-    
     window.drawerLogicInitialized = true;
     console.log("Drawer Component Initialized with new data model.");
 })();
