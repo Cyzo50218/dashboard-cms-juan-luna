@@ -14,15 +14,16 @@ export default async function handler(req, res) {
     }
 
     const contentType = response.headers.get("Content-Type") || "application/octet-stream";
-    const contentDisposition = response.headers.get("Content-Disposition") || "inline";
+    const rawFileName = decodeURIComponent(path).split('/').pop();
+    const cleanedFileName = rawFileName.replace(/_[\d.]+[kKmMgG][bB](?=\.\w+$)/, '');
+
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Content-Disposition", `inline; filename="${cleanedFileName}"`);
 
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    res.setHeader("Content-Type", contentType);
-    res.setHeader("Content-Disposition", contentDisposition);
     res.setHeader("Content-Length", buffer.length);
-
     res.end(buffer);
   } catch (error) {
     console.error("[vercel-proxy] Error:", error);
