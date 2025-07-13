@@ -806,6 +806,13 @@ window.TaskSidebar = (function () {
 
     async function handleCommentSubmit() {
         const commentInputEl = document.getElementById('comment-input');
+
+        const previewEl = commentInputEl.querySelector('.inline-file-preview');
+
+        // If a preview exists, remove it from the DOM before reading any text.
+        if (previewEl) {
+            previewEl.remove();
+        }
         const textContent = commentInputEl.innerText || '';
         const fileToUpload = pastedFiles.length > 0 ? pastedFiles[0] : null;
 
@@ -825,25 +832,28 @@ window.TaskSidebar = (function () {
                 const storagePath = `workspaceProjects/${currentProject.id}/messages-attachments/${Date.now()}-${fileToUpload.name}`;
                 const storageRef = ref(storage, storagePath);
                 const snapshot = await uploadBytes(storageRef, fileToUpload);
-                const finalDownloadURL = await getDownloadURL(snapshot.ref);
+                const finalDownloadURL = `/attachments/downloadProxy?path=${encodeURIComponent(snapshot.metadata.fullPath)}`;
+
                 console.log("Upload complete. Final URL:", finalDownloadURL);
 
                 // 4. Now, build the attachment HTML with the valid URL.
                 const fileType = fileToUpload.type;
                 const fileName = fileToUpload.name;
                 let attachmentHtml = '';
+                const displayFileName = fileName.replace(/_[\d.]+[KMGT]?B/i, '');
+                
 
                 if (fileType.startsWith('image/')) {
                     messageHasImage = true;
                     attachmentHtml = `<img src="${finalDownloadURL}" alt="${fileName}" class="scalable-image">`;
                 } else if (fileType === 'application/pdf') {
                     attachmentHtml = `<a href="${finalDownloadURL}" target="_blank" class="file-attachment-link pdf-link">
-                    <i class="fa-solid fa-file-pdf"></i> ${fileName}
+                    <i class="fa-solid fa-file-pdf"></i> ${displayFileName}
                 </a>`;
                 } else {
                     // Fallback for other file types (Word, Excel, etc.)
                     attachmentHtml = `<a href="${finalDownloadURL}" target="_blank" class="file-attachment-link">
-                    <i class="fa-solid fa-file"></i> ${fileName}
+                    <i class="fa-solid fa-file"></i> ${displayFileName}
                 </a>`;
                 }
 
@@ -1343,7 +1353,6 @@ window.TaskSidebar = (function () {
             item.className = 'comment-item';
             item.dataset.messageId = msg.id;
 
-            // --- Start of Permissions and Reaction Logic (No changes here) ---
             const isAuthor = msg.senderId === currentUser.id;
             const canManageMessage = isAuthor || userCanEditProject;
             const hasLiked = msg.reactions?.like?.includes(currentUser.id);
@@ -1352,9 +1361,9 @@ window.TaskSidebar = (function () {
             const reactionsHTML = `<button class="react-btn like-btn ${hasLiked ? 'reacted' : ''}" title="Like"><i class="${likeIconClass}"></i> <span class="like-count">${likeCount > 0 ? likeCount : ''}</span></button>`;
 
             let authorActionsHTML = canManageMessage ? `
-        <button class="edit-comment-btn" title="Edit"><i class="fa-solid fa-pencil"></i></button>
-        <button class="delete-comment-btn" title="Delete"><i class="fa-solid fa-trash"></i></button>
-    ` : '';
+            <button class="edit-comment-btn" title="Edit"><i class="fa-solid fa-pencil"></i></button>
+            <button class="delete-comment-btn" title="Delete"><i class="fa-solid fa-trash"></i></button>
+        ` : '';
 
             const iconsHTML = `<div class="sidebarcommenticons">${reactionsHTML}${authorActionsHTML}</div>`;
             const timestamp = msg.timestamp ? new Date(msg.timestamp.toDate()).toLocaleString() : 'Sending...';
@@ -1362,10 +1371,15 @@ window.TaskSidebar = (function () {
             let finalDisplayHtml = '';
 
             if (msg.content) {
-                // NEW format: Sanitize and use the HTML content directly.
-                finalDisplayHtml = DOMPurify.sanitize(msg.content);
+                // ✅ THIS IS THE FIX: Configure DOMPurify to allow attachment links
+                finalDisplayHtml = DOMPurify.sanitize(msg.content, {
+                    // Explicitly allow tags needed for links, icons, and images
+                    ALLOWED_TAGS: ['a', 'i', 'img', 'br', 'b', 'strong', 'em', 'span', 'div'],
+                    // Explicitly allow attributes needed for links and styling
+                    ALLOWED_ATTR: ['href', 'target', 'class', 'alt', 'src', 'style']
+                });
             } else {
-                // OLD format: Rebuild the structure from individual fields.
+                // Fallback for older messages without the 'content' field
                 let oldContentHTML = '';
                 if (msg.message) {
                     oldContentHTML += `<div class="comment-text">${msg.message}</div>`;
@@ -1380,42 +1394,38 @@ window.TaskSidebar = (function () {
             }
 
             const editAreaHTML = `
-        <div class="comment-edit-area" style="display: none;">
-            <div class="comment-edit-input" contenteditable="true">${msg.content || msg.message || ''}</div>
-            
-            ${(msg.imageUrl && !msg.content) ? `
+            <div class="comment-edit-area" style="display: none;">
+                <div class="comment-edit-input" contenteditable="true">${msg.content || msg.message || ''}</div>
+                ${(msg.imageUrl && !msg.content) ? `
                     <div class="sidebareditimage-container">
                         <img src="${msg.imageUrl}" class="current-image-preview">
                     </div>
-                ` : ''
-                }
-
-            <div class="comment-edit-actions">
-                <button class="btn-cancel-edit">Cancel</button>
-                <button class="btn-save-edit">Save</button>
+                ` : ''}
+                <div class="comment-edit-actions">
+                    <button class="btn-cancel-edit">Cancel</button>
+                    <button class="btn-save-edit">Save</button>
+                </div>
             </div>
-        </div>
-    `;
-
+        `;
 
             item.innerHTML = `
-        <div class="avatar" style="background-image: url(${msg.senderAvatar})"></div>
-        <div class="comment-body">
-            <div class="comment-header">
-                <div class="comment-meta">
-                    <span class="comment-author">${msg.senderName}</span> 
-                    <span class="comment-timestamp">${timestamp}${msg.editedAt ? ' (edited)' : ''}</span>
+            <div class="avatar" style="background-image: url(${msg.senderAvatar})"></div>
+            <div class="comment-body">
+                <div class="comment-header">
+                    <div class="comment-meta">
+                        <span class="comment-author">${msg.senderName}</span> 
+                        <span class="comment-timestamp">${timestamp}${msg.editedAt ? ' (edited)' : ''}</span>
+                    </div>
+                    ${iconsHTML}
                 </div>
-                ${iconsHTML}
+                <div class="comment-content-wrapper">
+                    <div class="comment-display-area">
+                        ${finalDisplayHtml}
+                    </div>
+                    ${editAreaHTML}
+                </div>
             </div>
-            <div class="comment-content-wrapper">
-                <div class="comment-display-area">
-                    ${finalDisplayHtml}  </div>
-                ${editAreaHTML}
-            </div>
-        </div>
-    `;
-
+        `;
 
             activityLogContainer.appendChild(item);
         });
@@ -1455,40 +1465,40 @@ window.TaskSidebar = (function () {
     function attachEventListeners() {
         if (!sidebar) return;
         if (commentInputWrapper) {
-    // Add a class when a file is dragged over
-    commentInputWrapper.addEventListener('dragenter', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        commentInputWrapper.classList.add('drag-over');
-    });
+            // Add a class when a file is dragged over
+            commentInputWrapper.addEventListener('dragenter', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                commentInputWrapper.classList.add('drag-over');
+            });
 
-    // Necessary to prevent the browser's default handling
-    commentInputWrapper.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-    });
+            // Necessary to prevent the browser's default handling
+            commentInputWrapper.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            });
 
-    // Remove the class when the file is no longer being dragged over
-    commentInputWrapper.addEventListener('dragleave', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        commentInputWrapper.classList.remove('drag-over');
-    });
+            // Remove the class when the file is no longer being dragged over
+            commentInputWrapper.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                commentInputWrapper.classList.remove('drag-over');
+            });
 
-    // Handle the file drop
-    commentInputWrapper.addEventListener('drop', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        commentInputWrapper.classList.remove('drag-over');
+            // Handle the file drop
+            commentInputWrapper.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                commentInputWrapper.classList.remove('drag-over');
 
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            const file = files[0];
-            pastedFiles = [file]; // Store the file for upload
-            addImagePreview(file); // Show the preview
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    const file = files[0];
+                    pastedFiles = [file]; // Store the file for upload
+                    addImagePreview(file); // Show the preview
+                }
+            });
         }
-    });
-}
 
         sidebar.addEventListener('scroll', handleSidebarScroll);
         activityLogContainer.addEventListener('click', (e) => {
@@ -1585,6 +1595,22 @@ window.TaskSidebar = (function () {
         closeBtn.addEventListener('click', close);
         expandBtn.addEventListener('click', toggleSidebarView);
         deleteTaskBtn.addEventListener('click', deleteCurrentTask);
+        commentInput.addEventListener('click', (e) => {
+            // Check if the clicked element is the remove button
+            if (e.target.classList.contains('remove-inline-preview')) {
+
+                // Find the parent preview element (the <img> or <span>)
+                const previewElement = e.target.closest('.inline-file-preview');
+
+                // Remove the preview from the input box
+                if (previewElement) {
+                    previewElement.remove();
+                }
+
+                // Call your existing function to clear the file from the upload queue
+                clearImagePreview();
+            }
+        });
 
         sendCommentBtn.addEventListener('click', handleCommentSubmit);
         commentInput.addEventListener('keydown', e => {
@@ -2209,89 +2235,89 @@ window.TaskSidebar = (function () {
  * directly into the contenteditable comment input at the cursor's position.
  * @param {File} file The file to be previewed.
  */
-function addImagePreview(file) {
-    // 1. Store the file for the upload process
-    pastedFiles = [file];
+    function addImagePreview(file) {
+        // 1. Store the file for the upload process
+        pastedFiles = [file];
 
-    // 2. Define the insertion logic as a reusable function
-    const insertNode = (nodeToInsert) => {
-        const commentInputEl = document.getElementById('comment-input');
-        commentInputEl.focus();
-        const selection = window.getSelection();
+        // 2. Define the insertion logic as a reusable function
+        const insertNode = (nodeToInsert) => {
+            const commentInputEl = document.getElementById('comment-input');
+            commentInputEl.focus();
+            const selection = window.getSelection();
 
-        if (selection.rangeCount > 0) {
-            const range = selection.getRangeAt(0);
-            range.deleteContents(); // Clear any user-selected text
+            if (selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                range.deleteContents(); // Clear any user-selected text
 
-            const br = document.createElement('br');
-            const finalBr = document.createElement('br');
+                const br = document.createElement('br');
+                const finalBr = document.createElement('br');
 
-            // Insert the line break, then the node, then a final line break
-            range.insertNode(br);
-            range.insertNode(nodeToInsert);
-            range.insertNode(finalBr);
+                // Insert the line break, then the node, then a final line break
+                range.insertNode(br);
+                range.insertNode(nodeToInsert);
+                range.insertNode(finalBr);
 
-            // Move the cursor after the final line break for a new line
-            range.setStartAfter(finalBr);
-            range.collapse(true);
+                // Move the cursor after the final line break for a new line
+                range.setStartAfter(finalBr);
+                range.collapse(true);
 
-            selection.removeAllRanges();
-            selection.addRange(range);
-        } else {
-            // Fallback for when there's no cursor position
-            commentInputEl.appendChild(document.createElement('br'));
-            commentInputEl.appendChild(nodeToInsert);
-            commentInputEl.appendChild(document.createElement('br'));
-        }
-    };
-
-    // 3. Create the correct preview node based on file type
-    if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const img = document.createElement('img');
-            img.src = event.target.result;
-            img.alt = file.name;
-            img.className = 'inline-file-preview'; // Class for styling and removal
-
-            // Apply styling from your example
-            img.style.display = 'block'; // 'center' is not valid; 'block' allows centering with margin
-            img.style.margin = '10px auto'; // Center the block-level image
-            img.style.maxWidth = '70%';
-            img.style.maxHeight = '450px';
-            img.style.borderRadius = '10px';
-
-            insertNode(img); // Insert the created image node
+                selection.removeAllRanges();
+                selection.addRange(range);
+            } else {
+                // Fallback for when there's no cursor position
+                commentInputEl.appendChild(document.createElement('br'));
+                commentInputEl.appendChild(nodeToInsert);
+                commentInputEl.appendChild(document.createElement('br'));
+            }
         };
-        reader.readAsDataURL(file);
-    } else {
-        // For non-image files, create a placeholder element
-        const fileNode = document.createElement('span');
-        fileNode.className = 'inline-file-preview';
-        fileNode.contentEditable = false; // Make the preview non-editable
 
-        let iconClass = 'fa-solid fa-file'; // Default icon
-        if (file.type === 'application/pdf') {
-            iconClass = 'fa-solid fa-file-pdf';
-        }
-        // Add more 'else if' blocks for other file types if desired
+        // 3. Create the correct preview node based on file type
+        if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = document.createElement('img');
+                img.src = event.target.result;
+                img.alt = file.name;
+                img.className = 'inline-file-preview'; // Class for styling and removal
 
-        fileNode.innerHTML = `
+                // Apply styling from your example
+                img.style.display = 'block'; // 'center' is not valid; 'block' allows centering with margin
+                img.style.margin = '10px auto'; // Center the block-level image
+                img.style.maxWidth = '70%';
+                img.style.maxHeight = '450px';
+                img.style.borderRadius = '10px';
+
+                insertNode(img); // Insert the created image node
+            };
+            reader.readAsDataURL(file);
+        } else {
+            // For non-image files, create a placeholder element
+            const fileNode = document.createElement('span');
+            fileNode.className = 'inline-file-preview';
+            fileNode.contentEditable = false; // Make the preview non-editable
+
+            let iconClass = 'fa-solid fa-file'; // Default icon
+            if (file.type === 'application/pdf') {
+                iconClass = 'fa-solid fa-file-pdf';
+            }
+            // Add more 'else if' blocks for other file types if desired
+
+            fileNode.innerHTML = `
             <i class="${iconClass}"></i>
             <span>${file.name}</span>
             <button type="button" class="remove-inline-preview">&times;</button>
         `;
-        insertNode(fileNode); // Insert the created file node
+            insertNode(fileNode); // Insert the created file node
+        }
     }
-}
 
-/**
- * Clears the file from memory and removes the visual preview.
- * This acts as the "cancellation" for the upload.
- */
-function clearImagePreview() {
-    pastedFiles = []; // Clear the stored file
-}
+    /**
+     * Clears the file from memory and removes the visual preview.
+     * This acts as the "cancellation" for the upload.
+     */
+    function clearImagePreview() {
+        pastedFiles = []; // Clear the stored file
+    }
 
     async function deleteCurrentTask() {
 

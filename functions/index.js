@@ -123,6 +123,33 @@ export const acceptWorkspaceInvitation = onCall(async (request) => {
   }
 });
 
+export const downloadProxy = onRequest(async (req, res) => {
+    // Get the file path from the query parameter
+    const filePath = req.query.path;
+
+    if (!filePath) {
+        return res.status(400).send("File path is required.");
+    }
+
+    try {
+        const bucket = getStorage().bucket();
+        const file = bucket.file(filePath);
+        
+        // Get the file's metadata to set the correct content type
+        const [metadata] = await file.getMetadata();
+
+        // Set headers to stream the file back to the user
+        res.setHeader("Content-Type", metadata.contentType);
+        res.setHeader("Content-Disposition", `inline; filename="${metadata.name.split('/').pop()}"`);
+
+        // Create a read stream and pipe it to the response
+        file.createReadStream().pipe(res);
+
+    } catch (error) {
+        console.error("Error proxying file:", error);
+        return res.status(404).send("File not found.");
+    }
+});
 
 async function backfillTaskCounts() {
   console.log("🚀 Starting global task count backfill for all users...");

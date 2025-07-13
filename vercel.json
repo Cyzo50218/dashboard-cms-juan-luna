@@ -11,6 +11,10 @@
       "handle": "filesystem"
     },
     {
+      "src": "/attachments/downloadProxy",
+      "dest": "/api/downloadProxy.js"
+    },
+    {
       "src": "^/$",
       "status": 307,
       "headers": { "Location": "/login/" }
