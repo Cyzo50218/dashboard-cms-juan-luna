@@ -1742,7 +1742,22 @@ task-fields-table .field-value {
     text-align: center;
     list-style: none;
 }
+.file-attachment-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    font-size: 14px;
+    text-decoration: none;
+    color: #444;
+}
 
+.file-attachment-link i {
+    color: #888;
+}
+.pdf-link i {
+    color: #d64545;
+}
 /* Styling for the PDF preview block in the comment input */
 .attachment-preview.pdf-preview {
     display: inline-flex;
