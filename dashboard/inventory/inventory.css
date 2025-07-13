@@ -2254,13 +2254,17 @@ Custom class
     opacity: 1;
     transform: translateY(0);
 }
-
-/* Ensure the datepicker from the library fits nicely inside */
 .floating-panel .datepicker {
     border: none;
     box-shadow: none;
 }
-
+.inventory-header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%; 
+    margin-bottom: 1rem; 
+}
 .inventory-title {
     font-size: 2rem;
     font-weight: 600;
@@ -2270,7 +2274,6 @@ Custom class
     margin-top: 8px;
     gap: 0.6rem;
     color: #2c3e50; 
-    margin-bottom: 1rem;
 }
 .inventory-title i {
     font-size: 1.5rem;
