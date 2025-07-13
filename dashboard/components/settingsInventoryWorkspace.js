@@ -32,61 +32,82 @@ function closeModal() {
     document.getElementById("access-modal-styles")?.remove();
 }
 
-/**
- * Opens and populates the inventory access modal.
- * @param {string} inventoryId The document UID of the inventory item.
- */
 export async function openInventoryModal(inventoryId) {
-    if (!inventoryId) return alert("Error: Inventory ID not specified.");
-    if (isModalOpen) return;
-    isModalOpen = true;
-    
-    // --- Create the basic UI structure ---
-    createModalUI();
-    modal = document.querySelector(".access-modal");
-    const modalBody = document.querySelector(".access-modal-body");
-    modal.classList.remove("hidden");
-    
-    try {
-        const user = auth.currentUser;
-        if (!user) throw new Error("User not authenticated.");
-        
-        // --- Construct the correct Firestore path for the inventory item ---
-        const inventoryRef = doc(db, 'Inventory', inventoryId);
-        
-        // --- Real-time listener for inventory data ---
-        unsubscribeInventoryListener = onSnapshot(inventoryRef, async (inventoryDocSnap) => {
-            if (!inventoryDocSnap.exists()) {
-                alert("This inventory item has been deleted.");
-                closeModal();
-                return;
-            }
-            
-            const inventoryData = inventoryDocSnap.data();
-            // --- Get the inventory name from the specified field path: details.name ---
-            const inventoryName = inventoryData.details?.name || "Unnamed Inventory";
-            const memberUIDs = (inventoryData.members || []).map((m) => m.uid);
-            
-            // --- Fetch profiles for all members ---
-            const userProfilePromises = memberUIDs.map(uid => getDoc(doc(db, "users", uid)));
-            const userProfileDocs = await Promise.all(userProfilePromises);
-            const userProfilesMap = userProfileDocs.reduce((acc, docSnap) => {
-                if (docSnap.exists()) acc[docSnap.id] = docSnap.data();
-                return acc;
-            }, {});
-            
-            // --- Render the content and set up listeners ---
-            renderDynamicContent(modal, { inventoryData, inventoryName, userProfilesMap });
-            setupEventListeners(modal, inventoryRef);
-        });
-        
-    } catch (error) {
-        console.error("openInventoryModal error:", error);
-        if (modalBody) {
-            modalBody.innerHTML = `<p class="access-modal-error-message">Could not load access details. Reason: ${error.message}</p>`;
+  if (!inventoryId) return alert("Error: Inventory ID not specified.");
+  if (isModalOpen) return;
+  isModalOpen = true;
+
+  createModalUI();
+  modal = document.querySelector(".access-modal");
+  const modalBody = document.querySelector(".access-modal-body");
+  modal.classList.remove("hidden");
+
+  try {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated.");
+
+    const inventoryRef = doc(db, 'InventoryWorkspace', inventoryId);
+
+    unsubscribeInventoryListener = onSnapshot(inventoryRef, async (inventoryDocSnap) => {
+      if (!inventoryDocSnap.exists()) {
+        alert("This inventory item has been deleted.");
+        closeModal();
+        return;
+      }
+
+      const inventoryData = inventoryDocSnap.data();
+      const inventoryName = inventoryData.details?.name || "Unnamed Inventory";
+      const memberUIDs = (inventoryData.members || []).map((m) => m.uid);
+
+      // --- Load user workspace context and profiles ---
+      const userProfilesMap = {};
+
+      for (const uid of memberUIDs) {
+        const userRef = doc(db, 'users', uid);
+        const userSnap = await getDoc(userRef);
+
+        if (userSnap.exists()) {
+          const userData = userSnap.data();
+          const selectedWorkspaceId = userData.selectedWorkspace || null;
+
+          // Collection group to find matching workspaces where user is a member
+          const workspacesQuery = query(
+            collectionGroup(db, 'myworkspace'),
+            where('members', 'array-contains', uid)
+          );
+
+          const workspacesSnap = await getDocs(workspacesQuery);
+          const matchingWorkspaces = [];
+
+          workspacesSnap.forEach(docSnap => {
+            const workspaceData = docSnap.data();
+            matchingWorkspaces.push({
+              id: docSnap.id,
+              selected: docSnap.id === selectedWorkspaceId,
+              ...workspaceData
+            });
+          });
+
+          userProfilesMap[uid] = {
+            ...userData,
+            selectedWorkspaceId,
+            workspaces: matchingWorkspaces
+          };
         }
+      }
+
+      renderDynamicContent(modal, { inventoryData, inventoryName, userProfilesMap });
+      setupEventListeners(modal, inventoryRef);
+    });
+
+  } catch (error) {
+    console.error("openInventoryModal error:", error);
+    if (modalBody) {
+      modalBody.innerHTML = `<p class="access-modal-error-message">Could not load access details. Reason: ${error.message}</p>`;
     }
+  }
 }
+
 
 /**
  * Handles the checking/unchecking of the "Can be viewed" checkbox.

@@ -32,6 +32,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 import { firebaseConfig } from "/services/firebase-config.js";
+import { openInventoryModal } from '/dashboard/components/settingsInventoryWorkspace.js';
 
 // Initialize Firebase
 console.log("Initializing Firebase...");
@@ -42,10 +43,10 @@ console.log("Initialized Firebase on Dashboard.");
 
 // --- Module-Scoped Variables ---
 // DOM Element Holders
-let taskListHeaderEl, drawer, addSectionClassBtn, headerRight, productListBody, taskListFooter, addProductHeaderBtn, mainContainer, assigneeDropdownTemplate, filterBtn, sortBtn;
+let taskListHeaderEl, drawer, settingsBtn, restrictedOverlay, addSectionClassBtn, headerRight, productListBody, taskListFooter, addProductHeaderBtn, mainContainer, assigneeDropdownTemplate, filterBtn, sortBtn;
 
 // Event Handler References
-let headerClickListener, bodyClickListener, bodyFocusOutListener, addProductHeaderBtnListener, windowClickListener, filterBtnListener, sortBtnListener;
+let headerClickListener, bodyClickListener, settingsBtnListener, bodyFocusOutListener, addProductHeaderBtnListener, windowClickListener, filterBtnListener, sortBtnListener;
 let sortableSections;
 let activeMenuButton = null;
 const sortableTasks = [];
@@ -85,6 +86,7 @@ let activeListeners = {
 
 let currentUserId = null;
 let currentWorkspaceId = null;
+let currentInventoryId = null;
 let expansionTimeout = null; // Holds the timer for auto-expanding a section
 let lastHoveredSectionId = null; // Tracks the last section hovered over to prevent re-triggering
 let currentProjectId = null;
@@ -120,6 +122,10 @@ const defaultStatusColors = {
     'Off track': '#FFD15E',
     'Completed': '#878787'
 };
+
+let inventoryPath = null;
+let dataUsStocks = [];
+let dataPhStocks = [];
 
 // --- New Real-time Data Loading Functions ---
 
@@ -160,105 +166,111 @@ function detachProjectSpecificListeners() {
 }
 
 function attachRealtimeListeners(userId) {
-    detachAllListeners(); // A helper function to clean up old listeners
+    detachAllListeners();
     currentUserId = userId;
-    console.log(`[DEBUG] Attaching listeners for user: ${userId}`);
-    
-    // STEP 1: Find the user's active workspace to know where to find the selected project ID.
-    const workspaceQuery = query(collection(db, `users/${userId}/myworkspace`), where("isSelected", "==", true));
-    
-    activeListeners.workspace = onSnapshot(workspaceQuery, async (workspaceSnapshot) => {
-        // When the active workspace changes, we must clean up listeners for the previous project.
-        detachProjectSpecificListeners();
-        
-        if (workspaceSnapshot.empty) {
-            console.warn("[DEBUG] No selected workspace. Clearing UI.");
-            project = {}; // Clear all project data
-            render(); // Render the empty state
+
+    console.groupCollapsed(`%c🔗 Attaching Listeners for User: ${userId}`, 'color: #007bff; font-weight: bold;');
+
+    const userDocRef = doc(db, 'users', userId);
+
+    activeListeners.user = onSnapshot(userDocRef, async (userSnap) => {
+        if (!userSnap.exists()) {
+            console.error(`%c❌ User document not found: ${userId}`, 'color: #dc3545; font-weight: bold;');
+            detachAllListeners();
+            console.groupEnd();
             return;
         }
-        
-        const workspaceDoc = workspaceSnapshot.docs[0];
-        currentWorkspaceId = workspaceDoc.id;
-        const workspaceData = workspaceDoc.data();
-        
-        // STEP 2: Read the 'selectedProjectId' from the active workspace document. This is our target.
-        const selectedProjectId = workspaceData.selectedProjectId || null;
-        console.log(`[DEBUG] Found workspace '${currentWorkspaceId}'. It points to selectedProjectId: '${selectedProjectId}'`);
-        
-        if (!selectedProjectId) {
-            console.warn("[DEBUG] The active workspace does not point to a selected project.");
-            project = {};
-            render();
+
+        const userData = userSnap.data();
+        const selectedWorkspaceId = userData.selectedWorkspace;
+
+        if (!selectedWorkspaceId) {
+            console.warn('%c⚠️ No selected workspace found.', 'color: #ffc107; font-weight: bold;');
+            showRestrictedAccessUI('No workspace selected.');
+            console.groupEnd();
             return;
         }
-        
-        // STEP 3: Use the ID to find the actual project document, no matter where it's nested.
-        // We use a one-time `getDocs` with `collectionGroup` to find its full path.
-        try {
-            const projectQuery = query(
-                collectionGroup(db, 'projects'),
-                where('projectId', '==', selectedProjectId),
-                where('memberUIDs', 'array-contains', currentUserId)
-            );
-            const projectSnapshot = await getDocs(projectQuery);
-            
-            if (projectSnapshot.empty) {
-                console.error(`[DEBUG] CRITICAL: Could not find any project with the ID '${selectedProjectId}'.`);
-                project = {};
-                render();
+
+        currentWorkspaceId = selectedWorkspaceId;
+
+        const workspaceDocRef = doc(db, `users/${userId}/myworkspace`, selectedWorkspaceId);
+        console.info(`%c📁 Listening to Workspace: ${selectedWorkspaceId}`, 'color: #17a2b8;');
+
+        activeListeners.workspace = onSnapshot(workspaceDocRef, async (workspaceSnap) => {
+            if (!workspaceSnap.exists()) {
+                console.warn('%c⚠️ Workspace document does not exist.', 'color: #ffc107; font-weight: bold;');
+                showRestrictedAccessUI('Workspace does not exist.');
                 return;
             }
-            
-            const projectDoc = projectSnapshot.docs[0];
-            const projectRef = projectDoc.ref; // This is the full, correct path to the document
-            currentProjectId = projectDoc.id;
-            currentProjectRef = projectDoc.ref;
-            console.log(`[DEBUG] Successfully found project at path: ${projectRef.path}`);
-            
-            // STEP 4: Now that we have the correct project, attach real-time listeners to it.
-            activeListeners.project = onSnapshot(projectRef, async (projectDetailSnap) => {
-                if (!projectDetailSnap.exists()) {
-                    console.error("[DEBUG] The selected project was deleted.");
-                    project = { customColumns: [], sections: [], customPriorities: [], customStatuses: [] };
-                    render();
-                    return;
-                }
-                
-                console.log(`[DEBUG] Project details listener fired for ${projectDetailSnap.id}`);
-                const projectData = projectDetailSnap.data();
-                project = { ...project, ...projectDetailSnap.data(), id: projectDetailSnap.id };
-                
-                updateUserPermissions(projectData, currentUserId);
-                const memberUIDs = projectData.members?.map(m => m.uid) || [];
-                
-                // Fetch all user profiles using the new helper function
-                allUsers = await fetchMemberProfiles(memberUIDs);
-                
-                // Attach listener for Sections
-                const sectionsQuery = query(collection(projectRef, 'sections'), orderBy("order"));
-                if (activeListeners.sections) activeListeners.sections();
-                activeListeners.sections = onSnapshot(sectionsQuery, (sectionsSnapshot) => {
-                    project.sections = sectionsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, tasks: [] }));
-                    distributeTasksToSections(allTasksFromSnapshot);
-                    render();
-                });
-                
-                // Attach listener for Tasks (using collectionGroup is still powerful here)
-                const tasksGroupQuery = query(collectionGroup(db, 'tasks'), where('projectId', '==', currentProjectId), orderBy('createdAt', 'desc'));
-                if (activeListeners.tasks) activeListeners.tasks();
-                activeListeners.tasks = onSnapshot(tasksGroupQuery, (tasksSnapshot) => {
-                    allTasksFromSnapshot = tasksSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-                    distributeTasksToSections(allTasksFromSnapshot);
-                    render();
-                });
+
+            const workspaceData = workspaceSnap.data();
+
+            if (workspaceData.canShowInventory === false) {
+                console.warn('%c🚫 Access Denied: Inventory is restricted.', 'color: red; font-weight: bold;');
+                showRestrictedAccessUI('Restricted Access: You are not allowed to view this inventory.');
+                return;
+            }
+
+            const inventoryQuery = query(collection(db, 'InventoryWorkspace'), limit(1));
+            const inventorySnapshot = await getDocs(inventoryQuery);
+
+            if (inventorySnapshot.empty) {
+                console.warn('%c⚠️ No InventoryWorkspace data found.', 'color: #ffc107; font-weight: bold;');
+                showRestrictedAccessUI('Inventory data not found.');
+                return;
+            }
+
+            const inventoryDocId = inventorySnapshot.docs[0].id;
+            const inventoryDocRef = doc(db, 'InventoryWorkspace', inventoryDocId);
+            console.info(`%c📦 Inventory ID: ${inventoryDocId}`, 'color: #17a2b8;');
+            currentInventoryId = inventoryDocId;
+            let inventoryId = inventoryDocId;
+            inventoryPath = `InventoryWorkspace/${inventoryDocId}`;
+
+            const usStocksRef = collection(inventoryDocRef, 'US-Stocks');
+            const phStocksRef = collection(inventoryDocRef, 'PH-Stocks');
+
+            activeListeners.usStocks = onSnapshot(usStocksRef, (usSnapshot) => {
+                dataUsStocks = usSnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                console.log('%c🇺🇸 US Stocks:', 'color: #00bcd4;', dataUsStocks);
             });
-            
-        } catch (error) {
-            console.error("[DEBUG] Error finding project via collectionGroup query:", error);
-        }
+
+            activeListeners.phStocks = onSnapshot(phStocksRef, (phSnapshot) => {
+                dataPhStocks = phSnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                console.log('%c🇵🇭 PH Stocks:', 'color: #ff9800;', dataPhStocks);
+            });
+        }, (error) => {
+            console.error('%c❌ Error loading workspace snapshot.', 'color: #dc3545; font-weight: bold;', error);
+            showRestrictedAccessUI('An error occurred while loading your workspace.');
+        });
+
+        console.groupEnd();
     });
 }
+
+function showRestrictedAccessUI(message) {
+  if (restrictedOverlay) {
+    restrictedOverlay.querySelector('.message').textContent = message || 'Restricted Access';
+    restrictedOverlay.classList.remove('hidden');
+  }
+
+  document.querySelector('.list-view-container')?.classList.add('hidden');
+
+  const okBtn = document.getElementById('restricted-ok-btn');
+  if (okBtn) {
+    okBtn.onclick = () => {
+      window.location.href = '/home';
+    };
+  }
+}
+
+
 
 async function fetchMemberProfiles(uids) {
     if (!uids || uids.length === 0) {
@@ -342,8 +354,10 @@ function canUserEditProduct(task) {
 // --- Main Initialization and Cleanup ---
 
 function initializeListView(params) {
+    restrictedOverlay = document.getElementById('restricted-overlay');
     taskListHeaderEl = document.getElementById('task-list-header');
     drawer = document.getElementById('right-sidebar');
+    settingsBtn = document.getElementById('inventory-settings-btn');
     headerRight = document.getElementById('header-right');
     productListBody = document.getElementById('task-list-body');
     taskListFooter = document.getElementById('task-list-footer');
@@ -430,6 +444,7 @@ export function init(params) {
         
         if (headerClickListener) taskListHeaderEl.removeEventListener('click', headerClickListener);
         if (bodyClickListener) productListBody.removeEventListener('click', bodyClickListener);
+        if (settingsBtnListener) settingsBtn.removeEventListener('click', settingsBtnListener);
         if (bodyFocusOutListener) productListBody.removeEventListener('focusout', bodyFocusOutListener);
         if (addProductHeaderBtnListener) addProductHeaderBtn.removeEventListener('click', addProductHeaderBtnListener);
         if (windowClickListener) window.removeEventListener('click', windowClickListener);
@@ -724,6 +739,9 @@ function setupEventListeners() {
         console.log('No specific interactive element was clicked.');
     };
     
+    settingsBtnListener = () => {
+        openInventoryModal(currentInventoryId);
+    }
     
     bodyFocusOutListener = (e) => {
         const focusedOutElement = e.target;
@@ -865,9 +883,8 @@ function setupEventListeners() {
         render();
     };
     
-    // Attach all listeners
-    
     productListBody.addEventListener('click', bodyClickListener);
+    settingsBtn.addEventListener('click', settingsBtnListener);
     productListBody.addEventListener('focusout', bodyFocusOutListener);
     addProductHeaderBtn.addEventListener('click', addProductHeaderBtnListener);
     window.addEventListener('click', setupGlobalClickListeners);

@@ -158,9 +158,6 @@ function showListViewUI() {
     if (listViewHeader) listViewHeader.style.display = 'flex'; // Or 'block'
 }
 
-/**
- * Detaches all active Firestore listeners to prevent memory leaks.
- */
 function detachAllListeners() {
     console.log("Detaching all Firestore listeners...");
     Object.values(activeListeners).forEach(unsubscribe => {
@@ -172,10 +169,6 @@ function detachAllListeners() {
     Object.keys(activeListeners).forEach(key => activeListeners[key] = null);
 }
 
-/**
- * Detaches all active Firestore listeners to prevent memory leaks and
- * unnecessary data fetching when the user logs out or navigates away.
- */
 function detachProjectSpecificListeners() {
     console.log("[DEBUG] Detaching all active Firestore listeners...");
 

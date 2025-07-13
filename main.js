@@ -292,19 +292,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             };
 
-            const runTaskCountBackfill = async () => {
-                try {
-                    const res = await runBackfill();
-                    console.log("✅ Periodic Task Count Backfill success:", res.data.message);
-                } catch (err) {
-                    console.error("❌ Task Count Backfill error:", err.message);
-                }
-            };
-
             runAndLogBackfill(); // initial run
-            runTaskCountBackfill();
             backfillIntervalId = setInterval(runAndLogBackfill, 60_000);
-            backfillTaskCountIntervalId = setInterval(runTaskCountBackfill, 60_000);
 
             // SPA navigation handler
             document.body.addEventListener('click', e => {
@@ -326,10 +315,6 @@ document.addEventListener("DOMContentLoaded", () => {
             if (backfillIntervalId) {
                 clearInterval(backfillIntervalId);
                 backfillIntervalId = null;
-            }
-            if (backfillTaskCountIntervalId) {
-                clearInterval(backfillTaskCountIntervalId);
-                backfillTaskCountIntervalId = null;
             }
         }
     });

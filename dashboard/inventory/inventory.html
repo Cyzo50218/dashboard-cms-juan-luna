@@ -1,18 +1,28 @@
+<div id="restricted-overlay" class="restricted-overlay hidden">
+  <div class="restricted-content">
+    <i class="fas fa-lock fa-3x"></i>
+    <h2>Restricted Access</h2>
+    <p class="message">You are not allowed to view this inventory.</p>
+    <button id="restricted-ok-btn" class="restricted-ok-btn">OK</button>
+  </div>
+</div>
+
 <div class="list-view-container">
 
     <div class="inventory-header">
-<div class="inventory-header-top">
-    <h1 class="inventory-title">
-        <i class="fas fa-boxes"></i>
-        Inventory Management <span class="dot-separator">·</span> <span id="inventory-subtitle">US Stocks</span>
-    </h1>
-    <div class="inventory-actions">
-        <div class="avatar-stack" id="project-header-members"></div>
-        <button class="share-btn display-none" id="share-project-btn">
-            <span class="material-icons">person_add</span> Share
-        </button>
-    </div>
-</div>
+        <div class="inventory-header-top">
+            <h1 class="inventory-title">
+                <i class="fas fa-boxes"></i>
+                Inventory Management <span class="dot-separator">·</span> <span id="inventory-subtitle">US Stocks</span>
+            </h1>
+            <div class="inventory-actions">
+                <div class="avatar-stack" id="project-header-members"></div>
+                <button class="inventory-btn" id="inventory-settings-btn">
+                    <span class="material-icons">inventory_2</span>
+                    Settings
+                </button>
+            </div>
+        </div>
         <div class="inventory-tabs">
             <button class="tab-item active">PH Stocks</button>
             <button class="tab-item">US Stocks</button>
@@ -29,6 +39,7 @@
 
     <div id="task-list-header"></div>
     <div id="task-list-body" class="h-full w-full"></div>
+
     <div class="custom-scrollbar-placeholder"></div>
 
 </div>

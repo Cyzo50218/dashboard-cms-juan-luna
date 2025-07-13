@@ -97,17 +97,23 @@ button {
     gap: 0.4rem;
     /* Reduced gap inside buttons */
 }
-.add-task-header-btn.hide{
+
+.add-task-header-btn.hide {
     display: none;
 }
+
 .add-section-btn.hide {
     display: none;
 }
+
 .cell-restricted {
-    background-color: #f8fafc; /* very light gray (slate-50) */
-    color: #64748b; /* medium gray text (slate-500) */
+    background-color: #f8fafc;
+    /* very light gray (slate-50) */
+    color: #64748b;
+    /* medium gray text (slate-500) */
     cursor: not-allowed !important;
 }
+
 .add-section-btn {
     background-color: transparent;
     border: 1px solid transparent;
@@ -309,7 +315,7 @@ button {
     font-size: 14px;
     align-items: center;
     border-top: none;
-    
+
     gap: 8px;
 }
 
@@ -441,8 +447,8 @@ button {
 }
 
 .numeric-placeholder:empty::before {
-  content: '-';
-  color: #9ca3af; 
+    content: '-';
+    color: #9ca3af;
 }
 
 .add-task-wrapper {
@@ -796,18 +802,18 @@ Custom class
     /* For centering text inside the tag */
     display: inline-flex;
     align-items: center;
-    
+
     /* Appearance */
     padding: 3px 8px;
     font-size: 13px;
     font-weight: 500;
     border-radius: 40px;
-    
+
     /* --- THIS IS THE FIX FOR TEXT OVERFLOWING THE TAG --- */
-    
+
     /* This is required to prevent the tag from growing wider than the cell content wrapper */
     max-width: 100%;
-    
+
     /* These three properties ensure long text inside the tag shows "..." */
     white-space: nowrap;
     overflow: hidden;
@@ -1697,28 +1703,32 @@ Custom class
 
 /* Custom scrollbar for a cleaner look */
 .juanlunacms-spreadsheetlist-custom-scrollbar::-webkit-scrollbar {
-  width: 14px;
-  height: 14px;
+    width: 14px;
+    height: 14px;
 }
+
 .juanlunacms-spreadsheetlist-custom-scrollbar::-webkit-scrollbar-track {
-  background: #f1f5f9;
+    background: #f1f5f9;
 }
+
 .juanlunacms-spreadsheetlist-custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 10px;
-  border: 2px solid #f1f5f9;
+    background: #cbd5e1;
+    border-radius: 10px;
+    border: 2px solid #f1f5f9;
 }
+
 .juanlunacms-spreadsheetlist-custom-scrollbar::-webkit-scrollbar-track:vertical {
     margin-top: 35px;
     background: #f1f5f9;
 }
+
 .juanlunacms-spreadsheetlist-custom-scrollbar::-webkit-scrollbar-thumb:vertical {
     margin-top: 35px;
 }
 
 /* The hover effect applies to both scrollbars, which is good. */
 .juanlunacms-spreadsheetlist-custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #8595ac;
+    background: #8595ac;
 }
 
 .juanlunacms-spreadsheetlist-sticky-header,
@@ -1840,8 +1850,9 @@ Custom class
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     z-index: 1000;
-    padding: 6px; /* A little padding around the list of items */
-    
+    padding: 6px;
+    /* A little padding around the list of items */
+
     /* --- FIX for Width --- */
     /* By NOT setting a min-width or width, it will automatically size to its content. */
 }
@@ -1852,15 +1863,20 @@ Custom class
 .dropdown-item {
     /* --- FIX for Alignment --- */
     display: flex;
-    align-items: center;     /* Vertically centers everything in the row (e.g., icons and text) */
-    justify-content: flex-start; /* Aligns all content to the LEFT */
-    text-align: left;          /* Ensures the text itself is left-aligned */
-    
+    align-items: center;
+    /* Vertically centers everything in the row (e.g., icons and text) */
+    justify-content: flex-start;
+    /* Aligns all content to the LEFT */
+    text-align: left;
+    /* Ensures the text itself is left-aligned */
+
     /* --- Recommended styles for better UX --- */
     padding: 8px;
     cursor: pointer;
-    border-radius: 4px;      /* A slight radius for each item on hover */
-    white-space: nowrap;     /* Prevents long item names from wrapping */
+    border-radius: 4px;
+    /* A slight radius for each item on hover */
+    white-space: nowrap;
+    /* Prevents long item names from wrapping */
     font-size: 14px;
     color: #333;
 }
@@ -1902,18 +1918,22 @@ Custom class
     object-fit: cover;
 }
 
-.like-count, .comment-count {
+.like-count,
+.comment-count {
     margin-right: 4px;
     font-size: 12px;
-    color: #64748b; /* Tailwind slate-500 */
+    color: #64748b;
+    /* Tailwind slate-500 */
 }
 
 .task-name-completed {
-  color: #94a3b8; /* Tailwind slate-400 or a soft gray */
+    color: #94a3b8;
+    /* Tailwind slate-400 or a soft gray */
 }
 
 .juanlunacms-spreadsheetlist-custom-checkbox-container input[type="checkbox"]:hover {
-  border-color: #2563eb; /* Tailwind blue-600 */
+    border-color: #2563eb;
+    /* Tailwind blue-600 */
 }
 
 /* Custom ghost element that follows the cursor */
@@ -1928,7 +1948,8 @@ Custom class
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    pointer-events: none; /* Important */
+    pointer-events: none;
+    /* Important */
 }
 
 .section-drag-ghost {
@@ -1943,10 +1964,13 @@ Custom class
     align-items: center;
     gap: 8px;
     color: #333;
-    pointer-events: none; /* Important */
+    pointer-events: none;
+    /* Important */
 }
+
 .section-drag-ghost .fa-chevron-down {
-    color: #6b7280; /* text-slate-500 */
+    color: #6b7280;
+    /* text-slate-500 */
 }
 
 
@@ -1967,16 +1991,23 @@ Custom class
 
 /* Color styles */
 .date-red {
-    color: #c53030; /* red-700 */
+    color: #c53030;
+    /* red-700 */
 }
+
 .date-yellow {
-    color: #975a16; /* yellow-800 */
+    color: #975a16;
+    /* yellow-800 */
 }
+
 .date-green {
-    color: #2f855a; /* green-700 */
+    color: #2f855a;
+    /* green-700 */
 }
+
 .date-default {
-    color: #4a5568; /* gray-700 */
+    color: #4a5568;
+    /* gray-700 */
 }
 
 /* --- NEW: Styles for flatpickr Wrapper and Icon --- */
@@ -1998,6 +2029,7 @@ Custom class
     box-sizing: border-box;
     cursor: pointer;
 }
+
 .flatpickr-input:hover {
     border-color: #c1c7d0;
 }
@@ -2009,7 +2041,8 @@ Custom class
     top: 50%;
     transform: translateY(-50%);
     color: #5f6368;
-    pointer-events: none; /* Let clicks pass through to the input */
+    pointer-events: none;
+    /* Let clicks pass through to the input */
 }
 
 /* Changes the color of the selected day */
@@ -2020,7 +2053,7 @@ Custom class
 
 /* Changes the color of today's date */
 .flatpickr-day.today {
-    background: transparent; 
+    background: transparent;
     border-color: #34C759;
 }
 
@@ -2042,27 +2075,28 @@ Custom class
 
 /* 1. Hides the default blue placeholder ghost */
 .sortable-ghost {
-  opacity: 0 !important;
+    opacity: 0 !important;
 }
 
 /* 2. Creates the dark background overlay */
 /* We target the main table container when it has the 'is-dragging-active' class */
 .min-w-max.relative.is-dragging-active::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  
-  /* The dark overlay color */
-  background-color: rgba(0, 0, 0, 0.14); /* A semi-transparent dark blue-gray */
-  
-  /* Ensure it's on top of the grid but below the dragged item */
-  z-index: 100; 
-  
-  /* Allows mouse events to pass through the overlay */
-  pointer-events: none; 
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+
+    /* The dark overlay color */
+    background-color: rgba(0, 0, 0, 0.14);
+    /* A semi-transparent dark blue-gray */
+
+    /* Ensure it's on top of the grid but below the dragged item */
+    z-index: 100;
+
+    /* Allows mouse events to pass through the overlay */
+    pointer-events: none;
 }
 
 /*
@@ -2070,8 +2104,10 @@ Custom class
   This gives it the dashed border and light background.
 */
 .task-row-wrapper.sortable-chosen {
-  background-color: #f8fafc;  /* e.g., slate-50 */
-  border: 1px dashed #cbd5e1;  /* e.g., slate-300 */
+    background-color: #f8fafc;
+    /* e.g., slate-50 */
+    border: 1px dashed #cbd5e1;
+    /* e.g., slate-300 */
 }
 
 /*
@@ -2080,7 +2116,7 @@ Custom class
   the space they occupy, which keeps the layout stable.
 */
 .task-row-wrapper.sortable-chosen * {
-  visibility: hidden;
+    visibility: hidden;
 }
 
 /*
@@ -2089,15 +2125,17 @@ Custom class
   and makes it visible again, overriding the rule above.
 */
 .task-row-wrapper.sortable-chosen .task-name {
-  visibility: visible;
-  color: #9ca3af; /* Muted gray text to look like a placeholder */
+    visibility: visible;
+    color: #9ca3af;
+    /* Muted gray text to look like a placeholder */
 }
+
 .cell-content {
     width: 100%;
-    
+
     /* This creates the 10px space on the right */
     padding-right: 10px;
-    
+
     /* These three properties work together to create the "..." effect */
     white-space: nowrap;
     overflow: hidden;
@@ -2107,21 +2145,26 @@ Custom class
 .resize-handle {
     position: absolute;
     top: 0;
-    right: -3px; /* Position it slightly over the border */
+    right: -3px;
+    /* Position it slightly over the border */
     width: 6px;
     height: 100%;
     cursor: col-resize;
     z-index: 10;
 }
+
 .resize-handle:hover {
-    background-color: rgba(59, 130, 246, 0.5); /* A blue indicator on hover */
+    background-color: rgba(59, 130, 246, 0.5);
+    /* A blue indicator on hover */
 }
 
 /* This is for the main cell (the direct child of the flex row) */
 .table-cell {
-    display: flex;       /* Aligns content vertically */
+    display: flex;
+    /* Aligns content vertically */
     align-items: center;
-    padding: 0 4px;      /* Give the cell itself a little padding */
+    padding: 0 4px;
+    /* Give the cell itself a little padding */
     /* The width/flex-basis is set by your syncColumnWidths() JavaScript */
 }
 
@@ -2129,17 +2172,20 @@ Custom class
 .header-cell-content {
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap; /* Forces text onto one line so we can measure its full width */
+    white-space: nowrap;
+    /* Forces text onto one line so we can measure its full width */
 }
 
 /* For content that SHOULD truncate if it's too long (like task data) */
 .cell-content {
     width: 100%;
-    min-width: 0; /* This is critical for truncation inside a flex container */
+    min-width: 0;
+    /* This is critical for truncation inside a flex container */
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
 /* ============================================= */
 /* ==      ADVANCED DROPDOWN & PANEL STYLES     == */
 /* ============================================= */
@@ -2192,7 +2238,8 @@ Custom class
 .advanced-dropdown .dropdown-item {
     display: flex;
     align-items: center;
-    justify-content: space-between; /* To space out name and edit button */
+    justify-content: space-between;
+    /* To space out name and edit button */
     padding: 8px 10px;
     border-radius: 4px;
     cursor: pointer;
@@ -2217,6 +2264,7 @@ Custom class
     padding: 4px;
     border-radius: 4px;
 }
+
 .advanced-dropdown .dropdown-item-edit-btn:hover {
     background-color: #e0e0e0;
     color: #000;
@@ -2227,8 +2275,9 @@ Custom class
     height: 16px;
     border-radius: 4px;
     margin-right: 10px;
-    border: 1px solid rgba(0,0,0,0.1);
+    border: 1px solid rgba(0, 0, 0, 0.1);
 }
+
 .advanced-dropdown .dropdown-item-empty,
 .advanced-dropdown .dropdown-footer {
     padding: 10px;
@@ -2238,11 +2287,14 @@ Custom class
 
 /* Basic styling for the floating panel container */
 .floating-panel {
-    position: fixed; /* Positions relative to the viewport */
+    position: fixed;
+    /* Positions relative to the viewport */
     z-index: 1000;
     background-color: white;
-    border: 1px solid #e2e8f0; /* slate-200 */
-    border-radius: 0.5rem; /* 8px */
+    border: 1px solid #e2e8f0;
+    /* slate-200 */
+    border-radius: 0.5rem;
+    /* 8px */
     box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
     opacity: 0;
     transform: translateY(-10px);
@@ -2254,17 +2306,20 @@ Custom class
     opacity: 1;
     transform: translateY(0);
 }
+
 .floating-panel .datepicker {
     border: none;
     box-shadow: none;
 }
+
 .inventory-header-top {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    width: 100%; 
-    margin-bottom: 1rem; 
+    width: 100%;
+    margin-bottom: 1rem;
 }
+
 .inventory-title {
     font-size: 2rem;
     font-weight: 600;
@@ -2273,21 +2328,25 @@ Custom class
     margin-left: 16px;
     margin-top: 8px;
     gap: 0.6rem;
-    color: #2c3e50; 
+    color: #2c3e50;
 }
+
 .inventory-title i {
     font-size: 1.5rem;
     color: #3498db;
 }
+
 .inventory-header {
     margin-bottom: 0.5rem;
 }
+
 .inventory-tabs {
     display: flex;
     gap: 1rem;
     background-color: transparent;
     border-bottom: 2px solid #e0e0e0;
 }
+
 .tab-item {
     padding: 0.4rem 1rem;
     font-size: 0.95rem;
@@ -2299,16 +2358,105 @@ Custom class
     color: #555;
     transition: all 0.2s ease-in-out;
 }
+
 .tab-item:hover {
     color: #3498db;
 }
+
 .tab-item.active {
     border-color: #3498db;
     border-radius: 0;
     color: #3498db;
 }
+
 #inventory-subtitle {
     color: #666;
     font-size: 1.5rem;
     font-weight: 500;
+}
+
+.inventory-btn {
+  background-color: #000; /* black */
+  color: #fff;            /* white text */
+  border: none;
+  border-radius: 8px;
+  margin: 20px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s ease;
+}
+
+.inventory-btn:hover {
+  background-color: #333; /* lighter black on hover */
+}
+
+.inventory-btn .material-icons {
+  font-size: 20px;
+}
+.restricted-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 999;
+    background-color: rgba(0, 0, 0, 0.85);
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    text-align: center;
+    color: #fff;
+    backdrop-filter: blur(4px);
+    transition: opacity 0.3s ease;
+}
+
+.restricted-overlay.hidden {
+    display: none;
+}
+
+.restricted-content {
+    background: #1c1c1e;
+    padding: 40px;
+    border-radius: 16px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+    max-width: 400px;
+    width: 100%;
+}
+
+.restricted-content i {
+    margin-bottom: 20px;
+    color: #ff4c4c;
+}
+
+.restricted-content h2 {
+    margin: 0 0 10px;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.restricted-content .message {
+    font-size: 16px;
+    color: #ccc;
+}
+.restricted-ok-btn {
+  margin-top: 20px;
+  padding: 10px 24px;
+  font-size: 16px;
+  width: 100%;
+  font-weight: bold;
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.restricted-ok-btn:hover {
+  background-color: #0056b3;
 }

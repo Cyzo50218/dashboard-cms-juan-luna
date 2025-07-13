@@ -1,3 +1,42 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+    getAuth,
+    onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+    getFirestore,
+    doc,
+    collection,
+    query,
+    where,
+    arrayUnion,
+    onSnapshot,
+    collectionGroup,
+    orderBy,
+    limit,
+    getDoc,
+    getDocs,
+    addDoc,
+    documentId,
+    setDoc,
+    updateDoc,
+    deleteDoc,
+    writeBatch,
+    serverTimestamp,
+    increment,
+    deleteField,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+import { firebaseConfig } from "/services/firebase-config.js";
+import { openInventoryModal } from '/dashboard/components/settingsInventoryWorkspace.js';
+
+// Initialize Firebase
+console.log("Initializing Firebase...");
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app, "juanluna-cms-01");
+console.log("Initialized Firebase on Dashboard.");
+
 const products = [
   {
     id: 1,
@@ -150,6 +189,7 @@ let searchInput, clearSearchBtn;
 let grid,
   addBtn,
   settingsBtn,
+  overlay,
   closeBtn,
   productContent,
   productSettings,
@@ -168,6 +208,108 @@ let grid,
   productSupplierInput,
   productDescriptionInput,
   productImageInput;
+
+let currentUserId = null;
+let currentWorkspaceId = null;
+let productList = [];
+let productListUnsub = null;
+let activeListeners = {
+  user: null,
+  workspace: null,
+};
+
+function detachAllListeners() {
+  if (activeListeners.user) {
+    activeListeners.user();
+    activeListeners.user = null;
+  }
+  if (activeListeners.workspace) {
+    activeListeners.workspace();
+    activeListeners.workspace = null;
+  }
+  if (productListUnsub) {
+    productListUnsub();
+    productListUnsub = null;
+  }
+  console.log('%c🔌 All Firestore listeners detached.', 'color: #ff5722;');
+}
+
+function attachProductListListener(userId) {
+  detachAllListeners();
+  currentUserId = userId;
+
+  console.groupCollapsed(`%c🔗 Attaching Listeners for User: ${userId}`, 'color: #007bff; font-weight: bold;');
+
+  const userDocRef = doc(db, 'users', userId);
+
+  activeListeners.user = onSnapshot(userDocRef, async (userSnap) => {
+    if (!userSnap.exists()) {
+      console.error(`❌ User document not found for ID: ${userId}`);
+      detachAllListeners();
+      console.groupEnd();
+      return;
+    }
+
+    const userData = userSnap.data();
+    const selectedWorkspaceId = userData.selectedWorkspace;
+
+    if (!selectedWorkspaceId) {
+      console.warn('%c⚠️ No selected workspace found for user.', 'color: #ffc107;');
+      showRestrictedAccessUI('No workspace selected.');
+      console.groupEnd();
+      return;
+    }
+    currentWorkspaceId = selectedWorkspaceId;
+
+    const workspaceDocRef = doc(db, `users/${userId}/myworkspace`, selectedWorkspaceId);
+    console.info(`%c📁 Listening to workspace: ${selectedWorkspaceId}`, 'color: #17a2b8;');
+
+    activeListeners.workspace = onSnapshot(workspaceDocRef, async (workspaceSnap) => {
+      if (!workspaceSnap.exists()) {
+        console.warn('%c⚠️ Workspace document does not exist.', 'color: #ffc107; font-weight: bold;');
+        showRestrictedAccessUI('Workspace does not exist.');
+        return;
+      }
+
+      const workspaceData = workspaceSnap.data();
+
+      if (workspaceData.canShowProducts === false) {
+        console.warn('%c🚫 Access Denied: Products are restricted.', 'color: red; font-weight: bold;');
+        showRestrictedAccessUI('Restricted Access: You are not allowed to view this product list.');
+        return;
+      }
+
+      const workspaceQuery = query(collection(db, 'ProductListWorkspace'), limit(1));
+      workspaceSnap = await getDocs(workspaceQuery);
+
+      if (workspaceSnap.empty) {
+        console.warn('%c⚠️ No ProductListWorkspace document found.', 'color: #ffc107;');
+        showRestrictedAccessUI('Product workspace data not found.');
+        return;
+      }
+
+      const firstDoc = workspaceSnap.docs[0];
+      const productListRef = collection(firstDoc.ref, 'ProductList');
+
+      if (productListUnsub) productListUnsub();
+
+      productListUnsub = onSnapshot(productListRef, (snapshot) => {
+        productList = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+
+        console.log('%c📦 Product List Updated:', 'color: #4caf50;', productList);
+        // renderProductList(productList); // Optional: render UI here
+      });
+    }, (error) => {
+      console.error('%c❌ Error loading workspace snapshot.', 'color: #dc3545; font-weight: bold;', error);
+      showRestrictedAccessUI('An error occurred while loading your workspace.');
+    });
+
+    console.groupEnd();
+  });
+}
 
 // Format currency to PHP
 function formatCurrency(amount) {
@@ -204,9 +346,8 @@ function renderProducts(productsToRender = products) {
                 </div>
             </div>
             <div class="product-image">
-                <img src="${product.image}" alt="${
-      product.name
-    }" class="loading" />
+                <img src="${product.image}" alt="${product.name
+      }" class="loading" />
             </div>
             <div class="product-name">${product.name}</div>
             <div class="product-sku">${product.sku}</div>
@@ -310,9 +451,8 @@ function renderProductSidebar(product) {
     </div>
     <div class="settings-section">
       <span class="settings-label">Description</span>
-      <div class="settings-value">${
-        description || "No description available"
-      }</div>
+      <div class="settings-value">${description || "No description available"
+    }</div>
     </div>
     <div class="settings-section">
       <span class="settings-label">Product image</span>
@@ -456,7 +596,7 @@ function handleSettingsClick() {
   /*const sidebar = document.querySelector("aside");
   const isVisible = sidebar.style.right === "0px";
   sidebar.style.right = isVisible ? "-300px" : "0px";*/
-  
+
 }
 
 function handleCloseClick() {
@@ -539,12 +679,15 @@ function handleClearSearch() {
   renderProducts(); // Reset to show all products
 }
 
+
+
 // UPDATED: Initialize DOM elements
 function initElements() {
   console.log(
     "%c--- Initializing All DOM Elements ---",
     "color: yellow; font-weight: bold;"
   );
+  overlay = document.getElementById('restricted-overlay');
   searchInput = document.getElementById("searchInput");
   clearSearchBtn = document.getElementById("clearSearchBtn");
   // Core App Elements
@@ -629,6 +772,8 @@ function setupEventListeners() {
 function cleanup() {
   console.log("[Products Module] Cleaning up old event listeners.");
 
+  detachAllListeners();
+
   if (grid) grid.removeEventListener("click", handleGridClick);
   if (addBtn) addBtn.removeEventListener("click", handleAddClick);
   if (settingsBtn)
@@ -651,12 +796,44 @@ function cleanup() {
   document.removeEventListener("paste", handlePaste);
 }
 
+function showRestrictedAccessUI(message) {
+  if (overlay) {
+    overlay.querySelector('.message').textContent = message || 'Restricted Access';
+    overlay.classList.remove('hidden');
+  }
+
+  const container = document.querySelector('.product-list-container');
+  if (container) container.classList.add('hidden');
+
+  const okBtn = document.getElementById('restricted-ok-btn');
+  if (okBtn) {
+    okBtn.onclick = () => {
+      window.location.href = '/home';
+    };
+  }
+}
+
 // Initialize app
 export function init(params) {
   console.log("[Products Module] Initializing...");
-  initElements();
+
+  onAuthStateChanged(auth, (user) => {
+          if (user) {
+              console.log(`User ${user.uid} signed in. Attaching listeners.`);
+              attachProductListListener(user.uid);
+              initElements();
   setupEventListeners();
   renderProducts();
+          } else {
+              console.log("User signed out. Detaching listeners.");
+              detachAllListeners();
+              project = { customColumns: [], sections: [], customPriorities: [], customStatuses: [] };
+              initElements();
+  setupEventListeners();
+  renderProducts();
+          }
+      });
+  
   const loadingScreen = document.getElementById("loadingScreen");
   if (loadingScreen) {
     setTimeout(() => {

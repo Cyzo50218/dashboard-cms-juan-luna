@@ -13,8 +13,7 @@ import { backfillAll } from "./backfillAllAlgolia.mjs";
 import logger from "firebase-functions/logger";
 import axios from "axios";
 import corsLib from "cors";
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
+
 const cors = corsLib({ origin: true });
 
 
@@ -126,38 +125,70 @@ export const acceptWorkspaceInvitation = onCall(async (request) => {
 
 
 async function backfillTaskCounts() {
-  console.log("Starting backfill process...");
+  console.log("🚀 Starting global task count backfill for all users...");
 
-  const projectsSnapshot = await db.collectionGroup('projects').get();
+  const usersSnap = await db.collection("users").get();
 
-  if (projectsSnapshot.empty) {
-    console.log("No projects found.");
-    return;
-  }
+  for (const userDoc of usersSnap.docs) {
+    const userId = userDoc.id;
+    console.log(`👤 Processing user: ${userId}`);
 
-  console.log(`Found ${projectsSnapshot.size} projects to process.`);
+    const workspacesSnap = await db.collection(`users/${userId}/myworkspace`).get();
+    if (workspacesSnap.empty) {
+      console.warn(`⚠️ No workspaces found for user ${userId}, skipping...`);
+      continue;
+    }
 
-  for (const projectDoc of projectsSnapshot.docs) {
-    const projectId = projectDoc.id;
-    const projectPath = projectDoc.ref.path;
+    for (const workspaceDoc of workspacesSnap.docs) {
+      const workspaceId = workspaceDoc.id;
 
-    try {
-      const tasksQuery = db.collectionGroup('tasks').where('projectId', '==', projectId);
-      const tasksSnapshot = await tasksQuery.count().get();
-      const count = tasksSnapshot.data().count;
+      if (!workspaceDoc.exists) {
+        console.warn(`⚠️ Workspace doc missing at users/${userId}/myworkspace/${workspaceId}, skipping...`);
+        continue;
+      }
 
-      await projectDoc.ref.update({ taskCount: count });
+      console.log(`🏢 Processing workspace: ${workspaceId}`);
 
-      console.log(`Updated ${projectPath} -> taskCount: ${count}`);
+      const projectsSnap = await db
+        .collection(`users/${userId}/myworkspace/${workspaceId}/projects`)
+        .get();
 
-    } catch (error) {
-      console.error(`Failed to update ${projectPath}:`, error);
+      if (projectsSnap.empty) {
+        console.log(`📭 No projects in workspace ${workspaceId}, skipping...`);
+        continue;
+      }
+
+      for (const projectDoc of projectsSnap.docs) {
+        const projectId = projectDoc.id;
+        const projectPath = projectDoc.ref.path;
+        console.log(`📂 Processing project: ${projectId}`);
+
+        let totalTaskCount = 0;
+
+        try {
+          const sectionsSnap = await projectDoc.ref.collection("sections").get();
+
+          for (const sectionDoc of sectionsSnap.docs) {
+            const sectionId = sectionDoc.id;
+            const tasksSnap = await sectionDoc.ref.collection("tasks").get(); // or .count().get() on Blaze
+            const taskCount = tasksSnap.size;
+
+            console.log(`🗂️ Section ${sectionId} → ${taskCount} tasks`);
+            totalTaskCount += taskCount;
+          }
+
+          await projectDoc.ref.update({ taskCount: totalTaskCount });
+
+          console.log(`✅ Updated ${projectPath} → taskCount: ${totalTaskCount}`);
+        } catch (error) {
+          console.error(`❌ Failed to update ${projectPath}:`, error.message);
+        }
+      }
     }
   }
 
-  console.log("Backfill process completed!");
+  console.log("🎉 Global project task count backfill completed!");
 }
-
 
 export const runBackfill = onCall(async (request) => {
   await backfillTaskCounts();
@@ -196,15 +227,15 @@ export const sendEmailInvitation = onCall(
 
     sgMail.setApiKey(process.env.SENDGRID_API_KEY_EMAIL_INVITATION);
 
-  // --- SendGrid Message Object ---
-  const msg = {
-    to: recipientEmail,
-    from: {
-      name: 'Juan Luna Collections',
-      email: 'collection@juanlunacollections.com' 
-    },
-    subject: `${inviterName} has invited you to collaborate on ${projectName}`,
-    html: `<!DOCTYPE html>
+    // --- SendGrid Message Object ---
+    const msg = {
+      to: recipientEmail,
+      from: {
+        name: 'Juan Luna Collections',
+        email: 'collection@juanlunacollections.com'
+      },
+      subject: `${inviterName} has invited you to collaborate on ${projectName}`,
+      html: `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -270,10 +301,10 @@ export const sendEmailInvitation = onCall(
     </table>
 </body>
 </html>`
-  };
+    };
 
-  // --- Send Email ---
-  try {
+    // --- Send Email ---
+    try {
       await sgMail.send(msg);
       return { success: true, message: "Invitation sent!" };
     } catch (error) {
@@ -315,7 +346,7 @@ export const sendShareExistingProjectInvitation = onCall(
     const membersToDisplay = members.slice(0, 2);
     const remainingMembersCount = Math.max(0, members.length - 2);
 
-    let membersHtml = membersToDisplay.map((member, index) => 
+    let membersHtml = membersToDisplay.map((member, index) =>
       `<td style="padding: 0; margin: 0; border: 2px solid #ffffff; border-radius: 50%; margin-left: ${index > 0 ? '-10px' : '0'};">
           <img src="${member.avatarUrl || 'https://www.gravatar.com/avatar/?d=mp'}" alt="Member" width="32" height="32" style="border-radius: 50%; display: block;">
       </td>`
@@ -334,7 +365,7 @@ export const sendShareExistingProjectInvitation = onCall(
       to: recipientEmail,
       from: {
         name: 'Juan Luna Collections',
-        email: 'collection@juanlunacollections.com' 
+        email: 'collection@juanlunacollections.com'
       },
       subject: `${inviterName} shared "${projectName}" with you on Juan Luna CMS`,
       html: `<!DOCTYPE html>
@@ -471,7 +502,7 @@ export const sendEmailWorkspaceInvitation = onCall(
       to: recipientEmail,
       from: {
         name: 'Juan Luna Collections',
-        email: 'collection@juanlunacollections.com' 
+        email: 'collection@juanlunacollections.com'
       },
       subject: `${inviterName} has invited you to join their workspace on Juan Luna CMS`,
       html: `<!DOCTYPE html>
@@ -577,7 +608,7 @@ export const sendEmailWorkspaceInvitation = onCall(
       throw new functions.https.HttpsError("internal", "Failed to send email");
     }
   }
-);  
+);
 
 export const runAlgoliaBackfill = onCall(
   {
@@ -594,7 +625,7 @@ export const runAlgoliaBackfill = onCall(
       throw new Error("Backfill failed: " + err.message);
     }
   }
-);  
+);
 
 /*
 export const getUSPSTracking = onRequest(

@@ -109,6 +109,7 @@ export async function backfillAll() {
 
         // === 🔁 Backfill Sections
         const sectionsSnap = await db.collection(`${projectDoc.ref.path}/sections`).get();
+        let totalTaskCount = 0;
 
         for (const sectionDoc of sectionsSnap.docs) {
           const sectionId = sectionDoc.id;
@@ -166,7 +167,7 @@ export async function backfillAll() {
               taskRef: taskDoc.ref.path,
               projectRef: projectDoc.ref.path,
             });
-
+            totalTaskCount++;
             await taskDoc.ref.update({ isIndexed: true });
           }
 
@@ -177,6 +178,7 @@ export async function backfillAll() {
             });
           }
         }
+        await projectDoc.ref.update({ isIndexed: true, taskCount: totalTaskCount });
       }
     }
   }
