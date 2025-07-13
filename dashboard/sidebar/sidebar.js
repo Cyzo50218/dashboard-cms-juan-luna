@@ -806,7 +806,6 @@ window.TaskSidebar = (function () {
 
     async function handleCommentSubmit() {
         const commentInputEl = document.getElementById('comment-input');
-        // Get the text content separately from any file previews
         const textContent = commentInputEl.innerText || '';
         const fileToUpload = pastedFiles.length > 0 ? pastedFiles[0] : null;
 
@@ -817,34 +816,53 @@ window.TaskSidebar = (function () {
         sendCommentBtn.disabled = true;
 
         try {
-            let finalHtml = textContent.trim().replace(/\n/g, '<br>'); // Start with the text
+            let finalHtml = textContent.trim().replace(/\n/g, '<br>');
             let messageHasImage = false;
 
-            // --- UPLOAD LOGIC ---
-            const fileType = fileToUpload.type;
-            const fileName = fileToUpload.name;
+            // --- CORRECTED UPLOAD LOGIC ---
+            if (fileToUpload) {
+                console.log("File detected, uploading to Firebase Storage...");
+                const storagePath = `workspaceProjects/${currentProject.id}/messages-attachments/${Date.now()}-${fileToUpload.name}`;
+                const storageRef = ref(storage, storagePath);
+                const snapshot = await uploadBytes(storageRef, fileToUpload);
+                const finalDownloadURL = await getDownloadURL(snapshot.ref);
+                console.log("Upload complete. Final URL:", finalDownloadURL);
 
-            if (fileType.startsWith('image/')) {
-                messageHasImage = true;
-                attachmentHtml = `<img src="${finalDownloadURL}" alt="${fileName}" class="scalable-image">`;
-            } else if (fileType === 'application/pdf') {
-                attachmentHtml = `<a href="${finalDownloadURL}" target="_blank" class="file-attachment-link pdf-link">
-        <i class="fa-solid fa-file-pdf"></i> ${fileName}
-    </a>`;
-            } else {
-                // Generic file (e.g., Word, Excel, TXT)
-                attachmentHtml = `<a href="${finalDownloadURL}" target="_blank" class="file-attachment-link">
-        <i class="fa-solid fa-file"></i> ${fileName}
-    </a>`;
+                // 4. Now, build the attachment HTML with the valid URL.
+                const fileType = fileToUpload.type;
+                const fileName = fileToUpload.name;
+                let attachmentHtml = '';
+
+                if (fileType.startsWith('image/')) {
+                    messageHasImage = true;
+                    attachmentHtml = `<img src="${finalDownloadURL}" alt="${fileName}" class="scalable-image">`;
+                } else if (fileType === 'application/pdf') {
+                    attachmentHtml = `<a href="${finalDownloadURL}" target="_blank" class="file-attachment-link pdf-link">
+                    <i class="fa-solid fa-file-pdf"></i> ${fileName}
+                </a>`;
+                } else {
+                    // Fallback for other file types (Word, Excel, etc.)
+                    attachmentHtml = `<a href="${finalDownloadURL}" target="_blank" class="file-attachment-link">
+                    <i class="fa-solid fa-file"></i> ${fileName}
+                </a>`;
+                }
+
+                // 5. Append the attachment HTML to the message content.
+                if (finalHtml) {
+                    finalHtml += `<br>${attachmentHtml}`;
+                } else {
+                    finalHtml = attachmentHtml;
+                }
             }
 
-
             // --- SEND MESSAGE ---
-            await sendMessage({ html: finalHtml, hasImage: messageHasImage });
+            if (finalHtml) { // Only send if there's actual content.
+                await sendMessage({ html: finalHtml, hasImage: messageHasImage });
+            }
 
             // --- CLEANUP ---
             commentInputEl.innerHTML = '';
-            clearImagePreview(); // This clears the pastedFiles array
+            clearImagePreview(); // This now clears the file from pastedFiles and hides the preview.
 
         } catch (error) {
             console.error("Failed to send message:", error);
@@ -1436,9 +1454,49 @@ window.TaskSidebar = (function () {
     // --- EVENT LISTENERS ---
     function attachEventListeners() {
         if (!sidebar) return;
+        if (commentInputWrapper) {
+    // Add a class when a file is dragged over
+    commentInputWrapper.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        commentInputWrapper.classList.add('drag-over');
+    });
+
+    // Necessary to prevent the browser's default handling
+    commentInputWrapper.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+    });
+
+    // Remove the class when the file is no longer being dragged over
+    commentInputWrapper.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        commentInputWrapper.classList.remove('drag-over');
+    });
+
+    // Handle the file drop
+    commentInputWrapper.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        commentInputWrapper.classList.remove('drag-over');
+
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            // Use the first file dropped
+            const file = files[0];
+            pastedFiles = [file]; // Store the file for upload
+            addImagePreview(file); // Show the preview
+        }
+    });
+}
 
         sidebar.addEventListener('scroll', handleSidebarScroll);
-
+        imagePreviewContainer.addEventListener('click', (e) => {
+            if (e.target.closest('.remove-pasted-file')) {
+                clearImagePreview();
+            }
+        });
         activityLogContainer.addEventListener('click', (e) => {
             const messageItem = e.target.closest('.comment-item');
             if (!messageItem) return;
@@ -1574,7 +1632,7 @@ window.TaskSidebar = (function () {
 
         fileUploadInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
-            if (file && file.type.startsWith('image/')) {
+            if (file) {
                 pastedFiles = [file];
                 addImagePreview(file);
             }
@@ -1585,12 +1643,13 @@ window.TaskSidebar = (function () {
             if (!items) return;
 
             for (const item of items) {
-                if (item.type.indexOf('image') !== -1) {
+                if (item.kind === 'file') {
                     const file = item.getAsFile();
                     if (file) {
-                        pastedFiles.push(file);
+                        pastedFiles = [file]; // We'll handle one file at a time.
                         addImagePreview(file);
-                        e.preventDefault(); // Prevent text paste
+                        e.preventDefault(); // Prevent the file path from being pasted as text.
+                        break; // Stop after handling the first file.
                     }
                 }
             }
@@ -2152,69 +2211,56 @@ window.TaskSidebar = (function () {
 
 
     function addImagePreview(file) {
-        if (!file.type.startsWith('image/')) return;
+    // Ensure the preview container and file exist
+    if (!imagePreviewContainer || !file) return;
 
+    const fileName = file.name;
+
+    // Create a wrapper for the preview content
+    const previewWrapper = document.createElement('div');
+    previewWrapper.className = 'pasted-file-preview'; // Add styling for this class
+
+    let previewContent = '';
+    const removeButtonHTML = `<button class="remove-pasted-file" title="Remove file">&times;</button>`;
+
+    if (file.type.startsWith('image/')) {
         const reader = new FileReader();
-        reader.onload = (event) => {
-            // --- Elements to be inserted ---
-
-            // 1. A line break to create space above the image.
-            const br = document.createElement('br');
-
-            // 2. The image element, styled as a block.
-            const img = document.createElement('img');
-            img.src = event.target.result;
-            img.alt = file.name;
-            // Reverted to block display for left alignment.
-            img.style.display = 'center';
-            img.style.maxWidth = '70%';
-            img.style.maxHeight = '450px';
-            img.style.margin = '10px 0';
-            img.style.borderRadius = '10px';
-
-            // Attach the file to the image for upload.
-            img._file = file;
-
-            // --- Insertion Logic ---
-            const commentInputEl = document.getElementById('comment-input');
-            commentInputEl.focus();
-            const selection = window.getSelection();
-
-            if (selection.rangeCount > 0) {
-                const range = selection.getRangeAt(0);
-                range.deleteContents();
-
-                // Insert the line break FIRST, then the image.
-                range.insertNode(br);
-                range.insertNode(img); // Inserting the 'img' directly, not a wrapper.
-
-                // Move the cursor to be immediately after the image.
-                range.setStartAfter(img);
-                range.collapse(true);
-
-                // Add another line break for typing below the image.
-                const finalBr = document.createElement('br');
-                range.insertNode(finalBr);
-
-                // Finally, place the cursor after the last line break.
-                range.setStartAfter(finalBr);
-                range.collapse(true);
-
-                selection.removeAllRanges();
-                selection.addRange(range);
-            } else {
-                // Fallback: If there's no cursor, just append everything.
-                commentInputEl.appendChild(br);
-                commentInputEl.appendChild(img);
-                commentInputEl.appendChild(document.createElement('br'));
-            }
+        reader.onload = function(e) {
+            // Display a thumbnail for image files
+            previewContent = `<img src="${e.target.result}" alt="Image preview"> <span>${fileName}</span>`;
+            previewWrapper.innerHTML = previewContent + removeButtonHTML;
+            imagePreviewContainer.innerHTML = ''; // Clear any old preview
+            imagePreviewContainer.appendChild(previewWrapper);
+            imagePreviewContainer.style.display = 'block';
         };
         reader.readAsDataURL(file);
-    }
+    } else {
+        // Display a placeholder icon for other documents (like PDFs)
+        let iconClass = 'fa-solid fa-file'; // Default icon
+        if (file.type === 'application/pdf') {
+            iconClass = 'fa-solid fa-file-pdf';
+        }
+        // You can add more 'else if' blocks for other file types (Word, Excel, etc.)
 
-    function clearImagePreview() {
-        pastedFiles = [];
+        previewContent = `<i class="${iconClass}"></i> <span>${fileName}</span>`;
+        previewWrapper.innerHTML = previewContent + removeButtonHTML;
+        imagePreviewContainer.innerHTML = ''; // Clear any old preview
+        imagePreviewContainer.appendChild(previewWrapper);
+        imagePreviewContainer.style.display = 'block';
     }
+}
+
+/**
+ * Clears the file from memory and removes the visual preview.
+ * This acts as the "cancellation" for the upload.
+ */
+function clearImagePreview() {
+    pastedFiles = []; // Clear the stored file
+    if (imagePreviewContainer) {
+        imagePreviewContainer.innerHTML = ''; // Empty the preview container
+        imagePreviewContainer.style.display = 'none'; // Hide the container
+    }
+}
 
     async function deleteCurrentTask() {
 
