@@ -4,9 +4,7 @@
      .header-myworkspace {
          position: sticky;
          top: 0;
-         margin-top: 60px;
          z-index: 100;
-         background-color: white;
          border-bottom: 1px solid #e8e8e8;
          padding: 0 32px;
          /* Adds padding on the far left/right of the screen */
@@ -18,7 +16,6 @@
          align-items: center;
          justify-content: space-between;
          /* Pushes left and right sides apart */
-         max-width: 1200px;
          margin: 0 auto;
          /* Centers the content */
          padding: 16px 0;
@@ -26,17 +23,17 @@
      }
 
      /* 3. The Main Content Container: Adjusted for the new layout */
-     .workspace-container {
-
-         max-width: 1200px;
-         margin-left: auto;
-         /* Use margin auto to center it */
-         margin-right: auto;
-         padding: 0 32px;
-         /* The padding now goes here */
+     .main-header-myworkspace {
+         display: flex;
+         justify-content: space-between;
+         align-items: center;
+         flex-wrap: wrap;
      }
 
-
+     .workspace-container {
+         margin-left: 40px;
+         margin-right: 20px;
+     }
 
      .header-myworkspace-left {
          display: flex;
@@ -61,6 +58,7 @@
      .workspace-title {
          font-size: 20px;
          font-weight: 600;
+         margin-top: 4px;
          margin-right: 8px;
      }
 
@@ -146,6 +144,11 @@
      .main-column h1 {
          font-size: 28px;
          margin: 0;
+     }
+
+     .workspace-description.placeholder {
+         color: #888;
+         font-style: italic;
      }
 
      .workspace-description {
@@ -348,6 +351,7 @@
          height: 100%;
          background-color: #b0b0b0;
      }
+
      /* Style the dropdown container */
      .workspace-dropdown {
          display: none;

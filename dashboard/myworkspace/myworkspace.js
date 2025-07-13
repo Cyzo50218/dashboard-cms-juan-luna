@@ -120,7 +120,7 @@ export function init(params) {
 
     workspaceTitleEl.textContent = workspace.name;
     teamDescriptionEl.textContent = workspace.description || "Click to add team description...";
-
+    
     if (isOwner) {
       workspaceTitleEl.contentEditable = "true";
       teamDescriptionEl.contentEditable = "true";
