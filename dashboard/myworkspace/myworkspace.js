@@ -9,109 +9,104 @@ import {
   where,
   collectionGroup,
   getDoc,
-  getDocs,
   setDoc,
-  updateDoc,
-  runTransaction,
-  serverTimestamp,
+  updateDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "/services/firebase-config.js";
 import { showInviteModal } from "/dashboard/components/showEmailModel.js";
-import { generateColorForName } from "/services/utils/colorUtils.js";
 
+// --- Initialize Firebase ---
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app, "juanluna-cms-01");
 
+/**
+ * Initializes all functionality for the My Workspace page.
+ * @param {object} params - Initialization parameters (if any).
+ * @returns {function} A cleanup function to be called when the component is unmounted.
+ */
 export function init(params) {
   const controller = new AbortController();
   const workspaceSection = document.querySelector('div[data-section="myworkspace"]');
   if (!workspaceSection) return () => { };
 
+  // --- Element Selectors ---
   const headerLeft = workspaceSection.querySelector(".header-myworkspace-left");
   const workspaceTitleEl = workspaceSection.querySelector(".workspace-title");
   const teamDescriptionEl = workspaceSection.querySelector("#team-description");
   const staffListContainer = workspaceSection.querySelector("#staff-list");
   const staffCountLink = workspaceSection.querySelector("#staff-count-link");
   const inviteButton = workspaceSection.querySelector("#invite-btn");
+  const inviteButtonMembers = workspaceSection.querySelector("#invite-btn");
+  const invitePlusMembers = workspaceSection.querySelector("#add-staff-btn");
   const createWorkBtn = workspaceSection.querySelector("#create-work-btn");
 
+
+  // --- State Variables ---
   let currentUser = null;
-  let unsubscribeUser = null;
   let unsubscribeWorkspaces = null;
 
-  // --- State Variables for Real-time Updates ---
-  let allWorkspaces = [];
-  let selectedWorkspaceId = null;
-
-  /**
-   * Main rendering function triggered by any state change.
-   */
-  function renderWorkspaceView() {
-    if (!selectedWorkspaceId && allWorkspaces.length > 0) {
-      // If no workspace is selected, default to the first one and update the user's doc
-      const firstWorkspaceId = allWorkspaces[0].id;
-      const userRef = doc(db, 'users', currentUser.uid);
-      setDoc(userRef, { selectedWorkspace: firstWorkspaceId }, { merge: true });
-      // The user listener will catch this change and trigger another render
-      return;
-    }
-
-    const selectedWorkspaceData = allWorkspaces.find(ws => ws.id === selectedWorkspaceId);
-    const otherWorkspaces = allWorkspaces.filter(ws => ws.id !== selectedWorkspaceId);
-
-    if (allWorkspaces.length === 0) {
-      workspaceTitleEl.textContent = "No Workspace";
-      teamDescriptionEl.textContent = "Create or join a workspace to begin.";
-      staffListContainer.innerHTML = '';
-      updateURL(null);
-      return;
-    }
-
-    if (!selectedWorkspaceData) {
-      // Handles the case where the selected ID is invalid
-      if (allWorkspaces.length > 0) {
-        const fallbackId = allWorkspaces[0].id;
-        const userRef = doc(db, 'users', currentUser.uid);
-        setDoc(userRef, { selectedWorkspace: fallbackId }, { merge: true });
-      }
-      return;
-    }
-
-    updateURL(selectedWorkspaceData.id);
-    updateWorkspaceUI(selectedWorkspaceData, currentUser);
-    createWorkspaceDropdown(otherWorkspaces, doc(db, 'users', currentUser.uid));
-  }
-
-  /**
-   * Sets up the real-time listeners for workspaces and user selection.
-   * This is the key change for instant updates.
-   * @param {string} uid - The current user's ID.
-   */
-  function setupWorkspaceListeners(uid) {
-    // Clear previous listeners
+  async function loadAndRenderWorkspaces(uid) {
     if (unsubscribeWorkspaces) unsubscribeWorkspaces();
-    if (unsubscribeUser) unsubscribeUser();
 
-    // Listener 1: Get all workspaces the user is a member of
+    const userRef = doc(db, 'users', uid);
+
     const workspacesQuery = query(
       collectionGroup(db, 'myworkspace'),
       where('members', 'array-contains', uid)
     );
 
-    unsubscribeWorkspaces = onSnapshot(workspacesQuery, (snapshot) => {
-      allWorkspaces = snapshot.docs.map(doc => ({ id: doc.id, ref: doc.ref, ...doc.data() }));
-      renderWorkspaceView();
-    });
+    unsubscribeWorkspaces = onSnapshot(workspacesQuery, async (workspacesSnap) => {
+  // 🔁 Always re-fetch current user's selectedWorkspace
+  const userSnap = await getDoc(userRef);
+  const selectedWorkspaceId = userSnap.exists() ? userSnap.data().selectedWorkspace : null;
 
-    // Listener 2: Get the user's selected workspace ID
-    const userRef = doc(db, 'users', uid);
-    unsubscribeUser = onSnapshot(userRef, (snapshot) => {
-      selectedWorkspaceId = snapshot.exists() ? snapshot.data().selectedWorkspace : null;
-      renderWorkspaceView();
-    });
+  if (workspacesSnap.empty) {
+    workspaceTitleEl.textContent = "No Workspace";
+    staffListContainer.innerHTML = '<p>Create a workspace to begin.</p>';
+    updateURL(null);
+    return;
   }
 
+  let selectedWorkspaceData = null;
+  const otherWorkspaces = [];
+
+  workspacesSnap.docs.forEach(doc => {
+    const data = { id: doc.id, ref: doc.ref, ...doc.data() };
+    if (doc.id === selectedWorkspaceId) {
+      selectedWorkspaceData = data;
+    } else {
+      otherWorkspaces.push(data);
+    }
+  });
+
+  // 🛠 Fallback & force re-write if still no selected
+  if (!selectedWorkspaceData) {
+    selectedWorkspaceData = {
+      id: workspacesSnap.docs[0].id,
+      ref: workspacesSnap.docs[0].ref,
+      ...workspacesSnap.docs[0].data()
+    };
+
+    await setDoc(userRef, { selectedWorkspace: selectedWorkspaceData.id }, { merge: true });
+
+    // 🔁 Rerun load again with updated user doc to refresh UI
+    return loadAndRenderWorkspaces(uid);
+  }
+
+  // ✅ Now safe to update UI
+  updateURL(selectedWorkspaceData.id);
+  updateWorkspaceUI(selectedWorkspaceData, currentUser);
+  createWorkspaceDropdown(otherWorkspaces, userRef, uid);
+});
+
+  }
+
+  /**
+   * Updates the UI with the selected workspace's data and enables editing for owners.
+   * @param {object} workspace - The selected workspace data object.
+   * @param {object} user - The current Firebase user object.
+   */
   function updateWorkspaceUI(workspace, user) {
     if (!workspace || !user) return;
 
@@ -146,6 +141,7 @@ export function init(params) {
         }
 
         try {
+          // The 'workspace.ref' is still available from the query result, so this works
           await updateDoc(workspace.ref, { [fieldName]: newText });
           element.classList.add('saved');
           setTimeout(() => element.classList.remove('saved'), 1000);
@@ -188,25 +184,17 @@ export function init(params) {
     plusBtn.className = "add-staff-icon";
     plusBtn.innerHTML = `<i class="fas fa-plus"></i>`;
     staffListContainer.appendChild(plusBtn);
-    plusBtn.addEventListener("click", () => showInviteModal(workspace), { signal: controller.signal });
+    plusBtn.addEventListener("click", () => showInviteModal(), { signal: controller.signal });
   }
 
   /**
-   * Creates the dropdown menu below the workspace title.
-   * This is modified for better positioning.
+   * Creates and manages the workspace selection dropdown menu.
+   * @param {Array} otherWorkspaces - An array of workspaces the user is in, excluding the selected one.
+   * @param {DocumentReference} userRef - Firestore reference to the current user's document.
    */
-  function createWorkspaceDropdown(otherWorkspaces, userRef) {
-    const oldContainer = headerLeft.querySelector('.workspace-title-container');
-    if (oldContainer) oldContainer.remove();
-
-    // 1. Create a wrapper for the title and dropdown for correct positioning
-    const titleContainer = document.createElement('div');
-    titleContainer.className = 'workspace-title-container';
-
-    // Move the original title element inside the new container
-    titleContainer.appendChild(workspaceTitleEl);
-    headerLeft.prepend(titleContainer); // Add container to the start of the header
-
+  function createWorkspaceDropdown(otherWorkspaces, userRef, uid) {
+    const oldDropdown = headerLeft.querySelector('.workspace-dropdown');
+    if (oldDropdown) oldDropdown.remove();
     workspaceTitleEl.classList.remove('is-switchable');
     workspaceTitleEl.onclick = null;
 
@@ -222,26 +210,23 @@ export function init(params) {
       item.onclick = async (e) => {
         e.preventDefault();
         await setDoc(userRef, { selectedWorkspace: ws.id }, { merge: true });
-        // No need to do anything else, the user listener will handle the update
+        dropdownContainer.classList.remove('visible');
+        loadAndRenderWorkspaces(uid);
       };
       dropdownContainer.appendChild(item);
     });
-    // 2. Append the dropdown inside the same wrapper
-    titleContainer.appendChild(dropdownContainer);
+    headerLeft.appendChild(dropdownContainer);
 
     workspaceTitleEl.classList.add('is-switchable');
     workspaceTitleEl.onclick = () => {
       dropdownContainer.classList.toggle('visible');
     };
-
-    // Close dropdown when clicking outside
-    document.addEventListener('click', (event) => {
-        if (!titleContainer.contains(event.target)) {
-            dropdownContainer.classList.remove('visible');
-        }
-    }, { signal: controller.signal });
   }
 
+  /**
+   * Updates the browser URL to match the selected workspace without reloading.
+   * @param {string|null} workspaceId - The ID of the current workspace.
+   */
   function updateURL(workspaceId) {
     const newPath = workspaceId
       ? `/myworkspace?selectedWorkspace=${workspaceId}`
@@ -252,14 +237,16 @@ export function init(params) {
     }
   }
 
+  // --- Main Execution Logic ---
+
   onAuthStateChanged(auth, user => {
     if (user) {
       currentUser = user;
-      setupWorkspaceListeners(user.uid);
+      loadAndRenderWorkspaces(user.uid);
     } else {
       currentUser = null;
       if (unsubscribeWorkspaces) unsubscribeWorkspaces();
-      if (unsubscribeUser) unsubscribeUser();
+      // Optionally clear the UI for logged-out users
       workspaceTitleEl.textContent = 'Please log in';
       staffListContainer.innerHTML = '';
     }
@@ -393,9 +380,9 @@ export function init(params) {
     inviteButton.addEventListener("click", () => showInviteModal(), { signal: controller.signal });
   }
 
+  // Return the cleanup function
   return () => {
     controller.abort();
     if (unsubscribeWorkspaces) unsubscribeWorkspaces();
-    if (unsubscribeUser) unsubscribeUser();
   };
 }
