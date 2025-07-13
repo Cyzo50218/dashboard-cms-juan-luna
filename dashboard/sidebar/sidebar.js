@@ -841,20 +841,24 @@ window.TaskSidebar = (function () {
                 const fileName = fileToUpload.name;
                 let attachmentHtml = '';
                 const displayFileName = fileName.replace(/_[\d.]+[KMGT]?B/i, '');
-                
+
 
                 if (fileType.startsWith('image/')) {
                     messageHasImage = true;
                     attachmentHtml = `<img src="${finalDownloadURL}" alt="${fileName}" class="scalable-image">`;
-                } else if (fileType === 'application/pdf') {
-                    attachmentHtml = `<a href="${finalDownloadURL}" target="_blank" class="file-attachment-link pdf-link">
-                    <i class="fa-solid fa-file-pdf"></i> ${displayFileName}
-                </a>`;
                 } else {
-                    // Fallback for other file types (Word, Excel, etc.)
-                    attachmentHtml = `<a href="${finalDownloadURL}" target="_blank" class="file-attachment-link">
-                    <i class="fa-solid fa-file"></i> ${displayFileName}
-                </a>`;
+
+                    let iconClass = 'fa-solid fa-file';
+                    if (fileToUpload.type === 'application/pdf') {
+                        iconClass = 'fa-solid fa-file-pdf';
+                    }
+
+                    attachmentHtml = `
+            <a href="${finalDownloadURL}" target="_blank" class="file-attachment-container">
+                <i class="${iconClass}"></i>
+                <span>${displayFileName}</span>
+            </a>
+        `;
                 }
 
                 // 5. Append the attachment HTML to the message content.

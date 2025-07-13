@@ -1831,7 +1831,31 @@ task-fields-table .field-value {
 .inline-file-preview i {
     margin-right: 6px;
 }
+.file-attachment-container {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+    background-color: #e9ecef;
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #212529; /* Set a default text color */
+    text-decoration: none; /* Remove underline from the link */
+    gap: 8px; /* Adds space between the icon and filename */
+    transition: background-color 0.2s;
+}
 
+/* Change style on hover for better user feedback */
+.file-attachment-container:hover {
+    background-color: #dee2e6;
+    text-decoration: none;
+    color: #212529;
+}
+
+.file-attachment-container i {
+    font-size: 1.2em;
+}
 /* Styling for the inline remove button */
 .remove-inline-preview {
     background: #bec0c3;
