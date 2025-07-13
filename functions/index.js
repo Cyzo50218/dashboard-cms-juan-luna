@@ -15,16 +15,10 @@ import axios from "axios";
 import corsLib from "cors";
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
-
-const serviceAccount = require("./credentials/juan-luna-cms-db-account-credentials.json");
-
 const cors = corsLib({ origin: true });
 
 
-// 2. Initialize the app with the key
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
+admin.initializeApp();
 
 const db = admin.firestore(admin.app(), "juanluna-cms-01");
 
