@@ -1789,7 +1789,59 @@ task-fields-table .field-value {
     font-size: 16px;
     line-height: 20px;
 }
+/* Visual feedback for when a file is dragged over the input area */
+.comment-input-wrapper.drag-over {
+    border: 2px dashed #007bff;
+    background-color: #f8f9fa;
+}
 
+/* Base style for all inline previews */
+.inline-file-preview {
+    display: inline-block;
+    vertical-align: middle;
+    margin: 0 4px;
+    border-radius: 4px;
+    user-select: none; /* Prevent the user from selecting the preview text */
+}
+
+/* Specific styling for image previews */
+.inline-file-preview[src] {
+    max-width: 120px;
+    max-height: 100px;
+    border: 1px solid #ddd;
+}
+
+/* Styling for non-image file previews (the placeholder span) */
+.inline-file-preview:not([src]) {
+    background-color: #e9ecef;
+    padding: 4px 8px;
+    border: 1px solid #ced4da;
+    font-size: 14px;
+}
+
+.inline-file-preview i {
+    margin-right: 6px;
+}
+
+/* Styling for the inline remove button */
+.remove-inline-preview {
+    background: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    font-size: 12px;
+    line-height: 16px;
+    text-align: center;
+    cursor: pointer;
+    margin-left: 8px;
+    font-family: 'Helvetica', 'Arial', sans-serif;
+}
+
+.remove-inline-preview:hover {
+    background: #dc3545;
+}
 .remove-pasted-file:hover {
     background: #6c757d;
 }

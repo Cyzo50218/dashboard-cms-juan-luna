@@ -1483,7 +1483,6 @@ window.TaskSidebar = (function () {
 
         const files = e.dataTransfer.files;
         if (files.length > 0) {
-            // Use the first file dropped
             const file = files[0];
             pastedFiles = [file]; // Store the file for upload
             addImagePreview(file); // Show the preview
@@ -2210,43 +2209,84 @@ window.TaskSidebar = (function () {
     }
 
 
-    function addImagePreview(file) {
-    // Ensure the preview container and file exist
-    if (!imagePreviewContainer || !file) return;
+    /**
+ * Creates a preview of a file (image or document) and inserts it
+ * directly into the contenteditable comment input at the cursor's position.
+ * @param {File} file The file to be previewed.
+ */
+function addImagePreview(file) {
+    // 1. Store the file for the upload process
+    pastedFiles = [file];
 
-    const fileName = file.name;
+    // 2. Define the insertion logic as a reusable function
+    const insertNode = (nodeToInsert) => {
+        const commentInputEl = document.getElementById('comment-input');
+        commentInputEl.focus();
+        const selection = window.getSelection();
 
-    // Create a wrapper for the preview content
-    const previewWrapper = document.createElement('div');
-    previewWrapper.className = 'pasted-file-preview'; // Add styling for this class
+        if (selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            range.deleteContents(); // Clear any user-selected text
 
-    let previewContent = '';
-    const removeButtonHTML = `<button class="remove-pasted-file" title="Remove file">&times;</button>`;
+            const br = document.createElement('br');
+            const finalBr = document.createElement('br');
 
+            // Insert the line break, then the node, then a final line break
+            range.insertNode(br);
+            range.insertNode(nodeToInsert);
+            range.insertNode(finalBr);
+
+            // Move the cursor after the final line break for a new line
+            range.setStartAfter(finalBr);
+            range.collapse(true);
+
+            selection.removeAllRanges();
+            selection.addRange(range);
+        } else {
+            // Fallback for when there's no cursor position
+            commentInputEl.appendChild(document.createElement('br'));
+            commentInputEl.appendChild(nodeToInsert);
+            commentInputEl.appendChild(document.createElement('br'));
+        }
+    };
+
+    // 3. Create the correct preview node based on file type
     if (file.type.startsWith('image/')) {
         const reader = new FileReader();
-        reader.onload = function(e) {
-            // Display a thumbnail for image files
-            previewContent = `<img src="${e.target.result}" alt="Image preview"> <span>${fileName}</span>`;
-            previewWrapper.innerHTML = previewContent + removeButtonHTML;
-            imagePreviewContainer.innerHTML = ''; // Clear any old preview
-            imagePreviewContainer.appendChild(previewWrapper);
-            imagePreviewContainer.style.display = 'block';
+        reader.onload = (event) => {
+            const img = document.createElement('img');
+            img.src = event.target.result;
+            img.alt = file.name;
+            img.className = 'inline-file-preview'; // Class for styling and removal
+
+            // Apply styling from your example
+            img.style.display = 'block'; // 'center' is not valid; 'block' allows centering with margin
+            img.style.margin = '10px auto'; // Center the block-level image
+            img.style.maxWidth = '70%';
+            img.style.maxHeight = '450px';
+            img.style.borderRadius = '10px';
+
+            insertNode(img); // Insert the created image node
         };
         reader.readAsDataURL(file);
     } else {
-        // Display a placeholder icon for other documents (like PDFs)
+        // For non-image files, create a placeholder element
+        const fileNode = document.createElement('span');
+        fileNode.className = 'inline-file-preview';
+        fileNode.contentEditable = false; // Make the preview non-editable
+
         let iconClass = 'fa-solid fa-file'; // Default icon
         if (file.type === 'application/pdf') {
             iconClass = 'fa-solid fa-file-pdf';
         }
-        // You can add more 'else if' blocks for other file types (Word, Excel, etc.)
+        // Add more 'else if' blocks for other file types if desired
 
-        previewContent = `<i class="${iconClass}"></i> <span>${fileName}</span>`;
-        previewWrapper.innerHTML = previewContent + removeButtonHTML;
-        imagePreviewContainer.innerHTML = ''; // Clear any old preview
-        imagePreviewContainer.appendChild(previewWrapper);
-        imagePreviewContainer.style.display = 'block';
+        fileNode.innerHTML = `
+            <i class="${iconClass}"></i>
+            <span>${file.name}</span>
+            <button type="button" class="remove-inline-preview">&times;</button>
+        `;
+        insertNode(fileNode); // Insert the created file node
     }
 }
 
@@ -2256,10 +2296,6 @@ window.TaskSidebar = (function () {
  */
 function clearImagePreview() {
     pastedFiles = []; // Clear the stored file
-    if (imagePreviewContainer) {
-        imagePreviewContainer.innerHTML = ''; // Empty the preview container
-        imagePreviewContainer.style.display = 'none'; // Hide the container
-    }
 }
 
     async function deleteCurrentTask() {
