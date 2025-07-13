@@ -1,20 +1,31 @@
 export default async function handler(req, res) {
-    const { path } = req.query;
+  const { path } = req.query;
 
-    if (!path) return res.status(400).send('Missing file path');
+  if (!path) return res.status(400).send('Missing file path');
 
-    const firebaseProxyURL = `https://us-central1-juan-luna-db.cloudfunctions.net/downloadProxy?path=${encodeURIComponent(path)}`;
+  const firebaseProxyURL = `https://us-central1-juan-luna-db.cloudfunctions.net/downloadProxy?path=${encodeURIComponent(path)}`;
 
+  try {
     const response = await fetch(firebaseProxyURL);
 
     if (!response.ok) {
-        return res.status(404).send("File not found.");
+      console.error("[vercel-proxy] Firebase returned:", response.statusText);
+      return res.status(response.status).send("File not found.");
     }
 
-    // Set headers to stream the content
-    res.setHeader("Content-Type", response.headers.get("Content-Type") || "application/octet-stream");
-    res.setHeader("Content-Disposition", response.headers.get("Content-Disposition") || "inline");
+    const contentType = response.headers.get("Content-Type") || "application/octet-stream";
+    const contentDisposition = response.headers.get("Content-Disposition") || "inline";
 
-    // Stream the response
-    response.body.pipe(res);
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Content-Disposition", contentDisposition);
+    res.setHeader("Content-Length", buffer.length);
+
+    res.end(buffer);
+  } catch (error) {
+    console.error("[vercel-proxy] Error:", error);
+    return res.status(500).send("Proxy error.");
+  }
 }
