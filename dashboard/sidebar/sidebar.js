@@ -1373,6 +1373,7 @@ window.TaskSidebar = (function () {
             const timestamp = msg.timestamp ? new Date(msg.timestamp.toDate()).toLocaleString() : 'Sending...';
 
             let finalDisplayHtml = '';
+            let contentForEdit = msg.content || msg.message || '';
 
             if (msg.content) {
                 // ✅ THIS IS THE FIX: Configure DOMPurify to allow attachment links
@@ -1408,12 +1409,7 @@ window.TaskSidebar = (function () {
 
             const editAreaHTML = `
             <div class="comment-edit-area" style="display: none;">
-                <div class="comment-edit-input" contenteditable="true">${msg.content || msg.message || ''}</div>
-                ${(msg.imageUrl && !msg.content) ? `
-                    <div class="sidebareditimage-container">
-                        <img src="${msg.imageUrl}" class="current-image-preview">
-                    </div>
-                ` : ''}
+                <div class="comment-edit-input" contenteditable="true">${contentForEdit}</div>
                 <div class="comment-edit-actions">
                     <button class="btn-cancel-edit">Cancel</button>
                     <button class="btn-save-edit">Save</button>
