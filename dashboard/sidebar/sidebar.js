@@ -1491,11 +1491,6 @@ window.TaskSidebar = (function () {
 }
 
         sidebar.addEventListener('scroll', handleSidebarScroll);
-        imagePreviewContainer.addEventListener('click', (e) => {
-            if (e.target.closest('.remove-pasted-file')) {
-                clearImagePreview();
-            }
-        });
         activityLogContainer.addEventListener('click', (e) => {
             const messageItem = e.target.closest('.comment-item');
             if (!messageItem) return;
