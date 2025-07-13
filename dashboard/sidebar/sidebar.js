@@ -1382,6 +1382,17 @@ window.TaskSidebar = (function () {
                     // Explicitly allow attributes needed for links and styling
                     ALLOWED_ATTR: ['href', 'target', 'class', 'alt', 'src', 'style']
                 });
+
+                const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = msg.content;
+            const attachmentContainer = tempDiv.querySelector('.file-attachment-container');
+            if (attachmentContainer) {
+                // This makes the entire file block behave like a single, unchangeable character.
+                attachmentContainer.setAttribute('contenteditable', 'false');
+                attachmentContainer.style.userSelect = 'none'; // Prevent selecting text inside
+            }
+            // Use the modified HTML for the edit input
+            contentForEdit = tempDiv.innerHTML;
             } else {
                 // Fallback for older messages without the 'content' field
                 let oldContentHTML = '';
