@@ -1989,6 +1989,26 @@ function createFloatingInput(targetCell, task, column) {
     editor.select();
 }
 
+/**
+ * Deletes a product document from Firestore.
+ * @param {string} productId The ID of the product to delete.
+ */
+async function deleteProduct(productId) {
+    const stockTypeCollection = currentStockType === 'us' ? 'US-Stocks-meta' : 'PH-Stocks-meta';
+    const productRef = doc(db, `InventoryWorkspace/${currentInventoryId}/${stockTypeCollection}`, productId);
+    
+    try {
+        await deleteDoc(productRef);
+        
+        console.log(`✅ Product with ID: ${productId} has been deleted.`);
+        render(currentStockType);
+        // The list will automatically update when your real-time listener detects the deletion.
+    } catch (error) {
+        console.error("❌ Error deleting product:", error);
+        alert("Failed to delete the product. Please try again.");
+    }
+}
+
 async function render(stockType) {
     let productList = stockType === 'ph' ? dataPhStocks : dataUsStocks;
     let savedColumnWidths = {};
@@ -2205,19 +2225,41 @@ async function render(stockType) {
         row.dataset.productId = product.id;
 
         const leftCell = document.createElement('div');
-        leftCell.className = 'sticky left-0 z-10 bg-white px-1 w-80 md:w-96 lg:w-[400px] flex-shrink-0 flex items-center border-r border-transparent group-hover:bg-slate-50 py-0.5';
-        leftCell.innerHTML = `
+leftCell.className = 'sticky left-0 z-10 bg-white px-1 w-80 md:w-96 lg:w-[400px] flex-shrink-0 flex items-center border-r border-transparent group-hover:bg-slate-50 py-0.5';
+
+// Add the delete icon to the end of the flex container
+leftCell.innerHTML = `
     <div class="drag-handle ${!canUserEditProduct ? 'hidden' : ''} cursor-grab p-1 hover:bg-slate-200">
         <span class="material-icons text-slate-500" style="font-size: 20px;">drag_indicator</span>
     </div>
     <div class="flex items-center flex-grow min-w-0">
-        <span class="product-name truncate text-[13px] px-1 ${canUserEditProduct ? 'focus:bg-white focus:ring-1 focus:ring-slate-300' : 'cursor-default'}" 
+        <span class="product-name truncate text-[13px] px-4 ${canUserEditProduct ? 'focus:bg-white focus:ring-1 focus:ring-slate-300' : 'cursor-default'}" 
               contenteditable="${canUserEditProduct}" data-product-id="${product.id}">
             ${product.name}
         </span>
     </div>
+    ${canUserEditProduct ? `
+        <span class="delete-product-btn material-icons text-slate-400 hover:text-red-500 cursor-pointer ml-auto p-1" title="Delete Product">
+            delete_outline
+        </span>
+    ` : ''}
 `;
 
+// Find the delete icon we just created
+const deleteIcon = leftCell.querySelector('.delete-product-btn');
+
+// If the delete icon exists, add the click listener
+if (deleteIcon) {
+    deleteIcon.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent other clicks from firing
+        
+        // Show a confirmation dialog
+        if (confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
+            // If user clicks "Yes", call the delete function
+            deleteProduct(product.id);
+        }
+    });
+}
 
         const rightCells = document.createElement('div');
         rightCells.className = 'flex-grow flex group-hover:bg-slate-50';
