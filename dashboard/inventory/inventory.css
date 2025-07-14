@@ -2418,7 +2418,9 @@ Custom class
 .restricted-overlay.hidden {
     display: none;
 }
-
+.add-task-header-btn.hidden{
+    display: none;
+}
 .restricted-content {
     background: #1c1c1e;
     padding: 40px;

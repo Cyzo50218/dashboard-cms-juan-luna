@@ -30,20 +30,27 @@ import {
     increment,
     deleteField,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
+import {
+    getStorage,
+    ref,
+    uploadBytes,
+    getDownloadURL
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 import { firebaseConfig } from "/services/firebase-config.js";
 import { openInventoryModal } from '/dashboard/components/settingsInventoryWorkspace.js';
+import { openAddProductModal } from '/dashboard/components/addProductModal.js';
 
 // Initialize Firebase
 console.log("Initializing Firebase...");
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app, "juanluna-cms-01");
+const storage = getStorage(app);
 console.log("Initialized Firebase on Dashboard.");
 
 // --- Module-Scoped Variables ---
 // DOM Element Holders
-let taskListHeaderEl, drawer, settingsBtn, restrictedOverlay, addSectionClassBtn, headerRight, productListBody, taskListFooter, addProductHeaderBtn, mainContainer, assigneeDropdownTemplate, filterBtn, sortBtn;
+let taskListHeaderEl, drawer, settingsBtn, inventoryTabs, restrictedOverlay, addSectionClassBtn, headerRight, productListBody, taskListFooter, addProductHeaderBtn, mainContainer, assigneeDropdownTemplate, filterBtn, sortBtn;
 
 // Event Handler References
 let headerClickListener, bodyClickListener, settingsBtnListener, bodyFocusOutListener, addProductHeaderBtnListener, windowClickListener, filterBtnListener, sortBtnListener;
@@ -123,15 +130,12 @@ const defaultStatusColors = {
     'Completed': '#878787'
 };
 
+let currentStockType = 'ph'; // or 'ph'
 let inventoryPath = null;
 let dataUsStocks = [];
 let dataPhStocks = [];
-
+let canUserEditProduct = false; // This will be set based on the user's permissions
 // --- New Real-time Data Loading Functions ---
-
-/**
- * Detaches all active Firestore listeners to prevent memory leaks.
- */
 function detachAllListeners() {
     console.log("Detaching all Firestore listeners...");
     Object.values(activeListeners).forEach(unsubscribe => {
@@ -143,28 +147,6 @@ function detachAllListeners() {
     Object.keys(activeListeners).forEach(key => activeListeners[key] = null);
 }
 
-function detachProjectSpecificListeners() {
-    console.log("[DEBUG] Detaching project-specific listeners (project, sections, tasks)...");
-    
-    // Check for and unsubscribe from the project details listener
-    if (activeListeners.project) {
-        activeListeners.project(); // This executes the unsubscribe function returned by onSnapshot
-        activeListeners.project = null; // Reset the state to clean up
-    }
-    
-    // Check for and unsubscribe from the sections listener
-    if (activeListeners.sections) {
-        activeListeners.sections();
-        activeListeners.sections = null;
-    }
-    
-    // Check for and unsubscribe from the tasks listener
-    if (activeListeners.tasks) {
-        activeListeners.tasks();
-        activeListeners.tasks = null;
-    }
-}
-
 function attachRealtimeListeners(userId) {
     detachAllListeners();
     currentUserId = userId;
@@ -172,7 +154,8 @@ function attachRealtimeListeners(userId) {
     console.groupCollapsed(`%c🔗 Attaching Listeners for User: ${userId}`, 'color: #007bff; font-weight: bold;');
 
     const userDocRef = doc(db, 'users', userId);
-
+    let hasRenderedPhStocks = false;
+    let hasRenderedUsStocks = false;
     activeListeners.user = onSnapshot(userDocRef, async (userSnap) => {
         if (!userSnap.exists()) {
             console.error(`%c❌ User document not found: ${userId}`, 'color: #dc3545; font-weight: bold;');
@@ -227,8 +210,8 @@ function attachRealtimeListeners(userId) {
             let inventoryId = inventoryDocId;
             inventoryPath = `InventoryWorkspace/${inventoryDocId}`;
 
-            const usStocksRef = collection(inventoryDocRef, 'US-Stocks');
-            const phStocksRef = collection(inventoryDocRef, 'PH-Stocks');
+            const usStocksRef = collection(inventoryDocRef, 'US-Stocks-meta');
+            const phStocksRef = collection(inventoryDocRef, 'PH-Stocks-meta');
 
             activeListeners.usStocks = onSnapshot(usStocksRef, (usSnapshot) => {
                 dataUsStocks = usSnapshot.docs.map(doc => ({
@@ -236,6 +219,7 @@ function attachRealtimeListeners(userId) {
                     ...doc.data()
                 }));
                 console.log('%c🇺🇸 US Stocks:', 'color: #00bcd4;', dataUsStocks);
+                render(['ph', 'us'].includes(currentStockType) ? currentStockType : 'ph');
             });
 
             activeListeners.phStocks = onSnapshot(phStocksRef, (phSnapshot) => {
@@ -243,8 +227,12 @@ function attachRealtimeListeners(userId) {
                     id: doc.id,
                     ...doc.data()
                 }));
+
                 console.log('%c🇵🇭 PH Stocks:', 'color: #ff9800;', dataPhStocks);
+                render(['ph', 'us'].includes(currentStockType) ? currentStockType : 'ph');
+
             });
+            render("ph");
         }, (error) => {
             console.error('%c❌ Error loading workspace snapshot.', 'color: #dc3545; font-weight: bold;', error);
             showRestrictedAccessUI('An error occurred while loading your workspace.');
@@ -255,40 +243,38 @@ function attachRealtimeListeners(userId) {
 }
 
 function showRestrictedAccessUI(message) {
-  if (restrictedOverlay) {
-    restrictedOverlay.querySelector('.message').textContent = message || 'Restricted Access';
-    restrictedOverlay.classList.remove('hidden');
-  }
+    if (restrictedOverlay) {
+        restrictedOverlay.querySelector('.message').textContent = message || 'Restricted Access';
+        restrictedOverlay.classList.remove('hidden');
+    }
 
-  document.querySelector('.list-view-container')?.classList.add('hidden');
+    document.querySelector('.list-view-container')?.classList.add('hidden');
 
-  const okBtn = document.getElementById('restricted-ok-btn');
-  if (okBtn) {
-    okBtn.onclick = () => {
-      window.location.href = '/home';
-    };
-  }
+    const okBtn = document.getElementById('restricted-ok-btn');
+    if (okBtn) {
+        okBtn.onclick = () => {
+            window.location.href = '/home';
+        };
+    }
 }
-
-
 
 async function fetchMemberProfiles(uids) {
     if (!uids || uids.length === 0) {
         return []; // Return empty if no UIDs are provided
     }
-    
+
     try {
         // Create an array of promises, where each promise fetches one user document
         const userPromises = uids.map(uid => getDoc(doc(db, `users/${uid}`)));
-        
+
         // Wait for all promises to resolve
         const userDocs = await Promise.all(userPromises);
-        
+
         // Filter out any users that might not exist and format the data
         const validUsers = userDocs
             .filter(d => d.exists())
             .map(d => ({ uid: d.id, ...d.data() }));
-        
+
         console.log("[DEBUG] Fetched member profiles:", validUsers);
         return validUsers;
     } catch (error) {
@@ -312,48 +298,22 @@ function updateUserPermissions(projectData, userId) {
         console.warn("[Permissions] Cannot set permissions. Missing project data or user ID.");
         return;
     }
-    
+
     const members = projectData.members || [];
     const userMemberInfo = members.find(member => member.uid === userId);
-    
-    currentUserRole = userMemberInfo ? userMemberInfo.role : null;
-    
-    const isMemberWithEditPermission = userMemberInfo && (userMemberInfo.role === "Project Admin" || userMemberInfo.role === "Project Owner Admin" || userMemberInfo.role === "Editor");
-    const isSuperAdmin = projectData.project_super_admin_uid === userId;
-    const isAdminUser = projectData.project_admin_user === userId;
-    
-    userCanEditProject = isMemberWithEditPermission || isSuperAdmin || isAdminUser;
-    
-    console.log(`[Permissions] User: ${userId}, Role: ${currentUserRole}, Can Edit Project: ${userCanEditProject}`);
-}
 
-/**
- * Checks if the current user has permission to edit a specific task.
- * Viewers/Commentors can edit a task ONLY IF they are assigned to it.
- * @param {object} task - The task object.
- * @returns {boolean} - True if the user can edit the task.
- */
-function canUserEditProduct(task) {
-    if (userCanEditProject) {
-        return true;
-    }
-    
-    // Check for the special case: Viewers or Commentors who are assigned to the task.
-    if (currentUserRole === 'Viewer' || currentUserRole === 'Commentor') {
-        const isAssigned = Array.isArray(task.assignees) && task.assignees.includes(currentUserId);
-        if (isAssigned) {
-            console.log(`[Permissions] Granting task edit for assigned ${currentUserRole}.`);
-            return true;
-        }
-    }
-    
-    // Otherwise, no permission.
-    return false;
+    currentUserRole = userMemberInfo ? userMemberInfo.role : null;
+
+    const isMemberWithEditPermission = userMemberInfo && (userMemberInfo.role === "Project Admin" || userMemberInfo.role === "Project Owner Admin" || userMemberInfo.role === "Editor");
+
+    userCanEditProject = isMemberWithEditPermission || isSuperAdmin || isAdminUser;
+
+    console.log(`[Permissions] User: ${userId}, Role: ${currentUserRole}, Can Edit Project: ${userCanEditProject}`);
 }
 
 // --- Main Initialization and Cleanup ---
 
-function initializeListView(params) {
+function initializeListView() {
     restrictedOverlay = document.getElementById('restricted-overlay');
     taskListHeaderEl = document.getElementById('task-list-header');
     drawer = document.getElementById('right-sidebar');
@@ -367,13 +327,16 @@ function initializeListView(params) {
     assigneeDropdownTemplate = document.getElementById('assignee-dropdown-template');
     filterBtn = document.getElementById('filter-btn');
     sortBtn = document.getElementById('sort-btn');
-    
+
     if (!mainContainer || !productListBody) {
         console.error("List view could not initialize: Essential containers not found.");
-        return () => {};
+        return () => { };
     }
-    render();
+
+    // Attach tab switching logic
+    inventoryTabs = document.querySelectorAll('.inventory-tabs .tab-item');
     setupEventListeners();
+
 }
 
 export function getHeaderRight() {
@@ -385,19 +348,19 @@ export function getHeaderRight() {
 
 function distributeTasksToSections(tasks) {
     console.log("--- Running Task Distribution ---");
-    
+
     const availableSectionIds = project.sections.map(s => s.id);
     console.log("Available section IDs on client:", availableSectionIds);
-    
+
     // Reset tasks on all sections
     project.sections.forEach(section => section.tasks = []);
-    
+
     let unmatchedTasks = 0;
     for (const task of tasks) {
         console.log(`Processing Task "${task.name || 'New Task'}" (ID: ${task.id}). Looking for sectionId: "${task.sectionId}"`);
-        
+
         const section = project.sections.find(s => s.id === task.sectionId);
-        
+
         if (section) {
             console.log(`   ✅ SUCCESS: Matched with section "${section.title}" (ID: "${section.id}")`);
             section.tasks.push(task);
@@ -406,42 +369,43 @@ function distributeTasksToSections(tasks) {
             unmatchedTasks++;
         }
     }
-    
+
     // ✅ NOW sort the tasks inside each section by their `order`
     project.sections.forEach(section => {
         section.tasks.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     });
-    
+
     console.log(`--- Distribution Complete. ${unmatchedTasks} tasks could not be matched. ---`);
 }
 
 
 export function init(params) {
     console.log("Initializing List View Module...", params);
-    
+
     // Listen for authentication state changes
     onAuthStateChanged(auth, (user) => {
         if (user) {
             console.log(`User ${user.uid} signed in. Attaching listeners.`);
             attachRealtimeListeners(user.uid);
+
         } else {
             console.log("User signed out. Detaching listeners.");
             detachAllListeners();
             project = { customColumns: [], sections: [], customPriorities: [], customStatuses: [] };
-            render();
+            render('us');
         }
     });
-    
+
     // Initial view setup
     initializeListView(params);
-    
-    
-    
+
+
+
     // Cleanup
     return function cleanup() {
         console.log("Cleaning up List View Module...");
         detachAllListeners();
-        
+
         if (headerClickListener) taskListHeaderEl.removeEventListener('click', headerClickListener);
         if (bodyClickListener) productListBody.removeEventListener('click', bodyClickListener);
         if (settingsBtnListener) settingsBtn.removeEventListener('click', settingsBtnListener);
@@ -450,7 +414,7 @@ export function init(params) {
         if (windowClickListener) window.removeEventListener('click', windowClickListener);
         if (filterBtnListener) filterBtn.removeEventListener('click', filterBtnListener);
         if (sortBtnListener) sortBtn.removeEventListener('click', sortBtnListener);
-        
+
         if (sortableSections) sortableSections.destroy();
         sortableTasks.forEach(st => st.destroy());
         sortableTasks.length = 0;
@@ -458,31 +422,184 @@ export function init(params) {
 }
 
 // --- Event Listener Setup ---
+async function handleProductListClick(e) {
+    const cell = e.target.closest('[data-control]');
+    if (!cell) return; // Exit if the click wasn't on a controllable cell
 
-function setupEventListeners() {
+    const row = e.target.closest('.product-row-wrapper');
+    if (!row) return; // Exit if we can't find the product row
+
+    const productId = row.dataset.productId;
+    const controlType = cell.dataset.control;
+    const stockType = currentStockType; // Assuming 'currentStockType' is globally available
+
+    // Find the product data from your local list
+    const productList = stockType === 'ph' ? dataPhStocks : dataUsStocks;
+    const product = productList.find(p => p.id === productId);
+
+    if (!product) {
+        console.error("Could not find product data for ID:", productId);
+        return;
+    }
+
+    // Now, handle the specific dropdown logic
+    switch (controlType) {
+        case 'supplierProject': {
+            if (!canUserEditProduct) return;
+
+            const userSnap = await getDoc(doc(db, 'users', auth.currentUser.uid));
+            const selectedWorkspace = userSnap.data()?.selectedWorkspace;
+            if (!selectedWorkspace) return;
+
+            const projectsQuery = query(
+                collectionGroup(db, 'projects'),
+                where('workspaceId', '==', selectedWorkspace),
+                where('memberUIDs', 'array-contains', auth.currentUser.uid)
+            );
+
+            const querySnap = await getDocs(projectsQuery);
+            const options = querySnap.docs.map(doc => ({
+                id: doc.id,
+                name: doc.data().title || 'Unnamed Project',
+                ref: doc.ref
+            }));
+
+            createAdvancedDropdown(cell, {
+                options,
+                itemRenderer: (opt) => `<span>${opt.name}</span>`,
+                onSelect: async (selectedProject) => {
+                    const productRef = doc(db, `InventoryWorkspace/${currentInventoryId}/${stockType === 'us' ? 'US-Stocks-meta' : 'PH-Stocks-meta'}`, product.id);
+                    try {
+                        await updateDoc(productRef, {
+                            supplierProject: {
+                                name: selectedProject.name,
+                                id: selectedProject.id
+                            }
+                        });
+                    } catch (err) {
+                        console.error('❌ Failed to update supplierProject:', err);
+                    }
+                }
+            });
+            break;
+        }
+
+        case 'warehouseLocation': {
+            if (!canUserEditProduct) return;
+
+            const stockOptions = [
+                { name: 'PH Stocks', path: 'PH-Stocks-meta' },
+                { name: 'US Stocks', path: 'US-Stocks-meta' }
+            ];
+
+            createAdvancedDropdown(cell, {
+                options: stockOptions,
+                itemRenderer: (opt) => `<span>${opt.name}</span>`,
+                onSelect: async (selectedOption) => {
+                    // Logic to move the document in Firestore
+                    const currentPath = `${stockType === 'us' ? 'US-Stocks-meta' : 'PH-Stocks-meta'}`;
+                    if (currentPath === selectedOption.path) return; // No change needed
+
+                    const currentRef = doc(db, `InventoryWorkspace/${currentInventoryId}/${currentPath}`, product.id);
+                    const targetRef = doc(db, `InventoryWorkspace/${currentInventoryId}/${selectedOption.path}`, product.id);
+
+                    try {
+                        const docSnap = await getDoc(currentRef);
+                        if (docSnap.exists()) {
+                            await setDoc(targetRef, { ...docSnap.data(), warehouseLocation: selectedOption.name });
+                            await deleteDoc(currentRef);
+                            render(currentStockType); // Re-render to reflect changes
+                            console.log(`✅ Moved product to ${selectedOption.name}`);
+                        }
+                    } catch (err) {
+                        console.error('❌ Failed to transfer document:', err);
+                    }
+                }
+            });
+            break;
+        }
+        // Add cases for your other controls like 'supplierCost' here...
+    }
+}
+
+/**
+ * Handles the image upload process for a product.
+ * @param {File} file The image file to upload.
+ * @param {string} productId The ID of the product to associate the image with.
+ */
+async function uploadProductImage(file, productId) {
+    const imageWrapper = document.querySelector(`.product-row-wrapper[data-product-id="${productId}"] .product-image-wrapper`);
+    if (!imageWrapper) return;
+
+    // 1. Show a loading spinner in the cell for immediate feedback
+    imageWrapper.innerHTML = `<div class="w-full h-full flex items-center justify-center"><div class="loading-spinner"></div></div>`;
+
+    try {
+        // 2. Define the path in Firebase Storage
+        const storageRef = ref(storage, `products/${productId}/${file.name}`);
+
+        // 3. Upload the file
+        await uploadBytes(storageRef, file);
+
+        // 4. Get the public download URL
+        const imageUrl = await getDownloadURL(storageRef);
+
+        // 5. Update the product document in Firestore
+        const stockTypeCollection = currentStockType === 'us' ? 'US-Stocks-meta' : 'PH-Stocks-meta';
+        const productRef = doc(db, `InventoryWorkspace/${currentInventoryId}/${stockTypeCollection}`, productId);
+        await updateDoc(productRef, { imageUrl: imageUrl });
+
+        // 6. Update the UI with the new image (the list will re-render on the next data update)
+        console.log('✅ Image uploaded and product updated successfully!');
+
+    } catch (error) {
+        console.error("❌ Error uploading image:", error);
+        // Revert UI to the placeholder on error
+        imageWrapper.innerHTML = '<span class="material-icons text-gray-400 pointer-events-none">photo_camera</span>';
+    }
+}
+
+async function setupEventListeners() {
+
+    inventoryTabs.forEach((tab, index) => {
+        tab.addEventListener('click', () => {
+            inventoryTabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            currentStockType = index === 0 ? 'ph' : 'us';
+
+            // Update subtitle
+            const subtitle = document.getElementById('inventory-subtitle');
+            subtitle.textContent = currentStockType.toUpperCase() + ' Stocks';
+
+            // Render relevant stock data
+            render(currentStockType);
+        });
+    });
+
     document.addEventListener('click', (e) => {
         const optionsButton = e.target.closest('.section-options-btn');
-        
-        if (!userCanEditProject) {
+
+        if (!canUserEditProduct) {
             console.warn("[Permissions] Blocked dropdown menu action. User cannot edit project.");
             closeOpenMenu();
             return;
         }
-        
+
         if (e.target.closest('.options-dropdown-menu')) {
             const dropdownItem = e.target.closest('.dropdown-item');
             if (dropdownItem) {
                 const { action, sectionId } = dropdownItem.dataset;
                 console.log(`Action: ${action}, Section ID: ${sectionId || 'N/A'}`);
-                
-                
+
+
                 // NEW: Handle the specific actions from the menu
                 switch (action) {
                     case 'addTask':
                         const section = project.sections.find(s => s.id === sectionId);
                         if (section) addNewTask(section);
                         break;
-                        
+
                     case 'renameSection':
                         const sectionTitleEl = document.querySelector(`.section-title-wrapper[data-section-id="${sectionId}"] .section-title`);
                         if (sectionTitleEl) {
@@ -490,25 +607,25 @@ function setupEventListeners() {
                             document.execCommand('selectAll', false, null);
                         }
                         break;
-                        
+
                     case 'deleteSection':
                         // This calls your new function
                         deleteSectionInFirebase(sectionId);
                         break;
                 }
-                
-                
+
+
                 closeOpenMenu();
             }
             return; // Do nothing more if click is inside a menu
         }
-        
+
         // If we clicked an options button...
         if (optionsButton) {
             // Check if its menu is already open. If so, this click should close it.
             const wrapper = optionsButton.parentElement;
             const existingMenu = wrapper.querySelector('.options-dropdown-menu');
-            
+
             if (existingMenu) {
                 closeOpenMenu(); // It's open, so close it.
             } else {
@@ -519,10 +636,10 @@ function setupEventListeners() {
             closeOpenMenu();
         }
     });
-    
-    bodyClickListener = (e) => {
+
+    bodyClickListener = async (e) => {
         console.log('%cbodyClickListener Triggered', 'color: #888;', 'Clicked on:', e.target);
-        
+
         // --- 0. Guard clause: Prevent other clicks if a temp task is still blank ---
         const activeTempTask = document.querySelector('.task-row-wrapper[data-task-id^="temp_"] .task-name');
         if (activeTempTask && activeTempTask.innerText.trim() === '' && !e.target.closest('.task-name')) {
@@ -530,7 +647,7 @@ function setupEventListeners() {
             activeTempTask.focus();
             return;
         }
-        
+
         // --- 1. Section Toggle ---
         const sectionToggle = e.target.closest('.section-toggle');
         if (sectionToggle) {
@@ -540,15 +657,15 @@ function setupEventListeners() {
             const section = project.sections.find(s => s.id == sectionId);
             if (section) {
                 section.isCollapsed = !section.isCollapsed;
-                render();
+                render('us');
             }
             return;
         }
-        
+
         // --- 2. "Add Task" Button inside section ---
         const addTaskBtn = e.target.closest('.add-task-btn');
         if (addTaskBtn) {
-            
+
             if (!userCanEditProject) {
                 console.warn("[Permissions] Blocked 'Add Task'. User cannot edit project.");
                 return;
@@ -561,17 +678,17 @@ function setupEventListeners() {
             }
             return;
         }
-        
+
         // --- 2.5: Add task row clicked ---
         const addTaskRow = e.target.closest('.add-task-row-wrapper');
         if (addTaskRow) {
-            
+
             // *** PERMISSION CHECK ***
             if (!userCanEditProject) {
                 console.warn("[Permissions] Blocked 'Add Task Row'. User cannot edit project.");
                 return;
             }
-            
+
             console.log('%cACTION: Add Task Row clicked', 'color: blue; font-weight: bold;');
             const sectionId = addTaskRow.dataset.sectionId;
             const section = project.sections.find(s => s.id == sectionId);
@@ -580,45 +697,45 @@ function setupEventListeners() {
             }
             return;
         }
-        
+
         const taskRow = e.target.closest('.task-row-wrapper');
         if (!taskRow) return; // Exit if the click was not on a task row
-        
+
         const taskId = taskRow.dataset.taskId;
         const sectionId = taskRow.dataset.sectionId;
         const { task } = findTaskAndSection(taskId);
-        
+
         // Find the specific control element that was clicked (e.g., the due date button, task name, etc.)
         const controlElement = e.target.closest('[data-control]');
         if (!controlElement) return; // Exit if not a specific interactive element
-        
+
         const controlType = controlElement.dataset.control;
 
         if (taskId && taskId.startsWith('temp_')) {
-        const control = e.target.closest('[data-control]');
-        if (control && control.dataset.control !== 'open-sidebar') {
-            console.warn("Action blocked: Please wait a moment for the task to finish saving.");
-            // Add a subtle flash to indicate the task is saving
-            taskRow.style.transition = 'background-color 0.2s';
-            taskRow.style.backgroundColor = '#fffbe6'; // A light yellow flash
-            setTimeout(() => {
-                taskRow.style.backgroundColor = '';
-            }, 400);
-            return;
+            const control = e.target.closest('[data-control]');
+            if (control && control.dataset.control !== 'open-sidebar') {
+                console.warn("Action blocked: Please wait a moment for the task to finish saving.");
+                // Add a subtle flash to indicate the task is saving
+                taskRow.style.transition = 'background-color 0.2s';
+                taskRow.style.backgroundColor = '#fffbe6'; // A light yellow flash
+                setTimeout(() => {
+                    taskRow.style.backgroundColor = '';
+                }, 400);
+                return;
+            }
         }
-    }
         // Block interaction with temp tasks (this logic remains the same)
         if (taskId.startsWith('temp_') && controlType !== 'open-sidebar') {
             return;
         }
-        
+
         switch (controlType) {
             case 'open-sidebar':
             case 'comment':
                 displaySideBarTasks(taskId); // Assumes this function is defined elsewhere
                 headerRight.classList.add('hide'); // Your existing UI logic
                 break;
-                
+
             case 'check':
                 e.stopPropagation();
                 if (!canUserEditProduct(task)) {
@@ -627,7 +744,7 @@ function setupEventListeners() {
                 }
                 handleTaskCompletion(task, taskRow); // Your existing function
                 break;
-                
+
             case 'due-date':
                 if (!canUserEditProduct(task)) {
                     console.warn(`[Permissions] Blocked 'move-task' action. User cannot edit project.`);
@@ -635,7 +752,7 @@ function setupEventListeners() {
                 }
                 showDatePicker(controlElement, taskId, sectionId);
                 break;
-                
+
             case 'assignee':
                 if (!canUserEditProduct(task)) {
                     console.warn(`[Permissions] Blocked 'move-task' action. User cannot edit project.`);
@@ -643,7 +760,7 @@ function setupEventListeners() {
                 }
                 showAssigneeDropdown(controlElement, taskId, sectionId);
                 break;
-                
+
             case 'priority':
             case 'status': {
                 if (!canUserEditProduct(task)) {
@@ -654,7 +771,141 @@ function setupEventListeners() {
                 showStatusDropdown(controlElement, taskId, sectionId, optionType);
                 break;
             }
-            
+            case 'warehouseLocation':
+                if (!canUserEditProduct(task)) {
+                    console.warn(`[Permissions] Blocked 'warehouseLocation' change. User cannot edit project.`);
+                    return;
+                }
+
+                const stockOptions = [
+                    { name: 'PH Stocks', path: 'PH-Stocks-meta' },
+                    { name: 'US Stocks', path: 'US-Stocks-meta' }
+                ];
+
+                createAdvancedDropdown(controlElement, {
+                    options: stockOptions,
+                    itemRenderer: (opt) => `<span>${opt.name}</span>`,
+                    onSelect: async (selectedOption) => {
+                        const currentRef = doc(db, `InventoryWorkspace/${currentInventoryId}/${currentStockType === 'us' ? 'US-Stocks-meta' : 'PH-Stocks-meta'}`, task.id);
+                        const targetRef = doc(db, `InventoryWorkspace/${currentInventoryId}/${selectedOption.path}`, task.id);
+
+                        try {
+                            const docSnap = await getDoc(currentRef);
+                            if (docSnap.exists()) {
+                                await setDoc(targetRef, {
+                                    ...docSnap.data(),
+                                    warehouseLocation: selectedOption.name
+                                });
+                                await deleteDoc(currentRef);
+                                console.log(`✅ Moved product to ${selectedOption.name}`);
+                            }
+                        } catch (err) {
+                            console.error('❌ Failed to transfer document:', err);
+                        }
+                    }
+                });
+                break;
+            case 'supplierProject':
+                if (!canUserEditProduct(task)) {
+                    console.warn(`[Permissions] Blocked 'supplierProject' change. User cannot edit project.`);
+                    return;
+                }
+
+                const userSnap = await getDoc(doc(db, 'users', auth.currentUser.uid));
+                const selectedWorkspace = userSnap.data()?.selectedWorkspace;
+                if (!selectedWorkspace) return;
+
+                const projectsQuery = query(
+                    collectionGroup(db, 'projects'),
+                    where('workspaceId', '==', selectedWorkspace),
+                    where('memberUIDs', 'array-contains', auth.currentUser.uid)
+                );
+
+                const querySnap = await getDocs(projectsQuery);
+                const options = [];
+
+                querySnap.forEach(doc => {
+                    const data = doc.data();
+                    options.push({
+                        id: doc.id,
+                        name: data.title || 'Unnamed Project',
+                        ref: doc.ref
+                    });
+                });
+
+                createAdvancedDropdown(controlElement, {
+                    options,
+                    itemRenderer: (opt) => `<span>${opt.name}</span>`,
+                    onSelect: async (selectedProject) => {
+                        const productRef = doc(db, `InventoryWorkspace/${currentInventoryId}/${currentStockType === 'us' ? 'US-Stocks-meta' : 'PH-Stocks-meta'}`, task.id);
+                        try {
+                            await updateDoc(productRef, {
+                                supplierProject: {
+                                    name: selectedProject.name,
+                                    id: selectedProject.id
+                                }
+                            });
+                            console.log(`✅ Updated supplierProject to "${selectedProject.name}"`);
+                        } catch (err) {
+                            console.error('❌ Failed to update supplierProject:', err);
+                        }
+                    }
+                });
+                break;
+
+            case 'productImage':
+                const hasImage = !!product.imageUrl;
+                cell.innerHTML = `
+        <div class="product-image-wrapper w-10 h-10 bg-gray-200 rounded-md flex items-center justify-center overflow-hidden relative cursor-pointer" data-column-id="productImage">
+            ${hasImage
+                        ? `<img src="${product.imageUrl}" class="w-full h-full object-cover pointer-events-none">`
+                        : '<span class="material-icons text-gray-400 pointer-events-none">photo_camera</span>'
+                    }
+            <input type="file" accept="image/*" class="hidden image-file-input">
+        </div>
+    `;
+
+                const wrapper = cell.querySelector('.product-image-wrapper');
+                const fileInput = wrapper.querySelector('.image-file-input');
+
+                wrapper.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (hasImage) {
+                        // TODO: open image action dropdown (e.g., replace, remove)
+                        openImageOptionsDropdown(wrapper, product);
+                    } else {
+                        fileInput.click();
+                    }
+                });
+
+                fileInput.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        uploadProductImage(file, product.id);
+                    }
+                });
+
+                // --- Drag and Drop ---
+                wrapper.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    wrapper.classList.add('drag-hover');
+                });
+
+                wrapper.addEventListener('dragleave', () => {
+                    wrapper.classList.remove('drag-hover');
+                });
+
+                wrapper.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    wrapper.classList.remove('drag-hover');
+                    const file = e.dataTransfer.files[0];
+                    if (file && file.type.startsWith('image/')) {
+                        uploadProductImage(file, product.id);
+                    }
+                });
+
+                break;
+
             case 'custom-select': {
                 if (!canUserEditProduct(task)) {
                     console.warn(`[Permissions] Blocked 'move-task' action. User cannot edit project.`);
@@ -662,7 +913,7 @@ function setupEventListeners() {
                 }
                 const columnId = controlElement.dataset.columnId;
                 const column = project.customColumns.find(c => String(c.id) === columnId);
-                
+
                 if (column && column.options) {
                     createAdvancedDropdown(controlElement, {
                         options: column.options,
@@ -678,7 +929,7 @@ function setupEventListeners() {
                 }
                 break;
             }
-            
+
             case 'move-task': {
                 if (!canUserEditProduct(task)) {
                     console.warn(`[Permissions] Blocked 'move-task' action. User cannot edit project.`);
@@ -687,7 +938,7 @@ function setupEventListeners() {
                 // REFACTORED: Moving tasks also uses the universal advanced dropdown
                 const { section: currentSection } = findTaskAndSection(taskId);
                 const otherSections = project.sections.filter(s => s.id !== currentSection?.id);
-                
+
                 if (otherSections.length > 0) {
                     createAdvancedDropdown(controlElement, {
                         options: otherSections,
@@ -704,17 +955,17 @@ function setupEventListeners() {
                 }
                 break;
             }
-            
+
             // --- These cases remain unchanged ---
             case 'like': {
                 const { task, section } = findTaskAndSection(taskId);
                 if (!task || !section || !currentUserId) return;
-                
+
                 const sectionRef = collection(currentProjectRef, 'sections');
                 const taskRef = doc(sectionRef, section.id, 'tasks', taskId);
-                
+
                 const liked = task.likedBy?.[currentUserId];
-                
+
                 updateDoc(taskRef, liked ? {
                     likedAmount: increment(-1),
                     [`likedBy.${currentUserId}`]: deleteField()
@@ -735,58 +986,58 @@ function setupEventListeners() {
                 break;
             }
         }
-        
+
         console.log('No specific interactive element was clicked.');
     };
-    
+
     settingsBtnListener = () => {
         openInventoryModal(currentInventoryId);
     }
-    
+
     bodyFocusOutListener = (e) => {
         const focusedOutElement = e.target;
         console.log('%cbodyFocusOutListener Triggered', 'color: #888;', 'Element that lost focus:', focusedOutElement);
-        
+
         // --- Section Title Save ---
         if (focusedOutElement.matches('.section-title')) {
             if (!userCanEditProject) {
                 console.warn("[Permissions] Blocked section rename. User cannot edit project.");
-                render(); // Re-render to discard the user's change
+                render('us'); // Re-render to discard the user's change
                 return;
             }
             const sectionEl = focusedOutElement.closest('.section-title-wrapper');
             if (!sectionEl) return;
-            
+
             const sectionId = sectionEl.dataset.sectionId;
             const newTitle = focusedOutElement.innerText.trim();
             const section = project.sections.find(s => s.id === sectionId);
-            
+
             if (!section) return;
-            
+
             if (section.title !== newTitle) {
                 console.log(`Updated section title: ${newTitle}`);
                 updateSectionInFirebase(sectionId, { title: newTitle });
             }
             return;
         }
-        
+
         // --- Task Name Save ---
         if (focusedOutElement.matches('.task-name')) {
             const taskRow = focusedOutElement.closest('.task-row-wrapper');
             if (!taskRow) return;
-            
+
             if (!userCanEditProject) {
                 console.warn("[Permissions] Blocked task rename. User role is insufficient.");
-                render(); // Re-render to discard change.
+                render('us'); // Re-render to discard change.
                 return;
             }
-            
+
             const taskId = taskRow.dataset.taskId;
             const { task, section } = findTaskAndSection(taskId);
             if (!task || !section) return;
-            
+
             const newName = focusedOutElement.innerText.trim();
-            
+
             if (task.isNew) {
                 if (newName) {
                     section.tasks = section.tasks.filter(t => t.id !== taskId);
@@ -796,31 +1047,31 @@ function setupEventListeners() {
                 } else {
                     console.log("Discarding empty new task.");
                     section.tasks = section.tasks.filter(t => t.id !== taskId);
-                    render();
+                    render('us');
                 }
             } else if (task.name !== newName) {
                 updateTask(taskId, section.id, { name: newName });
             }
             return;
         }
-        
+
         // --- Custom Field Save ---
         const customFieldCell = focusedOutElement.closest('[data-control="custom"]');
         if (customFieldCell) {
-            
+
             const taskRow = customFieldCell.closest('.task-row-wrapper');
             const taskId = taskRow?.dataset.taskId;
             const columnId = customFieldCell.dataset.columnId;
-            
+
             const { task, section } = findTaskAndSection(taskId);
             const column = project.customColumns.find(c => c.id == columnId);
-            
+
             if (!task || !section || !column) return;
-            
+
             let rawValue = customFieldCell.innerText.trim();
             const oldValue = task.customFields?.[columnId] ?? null;
             let newValue = rawValue;
-            
+
             if (column.type === 'Costing') {
                 const numeric = rawValue.replace(/[^0-9.-]+/g, '');
                 if (/^-?\d+(\.\d+)?$/.test(numeric)) {
@@ -837,7 +1088,7 @@ function setupEventListeners() {
                     return;
                 }
             }
-            
+
             if (newValue !== oldValue) {
                 console.log(`Updating customFields.${columnId} →`, newValue);
                 updateTask(task.id, section.id, {
@@ -848,30 +1099,23 @@ function setupEventListeners() {
             }
         }
     };
-    
-    
-    
+
+
+
     addProductHeaderBtnListener = () => {
-        
-        if (!userCanEditProject) {
-            console.warn("[Permissions] Blocked 'Add Task' from header. User cannot edit project.");
-            return;
-        }
-        
-        if (!currentlyFocusedSectionId && project.sections.length > 0) {
-            currentlyFocusedSectionId = project.sections[0].id;
-        }
-        const focusedSection = project.sections.find(s => s.id === currentlyFocusedSectionId);
-        if (focusedSection) addNewTask(focusedSection);
-        else alert('Please create a section before adding a task.');
+        openAddProductModal(currentInventoryId, currentStockType, () => {
+
+        });
     };
-    
+
+
+
     filterBtnListener = () => {
         // DEBUG: Confirm the listener is firing
         console.log("Filter button clicked. Opening section filter panel...");
         openSectionFilterPanel();
     }
-    
+
     sortBtnListener = () => {
         if (activeSortState === 'default') {
             activeSortState = 'asc'; // asc = Oldest first
@@ -880,41 +1124,48 @@ function setupEventListeners() {
         } else {
             activeSortState = 'default';
         }
-        render();
+        render('us');
     };
-    
-    productListBody.addEventListener('click', bodyClickListener);
+
+    productListBody.addEventListener('click', handleProductListClick);
     settingsBtn.addEventListener('click', settingsBtnListener);
     productListBody.addEventListener('focusout', bodyFocusOutListener);
     addProductHeaderBtn.addEventListener('click', addProductHeaderBtnListener);
     window.addEventListener('click', setupGlobalClickListeners);
     if (filterBtn) filterBtn.addEventListener('click', filterBtnListener);
     if (sortBtn) sortBtn.addEventListener('click', sortBtnListener);
-    
+
     window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' || e.key === 'Esc') {
             closeFloatingPanels();
         }
     });
-    
+
 }
 
+
+function openImageOptionsDropdown(container, product) {
+    // Use your custom dropdown UI to offer "Replace" or "Remove" options
+    console.log('Open image options for:', product.id);
+}
+
+
 function setupGlobalClickListeners() {
-    
+
     // Use 'true' for the capture phase. This lets our listener inspect the click
     // before it reaches the target element, which is ideal for "click outside" logic.
     document.addEventListener('click', (e) => {
-        
+
         // --- 1. Handle Closing the Main Task Sidebar ---
         // Find the sidebar element. This assumes TaskSidebar is a separate module.
         const taskSidebar = document.getElementById('task-sidebar');
-        
+
         // Only run this check if the sidebar is actually visible.
         if (taskSidebar && taskSidebar.classList.contains('is-visible')) {
             // Define all the areas that are "safe" to click without closing the sidebar.
             // This includes the sidebar itself AND any floating panels it may have opened.
             const safeAreas = '#task-sidebar, .advanced-dropdown, .floating-panel, .flatpickr-calendar';
-            
+
             // If the click was NOT inside any of the safe areas...
             if (!e.target.closest(safeAreas)) {
                 // ...then call the public 'close' method for the sidebar.
@@ -925,11 +1176,11 @@ function setupGlobalClickListeners() {
                 }
             }
         }
-        
+
         // --- 2. Handle Closing Modals/Dialogs ---
         // Find the top-most dialog overlay.
         const dialogOverlay = e.target.closest('.dialog-overlay, .filterlistview-dialog-overlay');
-        
+
         // If a dialog was clicked...
         if (dialogOverlay) {
             // ...and the click was on the overlay background itself (not its children)...
@@ -938,18 +1189,18 @@ function setupGlobalClickListeners() {
                 dialogOverlay.remove();
             }
         }
-        
+
         // --- 3. Handle Your Other UI Logic (e.g., headerRight) ---
         // This logic can remain if it's still needed. It checks if the left drawer is closed.
         const drawer = document.getElementById('drawer'); // Assuming 'drawer' is the ID of the left sidebar
         const headerRight = document.getElementById('listview-header-right'); // Make sure this has a specific ID
-        
+
         // This condition is a bit confusing. A clearer way to write this might be:
         // if the left sidebar is closed or doesn't exist, show the header right controls.
         if (headerRight && (!drawer || !drawer.classList.contains('is-open'))) {
             headerRight.classList.remove('hide');
         }
-        
+
     }, true);
 }
 
@@ -969,15 +1220,15 @@ function openSectionFilterPanel() {
     const dialogOverlay = document.createElement('div');
     // MODIFIED: Changed class name
     dialogOverlay.className = 'filterlistview-dialog-overlay';
-    
+
     const sectionOptionsHTML = project.sections.map(s => {
         const isChecked = !activeFilters.visibleSections || activeFilters.visibleSections.includes(s.id);
         // MODIFIED: Changed class name for checkboxes
         return `<div><label><input type="checkbox" class="filterlistview-section-checkbox" name="section" value="${s.id}" ${isChecked ? 'checked' : ''}> ${s.title}</label></div>`;
     }).join('');
-    
+
     const allChecked = !activeFilters.visibleSections;
-    
+
     // MODIFIED: Changed all class names within the HTML string
     dialogOverlay.innerHTML = `
     <div class="filterlistview-dialog-box filterlistview-filter-dialog">
@@ -994,51 +1245,51 @@ function openSectionFilterPanel() {
                 <button class="filterlistview-dialog-button filterlistview-primary" id="apply-filters-btn">Apply</button>
             </div>
         </div>`;
-    
+
     document.body.appendChild(dialogOverlay);
-    
+
     const applyBtn = dialogOverlay.querySelector('#apply-filters-btn');
     const selectAllBox = dialogOverlay.querySelector('#select-all-sections');
     // MODIFIED: Changed selector to match new class name
     const allSectionBoxes = dialogOverlay.querySelectorAll('.filterlistview-section-checkbox');
-    
+
     selectAllBox.addEventListener('change', (e) => {
         allSectionBoxes.forEach(box => box.checked = e.target.checked);
     });
-    
+
     applyBtn.addEventListener('click', () => {
         const checkedBoxes = Array.from(allSectionBoxes).filter(box => box.checked);
-        
+
         if (checkedBoxes.length === allSectionBoxes.length) {
             delete activeFilters.visibleSections;
         } else {
             activeFilters.visibleSections = checkedBoxes.map(box => Number(box.value));
         }
-        
+
         closeFloatingPanels();
-        render();
+        render('us');
     });
-    
+
     // MODIFIED: Changed selector to match new class name
     dialogOverlay.addEventListener('click', e => {
         if (e.target.classList.contains('filterlistview-dialog-overlay')) {
             closeFloatingPanels();
         }
     });
-    
+
 }
 
 function getFilteredProject() {
     // DEBUG: See what filters are being applied at the start of the render cycle
     // console.log("getFilteredProject called with state:", JSON.stringify(activeFilters));
     const projectCopy = JSON.parse(JSON.stringify(project));
-    
+
     if (activeFilters.visibleSections && activeFilters.visibleSections.length < project.sections.length) {
         projectCopy.sections = projectCopy.sections.filter(section =>
             activeFilters.visibleSections.includes(section.id)
         );
     }
-    
+
     return projectCopy;
 }
 
@@ -1057,7 +1308,7 @@ function getSortedProject(project) {
  * @returns {Promise<string>} A promise that resolves to the full path of the project document.
  */
 async function _getSelectedProjectPath(db, userId) {
-    
+
     // Step 1: Find the user's active workspace.
     const workspaceQuery = query(
         collection(db, `users/${userId}/myworkspace`),
@@ -1065,19 +1316,19 @@ async function _getSelectedProjectPath(db, userId) {
         limit(1) // Optimization as we only need one
     );
     const workspaceSnap = await getDocs(workspaceQuery);
-    
+
     if (workspaceSnap.empty) {
         throw new Error("No selected workspace found for the user.");
     }
-    
+
     // Step 2: Read the 'selectedProjectId' from the workspace document's data.
     const workspaceData = workspaceSnap.docs[0].data();
     const selectedProjectId = workspaceData.selectedProjectId;
-    
+
     if (!selectedProjectId) {
         throw new Error("The active workspace does not have a selected project.");
     }
-    
+
     // Step 3: Use a collectionGroup query to find the project by its ID, no matter where it's nested.
     // This is the key change that supports shared projects.
     const projectQuery = query(
@@ -1086,11 +1337,11 @@ async function _getSelectedProjectPath(db, userId) {
         where('memberUIDs', 'array-contains', userId) // Ensures security rules are met
     );
     const projectSnap = await getDocs(projectQuery);
-    
+
     if (projectSnap.empty) {
         throw new Error(`Project with ID '${selectedProjectId}' not found, or user does not have permission.`);
     }
-    
+
     // Step 4: Return the full path from the found document's reference.
     const projectPath = projectSnap.docs[0].ref.path;
     console.log(`[DEBUG] _getSelectedProjectPath resolved to: ${projectPath}`);
@@ -1110,10 +1361,10 @@ function findTaskAndSection(taskId) {
 function _getTasksForSectionFromDOM(sectionHeaderEl) {
     const tasks = [];
     if (!sectionHeaderEl) return tasks;
-    
+
     // Start with the element right after the header
     let nextElement = sectionHeaderEl.nextElementSibling;
-    
+
     // Loop as long as we have a sibling AND it's not another section header
     while (nextElement && !nextElement.classList.contains('section-row-wrapper')) {
         // If it's a valid task, add it
@@ -1128,13 +1379,13 @@ function _getTasksForSectionFromDOM(sectionHeaderEl) {
 
 async function handleSectionReorder(evt) {
     console.log("🔄 Section reorder triggered.");
-    
+
     const user = auth.currentUser;
     if (!user) throw new Error("User not authenticated.");
-    
+
     try {
         const sectionRef = doc(collection(currentProjectRef, 'sections'), sectionId);
-        
+
         const batch = writeBatch(db);
         sectionEls.forEach((el, index) => {
             const sectionId = el.dataset.sectionId;
@@ -1144,10 +1395,10 @@ async function handleSectionReorder(evt) {
                 console.log(`🔢 Set order ${index} for section ${sectionId}`);
             }
         });
-        
+
         await batch.commit();
         console.log("✅ Sections reordered and saved to Firestore.");
-        
+
     } catch (err) {
         console.error("❌ Error committing section reordering batch:", err);
         // Re-throw to allow the calling function to revert the UI.
@@ -1157,91 +1408,91 @@ async function handleSectionReorder(evt) {
 
 async function handleTaskMoved(evt) {
     console.log("🧪 Drag Event Details:", evt);
-    
+
     const user = auth.currentUser;
     if (!user) {
         console.error("❌ User not authenticated.");
         return;
     }
-    
+
     const taskEl = evt.item;
     const taskId = taskEl.dataset.taskId;
-    
+
     const newSectionEl = evt.to.closest(".section-wrapper");
     const oldSectionEl = evt.from.closest(".section-wrapper");
     const newSectionId = newSectionEl?.dataset.sectionId;
     const oldSectionId = oldSectionEl?.dataset.sectionId;
-    
+
     if (!taskId || !newSectionId || !oldSectionId) {
         console.error("❌ Critical ID missing.", { taskId, newSectionId, oldSectionId });
         return;
     }
-    
+
     try {
         const batch = writeBatch(db);
-        
+
         if (newSectionId === oldSectionId) {
             console.log(`Reordering task "${taskId}" in section "${newSectionId}"`);
             const tasksToUpdate = Array.from(newSectionEl.querySelectorAll(".task-row-wrapper"));
-            
+
             tasksToUpdate.forEach((el, index) => {
                 const currentTaskId = el.dataset.taskId;
                 if (!currentTaskId) return;
-                
+
                 const taskRef = doc(db, `${currentProjectRef.path}/sections/${newSectionId}/tasks/${currentTaskId}`);
                 batch.update(taskRef, { order: index });
             });
-            
+
         } else {
             console.log(`Moving task "${taskId}" from section "${oldSectionId}" to "${newSectionId}"`);
-            
+
             const sourceRef = doc(db, `${currentProjectRef.path}/sections/${oldSectionId}/tasks/${taskId}`);
             const sourceSnap = await getDoc(sourceRef);
             if (!sourceSnap.exists()) {
                 console.error("❌ Task not found in the source section. Cannot move.");
                 return;
             }
-            
+
             const newDocRef = doc(collection(db, `${currentProjectRef.path}/sections/${newSectionId}/tasks`));
             const taskData = {
                 ...sourceSnap.data(),
                 sectionId: newSectionId,
                 id: newDocRef.id
             };
-            
+
             const targetSection = project.sections.find(s => s.id === newSectionId);
             if (targetSection?.sectionType === 'completed') {
                 console.log(`Destination is a 'completed' section. Updating task status.`);
                 taskData.status = 'Completed';
             }
-            
+
             batch.delete(sourceRef);
             batch.set(newDocRef, taskData);
-            
+
             taskEl.dataset.taskId = newDocRef.id;
-            
+
             const newSectionTasks = Array.from(newSectionEl.querySelectorAll(".task-row-wrapper"));
             newSectionTasks.forEach((el, index) => {
                 const currentTaskId = el.dataset.taskId;
                 if (!currentTaskId) return;
-                
+
                 const taskRef = doc(db, `${currentProjectRef.path}/sections/${newSectionId}/tasks/${currentTaskId}`);
                 batch.update(taskRef, { order: index, sectionId: newSectionId });
             });
-            
+
             const oldSectionTasks = Array.from(oldSectionEl.querySelectorAll(".task-row-wrapper"));
             oldSectionTasks.forEach((el, index) => {
                 const currentTaskId = el.dataset.taskId;
                 if (!currentTaskId) return;
-                
+
                 const taskRef = doc(db, `${currentProjectRef.path}/sections/${oldSectionId}/tasks/${currentTaskId}`);
                 batch.update(taskRef, { order: index });
             });
         }
-        
+
         await batch.commit();
         console.log("✅ Batch commit successful. Task positions updated.");
-        
+
     } catch (err) {
         console.error("❌ Error handling task move:", err);
     }
@@ -1253,64 +1504,53 @@ async function handleTaskMoved(evt) {
  * array in Firestore (either defaultColumns or customColumns).
  * This version is improved to prevent deleting the menu icon.
  */
-function enableColumnRename(columnEl) {
+function enableColumnRename(columnEl, stockType) {
     closeFloatingPanels();
-    
-    // FIX 1: Target the inner <span> for editing to protect the menu icon.
+
     const cellText = columnEl.querySelector('span');
     const originalName = cellText.textContent.trim();
-    
-    // Make only the text span editable, not the whole div.
     cellText.contentEditable = 'true';
     cellText.focus();
     document.execCommand('selectAll', false, null);
-    
-    // Get the ID. It can be a string ('status') or a number (for custom columns).
+
     const columnId = columnEl.dataset.columnId;
-    
+
     const finishEditing = async (saveChanges) => {
-        // Remove listeners from the text span.
         cellText.removeEventListener('blur', onBlur);
         cellText.removeEventListener('keydown', onKeyDown);
         cellText.contentEditable = 'false';
-        
+
         const newName = cellText.textContent.trim();
-        
-        if (saveChanges && newName && newName !== originalName) {
-            // --- THIS IS THE NEW UNIFIED SAVE LOGIC ---
-            
-            // Create mutable copies of the arrays from our project data.
-            let defaultCols = [...(project.defaultColumns || [])];
-            let customCols = [...(project.customColumns || [])];
-            
-            // Try to find and update the column in the default list first.
-            const defaultIndex = defaultCols.findIndex(c => String(c.id) === String(columnId));
-            
-            if (defaultIndex > -1) {
-                // It's a default column. Update its name.
-                console.log(`Renaming default column: ${columnId}`);
-                defaultCols[defaultIndex] = { ...defaultCols[defaultIndex], name: newName };
-            } else {
-                // If not found, it must be a custom column.
-                const customIndex = customCols.findIndex(c => String(c.id) === String(columnId));
-                if (customIndex > -1) {
-                    console.log(`Renaming custom column: ${columnId}`);
-                    customCols[customIndex] = { ...customCols[customIndex], name: newName };
-                }
-            }
-            
-            // Save both arrays back to Firestore in a single, safe operation.
-            await updateProjectInFirebase({
-                defaultColumns: defaultCols,
-                customColumns: customCols
+        if (!saveChanges || !newName || newName === originalName) {
+            cellText.textContent = originalName;
+            return;
+        }
+
+        try {
+            const invRef = doc(db, 'InventoryWorkspace', currentInventoryId);
+            const invSnap = await getDoc(invRef);
+            if (!invSnap.exists()) return;
+
+            const data = invSnap.data();
+            const columnKey = stockType === 'us' ? 'columns_us' : 'columns_ph';
+            const columns = Array.isArray(data[columnKey]) ? [...data[columnKey]] : [];
+
+            const colIndex = columns.findIndex(c => c.id === columnId);
+            if (colIndex === -1) return;
+
+            columns[colIndex] = { ...columns[colIndex], name: newName };
+
+            await updateDoc(invRef, {
+                [columnKey]: columns
             });
-            
-        } else {
-            // If editing was cancelled or the name is empty, revert to the original text.
+
+            console.log(`✅ Column '${columnId}' renamed to '${newName}' and saved to ${columnKey}`);
+        } catch (err) {
+            console.error('❌ Failed to rename column:', err);
             cellText.textContent = originalName;
         }
     };
-    
+
     const onBlur = () => finishEditing(true);
     const onKeyDown = (e) => {
         if (e.key === 'Enter' || e.key === 'Escape') {
@@ -1318,27 +1558,28 @@ function enableColumnRename(columnEl) {
             finishEditing(e.key === 'Enter');
         }
     };
-    
+
     cellText.addEventListener('blur', onBlur);
     cellText.addEventListener('keydown', onKeyDown);
 }
 
+
 /**
  * Flattens the project's sections and tasks into a single array for virtual scrolling.
  */
-function flattenProjectData() {
+async function flattenProjectData() {
     flatListOfItems = [];
     project.sections.forEach(section => {
         // Add the section itself as an item
         flatListOfItems.push({ type: 'section', data: section });
-        
+
         // Add its tasks if not collapsed
         if (!section.isCollapsed && section.tasks) {
             section.tasks.forEach(task => {
                 flatListOfItems.push({ type: 'task', data: task });
             });
         }
-        
+
         // Add the "Add Task" row for the section
         flatListOfItems.push({ type: 'add_task', sectionId: section.id });
     });
@@ -1352,18 +1593,18 @@ function flattenProjectData() {
 function renderVisibleRows(bodyContainer, bodyGrid) {
     const scrollTop = bodyContainer.scrollTop;
     const viewportHeight = bodyContainer.clientHeight;
-    
+
     // 1. Calculate the start and end index of visible items
     let startIndex = Math.floor(scrollTop / ROW_HEIGHT);
     let endIndex = Math.ceil((scrollTop + viewportHeight) / ROW_HEIGHT);
-    
+
     // 2. Apply the buffer
     startIndex = Math.max(0, startIndex - VISIBLE_ROW_BUFFER);
     endIndex = Math.min(flatListOfItems.length, endIndex + VISIBLE_ROW_BUFFER);
-    
+
     // 3. Slice the visible items from our flat list
     const visibleItems = flatListOfItems.slice(startIndex, endIndex);
-    
+
     // 4. Clear the existing rows and render the new visible ones
     bodyGrid.innerHTML = '';
     visibleItems.forEach(item => {
@@ -1375,12 +1616,12 @@ function renderVisibleRows(bodyContainer, bodyGrid) {
         } else if (item.type === 'add_task') {
             rowElement = createAddTaskRow(project.customColumns, item.sectionId);
         }
-        
+
         if (rowElement) {
             bodyGrid.appendChild(rowElement);
         }
     });
-    
+
     // 5. Position the "window" of rows correctly inside the giant spacer
     // This is the most important step for virtual scrolling.
     const offsetY = startIndex * ROW_HEIGHT;
@@ -1396,22 +1637,22 @@ function allowNumericChars(cell) {
     cell.addEventListener('input', (e) => {
         const target = e.target;
         const originalText = target.textContent;
-        
+
         // Allow digits, one leading hyphen, one decimal, and commas
         let sanitizedText = originalText
             .replace(/[^-\d.,]/g, '') // 1. Remove all invalid characters
             .replace(/(?!^)-/g, '') // 2. Remove hyphens unless they are the first character
             .replace(/(\..*)\./g, '$1'); // 3. Remove any subsequent decimal points
-        
+
         if (originalText !== sanitizedText) {
             // Restore cursor position if text was changed
             const selection = window.getSelection();
             const originalOffset = selection.focusOffset;
             const lengthDifference = originalText.length - sanitizedText.length;
             const newOffset = Math.max(0, originalOffset - lengthDifference);
-            
+
             target.textContent = sanitizedText;
-            
+
             try {
                 const range = document.createRange();
                 const textNode = target.firstChild || target;
@@ -1430,31 +1671,32 @@ function allowNumericChars(cell) {
  * Toggles the 'isRestricted' property for a specific column rule in Firestore.
  * @param {object} column - The column object to toggle the rule for.
  */
-async function toggleColumnRestriction(column) {
-    if (!userCanEditProject) {
-        return console.error("PERMISSION DENIED: Only project admins can change column rules.");
+async function toggleColumnRestriction(column, stockType) {
+    try {
+        const invRef = doc(db, 'InventoryWorkspace', currentInventoryId);
+        const invSnap = await getDoc(invRef);
+        if (!invSnap.exists()) return console.error('InventoryWorkspace document not found');
+
+        const data = invSnap.data();
+        const columnKey = stockType === 'us' ? 'columns_us' : 'columns_ph';
+        const columns = Array.isArray(data[columnKey]) ? [...data[columnKey]] : [];
+
+        const index = columns.findIndex(c => c.id === column.id);
+        if (index === -1) return console.warn(`Column ${column.id} not found in ${columnKey}`);
+
+        // Toggle the `isRestricted` flag
+        columns[index].isRestricted = !columns[index].isRestricted;
+
+        await updateDoc(invRef, {
+            [columnKey]: columns
+        });
+
+        console.log(`✅ ${column.id} restriction toggled to: ${columns[index].isRestricted}`);
+    } catch (err) {
+        console.error('❌ Failed to toggle column restriction:', err);
     }
-    
-    // Get a mutable copy of the rules, or an empty array if none exist.
-    const currentRules = project.columnRules ? JSON.parse(JSON.stringify(project.columnRules)) : [];
-    
-    const ruleIndex = currentRules.findIndex(rule => rule.name === column.name);
-    
-    if (ruleIndex > -1) {
-        // If a rule exists, flip its 'isRestricted' property.
-        currentRules[ruleIndex].isRestricted = !currentRules[ruleIndex].isRestricted;
-        console.log(`Rule for "${column.name}" updated to isRestricted: ${currentRules[ruleIndex].isRestricted}`);
-    } else {
-        // If no rule exists, create a new one, defaulting to restricted.
-        currentRules.push({ name: column.name, isRestricted: true });
-        console.log(`Rule for "${column.name}" created with isRestricted: true`);
-    }
-    
-    // Save the entire updated array back to Firestore.
-    await updateProjectInFirebase({
-        columnRules: currentRules
-    });
 }
+
 
 /**
  * PART 2: A smart formatter on 'blur' (when the user clicks away).
@@ -1466,15 +1708,15 @@ function formatNumberOnBlur(cell) {
         const target = e.target;
         // Get the raw text and remove commas to prepare for parsing
         const rawText = target.textContent.replace(/,/g, '');
-        
+
         // If empty or not a valid number, clear the cell and stop
         if (rawText.trim() === '' || isNaN(parseFloat(rawText))) {
             target.textContent = '';
             return;
         }
-        
+
         const numberValue = parseFloat(rawText);
-        
+
         // Check if the number has decimals
         if (numberValue % 1 !== 0) {
             // If it has decimals, format with 2 decimal places
@@ -1495,27 +1737,27 @@ function formatDueDate(dueDateString) {
     // --- Setup ---
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Normalize today to the start of the day for accurate comparisons.
-    
+
     // Handle empty or invalid dates
     if (!dueDateString) {
         return { text: '', color: 'default' }; // Return empty text as requested
     }
-    
+
     const dueDate = new Date(dueDateString); // Directly parse the string
     if (isNaN(dueDate.getTime())) {
         return { text: 'Invalid date', color: 'red' };
     }
     dueDate.setHours(0, 0, 0, 0); // Also normalize the due date
-    
+
     // --- Calculations ---
     const todayYear = today.getFullYear();
     const todayMonth = today.getMonth();
     const dueYear = dueDate.getFullYear();
     const dueMonth = dueDate.getMonth();
-    
+
     // Calculate the difference in milliseconds and convert to days
     const dayDifference = (dueDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
-    
+
     // --- 1. Handle Past Dates ---
     if (dayDifference < 0) {
         if (dayDifference === -1) {
@@ -1541,7 +1783,7 @@ function formatDueDate(dueDateString) {
         const MmmDddYyyyFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         return { text: MmmDddYyyyFormat.format(dueDate), color: 'red' };
     }
-    
+
     // --- 2. Handle Present and Immediate Future ---
     if (dayDifference === 0) {
         return { text: 'Today', color: 'green' };
@@ -1549,15 +1791,15 @@ function formatDueDate(dueDateString) {
     if (dayDifference === 1) {
         return { text: 'Tomorrow', color: 'yellow' }; // Changed to yellow for "approaching"
     }
-    
+
     // --- 3. Handle Future Dates ---
-    
+
     // If the due date is in the current year
     if (dueYear === todayYear) {
         const MmmDddFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
         return { text: MmmDddFormat.format(dueDate), color: 'default' }; // e.g., "30 Jun"
     }
-    
+
     // If the due date is in a future year
     else {
         const MmmDddYyyyFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -1565,514 +1807,806 @@ function formatDueDate(dueDateString) {
     }
 }
 
-function render() {
-let project = {
-    id: 'project_xyz789',
-    name: 'Q3 Product Catalog',
+async function updateProduct(productId, stockType, data) {
+    if (!currentInventoryId || !productId) return;
 
-    // A single, flat array of all products for the project.
-    products: [
-        {
-            id: 'prod_1A',
-            // Each product still needs to know its category for database operations.
-            categoryId: 'cat_001', 
-            name: 'Wireless Mechanical Keyboard',
-            imageUrl: 'https://via.placeholder.com/150/8f8f8e/ffffff?text=Keyboard',
-            productSku: 'WMK-K87-RGB',
-            supplierCost: 85.50,
-            supplierName: 'Global Tech Imports',
-            supplierProject: 'Project Alpha',
-            order: 0 // Order within its logical category
-        },
-        {
-            id: 'prod_2A',
-            categoryId: 'cat_002', // This product is in a different category
-            name: 'Ergonomic Office Chair',
-            imageUrl: 'https://via.placeholder.com/150/5c5c5c/ffffff?text=Chair',
-            productSku: 'EOC-BLK-MESH',
-            supplierCost: 195.75,
-            supplierName: 'Comfort Seating Co.',
-            supplierProject: 'Project Alpha',
-            order: 0
-        },
-        {
-            id: 'prod_1B',
-            categoryId: 'cat_001',
-            name: '4K IPS Monitor 27-inch',
-            imageUrl: null,
-            productSku: 'MON-4K-27-IPS',
-            supplierCost: 320.00,
-            supplierName: 'Display Solutions Inc.',
-            supplierProject: 'Project Gamma',
-            order: 1 // This product comes after the keyboard in the same category
-        },
-    ],
+    const stockCollection = stockType === 'us' ? 'US-Stocks-meta' : 'PH-Stocks-meta';
+    const productRef = doc(db, 'InventoryWorkspace', currentInventoryId, stockCollection, productId);
 
-    // Column definitions and rules remain the same.
-    customColumns: [
-        { id: 'cc_01', name: 'Warehouse Location', type: 'Text' }
-    ],
-    columnRules: [
-        { name: 'Supplier Cost', isRestricted: true }
-    ],
-    
-    // Project metadata remains the same.
-    project_super_admin_uid: 'user_super_admin_id',
-    project_admin_user: 'user_admin_id'
-};
+    try {
+        await updateDoc(productRef, data);
+        console.log(`✅ Product ${productId} updated in ${stockCollection}:`, data);
+    } catch (err) {
+        console.error(`❌ Failed to update ${stockCollection}/${productId}`, err);
+    }
+}
 
-    // 1. --- INITIAL CHECKS & SETUP ---
-    if (!productListBody) {
-        console.error("Render function aborted: productListBody element not found.");
+
+
+async function addNewSizeColumnsToInventory(inventoryId) {
+    const ref = doc(db, 'InventoryWorkspace', inventoryId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) {
+        console.error('Inventory not found');
         return;
     }
 
-    if (!userCanEditProject) {
-        addProductHeaderBtn.classList.add('hide');
-    } else {
-        addProductHeaderBtn.classList.remove('hide');
-    }
-
-    let scrollState = { top: 0, left: 0 };
-    const oldContainer = productListBody.querySelector('.juanlunacms-spreadsheetlist-custom-scrollbar');
-    if (oldContainer) {
-        scrollState.top = oldContainer.scrollTop;
-        scrollState.left = oldContainer.scrollLeft;
-    }
-    
-    const baseColumns = [
-        { id: 'productImage', name: 'Product Image', type: 'Image' },
-        { id: 'productSku', name: 'Product SKU', type: 'Text' },
-        { id: 'supplierCost', name: 'Supplier Cost', type: 'Costing' },
-        { id: 'supplierName', name: 'Supplier Name', type: 'Text' },
-        { id: 'supplierProject', name: 'Supplier Project', type: 'Dropdown' },
+    const newColumnsToAdd = [
+        { id: "s", name: "S", type: "SizeNumber", isRestricted: false },
+        { id: "m", name: "M", type: "SizeNumber", isRestricted: false },
+        { id: "l", name: "L", type: "SizeNumber", isRestricted: false },
+        { id: "xl", name: "XL", type: "SizeNumber", isRestricted: false },
+        { id: "xxl", name: "XXL", type: "SizeNumber", isRestricted: false },
+        { id: "c", name: "C", type: "SizeNumber", isRestricted: false },
+        { id: "others", name: "Others", type: "Text", isRestricted: false },
+        { id: "total", name: "Total", type: "Text", isRestricted: false },
     ];
-    const customColumns = project.customColumns || [];
-    const allColumns = [...baseColumns, ...customColumns];
 
+    const data = snap.data();
 
-    productListBody.innerHTML = '';
-    const container = document.createElement('div');
-    container.className = 'w-full h-full bg-white overflow-auto juanlunacms-spreadsheetlist-custom-scrollbar border border-slate-200 rounded-none shadow-sm';
-    
-    const table = document.createElement('div');
-    table.className = 'min-w-max relative';
+    const updatedColumnsPH = (data.columns_ph || []).concat(newColumnsToAdd);
+    const updatedColumnsUS = (data.columns_us || []).concat(newColumnsToAdd);
 
-    // 2. --- HEADER CREATION ---
-    const header = document.createElement('div');
-    header.className = 'flex sticky top-0 z-20 bg-white juanlunacms-spreadsheetlist-sticky-header h-8';
-    
-    const leftHeader = document.createElement('div');
-    leftHeader.className = 'sticky left-0 z-10 w-80 md:w-96 lg:w-[400px] flex-shrink-0 px-4 font-semibold text-slate-600 border-b border-r border-slate-200 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg text-xs rounded-none flex items-center';
-    leftHeader.textContent = 'Product Name';
-    
-    const rightHeaderContent = document.createElement('div');
-    rightHeaderContent.className = 'flex flex-grow border-b border-slate-200';
-
-    allColumns.forEach(col => {
-        const cell = document.createElement('div');
-        cell.className = 'group relative px-2 py-1 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center text-xs rounded-none';
-        cell.dataset.columnId = col.id;
-        
-        const innerWrapper = document.createElement('div');
-        innerWrapper.className = 'flex flex-grow items-center min-w-0';
-        innerWrapper.style.userSelect = 'none';
-
-        const cellText = document.createElement('span');
-        cellText.className = 'header-cell-content flex-grow';
-        cellText.textContent = col.name;
-        innerWrapper.appendChild(cellText);
-        
-        if (userCanEditProject) {
-            const cellMenu = document.createElement('div');
-            cellMenu.className = 'options-icon flex-shrink-0 opacity-1 group-hover:opacity-100 transition-opacity cursor-pointer p-1 ml-2 rounded-full hover:bg-slate-200';
-            cellMenu.innerHTML = `<i class="fa-solid fa-ellipsis-vertical text-slate-500 pointer-events-none"></i>`;
-            
-            innerWrapper.appendChild(cellMenu);
-        }
-        
-        cell.appendChild(innerWrapper);
-        const resizeHandle = document.createElement('div');
-        resizeHandle.className = 'resize-handle';
-        cell.appendChild(resizeHandle);
-        
-        rightHeaderContent.appendChild(cell);
+    await updateDoc(ref, {
+        columns_ph: updatedColumnsPH,
+        columns_us: updatedColumnsUS
     });
 
-    const addColumnBtn = document.createElement('div');
-    addColumnBtn.className = 'add-column-cell w-8 opacity-100 flex-shrink-0 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 cursor-pointer border-l border-slate-200 bg-white';
-    if (userCanEditProject) {
-        addColumnBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
+    console.log('Columns added successfully.');
+}
+
+function createFloatingInput(targetCell, task, column) {
+    if (document.querySelector('.floating-input-wrapper')) return;
+
+    const scrollContainer = targetCell.closest('.juanlunacms-spreadsheetlist-custom-scrollbar');
+    if (!scrollContainer) return;
+
+    const cellRect = targetCell.getBoundingClientRect();
+    const currentValue = task[column.id] || '';
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'floating-input-wrapper';
+    wrapper.style.position = 'fixed';
+    wrapper.style.top = `${cellRect.top}px`;
+    wrapper.style.left = `${cellRect.left}px`;
+    wrapper.style.width = `${cellRect.width}px`;
+    wrapper.style.minHeight = `${cellRect.height}px`;
+
+    let editor;
+    let saveButton;
+    let outsideClickListener;
+
+    if (column.type === 'Tracking') {
+        wrapper.classList.add('tracking-input-mode');
+        editor = document.createElement('input');
+        editor.type = 'text';
+        editor.className = 'floating-input';
+        editor.value = currentValue;
+        editor.placeholder = 'Enter USPS Tracking No...';
+
+        saveButton = document.createElement('button');
+        saveButton.className = 'floating-save-btn';
+        saveButton.textContent = 'Save';
+
+        const validate = () => {
+            const isValid = isValidUPSTrackingNumber(editor.value);
+            saveButton.disabled = !isValid;
+            editor.classList.toggle('is-invalid', editor.value.length > 0 && !isValid);
+        };
+        editor.addEventListener('input', validate);
+        setTimeout(validate, 0);
+
+    } else if (column.type === 'Text') {
+        editor = document.createElement('textarea');
+        editor.className = 'floating-input';
+        editor.value = currentValue;
+        const autoGrow = () => {
+            editor.style.height = 'auto';
+            editor.style.height = (editor.scrollHeight) + 'px';
+            wrapper.style.height = editor.style.height;
+        };
+        editor.addEventListener('input', autoGrow);
+        setTimeout(autoGrow, 0);
+
     } else {
-        addColumnBtn.style.pointerEvents = 'none';
+        editor = document.createElement('input');
+        editor.type = 'number';
+        editor.className = 'floating-input';
+        editor.value = currentValue;
+        wrapper.style.height = `${cellRect.height}px`;
     }
-    rightHeaderContent.appendChild(addColumnBtn);
 
-    header.appendChild(leftHeader);
-    header.appendChild(rightHeaderContent);
+    const repositionOnScroll = () => {
+        const newRect = targetCell.getBoundingClientRect();
+        wrapper.style.top = `${newRect.top}px`;
+        wrapper.style.left = `${newRect.left}px`;
+    };
 
-    // 3. --- HEADER CLICK LISTENER ---
+    const cleanup = () => {
+        scrollContainer.removeEventListener('scroll', repositionOnScroll);
+        document.removeEventListener('click', outsideClickListener, true);
+        wrapper.remove();
+    };
+
+    const saveAndClose = () => {
+
+        const newValue = editor.value.trim();
+        const oldValue = String(currentValue).trim();
+
+        if (newValue !== oldValue) {
+            const parsedValue = (column.type === 'Costing' || column.type === 'Numbers')
+                ? parseFloat(newValue) || 0
+                : newValue;
+
+            updateProduct(task.id, currentStockType, {
+                [column.id]: parsedValue
+            });
+
+
+            if (column.type === 'Tracking' && parsedValue) {
+                const cellContent = targetCell.querySelector('.cell-content');
+                if (cellContent) {
+                    cellContent.innerHTML = `
+                        <div id="tracking-status-${parsedValue}" class="flex items-center gap-2">
+                            <div class="loading-spinner"></div>
+                            <span>${parsedValue}</span>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        cleanup();
+    };
+
+    editor.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && editor.tagName !== 'TEXTAREA') {
+            e.preventDefault();
+            saveAndClose();
+        } else if (e.key === 'Escape') {
+            cleanup();
+        }
+    });
+
+    // ✅ Save when user clicks anywhere outside
+    outsideClickListener = (e) => {
+        if (!wrapper.contains(e.target)) {
+            saveAndClose();
+        }
+    };
+    document.addEventListener('click', outsideClickListener, true);
+
+    scrollContainer.addEventListener('scroll', repositionOnScroll);
+
+    wrapper.appendChild(editor);
+    if (saveButton) {
+        wrapper.appendChild(saveButton);
+        saveButton.addEventListener('click', saveAndClose);
+    }
+
+    document.body.appendChild(wrapper);
+    editor.focus();
+    editor.select();
+}
+
+async function render(stockType) {
+    let productList = stockType === 'ph' ? dataPhStocks : dataUsStocks;
+    let savedColumnWidths = {};
+    if (!productListBody || !currentInventoryId) return;
+
+
+
+    const docSnap = await getDoc(doc(db, 'InventoryWorkspace', currentInventoryId));
+    if (!docSnap.exists()) return;
+    console.log('✅ Rendering PH with:', dataPhStocks.length, 'items');
+
+    if (!Array.isArray(productList) || productList.length === 0) {
+        console.warn('⚠️ productList is empty or invalid!', productList);
+    }
+
+    const data = docSnap.data();
+    savedColumnWidths = stockType === 'us'
+        ? data.customResizeWidthUSStock || {}
+        : data.customResizeWidthPHStock || {};
+    const columnRules = Array.isArray(data[`columnRules_${stockType}`]) ? data[`columnRules_${stockType}`] : [];
+
+    // Permission check
+    // Get the user's workspace document
+    // --- Get Workspace and check for Ownership ---
+    const myWorkspaceRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}`);
+    const myWorkspaceSnap = await getDoc(myWorkspaceRef);
+    const workspaceData = myWorkspaceSnap.exists() ? myWorkspaceSnap.data() : null;
+
+    // Condition 1: Check if the user is the owner (from workspace data)
+    const ownerRef = workspaceData?.ownerWorkspaceRef;
+    const ownerPath = typeof ownerRef === 'string' ? ownerRef : ownerRef?.path;
+    const isOwner = ownerPath?.includes(currentUserId);
+
+
+    // --- Get main User Document to check for Role ---
+    const userDocRef = doc(db, 'users', currentUserId);
+    const userDocSnap = await getDoc(userDocRef);
+
+    // Condition 2: Check if the user's role is Admin or Developer (from user data)
+    const userRole = userDocSnap.exists() ? userDocSnap.data()?.role : null;
+    const isAdminOrDev = userRole === 3 || userRole === 0; // 3 = Admin, 0 = Developer
+
+
+    // --- Final Permission: True if EITHER condition is met ---
+    canUserEditProduct = !!(isOwner || isAdminOrDev);
+    canUserEditProduct = !!(isOwner && isAdminOrDev);
+
+    if (!canUserEditProduct) {
+        console.warn('⚠️ User does not have permission to add products.');
+        addProductHeaderBtn.classList.add('hidden');
+    }
+    // Column setup from Firestore
+    const firestoreColumns = stockType === 'us'
+        ? data.columns_us || []
+        : data.columns_ph || [];
+
+    // 🟢 Apply saved column order
+    const columnOrder = data[`columnOrder_${stockType}`] || [];
+    if (Array.isArray(columnOrder) && columnOrder.length > 0) {
+        firestoreColumns.sort((a, b) => {
+            return columnOrder.indexOf(a.id) - columnOrder.indexOf(b.id);
+        });
+    }
+    const baseColumnIds = ['productImage', 'productSku', 'supplierCost', 'supplierName', 'supplierProject', 'warehouseLocation'];
+    const baseColumns = firestoreColumns.filter(col => baseColumnIds.includes(col.id));
+    const allColumns = firestoreColumns.map(col => ({ ...col }));
+
+    // Structure data
+    const project = {
+        id: `project_${stockType}`,
+        name: `${stockType.toUpperCase()} Stock Inventory`,
+        products: Array.isArray(productList)
+            ? productList
+                .filter(item => {
+                    if (!item || typeof item !== 'object' || !item.id) return false;
+
+                    const meaningfulKeys = Object.entries(item).filter(([key, value]) => {
+                        if (['id', 'productId', 'createdAt'].includes(key)) return false;
+
+                        if (typeof value === 'string') return value.trim() !== '';
+                        if (typeof value === 'number') return value !== 0; // ✅ This will allow non-zero sizes
+                        if (typeof value === 'object') return value !== null;
+                        return value !== undefined;
+                    });
+
+                    return meaningfulKeys.length > 0;
+
+                })
+                .map(item => ({
+                    ...item,
+                    productId: item.id,
+                    name: item.name || 'Unnamed Product'
+                }))
+            : [],
+        columnRules: columnRules
+    };
+
+
     const headerClickListener = (e) => {
         const columnOptionsIcon = e.target.closest('.options-icon');
-        const addColumnBtn = e.target.closest('.add-column-cell');
-        
+
         if (columnOptionsIcon) {
             e.stopPropagation();
+
             const columnEl = columnOptionsIcon.closest('[data-column-id]');
             if (!columnEl) return;
-            
+
             const columnId = columnEl.dataset.columnId;
             const column = allColumns.find(c => String(c.id) === String(columnId));
             if (!column) return;
-            
-            let dropdownOptions = [{ name: 'Rename column' }];
-            
-            if (userCanEditProject) {
-                 const rules = project.columnRules || [];
-                 const existingRule = rules.find(rule => rule.name === column.name);
-                 const isCurrentlyRestricted = existingRule && existingRule.isRestricted;
-                 dropdownOptions.push({ name: isCurrentlyRestricted ? 'Unrestrict Column' : 'Restrict Column' });
+
+            const dropdownOptions = [{ name: 'Rename column' }];
+
+            if (canUserEditProduct) {
+                const isCurrentlyRestricted = column.isRestricted === true;
+                dropdownOptions.push({
+                    name: isCurrentlyRestricted ? 'Unrestrict Column' : 'Restrict Column'
+                });
             }
-            
-            const isBaseColumn = baseColumns.some(c => c.id === columnId);
-            if (!isBaseColumn && (project.project_super_admin_uid === currentUserId || project.project_admin_user === currentUserId)) {
-                dropdownOptions.push({ name: 'Delete column' });
-            }
-            
+
             createAdvancedDropdown(columnOptionsIcon, {
                 options: dropdownOptions,
-                itemRenderer: (option) => {
-                    const isDelete = option.name === 'Delete column';
-                    const colorStyle = isDelete ? 'style="color: #d9534f;"' : '';
-                    return `<span ${colorStyle}>${option.name}</span>`;
-                },
+                itemRenderer: (option) => `<span>${option.name}</span>`,
                 onSelect: (selected) => {
                     if (selected.name === 'Rename column') {
                         enableColumnRename(columnEl);
                     } else if (selected.name.includes('Restrict Column')) {
-                        toggleColumnRestriction(column);
-                    } else if (selected.name === 'Delete column') {
-                        deleteColumnInFirebase(column.id);
+                        toggleColumnRestriction(column, stockType);
                     }
                 }
             });
-            return;
-        }
 
-        if (addColumnBtn) {
-            e.stopPropagation();
-            openAddColumnDialog();
+            return;
         }
     };
 
-    if (userCanEditProject) {
+    // UI rendering
+    productListBody.innerHTML = '';
+    const container = document.createElement('div');
+    container.className = 'w-full h-full overflow-auto bg-white border border-slate-200 juanlunacms-spreadsheetlist-custom-scrollbar';
+    const table = document.createElement('div');
+    table.className = 'min-w-max relative';
+
+    const header = document.createElement('div');
+    header.className = 'flex sticky top-0 z-20 bg-white h-[22px]';
+
+    const leftHeader = document.createElement('div');
+    leftHeader.className = 'sticky left-0 z-30 bg-white w-80 md:w-96 lg:w-[400px] flex-shrink-0 px-4 font-semibold text-slate-600 border-b border-r border-slate-200 text-xs flex items-center';
+    leftHeader.textContent = 'Product Name';
+
+    const rightHeaderContent = document.createElement('div');
+    rightHeaderContent.className = 'flex flex-grow border-b border-slate-200 juanlunacms-column-header';
+
+
+
+    allColumns.forEach(col => {
+        const fixedColumnWidths = {
+            total: 80,
+            productVendor: 100,
+            s: 50,
+            m: 50,
+            l: 50,
+            xl: 50,
+            xxl: 50,
+            c: 50,
+            others: 100
+        };
+
+        const width = fixedColumnWidths[col.id] || savedColumnWidths[col.id] || 150;
+
+        const cell = document.createElement('div');
+        cell.dataset.columnId = col.id;
+        cell.className = 'group relative px-2 py-1 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center text-xs';
+        cell.style.width = `${width}px`;
+        cell.style.minWidth = `${width}px`;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'flex flex-grow items-center justify-between min-w-0';
+
+        const text = document.createElement('span');
+        text.textContent = col.name;
+        text.className = 'header-cell-content flex-grow truncate text-ellipsis overflow-hidden';
+
+        const optionsIcon = document.createElement('span');
+        optionsIcon.className = 'material-icons options-icon text-slate-400 hover:text-slate-600 cursor-pointer text-[18px] ml-2';
+        optionsIcon.textContent = 'more_vert'; // vertical three dots
+
+        wrapper.appendChild(text);
+        wrapper.appendChild(optionsIcon);
+
+
+        const resizeHandle = document.createElement('div');
+        resizeHandle.className = 'resize-handle';
+
+        cell.appendChild(wrapper);
+        cell.appendChild(resizeHandle);
+        rightHeaderContent.appendChild(cell);
+    });
+
+    if (canUserEditProduct) {
         rightHeaderContent.addEventListener('click', headerClickListener);
     }
 
+    header.appendChild(leftHeader);
+    header.appendChild(rightHeaderContent);
 
-    // 4. --- BODY CREATION (FLAT PRODUCT LIST) ---
     const body = document.createElement('div');
-    const productsContainer = document.createElement('div'); 
+    const productsContainer = document.createElement('div');
     productsContainer.className = 'products-container';
 
-    // The products should be pre-sorted by categoryId and then by order.
-    const sortedProducts = (project.products || []).sort((a, b) => {
-        if (a.categoryId < b.categoryId) return -1;
-        if (a.categoryId > b.categoryId) return 1;
-        return (a.order || 0) - (b.order || 0);
-    });
-
+    const sortedProducts = project.products.sort((a, b) => (a.order || 0) - (b.order || 0));
     sortedProducts.forEach(product => {
-        const productRow = document.createElement('div');
-        productRow.className = 'product-row-wrapper flex group border-b border-slate-200';
-        productRow.dataset.productId = product.id;
-        productRow.dataset.categoryId = product.categoryId; // Still required!
-        
-        const canEditThisProduct = canUserEditProduct(product);
-        
-        // Left Pane (Product Name)
-        const leftProductCell = document.createElement('div');
-        leftProductCell.className = 'group sticky left-0 w-80 md:w-96 lg:w-[400px] flex-shrink-0 flex items-center border-r border-transparent group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg juanlunacms-spreadsheetlist-dynamic-border py-0.2';
-        leftProductCell.dataset.control = 'open-sidebar';
-        
-        leftProductCell.innerHTML = `
-            <div class="drag-handle ${!canEditThisProduct ? 'hidden' : ''} cursor-grab rounded flex items-center justify-center hover:bg-slate-200 user-select-none p-1">
-                <span class="material-icons text-slate-500 select-none" style="font-size: 20px;" draggable="false">drag_indicator</span>
-            </div>
-            <div class="flex items-center flex-grow min-w-0">
-                <span
-                    class="product-name truncate text-[13px] block outline-none bg-transparent rounded px-1 ${canEditThisProduct ? 'focus:bg-white focus:ring-1 focus:ring-slate-300' : 'cursor-text'}"
-                    contenteditable="${canEditThisProduct}"
-                    data-product-id="${product.id}"
-                >${product.name || 'New Product'}</span>
-            </div>
-        `;
+        const row = document.createElement('div');
+        row.className = 'product-row-wrapper flex group border-b border-slate-200 h-[32px]';
+        row.dataset.productId = product.id;
 
-        // Right Pane (Product Data Columns)
-        const rightProductCells = document.createElement('div');
-        rightProductCells.className = 'flex-grow flex group-hover:bg-slate-50';
+        const leftCell = document.createElement('div');
+        leftCell.className = 'sticky left-0 z-10 bg-white px-1 w-80 md:w-96 lg:w-[400px] flex-shrink-0 flex items-center border-r border-transparent group-hover:bg-slate-50 py-0.5';
+        leftCell.innerHTML = `
+    <div class="drag-handle ${!canUserEditProduct ? 'hidden' : ''} cursor-grab p-1 hover:bg-slate-200">
+        <span class="material-icons text-slate-500" style="font-size: 20px;">drag_indicator</span>
+    </div>
+    <div class="flex items-center flex-grow min-w-0">
+        <span class="product-name truncate text-[13px] px-1 ${canUserEditProduct ? 'focus:bg-white focus:ring-1 focus:ring-slate-300' : 'cursor-default'}" 
+              contenteditable="${canUserEditProduct}" data-product-id="${product.id}">
+            ${product.name}
+        </span>
+    </div>
+`;
 
-        allColumns.forEach((col) => {
+
+        const rightCells = document.createElement('div');
+        rightCells.className = 'flex-grow flex group-hover:bg-slate-50';
+
+        const fixedColumnWidths = {
+            total: 80,
+            productVendor: 100,
+            s: 50,
+            m: 50,
+            l: 50,
+            xl: 50,
+            xxl: 50,
+            c: 50,
+            others: 100
+        };
+
+        allColumns.forEach(col => {
+            const width = fixedColumnWidths[col.id] || savedColumnWidths[col.id] || 150;
             const cell = document.createElement('div');
-            let cellClasses = `table-cell px-2 py-1 flex items-center border-r border-slate-200 text-sm`;
-            cellClasses += (col.id === 'productImage') ? ' w-20 justify-center' : ' w-44';
-            
-            
-            const canEditThisCell = isCellEditable(col, product);
+            const rule = project.columnRules?.find(r => r.name === col.name);
+            const isRestricted = !!rule?.isRestricted;
+            const isEditable = canUserEditProduct && !isRestricted;
 
-            if (!canEditThisCell) {
-                cellClasses += ' cell-restricted bg-slate-50 cursor-not-allowed';
-            }
-            
-            cell.className = cellClasses;
+            const rawValue = product[col.id] !== undefined && product[col.id] !== null ? product[col.id] : '';
             cell.dataset.columnId = col.id;
-            
-            let content = '';
-            const rawValue = product[col.id] || (product.customFields && product.customFields[col.id]);
+            cell.style.width = `${width}px`;
+            cell.style.minWidth = `${width}px`;
+            cell.className = `table-cell px-2 py-1 flex items-center border-r border-slate-200 text-sm ${!isEditable ? 'bg-slate-50 cursor-not-allowed' : ''}`;
 
             switch (col.id) {
-                case 'productImage':
-                    content = `<div class="w-10 h-10 bg-gray-200 rounded-md flex items-center justify-center overflow-hidden">
-                                   ${product.imageUrl ? `<img src="${product.imageUrl}" class="w-full h-full object-cover" alt="Product Image">` : '<span class="material-icons text-gray-400">photo_camera</span>'}
-                               </div>`;
+                case 'productImage': { // Brackets create a block scope for our variables
+                    const hasImage = !!product.imageUrl;
+
+                    // 1. Set the initial HTML for the cell.
+                    // We use a w-10 h-10 container for a better click/drag target area.
+                    cell.innerHTML = `
+        <div class="product-image-wrapper w-6 h-6 bg-gray-200 rounded-md flex items-center justify-center overflow-hidden relative cursor-pointer" data-column-id="productImage">
+            ${hasImage
+                            ? `<img src="${product.imageUrl}" class="w-full h-full object-cover pointer-events-none">`
+                            : '<span class="material-icons text-gray-400 text-[18px] pointer-events-none">photo_camera</span>'
+                        }
+            <input type="file" accept="image/*" class="hidden image-file-input">
+        </div>
+    `;
+
+
+                    // 2. Get references to the interactive elements we just created.
+                    const wrapper = cell.querySelector('.product-image-wrapper');
+                    const fileInput = cell.querySelector('.image-file-input');
+
+                    // 3. Attach all necessary event listeners for interactivity.
+
+                    // --- Click-to-Upload ---
+                    wrapper.addEventListener('click', (e) => {
+                        e.stopPropagation(); // Prevent other listeners from firing.
+                        fileInput.click();   // Open the file selection dialog.
+                    });
+
+                    // --- File Picker Selection ---
+                    fileInput.addEventListener('change', (e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                            // Call the helper function to handle the upload.
+                            uploadProductImage(file, product.id);
+                        }
+                    });
+
+                    // --- Drag and Drop ---
+                    wrapper.addEventListener('dragover', (e) => {
+                        e.preventDefault(); // This is necessary to allow a drop.
+                        wrapper.classList.add('drag-hover'); // Optional: style for hover effect.
+                    });
+
+                    wrapper.addEventListener('dragleave', () => {
+                        wrapper.classList.remove('drag-hover');
+                    });
+
+                    wrapper.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        wrapper.classList.remove('drag-hover');
+                        const file = e.dataTransfer.files[0];
+                        if (file && file.type.startsWith('image/')) {
+                            // Call the helper function to handle the upload.
+                            uploadProductImage(file, product.id);
+                        }
+                    });
+
                     break;
-                case 'productSku':
-                    content = `<span class="px-1 w-full" contenteditable="${canEditThisCell}">${rawValue || ''}</span>`;
-                    break;
+                }
+
                 case 'supplierCost':
-                    const cost = (typeof rawValue === 'number') ? '$' + rawValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
-                    content = `<span class="px-1 w-full" contenteditable="${canEditThisCell}">${cost}</span>`;
-                    break;
-                case 'supplierName':
-                     content = `<span class="px-1 w-full" contenteditable="${canEditThisCell}">${rawValue || ''}</span>`;
-                    break;
-                case 'supplierProject':
-                    cell.dataset.control = 'supplier-project';
-                    if(canEditThisCell) {
-                       content = `<div class="status-tag cursor-pointer">${rawValue || 'Select Project'}</div>`;
-                    } else {
-                       content = `<div class="status-tag">${rawValue || 'N/A'}</div>`;
+                    const cost = typeof rawValue === 'number' ? `$${rawValue.toFixed(2)}` : '';
+                    cell.innerHTML = `<span class="px-1 w-full block truncate">${cost}</span>`;
+
+                    if (isEditable) {
+                        col.type = 'Costing';
+                        cell.dataset.control = 'supplierCost'; // Add control type
+                        cell.addEventListener('click', () => {
+                            createFloatingInput(cell, product, col);
+                        });
                     }
                     break;
-                default:
-                    content = `<span class="px-1 w-full" contenteditable="${canEditThisCell}">${rawValue || ''}</span>`;
+
+                case 'supplierProject':
+                    cell.dataset.control = 'supplierProject'; // 👈 required for dropdown click handler
+                    const displayValue = (typeof rawValue === 'object' && rawValue !== null)
+                        ? rawValue.name || 'Unnamed Project'
+                        : rawValue || (isEditable ? 'Select Project' : 'N/A');
+
+                    cell.innerHTML = `<div class="status-tag ${isEditable ? 'cursor-pointer' : ''}">${displayValue}</div>`;
                     break;
+
+                case 'warehouseLocation':
+                    cell.dataset.control = 'warehouseLocation'; // 👈 required for dropdown click handler
+                    cell.innerHTML = `
+            <div class="flex items-center gap-1">
+                <span class="material-icons text-slate-400 text-xs">location_on</span>
+                <span class="editable-location px-1 w-full ${isEditable ? 'cursor-pointer' : 'cursor-default'}">
+                    ${rawValue || ''}
+                </span>
+            </div>
+        `;
+                    break;
+
+                case 'total':
+                    const sizeFields = ['s', 'm', 'l', 'xl', 'xxl', 'c', 'others'];
+                    const total = sizeFields.reduce((sum, field) => {
+                        const val = parseFloat(product[field]);
+                        return sum + (isNaN(val) ? 0 : val);
+                    }, 0);
+                    cell.innerHTML = `<span class="px-1 w-full text-right">${total}</span>`;
+                    // ❌ Not editable
+                    break;
+
+                case 'productVendor':
+                case 's':
+                case 'm':
+                case 'l':
+                case 'xl':
+                case 'xxl':
+                case 'c':
+                case 'others':
+                    let colorClass = 'text-slate-700'; // Default color
+                    const numericValue = parseInt(rawValue, 10);
+
+                    if (!isNaN(numericValue)) {
+                        if (numericValue >= 0 && numericValue <= 5) {
+                            colorClass = 'text-red-600 font-bold'; // Red and bold for 0-5
+                        } else if (numericValue < 10) {
+                            colorClass = 'text-yellow-600'; // Yellow for 6-9
+                        } else {
+                            colorClass = 'text-green-600'; // Green for 10+
+                        }
+                    }
+
+                    // Apply the dynamic color class to the span
+                    cell.innerHTML = `<span class="px-1 w-full block truncate ${colorClass}">${rawValue}</span>`;
+
+                    if (isEditable) {
+                        col.type = 'Text';
+                        cell.dataset.control = col.id;
+                        cell.addEventListener('click', () => {
+                            createFloatingInput(cell, product, col);
+                        });
+                    }
+                    break;
+
+                default:
+                    cell.innerHTML = `<span class="px-1 w-full block truncate">${rawValue}</span>`;
+                    if (isEditable) {
+                        col.type = 'Text';
+                        cell.dataset.control = col.id; // fallback
+                        cell.addEventListener('click', () => {
+                            createFloatingInput(cell, product, col);
+                        });
+                    }
             }
-            cell.innerHTML = content;
-            rightProductCells.appendChild(cell);
+
+
+            rightCells.appendChild(cell);
         });
-        
-        productRow.appendChild(leftProductCell);
-        productRow.appendChild(rightProductCells);
-        productsContainer.appendChild(productRow);
+
+        row.appendChild(leftCell);
+        row.appendChild(rightCells);
+        productsContainer.appendChild(row);
     });
-    
-    // 5. --- FINAL ASSEMBLY & DYNAMIC BEHAVIORS ---
+
     table.appendChild(header);
     body.appendChild(productsContainer);
     table.appendChild(body);
     container.appendChild(table);
     productListBody.appendChild(container);
-    
-    if (userCanEditProject) {
+
+    if (canUserEditProduct) {
         Sortable.create(productsContainer, {
             group: 'products',
             handle: '.drag-handle',
             animation: 300,
             onEnd: async (evt) => {
-                await handleProductMoved(evt); 
+                await handleProductMoved(evt);
             }
         });
+        initColumnDragging(allColumns);
     }
 
-    container.scrollTop = scrollState.top;
-    container.scrollLeft = scrollState.left;
-    container.addEventListener('scroll', () => {
-        const scrolled = container.scrollLeft > 0;
-        header.classList.toggle('shadow-md', container.scrollTop > 0);
-        container.querySelectorAll('.juanlunacms-spreadsheetlist-left-sticky-pane').forEach(pane => {
-            pane.classList.toggle('juanlunacms-spreadsheetlist-shadow-right-custom', scrolled);
-        });
-    });
-    
-    if (userCanEditProject) {
-        initColumnDragging();
-    }
-    initColumnResizing();
+    initColumnResizing(stockType, savedColumnWidths);
     requestAnimationFrame(syncColumnWidths);
-    
-    if (productIdToFocus) {
-        const productToFocusEl = productListBody.querySelector(`[data-product-id="${productIdToFocus}"] .product-name`);
-        if (productToFocusEl) {
-            productToFocusEl.focus();
-            const range = document.createRange();
-            const sel = window.getSelection();
-            range.selectNodeContents(productToFocusEl);
-            sel.removeAllRanges();
-            sel.addRange(range);
-        }
-        productIdToFocus = null;
-    }
 }
 
-function isCellEditable(column) {
-    // Admins/Owners can always edit any column.
-    if (userCanEditProject) {
-        return true;
-    }
-    
-    // Assigned users (Viewer/Commentor) can edit some fields,
-    // BUT never allowed to modify the "Assignee" column
-    if (column.name === 'Assignee') {
-        return false;
-    }
-    
-    // Respect per-project column restrictions
-    const rules = project.columnRules || [];
-    const columnRule = rules.find(rule => rule.name === column.name);
-    if (columnRule?.isRestricted) {
-        return false;
-    }
-    
-    // All other custom fields allowed
-    return true;
-}
-
-
-
-function initColumnDragging() {
-    const headerContainer = document.querySelector('.juanlunacms-spreadsheetlist-sticky-header .flex-grow');
+function initColumnDragging(allColumns) {
+    const headerContainer = document.querySelector('.juanlunacms-column-header');
     if (!headerContainer) return;
-    
+
     Sortable.create(headerContainer, {
         animation: 150,
-        handle: '.group',
+        handle: '.group', // make sure .group is applied on draggable cell
         filter: '.resize-handle',
         onEnd: async (evt) => {
             if (evt.oldIndex === evt.newIndex) return;
-            
-            // --- SIMPLIFIED LOGIC ---
-            
-            // 1. Get the new order of column IDs directly from the DOM after the drop.
+
+            // Get new column order
             const newColumnOrder = Array.from(evt.to.children)
                 .map(el => el.dataset.columnId)
-                .filter(id => id); // Filter out any non-column elements
-            
-            // 2. Optimistically update the local state.
-            project.columnOrder = newColumnOrder;
-            
-            // 3. Trigger a re-render immediately for a snappy UI.
-            render();
-            
-            // 4. Save the new array directly to Firestore in the background.
+                .filter(id => id);
+
+            // Update local order
+            const newOrderedColumns = newColumnOrder.map(id =>
+                allColumns.find(col => col.id === id)
+            ).filter(Boolean);
+
+            // Save column order to Firestore
             try {
-                await updateProjectInFirebase({
-                    columnOrder: newColumnOrder // Just save the one new field
+                const docRef = doc(db, 'InventoryWorkspace', currentInventoryId);
+                await updateDoc(docRef, {
+                    [`columnOrder_${currentStockType}`]: newColumnOrder
                 });
-                console.log("Column order saved to Firestore successfully.");
+                console.log("✅ Column order saved to Firestore.");
             } catch (error) {
-                console.error("Failed to save new column order:", error);
+                console.error("❌ Failed to save column order:", error);
             }
+
+            // Re-render
+            await render(currentStockType);
         }
     });
 }
+
 
 function syncColumnWidths() {
     const table = document.querySelector('.min-w-max.relative');
     if (!table) return;
-    
+
     const headerContainer = table.querySelector('.juanlunacms-spreadsheetlist-sticky-header');
     if (!headerContainer) return;
 
-    // Get all column IDs directly from the rendered header elements
     const allColumnIds = Array.from(headerContainer.querySelectorAll('[data-column-id]')).map(cell => cell.dataset.columnId);
-    
+
+    const fixedColumnWidths = {
+        total: 80,
+        productVendor: 100,
+        s: 50,
+        m: 50,
+        l: 50,
+        xl: 50,
+        xxl: 50,
+        c: 50,
+        others: 100
+    };
+
+    let minWidth = fixedColumnWidths[columnId] || 50;
+
     allColumnIds.forEach(columnId => {
         const headerCell = headerContainer.querySelector(`[data-column-id="${columnId}"]`);
         if (!headerCell) return;
-        
+
         const textElement = headerCell.querySelector('.header-cell-content');
         const headerContentWidth = textElement ? textElement.scrollWidth : 0;
-        
-        // *** MODIFIED: New minimum width logic for product columns ***
-        let minWidth = 150; // A sensible default min-width
-        if (columnId === 'productImage') {
+
+        let minWidth = 150;
+
+        if (fixed20pxColumns.includes(columnId)) {
+            minWidth = 20;  // Force 20px for fixed columns
+        } else if (columnId === 'productImage') {
             minWidth = 80;
         } else if (columnId === 'supplierCost') {
             minWidth = 120;
         } else if (columnId === 'productSku') {
             minWidth = 160;
-        } else if (columnId === 'supplierName' || columnId === 'supplierProject') {
+        } else if (['supplierName', 'supplierProject'].includes(columnId)) {
             minWidth = 180;
         }
-        
-        // The final width is the LARGER of the minimum width or the actual header text width.
-        // A 32px buffer is added for padding and icons.
-        const finalWidth = Math.max(minWidth, headerContentWidth) + 32;
-        
+
+        const finalWidth = fixedColumnWidths[columnId] || Math.max(minWidth, headerContentWidth) + 32;
+
         const allCellsInColumn = table.querySelectorAll(`[data-column-id="${columnId}"]`);
         allCellsInColumn.forEach(cell => {
             cell.style.width = `${finalWidth}px`;
-            cell.style.minWidth = `${finalWidth}px`; // Mirror width and min-width
+            cell.style.minWidth = `${finalWidth}px`;
         });
     });
+
 }
 
 function initColumnResizing() {
     const table = document.querySelector('.min-w-max.relative');
     if (!table) return;
-    
+
     let initialX, initialWidth, columnId;
-    let columnSpecificMinWidth; 
-    
+    let columnSpecificMinWidth;
+    let finalWidth = 0; // ✅ define in outer scope so it can be used in onDragEnd
+
     const onDragMove = (e) => {
         const currentX = e.touches ? e.touches[0].clientX : e.clientX;
         const deltaX = currentX - initialX;
-        const newWidth = Math.max(columnSpecificMinWidth, initialWidth + deltaX);
-        
+        finalWidth = Math.max(columnSpecificMinWidth, initialWidth + deltaX); // ✅ update here
+
         const cellsToResize = table.querySelectorAll(`[data-column-id="${columnId}"]`);
         cellsToResize.forEach(cell => {
-            cell.style.width = `${newWidth}px`;
-            cell.style.minWidth = `${newWidth}px`;
+            cell.style.width = `${finalWidth}px`;
+            cell.style.minWidth = `${finalWidth}px`;
         });
     };
-    
-    const onDragEnd = () => {
+
+    const onDragEnd = async () => {
         document.removeEventListener('mousemove', onDragMove);
         document.removeEventListener('mouseup', onDragEnd);
         document.removeEventListener('touchmove', onDragMove);
         document.removeEventListener('touchend', onDragEnd);
+
+        if (!currentInventoryId || !currentStockType || !columnId || !finalWidth) return;
+
+        const isUS = currentStockType === 'us';
+        const fieldPath = isUS
+            ? `customResizeWidthUSStock.${columnId}`
+            : `customResizeWidthPHStock.${columnId}`;
+
+        const workspaceRef = doc(db, 'InventoryWorkspace', currentInventoryId);
+
+        try {
+            await updateDoc(workspaceRef, {
+                [fieldPath]: finalWidth
+            });
+
+            console.log(`✅ Saved width for ${columnId} (${finalWidth}px) to ${fieldPath}`);
+        } catch (err) {
+            console.error('❌ Failed to save column width to InventoryWorkspace root:', err);
+        }
     };
-    
+
+
     const onDragStart = (e) => {
         if (!e.target.classList.contains('resize-handle')) return;
-        
+
         e.preventDefault();
-        
+
         const headerCell = e.target.parentElement;
         columnId = headerCell.dataset.columnId;
         initialX = e.touches ? e.touches[0].clientX : e.clientX;
         initialWidth = headerCell.offsetWidth;
-        
-        // *** MODIFIED: MIRRORED LOGIC for consistent resize behavior ***
-        let minWidth = 150; // Default min-width
-        if (columnId === 'productImage') {
-            minWidth = 80;
-        } else if (columnId === 'supplierCost') {
-            minWidth = 120;
-        } else if (columnId === 'productSku') {
-            minWidth = 160;
-        } else if (columnId === 'supplierName' || columnId === 'supplierProject') {
-            minWidth = 180;
-        }
-        columnSpecificMinWidth = minWidth; // Set the min-width for the drag operation
+
+        // Set custom min width for each column
+        const fixedMinWidths = {
+            productImage: 80,
+            supplierCost: 120,
+            productSku: 160,
+            supplierName: 180,
+            supplierProject: 180,
+            warehouseLocation: 180,
+            total: 80,
+            productVendor: 100,
+            s: 50,
+            m: 50,
+            l: 50,
+            xl: 50,
+            xxl: 50,
+            c: 50,
+            others: 100
+        };
+
+        let minWidth = fixedMinWidths[columnId] || 150;
+        columnSpecificMinWidth = minWidth;
 
         document.addEventListener('mousemove', onDragMove);
         document.addEventListener('mouseup', onDragEnd);
         document.addEventListener('touchmove', onDragMove);
         document.addEventListener('touchend', onDragEnd);
     };
-    
+
     table.addEventListener('mousedown', onDragStart);
     table.addEventListener('touchstart', onDragStart, { passive: false });
 }
@@ -2086,14 +2620,14 @@ function handleMouseMoveDragGhost(e) {
 // This function will run ONLY when a menu is open and the user scrolls
 function updateMenuPosition() {
     if (!activeMenuButton) return;
-    
+
     const menu = document.querySelector('.options-dropdown-menu');
     if (!menu) return;
-    
+
     // Recalculate button position and update the menu's style
     const rect = activeMenuButton.getBoundingClientRect();
     const menuWidth = menu.offsetWidth;
-    
+
     menu.style.top = `${rect.bottom + window.scrollY + 4}px`;
     menu.style.left = `${rect.right + window.scrollX - menuWidth}px`;
 }
@@ -2111,32 +2645,32 @@ function closeOpenMenu() {
 
 function openOptionsMenu(buttonEl) {
     closeOpenMenu(); // Close any other menus first
-    
+
     const sectionWrapper = buttonEl.closest('.section-row-wrapper, .section-title-wrapper');
     const sectionId = sectionWrapper ? sectionWrapper.dataset.sectionId : null;
-    
+
     if (!sectionId) {
         console.error("Could not find sectionId for the options menu.");
         return;
     }
-    
+
     // --- NEW LOGIC TO CHECK SECTION TYPE ---
-    
+
     // 1. Find the full section object from our project data using the sectionId.
     const section = project.sections.find(s => s.id === sectionId);
-    
+
     // 2. Define the list of protected section types that cannot be deleted.
     const protectedTypes = ['completed', 'todo', 'doing'];
-    
+
     // 3. Check if the current section is a protected type.
     //    We check if `section` exists and if its `sectionType` is in our list.
     const isProtected = section && protectedTypes.includes(section.sectionType);
-    
+
     // --- END OF NEW LOGIC ---
-    
+
     const menu = document.createElement('div');
     menu.className = 'options-dropdown-menu';
-    
+
     // 4. Conditionally build the menu's HTML.
     // Start with the options that are always available.
     let menuHTML = `
@@ -2149,7 +2683,7 @@ function openOptionsMenu(buttonEl) {
             <span>Rename section</span>
         </div>
     `;
-    
+
     // ONLY if the section is NOT protected, add the "Delete" option.
     if (!isProtected) {
         menuHTML += `
@@ -2159,9 +2693,9 @@ function openOptionsMenu(buttonEl) {
             </div>
         `;
     }
-    
+
     menu.innerHTML = menuHTML;
-    
+
     document.body.appendChild(menu);
     activeMenuButton = buttonEl;
     updateMenuPosition();
@@ -2182,9 +2716,9 @@ async function deleteSectionInFirebase(sectionId) {
     // Create correct references from the main project reference.
     const sectionRef = doc(currentProjectRef, 'sections', sectionId);
     const tasksCollectionRef = collection(sectionRef, 'tasks');
-    
+
     const batch = writeBatch(db);
-    
+
     try {
         const tasksSnapshot = await getDocs(tasksCollectionRef);
         tasksSnapshot.forEach(taskDoc => batch.delete(taskDoc.ref));
@@ -2204,34 +2738,34 @@ async function deleteSectionInFirebase(sectionId) {
  */
 async function handleTaskCompletion(task, taskRowEl) {
     if (!task || !taskRowEl) return;
-    
+
     const sourceSection = findSectionById(task.sectionId);
     if (!sourceSection) {
         console.error("Could not find the source section for the task.");
         return;
     }
-    
+
     const taskId = task.id;
     const batch = writeBatch(db);
     const isCurrentlyCompleted = task.status === 'Completed';
-    
+
     if (isCurrentlyCompleted) {
         // --- LOGIC FOR UN-COMPLETING A TASK ---
         console.log(`Un-completing task: "${task.name}"`);
-        
+
         const targetSectionId = task.previousSectionId || sourceSection.id;
         const targetSection = findSectionById(targetSectionId);
-        
+
         if (!targetSection) {
             console.error(`Cannot un-complete task. Target section with ID "${targetSectionId}" not found.`);
             return;
         }
-        
+
         // *** THE FIX IS HERE ***
         // 1. Use destructuring to pull out the fields we want to discard (`previousStatus`, `previousSectionId`).
         //    The `...restOfTask` variable will contain all other properties from the original task object.
         const { previousStatus, previousSectionId, ...restOfTask } = task;
-        
+
         // 2. Build the new data object from the `restOfTask`, ensuring the unwanted fields are gone.
         const updatedTaskData = {
             ...restOfTask,
@@ -2239,24 +2773,24 @@ async function handleTaskCompletion(task, taskRowEl) {
             sectionId: targetSection.id,
         };
         // *** END OF FIX ***
-        
+
         const sourceTaskRef = doc(currentProjectRef, `sections/${sourceSection.id}/tasks/${taskId}`);
         const targetTaskRef = doc(currentProjectRef, `sections/${targetSection.id}/tasks/${taskId}`);
-        
+
         batch.delete(sourceTaskRef);
         // Now, this `set` operation works because `updatedTaskData` is a clean object without any `deleteField()` instructions.
         batch.set(targetTaskRef, updatedTaskData);
-        
+
     } else {
         // --- LOGIC FOR COMPLETING A TASK (This part was already correct) ---
         console.log(`Completing task: "${task.name}"`);
         const completedSection = project.sections.find(s => s.sectionType === 'completed');
-        
+
         if (!completedSection) {
             console.error("Cannot complete task: A section with sectionType: 'completed' was not found.");
             return;
         }
-        
+
         const updatedTaskData = {
             ...task,
             status: 'Completed',
@@ -2264,21 +2798,21 @@ async function handleTaskCompletion(task, taskRowEl) {
             previousSectionId: sourceSection.id,
             sectionId: completedSection.id,
         };
-        
+
         const sourceTaskRef = doc(currentProjectRef, `sections/${sourceSection.id}/tasks/${taskId}`);
         const targetTaskRef = doc(currentProjectRef, `sections/${completedSection.id}/tasks/${taskId}`);
-        
+
         batch.delete(sourceTaskRef);
         batch.set(targetTaskRef, updatedTaskData);
     }
-    
+
     // --- Execute the batch and update the UI ---
     try {
         await batch.commit();
         console.log(`Task ${taskId} completion status updated successfully in Firestore.`);
         taskRowEl.classList.toggle('is-completed', !isCurrentlyCompleted);
-        render();
-        
+        render('us');
+
     } catch (error) {
         console.error(`Error updating task completion for ${taskId}:`, error);
     }
@@ -2299,34 +2833,34 @@ async function moveTaskToSection(taskId, targetSectionId) {
     if (!taskToMove || !sourceSection || !targetSection || sourceSection.id === targetSectionId) {
         return console.error("Cannot move task. Invalid source or target.");
     }
-    
+
     // Prepare the initial data object for the new task document.
     const newTaskData = {
         ...taskToMove,
         id: taskId,
         sectionId: targetSectionId,
     };
-    
+
     // --- UPDATED LOGIC FOR STATUS CHANGES ---
 
     // Case 1: Moving INTO a 'completed' section
     if (targetSection.sectionType === 'completed') {
         console.log(`Task moved to 'Completed' section. Updating status.`);
-        
+
         // If the task isn't already completed, save its current status for potential reversal.
         if (newTaskData.status !== 'Completed') {
             newTaskData.previousStatus = newTaskData.status;
         }
         // Set the new status to 'Completed'.
         newTaskData.status = 'Completed';
-    } 
+    }
     // Case 2: Moving OUT OF a 'completed' section
     else if (sourceSection.sectionType === 'completed') {
         console.log(`Task moved out of 'Completed' section. Reverting status.`);
 
         // Revert to the stored previous status, or a sensible default like 'On track'.
         newTaskData.status = taskToMove.previousStatus || 'On track';
-        
+
         // Clean up the previousStatus field as it's no longer needed.
         newTaskData.previousStatus = deleteField();
     }
@@ -2339,7 +2873,7 @@ async function moveTaskToSection(taskId, targetSectionId) {
         const batch = writeBatch(db);
         batch.delete(sourceTaskRef);
         // Use { merge: true } with set() to allow deleteField() to work correctly.
-        batch.set(newTaskRef, newTaskData, { merge: true }); 
+        batch.set(newTaskRef, newTaskData, { merge: true });
         await batch.commit();
         console.log(`Task ${taskId} moved successfully to section ${targetSectionId}.`);
     } catch (error) {
@@ -2399,7 +2933,7 @@ async function addTaskToFirebase(sectionId, taskData) {
     }
     const sectionRef = doc(currentProjectRef, 'sections', sectionId);
     const tasksCollectionRef = collection(sectionRef, 'tasks');
-    
+
     try {
         const newTaskRef = doc(tasksCollectionRef); // Create a reference to get the ID
         const fullTaskData = {
@@ -2426,23 +2960,23 @@ async function addSectionToFirebase() {
     if (!currentProjectRef) {
         return console.error("Cannot add section: Project reference is missing.");
     }
-    
+
     // This logic remains the same.
     const newOrder = project.sections ? project.sections.length : 0;
-    
+
     try {
         // THE FIX: Get a reference to the 'sections' subcollection from the correct project reference.
         const sectionsCollectionRef = collection(currentProjectRef, 'sections');
-        
+
         // Use the correct reference to add the new document.
         await addDoc(sectionsCollectionRef, {
             title: 'New Section',
             isCollapsed: false,
             order: newOrder
         });
-        
+
         console.log("Section added successfully to the correct project.");
-        
+
     } catch (error) {
         console.error("Error adding section:", error);
     }
@@ -2455,7 +2989,7 @@ async function addSectionToFirebase() {
  */
 async function updateSectionInFirebase(sectionId, propertiesToUpdate) {
     if (!currentProjectRef || !sectionId) return console.error("Missing IDs or project reference.");
-    
+
     const sectionRef = doc(currentProjectRef, `sections/${sectionId}`);
     try {
         await updateDoc(sectionRef, propertiesToUpdate);
@@ -2552,43 +3086,43 @@ async function deleteColumnInFirebase(columnId) {
         alert("You do not have permission to perform this action.");
         return;
     }
-    
+
     if (!currentProjectRef) {
         return console.error("Cannot delete column: Project reference is missing.");
     }
-    
+
     const confirmed = await showConfirmationModal(
         'Are you sure you want to delete this column and all its data? This action cannot be undone.'
     );
     if (!confirmed) {
         return;
     }
-    
+
     const batch = writeBatch(db);
-    
+
     // 1. Update the project document using the correct reference
     const newColumnsArray = project.customColumns.filter(col => String(col.id) !== String(columnId));
     batch.update(currentProjectRef, { customColumns: newColumnsArray });
-    
+
     // 2. Query for ALL tasks within the project to remove the field data
     const tasksQuery = query(
         collectionGroup(db, "tasks"),
         where("projectId", "==", currentProjectId)
     );
-    
+
     try {
         const tasksSnapshot = await getDocs(tasksQuery);
         console.log(`Found ${tasksSnapshot.size} tasks in project to update.`);
-        
+
         tasksSnapshot.forEach(taskDoc => {
             batch.update(taskDoc.ref, {
                 [`customFields.${columnId}`]: deleteField()
             });
         });
-        
+
         await batch.commit();
         console.log("Column and its data were deleted successfully from all relevant tasks.");
-        
+
     } catch (error) {
         console.error("Error deleting column and its data:", error);
         alert("Error: Could not completely delete the column. Check console for details.");
@@ -2619,24 +3153,24 @@ function createStatusTag(s) {
     if (typeof s !== 'string' || !s) {
         return '';
     }
-    
+
     // Sanitize the string once to create a valid CSS class name.
     // This replaces spaces with dashes and removes any non-alphanumeric characters (except dashes).
     const sanitizedName = s.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
     const className = `status-${sanitizedName}`;
-    
+
     // Check if it's a known default or custom status, then create the tag.
     if (statusOptions.includes(s)) {
         return createTag(s, 'status', className);
     }
-    
+
     if (project.customStatuses) {
         const customStatus = project.customStatuses.find(cs => cs.name === s);
         if (customStatus) {
             return createTag(s, 'status', className);
         }
     }
-    
+
     // If the status is not found, return an empty string.
     return '';
 }
@@ -2647,11 +3181,11 @@ function closeFloatingPanels() {
 
 function createAdvancedDropdown(targetEl, config) {
     closeFloatingPanels();
-    
+
     const dropdown = document.createElement('div');
     dropdown.className = 'advanced-dropdown';
     document.body.appendChild(dropdown);
-    
+
     // --- Event listener for closing the dropdown ---
     const clickOutsideHandler = (event) => {
         if (!dropdown.contains(event.target) && !targetEl.contains(event.target)) {
@@ -2661,7 +3195,7 @@ function createAdvancedDropdown(targetEl, config) {
     };
     // Use a timeout to attach the listener, preventing it from firing on the same click that opened it
     setTimeout(() => document.addEventListener('click', clickOutsideHandler, true), 0);
-    
+
     // --- Search Input ---
     if (config.searchable) {
         const searchInput = document.createElement('input');
@@ -2670,12 +3204,12 @@ function createAdvancedDropdown(targetEl, config) {
         searchInput.placeholder = 'Search teammates...';
         dropdown.appendChild(searchInput);
     }
-    
+
     // --- List Container ---
     const listContainer = document.createElement('ul');
     listContainer.className = 'dropdown-list';
     dropdown.appendChild(listContainer);
-    
+
     // --- Render Items Function ---
     const renderItems = (filter = '') => {
         listContainer.innerHTML = '';
@@ -2683,23 +3217,23 @@ function createAdvancedDropdown(targetEl, config) {
         const filteredOptions = config.options.filter(opt =>
             (opt.name || opt.label || '').toLowerCase().includes(lowerFilter)
         );
-        
+
         filteredOptions.forEach(option => {
             const li = document.createElement('li');
             li.className = 'dropdown-item';
-            
+
             const content = document.createElement('div');
             content.className = 'dropdown-item-content';
             content.innerHTML = config.itemRenderer(option);
             li.appendChild(content);
-            
+
             // Handle main item click
             content.addEventListener('click', (e) => {
                 e.stopPropagation();
                 config.onSelect(option);
                 closeFloatingPanels();
             });
-            
+
             // Add optional edit button
             if (config.onEdit) {
                 const editBtn = document.createElement('button');
@@ -2716,7 +3250,7 @@ function createAdvancedDropdown(targetEl, config) {
             listContainer.appendChild(li);
         });
     };
-    
+
     // --- Footer for "Add New" action ---
     if (config.onAdd) {
         const footer = document.createElement('div');
@@ -2728,7 +3262,7 @@ function createAdvancedDropdown(targetEl, config) {
         });
         dropdown.appendChild(footer);
     }
-    
+
     // --- Initial Render & Positioning ---
     renderItems();
     // Use the same robust positioning logic from the sidebar answer
@@ -2741,7 +3275,7 @@ function createAdvancedDropdown(targetEl, config) {
     } else {
         dropdown.style.top = `${rect.bottom + 4}px`;
     }
-    
+
     setTimeout(() => dropdown.classList.add('visible'), 10);
 }
 
@@ -2753,7 +3287,7 @@ function showStatusDropdown(targetEl, taskId, sectionId, optionType) {
     const options = isPriority ? priorityOptions : statusOptions; // Your existing options arrays
     const customOptions = isPriority ? project.customPriorities : project.customStatuses;
     const allOptions = [...options.map(o => ({ name: o })), ...(customOptions || [])];
-    
+
     createAdvancedDropdown(targetEl, {
         options: allOptions,
         itemRenderer: (option) => {
@@ -2780,7 +3314,7 @@ function showStatusDropdown(targetEl, taskId, sectionId, optionType) {
 function showAssigneeDropdown(targetEl, taskId, sectionId) {
     const { task } = findTaskAndSection(taskId);
     if (!task) return;
-    
+
     createAdvancedDropdown(targetEl, {
         options: allUsers, // Your array of user objects
         searchable: true,
@@ -2801,19 +3335,19 @@ function showAssigneeDropdown(targetEl, taskId, sectionId) {
 function showDatePicker(targetEl, taskId, sectionId) {
     // 1. Create a perfectly positioned, empty panel.
     const panel = createFloatingPanel(targetEl);
-    
+
     // 2. Initialize the Datepicker library inside our new panel.
     const datepicker = new Datepicker(panel, {
         autohide: true,
         format: 'yyyy-mm-dd',
         todayHighlight: true,
     });
-    
+
     const { task } = findTaskAndSection(taskId);
     if (task && task.dueDate) {
         datepicker.setDate(task.dueDate);
     }
-    
+
     // 3. Add the event listener to handle date changes.
     panel.addEventListener('changeDate', (e) => {
         const formattedDate = Datepicker.formatDate(e.detail.date, 'yyyy-mm-dd');
@@ -2831,12 +3365,12 @@ function showDatePicker(targetEl, taskId, sectionId) {
 function createFloatingPanel(targetEl) {
     // 1. Clean up any existing panels first.
     closeFloatingPanels();
-    
+
     // 2. Create the panel element and add it to the body.
     const panel = document.createElement('div');
     panel.className = 'floating-panel'; // Use this class for styling
     document.body.appendChild(panel);
-    
+
     // 3. Add a "click outside" listener to close the panel.
     const clickOutsideHandler = (event) => {
         if (!panel.contains(event.target) && !targetEl.contains(event.target)) {
@@ -2845,17 +3379,17 @@ function createFloatingPanel(targetEl) {
         }
     };
     setTimeout(() => document.addEventListener('click', clickOutsideHandler, true), 0);
-    
+
     // 4. Calculate the correct position on the screen.
     const rect = targetEl.getBoundingClientRect();
     panel.style.left = `${rect.left}px`;
-    
+
     // Wait a moment for the panel to be rendered to get its height,
     // then decide whether to show it above or below the target.
     setTimeout(() => {
         const spaceBelow = window.innerHeight - rect.bottom;
         const panelHeight = panel.offsetHeight;
-        
+
         if (spaceBelow < panelHeight && rect.top > panelHeight) {
             // Not enough space below, plenty of space above: Position it above the target.
             panel.style.top = `${rect.top - panelHeight - 4}px`;
@@ -2863,11 +3397,11 @@ function createFloatingPanel(targetEl) {
             // Default behavior: Position it below the target.
             panel.style.top = `${rect.bottom + 4}px`;
         }
-        
+
         // 5. Make the panel visible with a smooth transition.
         panel.classList.add('visible');
     }, 10);
-    
+
     // 6. Return the created panel so it can be used.
     return panel;
 }
@@ -2877,14 +3411,14 @@ function createAssigneeHTML(assignees) {
     if (!assignees || assignees.length === 0) {
         return `<div class="add-assignee-btn" data-control="assignee"><i class="fas fa-plus"></i></div>`;
     }
-    
+
     const assigneeId = assignees[0];
     const user = allUsers.find(u => u.id === assigneeId);
-    
+
     if (!user) {
         return `<div class="add-assignee-btn" data-control="assignee"><i class="fas fa-plus"></i></div>`;
     }
-    
+
     return `
         <div class="assignee-cell-content assigneelistviewprofile-${user.id}" data-control="assignee">
             <img class="profile-picture rounded-avatar" src="${user.avatar}" title="${user.name}">
@@ -2921,7 +3455,7 @@ function syncScroll(scrollStates = new Map()) {
 
 function addNewColumn(config) {
     const newId = Date.now();
-    
+
     const newColumn = {
         id: newId,
         name: config.name,
@@ -2933,16 +3467,16 @@ function addNewColumn(config) {
             (config.type === 'Type' ? typeColumnOptions : []) :
             null
     };
-    
+
     // Step 1: Update customColumns with the new column
     updateProjectInFirebase({
         customColumns: arrayUnion(newColumn)
     });
-    
+
     // Step 2: Update columnOrder with the new column ID
     const currentOrder = project.columnOrder || [];
     const newOrder = [...currentOrder, String(newId)];
-    
+
     updateProjectInFirebase({
         columnOrder: newOrder
     });
@@ -2958,7 +3492,7 @@ function openAddColumnDialog(columnType) {
         openCustomColumnCreatorDialog();
         return;
     }
-    
+
     const dialogOverlay = document.createElement('div');
     dialogOverlay.className = 'dialog-overlay';
     console.log('opened');
@@ -2970,7 +3504,7 @@ function openAddColumnDialog(columnType) {
     } else {
         previewHTML = `<div class="preview-value">Any text value</div><p>Freeform label or comment.</p>`;
     }
-    
+
     let typeSpecificFields = '';
     if (columnType === 'Costing') {
         typeSpecificFields = `
@@ -2983,7 +3517,7 @@ function openAddColumnDialog(columnType) {
                 </select>
             </div>`;
     }
-    
+
     dialogOverlay.innerHTML = `
         <div class="dialog-box">
             <div class="dialog-header">Add "${columnType}" Column</div>
@@ -3001,22 +3535,22 @@ function openAddColumnDialog(columnType) {
             </div>
         </div>
     `;
-    
+
     // Append to body
     document.body.appendChild(dialogOverlay);
-    
+
     // Focus input on open
     const inputEl = document.getElementById('column-name');
     if (inputEl) inputEl.focus();
-    
+
     // Close function
     const closeDialog = () => {
         dialogOverlay.remove();
     };
-    
+
     // Cancel Button
     document.getElementById('cancel-add-column').addEventListener('click', closeDialog);
-    
+
     // Confirm Add Column
     document.getElementById('confirm-add-column').addEventListener('click', () => {
         const columnName = document.getElementById('column-name').value.trim();
@@ -3024,17 +3558,17 @@ function openAddColumnDialog(columnType) {
             alert('Please enter a column name.');
             return;
         }
-        
+
         const config = {
             name: columnName,
             type: columnType,
             currency: document.getElementById('column-currency')?.value || null
         };
-        
+
         addNewColumn(config); // Your logic to push column into Firestore/local data
         closeDialog(); // Close dialog after
     });
-    
+
     // Dismiss modal when clicking outside
     dialogOverlay.addEventListener('click', (e) => {
         if (e.target === dialogOverlay) closeDialog();
@@ -3043,14 +3577,14 @@ function openAddColumnDialog(columnType) {
 
 function openCustomColumnCreatorDialog() {
     closeFloatingPanels();
-    
+
     const dialogOverlay = document.createElement('div');
     dialogOverlay.className = 'dialog-overlay';
-    
+
     const baseTypeOptionsHTML = baseColumnTypes
         .map(type => `<option value="${type}">${type}</option>`)
         .join('');
-    
+
     dialogOverlay.innerHTML = `
         <div class="dialog-box">
             <div class="dialog-header">Create Custom Column</div>
@@ -3071,16 +3605,16 @@ function openCustomColumnCreatorDialog() {
             </div>
         </div>
     `;
-    
+
     document.body.appendChild(dialogOverlay);
-    
+
     // Auto-focus
     const columnNameInput = document.getElementById('custom-column-name');
     if (columnNameInput) columnNameInput.focus();
-    
+
     const baseTypeSelect = document.getElementById('base-column-type');
     const specificOptionsContainer = document.getElementById('type-specific-options-custom');
-    
+
     const renderTypeSpecificOptions = (selectedType) => {
         let extraFields = '';
         if (selectedType === 'Costing') {
@@ -3096,31 +3630,31 @@ function openCustomColumnCreatorDialog() {
         }
         specificOptionsContainer.innerHTML = extraFields;
     };
-    
+
     // Render on change and init
     baseTypeSelect.addEventListener('change', () => renderTypeSpecificOptions(baseTypeSelect.value));
     renderTypeSpecificOptions(baseTypeSelect.value);
-    
+
     // Confirm button
     document.getElementById('confirm-custom-column').addEventListener('click', () => {
         const name = document.getElementById('custom-column-name').value.trim();
         const type = baseTypeSelect.value;
         const currency = document.getElementById('column-currency')?.value || null;
-        
+
         if (!name) {
             alert('Please enter a column name.');
             return;
         }
-        
+
         addNewColumn({ name, type, currency });
         dialogOverlay.remove(); // Close modal
     });
-    
+
     // Cancel button
     document.getElementById('cancel-custom-column').addEventListener('click', () => {
         dialogOverlay.remove();
     });
-    
+
     // Click outside closes dialog
     dialogOverlay.addEventListener('click', e => {
         if (e.target === dialogOverlay) dialogOverlay.remove();
@@ -3141,15 +3675,15 @@ function addNewTask(section) {
         customFields: {},
         order: section.tasks.length
     };
-    
+
     section.tasks.push(newTask);
     productIdToFocus = tempId;
-    
+
     if (section.isCollapsed) {
         section.isCollapsed = false;
     }
-    
-    render();
+
+    render('us');
 }
 
 /**
@@ -3160,7 +3694,7 @@ function openCustomOptionDialog(optionType) {
     closeFloatingPanels();
     const dialogOverlay = document.createElement('div');
     dialogOverlay.className = 'dialog-overlay';
-    
+
     dialogOverlay.innerHTML = `
 <div class="dialog-box">
     <div class="dialog-header">Add Custom ${optionType}</div>
@@ -3179,14 +3713,14 @@ function openCustomOptionDialog(optionType) {
         <button class="dialog-button primary" id="confirm-add-option">Add Option</button>
     </div>
 </div>`;
-    
+
     document.body.appendChild(dialogOverlay);
     document.getElementById('custom-option-name').focus();
-    
+
     const closeDialog = () => dialogOverlay.remove();
-    
+
     document.getElementById('cancel-add-option').addEventListener('click', closeDialog);
-    
+
     document.getElementById('confirm-add-option').addEventListener('click', () => {
         const name = document.getElementById('custom-option-name').value.trim();
         const color = document.getElementById('custom-option-color').value;
@@ -3197,7 +3731,7 @@ function openCustomOptionDialog(optionType) {
             alert('Please enter a name for the option.');
         }
     });
-    
+
     dialogOverlay.addEventListener('click', e => {
         if (e.target === dialogOverlay) closeDialog();
     });
@@ -3223,10 +3757,10 @@ function addNewCustomOption(optionType, newOption) {
 function openCustomColumnOptionDialog(columnId) {
     if (!columnId) return;
     closeFloatingPanels();
-    
+
     const dialogOverlay = document.createElement('div');
     dialogOverlay.className = 'dialog-overlay';
-    
+
     dialogOverlay.innerHTML = `
 <div class="dialog-box">
     <div class="dialog-header">Add New Option</div>
@@ -3245,14 +3779,14 @@ function openCustomColumnOptionDialog(columnId) {
         <button class="dialog-button primary" id="confirm-add-option">Add Option</button>
     </div>
 </div>`;
-    
+
     document.body.appendChild(dialogOverlay);
     document.getElementById('custom-option-name').focus();
-    
+
     const closeDialog = () => dialogOverlay.remove();
-    
+
     document.getElementById('cancel-add-option').addEventListener('click', closeDialog);
-    
+
     document.getElementById('confirm-add-option').addEventListener('click', () => {
         const name = document.getElementById('custom-option-name').value.trim();
         const color = document.getElementById('custom-option-color').value;
@@ -3263,7 +3797,7 @@ function openCustomColumnOptionDialog(columnId) {
             alert('Please enter a name for the option.');
         }
     });
-    
+
     dialogOverlay.addEventListener('click', e => {
         if (e.target === dialogOverlay) closeDialog();
     });
@@ -3297,18 +3831,18 @@ async function addNewCustomColumnOption(columnId, newOption) {
 function generateCustomTagStyles(projectData) {
     const styleId = 'custom-tag-styles';
     let styleElement = document.getElementById(styleId);
-    
+
     if (!styleElement) {
         styleElement = document.createElement('style');
         styleElement.id = styleId;
         document.head.appendChild(styleElement);
     }
-    
+
     let cssRules = '';
-    
+
     const generateRules = (items, prefix) => {
         if (!items) return;
-        
+
         // This loop is where the error occurs
         items.forEach(item => {
             // --- FIX STARTS HERE ---
@@ -3324,10 +3858,10 @@ function generateCustomTagStyles(projectData) {
             // --- FIX ENDS HERE ---
         });
     };
-    
+
     generateRules(projectData.customPriorities, 'priority');
     generateRules(projectData.customStatuses, 'status');
-    
+
     if (projectData.customColumns) {
         projectData.customColumns.forEach(col => {
             if (col.options && Array.isArray(col.options)) {
@@ -3361,11 +3895,11 @@ function openEditOptionDialog(optionType, originalOption, columnId = null) {
     closeFloatingPanels();
     const dialogOverlay = document.createElement('div');
     dialogOverlay.className = 'dialog-overlay';
-    
+
     // --- FIX STARTS HERE ---
     // Determine the correct dialog title based on the option type.
     let dialogTitle = `Edit ${optionType} Option`; // Default title
-    
+
     if (optionType === 'CustomColumn' && columnId) {
         // Find the custom column by its ID in our project data
         const column = project.customColumns.find(c => c.id === columnId);
@@ -3375,7 +3909,7 @@ function openEditOptionDialog(optionType, originalOption, columnId = null) {
         }
     }
     // --- FIX ENDS HERE ---
-    
+
     dialogOverlay.innerHTML = `
     <div class="dialog-box">
         <div class="dialog-header">${dialogTitle}</div>
@@ -3394,11 +3928,11 @@ function openEditOptionDialog(optionType, originalOption, columnId = null) {
             <button class="dialog-button primary" id="confirm-edit-option">Save Changes</button>
         </div>
     </div>`;
-    
+
     document.body.appendChild(dialogOverlay);
     const nameInput = document.getElementById('edit-option-name');
     nameInput.focus();
-    
+
     document.getElementById('confirm-edit-option').addEventListener('click', () => {
         const newOption = {
             name: document.getElementById('edit-option-name').value.trim(),
@@ -3412,7 +3946,7 @@ function openEditOptionDialog(optionType, originalOption, columnId = null) {
             showConfirmationModal('Please enter a name for the option.');
         }
     });
-    
+
     dialogOverlay.addEventListener('click', e => {
         if (e.target === e.currentTarget || e.target.id === 'cancel-edit-option') {
             closeFloatingPanels();
@@ -3432,7 +3966,7 @@ async function updateCustomOptionInFirebase(optionType, originalOption, newOptio
     const projectCopy = JSON.parse(JSON.stringify(project));
     let fieldToUpdate = null;
     let newArray = [];
-    
+
     if (optionType === 'Priority') {
         fieldToUpdate = 'customPriorities';
         newArray = projectCopy.customPriorities || [];
@@ -3450,7 +3984,7 @@ async function updateCustomOptionInFirebase(optionType, originalOption, newOptio
         }
         newArray = projectCopy.customColumns;
     }
-    
+
     // For non-column options, find and replace the option in the array
     if (optionType === 'Priority' || optionType === 'Status') {
         const optionIndex = newArray.findIndex(opt => opt.name === originalOption.name && opt.color === originalOption.color);
@@ -3458,7 +3992,7 @@ async function updateCustomOptionInFirebase(optionType, originalOption, newOptio
             newArray[optionIndex] = newOption;
         }
     }
-    
+
     if (fieldToUpdate) {
         // Update the entire array in Firestore
         await updateProjectInFirebase({
@@ -3476,21 +4010,21 @@ async function collapseExpandedSection(sectionId) {
     // Note: We find the toggle icon inside the '.section-title-wrapper' as per your code
     const sectionHeader = document.querySelector(`.section-title-wrapper[data-section-id="${sectionId}"]`);
     const chevron = sectionHeader ? sectionHeader.querySelector('.section-toggle') : null;
-    
+
     // --- 1. Update the UI immediately ---
     chevron.classList.replace('fa-chevron-down', 'fa-chevron-right');
-    
+
     // --- 2. Update Firestore in the background ---
     try {
         const user = auth.currentUser;
         if (!user) throw new Error("User not authenticated.");
-        
+
         const basePath = await _getSelectedProjectPath(db, user.uid);
         const sectionRef = doc(db, `${basePath}/sections/${sectionId}`);
         await updateDoc(sectionRef, { isCollapsed: false });
         console.log(`✅ Section ${sectionId} marked as collapsed in Firestore.`);
-        
-        
+
+
     } catch (error) {
         console.error("❌ Error updating section collapse state:", error);
         // Optional: Revert UI changes if Firestore update fails
@@ -3504,20 +4038,20 @@ async function expandCollapsedSection(sectionId) {
     // Note: We find the toggle icon inside the '.section-title-wrapper' as per your code
     const sectionHeader = document.querySelector(`.section-title-wrapper[data-section-id="${sectionId}"]`);
     const chevron = sectionHeader ? sectionHeader.querySelector('.section-toggle') : null;
-    
+
     // --- 1. Update the UI immediately ---
     chevron.classList.replace('fa-chevron-right', 'fa-chevron-down');
-    
+
     // --- 2. Update Firestore in the background ---
     try {
         const user = auth.currentUser;
         if (!user) throw new Error("User not authenticated.");
-        
+
         const basePath = await _getSelectedProjectPath(db, user.uid);
         const sectionRef = doc(db, `${basePath}/sections/${sectionId}`);
         await updateDoc(sectionRef, { isCollapsed: true });
         console.log(`✅ Section ${sectionId} marked as collapsed in Firestore.`);
-        
+
     } catch (error) {
         console.error("❌ Error updating section collapse state:", error);
         // Optional: Revert UI changes if Firestore update fails
@@ -3542,7 +4076,7 @@ function initializeDragAndDrop(gridWrapper) {
     // Ensure we don't attach multiple listeners on re-renders
     if (gridWrapper.dataset.dragInit === 'true') return;
     gridWrapper.dataset.dragInit = 'true';
-    
+
     gridWrapper.addEventListener('mousedown', handleDragStart);
     gridWrapper.addEventListener('touchstart', handleDragStart, { passive: false });
 }
@@ -3550,12 +4084,12 @@ function initializeDragAndDrop(gridWrapper) {
 function handleDragStart(e) {
     const dragHandle = e.target.closest('.drag-handle');
     if (!dragHandle) return;
-    
+
     e.preventDefault();
-    
+
     const taskRow = dragHandle.closest('.task-row-wrapper');
     const sectionRow = dragHandle.closest('.section-row-wrapper');
-    
+
     if (taskRow) {
         draggedElement = taskRow;
     } else if (sectionRow) {
@@ -3564,32 +4098,32 @@ function handleDragStart(e) {
     } else {
         return;
     }
-    
+
     if (!draggedElement) return;
-    
+
     sourceContainer = draggedElement.closest('.grid-wrapper');
     originalNextSibling = draggedElement.nextSibling;
     dragHasMoved = false;
-    
+
     // --- Placeholder for CSS Grid ---
     placeholder = document.createElement('div');
     placeholder.classList.add('drag-placeholder-ghost');
-    
+
     const draggedHeight = draggedElement.getBoundingClientRect().height;
     placeholder.style.height = `${draggedHeight}px`;
-    
+
     // CRITICAL: Make the placeholder span all columns in the grid
     placeholder.style.gridColumn = '1 / -1';
-    
+
     draggedElement.parentNode.insertBefore(placeholder, draggedElement);
     placeholder.style.display = 'none'; // Hide until drag moves
-    
+
     setTimeout(() => {
         if (draggedElement) draggedElement.classList.add('dragging');
     }, 0);
-    
+
     document.body.classList.add('is-dragging');
-    
+
     // Attach follow-up events
     document.addEventListener('mousemove', handleDragMove);
     document.addEventListener('touchmove', handleDragMove, { passive: false });
@@ -3599,7 +4133,7 @@ function handleDragStart(e) {
 
 function handleDragMove(e) {
     if (!draggedElement) return;
-    
+
     if (e.type === 'touchmove') e.preventDefault();
     if (!dragHasMoved) {
         dragHasMoved = true;
@@ -3610,7 +4144,7 @@ function handleDragMove(e) {
     const elementOver = document.elementFromPoint(coords.x, coords.y);
     placeholder.style.display = '';
     if (!elementOver) return;
-    
+
     // Auto-expand logic (remains the same)
     const isDraggingTask = draggedElement.matches('.task-row-wrapper');
     const hoveredSectionHeader = elementOver.closest('.section-row-wrapper');
@@ -3628,9 +4162,9 @@ function handleDragMove(e) {
         clearTimeout(expansionTimeout);
         lastHoveredSectionId = null;
     }
-    
+
     // ▼▼▼ NEW & IMPROVED POSITIONING LOGIC ▼▼▼
-    
+
     // Rule 1: Prioritize the "Add Task" row as a primary drop zone.
     const addTaskTarget = elementOver.closest('.add-task-row-wrapper');
     if (addTaskTarget) {
@@ -3638,12 +4172,12 @@ function handleDragMove(e) {
         addTaskTarget.before(placeholder);
         return;
     }
-    
+
     // Rule 2: Handle dropping in the empty space at the bottom of a section.
     const hoveredSection = elementOver.closest('.section-wrapper');
     const isHoveringTask = elementOver.closest('.task-row-wrapper');
     const isHoveringHeader = elementOver.closest('.section-row-wrapper');
-    
+
     if (hoveredSection && !isHoveringTask && !isHoveringHeader) {
         // We are inside a section, but not over a specific task or header.
         // This means we're in the empty space (likely at the bottom).
@@ -3654,13 +4188,13 @@ function handleDragMove(e) {
             return;
         }
     }
-    
+
     // Rule 3: General logic for dropping relative to other tasks and sections.
     const finalTarget = elementOver.closest('.task-row-wrapper, .section-wrapper');
     if (finalTarget && finalTarget !== draggedElement && !finalTarget.contains(draggedElement)) {
         const dropZoneRect = finalTarget.getBoundingClientRect();
         const isAfter = coords.y > dropZoneRect.top + dropZoneRect.height / 2;
-        
+
         if (isAfter) {
             finalTarget.after(placeholder);
         } else {
@@ -3679,18 +4213,18 @@ async function handleDragEnd(e) {
         cleanUpDragState();
         return;
     }
-    
+
     // Optimistic UI update
     placeholder.parentNode.replaceChild(draggedElement, placeholder);
-    
+
     const isTask = draggedElement.classList.contains('task-row-wrapper');
     const gridWrapper = draggedElement.closest('.grid-wrapper');
-    
+
     try {
         const user = auth.currentUser;
         if (!user) throw new Error("User not authenticated.");
         const basePath = await _getSelectedProjectPath(db, user.uid);
-        
+
         if (isTask) {
             // Call our new, grid-aware function
             await handleTaskMoved(draggedElement, gridWrapper, basePath);
@@ -3720,12 +4254,12 @@ function cleanUpDragState() {
         placeholder.parentNode.removeChild(placeholder);
     }
     document.body.classList.remove('is-dragging');
-    
+
     draggedElement = null;
     placeholder = null;
     sourceContainer = null;
     dragHasMoved = false;
-    
+
     // --- Remove ALL potential listeners ---
     document.removeEventListener('mousemove', handleDragMove);
     document.removeEventListener('touchmove', handleDragMove);
@@ -3743,7 +4277,7 @@ function updateDataOnDrop(draggedId, isTask, targetSectionId, targetId) {
     let itemToMove;
     let sourceArray;
     let sourceIndex = -1;
-    
+
     // 1. Find and remove the item from its original location
     if (isTask) {
         for (const section of project.sections) {
@@ -3761,12 +4295,12 @@ function updateDataOnDrop(draggedId, isTask, targetSectionId, targetId) {
             itemToMove = sourceArray.splice(sourceIndex, 1)[0];
         }
     }
-    
+
     if (!itemToMove) {
         console.error("Could not find the dragged item in the data source.");
         return;
     }
-    
+
     // 2. Add the item to its new location
     if (isTask) {
         const targetSection = project.sections.find(s => s.id === targetSectionId);
@@ -3800,17 +4334,17 @@ function positionFloatingPanel(targetEl, dropdownEl) {
     const panelRect = dropdownEl.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
     const viewportWidth = window.innerWidth;
-    
+
     let top = targetRect.bottom + 4;
     if (top + panelRect.height > viewportHeight) {
         top = targetRect.top - panelRect.height - 4;
     }
-    
+
     let left = targetRect.left;
     if (left + panelRect.width > viewportWidth) {
         left = viewportWidth - panelRect.width - 8;
     }
-    
+
     dropdownEl.style.top = `${top}px`;
     dropdownEl.style.left = `${left}px`;
     dropdownEl.style.position = 'absolute';
