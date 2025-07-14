@@ -2033,7 +2033,6 @@ async function render(stockType) {
 
 
     // --- Final Permission: True if EITHER condition is met ---
-    canUserEditProduct = !!(isOwner || isAdminOrDev);
     canUserEditProduct = !!(isOwner && isAdminOrDev);
 
     if (!canUserEditProduct) {
@@ -2250,64 +2249,104 @@ async function render(stockType) {
 
             switch (col.id) {
                 case 'productImage': { // Brackets create a block scope for our variables
-                    const hasImage = !!product.imageUrl;
-
-                    // 1. Set the initial HTML for the cell.
-                    // We use a w-10 h-10 container for a better click/drag target area.
-                    cell.innerHTML = `
-        <div class="product-image-wrapper w-6 h-6 bg-gray-200 rounded-md flex items-center justify-center overflow-hidden relative cursor-pointer" data-column-id="productImage">
-            ${hasImage
-                            ? `<img src="${product.imageUrl}" class="w-full h-full object-cover pointer-events-none">`
-                            : '<span class="material-icons text-gray-400 text-[18px] pointer-events-none">photo_camera</span>'
-                        }
-            <input type="file" accept="image/*" class="hidden image-file-input">
-        </div>
-    `;
-
-
-                    // 2. Get references to the interactive elements we just created.
-                    const wrapper = cell.querySelector('.product-image-wrapper');
-                    const fileInput = cell.querySelector('.image-file-input');
-
-                    // 3. Attach all necessary event listeners for interactivity.
-
-                    // --- Click-to-Upload ---
-                    wrapper.addEventListener('click', (e) => {
-                        e.stopPropagation(); // Prevent other listeners from firing.
-                        fileInput.click();   // Open the file selection dialog.
-                    });
-
-                    // --- File Picker Selection ---
-                    fileInput.addEventListener('change', (e) => {
-                        const file = e.target.files[0];
-                        if (file) {
-                            // Call the helper function to handle the upload.
-                            uploadProductImage(file, product.id);
-                        }
-                    });
-
-                    // --- Drag and Drop ---
-                    wrapper.addEventListener('dragover', (e) => {
-                        e.preventDefault(); // This is necessary to allow a drop.
-                        wrapper.classList.add('drag-hover'); // Optional: style for hover effect.
-                    });
-
-                    wrapper.addEventListener('dragleave', () => {
-                        wrapper.classList.remove('drag-hover');
-                    });
-
-                    wrapper.addEventListener('drop', (e) => {
-                        e.preventDefault();
-                        wrapper.classList.remove('drag-hover');
-                        const file = e.dataTransfer.files[0];
-                        if (file && file.type.startsWith('image/')) {
-                            // Call the helper function to handle the upload.
-                            uploadProductImage(file, product.id);
-                        }
-                    });
-
-                    break;
+    const hasImage = !!product.imageUrl;
+    
+    if (canUserEditProduct) {
+        // ✅ --- EDITABLE STATE ---
+        // If the user has permission, create the fully interactive cell.
+        
+        // 1. Set the initial HTML.
+        cell.innerHTML = `
+            <div class="product-image-wrapper w-6 h-6 bg-gray-200 rounded-md flex items-center justify-center overflow-hidden relative cursor-pointer" data-column-id="productImage">
+                ${hasImage
+                    ? `<img src="${product.imageUrl}" class="w-full h-full object-cover pointer-events-none">`
+                    : '<span class="material-icons text-gray-400 text-[18px] pointer-events-none">photo_camera</span>'
                 }
+                <input type="file" accept="image/*" class="hidden image-file-input">
+            </div>
+        `;
+        
+        // 2. Get references to interactive elements.
+        const wrapper = cell.querySelector('.product-image-wrapper');
+        const fileInput = cell.querySelector('.image-file-input');
+        
+        // 3. Attach event listeners for uploading and editing.
+        
+        // --- Click Handler ---
+        wrapper.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (hasImage) {
+                // If an image exists, show the options dropdown.
+                createAdvancedDropdown(wrapper, {
+                    options: [
+                        { name: 'View Image', icon: 'visibility' },
+                        { name: 'Replace Image', icon: 'file_upload' }
+                    ],
+                    itemRenderer: (option) => `<span class="material-icons text-slate-500">${option.icon}</span><span>${option.name}</span>`,
+                    onSelect: (selected) => {
+                        if (selected.name === 'View Image') {
+                            window.open(product.imageUrl, '_blank');
+                        } else if (selected.name === 'Replace Image') {
+                            fileInput.click();
+                        }
+                    }
+                });
+            } else {
+                // If no image, clicking opens the file picker directly.
+                fileInput.click();
+            }
+        });
+        
+        // --- File Input Handler ---
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                uploadProductImage(file, product.id);
+            }
+        });
+        
+        // --- Drag and Drop Handlers ---
+        wrapper.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            wrapper.classList.add('drag-hover');
+        });
+        wrapper.addEventListener('dragleave', () => {
+            wrapper.classList.remove('drag-hover');
+        });
+        wrapper.addEventListener('drop', (e) => {
+            e.preventDefault();
+            wrapper.classList.remove('drag-hover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                uploadProductImage(file, product.id);
+            }
+        });
+        
+    } else {
+        // 🛑 --- VIEW-ONLY STATE ---
+        // If the user does NOT have permission, create a simple, non-interactive link.
+        
+        if (hasImage) {
+            // If there's an image, make it a link that opens in a new tab.
+            cell.innerHTML = `
+                <a href="${product.imageUrl}" target="_blank" rel="noopener noreferrer" title="View image in new tab">
+                    <div class="w-6 h-6 bg-gray-200 rounded-md flex items-center justify-center overflow-hidden">
+                        <img src="${product.imageUrl}" class="w-full h-full object-cover">
+                    </div>
+                </a>
+            `;
+        } else {
+            // If there's no image, just show the static placeholder icon.
+            cell.innerHTML = `
+                <div class="w-6 h-6 bg-gray-200 rounded-md flex items-center justify-center overflow-hidden cursor-default">
+                    <span class="material-icons text-gray-400 text-[18px]">photo_camera</span>
+                </div>
+            `;
+        }
+    }
+    
+    break;
+}
 
                 case 'supplierCost':
                     const cost = typeof rawValue === 'number' ? `$${rawValue.toFixed(2)}` : '';
