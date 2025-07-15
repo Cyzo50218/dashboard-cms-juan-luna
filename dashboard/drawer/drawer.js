@@ -31,6 +31,7 @@ import { firebaseConfig } from "/services/firebase-config.js";
     const sidebar = document.getElementById("dashboardDrawer");
     const inventoryLink = document.getElementById('inventory-link');
     const productsLink = document.getElementById('products-link');
+    const adminLink = document.getElementById("adminLink");
     if (!sidebar) return;
 
     // --- Module-level state variables ---
@@ -307,6 +308,18 @@ import { firebaseConfig } from "/services/firebase-config.js";
 
             activeWorkspaceId = newWorkspaceId;
             console.log("Active workspace set:", activeWorkspaceId);
+            
+            // Admin tab logic
+const role = userSnap.data()?.role;
+
+if (adminLink) {
+    if (role === 0 || role === 3) {
+        adminLink.classList.remove("hidden");
+        adminLink.querySelector("a").href = "/admin/admin.html";
+    } else {
+        adminLink.classList.add("hidden");
+    }
+}
 
             const workspaceDocRef = doc(db, `users/${user.uid}/myworkspace`, activeWorkspaceId);
 
