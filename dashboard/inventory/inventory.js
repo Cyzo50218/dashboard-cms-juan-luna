@@ -2058,6 +2058,8 @@ async function render(stockType) {
     if (!canUserEditProduct) {
         console.warn('⚠️ User does not have permission to add products.');
         addProductHeaderBtn.classList.add('hidden');
+    }else {
+        addProductHeaderBtn.classList.remove('hidden');
     }
     // Column setup from Firestore
     const firestoreColumns = stockType === 'us'
