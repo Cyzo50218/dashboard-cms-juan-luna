@@ -50,7 +50,7 @@ console.log("Initialized Firebase on Dashboard.");
 
 // --- Module-Scoped Variables ---
 // DOM Element Holders
-let taskListHeaderEl, drawer, settingsBtn, inventoryTabs, restrictedOverlay, addSectionClassBtn, headerRight, productListBody, taskListFooter, addProductHeaderBtn, mainContainer, assigneeDropdownTemplate, filterBtn, sortBtn;
+let taskListHeaderEl, drawer, settingsBtn, inventoryTabs, imageOverlay, overlayImageSrc, closeOverlay, restrictedOverlay, addSectionClassBtn, headerRight, productListBody, taskListFooter, addProductHeaderBtn, mainContainer, assigneeDropdownTemplate, filterBtn, sortBtn;
 
 // Event Handler References
 let headerClickListener, bodyClickListener, settingsBtnListener, bodyFocusOutListener, addProductHeaderBtnListener, windowClickListener, filterBtnListener, sortBtnListener;
@@ -314,6 +314,9 @@ function updateUserPermissions(projectData, userId) {
 // --- Main Initialization and Cleanup ---
 
 function initializeListView() {
+    imageOverlay = document.getElementById('image-overlay');
+    overlayImageSrc = document.getElementById('overlay-image-src');
+    closeOverlay = document.getElementById('close-overlay');
     restrictedOverlay = document.getElementById('restricted-overlay');
     taskListHeaderEl = document.getElementById('task-list-header');
     drawer = document.getElementById('right-sidebar');
@@ -560,6 +563,16 @@ async function uploadProductImage(file, productId) {
 }
 
 async function setupEventListeners() {
+
+    closeOverlay.addEventListener('click', () => {
+        imageOverlay.classList.add('hidden');
+    });
+
+    imageOverlay.addEventListener('click', (e) => {
+        if (e.target === imageOverlay) {
+            imageOverlay.classList.add('hidden');
+        }
+    });
 
     inventoryTabs.forEach((tab, index) => {
         tab.addEventListener('click', () => {
@@ -1996,10 +2009,10 @@ function createFloatingInput(targetCell, task, column) {
 async function deleteProduct(productId) {
     const stockTypeCollection = currentStockType === 'us' ? 'US-Stocks-meta' : 'PH-Stocks-meta';
     const productRef = doc(db, `InventoryWorkspace/${currentInventoryId}/${stockTypeCollection}`, productId);
-    
+
     try {
         await deleteDoc(productRef);
-        
+
         console.log(`✅ Product with ID: ${productId} has been deleted.`);
         render(currentStockType);
         // The list will automatically update when your real-time listener detects the deletion.
@@ -2008,6 +2021,7 @@ async function deleteProduct(productId) {
         alert("Failed to delete the product. Please try again.");
     }
 }
+
 
 async function render(stockType) {
     let productList = stockType === 'ph' ? dataPhStocks : dataUsStocks;
@@ -2058,7 +2072,7 @@ async function render(stockType) {
     if (!canUserEditProduct) {
         console.warn('⚠️ User does not have permission to add products.');
         addProductHeaderBtn.classList.add('hidden');
-    }else {
+    } else {
         addProductHeaderBtn.classList.remove('hidden');
     }
     // Column setup from Firestore
@@ -2198,14 +2212,18 @@ async function render(stockType) {
         optionsIcon.textContent = 'more_vert'; // vertical three dots
 
         wrapper.appendChild(text);
-        wrapper.appendChild(optionsIcon);
-
-
+        if (canUserEditProduct) {
+            wrapper.appendChild(optionsIcon);
+        } 
+        
         const resizeHandle = document.createElement('div');
         resizeHandle.className = 'resize-handle';
 
         cell.appendChild(wrapper);
-        cell.appendChild(resizeHandle);
+        if (canUserEditProduct){
+            cell.appendChild(resizeHandle);
+        }
+        
         rightHeaderContent.appendChild(cell);
     });
 
@@ -2227,10 +2245,9 @@ async function render(stockType) {
         row.dataset.productId = product.id;
 
         const leftCell = document.createElement('div');
-leftCell.className = 'sticky left-0 z-10 bg-white px-1 w-80 md:w-96 lg:w-[400px] flex-shrink-0 flex items-center border-r border-transparent group-hover:bg-slate-50 py-0.5';
+        leftCell.className = 'sticky left-0 z-10 bg-white px-1 w-80 md:w-96 lg:w-[400px] flex-shrink-0 flex items-center border-r border-transparent group-hover:bg-slate-50 py-0.5';
 
-// Add the delete icon to the end of the flex container
-leftCell.innerHTML = `
+        leftCell.innerHTML = `
     <div class="drag-handle ${!canUserEditProduct ? 'hidden' : ''} cursor-grab p-1 hover:bg-slate-200">
         <span class="material-icons text-slate-500" style="font-size: 20px;">drag_indicator</span>
     </div>
@@ -2247,21 +2264,21 @@ leftCell.innerHTML = `
     ` : ''}
 `;
 
-// Find the delete icon we just created
-const deleteIcon = leftCell.querySelector('.delete-product-btn');
+        // Find the delete icon we just created
+        const deleteIcon = leftCell.querySelector('.delete-product-btn');
 
-// If the delete icon exists, add the click listener
-if (deleteIcon) {
-    deleteIcon.addEventListener('click', (e) => {
-        e.stopPropagation(); // Prevent other clicks from firing
-        
-        // Show a confirmation dialog
-        if (confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
-            // If user clicks "Yes", call the delete function
-            deleteProduct(product.id);
+        // If the delete icon exists, add the click listener
+        if (deleteIcon) {
+            deleteIcon.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent other clicks from firing
+
+                // Show a confirmation dialog
+                if (confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
+                    // If user clicks "Yes", call the delete function
+                    deleteProduct(product.id);
+                }
+            });
         }
-    });
-}
 
         const rightCells = document.createElement('div');
         rightCells.className = 'flex-grow flex group-hover:bg-slate-50';
@@ -2293,104 +2310,109 @@ if (deleteIcon) {
 
             switch (col.id) {
                 case 'productImage': { // Brackets create a block scope for our variables
-    const hasImage = !!product.imageUrl;
-    
-    if (canUserEditProduct) {
-        // ✅ --- EDITABLE STATE ---
-        // If the user has permission, create the fully interactive cell.
-        
-        // 1. Set the initial HTML.
-        cell.innerHTML = `
+                    const hasImage = !!product.imageUrl;
+
+                    if (canUserEditProduct) {
+                        // ✅ --- EDITABLE STATE ---
+                        // If the user has permission, create the fully interactive cell.
+
+                        // 1. Set the initial HTML.
+                        cell.innerHTML = `
             <div class="product-image-wrapper w-6 h-6 bg-gray-200 rounded-md flex items-center justify-center overflow-hidden relative cursor-pointer" data-column-id="productImage">
                 ${hasImage
-                    ? `<img src="${product.imageUrl}" class="w-full h-full object-cover pointer-events-none">`
-                    : '<span class="material-icons text-gray-400 text-[18px] pointer-events-none">photo_camera</span>'
-                }
+                                ? `<img src="${product.imageUrl}" class="w-full h-full object-cover pointer-events-none">`
+                                : '<span class="material-icons text-gray-400 text-[18px] pointer-events-none">photo_camera</span>'
+                            }
                 <input type="file" accept="image/*" class="hidden image-file-input">
             </div>
         `;
-        
-        // 2. Get references to interactive elements.
-        const wrapper = cell.querySelector('.product-image-wrapper');
-        const fileInput = cell.querySelector('.image-file-input');
-        
-        // 3. Attach event listeners for uploading and editing.
-        
-        // --- Click Handler ---
-        wrapper.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (hasImage) {
-                // If an image exists, show the options dropdown.
-                createAdvancedDropdown(wrapper, {
-                    options: [
-                        { name: 'View Image', icon: 'visibility' },
-                        { name: 'Replace Image', icon: 'file_upload' }
-                    ],
-                    itemRenderer: (option) => `<span class="material-icons text-slate-500">${option.icon}</span><span>${option.name}</span>`,
-                    onSelect: (selected) => {
-                        if (selected.name === 'View Image') {
-                            window.open(product.imageUrl, '_blank');
-                        } else if (selected.name === 'Replace Image') {
-                            fileInput.click();
-                        }
-                    }
-                });
-            } else {
-                // If no image, clicking opens the file picker directly.
-                fileInput.click();
-            }
-        });
-        
-        // --- File Input Handler ---
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                uploadProductImage(file, product.id);
-            }
-        });
-        
-        // --- Drag and Drop Handlers ---
-        wrapper.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            wrapper.classList.add('drag-hover');
-        });
-        wrapper.addEventListener('dragleave', () => {
-            wrapper.classList.remove('drag-hover');
-        });
-        wrapper.addEventListener('drop', (e) => {
-            e.preventDefault();
-            wrapper.classList.remove('drag-hover');
-            const file = e.dataTransfer.files[0];
-            if (file && file.type.startsWith('image/')) {
-                uploadProductImage(file, product.id);
-            }
-        });
-        
-    } else {
-        // 🛑 --- VIEW-ONLY STATE ---
-        // If the user does NOT have permission, create a simple, non-interactive link.
-        
-        if (hasImage) {
-            // If there's an image, make it a link that opens in a new tab.
-            cell.innerHTML = `
-                <a href="${product.imageUrl}" target="_blank" rel="noopener noreferrer" title="View image in new tab">
+
+                        // 2. Get references to interactive elements.
+                        const wrapper = cell.querySelector('.product-image-wrapper');
+                        const fileInput = cell.querySelector('.image-file-input');
+
+                        // 3. Attach event listeners for uploading and editing.
+
+                        // --- Click Handler ---
+                        wrapper.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            if (hasImage) {
+                                // If an image exists, show the options dropdown.
+                                createAdvancedDropdown(wrapper, {
+                                    options: [
+                                        { name: 'View Image', icon: 'visibility' },
+                                        { name: 'Replace Image', icon: 'file_upload' }
+                                    ],
+                                    itemRenderer: (option) => `<span class="material-icons text-slate-500">${option.icon}</span><span>${option.name}</span>`,
+                                    onSelect: (selected) => {
+                                        if (selected.name === 'View Image') {
+                                            window.open(product.imageUrl, '_blank');
+                                        } else if (selected.name === 'Replace Image') {
+                                            fileInput.click();
+                                        }
+                                    }
+                                });
+                            } else {
+                                // If no image, clicking opens the file picker directly.
+                                fileInput.click();
+                            }
+                        });
+
+                        // --- File Input Handler ---
+                        fileInput.addEventListener('change', (e) => {
+                            const file = e.target.files[0];
+                            if (file) {
+                                uploadProductImage(file, product.id);
+                            }
+                        });
+
+                        // --- Drag and Drop Handlers ---
+                        wrapper.addEventListener('dragover', (e) => {
+                            e.preventDefault();
+                            wrapper.classList.add('drag-hover');
+                        });
+                        wrapper.addEventListener('dragleave', () => {
+                            wrapper.classList.remove('drag-hover');
+                        });
+                        wrapper.addEventListener('drop', (e) => {
+                            e.preventDefault();
+                            wrapper.classList.remove('drag-hover');
+                            const file = e.dataTransfer.files[0];
+                            if (file && file.type.startsWith('image/')) {
+                                uploadProductImage(file, product.id);
+                            }
+                        });
+
+                    } else {
+                        // 🛑 --- VIEW-ONLY STATE ---
+
+
+                        if (hasImage) {
+                            // If there's an image, create a clickable element to open the overlay.
+                            cell.innerHTML = `
+                <div class="product-image-container cursor-pointer" title="View Image">
                     <div class="w-6 h-6 bg-gray-200 rounded-md flex items-center justify-center overflow-hidden">
                         <img src="${product.imageUrl}" class="w-full h-full object-cover">
                     </div>
-                </a>
+                </div>
             `;
-        } else {
-            // If there's no image, just show the static placeholder icon.
-            cell.innerHTML = `
+
+                            cell.querySelector('.product-image-container').addEventListener('click', () => {
+                                overlayImageSrc.src = product.imageUrl;
+                                imageOverlay.classList.remove('hidden');
+                            });
+
+                        } else {
+                            // If there's no image, just show the static placeholder icon.
+                            cell.innerHTML = `
                 <div class="w-6 h-6 bg-gray-200 rounded-md flex items-center justify-center overflow-hidden cursor-default">
                     <span class="material-icons text-gray-400 text-[18px]">photo_camera</span>
                 </div>
             `;
-        }
-    }
-    
-    break;
-}
+                        }
+                    }
+                    break;
+                }
 
                 case 'supplierCost':
                     const cost = typeof rawValue === 'number' ? `$${rawValue.toFixed(2)}` : '';

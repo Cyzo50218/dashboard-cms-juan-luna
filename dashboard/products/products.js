@@ -214,7 +214,7 @@ async function checkUserPermissions(userId, workspaceId, userRole) {
     const isAdminOrDev = userRole === 3 || userRole === 0; // 3 = Admin, 0 = Developer
 
     // --- Final Permission: True if EITHER condition is met ---
-    canUserModify = isOwner || isAdminOrDev;
+    canUserModify = isOwner && isAdminOrDev;
 
     if (canUserModify) {
       console.log(`%c✅ Permission Granted: User is ${isOwner ? 'Owner' : ''}${isOwner && isAdminOrDev ? ' and ' : ''}${isAdminOrDev ? 'Admin/Dev' : ''}.`, 'color: #28a745;');
@@ -288,6 +288,12 @@ function renderProducts(productsToRender, shouldAppend = false) {
     }
     return;
   }
+
+  if (!canUserModify) {
+    if (addBtn) {
+      addBtn.classList.add('hidden');
+    }
+  }
   productsToRender.forEach((product) => {
     const card = document.createElement("div");
     card.className = "product-card";
@@ -315,6 +321,13 @@ function renderProducts(productsToRender, shouldAppend = false) {
             <div class="product-cost">${formatCurrency(product.cost)}</div>
             <div class="product-supplier">${product.supplier}</div>
         `;
+        if (!canUserModify) {
+      const editIcon = card.querySelector('.edit-icon');
+      const deleteIcon = card.querySelector('.delete-icon');
+
+      if (editIcon) editIcon.classList.add('hidden');
+      if (deleteIcon) deleteIcon.classList.add('hidden');
+    }
     card.dataset.id = product.id;
     if (selectedProductId === product.id) {
       card.classList.add("selected");
@@ -679,15 +692,15 @@ async function handleSaveClick(e) {
 }
 
 function filterProducts(searchTerm) {
-    if (!searchTerm) {
-        return [...productList]; // Return a copy of the master list
-    }
-    const term = searchTerm.toLowerCase();
-    return productList.filter(
-        (product) =>
-            product.name.toLowerCase().includes(term) ||
-            product.sku.toLowerCase().includes(term)
-    );
+  if (!searchTerm) {
+    return [...productList]; // Return a copy of the master list
+  }
+  const term = searchTerm.toLowerCase();
+  return productList.filter(
+    (product) =>
+      product.name.toLowerCase().includes(term) ||
+      product.sku.toLowerCase().includes(term)
+  );
 }
 
 
@@ -856,25 +869,21 @@ export function init(params) {
     if (user) {
       console.log(`User ${user.uid} signed in. Attaching listeners.`);
       attachProductListListener(user.uid);
-      setTimeout(() => {
-        initElements();
-        setupEventListeners();
-        renderProducts([]);
-        updateSidebar(null);
-      }, 100);
+      initElements();
+      setupEventListeners();
+      renderProducts([]);
+      updateSidebar(null);
 
     } else {
       console.log("User signed out. Detaching listeners.");
       detachAllListeners();
       project = { customColumns: [], sections: [], customPriorities: [], customStatuses: [] };
-      setTimeout(() => {
-        productList = [];
-        canUserModify = false;
-        initElements();
-        setupEventListeners();
-        renderProducts([]);
-        updateSidebar(null);
-      }, 100);
+      productList = [];
+      canUserModify = false;
+      initElements();
+      setupEventListeners();
+      renderProducts([]);
+      updateSidebar(null);
 
     }
   });

@@ -65,9 +65,10 @@
   height: auto; /* Let height be determined by content */
   background-color: #ffffff;
   border: none;
-  border-radius: 12px;
+  border-radius: 8px;
   min-height: auto; /* Minimum height */
   box-sizing: border-box;
+  border: #f0f0f0 1px solid;
   padding: 6px;
   transition: all 0.3s ease;
   position: relative;
@@ -81,7 +82,7 @@
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
 }
 .product-card.selected {
-  border: 2px solid #000000;
+  border: 2px solid #e2e2e2;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
 }
 .product-image {
@@ -163,8 +164,6 @@
 }
 .sidebar-header {
   border-bottom: 1px solid #e5e5e5;
-  margin-top: 20px;
-  padding: 16px;
 }
 .settings-section {
   padding: 16px;
@@ -514,7 +513,9 @@ textarea.form-input {
 .restricted-overlay.hidden {
     display: none;
 }
-
+.hidden {
+    display: none;
+}
 .restricted-content {
     background: #1c1c1e;
     padding: 40px;

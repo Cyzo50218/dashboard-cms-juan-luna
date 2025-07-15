@@ -1,3 +1,7 @@
+<div id="image-overlay" class="image-overlay hidden">
+    <span id="close-overlay" class="close-overlay-btn">&times;</span>
+    <img id="overlay-image-src" class="overlay-image" src="" alt="Product Image">
+</div>
 <div id="restricted-overlay" class="restricted-overlay hidden">
   <div class="restricted-content">
     <i class="fas fa-lock fa-3x"></i>
@@ -15,7 +19,7 @@
                 <i class="fas fa-boxes"></i>
                 Inventory Management <span class="dot-separator">·</span> <span id="inventory-subtitle">PH Stocks</span>
             </h1>
-            <div class="inventory-actions">
+            <div class="inventory-actions hidden">
                 <div class="avatar-stack" id="project-header-members"></div>
                 <button class="inventory-btn" id="inventory-settings-btn">
                     <span class="material-icons">inventory_2</span>
@@ -31,7 +35,7 @@
 
     <div class="listview-header">
         <button class="add-task-header-btn hidden"><i class="fas fa-plus"></i> Add product</button>
-        <div class="header-controls-right" id="header-right">
+        <div class="header-controls-right hidden" id="header-right">
             <button id="filter-btn"><i class="fas fa-filter"></i> Filter</button>
             <button id="sort-btn"><i class="fas fa-sort"></i> Sort</button>
         </div>

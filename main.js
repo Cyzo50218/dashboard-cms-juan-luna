@@ -121,9 +121,10 @@ async function loadSection(routeParams) {
         content.innerHTML = sectionHtml;
 
         if (sectionModule.init) {
-            lastLoadedSection = section;
             return sectionModule.init(routeParams);
         }
+
+        lastLoadedSection = section;
 
     } catch (err) {
         content.innerHTML = `<p>Error loading section: <strong>${section}</strong></p>`;
