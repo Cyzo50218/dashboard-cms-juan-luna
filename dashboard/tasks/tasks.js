@@ -191,132 +191,7 @@ export function init(params) {
      * Fetches the data and reference for the currently selected project.
      * This function is crucial as it determines which project's tasks are shown.
      */
-    async function fetchCurrentProjectData() {
-        const user = auth.currentUser;
-        if (!user) {
-            console.error("User not authenticated.");
-            throw new Error("User not authenticated.");
-        }
 
-        // --- Step 1: Get the selectedWorkspaceId from the user's document (Unchanged) ---
-        const userRef = doc(db, 'users', user.uid);
-        const userSnap = await getDoc(userRef);
-
-        if (!userSnap.exists() || !userSnap.data().selectedWorkspace) {
-            throw new Error("Could not find user's selected workspace.");
-        }
-        const selectedWorkspaceId = userSnap.data().selectedWorkspace;
-
-        // This ensures the user's workspace document points to the canonical workspace.
-        const userWorkspaceDocRef = doc(db, `users/${user.uid}/myworkspace`, selectedWorkspaceId);
-        try {
-            const userWorkspaceSnap = await getDoc(userWorkspaceDocRef);
-
-            // We only proceed if the document is missing OR it exists but lacks the ownerWorkspaceRef field.
-            if (userWorkspaceSnap.exists()) {
-                await setDoc(userWorkspaceDocRef, { ownerWorkspaceRef: userWorkspaceDocRef }, { merge: true });
-                console.log(`Set ownerWorkspaceRef at: ${userWorkspaceDocRef.path}`);
-            }
-        } catch (error) {
-            console.error("Error during ownerWorkspaceRef setup:", error);
-        }
-
-        // --- Step 2: Look in workspaces/{workspaceId}/members/{userId} for the selected project ---
-        const memberDocRef = doc(db, `workspaces/${selectedWorkspaceId}/members`, user.uid);
-        const memberDocSnap = await getDoc(memberDocRef);
-
-        if (!memberDocSnap.exists()) {
-            throw new Error(`Membership document not found for user ${user.uid} in workspace ${selectedWorkspaceId}.`);
-        }
-
-        const memberData = memberDocSnap.data();
-        const selectedProjectId = memberDocSnap.data()?.selectedProjectId;
-        if (!selectedProjectId) {
-            console.error("No selected project ID is stored in the workspace membership.");
-            throw new Error("Please select a project to continue.");
-        }
-
-        // --- Step 2: Find the project using combined access logic ---
-        let projectDoc = null;
-
-        // Query 1: Check for direct membership in the project
-        const directMembershipQuery = query(
-            collectionGroup(db, 'projects'),
-            where('projectId', '==', selectedProjectId),
-            where('memberUIDs', 'array-contains', user.uid)
-        );
-        const directMembershipSnapshot = await getDocs(directMembershipQuery);
-
-        if (!directMembershipSnapshot.empty) {
-            projectDoc = directMembershipSnapshot.docs[0];
-            console.log(`Access granted via direct membership for project: ${selectedProjectId}`);
-        } else {
-            // Query 2: If not a direct member, check for workspace-level access
-            console.log(`No direct membership found. Checking for workspace-level access...`);
-            const workspaceAccessQuery = query(
-                collectionGroup(db, 'projects'),
-                where('projectId', '==', selectedProjectId),
-                where('workspaceId', '==', selectedWorkspaceId),
-                where('accessLevel', '==', 'workspace')
-            );
-            const workspaceAccessSnapshot = await getDocs(workspaceAccessQuery);
-
-            if (!workspaceAccessSnapshot.empty) {
-                projectDoc = workspaceAccessSnapshot.docs[0];
-                console.log(`Access granted via workspace visibility for project: ${selectedProjectId}`);
-            }
-        }
-
-        // If projectDoc is still null after both queries, access is denied.
-        if (!projectDoc) {
-            throw new Error(`Project with ID ${selectedProjectId} not found, or you do not have permission to access it.`);
-        }
-
-        // --- Step 3: Sync roles if needed (Data integrity check) ---
-        const projectData = {
-            ...projectDoc.data()
-        }; // Create a mutable copy
-        const membersCount = Array.isArray(projectData.members) ? projectData.members.length : 0;
-        const rolesCount = projectData.rolesByUID ? Object.keys(projectData.rolesByUID).length : 0;
-
-        // If the legacy `members` array exists but the `rolesByUID` map is missing or out of sync, update it.
-        if (membersCount > 0 && (!projectData.rolesByUID || membersCount !== rolesCount)) {
-            console.log(`Syncing roles for project: ${projectDoc.id}. Members: ${membersCount}, Roles: ${rolesCount}`);
-
-            const rolesByUID = {};
-            const memberRoleKeys = [];
-
-            projectData.members.forEach(member => {
-                if (member.uid && member.role) {
-                    rolesByUID[member.uid] = member.role;
-                    memberRoleKeys.push(`${member.uid}:${member.role}`);
-                }
-            });
-
-            try {
-                await updateDoc(projectDoc.ref, {
-                    rolesByUID: rolesByUID,
-                    memberRoleKeys: memberRoleKeys
-                });
-
-                // Update the local copy to avoid a re-fetch
-                projectData.rolesByUID = rolesByUID;
-                projectData.memberRoleKeys = memberRoleKeys;
-                console.log(`Successfully synced roles for project: ${projectDoc.id}`);
-            } catch (updateError) {
-                console.error(`Failed to sync roles for project ${projectDoc.id}:`, updateError);
-                // Non-critical error, proceed with potentially stale role data
-            }
-        }
-
-        // --- Step 4: Return the final project data ---
-        return {
-            data: projectData,
-            projectId: projectDoc.id,
-            workspaceId: projectData.workspaceId,
-            projectRef: projectDoc.ref
-        };
-    }
 
     /**
      * Fetches multiple user profiles by their UIDs.
@@ -443,6 +318,98 @@ export function init(params) {
         }
     }
 
+    function getProjectIdFromUrl() {
+        const match = window.location.pathname.match(/\/tasks\/[^/]+\/list\/([^/]+)/);
+        return match ? match[1] : null;
+    }
+
+    async function fetchCurrentProjectData() {
+        const user = auth.currentUser;
+        if (!user) {
+            console.error("User not authenticated.");
+            throw new Error("User not authenticated.");
+        }
+
+        const projectIdFromUrl = getProjectIdFromUrl();
+        if (!projectIdFromUrl) {
+            throw new Error("No project ID found in the URL.");
+        }
+
+        console.log(`[DEBUG] Looking up projectId from URL: ${projectIdFromUrl}`);
+
+        // Step 1: Attempt to find the project via direct membership
+        let projectDoc = null;
+
+        const directMembershipQuery = query(
+            collectionGroup(db, 'projects'),
+            where('projectId', '==', projectIdFromUrl),
+            where('memberUIDs', 'array-contains', user.uid)
+        );
+        const directMembershipSnapshot = await getDocs(directMembershipQuery);
+
+        if (!directMembershipSnapshot.empty) {
+            projectDoc = directMembershipSnapshot.docs[0];
+            console.log(`[DEBUG] Access granted via direct membership: ${projectDoc.ref.path}`);
+        } else {
+            // Step 2: Check for workspace-level access (shared projects)
+            const workspaceAccessQuery = query(
+                collectionGroup(db, 'projects'),
+                where('projectId', '==', projectIdFromUrl),
+                where('accessLevel', '==', 'workspace')
+            );
+            const workspaceAccessSnapshot = await getDocs(workspaceAccessQuery);
+
+            if (!workspaceAccessSnapshot.empty) {
+                projectDoc = workspaceAccessSnapshot.docs[0];
+                console.log(`[DEBUG] Access granted via workspace visibility: ${projectDoc.ref.path}`);
+            }
+        }
+
+        if (!projectDoc) {
+            throw new Error(`Access denied or project not found for ID: ${projectIdFromUrl}`);
+        }
+
+        const projectData = { ...projectDoc.data() };
+        const membersCount = Array.isArray(projectData.members) ? projectData.members.length : 0;
+        const rolesCount = projectData.rolesByUID ? Object.keys(projectData.rolesByUID).length : 0;
+
+        // Step 3: Sync legacy roles if needed
+        if (membersCount > 0 && (!projectData.rolesByUID || membersCount !== rolesCount)) {
+            console.log(`Syncing roles for project: ${projectDoc.id}`);
+
+            const rolesByUID = {};
+            const memberRoleKeys = [];
+
+            projectData.members.forEach(member => {
+                if (member.uid && member.role) {
+                    rolesByUID[member.uid] = member.role;
+                    memberRoleKeys.push(`${member.uid}:${member.role}`);
+                }
+            });
+
+            try {
+                await updateDoc(projectDoc.ref, {
+                    rolesByUID: rolesByUID,
+                    memberRoleKeys: memberRoleKeys
+                });
+
+                // Update the local copy
+                projectData.rolesByUID = rolesByUID;
+                projectData.memberRoleKeys = memberRoleKeys;
+                console.log(`Successfully synced roles.`);
+            } catch (err) {
+                console.error(`Failed to sync roles for project ${projectDoc.id}:`, err);
+            }
+        }
+
+        // Step 4: Return result
+        return {
+            data: projectData,
+            projectId: projectDoc.id,
+            workspaceId: projectData.workspaceId,
+            projectRef: projectDoc.ref
+        };
+    }
 
     async function loadProjectHeader() {
         console.log("🚀 Kicking off loadProjectHeader...");

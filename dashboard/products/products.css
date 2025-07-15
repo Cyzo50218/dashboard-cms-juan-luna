@@ -56,27 +56,25 @@
 /* Update the product grid container */
 #productGridList {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr)); /* 5 equal columns */
-  gap: 4px; /* Very small gap between items */
-  margin-bottom: 10rem;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  padding-bottom: 10rem;
 }
-
 .product-card {
-  width: 103% !important; /* Full width of grid cell */
+  width: 100% !important; /* Full width of grid cell */
   height: auto; /* Let height be determined by content */
   background-color: #ffffff;
   border: none;
   border-radius: 12px;
-  min-height: 500px; /* Minimum height */
+  min-height: auto; /* Minimum height */
   box-sizing: border-box;
   padding: 6px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   transition: all 0.3s ease;
   position: relative;
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  margin-bottom: 70px; /* Add margin space gap at the bottom */
+  margin-bottom: 10px; /* Add margin space gap at the bottom */
 }
 .product-card:hover {
   transform: translateY(-4px);
@@ -87,8 +85,7 @@
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
 }
 .product-image {
-  width: 100%;
-  height: 100%;
+  width: auto;
   background-color: #ffffff;
   border-radius: 8px;
   margin-bottom: 12px;
@@ -97,12 +94,14 @@
   align-items: center;
   overflow: hidden;
   position: relative;
+  height: auto; /* ← let it wrap the image */
 }
+
 .product-image img {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: filter 0.3s;
+  height: 280px; /* ← allow natural image height */
+  object-fit: contain; /* or 'cover' if you still want cropping */ /* optional: set a max to prevent overly tall cards */
+  border-radius: 8px;
 }
 .product-image img.loading {
   filter: blur(10px);
@@ -164,6 +163,7 @@
 }
 .sidebar-header {
   border-bottom: 1px solid #e5e5e5;
+  margin-top: 20px;
   padding: 16px;
 }
 .settings-section {
@@ -214,7 +214,7 @@
 .close-btn {
   background: none;
   border: none;
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   cursor: pointer;
   padding: 8px;
   margin: -8px;

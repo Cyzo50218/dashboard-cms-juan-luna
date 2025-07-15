@@ -93,7 +93,7 @@ import { firebaseConfig } from "/services/firebase-config.js";
             projectLi.dataset.projectId = project.id;
             const numericUserId = stringToNumericString(currentUser?.uid);
             const numericProjectId = stringToNumericString(project.id);
-            const href = `/tasks/${numericUserId}/list/${numericProjectId}`;
+            const href = `/tasks/${currentUser?.uid}/list/${project.id}`;
             projectLi.innerHTML = `
                 <a href="${href}" data-link>
                     <div class="nav-item-main-content">
@@ -121,7 +121,7 @@ import { firebaseConfig } from "/services/firebase-config.js";
         if (targetProject) {
             const numericUserId = stringToNumericString(currentUser?.uid);
             const numericProjectId = stringToNumericString(targetProject.id);
-            myTasksLink.href = `/tasks/${numericUserId}/list/${numericProjectId}`;
+            myTasksLink.href = `/tasks/${currentUser?.uid}/list/${targetProject.id}`;
             myTasksLink.setAttribute('data-link', '');
         } else {
             myTasksLink.href = '#';
@@ -224,7 +224,11 @@ import { firebaseConfig } from "/services/firebase-config.js";
             console.log(`Workspace: ${activeWorkspaceId}`);
             console.log(`Project: ${projectIdToSelect}`);
 
-            await updateUserWorkspaceMembership(currentUser.uid, activeWorkspaceId, projectIdToSelect);
+            const selectedProject = projectsData.find(p => p.id === projectIdToSelect);
+            console.log(`Project Workspace: ${selectedProject?.workspaceId}`);
+            const projectWorkspaceId = selectedProject?.workspaceId || activeWorkspaceId;
+
+            await updateUserWorkspaceMembership(currentUser.uid, projectWorkspaceId, projectIdToSelect);
         } catch (error) {
             console.error(`Error setting selected project: ${error.message}`);
         }
@@ -308,18 +312,18 @@ import { firebaseConfig } from "/services/firebase-config.js";
 
             activeWorkspaceId = newWorkspaceId;
             console.log("Active workspace set:", activeWorkspaceId);
-            
-            // Admin tab logic
-const role = userSnap.data()?.role;
 
-if (adminLink) {
-    if (role === 0 || role === 3) {
-        adminLink.classList.remove("hidden");
-        adminLink.querySelector("a").href = "/admin/admin.html";
-    } else {
-        adminLink.classList.add("hidden");
-    }
-}
+            // Admin tab logic
+            const role = userSnap.data()?.role;
+
+            if (adminLink) {
+                if (role === 0 || role === 3) {
+                    adminLink.classList.remove("hidden");
+                    adminLink.querySelector("a").href = "/admin/admin.html";
+                } else {
+                    adminLink.classList.add("hidden");
+                }
+            }
 
             const workspaceDocRef = doc(db, `users/${user.uid}/myworkspace`, activeWorkspaceId);
 

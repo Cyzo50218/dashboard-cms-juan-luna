@@ -117,14 +117,14 @@ async function handleTaskCompletion(task, taskCardEl) {
         console.error("Task data or project reference is missing.");
         return;
     }
-    
+
     const taskId = task.id;
     const batch = writeBatch(db);
     const isCurrentlyCompleted = task.status === 'Completed';
-    
+
     if (isCurrentlyCompleted) {
         // --- LOGIC FOR UN-COMPLETING A TASK ---
-        
+
         // Find the section where the task should return. Use its 'previousSectionId' if it exists,
         // otherwise, assume it goes back to the first non-completed section.
         const targetSectionId = task.previousSectionId || project.sections.find(s => s.sectionType !== 'completed')?.id;
@@ -132,10 +132,10 @@ async function handleTaskCompletion(task, taskCardEl) {
             console.error("Cannot un-complete task: No target section found.");
             return;
         }
-        
+
         const sourceTaskRef = doc(currentProjectRef, `sections/${task.sectionId}/tasks/${taskId}`);
         const targetTaskRef = doc(currentProjectRef, `sections/${targetSectionId}/tasks/${taskId}`);
-        
+
         // Prepare the restored task data, removing the 'previous' fields
         const { previousStatus, previousSectionId, ...restOfTask } = task;
         const restoredTaskData = {
@@ -143,14 +143,14 @@ async function handleTaskCompletion(task, taskCardEl) {
             status: previousStatus || 'On track', // Restore previous status or a default
             sectionId: targetSectionId,
         };
-        
+
         // Move the task by deleting the old and setting the new
         batch.delete(sourceTaskRef);
         batch.set(targetTaskRef, restoredTaskData);
-        
+
     } else {
         // --- LOGIC FOR COMPLETING A TASK ---
-        
+
         // Find the project's designated "Completed" section
         const completedSection = project.sections.find(s => s.sectionType === 'completed');
         if (!completedSection) {
@@ -158,10 +158,10 @@ async function handleTaskCompletion(task, taskCardEl) {
             alert("Please create a 'Completed' section in your project settings to use this feature.");
             return;
         }
-        
+
         const sourceTaskRef = doc(currentProjectRef, `sections/${task.sectionId}/tasks/${taskId}`);
         const targetTaskRef = doc(currentProjectRef, `sections/${completedSection.id}/tasks/${taskId}`);
-        
+
         // Prepare the new task data, saving its current state before marking as completed
         const updatedTaskData = {
             ...task,
@@ -170,12 +170,12 @@ async function handleTaskCompletion(task, taskCardEl) {
             previousSectionId: task.sectionId, // Remember the original section
             sectionId: completedSection.id, // Set the new section
         };
-        
+
         // Move the task
         batch.delete(sourceTaskRef);
         batch.set(targetTaskRef, updatedTaskData);
     }
-    
+
     // --- Execute the batch update ---
     try {
         await batch.commit();
@@ -225,18 +225,18 @@ function canUserEditSpecifcTask(task) {
     if (userCanEditProject) {
         return true;
     }
-    
+
     // Rule 2: Check for the special case for assigned users.
     if (currentUserRole === 'Viewer' || currentUserRole === 'Commentor') {
         // Ensure task.assignees is an array before checking.
         const isAssigned = Array.isArray(task.assignees) && task.assignees.includes(currentUserId);
-        
+
         if (isAssigned) {
             console.log(`[Permissions] Granting FULL task edit for assigned ${currentUserRole}.`);
             return true;
         }
     }
-    
+
     // Otherwise, the user has no permission to edit this task.
     return false;
 }
@@ -254,27 +254,27 @@ function formatDueDate(dueDateString) {
     // --- Setup ---
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Normalize today to the start of the day for accurate comparisons.
-    
+
     // Handle empty or invalid dates
     if (!dueDateString) {
         return { text: '', color: 'default' }; // Return empty text as requested
     }
-    
+
     const dueDate = new Date(dueDateString); // Directly parse the string
     if (isNaN(dueDate.getTime())) {
         return { text: 'Invalid date', color: 'red' };
     }
     dueDate.setHours(0, 0, 0, 0); // Also normalize the due date
-    
+
     // --- Calculations ---
     const todayYear = today.getFullYear();
     const todayMonth = today.getMonth();
     const dueYear = dueDate.getFullYear();
     const dueMonth = dueDate.getMonth();
-    
+
     // Calculate the difference in milliseconds and convert to days
     const dayDifference = (dueDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
-    
+
     // --- 1. Handle Past Dates ---
     if (dayDifference < 0) {
         if (dayDifference === -1) {
@@ -300,7 +300,7 @@ function formatDueDate(dueDateString) {
         const MmmDddYyyyFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         return { text: MmmDddYyyyFormat.format(dueDate), color: 'red' };
     }
-    
+
     // --- 2. Handle Present and Immediate Future ---
     if (dayDifference === 0) {
         return { text: 'Today', color: 'green' };
@@ -308,15 +308,15 @@ function formatDueDate(dueDateString) {
     if (dayDifference === 1) {
         return { text: 'Tomorrow', color: 'yellow' }; // Changed to yellow for "approaching"
     }
-    
+
     // --- 3. Handle Future Dates ---
-    
+
     // If the due date is in the current year
     if (dueYear === todayYear) {
         const MmmDddFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
         return { text: MmmDddFormat.format(dueDate), color: 'default' }; // e.g., "30 Jun"
     }
-    
+
     // If the due date is in a future year
     else {
         const MmmDddYyyyFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -357,7 +357,7 @@ const init = () => {
     sortSectionsZa = document.getElementById('boardtasks-sort-sections-za');
     sortTasksAz = document.getElementById('boardtasks-sort-tasks-az');
     sortTasksZa = document.getElementById('boardtasks-sort-tasks-za');
-    
+
     // Attach event listeners
     addSectionBtn.addEventListener('click', addSectionToFirebase);
     addTaskMainBtn.addEventListener('click', handleAddTaskMainClick);
@@ -370,7 +370,7 @@ const init = () => {
     kanbanBoard.addEventListener('keydown', handleKanbanKeydown);
     kanbanBoard.addEventListener('blur', handleBlur, true);
     kanbanBoard.addEventListener('click', handleKanbanClick);
-    
+
     // Authentication state observer
     onAuthStateChanged(auth, async (user) => {
         if (user) {
@@ -386,7 +386,7 @@ const init = () => {
             }
         }
     });
-    
+
     return cleanup;
 };
 
@@ -409,194 +409,169 @@ function detachAllListeners() {
 // --- 7. REAL-TIME DATA & STATE MANAGEMENT ---
 function detachProjectSpecificListeners() {
     console.log("[DEBUG] Detaching project-specific listeners (project, sections, tasks)...");
-    
+
     // Check for and unsubscribe from the project details listener
     if (activeListeners.project) {
         activeListeners.project(); // This executes the unsubscribe function returned by onSnapshot
         activeListeners.project = null; // Reset the state to clean up
     }
-    
+
     // Check for and unsubscribe from the sections listener
     if (activeListeners.sections) {
         activeListeners.sections();
         activeListeners.sections = null;
     }
-    
+
     // Check for and unsubscribe from the tasks listener
     if (activeListeners.tasks) {
         activeListeners.tasks();
         activeListeners.tasks = null;
     }
-    
+
     if (activeListeners.messages) {
         activeListeners.messages();
         activeListeners.messages = null;
     }
 }
 
+function getProjectIdFromUrl() {
+    const match = window.location.pathname.match(/\/tasks\/[^/]+\/board\/([^/]+)/);
+    return match ? match[1] : null;
+}
+
 function attachRealtimeListeners(userId) {
     detachAllListeners();
     currentUserId = userId;
-    
+
+    const projectIdFromUrl = getProjectIdFromUrl();
+    if (!projectIdFromUrl) {
+        console.warn("No projectId found in URL.");
+        project = { sections: [] };
+        renderBoard();
+        return;
+    }
+
+    currentProjectId = projectIdFromUrl;
+
     const userDocRef = doc(db, 'users', userId);
-    activeListeners.user = onSnapshot(userDocRef, (userSnap) => {
+    activeListeners.user = onSnapshot(userDocRef, async (userSnap) => {
         if (!userSnap.exists()) {
             detachAllListeners();
             return;
         }
-        
-        const newWorkspaceId = userSnap.data().selectedWorkspace;
-        if (newWorkspaceId === currentWorkspaceId) return;
-        
-        currentWorkspaceId = newWorkspaceId;
-        
-        if (activeListeners.workspace) activeListeners.workspace();
-        detachProjectSpecificListeners();
-        
-        if (!currentWorkspaceId) {
-            project = { sections: [] };
-            renderBoard();
-            return;
-        }
-        
-        const memberDocRef = doc(db, `workspaces/${currentWorkspaceId}/members`, userId);
-        activeListeners.workspace = onSnapshot(memberDocRef, async (memberDocSnap) => {
-            if (!memberDocSnap.exists()) {
-                project = { sections: [] };
-                renderBoard();
-                return;
-            }
-            
-            const memberData = memberDocSnap.data();
-            const newProjectId = memberData?.selectedProjectId;
-            const visibility = memberData?.selectedProjectWorkspaceVisibility || 'private';
-            
-            if (newProjectId === currentProjectId) return;
-            
-            currentProjectId = newProjectId;
-            detachProjectSpecificListeners();
-            
-            if (!currentProjectId) {
-                project = { sections: [] };
-                renderBoard();
-                return;
-            }
-            
-            const canAttemptLoad = ['workspace', 'viewer', 'private'].includes(visibility);
-            if (!canAttemptLoad) {
-                console.warn(`Access denied by visibility setting: '${visibility}'`);
-                project = { sections: [] };
-                renderBoard();
-                return;
-            }
-            
-            try {
-                let projectDoc = null;
 
-                // Query 1: Check for direct membership
-                const directMembershipQuery = query(
+        detachProjectSpecificListeners();
+
+        try {
+            let projectDoc = null;
+
+            // 1. Direct membership query
+            const directMembershipQuery = query(
+                collectionGroup(db, 'projects'),
+                where('projectId', '==', currentProjectId),
+                where('memberUIDs', 'array-contains', currentUserId)
+            );
+            const directMembershipSnapshot = await getDocs(directMembershipQuery);
+
+            if (!directMembershipSnapshot.empty) {
+                projectDoc = directMembershipSnapshot.docs[0];
+            } else {
+                // 2. Workspace-level access query
+                const workspaceAccessQuery = query(
                     collectionGroup(db, 'projects'),
                     where('projectId', '==', currentProjectId),
-                    where('memberUIDs', 'array-contains', currentUserId)
+                    where('accessLevel', '==', 'workspace')
                 );
-                const directMembershipSnapshot = await getDocs(directMembershipQuery);
+                const workspaceAccessSnapshot = await getDocs(workspaceAccessQuery);
 
-                if (!directMembershipSnapshot.empty) {
-                    projectDoc = directMembershipSnapshot.docs[0];
-                } else {
-                    // Query 2: If no direct membership, check for workspace-level access
-                    const workspaceAccessQuery = query(
-                        collectionGroup(db, 'projects'),
-                        where('projectId', '==', currentProjectId),
-                        where('workspaceId', '==', currentWorkspaceId),
-                        where('accessLevel', '==', 'workspace')
-                    );
-                    const workspaceAccessSnapshot = await getDocs(workspaceAccessQuery);
-
-                    if (!workspaceAccessSnapshot.empty) {
-                        projectDoc = workspaceAccessSnapshot.docs[0];
-                    }
+                if (!workspaceAccessSnapshot.empty) {
+                    projectDoc = workspaceAccessSnapshot.docs[0];
                 }
-                
-                if (!projectDoc) {
-                    console.error(`Project '${currentProjectId}' not found or user lacks permission.`);
+            }
+
+            if (!projectDoc) {
+                console.error(`Project '${currentProjectId}' not found or access denied.`);
+                project = { sections: [] };
+                renderBoard();
+                return;
+            }
+
+            currentProjectRef = projectDoc.ref;
+
+            activeListeners.project = onSnapshot(currentProjectRef, async (projectDetailSnap) => {
+                if (!projectDetailSnap.exists()) {
                     project = { sections: [] };
                     renderBoard();
                     return;
                 }
-                
-                currentProjectRef = projectDoc.ref;
-                
-                activeListeners.project = onSnapshot(currentProjectRef, async (projectDetailSnap) => {
-                    if (!projectDetailSnap.exists()) return;
-                    
-                    const projectData = projectDetailSnap.data();
-                    project = { ...project, ...projectData, id: projectDetailSnap.id };
-                    
-                    updateUserPermissions(projectData, currentUserId);
-                    const memberUIDs = projectData.members?.map(m => m.uid) || [];
-                    allUsers = await fetchMemberProfiles(memberUIDs);
-                    
-                    const sectionsQuery = query(collection(currentProjectRef, 'sections'), orderBy("order"));
-                    activeListeners.sections = onSnapshot(sectionsQuery, (snapshot) => {
-                        project.sections = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, tasks: [] }));
-                        distributeTasksToSections(allTasksFromSnapshot);
-                        renderBoard();
-                    });
-                    
-                    
-                    const tasksQuery = query(collectionGroup(db, 'tasks'), where('projectId', '==', project.projectId));
-                    activeListeners.tasks = onSnapshot(tasksQuery, (snapshot) => {
-                        allTasksFromSnapshot = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-                        distributeTasksToSections(allTasksFromSnapshot);
-                        if (!isMovingTask) renderBoard();
-                    });
-                    
-                    const messagesQuery = query(
-                        collectionGroup(db, 'Messages'),
-                        where('projectId', '==', currentProjectId),
-                        where('hasImage', '==', true)
-                    );
-                    
-                    if (activeListeners.messages) activeListeners.messages();
-                    activeListeners.messages = onSnapshot(messagesQuery, (snapshot) => {
-                        const newImageMap = {};
-                        
-                        snapshot.forEach(doc => {
-                            const data = doc.data();
-                            
-                            const tempDiv = document.createElement('div');
-                            tempDiv.innerHTML = data.content;
-                            const imgTag = tempDiv.querySelector('img');
-                            
-                            if (imgTag && imgTag.src) {
-                                const imageUrl = imgTag.src;
-                                const taskId = doc.ref.parent.parent.id;
-                                const existing = newImageMap[taskId];
-                                
-                                if (!existing || (data.timestamp && data.timestamp.toMillis() < existing.timestamp.toMillis())) {
-                                    newImageMap[taskId] = {
-                                        imageUrl: imageUrl,
-                                        timestamp: data.timestamp
-                                    };
-                                }
-                            }
-                        });
-                        
-                        taskImageMap = Object.fromEntries(
-                            Object.entries(newImageMap).map(([key, value]) => [key, value.imageUrl])
-                        );
-                        
-                        renderBoard();
-                    });
-                    
+
+                const projectData = projectDetailSnap.data();
+                project = { ...project, ...projectData, id: projectDetailSnap.id };
+
+                updateUserPermissions(projectData, currentUserId);
+                const memberUIDs = projectData.members?.map(m => m.uid) || [];
+                allUsers = await fetchMemberProfiles(memberUIDs);
+
+                const sectionsQuery = query(collection(currentProjectRef, 'sections'), orderBy("order"));
+                activeListeners.sections = onSnapshot(sectionsQuery, (snapshot) => {
+                    project.sections = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, tasks: [] }));
+                    distributeTasksToSections(allTasksFromSnapshot);
+                    renderBoard();
                 });
-            } catch (error) {
-                console.error("Error attaching listeners:", error);
-            }
-        });
+
+                const tasksQuery = query(collectionGroup(db, 'tasks'), where('projectId', '==', currentProjectId));
+                activeListeners.tasks = onSnapshot(tasksQuery, (snapshot) => {
+                    allTasksFromSnapshot = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+                    distributeTasksToSections(allTasksFromSnapshot);
+                    if (!isMovingTask) renderBoard();
+                });
+
+                const messagesQuery = query(
+                    collectionGroup(db, 'Messages'),
+                    where('projectId', '==', currentProjectId),
+                    where('hasImage', '==', true)
+                );
+
+                if (activeListeners.messages) activeListeners.messages();
+                activeListeners.messages = onSnapshot(messagesQuery, (snapshot) => {
+                    const newImageMap = {};
+
+                    snapshot.forEach(doc => {
+                        const data = doc.data();
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = data.content;
+                        const imgTag = tempDiv.querySelector('img');
+
+                        if (imgTag && imgTag.src) {
+                            const imageUrl = imgTag.src;
+                            const taskId = doc.ref.parent.parent.id;
+                            const existing = newImageMap[taskId];
+
+                            if (!existing || (data.timestamp && data.timestamp.toMillis() < existing.timestamp.toMillis())) {
+                                newImageMap[taskId] = {
+                                    imageUrl: imageUrl,
+                                    timestamp: data.timestamp
+                                };
+                            }
+                        }
+                    });
+
+                    taskImageMap = Object.fromEntries(
+                        Object.entries(newImageMap).map(([key, value]) => [key, value.imageUrl])
+                    );
+
+                    renderBoard();
+                });
+            });
+
+        } catch (error) {
+            console.error("Error during listener setup:", error);
+            project = { sections: [] };
+            renderBoard();
+        }
     });
 }
+
 
 function distributeTasksToSections(tasks) {
     const tempTasks = project.sections.flatMap(s => (s.tasks || []).filter(t => t.isNew));
@@ -626,12 +601,12 @@ const renderBoard = () => {
     if (userCanEditProject) {
         initSortable();
     }
-    
+
     if (addSectionBtn) {
         addTaskMainBtn.style.display = userCanEditProject ? '' : 'none';
         addSectionBtn.style.display = userCanEditProject ? '' : 'none';
     }
-    
+
     kanbanBoard.scrollLeft = scrollLeft;
     kanbanBoard.scrollTop = scrollTop;
     if (taskIdToFocus) {
@@ -648,7 +623,7 @@ const renderColumn = (section) => {
     const columnEl = document.createElement('div');
     columnEl.className = 'boardtasks-kanban-column';
     columnEl.dataset.sectionId = section.id;
-    
+
     columnEl.innerHTML = `
         <div class="boardtasks-column-header">
             <h3 contenteditable="${userCanEditProject}" class="boardtasks-section-title-editable">${section.title}</h3>
@@ -662,7 +637,7 @@ const renderColumn = (section) => {
 const renderTask = (task) => {
     const canEditThisTask = canUserEditSpecifcTask(task);
     const isEditable = canEditThisTask ? 'true' : 'false';
-    
+
     if (task.isNew) {
         return `
             <div class="boardtasks-task-card is-new" id="task-${task.id}" data-task-id="${task.id}">
@@ -674,19 +649,19 @@ const renderTask = (task) => {
                 </div>
             </div>`;
     }
-    
+
     const assigneesHTML = (task.assignees || []).map(uid => {
         const user = allUsers.find(u => u.uid === uid);
         return user ? `<img src="${user.avatar || 'https://via.placeholder.com/24'}" alt="${user.name}" class="boardtasks-assignee-avatar" title="${user.name}">` : '';
     }).join('');
-    
+
     const oldestImageUrl = task.chatuuid ? taskImageMap[task.chatuuid] : null;
     const isCompleted = task.status === 'Completed';
     const cardCompletedClass = isCompleted ? 'boardtasks-task-checked' : '';
     const hasLiked = task.likedBy && task.likedBy[currentUserId];
-    
+
     // --- DYNAMIC TAG GENERATION LOGIC ---
-    
+
     // 1. PRIORITY TAG
     let priorityTagHTML = '';
     const priorityName = task.priority;
@@ -694,7 +669,7 @@ const renderTask = (task) => {
         const priorityColumn = project.defaultColumns.find(c => c.id === 'priority');
         const option = priorityColumn?.options?.find(p => p.name === priorityName);
         const color = option?.color;
-        
+
         if (color) {
             const style = `background-color: ${color}20; color: ${color};`;
             priorityTagHTML = `<span class="boardtasks-tag" style="${style}">${priorityName}</span>`;
@@ -702,7 +677,7 @@ const renderTask = (task) => {
             priorityTagHTML = `<span class="boardtasks-tag">${priorityName}</span>`;
         }
     }
-    
+
     // 2. STATUS TAG
     let statusTagHTML = '';
     const statusName = task.status || 'No Status';
@@ -710,7 +685,7 @@ const renderTask = (task) => {
         const statusColumn = project.defaultColumns.find(c => c.id === 'status');
         const option = statusColumn?.options?.find(s => s.name === statusName);
         const color = option?.color;
-        
+
         if (color) {
             const style = `background-color: ${color}20; color: ${color};`;
             statusTagHTML = `<span class="boardtasks-tag" style="${style}">${statusName}</span>`;
@@ -718,7 +693,7 @@ const renderTask = (task) => {
             statusTagHTML = `<span class="boardtasks-tag">${statusName}</span>`;
         }
     }
-    
+
     // 3. CUSTOM "TYPE" TAGS
     let customTypeTagsHTML = '';
     if (project.customColumns && task.customFields) {
@@ -734,9 +709,9 @@ const renderTask = (task) => {
             }
         });
     }
-    
+
     const dueDateInfo = formatDueDate(task.dueDate);
-    
+
     // --- FINAL HTML TEMPLATE ---
     return `
         <div class="boardtasks-task-card ${cardCompletedClass}" id="task-${task.id}" data-task-id="${task.id}" draggable="${isEditable}" data-control="open-sidebar">
@@ -777,9 +752,9 @@ function createTemporaryTask(section) {
         console.error("Cannot create task: The section provided is invalid.");
         return;
     }
-    
+
     const tempId = `temp_${Date.now()}`;
-    
+
     // ✅ NEW: Create a complete task object with all default fields.
     const newTask = {
         id: tempId,
@@ -793,15 +768,15 @@ function createTemporaryTask(section) {
         customFields: {},
         order: section.tasks.length
     };
-    
+
     section.tasks.push(newTask);
     taskIdToFocus = tempId;
-    
+
     // If the section is collapsed, expand it to show the new task.
     if (section.isCollapsed) {
         section.isCollapsed = false;
     }
-    
+
     // Call the correct render function for your board.
     renderBoard();
 }
@@ -825,14 +800,14 @@ async function addSectionToFirebase() {
 async function addTaskToFirebase(sectionId, taskData) {
     // ✅ Log 1: Announce that the function has been called and show the initial data.
     console.log("[addTaskToFirebase] Function called with:", { sectionId, taskData });
-    
+
     // ✅ Log 2: Check the critical context variables needed for the operation.
     console.log("[addTaskToFirebase] Checking context state:", {
         currentProjectRef_path: currentProjectRef?.path,
         currentProjectId,
         currentUserId
     });
-    
+
     // 1. Ensure we have the necessary context to build the path.
     if (!currentProjectRef || !sectionId || !currentProjectId || !currentUserId) {
         // ✅ Log 3: If any context is missing, log a critical error and stop.
@@ -844,17 +819,17 @@ async function addTaskToFirebase(sectionId, taskData) {
         });
         return;
     }
-    
+
     // Build the path to the 'tasks' subcollection.
     const sectionRef = doc(currentProjectRef, 'sections', sectionId);
     const tasksCollectionRef = collection(sectionRef, 'tasks');
-    
+
     // ✅ Log 4: Show the exact path we are trying to write to.
     console.log(`[addTaskToFirebase] Attempting to write to path: ${tasksCollectionRef.path}`);
-    
+
     try {
         const newTaskRef = doc(tasksCollectionRef); // Create a reference to get the ID
-        
+
         // Prepare the complete data object that will be saved.
         const fullTaskData = {
             ...taskData,
@@ -864,16 +839,16 @@ async function addTaskToFirebase(sectionId, taskData) {
             sectionId: sectionId,
             createdAt: serverTimestamp()
         };
-        
+
         // ✅ Log 5: Display the final data object just before the save attempt.
         console.log("[addTaskToFirebase] Preparing to save final data object:", fullTaskData);
-        
+
         // The actual save operation.
         await setDoc(newTaskRef, fullTaskData);
-        
+
         // ✅ Log 6: This will ONLY run if the await setDoc() line completes without throwing an error.
         console.log(`✅ SUCCESS: Firestore reported success for adding task with ID: ${newTaskRef.id}`);
-        
+
     } catch (error) {
         // ✅ Log 7: If `await setDoc()` fails for any reason (e.g., security rules), this block will run.
         console.error("❌ FIRESTORE ERROR: Error adding task:", error);
@@ -884,26 +859,26 @@ async function addTaskToFirebase(sectionId, taskData) {
 const handleBlur = async (e) => {
     // Only proceed if the event target is an editable field
     if (!e.target.isContentEditable) return;
-    
+
     const taskCard = e.target.closest('.boardtasks-task-card.is-new');
-    
+
     if (taskCard) {
         const newName = e.target.textContent.trim();
         const tempId = taskCard.dataset.taskId; // Get the temporary ID
         const sectionEl = taskCard.closest('.boardtasks-kanban-column');
         if (!sectionEl) return;
-        
+
         const sectionId = sectionEl.dataset.sectionId;
         const section = findSection(sectionId);
         if (!section) return;
-        
+
         if (newName) {
             // --- SAVE LOGIC ---
             const taskIndex = section.tasks.findIndex(t => t.id === tempId);
             if (taskIndex > -1) {
                 section.tasks.splice(taskIndex, 1);
             }
-            
+
             const order = section.tasks.length - 1; // Get order before it might change
             const taskData = {
                 name: newName,
@@ -913,10 +888,10 @@ const handleBlur = async (e) => {
                 assignees: [],
                 customFields: {}
             };
-            
+
             // Call the dedicated function to save the task
             await addTaskToFirebase(sectionId, taskData);
-            
+
         } else {
             // --- CANCEL LOGIC ---
             // If the name is empty, remove the temporary task from the local data array...
@@ -929,11 +904,11 @@ const handleBlur = async (e) => {
         }
         return;
     }
-    
+
     // --- Logic for updating EXISTING tasks/sections (remains the same) ---
     const existingTaskCard = e.target.closest('.boardtasks-task-card');
     const sectionHeader = e.target.closest('.boardtasks-column-header');
-    
+
     if (existingTaskCard) {
         const { task, section } = findTaskAndSection(existingTaskCard.dataset.taskId);
         if (!task) return;
@@ -959,53 +934,53 @@ const handleKanbanClick = (e) => {
         createTemporaryTask(findSection(e.target.closest('.boardtasks-kanban-column').dataset.sectionId));
         return;
     }
-    
+
     const control = e.target.closest('[data-control]');
     if (!control) return; // If the click was not on a designated control, do nothing.
-    
+
     // Find the parent task card to get the task's context.
     const taskCard = control.closest('.boardtasks-task-card');
     if (!taskCard) return;
-    
+
     const taskId = taskCard.dataset.taskId;
     const { task, section } = findTaskAndSection(taskId);
     if (!task) return;
-    
+
     // Get the specific action type from the data-control attribute.
     const controlType = control.dataset.control;
-    
+
     // Use a switch statement to perform the correct action.
     switch (controlType) {
         case 'open-sidebar':
             // This is the default action for the card itself and the comment icon.
             displaySideBarTasks(taskId, currentProjectRef);
             break;
-            
+
         case 'check':
             // Stop the event from bubbling up to the card, which would also open the sidebar.
             e.stopPropagation();
-            
+
             // Check for permission before allowing the action.
             if (canUserEditSpecifcTask(task)) {
                 handleTaskCompletion(task, taskCard);
             }
             break;
-            
+
         case 'like':
             // Stop the event from bubbling up.
             e.stopPropagation();
-            
+
             // Liking is allowed for all roles.
             const taskRef = doc(currentProjectRef, `sections/${section.id}/tasks/${task.id}`);
             const hasLiked = task.likedBy && task.likedBy[currentUserId];
-            
+
             updateDoc(taskRef, {
                 likedAmount: increment(hasLiked ? -1 : 1),
                 [`likedBy.${currentUserId}`]: hasLiked ? deleteField() : true
             });
             break;
     }
-    
+
 };
 
 const handleFilterInput = (e) => {
@@ -1075,11 +1050,11 @@ async function handleTaskMoved(evt) {
         isMovingTask = false;
         return;
     }
-    
+
     const oldSectionId = from.closest('.boardtasks-kanban-column').dataset.sectionId;
     const newSectionId = to.closest('.boardtasks-kanban-column').dataset.sectionId;
     const batch = writeBatch(db);
-    
+
     try {
         if (oldSectionId === newSectionId) {
             to.querySelectorAll('.boardtasks-task-card').forEach((taskEl, index) => {
@@ -1088,11 +1063,11 @@ async function handleTaskMoved(evt) {
         } else {
             const taskSnap = await getDoc(doc(currentProjectRef, `sections/${oldSectionId}/tasks/${taskId}`));
             if (!taskSnap.exists()) throw new Error("Source task not found!");
-            
+
             const newTaskRef = doc(currentProjectRef, `sections/${newSectionId}/tasks/${taskId}`);
             batch.set(newTaskRef, { ...taskSnap.data(), sectionId: newSectionId });
             batch.delete(taskSnap.ref);
-            
+
             to.querySelectorAll('.boardtasks-task-card').forEach((el, i) => batch.update(doc(currentProjectRef, `sections/${newSectionId}/tasks/${el.dataset.taskId}`), { order: i }));
             from.querySelectorAll('.boardtasks-task-card').forEach((el, i) => batch.update(doc(currentProjectRef, `sections/${oldSectionId}/tasks/${el.dataset.taskId}`), { order: i }));
         }

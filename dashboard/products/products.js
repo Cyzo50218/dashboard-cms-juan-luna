@@ -1,30 +1,30 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
-    getAuth,
-    onAuthStateChanged
+  getAuth,
+  onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-    getFirestore,
-    doc,
-    collection,
-    query,
-    where,
-    arrayUnion,
-    onSnapshot,
-    collectionGroup,
-    orderBy,
-    limit,
-    getDoc,
-    getDocs,
-    addDoc,
-    documentId,
-    setDoc,
-    updateDoc,
-    deleteDoc,
-    writeBatch,
-    serverTimestamp,
-    increment,
-    deleteField,
+  getFirestore,
+  doc,
+  collection,
+  query,
+  where,
+  arrayUnion,
+  onSnapshot,
+  collectionGroup,
+  orderBy,
+  limit,
+  getDoc,
+  getDocs,
+  addDoc,
+  documentId,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  writeBatch,
+  serverTimestamp,
+  increment,
+  deleteField,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 import { firebaseConfig } from "/services/firebase-config.js";
@@ -45,7 +45,7 @@ const products = [
     cost: 62093.5,
     supplier: "Apple Inc.",
     description: "Flagship smartphone with advanced camera system and A18 chip",
-    image: "https://cdn.mos.cms.futurecdn.net/u6ACPLnZhHS9fmJGE772nU.jpg",
+    image: "https://img.freepik.com/free-photo/shirt-hanger-with-green-background_23-2150264156.jpg?semt=ais_hybrid&w=740",
   },
   {
     id: 2,
@@ -55,7 +55,7 @@ const products = [
     supplier: "Acer Corporation",
     description: "Gaming laptop with AI-enhanced performance and cooling",
     image:
-      "https://cdn.uc.assets.prezly.com/0b67f184-f11f-4b5d-a698-893ebdec18c0/-/format/auto/Neo18-02.png",
+      "https://d1csarkz8obe9u.cloudfront.net/posterpreviews/plain-dark-green-t-shirt-mock-up-instagram-po-design-template-93bc81ccc943b866ffa3e1003b523c79_screen.jpg?ts=1723107646",
   },
   {
     id: 3,
@@ -66,118 +66,7 @@ const products = [
     description:
       "Ultra-slim laptop with 17-inch OLED display and all-day battery",
     image:
-      "https://images.unsplash.com/photo-1593642702821-c8da6771f0c6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80",
-  },
-  {
-    id: 4,
-    name: "Galaxy Watch 7",
-    sku: "WCH-GW7",
-    cost: 19718.5,
-    supplier: "Samsung Electronics",
-    description: "Smartwatch with health monitoring and 5-day battery life",
-    image:
-      "https://www.greentelcom.ph/wp-content/uploads/2024/11/Samsung-watch-7-1.png",
-  },
-  {
-    id: 5,
-    name: "Nike Phantom 6",
-    sku: "SNK-NP6",
-    cost: 11243.5,
-    supplier: "Nike Inc.",
-    description: "Professional soccer cleats with precision touch technology",
-    image:
-      "https://www.nike.sa/dw/image/v2/BDVB_PRD/on/demandware.static/-/Sites-akeneo-master-catalog/default/dwc0766894/nk/82d/1/a/3/4/8/82d1a348_df75_4c43_8015_6e9760b09ace.jpg?sw=700&sh=700&sm=fit&q=100&strip=false",
-  },
-  {
-    id: 6,
-    name: "Small Classic Bag",
-    sku: "BAG-SCB",
-    cost: 16893.5,
-    supplier: "Leather Goods Co.",
-    description: "Handcrafted leather bag with multiple compartments",
-    image:
-      "https://images.unsplash.com/photo-1554342872-034a06541bad?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80",
-  },
-  {
-    id: 7,
-    name: "Samsung Galaxy S24",
-    sku: "PHN-SGS24",
-    cost: 50793.5,
-    supplier: "Samsung Electronics",
-    description: "AI-powered smartphone with pro-grade camera system",
-    image:
-      "https://www.kimstore.com/cdn/shop/files/ph-galaxy-s24-sm-s921bzaqphl-539300355.png?v=1751341691",
-  },
-  {
-    id: 8,
-    name: "MacBook Pro 16",
-    sku: "LAP-MBP16",
-    cost: 141193.5,
-    supplier: "Apple Inc.",
-    description:
-      "Professional laptop with M3 Max chip and Liquid Retina XDR display",
-    image:
-      "https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/mbp16-spacegray-select-202301?wid=904&hei=840&fmt=jpeg&qlt=90&.v=1671304673209",
-  },
-  {
-    id: 9,
-    name: "iPad Pro 12.9",
-    sku: "TAB-IP12.9",
-    cost: 62093.5,
-    supplier: "Apple Inc.",
-    description: "Tablet with M2 chip and stunning Liquid Retina XDR display",
-    image:
-      "https://powermaccenter.com/cdn/shop/files/iPad_Pro_Wi-Fi_12-9_in_6th_generation_Space_Gray_PDP_Image_Position-1b__en-US_a6624cbb-2f53-472d-b87b-d03b4cc81c35.jpg?v=1689785523&width=823",
-  },
-  {
-    id: 10,
-    name: "Apple Watch Ultra 2",
-    sku: "WCH-AWU2",
-    cost: 45143.5,
-    supplier: "Apple Inc.",
-    description:
-      "Rugged smartwatch with advanced fitness features and 36-hour battery",
-    image:
-      "https://images.samsung.com/is/image/samsung/p6pim/ph/2407/gallery/ph-galaxy-watch-ultra-l705-sm-l705fdaaxtc-542169673?$684_547_PNG$",
-  },
-  {
-    id: 11,
-    name: "Google Pixel 8 Pro",
-    sku: "PHN-GP8P",
-    cost: 56443.5,
-    supplier: "Google LLC",
-    description: "Smartphone with AI camera features and Tensor G3 processor",
-    image:
-      "https://nerdherd.store/cdn/shop/files/Pixel8ProObsidian.jpg?v=1696659216",
-  },
-  {
-    id: 12,
-    name: "Dell XPS 13",
-    sku: "LAP-DXPS13",
-    cost: 67743.5,
-    supplier: "Dell Technologies",
-    description: "Ultraportable laptop with InfinityEdge display",
-    image: "https://m.media-amazon.com/images/I/710EGJBdIML._AC_SL1500_.jpg",
-  },
-  {
-    id: 13,
-    name: "Microsoft Surface Pro 9",
-    sku: "TAB-MSP9",
-    cost: 56443.5,
-    supplier: "Microsoft Corporation",
-    description: "Versatile 2-in-1 tablet with detachable keyboard",
-    image:
-      "https://www.microsoftestore.com.hk/resource/images/skudetail/b1fa4b3720240528030105.jpg",
-  },
-  {
-    id: 14,
-    name: "Fitbit Versa 4",
-    sku: "WCH-FV4",
-    cost: 11243.5,
-    supplier: "Fitbit Inc.",
-    description: "Health & fitness smartwatch with built-in GPS",
-    image:
-      "https://electroworld.abenson.com/media/catalog/product/1/8/186753_2023_2.jpg",
+      "https://png.pngtree.com/thumb_back/fh260/background/20241030/pngtree-plain-white-t-shirt-on-hanger-image_16329568.jpg",
   },
 ];
 
@@ -212,6 +101,14 @@ let grid,
 let currentUserId = null;
 let currentWorkspaceId = null;
 let productList = [];
+let canUserModify = false;
+
+let activeProductList = []; // The list currently being displayed (can be filtered)
+let productsCurrentlyShown = 0;
+let isLoading = false; // Prevents multiple loads at once
+const INITIAL_LOAD_COUNT = 10;
+const PRODUCTS_PER_LOAD = 5;
+
 let productListUnsub = null;
 let activeListeners = {
   user: null,
@@ -235,80 +132,100 @@ function detachAllListeners() {
 }
 
 function attachProductListListener(userId) {
-  detachAllListeners();
+  detachAllListeners(); // Ensure no old listeners are running
   currentUserId = userId;
-
-  console.groupCollapsed(`%c🔗 Attaching Listeners for User: ${userId}`, 'color: #007bff; font-weight: bold;');
 
   const userDocRef = doc(db, 'users', userId);
 
-  activeListeners.user = onSnapshot(userDocRef, async (userSnap) => {
+  onSnapshot(userDocRef, async (userSnap) => {
     if (!userSnap.exists()) {
       console.error(`❌ User document not found for ID: ${userId}`);
-      detachAllListeners();
-      console.groupEnd();
+      showRestrictedAccessUI('User profile not found.');
       return;
     }
 
     const userData = userSnap.data();
     const selectedWorkspaceId = userData.selectedWorkspace;
 
-    if (!selectedWorkspaceId) {
-      console.warn('%c⚠️ No selected workspace found for user.', 'color: #ffc107;');
-      showRestrictedAccessUI('No workspace selected.');
-      console.groupEnd();
-      return;
+    if (!selectedWorkspaceId || selectedWorkspaceId === currentWorkspaceId) {
+      if (!selectedWorkspaceId) {
+        console.warn('%c⚠️ No selected workspace found for user.', 'color: #ffc107;');
+        showRestrictedAccessUI('No workspace selected.');
+      }
+      return; // No change or no workspace, do nothing
     }
+
     currentWorkspaceId = selectedWorkspaceId;
+    console.log(`%c🚀 Switching to workspace: ${currentWorkspaceId}`, 'color: #8a2be2; font-weight: bold;');
 
-    const workspaceDocRef = doc(db, `users/${userId}/myworkspace`, selectedWorkspaceId);
-    console.info(`%c📁 Listening to workspace: ${selectedWorkspaceId}`, 'color: #17a2b8;');
+    // Detach previous product listener if it exists
+    if (productListUnsub) productListUnsub();
 
-    activeListeners.workspace = onSnapshot(workspaceDocRef, async (workspaceSnap) => {
-      if (!workspaceSnap.exists()) {
-        console.warn('%c⚠️ Workspace document does not exist.', 'color: #ffc107; font-weight: bold;');
-        showRestrictedAccessUI('Workspace does not exist.');
-        return;
-      }
+    const workspaceDocRef = doc(db, 'ProductListWorkspace', currentWorkspaceId);
 
-      const workspaceData = workspaceSnap.data();
+    // ** NEW: Permission Check Logic **
+    await checkUserPermissions(userId, currentWorkspaceId, userData.role);
 
-      if (workspaceData.canShowProducts === false) {
-        console.warn('%c🚫 Access Denied: Products are restricted.', 'color: red; font-weight: bold;');
-        showRestrictedAccessUI('Restricted Access: You are not allowed to view this product list.');
-        return;
-      }
+    // Listen to the ProductList subcollection within the workspace
+    const productListRef = collection(workspaceDocRef, 'ProductList');
+    const q = query(productListRef);
 
-      const workspaceQuery = query(collection(db, 'ProductListWorkspace'), limit(1));
-      workspaceSnap = await getDocs(workspaceQuery);
-
-      if (workspaceSnap.empty) {
-        console.warn('%c⚠️ No ProductListWorkspace document found.', 'color: #ffc107;');
-        showRestrictedAccessUI('Product workspace data not found.');
-        return;
-      }
-
-      const firstDoc = workspaceSnap.docs[0];
-      const productListRef = collection(firstDoc.ref, 'ProductList');
-
-      if (productListUnsub) productListUnsub();
-
-      productListUnsub = onSnapshot(productListRef, (snapshot) => {
-        productList = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-
-        console.log('%c📦 Product List Updated:', 'color: #4caf50;', productList);
-        // renderProductList(productList); // Optional: render UI here
-      });
+    productListUnsub = onSnapshot(q, (snapshot) => {
+      productList = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      console.log('%c📦 Product List Updated:', 'color: #4caf50;', productList);
+      activeProductList = [...productList]; // Set the active list to the full list
+      productsCurrentlyShown = 0; // Reset the counter
+      const initialBatch = activeProductList.slice(0, INITIAL_LOAD_COUNT);
+      renderProducts(initialBatch, false); // Render the initial 10 products
+      productsCurrentlyShown = initialBatch.length;
     }, (error) => {
-      console.error('%c❌ Error loading workspace snapshot.', 'color: #dc3545; font-weight: bold;', error);
-      showRestrictedAccessUI('An error occurred while loading your workspace.');
+      console.error(`%c❌ Error listening to product list for workspace ${currentWorkspaceId}:`, 'color: #dc3545;', error);
+      showRestrictedAccessUI('Could not load products for this workspace.');
     });
 
-    console.groupEnd();
+  }, (error) => {
+    console.error('%c❌ Error loading user snapshot.', 'color: #dc3545;', error);
+    showRestrictedAccessUI('An error occurred while loading your profile.');
   });
+}
+
+async function checkUserPermissions(userId, workspaceId, userRole) {
+  canUserModify = false; // Reset permission
+  if (!userId || !workspaceId) {
+    console.warn("Cannot check permissions without User ID and Workspace ID.");
+    return;
+  }
+
+  try {
+    // --- Get Workspace and check for Ownership ---
+    const myWorkspaceRef = doc(db, `users/${userId}/myworkspace/${workspaceId}`);
+    const myWorkspaceSnap = await getDoc(myWorkspaceRef);
+    const workspaceData = myWorkspaceSnap.exists() ? myWorkspaceSnap.data() : null;
+
+    // Condition 1: Check if the user is the owner (from workspace data)
+    const ownerRef = workspaceData?.ownerWorkspaceRef;
+    const ownerPath = typeof ownerRef === 'string' ? ownerRef : ownerRef?.path;
+    const isOwner = ownerPath?.includes(currentUserId);
+
+    // Condition 2: Check if the user's role is Admin or Developer
+    const isAdminOrDev = userRole === 3 || userRole === 0; // 3 = Admin, 0 = Developer
+
+    // --- Final Permission: True if EITHER condition is met ---
+    canUserModify = isOwner || isAdminOrDev;
+
+    if (canUserModify) {
+      console.log(`%c✅ Permission Granted: User is ${isOwner ? 'Owner' : ''}${isOwner && isAdminOrDev ? ' and ' : ''}${isAdminOrDev ? 'Admin/Dev' : ''}.`, 'color: #28a745;');
+    } else {
+      console.log('%c🚫 Permission Denied: User is not Owner, Admin, or Developer.', 'color: #dc3545;');
+    }
+
+  } catch (error) {
+    console.error("Error checking permissions:", error);
+    canUserModify = false; // Default to no permissions on error
+  }
 }
 
 // Format currency to PHP
@@ -324,9 +241,53 @@ function renderFilteredProducts(filteredProducts) {
   renderProducts(filteredProducts);
 }
 
+function loadMoreProducts() {
+  if (isLoading) return;
+
+  const remainingProducts = activeProductList.length - productsCurrentlyShown;
+  if (remainingProducts <= 0) {
+    console.log("All products loaded.");
+    return; // No more products to load
+  }
+
+  isLoading = true;
+  console.log("Loading more products...");
+
+  // Get the next batch of products to load
+  const nextBatch = activeProductList.slice(
+    productsCurrentlyShown,
+    productsCurrentlyShown + PRODUCTS_PER_LOAD
+  );
+
+  // Append the new products to the grid
+  renderProducts(nextBatch, true);
+
+  // Update the count of shown products
+  productsCurrentlyShown += nextBatch.length;
+  isLoading = false;
+}
+
+function handleScroll() {
+  // Check if the user has scrolled close to the bottom of the page
+  const buffer = 300; // Load 300px before the bottom
+  if (window.innerHeight + window.scrollY >= document.body.offsetHeight - buffer) {
+    loadMoreProducts();
+  }
+}
+
 // Initialize the product grid
-function renderProducts(productsToRender = products) {
-  grid.innerHTML = "";
+function renderProducts(productsToRender, shouldAppend = false) {
+  // If not appending, clear the grid for a fresh render (e.g., initial load or search)
+  if (!shouldAppend) {
+    grid.innerHTML = "";
+  }
+
+  if (!productsToRender || productsToRender.length === 0) {
+    if (!shouldAppend) {
+      grid.innerHTML = `<p class="col-span-full text-center text-gray-500">No products found.</p>`;
+    }
+    return;
+  }
   productsToRender.forEach((product) => {
     const card = document.createElement("div");
     card.className = "product-card";
@@ -493,99 +454,158 @@ function handleImageFile(file) {
 }
 
 // Add new product
-function addProduct() {
-  const name = productNameInput.value;
-  const sku = productSkuInput.value;
-  const cost = parseFloat(productCostInput.value);
-  const supplier = productSupplierInput.value;
-  const description = productDescriptionInput.value;
-  const image = productImageInput.value;
+async function addProduct() {
+  if (!canUserModify) {
+    showNotification("Permission Denied: You cannot add products.", 5000);
+    return;
+  }
 
   const newProduct = {
-    id: products.length > 0 ? Math.max(...products.map((p) => p.id)) + 1 : 1,
-    name,
-    sku,
-    cost,
-    supplier,
-    description,
-    image,
+    name: productNameInput.value,
+    sku: productSkuInput.value,
+    cost: parseFloat(productCostInput.value),
+    supplier: productSupplierInput.value,
+    description: productDescriptionInput.value,
+    image: productImageInput.value,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
   };
 
-  products.push(newProduct);
-  renderProducts();
-  hideModal();
-  showNotification("Product added successfully");
+  try {
+    const productListRef = collection(db, 'ProductListWorkspace', currentWorkspaceId, 'ProductList');
+    await addDoc(productListRef, newProduct);
+
+    hideModal();
+    showNotification("Product added successfully");
+    // UI will update automatically via the onSnapshot listener
+  } catch (error) {
+    console.error("Error adding product: ", error);
+    showNotification("Error: Could not add product.", 5000);
+  }
 }
 
 // Update existing product
-function updateProduct() {
-  const product = products.find((p) => p.id === selectedProductId);
-  if (!product) return;
+async function updateProduct() {
+  if (!canUserModify) {
+    showNotification("Permission Denied: You cannot edit products.", 5000);
+    return;
+  }
+  if (!selectedProductId) return;
 
-  product.name = productNameInput.value;
-  product.sku = productSkuInput.value;
-  product.cost = parseFloat(productCostInput.value);
-  product.supplier = productSupplierInput.value;
-  product.description = productDescriptionInput.value;
-  product.image = productImageInput.value;
+  const productDocRef = doc(db, 'ProductListWorkspace', currentWorkspaceId, 'ProductList', selectedProductId);
 
-  renderProducts();
-  updateSidebar(product);
-  hideModal();
-  showNotification("Product updated successfully");
+  const updatedData = {
+    name: productNameInput.value,
+    sku: productSkuInput.value,
+    cost: parseFloat(productCostInput.value),
+    supplier: productSupplierInput.value,
+    description: productDescriptionInput.value,
+    image: productImageInput.value,
+    updatedAt: serverTimestamp(),
+  };
+
+  try {
+    await updateDoc(productDocRef, updatedData);
+
+    const updatedProduct = { id: selectedProductId, ...updatedData };
+
+    updateSidebar(updatedProduct); // Immediately update sidebar for responsiveness
+    hideModal();
+    showNotification("Product updated successfully");
+    // Grid UI will update automatically via the onSnapshot listener
+  } catch (error) {
+    console.error("Error updating product: ", error);
+    showNotification("Error: Could not update product.", 5000);
+  }
 }
 
 // Delete product
-function deleteProduct(productId) {
-  const index = products.findIndex((p) => p.id === productId);
-  if (index !== -1) {
-    const productName = products[index].name;
-    products.splice(index, 1);
+async function deleteProduct(productId) {
+  if (!canUserModify) {
+    showNotification("Permission Denied: You cannot delete products.", 5000);
+    return;
+  }
+
+  const productName = productList.find(p => p.id === productId)?.name || "The product";
+  const productDocRef = doc(db, 'ProductListWorkspace', currentWorkspaceId, 'ProductList', productId);
+
+  try {
+    await deleteDoc(productDocRef);
+
     if (selectedProductId === productId) {
       selectedProductId = null;
       updateSidebar(null);
     }
-    renderProducts();
-    showNotification(`"${productName}" has been deleted`);
+    showNotification(`"${productName}" has been deleted.`);
+    // UI will update automatically via the onSnapshot listener
+  } catch (error) {
+    console.error("Error deleting product: ", error);
+    showNotification("Error: Could not delete product.", 5000);
   }
 }
 
 // Event handlers
-function handleGridClick(e) {
+async function handleGridClick(e) {
   const card = e.target.closest(".product-card");
   const editBtn = e.target.closest(".edit-icon");
   const deleteBtn = e.target.closest(".delete-icon");
 
+  if (!card) {
+    handleCloseClick();
+    return;
+  }
+
   if (editBtn) {
-    const productId = parseInt(editBtn.dataset.id);
-    const product = products.find((p) => p.id === productId);
+    e.stopPropagation(); // Prevent card selection
+    const productId = editBtn.dataset.id;
+    const product = productList.find((p) => p.id === productId);
     if (product) {
       selectedProductId = productId;
-      showModal(product);
+      showModal(product); // showModal needs to handle edit mode
     }
     return;
   }
 
   if (deleteBtn) {
-    const productId = parseInt(deleteBtn.dataset.id);
+    e.stopPropagation(); // Prevent card selection
+    const productId = deleteBtn.dataset.id;
     if (confirm("Are you sure you want to delete this product?")) {
-      deleteProduct(productId);
+      await deleteProduct(productId);
     }
     return;
   }
 
   if (!card) return;
 
-  selectedProductId = parseInt(card.dataset.id);
-  document
-    .querySelectorAll(".product-card")
-    .forEach((c) => c.classList.remove("selected"));
+  selectedProductId = card.dataset.id;
+  document.querySelectorAll(".product-card").forEach((c) => c.classList.remove("selected"));
   card.classList.add("selected");
 
-  const product = products.find((p) => p.id === selectedProductId);
+  const product = productList.find((p) => p.id === selectedProductId);
   if (product) {
     updateSidebar(product);
   }
+}
+
+function handleOutsideClick(e) {
+  // Do nothing if no product is currently selected
+  if (selectedProductId === null) {
+    return;
+  }
+
+  // Define the areas where a click should NOT trigger a deselect
+  const isClickInGrid = e.target.closest("#productGridList");
+  const isClickInSidebar = e.target.closest("#productSettings");
+  const isClickOnAddButton = e.target.closest("#addBtn");
+  const isModalOpen = !modal.classList.contains('hidden');
+
+  // If the click is inside any of these "safe" areas, or if the modal is open, do nothing.
+  if (isClickInGrid || isClickInSidebar || isClickOnAddButton || isModalOpen) {
+    return;
+  }
+
+  // If the click was outside, trigger the deselection logic.
+  handleCloseClick();
 }
 
 function handleAddClick() {
@@ -600,12 +620,14 @@ function handleSettingsClick() {
 }
 
 function handleCloseClick() {
-  document.querySelector("aside").style.right = "-300px";
-  document
-    .querySelectorAll(".product-card")
-    .forEach((c) => c.classList.remove("selected"));
-  selectedProductId = null;
-  updateSidebar(null);
+  if (selectedProductId !== null) {
+    console.log("Closing selection and sidebar.");
+    document
+      .querySelectorAll(".product-card.selected")
+      .forEach((c) => c.classList.remove("selected"));
+    selectedProductId = null;
+    updateSidebar(null);
+  }
 }
 
 function handleDragOver(e) {
@@ -645,43 +667,52 @@ function handlePaste(e) {
   }
 }
 
-function handleSaveClick(e) {
+async function handleSaveClick(e) {
   e.preventDefault();
+  saveBtn.disabled = true; // Prevent double-clicking
   if (isEditing) {
-    updateProduct();
+    await updateProduct();
   } else {
-    addProduct();
+    await addProduct();
   }
+  saveBtn.disabled = false;
 }
 
 function filterProducts(searchTerm) {
-  if (!searchTerm) return products;
-
-  const term = searchTerm.toLowerCase();
-  return products.filter(
-    (product) =>
-      product.name.toLowerCase().includes(term) ||
-      product.sku.toLowerCase().includes(term)
-  );
+    if (!searchTerm) {
+        return [...productList]; // Return a copy of the master list
+    }
+    const term = searchTerm.toLowerCase();
+    return productList.filter(
+        (product) =>
+            product.name.toLowerCase().includes(term) ||
+            product.sku.toLowerCase().includes(term)
+    );
 }
+
 
 function handleSearchInput(e) {
   const term = e.target.value.trim();
   clearSearchBtn.classList.toggle("hidden", !term);
 
-  const filtered = filterProducts(term);
-  renderFilteredProducts(filtered);
+  activeProductList = filterProducts(term); // filterProducts now returns the filtered list
+  productsCurrentlyShown = 0; // Reset counter for the new filtered list
+  const initialBatch = activeProductList.slice(0, INITIAL_LOAD_COUNT);
+  renderProducts(initialBatch, false); // Render the initial batch of the filtered list
+  productsCurrentlyShown = initialBatch.length;
 }
 
 function handleClearSearch() {
   searchInput.value = "";
   clearSearchBtn.classList.add("hidden");
-  renderProducts(); // Reset to show all products
+  activeProductList = [...productList]; // Reset to the full master list
+  productsCurrentlyShown = 0;
+  const initialBatch = activeProductList.slice(0, INITIAL_LOAD_COUNT);
+  renderProducts(initialBatch, false);
+  productsCurrentlyShown = initialBatch.length;
 }
 
 
-
-// UPDATED: Initialize DOM elements
 function initElements() {
   console.log(
     "%c--- Initializing All DOM Elements ---",
@@ -766,6 +797,9 @@ function setupEventListeners() {
 
   searchInput.addEventListener("input", handleSearchInput);
   clearSearchBtn.addEventListener("click", handleClearSearch);
+
+  document.addEventListener('click', handleOutsideClick);
+  window.addEventListener('scroll', handleScroll);
 }
 
 // Cleanup event listeners
@@ -794,6 +828,7 @@ function cleanup() {
   if (clearSearchBtn)
     clearSearchBtn.removeEventListener("click", handleClearSearch);
   document.removeEventListener("paste", handlePaste);
+  window.removeEventListener('scroll', handleScroll);
 }
 
 function showRestrictedAccessUI(message) {
@@ -818,22 +853,32 @@ export function init(params) {
   console.log("[Products Module] Initializing...");
 
   onAuthStateChanged(auth, (user) => {
-          if (user) {
-              console.log(`User ${user.uid} signed in. Attaching listeners.`);
-              attachProductListListener(user.uid);
-              initElements();
-  setupEventListeners();
-  renderProducts();
-          } else {
-              console.log("User signed out. Detaching listeners.");
-              detachAllListeners();
-              project = { customColumns: [], sections: [], customPriorities: [], customStatuses: [] };
-              initElements();
-  setupEventListeners();
-  renderProducts();
-          }
-      });
-  
+    if (user) {
+      console.log(`User ${user.uid} signed in. Attaching listeners.`);
+      attachProductListListener(user.uid);
+      setTimeout(() => {
+        initElements();
+        setupEventListeners();
+        renderProducts([]);
+        updateSidebar(null);
+      }, 100);
+
+    } else {
+      console.log("User signed out. Detaching listeners.");
+      detachAllListeners();
+      project = { customColumns: [], sections: [], customPriorities: [], customStatuses: [] };
+      setTimeout(() => {
+        productList = [];
+        canUserModify = false;
+        initElements();
+        setupEventListeners();
+        renderProducts([]);
+        updateSidebar(null);
+      }, 100);
+
+    }
+  });
+
   const loadingScreen = document.getElementById("loadingScreen");
   if (loadingScreen) {
     setTimeout(() => {
