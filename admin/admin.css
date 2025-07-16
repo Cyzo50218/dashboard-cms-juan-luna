@@ -61,6 +61,7 @@ body {
     display: flex;
     flex-direction: column;
     border-right: 1px solid var(--border-color);
+    transition: width 0.3s ease;
 }
 
 .sidebar-header {
@@ -625,12 +626,12 @@ input:checked+.slider:before {
 }
 
 /* Style when the checkbox is checked */
-.permission-control input:checked + .checkbox-display {
+.permission-control input:checked+.checkbox-display {
     background-color: var(--primary-color);
     border-color: var(--primary-color);
 }
 
-.permission-control input:checked + .checkbox-display .material-icons {
+.permission-control input:checked+.checkbox-display .material-icons {
     transform: scale(1);
 }
 
@@ -697,7 +698,8 @@ input:checked+.slider:before {
 
 /* Style for the Danger Zone */
 .danger-zone {
-    border-color: #e53935; /* Red border */
+    border-color: #e53935;
+    /* Red border */
 }
 
 .danger-zone h3 {
@@ -734,7 +736,8 @@ input:checked+.slider:before {
 }
 
 .btn-warning {
-    background-color: #ffb74d; /* A warning-yellow/orange color */
+    background-color: #ffb74d;
+    /* A warning-yellow/orange color */
     color: white;
     border: none;
     padding: 10px 20px;
@@ -749,11 +752,133 @@ input:checked+.slider:before {
 }
 
 .role-badge.banned {
-    background-color: #ff1111; /* Dark Gray */
+    background-color: #ff1111;
+    /* Dark Gray */
     color: white;
 }
 
 .banned-user-name {
-    color: #e53935; /* A danger/error red color */
+    color: #e53935;
+    /* A danger/error red color */
     text-decoration: line-through;
+}
+
+/* --- MOBILE RESPONSIVE STYLES --- */
+@media (max-width: 768px) {
+    body {
+        flex-direction: column;
+        height: auto;
+        overflow-y: auto;
+    }
+
+    .dashboard-container {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        /* --- ✨ STICKY SIDEBAR LOGIC ✨ --- */
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .sidebar-header {
+        text-align: left;
+    }
+
+    .sidebar-nav {
+        display: flex;
+        overflow-x: auto;
+        padding-bottom: 10px;
+    }
+
+    .sidebar-nav ul {
+        display: flex;
+        flex-direction: row;
+        margin: 0;
+    }
+
+    .sidebar-nav li a {
+        border-right: none;
+        border-bottom: 3px solid transparent;
+    }
+
+    .sidebar-nav li.active a,
+    .sidebar-nav li a:hover {
+        border-right: none;
+        border-bottom: 3px solid var(--primary-color);
+    }
+
+    .sidebar-footer {
+        border-top: none;
+        padding-top: 0;
+    }
+
+    .main-content {
+        padding: 15px;
+    }
+
+    .main-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .user-list-header {
+        display: none;
+        /* Hiding the header is a common mobile pattern */
+    }
+
+    .user-list-item {
+        grid-template-columns: 1fr;
+        gap: 15px;
+        padding: 15px;
+    }
+
+    .user-details {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .workgroup-list ul {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .user-role {
+        justify-self: start;
+    }
+
+    #user-cards-container {
+        grid-template-columns: 1fr;
+    }
+
+    .workspace-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .permission-controls {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+        width: 100%;
+    }
+
+    .settings-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .tab-header {
+        flex-wrap: wrap;
+    }
+
+    .tab-link {
+        flex-basis: 50%;
+        text-align: center;
+    }
 }
