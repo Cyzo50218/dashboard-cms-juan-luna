@@ -336,6 +336,7 @@ textarea.form-input {
   background-color: #c0c0c0;
 }
 .btn-primary {
+  border-color: transparent;
   background-color: #000000;
   color: white;
 }
@@ -556,4 +557,167 @@ textarea.form-input {
 
 .restricted-ok-btn:hover {
   background-color: #0056b3;
+}
+/* --- Custom Dropdown --- */
+.custom-select-container {
+    position: relative;
+    width: 100%;
+}
+
+.custom-select-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background-color: #fff;
+    border: 1px solid #d1d5db; /* A modern gray */
+    border-radius: 6px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.custom-select-trigger .arrow {
+    transition: transform 0.2s;
+}
+
+.custom-select-trigger.open .arrow {
+    transform: rotate(180deg);
+}
+
+
+/* --- Options Container --- */
+.custom-options {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background-color: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    max-height: 250px;
+    overflow-y: auto;
+    z-index: 50;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.168);
+}
+
+.custom-options.hidden {
+    display: none;
+}
+.settings-value .supplier-display {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Make sure the icon in the sidebar is the same size as the trigger's icon */
+.settings-value .option-icon {
+    width: 24px;
+    height: 24px;
+    font-size: 14px;
+}
+/* --- Individual Option Styling --- */
+.custom-option {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.custom-option:hover {
+    background-color: #eff6ff; /* Light blue on hover */
+}
+
+.custom-option.selected {
+    background-color: #dbeafe; /* A bit darker blue for selected */
+    font-weight: 500;
+}
+
+/* --- The Circular Icon --- */
+.option-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    margin-right: 12px;
+    background-size: cover;
+    background-position: center;
+    background-color: #e5e7eb; /* Fallback color */
+    flex-shrink: 0; /* Prevents icon from shrinking */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+/* --- Text details within an option --- */
+.option-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.option-name {
+    color: #1f2937;
+    line-height: 1.2;
+}
+
+.option-email {
+    font-size: 0.8rem;
+    color: #6b7280;
+}
+
+/* Displaying the selected item in the trigger */
+.selected-text .option-icon {
+    width: 24px;
+    height: 24px;
+    font-size: 14px;
+}
+
+.selected-text {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.custom-option.hidden {
+    display: none;
+}
+.saving-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999; /* Higher than the modal's z-index */
+    transition: opacity 0.2s;
+}
+
+.saving-overlay.hidden {
+    display: none;
+}
+
+.saving-content {
+    background: white;
+    padding: 2rem 3rem;
+    border-radius: 8px;
+    text-align: center;
+    color: #333;
+    font-size: 1.1rem;
+}
+
+.spinner {
+    border: 5px solid #f3f3f3; /* Light grey */
+    border-top: 5px solid #3b82f6; /* Blue */
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }

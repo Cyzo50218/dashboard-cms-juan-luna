@@ -6,6 +6,12 @@
     <button id="restricted-ok-btn" class="restricted-ok-btn">OK</button>
   </div>
 </div>
+<div id="savingOverlay" class="saving-overlay hidden">
+    <div class="saving-content">
+        <div class="spinner"></div>
+        <p>Saving...</p>
+    </div>
+</div>
 <div class="product-list-container">
   <div class="flex pt-16 h-screen w-full">
 
@@ -66,12 +72,27 @@
             <input type="text" class="form-input" id="productSku" required />
           </div>
           <div class="form-group">
-            <label class="form-label">Cost (₱)</label>
+            <label class="form-label">Cost</label>
             <input type="number" class="form-input" id="productCost" min="0" step="0.01" required />
           </div>
           <div class="form-group">
             <label class="form-label">Supplier</label>
-            <input type="text" class="form-input" id="productSupplier" required />
+
+            <input type="hidden" id="productSupplierValue">
+
+            <div class="custom-select-container" id="supplierDropdownContainer">
+
+              <div class="custom-select-trigger" id="supplierDropdownTrigger">
+                <span class="selected-text">Select a supplier...</span>
+                <svg class="arrow" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                  fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </div>
+
+              <div class="custom-options hidden" id="supplierDropdownOptions">
+              </div>
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">Description</label>

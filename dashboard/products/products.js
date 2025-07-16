@@ -95,12 +95,16 @@ let grid,
   productSkuInput,
   productCostInput,
   productSupplierInput,
+  trigger,
+  allOptions,
   productDescriptionInput,
+  optionsContainer,
   productImageInput;
 
 let currentUserId = null;
 let currentWorkspaceId = null;
 let productList = [];
+let supplierList = [];
 let canUserModify = false;
 
 let activeProductList = []; // The list currently being displayed (can be filtered)
@@ -170,12 +174,15 @@ function attachProductListListener(userId) {
     const productListRef = collection(workspaceDocRef, 'ProductList');
     const q = query(productListRef);
 
-    productListUnsub = onSnapshot(q, (snapshot) => {
+    productListUnsub = onSnapshot(q, async (snapshot) => {
       productList = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
       console.log('%c📦 Product List Updated:', 'color: #4caf50;', productList);
+
+      await fetchDropdownOptions(userId, currentWorkspaceId);
+
       activeProductList = [...productList]; // Set the active list to the full list
       productsCurrentlyShown = 0; // Reset the counter
       const initialBatch = activeProductList.slice(0, INITIAL_LOAD_COUNT);
@@ -273,6 +280,192 @@ function handleScroll() {
   if (window.innerHeight + window.scrollY >= document.body.offsetHeight - buffer) {
     loadMoreProducts();
   }
+}
+
+async function fetchDropdownOptions(userId, workspaceId) {
+    console.log('%cFetching options via projects subcollection...', 'color: #17a2b8;');
+    try {
+        // --- 1. Query the 'projects' SUBCOLLECTION directly ---
+        // This is the main logical change.
+        const projectsRef = collection(db, `users/${userId}/myworkspace/${workspaceId}/projects`);
+        const projectDocsSnap = await getDocs(projectsRef);
+
+        if (projectDocsSnap.empty) {
+            console.log("No projects found in the subcollection.");
+            populateSupplierDropdown([]);
+            return;
+        }
+
+        // --- 2. Process the projects and collect all unique member UIDs ---
+        const allMemberUids = new Set();
+        const projectSuppliers = projectDocsSnap.docs.map(doc => {
+            const projectData = doc.data();
+            
+            // Add the project's members to the Set for the next step
+            const members = projectData.memberUIDs || [];
+            members.forEach(uid => allMemberUids.add(uid));
+            
+            // Return the project's data for the dropdown list
+            return {
+                id: doc.id,
+                name: projectData.title, 
+                type: 'Project'
+            };
+        });
+
+        // --- 3. Fetch all unique User documents ---
+        let userSuppliers = [];
+        const uniqueMemberUidsArray = [...allMemberUids]; // Convert Set to Array
+
+        if (uniqueMemberUidsArray.length > 0) {
+            const usersRef = collection(db, 'users');
+            const userQuery = query(usersRef, where(documentId(), 'in', uniqueMemberUidsArray));
+            const userDocsSnap = await getDocs(userQuery);
+            userSuppliers = userDocsSnap.docs.map(doc => ({
+                id: doc.id,
+                name: doc.data().name,
+                email: doc.data().email,
+                avatar: doc.data().avatar,
+                type: 'User'
+            }));
+        }
+
+        // --- 4. Combine and Sort the final list ---
+        // to be use soon ..projectSuppliers,
+        supplierList = [...userSuppliers];
+        supplierList.sort((a, b) => a.name.localeCompare(b.name));
+
+        console.log('%c✅ All options loaded and sorted:', 'color: #28a745;', supplierList);
+        populateSupplierDropdown(supplierList);
+
+    } catch (error) {
+        console.error("Error fetching dropdown options:", error);
+        supplierList = [];
+        populateSupplierDropdown([]); // Clear dropdown on error
+    }
+}
+
+function createSupplierDisplayHTML(supplierData, fallbackName) {
+    // If for some reason the full supplier data isn't found, just return the name.
+    if (!supplierData) {
+        return fallbackName;
+    }
+
+    let iconContent = '';
+    let detailsContent = '';
+
+    if (supplierData.type === 'User') {
+        const bgImage = supplierData.avatar ? `url('${supplierData.avatar}')` : 'none';
+        iconContent = `<div class="option-icon" style="background-image: ${bgImage};"></div>`;
+        detailsContent = `
+            <div class="option-details">
+                <div class="option-name">${supplierData.name}</div>
+                <div class="option-email">${supplierData.email}</div>
+            </div>
+        `;
+    } else { // Project
+        iconContent = `<div class="option-icon">🏢</div>`;
+        detailsContent = `
+            <div class="option-details">
+                <div class="option-name">${supplierData.name}</div>
+            </div>
+        `;
+    }
+    // Combine the parts into a single flex container
+    return `<div class="supplier-display">${iconContent} ${detailsContent}</div>`;
+}
+
+function populateSupplierDropdown(options) {
+    const triggerText = document.querySelector('#supplierDropdownTrigger .selected-text');
+    if (!optionsContainer || !triggerText) return;
+
+    optionsContainer.innerHTML = ''; // Clear old options
+
+    if (options.length === 0) {
+        triggerText.textContent = 'No suppliers available';
+        return;
+    }
+
+    options.forEach(option => {
+        const optionEl = document.createElement('div');
+        optionEl.className = 'custom-option';
+        optionEl.dataset.value = option.name; // Store the value in a data attribute
+
+        let iconContent = '';
+        if (option.type === 'User') {
+            const bgImage = option.avatar ? `url('${option.avatar}')` : 'none';
+            iconContent = `<div class="option-icon" style="background-image: ${bgImage};"></div>`;
+        } else { // Project
+            iconContent = `<div class="option-icon"></div>`;
+        }
+
+        const emailText = option.email ? `<div class="option-email">${option.email}</div>` : '';
+        
+        optionEl.innerHTML = `
+            ${iconContent}
+            <div class="option-details">
+                <div class="option-name">${option.name}</div>
+                ${emailText}
+            </div>
+        `;
+        
+        optionEl.addEventListener('click', () => {
+            selectSupplier(option.name);
+             optionsContainer.classList.add('hidden');
+        });
+
+        optionsContainer.appendChild(optionEl);
+    });
+}
+
+function toggleSupplierDropdown(forceClose = false) {
+  console.log(`%cToggling supplier dropdown. Force close: ${forceClose}`, 'color: #17a2b8;');
+    if (!optionsContainer.classList.contains('hidden')) {
+        optionsContainer.classList.add('hidden');
+        trigger.classList.remove('open');
+    } else {
+        optionsContainer.classList.remove('hidden');
+        trigger.classList.add('open');
+    }
+}
+
+function selectSupplier(supplierName) {
+
+    const selectedOptionData = supplierList.find(opt => opt.name === supplierName);
+
+    if (selectedOptionData && productSupplierInput && trigger) {
+        productSupplierInput.value = supplierName;
+
+        let iconContent = '';
+        let detailsContent = '';
+
+        if (selectedOptionData.type === 'User') {
+            const bgImage = selectedOptionData.avatar ? `url('${selectedOptionData.avatar}')` : 'none';
+            iconContent = `<div class="option-icon" style="background-image: ${bgImage};"></div>`;
+            detailsContent = `
+                <div class="option-details">
+                    <div class="option-name">${selectedOptionData.name}</div>
+                    <div class="option-email">${selectedOptionData.email}</div>
+                </div>
+            `;
+        } else { // Project
+            iconContent = `<div class="option-icon">🏢</div>`;
+            detailsContent = `
+                <div class="option-details">
+                    <div class="option-name">${selectedOptionData.name}</div>
+                </div>
+            `;
+        }
+        trigger.querySelector('.selected-text').innerHTML = `${iconContent} ${detailsContent}`;
+
+        allOptions.forEach(opt => {
+            opt.classList.toggle('selected', opt.dataset.value === supplierName);
+        });
+
+    } else {
+        hiddenInput.value = '';
+        trigger.querySelector('.selected-text').innerHTML = 'Select a supplier...';
+    }
 }
 
 // Initialize the product grid
@@ -396,45 +589,44 @@ function hideModal() {
   modal.classList.add("hidden");
 }
 
-// NEW: Render sidebar with product details
 function renderProductSidebar(product) {
-  const { name, sku, cost, supplier, description, image } = product;
-  const formattedCost = formatCurrency(cost);
+    const { name, sku, cost, supplier, description, image } = product;
+    const formattedCost = formatCurrency(cost);
+    const supplierDisplayHtml = createSupplierDisplayHTML(supplier, supplier.name);
 
-  return `
-    <div class="settings-section">
-      <span class="settings-label">Product Name</span>
-      <div class="settings-value">${name}</div>
-    </div>
-    <div class="settings-section">
-      <div class="flex justify-between items-start">
-        <div>
-          <span class="settings-label">SKU</span>
-          <div class="settings-value">${sku}</div>
+    return `
+        <div class="settings-section">
+            <span class="settings-label">Product Name</span>
+            <div class="settings-value">${name}</div>
         </div>
-        <span class="important-tag hidden">Important</span>
-      </div>
-    </div>
-    <div class="settings-section">
-      <span class="settings-label">Cost</span>
-      <div class="settings-value">${formattedCost}</div>
-    </div>
-    <div class="settings-section">
-      <span class="settings-label">Supplier</span>
-      <div class="settings-value">${supplier}</div>
-    </div>
-    <div class="settings-section">
-      <span class="settings-label">Description</span>
-      <div class="settings-value">${description || "No description available"
-    }</div>
-    </div>
-    <div class="settings-section">
-      <span class="settings-label">Product image</span>
-      <div class="product-image-container">
-        <img src="${image}" alt="${name}" class="w-[80%] h-[80%] object-contain">
-      </div>
-    </div>
-  `;
+        <div class="settings-section">
+            <div class="flex justify-between items-start">
+                <div>
+                    <span class="settings-label">SKU</span>
+                    <div class="settings-value">${sku}</div>
+                </div>
+                <span class="important-tag hidden">Important</span>
+            </div>
+        </div>
+        <div class="settings-section">
+            <span class="settings-label">Cost</span>
+            <div class="settings-value">${cost}</div>
+        </div>
+        <div class="settings-section">
+            <span class="settings-label">Supplier</span>
+            <div class="settings-value">${supplierDisplayHtml}</div>
+        </div>
+        <div class="settings-section">
+            <span class="settings-label">Description</span>
+            <div class="settings-value">${description || "No description available"}</div>
+        </div>
+        <div class="settings-section">
+            <span class="settings-label">Product image</span>
+            <div class="product-image-container">
+                <img src="${image}" alt="${name}" class="w-[80%] h-[80%] object-contain">
+            </div>
+        </div>
+    `;
 }
 
 // UPDATED: Update sidebar with product details
@@ -465,71 +657,100 @@ function handleImageFile(file) {
   };
   reader.readAsDataURL(file);
 }
+function showSavingDialog() {
+    const overlay = document.getElementById('savingOverlay');
+    if (overlay) {
+        overlay.classList.remove('hidden');
+    }
+}
 
-// Add new product
+function hideSavingDialog() {
+    const overlay = document.getElementById('savingOverlay');
+    if (overlay) {
+        overlay.classList.add('hidden');
+    }
+}
+//Add New product
 async function addProduct() {
-  if (!canUserModify) {
-    showNotification("Permission Denied: You cannot add products.", 5000);
-    return;
-  }
+    if (!canUserModify) {
+        showNotification("Permission Denied: You cannot add products.", 5000);
+        return;
+    }
+    showSavingDialog();
+    const supplierName = productSupplierInput.value;
+    const supplierData = supplierList.find(s => s.name === supplierName);
+    const supplierInfoToSave = {
+        name: supplierData?.name || supplierName, 
+        avatar: supplierData?.avatar || null,
+        email: supplierData?.email || null,
+        type: supplierData?.type || 'Unknown'
+    };
 
-  const newProduct = {
-    name: productNameInput.value,
-    sku: productSkuInput.value,
-    cost: parseFloat(productCostInput.value),
-    supplier: productSupplierInput.value,
-    description: productDescriptionInput.value,
-    image: productImageInput.value,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  };
+    const newProduct = {
+        name: productNameInput.value,
+        sku: productSkuInput.value,
+        cost: parseFloat(productCostInput.value),
+        supplier: supplierInfoToSave,
+        description: productDescriptionInput.value,
+        image: productImageInput.value,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+    };
 
-  try {
-    const productListRef = collection(db, 'ProductListWorkspace', currentWorkspaceId, 'ProductList');
-    await addDoc(productListRef, newProduct);
-
-    hideModal();
-    showNotification("Product added successfully");
-    // UI will update automatically via the onSnapshot listener
-  } catch (error) {
-    console.error("Error adding product: ", error);
-    showNotification("Error: Could not add product.", 5000);
-  }
+    try {
+        const productListRef = collection(db, 'ProductListWorkspace', currentWorkspaceId, 'ProductList');
+        await addDoc(productListRef, newProduct);
+        hideModal();
+        showNotification("Product added successfully");
+    } catch (error) {
+        console.error("Error adding product: ", error);
+        showNotification("Error: Could not add product.", 5000);
+    } finally {
+        hideSavingDialog();
+    }
 }
 
 // Update existing product
 async function updateProduct() {
-  if (!canUserModify) {
-    showNotification("Permission Denied: You cannot edit products.", 5000);
-    return;
-  }
-  if (!selectedProductId) return;
+    if (!canUserModify) {
+        showNotification("Permission Denied: You cannot edit products.", 5000);
+        return;
+    }
+    if (!selectedProductId) return;
+    showSavingDialog();
+    const supplierName = productSupplierInput.value;
+    const supplierData = supplierList.find(s => s.name === supplierName);
+    const supplierInfoToSave = {
+        name: supplierData?.name || supplierName,
+        avatar: supplierData?.avatar || null,
+        email: supplierData?.email || null,
+        type: supplierData?.type || 'Unknown'
+    };
 
-  const productDocRef = doc(db, 'ProductListWorkspace', currentWorkspaceId, 'ProductList', selectedProductId);
+    const productDocRef = doc(db, 'ProductListWorkspace', currentWorkspaceId, 'ProductList', selectedProductId);
+    const updatedData = {
+        name: productNameInput.value,
+        sku: productSkuInput.value,
+        cost: parseFloat(productCostInput.value),
+        supplier: supplierInfoToSave, 
+        description: productDescriptionInput.value,
+        image: productImageInput.value,
+        updatedAt: serverTimestamp(),
+    };
 
-  const updatedData = {
-    name: productNameInput.value,
-    sku: productSkuInput.value,
-    cost: parseFloat(productCostInput.value),
-    supplier: productSupplierInput.value,
-    description: productDescriptionInput.value,
-    image: productImageInput.value,
-    updatedAt: serverTimestamp(),
-  };
-
-  try {
-    await updateDoc(productDocRef, updatedData);
-
-    const updatedProduct = { id: selectedProductId, ...updatedData };
-
-    updateSidebar(updatedProduct); // Immediately update sidebar for responsiveness
-    hideModal();
-    showNotification("Product updated successfully");
-    // Grid UI will update automatically via the onSnapshot listener
-  } catch (error) {
-    console.error("Error updating product: ", error);
-    showNotification("Error: Could not update product.", 5000);
-  }
+    try {
+        await updateDoc(productDocRef, updatedData);
+        // The sidebar will update instantly because updatedData contains the new supplier object.
+        const updatedProduct = { id: selectedProductId, ...updatedData };
+        updateSidebar(updatedProduct); 
+        hideModal();
+        showNotification("Product updated successfully");
+    } catch (error) {
+        console.error("Error updating product: ", error);
+        showNotification("Error: Could not update product.", 5000);
+    } finally {
+        hideSavingDialog();
+    }
 }
 
 // Delete product
@@ -778,10 +999,14 @@ function initElements() {
   console.log("productSkuInput:", productSkuInput);
   productCostInput = document.getElementById("productCost");
   console.log("productCostInput:", productCostInput);
-  productSupplierInput = document.getElementById("productSupplier");
+  productSupplierInput = document.getElementById("productSupplierValue");
+  trigger = document.getElementById('supplierDropdownTrigger');
+  optionsContainer = document.getElementById('supplierDropdownOptions');
+  allOptions = document.querySelectorAll('.custom-option');
   console.log("productSupplierInput:", productSupplierInput);
   productDescriptionInput = document.getElementById("productDescription");
   console.log("productDescriptionInput:", productDescriptionInput);
+
   productImageInput = document.getElementById("productImage");
   console.log("productImageInput:", productImageInput);
 
@@ -810,7 +1035,7 @@ function setupEventListeners() {
 
   searchInput.addEventListener("input", handleSearchInput);
   clearSearchBtn.addEventListener("click", handleClearSearch);
-
+  trigger.addEventListener('click', toggleSupplierDropdown);
   document.addEventListener('click', handleOutsideClick);
   window.addEventListener('scroll', handleScroll);
 }
@@ -841,6 +1066,7 @@ function cleanup() {
   if (clearSearchBtn)
     clearSearchBtn.removeEventListener("click", handleClearSearch);
   document.removeEventListener("paste", handlePaste);
+        
   window.removeEventListener('scroll', handleScroll);
 }
 
