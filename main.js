@@ -27,7 +27,7 @@ let currentSectionCleanup = null;
 function parseRoute() {
     const pathParts = window.location.pathname.split('/').filter(p => p);
     const queryParams = new URLSearchParams(window.location.search);
-    
+
 
     // Default home route
     if (pathParts.length === 0) {
@@ -250,8 +250,55 @@ async function loadHTML(selector, url) {
         console.error("Full error details:", err.stack);
     }
 }
+
+function hideInitialLoader() {
+    const loader = document.getElementById("initial-loader");
+    if (loader) {
+        loader.style.opacity = "0";
+        setTimeout(() => loader.remove(), 300);
+    }
+}
+
 // --- APPLICATION INITIALIZATION ---
 document.addEventListener("DOMContentLoaded", () => {
+    const loadingMessages = [
+        "Loading your workspace...",
+        "Syncing tasks...",
+        "Fetching project data...",
+        "Preparing your dashboard...",
+        "Almost ready..."
+    ];
+
+    let currentMsgIndex = 0;
+    const loaderTextContainer = document.getElementById("loader-message");
+
+    // --- 👇 CHANGE 1: Declare a variable to hold the interval ID ---
+    let messageIntervalId = null;
+
+    function showNextMessage() {
+        console.log(`[Loader] Showing next loading message...`);
+        const currentSpan = loaderTextContainer.querySelector("span");
+        if (!currentSpan) {
+            console.warn("[Loader] No current span found. Aborting message transition.");
+            return;
+        }
+        const nextIndex = (currentMsgIndex + 1) % loadingMessages.length;
+        const nextMessage = loadingMessages[nextIndex];
+        console.log(`[Loader] Transitioning to message #${nextIndex}: "${nextMessage}"`);
+        const nextSpan = document.createElement("span");
+        nextSpan.textContent = nextMessage;
+        nextSpan.classList.add("active");
+        currentSpan.classList.remove("active");
+        currentSpan.classList.add("exit");
+        loaderTextContainer.appendChild(nextSpan);
+        setTimeout(() => {
+            console.log(`[Loader] Removing previous message: "${currentSpan.textContent}"`);
+            currentSpan.remove();
+        }, 300);
+        currentMsgIndex = nextIndex;
+    }
+
+    messageIntervalId = setInterval(showNextMessage, 1000);
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const functions = getFunctions(app);
@@ -261,30 +308,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let backfillIntervalId = null;
     let backfillTaskCountIntervalId = null;
+
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             console.log("✅ Authenticated user found. Initializing dashboard...");
 
-            // Load layout components
             await Promise.all([
                 loadHTML("#top-header", "/dashboard/header/header.html"),
                 loadHTML("#rootdrawer", "/dashboard/drawer/drawer.html"),
                 loadHTML("#right-sidebar", "/dashboard/sidebar/sidebar.html"),
             ]);
 
-            // 🔍 After UI loads, ensure member doc exists with empty selectedProjectId
             try {
                 const userDoc = await getDoc(doc(db, "users", user.uid));
                 const selectedWorkspace = userDoc.data()?.selectedWorkspace;
-
                 if (selectedWorkspace) {
                     const memberRef = doc(db, `workspaces/${selectedWorkspace}/members/${user.uid}`);
                     const memberSnap = await getDoc(memberRef);
-
                     if (!memberSnap.exists()) {
                         await setDoc(memberRef, {
                             userId: user.uid,
-                            selectedProjectId: "", // ✅ Exists but empty
+                            selectedProjectId: "",
                             selectedProjectWorkspaceVisibility: "workspace",
                             lastAccessed: serverTimestamp()
                         });
@@ -299,7 +343,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 console.error("❌ Error creating member doc:", err.message);
             }
 
-            // Periodic backfill setup (unchanged)
             const runAndLogBackfill = async () => {
                 try {
                     const res = await runAlgoliaBackfill();
@@ -308,11 +351,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     console.error("❌ Periodic Backfill error:", err.message);
                 }
             };
-
-            runAndLogBackfill(); // initial run
+            runAndLogBackfill();
             backfillIntervalId = setInterval(runAndLogBackfill, 60_000);
 
-            // SPA navigation handler
             document.body.addEventListener('click', e => {
                 const link = e.target.closest('a[data-link]');
                 if (link) {
@@ -324,16 +365,31 @@ document.addEventListener("DOMContentLoaded", () => {
 
             window.TaskSidebar?.init();
             window.addEventListener('popstate', router);
+            
+            // --- 👇 CHANGE 3: Clear the interval right after hiding the loader ---
+            setTimeout(() => {
+                hideInitialLoader();
+                if (messageIntervalId) {
+                    clearInterval(messageIntervalId);
+                    console.log("✅ Loader hidden and message interval stopped.");
+                }
+            }, navigator.connection?.effectiveType === '4g' ? 1200 : 1800);
+            
             router(); // Initial route load
+
         } else {
             console.log("⛔ No authenticated user. Redirecting to login...");
             window.location.href = '/login/login.html';
 
+            // Clean up intervals on logout/redirect
             if (backfillIntervalId) {
                 clearInterval(backfillIntervalId);
                 backfillIntervalId = null;
             }
+            if (messageIntervalId) {
+                clearInterval(messageIntervalId);
+                messageIntervalId = null;
+            }
         }
     });
-
 });

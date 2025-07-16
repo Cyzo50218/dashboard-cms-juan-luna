@@ -346,8 +346,9 @@ window.TaskSidebar = (function () {
             allUsers = memberProfiles;
 
             updateUserPermissions(currentProject, currentUserId);
-            renderSidebar(currentTask);
             sidebar.classList.remove('is-loading');
+            renderSidebar(currentTask);
+            
 
             // ✅ STEP 4: Defer recent history update
             setTimeout(async () => {
