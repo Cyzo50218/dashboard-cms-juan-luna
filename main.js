@@ -28,22 +28,32 @@ function parseRoute() {
     const pathParts = window.location.pathname.split('/').filter(p => p);
     const queryParams = new URLSearchParams(window.location.search);
 
+    // ✅ Handle /admin or anything starting with /admin
+    if (pathParts[0]?.startsWith('admin')) {
+        return {
+            section: 'admin',
+            redirectTo: '/admin/admin.html'
+        };
+    }
+
+    // Default home route
     if (pathParts.length === 0) {
         return { section: 'home' };
     }
 
+    // ✅ Handle /tasks/:accountId/:tabId/:projectId?openTask=
     const resourceType = pathParts[0];
-
     if (resourceType === 'tasks' && pathParts.length > 3) {
         return {
             section: 'tasks',
             accountId: pathParts[1] || null,
             tabId: pathParts[2] || 'list',
             projectId: pathParts[3] || null,
-            openTask: queryParams.get('openTask') || null  // ✅ NEW: support openTask param
+            openTask: queryParams.get('openTask') || null
         };
     }
 
+    // ✅ Simple route sections
     const simpleRoutes = ['home', 'myworkspace', 'inbox', 'inventory', 'reports', 'products', 'searchresults', 'settings'];
     if (simpleRoutes.includes(resourceType)) {
         return { section: resourceType };
@@ -53,14 +63,22 @@ function parseRoute() {
 }
 
 
+
 /**
  * The main router function. It determines the current route and loads the appropriate section.
  */
 function router() {
     const routeParams = parseRoute();
     console.log("Routing to:", routeParams);
+
+    if (routeParams.redirectTo) {
+        window.location.href = routeParams.redirectTo;
+        return; // Stop further processing
+    }
+
     loadSection(routeParams);
 }
+
 
 window.router = router;
 
