@@ -294,11 +294,10 @@ document.addEventListener("DOMContentLoaded", () => {
         setTimeout(() => {
             console.log(`[Loader] Removing previous message: "${currentSpan.textContent}"`);
             currentSpan.remove();
-        }, 300);
+        }, 400);
         currentMsgIndex = nextIndex;
     }
 
-    messageIntervalId = setInterval(showNextMessage, 1000);
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const functions = getFunctions(app);
@@ -312,6 +311,7 @@ document.addEventListener("DOMContentLoaded", () => {
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             console.log("✅ Authenticated user found. Initializing dashboard...");
+            messageIntervalId = setInterval(showNextMessage, 1000);
 
             await Promise.all([
                 loadHTML("#top-header", "/dashboard/header/header.html"),
