@@ -3496,14 +3496,26 @@ function findSectionById(sectionId) {
     return project.sections.find(section => section.id === sectionId);
 }
 
-function displaySideBarTasks(taskId) {
+async function displaySideBarTasks(taskId) {
     console.log(`Task name clicked. Opening sidebar for task ID: ${taskId}`);
-    if (window.TaskSidebar) {
-        window.TaskSidebar.open(taskId, currentProjectRef);
-    } else {
+
+    if (!window.TaskSidebar) {
         console.error("TaskSidebar module is not available.");
+        return;
+    }
+
+    try {
+        const indexSnap = await getDoc(doc(db, "taskIndex", taskId));
+        if (!indexSnap.exists()) {
+            console.warn(`TaskIndex not found for task ID: ${taskId}`);
+            return;
+        }
+        window.TaskSidebar.open(taskId, currentProjectRef);
+    } catch (err) {
+        console.error("Failed to load sidebar via taskIndex:", err);
     }
 }
+
 
 function updateTask(taskId, sectionId, newProperties) {
     updateTaskInFirebase(taskId, sectionId, newProperties);

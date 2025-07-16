@@ -1,6 +1,6 @@
 // backfillAll.js
-import {getFirestore} from "firebase-admin/firestore";
-import {algoliasearch} from 'algoliasearch';
+import { getFirestore } from "firebase-admin/firestore";
+import { algoliasearch } from 'algoliasearch';
 import { defineSecret } from "firebase-functions/params";
 
 export const ALGOLIA_APP_ID = defineSecret("ALGOLIA_APP_ID");
@@ -143,7 +143,42 @@ export async function backfillAll() {
             const taskId = taskDoc.id;
             const taskData = taskDoc.data();
 
+            // ✅ Flat Firestore Index: /taskIndex/{taskId}
+            const indexData = {
+              taskId,
+              path: taskDoc.ref.path,
+              sectionId,
+              projectId,
+              workspaceId,
+              userId: taskData.userId || "",
 
+              // 🔽 Core fields for display
+              name: taskData.name || "",
+              status: taskData.status || "",
+              priority: taskData.priority || "",
+              dueDate: taskData.dueDate || null,
+              order: taskData.order ?? 0,
+              createdAt: taskData.createdAt || new Date().toISOString(),
+              updatedAt: taskData.updatedAt || new Date().toISOString(),
+
+              // 🔽 Assignees, likes, comments
+              assignees: Array.isArray(taskData.assignees) ? taskData.assignees : [],
+              likedAmount: taskData.likedAmount ?? 0,
+              likedBy: taskData.likedBy || {},
+              commentCount: taskData.commentCount ?? 0,
+
+              // 🔽 Metadata / chat
+              chatuuid: taskData.chatuuid || "",
+              isIndexed: true,
+
+              // 🔽 Custom fields map (optional)
+              customFields: taskData.customFields || {}
+            };
+
+
+            await db.doc(`taskIndex/${taskId}`).set(indexData, { merge: true });
+
+            // ✅ Algolia Task Record
             taskRecords.push({
               objectID: taskId,
               taskId,
@@ -167,6 +202,7 @@ export async function backfillAll() {
               taskRef: taskDoc.ref.path,
               projectRef: projectDoc.ref.path,
             });
+
             totalTaskCount++;
             await taskDoc.ref.update({ isIndexed: true });
           }
