@@ -319,7 +319,7 @@ import { firebaseConfig } from "/services/firebase-config.js";
             if (adminLink) {
                 if (role === 0 || role === 3) {
                     adminLink.classList.remove("hidden");
-                    adminLink.querySelector("a").href = "/admin/admin.html";
+                    adminLink.querySelector("a").href = "/admin-dashboard/database";
                 } else {
                     adminLink.classList.add("hidden");
                 }

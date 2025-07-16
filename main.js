@@ -27,14 +27,7 @@ let currentSectionCleanup = null;
 function parseRoute() {
     const pathParts = window.location.pathname.split('/').filter(p => p);
     const queryParams = new URLSearchParams(window.location.search);
-
-    // ✅ Handle /admin or anything starting with /admin
-    if (pathParts[0]?.startsWith('admin')) {
-        return {
-            section: 'admin',
-            redirectTo: '/admin/admin.html'
-        };
-    }
+    
 
     // Default home route
     if (pathParts.length === 0) {
@@ -53,10 +46,16 @@ function parseRoute() {
         };
     }
 
-    // ✅ Simple route sections
     const simpleRoutes = ['home', 'myworkspace', 'inbox', 'inventory', 'reports', 'products', 'searchresults', 'settings'];
     if (simpleRoutes.includes(resourceType)) {
         return { section: resourceType };
+    }
+
+    if (pathParts[0]?.startsWith('admin')) {
+        return {
+            section: 'admin',
+            redirectTo: '/admin/admin.html'
+        };
     }
 
     return { section: 'home' };
@@ -73,7 +72,7 @@ function router() {
 
     if (routeParams.redirectTo) {
         window.location.href = routeParams.redirectTo;
-        return; // Stop further processing
+        return;
     }
 
     loadSection(routeParams);
