@@ -231,7 +231,7 @@ function attachRealtimeListeners(userId) {
 
                         if (foundWorkspace) {
                             const workspaceData = foundWorkspace.data();
-                            const subcollectionsToClone = ['products', 'categories', 'logs'];
+                            const subcollectionsToClone = ['US-Stocks-meta', 'PH-Stocks-meta'];
                             await cloneInventoryWorkspace('ooOzZBHHLMw2e5lwNd8P', workspaceData.workspaceId, subcollectionsToClone);
                             const inventoryDocId = workspaceData.inventoryDocId; // must exist in that doc
                             const inventoryDocRef = doc(db, 'InventoryWorkspace', inventoryDocId);
