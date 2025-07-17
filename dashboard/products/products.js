@@ -401,34 +401,35 @@ function hslToHex(h, s, l) {
 }
 
 function createSupplierDisplayHTML(supplierData, fallbackName) {
-  // If for some reason the full supplier data isn't found, just return the name.
   if (!supplierData) {
     return fallbackName;
   }
-  
+
   let iconContent = '';
   let detailsContent = '';
-  
+
   if (supplierData.type === 'User') {
     const bgImage = supplierData.avatar ? `url('${supplierData.avatar}')` : 'none';
-    iconContent = `<div class="option-icon" style="background-image: ${bgImage};"></div>`;
+    iconContent = `<div class="option-icon" style="background-image: ${bgImage}; background-size: cover;"></div>`;
     detailsContent = `
-            <div class="option-details">
-                <div class="option-name">${supplierData.name}</div>
-                <div class="option-email">${supplierData.email}</div>
-            </div>
-        `;
+      <div class="option-details">
+        <div class="option-name">${supplierData.name}</div>
+        <div class="option-email">${supplierData.email}</div>
+      </div>
+    `;
   } else { // Project
-    iconContent = `<div class="option-icon">🏢</div>`;
+    const color = supplierData.color || '#cccccc';
+    iconContent = `<div class="option-icon" style="background-color: ${color};"></div>`;
     detailsContent = `
-            <div class="option-details">
-                <div class="option-name">${supplierData.name}</div>
-            </div>
-        `;
+      <div class="option-details">
+        <div class="option-name">${supplierData.name}</div>
+      </div>
+    `;
   }
-  // Combine the parts into a single flex container
+
   return `<div class="supplier-display">${iconContent} ${detailsContent}</div>`;
 }
+
 
 function populateSupplierDropdown(options) {
   const triggerText = document.querySelector('#supplierDropdownTrigger .selected-text');
@@ -525,6 +526,35 @@ function selectSupplier(supplierName) {
   }
 }
 
+function renderSupplierInfo(supplier) {
+  if (!supplier || !supplier.name) return '';
+
+  let icon = '';
+  let details = '';
+
+  if (supplier.type === 'User') {
+    const bgImage = supplier.avatar ? `url('${supplier.avatar}')` : 'none';
+    icon = `<div class="option-icon" style="background-image: ${bgImage}; background-size: cover;"></div>`;
+    details = `
+      <div class="option-details">
+        <div class="option-name">${supplier.name}</div>
+        <div class="option-email">${supplier.email || ''}</div>
+      </div>
+    `;
+  } else if (supplier.type === 'Project') {
+    const color = supplier.color || '#cccccc';
+    icon = `<div class="option-icon" style="background-color: ${color};"></div>`;
+    details = `
+      <div class="option-details">
+        <div class="option-name">${supplier.name}</div>
+      </div>
+    `;
+  } else {
+    return supplier.name; // fallback text if type unknown
+  }
+
+  return `<div class="supplier-display">${icon}${details}</div>`;
+}
 
 // Initialize the product grid
 function renderProducts(productsToRender, shouldAppend = false) {
@@ -570,7 +600,9 @@ function renderProducts(productsToRender, shouldAppend = false) {
             <div class="product-name">${product.name}</div>
             <div class="product-sku">${product.sku}</div>
             <div class="product-cost">${formatCurrency(product.cost)}</div>
-            <div class="product-supplier">${product.supplier}</div>
+            <div class="product-supplier">
+              ${renderSupplierInfo(product.supplier)}
+              </div>
         `;
     if (!canUserModify) {
       const editIcon = card.querySelector('.edit-icon');
