@@ -434,24 +434,6 @@
     border-radius: 8px;
 }
 
-/* Add this CSS to your project's stylesheet */
-
-.sidebarprojectfield-row {
-    display: flex;
-    justify-content: space-between;
-    /* This pushes the label and value to opposite ends */
-    align-items: center;
-    padding: 8px 0;
-    /* Example vertical spacing */
-    border-bottom: 1px solid #f0f0f0;
-    /* Faint separator line */
-}
-
-.sidebarprojectfield-label {
-    color: #5e6c84;
-    /* Standard label color */
-}
-
 /* Specific styling for the add assignee button */
 .assignee-add-btn {
     display: flex;
