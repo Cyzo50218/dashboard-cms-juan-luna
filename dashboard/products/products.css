@@ -636,8 +636,8 @@ textarea.form-input {
 .supplier-display {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: 2px;
+  font-size: 10px;
   max-width: 100%;
 }
 .option-icon-smaller {
