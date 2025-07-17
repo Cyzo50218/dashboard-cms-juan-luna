@@ -2270,13 +2270,13 @@ function render() {
                             const option = priorityColumn?.options?.find(p => p.name === task.priority);
                             const color = option?.color;
                             if (isCompleted) {
-                                const style = `background-color: ${color}20; color: ${color}; border: 1px solid ${color}80;`;
+                                const style = `background-color: ${color}20; border-radius: 50px; color: ${color}; border: 1px solid ${color}80;`;
                                 const grayStyle = `background-color: ${COMPLETED_BG_COLOR}; color: ${COMPLETED_TEXT_COLOR}; `;
                                 content = `<div class="priority-tag" style="${style}">${task.priority}</div>`;
                             } else {
 
                                 if (color) {
-                                    const style = `background-color: ${color}20; color: ${color}; border: 1px solid ${color}80;`;
+                                    const style = `background-color: ${color}20; border-radius: 50px; color: ${color}; border: 1px solid ${color}80;`;
                                     content = `<div class="priority-tag" style="${style}">${task.priority}</div>`;
                                 } else {
                                     content = `<span>${task.priority}</span>`;
@@ -2294,13 +2294,13 @@ function render() {
                             if (isCompleted) {
                                 const optionCompleted = statusColumn?.options?.find(s => s.name === task.previousStatus);
                             const colorCompleted = optionCompleted?.color;
-                                const style = `background-color: ${colorCompleted}20; color: ${colorCompleted}; border: 1px solid ${colorCompleted}80;`;
+                                const style = `background-color: ${colorCompleted}20; border-radius: 50px; color: ${colorCompleted}; border: 1px solid ${colorCompleted}80;`;
                                 const grayStyle = `background-color: ${COMPLETED_BG_COLOR}; color: ${COMPLETED_TEXT_COLOR};`;
                                 content = `<div class="status-tag" style="${style}"> ${task.previousStatus}</div>`;
                             } else {
 
                                 if (color) {
-                                    const style = `background-color: ${color}20; color: ${color}; border: 1px solid ${color}80;`;
+                                    const style = `background-color: ${color}20; border-radius: 50px; color: ${color}; border: 1px solid ${color}80;`;
                                     content = `<div class="status-tag" style="${style}">${task.status}</div>`;
                                 } else {
                                     content = `<span>${task.status}</span>`;
