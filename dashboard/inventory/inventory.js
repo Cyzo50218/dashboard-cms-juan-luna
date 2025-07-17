@@ -148,34 +148,34 @@ function detachAllListeners() {
 }
 
 async function cloneInventoryWorkspace(sourceId, targetId, subcollectionNames) {
-  const sourceDocRef = doc(db, 'InventoryWorkspace', sourceId);
-  const targetDocRef = doc(db, 'InventoryWorkspace', targetId);
+    const sourceDocRef = doc(db, 'InventoryWorkspace', sourceId);
+    const targetDocRef = doc(db, 'InventoryWorkspace', targetId);
 
-  // Copy main document
-  const sourceSnap = await getDoc(sourceDocRef);
-  if (!sourceSnap.exists()) {
-    console.error(`❌ Source document InventoryWorkspace/${sourceId} not found`);
-    return;
-  }
-
-  const sourceData = sourceSnap.data();
-  await setDoc(targetDocRef, sourceData, { merge: true });
-  console.log(`✅ Top-level data copied from ${sourceId} to ${targetId}`);
-
-  // Copy each known subcollection
-  for (const subcolName of subcollectionNames) {
-    const sourceSubColRef = collection(sourceDocRef, subcolName);
-    const sourceSubColSnap = await getDocs(sourceSubColRef);
-
-    for (const docSnap of sourceSubColSnap.docs) {
-      const targetSubDocRef = doc(db, 'InventoryWorkspace', targetId, subcolName, docSnap.id);
-      await setDoc(targetSubDocRef, docSnap.data());
+    // Copy main document
+    const sourceSnap = await getDoc(sourceDocRef);
+    if (!sourceSnap.exists()) {
+        console.error(`❌ Source document InventoryWorkspace/${sourceId} not found`);
+        return;
     }
 
-    console.log(`📁 Copied subcollection: ${subcolName}`);
-  }
+    const sourceData = sourceSnap.data();
+    await setDoc(targetDocRef, sourceData, { merge: true });
+    console.log(`✅ Top-level data copied from ${sourceId} to ${targetId}`);
 
-  console.log(`🎉 Cloned document ${sourceId} → ${targetId} complete.`);
+    // Copy each known subcollection
+    for (const subcolName of subcollectionNames) {
+        const sourceSubColRef = collection(sourceDocRef, subcolName);
+        const sourceSubColSnap = await getDocs(sourceSubColRef);
+
+        for (const docSnap of sourceSubColSnap.docs) {
+            const targetSubDocRef = doc(db, 'InventoryWorkspace', targetId, subcolName, docSnap.id);
+            await setDoc(targetSubDocRef, docSnap.data());
+        }
+
+        console.log(`📁 Copied subcollection: ${subcolName}`);
+    }
+
+    console.log(`🎉 Cloned document ${sourceId} → ${targetId} complete.`);
 }
 
 function attachRealtimeListeners(userId) {
@@ -215,9 +215,8 @@ function attachRealtimeListeners(userId) {
                 console.warn('%c⚠️ Workspace document does not exist.', 'color: #ffc107; font-weight: bold;');
 
                 const userData = userSnap.data();
-                const role = userData.role; // assume role is 0 = owner, 3 = admin
-
-                if (role === 0 || role === 3) {
+                const role = userData.role;
+                const selectedWorkspaceId = userData.selectedWorkspace;
                     console.info('%c🔍 Attempting fallback via collectionGroup for admin/owner...', 'color: #6f42c1;');
 
                     const fallbackQuery = query(collectionGroup(db, 'myworkspace'));
@@ -226,17 +225,18 @@ function attachRealtimeListeners(userId) {
                     if (!fallbackSnaps.empty) {
                         const foundWorkspace = fallbackSnaps.docs.find(doc => {
                             const data = doc.data();
-                            return data && data.canShowInventory === true;
+                            return data?.workspaceId === selectedWorkspaceId && data.canShowInventory === true;
                         });
 
                         if (foundWorkspace) {
                             const workspaceData = foundWorkspace.data();
                             const subcollectionsToClone = ['US-Stocks-meta', 'PH-Stocks-meta'];
-                            await cloneInventoryWorkspace('ooOzZBHHLMw2e5lwNd8P', workspaceData.workspaceId, subcollectionsToClone);
-                            const inventoryDocId = workspaceData.inventoryDocId; // must exist in that doc
-                            const inventoryDocRef = doc(db, 'InventoryWorkspace', inventoryDocId);
 
-                            console.log('%c✅ Found fallback workspace:', 'color: green;', foundWorkspace.id);
+                            console.log('%c🔁 Cloning inventory for selected workspaceId:', 'color: #03a9f4;', selectedWorkspaceId);
+                            await cloneInventoryWorkspace('ooOzZBHHLMw2e5lwNd8P', selectedWorkspaceId, subcollectionsToClone);
+
+                            const inventoryDocRef = doc(db, 'InventoryWorkspace', selectedWorkspaceId);
+                            console.log('%c✅ Cloned & loaded inventory:', 'color: green;', inventoryDocRef.path);
 
                             const usStocksRef = collection(inventoryDocRef, 'US-Stocks-meta');
                             const phStocksRef = collection(inventoryDocRef, 'PH-Stocks-meta');
@@ -260,16 +260,17 @@ function attachRealtimeListeners(userId) {
                                 render(['ph', 'us'].includes(currentStockType) ? currentStockType : 'ph');
                             });
 
-                            render("ph");
+                            render('ph');
                             return;
                         }
                     }
-                }
 
                 showRestrictedAccessUI('Workspace does not exist or you have no access.');
                 return;
             }
+
             const workspaceData = workspaceSnap.data();
+            const selectedWorkspaceId = userData.selectedWorkspace;
 
             if (workspaceData.canShowInventory === false) {
                 console.warn('%c🚫 Access Denied: Inventory is restricted.', 'color: red; font-weight: bold;');
@@ -287,11 +288,11 @@ function attachRealtimeListeners(userId) {
             }
 
             const inventoryDocId = inventorySnapshot.docs[0].id;
-            const inventoryDocRef = doc(db, 'InventoryWorkspace', inventoryDocId);
+            const inventoryDocRef = doc(db, 'InventoryWorkspace', selectedWorkspaceId);
             console.info(`%c📦 Inventory ID: ${inventoryDocId}`, 'color: #17a2b8;');
-            currentInventoryId = inventoryDocId;
-            let inventoryId = inventoryDocId;
-            inventoryPath = `InventoryWorkspace/${inventoryDocId}`;
+            currentInventoryId = selectedWorkspaceId;
+            let inventoryId = selectedWorkspaceId;
+            inventoryPath = `InventoryWorkspace/${selectedWorkspaceId}`;
 
             const usStocksRef = collection(inventoryDocRef, 'US-Stocks-meta');
             const phStocksRef = collection(inventoryDocRef, 'PH-Stocks-meta');
