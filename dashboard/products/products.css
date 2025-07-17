@@ -637,7 +637,7 @@ textarea.form-input {
 .option-icon {
     width: 28px;
     height: 28px;
-    border-radius: 50%;
+    border-radius: 20%;
     margin-right: 12px;
     background-size: cover;
     background-position: center;

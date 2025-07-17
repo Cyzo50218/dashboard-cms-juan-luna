@@ -294,20 +294,27 @@ async function fetchDropdownOptions(userId, workspaceId) {
     
     // --- 2. Process the projects and collect all unique member UIDs ---
     const allMemberUids = new Set();
+    
     const projectSuppliers = projectDocsSnap.docs.map(doc => {
-      const projectData = doc.data();
-      
-      // Add the project's members to the Set for the next step
-      const members = projectData.memberUIDs || [];
-      members.forEach(uid => allMemberUids.add(uid));
-      
-      // Return the project's data for the dropdown list
-      return {
-        id: doc.id,
-        name: projectData.title,
-        type: 'Project'
-      };
-    });
+  const projectData = doc.data();
+
+  const members = projectData.memberUIDs || [];
+  members.forEach(uid => allMemberUids.add(uid));
+
+  // Convert HSL to Hex color string if needed
+  let hexColor = '#cccccc'; 
+  if (projectData.color && projectData.color.h !== undefined) {
+    const { h, s, l } = projectData.color;
+    hexColor = hslToHex(h, s, l);
+  }
+
+  return {
+    id: doc.id,
+    color: hexColor,
+    name: projectData.title,
+    type: 'Project'
+  };
+});
     
     // --- 3. Fetch all unique User documents ---
     let userSuppliers = [];
@@ -339,6 +346,58 @@ async function fetchDropdownOptions(userId, workspaceId) {
     supplierList = [];
     populateSupplierDropdown([]); // Clear dropdown on error
   }
+}
+
+function hslToRgb(h, s, l) {
+  s /= 100;
+  l /= 100;
+  
+  let c = (1 - Math.abs(2 * l - 1)) * s,
+    x = c * (1 - Math.abs((h / 60) % 2 - 1)),
+    m = l - c / 2,
+    r = 0,
+    g = 0,
+    b = 0;
+  
+  if (0 <= h && h < 60) {
+    r = c;
+    g = x;
+    b = 0;
+  } else if (60 <= h && h < 120) {
+    r = x;
+    g = c;
+    b = 0;
+  } else if (120 <= h && h < 180) {
+    r = 0;
+    g = c;
+    b = x;
+  } else if (180 <= h && h < 240) {
+    r = 0;
+    g = x;
+    b = c;
+  } else if (240 <= h && h < 300) {
+    r = x;
+    g = 0;
+    b = c;
+  } else if (300 <= h && h < 360) {
+    r = c;
+    g = 0;
+    b = x;
+  }
+  r = Math.round((r + m) * 255);
+  g = Math.round((g + m) * 255);
+  b = Math.round((b + m) * 255);
+  
+  return [r, g, b];
+}
+
+function hslToHex(h, s, l) {
+  const [r, g, b] = hslToRgb(h, s, l);
+  const toHex = (c) => {
+    const hex = c.toString(16);
+    return hex.length === 1 ? "0" + hex : hex;
+  };
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
 
 function createSupplierDisplayHTML(supplierData, fallbackName) {
@@ -374,42 +433,43 @@ function createSupplierDisplayHTML(supplierData, fallbackName) {
 function populateSupplierDropdown(options) {
   const triggerText = document.querySelector('#supplierDropdownTrigger .selected-text');
   if (!optionsContainer || !triggerText) return;
-  
+
   optionsContainer.innerHTML = ''; // Clear old options
-  
+
   if (options.length === 0) {
     triggerText.textContent = 'No suppliers available';
     return;
   }
-  
+
   options.forEach(option => {
     const optionEl = document.createElement('div');
     optionEl.className = 'custom-option';
-    optionEl.dataset.value = option.name; // Store the value in a data attribute
-    
+    optionEl.dataset.value = option.name;
+
     let iconContent = '';
     if (option.type === 'User') {
       const bgImage = option.avatar ? `url('${option.avatar}')` : 'none';
-      iconContent = `<div class="option-icon" style="background-image: ${bgImage};"></div>`;
+      iconContent = `<div class="option-icon" style="background-image: ${bgImage}; background-size: cover;"></div>`;
     } else { // Project
-      iconContent = `<div class="option-icon"></div>`;
+      const color = option.color || '#cccccc'; // fallback color
+      iconContent = `<div class="option-icon" style="background-color: ${color};"></div>`;
     }
-    
+
     const emailText = option.email ? `<div class="option-email">${option.email}</div>` : '';
-    
+
     optionEl.innerHTML = `
-            ${iconContent}
-            <div class="option-details">
-                <div class="option-name">${option.name}</div>
-                ${emailText}
-            </div>
-        `;
-    
+      ${iconContent}
+      <div class="option-details">
+        <div class="option-name">${option.name}</div>
+        ${emailText}
+      </div>
+    `;
+
     optionEl.addEventListener('click', () => {
       selectSupplier(option.name);
       optionsContainer.classList.add('hidden');
     });
-    
+
     optionsContainer.appendChild(optionEl);
   });
 }
@@ -426,43 +486,45 @@ function toggleSupplierDropdown(forceClose = false) {
 }
 
 function selectSupplier(supplierName) {
-  
   const selectedOptionData = supplierList.find(opt => opt.name === supplierName);
-  
+
   if (selectedOptionData && productSupplierInput && trigger) {
     productSupplierInput.value = supplierName;
-    
+
     let iconContent = '';
     let detailsContent = '';
-    
+
     if (selectedOptionData.type === 'User') {
       const bgImage = selectedOptionData.avatar ? `url('${selectedOptionData.avatar}')` : 'none';
-      iconContent = `<div class="option-icon" style="background-image: ${bgImage};"></div>`;
+      iconContent = `<div class="option-icon" style="background-image: ${bgImage}; background-size: cover;"></div>`;
       detailsContent = `
-                <div class="option-details">
-                    <div class="option-name">${selectedOptionData.name}</div>
-                    <div class="option-email">${selectedOptionData.email}</div>
-                </div>
-            `;
+        <div class="option-details">
+          <div class="option-name">${selectedOptionData.name}</div>
+          <div class="option-email">${selectedOptionData.email}</div>
+        </div>
+      `;
     } else { // Project
-      iconContent = `<div class="option-icon"></div>`;
+      const color = selectedOptionData.color || '#cccccc';
+      iconContent = `<div class="option-icon" style="background-color: ${color};"></div>`;
       detailsContent = `
-                <div class="option-details">
-                    <div class="option-name">${selectedOptionData.name}</div>
-                </div>
-            `;
+        <div class="option-details">
+          <div class="option-name">${selectedOptionData.name}</div>
+        </div>
+      `;
     }
+
     trigger.querySelector('.selected-text').innerHTML = `${iconContent} ${detailsContent}`;
-    
+
     allOptions.forEach(opt => {
       opt.classList.toggle('selected', opt.dataset.value === supplierName);
     });
-    
+
   } else {
     hiddenInput.value = '';
     trigger.querySelector('.selected-text').innerHTML = 'Select a supplier...';
   }
 }
+
 
 // Initialize the product grid
 function renderProducts(productsToRender, shouldAppend = false) {
@@ -667,22 +729,31 @@ function hideSavingDialog() {
     overlay.classList.add('hidden');
   }
 }
+
 //Add New product
 async function addProduct() {
   if (!canUserModify) {
     showNotification("Permission Denied: You cannot add products.", 5000);
     return;
   }
+
   showSavingDialog();
+
   const supplierName = productSupplierInput.value;
   const supplierData = supplierList.find(s => s.name === supplierName);
+
   const supplierInfoToSave = {
     name: supplierData?.name || supplierName,
     avatar: supplierData?.avatar || null,
     email: supplierData?.email || null,
-    type: supplierData?.type || 'Unknown'
+    type: supplierData?.type || 'Unknown',
   };
-  
+
+  // If it's a project, and not a user (no avatar/email), include the color
+  if (supplierInfoToSave.type === 'Project' && !supplierData?.avatar && !supplierData?.email) {
+    supplierInfoToSave.color = supplierData?.color || '#cccccc';
+  }
+
   const newProduct = {
     name: productNameInput.value,
     sku: productSkuInput.value,
@@ -693,7 +764,7 @@ async function addProduct() {
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
-  
+
   try {
     const productListRef = collection(db, 'ProductListWorkspace', currentWorkspaceId, 'ProductList');
     await addDoc(productListRef, newProduct);
@@ -713,17 +784,24 @@ async function updateProduct() {
     showNotification("Permission Denied: You cannot edit products.", 5000);
     return;
   }
+
   if (!selectedProductId) return;
   showSavingDialog();
+
   const supplierName = productSupplierInput.value;
   const supplierData = supplierList.find(s => s.name === supplierName);
+
   const supplierInfoToSave = {
     name: supplierData?.name || supplierName,
     avatar: supplierData?.avatar || null,
     email: supplierData?.email || null,
-    type: supplierData?.type || 'Unknown'
+    type: supplierData?.type || 'Unknown',
   };
-  
+
+  if (supplierInfoToSave.type === 'Project' && !supplierData?.avatar && !supplierData?.email) {
+    supplierInfoToSave.color = supplierData?.color || '#cccccc';
+  }
+
   const productDocRef = doc(db, 'ProductListWorkspace', currentWorkspaceId, 'ProductList', selectedProductId);
   const updatedData = {
     name: productNameInput.value,
@@ -734,10 +812,9 @@ async function updateProduct() {
     image: productImageInput.value,
     updatedAt: serverTimestamp(),
   };
-  
+
   try {
     await updateDoc(productDocRef, updatedData);
-    // The sidebar will update instantly because updatedData contains the new supplier object.
     const updatedProduct = { id: selectedProductId, ...updatedData };
     updateSidebar(updatedProduct);
     hideModal();
