@@ -303,11 +303,12 @@ async function fetchDropdownOptions(userId, workspaceId) {
 
   // Convert HSL to Hex color string if needed
   let hexColor = '#cccccc'; 
+  console.log(`original color: ${projectData.color}`);
   if (projectData.color) {
     const { h, s, l } = projectData.color;
     hexColor = hslToHex(h, s, l);
   }
-console.log(`color: ${hexColor}`);
+console.log(`converted color: ${hexColor}`);
   return {
     id: doc.id,
     color: hexColor,
