@@ -548,10 +548,10 @@ function renderSupplierInfo(supplier) {
     `;
   } else if (supplier.type === 'Project') {
     const color = supplier.color || '#cccccc';
-    icon = `<div class="option-icon" style="background-color: ${color};"></div>`;
+    icon = `<div class="option-icon-smaller" style="background-color: ${color};"></div>`;
     details = `
       <div class="option-details">
-        <div class="option-name">${supplier.name}</div>
+        <div class="option-name-smaller">${supplier.name}</div>
       </div>
     `;
   } else {

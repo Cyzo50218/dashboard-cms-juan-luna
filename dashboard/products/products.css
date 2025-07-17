@@ -640,6 +640,20 @@ textarea.form-input {
   font-size: 12px;
   max-width: 100%;
 }
+.option-icon-smaller {
+    width: 16px;
+    height: 16px;
+    border-radius: 20%;
+    margin-right: 12px;
+    background-size: cover;
+    background-position: center;
+    background-color: #e5e7eb; /* Fallback color */
+    flex-shrink: 0; /* Prevents icon from shrinking */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
 
 /* --- The Circular Icon --- */
 .option-icon {
@@ -662,7 +676,11 @@ textarea.form-input {
     display: flex;
     flex-direction: column;
 }
-
+.option-name-smaller {
+  color: #1f2937;
+  margin-left: 4px;
+  font-size: 14px;
+}
 .option-name {
     color: #1f2937;
     line-height: 1.2;
