@@ -644,7 +644,7 @@ textarea.form-input {
     width: 16px;
     height: 16px;
     border-radius: 20%;
-    margin-right: 12px;
+    margin-right: 4px;
     background-size: cover;
     background-position: center;
     background-color: #e5e7eb; /* Fallback color */
