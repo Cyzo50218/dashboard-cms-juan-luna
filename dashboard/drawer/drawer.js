@@ -261,6 +261,58 @@ import { firebaseConfig } from "/services/firebase-config.js";
         }
     });
     
+    async function findAndListenToWorkspace(activeWorkspaceId) {
+  const workspaceQuery = query(
+  collectionGroup(db, "myworkspace"),
+  where("workspaceId", "==", activeWorkspaceId)
+);
+
+
+  const snapshot = await getDocs(workspaceQuery);
+
+  if (snapshot.empty) {
+    console.warn("No workspace found with ID:", activeWorkspaceId);
+    return;
+  }
+
+  const matchDoc = snapshot.docs[0];
+  const data = matchDoc.data();
+  const ownerRef = data.ownerWorkspaceRef;
+
+  if (!ownerRef) {
+    console.warn("ownerWorkspaceRef not found on the workspace document.");
+    return;
+  }
+
+  const workspaceDocRef = doc(db, ownerRef.path); // Convert DocumentReference to usable doc ref
+
+  // Step 2: Start listening
+  unsubscribeWorkspace = onSnapshot(workspaceDocRef, (workspaceSnap) => {
+    if (workspaceSnap.exists()) {
+      const workspaceData = workspaceSnap.data();
+      console.log("Real-time workspace data:", workspaceData);
+
+      if (workspaceData.canShowInventory === true) {
+        inventoryLink.classList.remove('hidden');
+      } else {
+        inventoryLink.classList.add('hidden');
+      }
+
+      if (workspaceData.canShowProducts === true) {
+        productsLink.classList.remove('hidden');
+      } else {
+        productsLink.classList.add('hidden');
+      }
+
+    } else {
+      console.warn("Workspace document does not exist at owner ref.");
+      inventoryLink.classList.add('hidden');
+      productsLink.classList.add('hidden');
+    }
+  });
+}
+
+    
     onAuthStateChanged(auth, async (user) => {
         console.log("Auth state changed.");
         
@@ -358,33 +410,7 @@ import { firebaseConfig } from "/services/firebase-config.js";
             activeWorkspaceId = newWorkspaceId;
             console.log("Active workspace set:", activeWorkspaceId);
             
-            const workspaceDocRef = doc(db, `users/${user.uid}/myworkspace`, activeWorkspaceId);
-            unsubscribeWorkspace = onSnapshot(workspaceDocRef, (workspaceSnap) => {
-                if (workspaceSnap.exists()) {
-                    const workspaceData = workspaceSnap.data();
-                    console.log("Workspace data updated in real-time.", workspaceData);
-                    
-                    if (workspaceData.canShowInventory === true) {
-                        inventoryLink.classList.remove('hidden');
-                    } else {
-                        inventoryLink.classList.add('hidden');
-                    }
-                    
-                    if (workspaceData.canShowProducts === true) {
-                        productsLink.classList.remove('hidden');
-                    } else {
-                        productsLink.classList.add('hidden');
-                    }
-                } else {
-                    console.warn("Workspace document does not exist.");
-                    inventoryLink.classList.add('hidden');
-                    productsLink.classList.add('hidden');
-                }
-            }, (error) => {
-                console.error("Error with workspace snapshot:", error);
-                inventoryLink.classList.add('hidden');
-                productsLink.classList.add('hidden');
-            });
+            findAndListenToWorkspace(activeWorkspaceId);
             
             const memberDocRef = doc(db, `workspaces/${activeWorkspaceId}/members/${user.uid}`);
             const memberSnap = await getDoc(memberDocRef);
