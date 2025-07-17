@@ -234,7 +234,7 @@ function attachRealtimeListeners(userId) {
                         const subcollectionsToClone = ['US-Stocks-meta', 'PH-Stocks-meta'];
 
                         console.log('%c🔁 Cloning inventory for selected workspaceId:', 'color: #03a9f4;', selectedWorkspaceId);
-                        await cloneInventoryWorkspace('ooOzZBHHLMw2e5lwNd8P', selectedWorkspaceId, subcollectionsToClone);
+                        //await cloneInventoryWorkspace('ooOzZBHHLMw2e5lwNd8P', selectedWorkspaceId, subcollectionsToClone);
 
                         const inventoryDocRef = doc(db, 'InventoryWorkspace', selectedWorkspaceId);
                         console.log('%c✅ Cloned & loaded inventory:', 'color: green;', inventoryDocRef.path);
