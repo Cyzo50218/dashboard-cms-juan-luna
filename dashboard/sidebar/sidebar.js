@@ -1270,7 +1270,7 @@ window.TaskSidebar = (function () {
             g = parseInt(hex.substring(2, 4), 16),
             b = parseInt(hex.substring(4, 6), 16);
         const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-        return `<div class="tag" style="background-color: ${color}; border-radius: 10px; color: ${(yiq >= 128) ? '#000' : '#fff'};">${text}</div>`;
+        return `<div class="tag" style="background-color: ${color}20; border-radius: 5px; color: ${color};  border: 1px solid ${color}80;">${text}</div>`;
     }
     /**
      * Renders the HTML for the assignee field with the correct design.
