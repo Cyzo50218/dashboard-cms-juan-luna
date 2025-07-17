@@ -633,6 +633,14 @@ textarea.form-input {
     font-weight: 500;
 }
 
+.supplier-display {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  max-width: 100%;
+}
+
 /* --- The Circular Icon --- */
 .option-icon {
     width: 28px;
