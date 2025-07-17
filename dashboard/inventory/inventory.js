@@ -217,53 +217,53 @@ function attachRealtimeListeners(userId) {
                 const userData = userSnap.data();
                 const role = userData.role;
                 const selectedWorkspaceId = userData.selectedWorkspace;
-                    console.info('%c🔍 Attempting fallback via collectionGroup for admin/owner...', 'color: #6f42c1;');
+                console.info('%c🔍 Attempting fallback via collectionGroup for admin/owner...', 'color: #6f42c1;');
 
-                    const fallbackQuery = query(collectionGroup(db, 'myworkspace'));
-                    const fallbackSnaps = await getDocs(fallbackQuery);
+                const fallbackQuery = query(collectionGroup(db, 'myworkspace'));
+                const fallbackSnaps = await getDocs(fallbackQuery);
 
-                    if (!fallbackSnaps.empty) {
-                        const foundWorkspace = fallbackSnaps.docs.find(doc => {
-                            const data = doc.data();
-                            return data?.workspaceId === selectedWorkspaceId && data.canShowInventory === true;
+                if (!fallbackSnaps.empty) {
+                    const foundWorkspace = fallbackSnaps.docs.find(doc => {
+                        const data = doc.data();
+                        return data?.workspaceId === selectedWorkspaceId && data.canShowInventory === true;
+                    });
+
+                    if (foundWorkspace) {
+                        const workspaceData = foundWorkspace.data();
+                        const subcollectionsToClone = ['US-Stocks-meta', 'PH-Stocks-meta'];
+
+                        console.log('%c🔁 Cloning inventory for selected workspaceId:', 'color: #03a9f4;', selectedWorkspaceId);
+                        await cloneInventoryWorkspace('ooOzZBHHLMw2e5lwNd8P', selectedWorkspaceId, subcollectionsToClone);
+
+                        const inventoryDocRef = doc(db, 'InventoryWorkspace', selectedWorkspaceId);
+                        console.log('%c✅ Cloned & loaded inventory:', 'color: green;', inventoryDocRef.path);
+
+                        const usStocksRef = collection(inventoryDocRef, 'US-Stocks-meta');
+                        const phStocksRef = collection(inventoryDocRef, 'PH-Stocks-meta');
+
+                        // Attach fallback listeners
+                        activeListeners.usStocks = onSnapshot(usStocksRef, (usSnapshot) => {
+                            dataUsStocks = usSnapshot.docs.map(doc => ({
+                                id: doc.id,
+                                ...doc.data()
+                            }));
+                            console.log('%c🇺🇸 US Stocks (Fallback):', 'color: #00bcd4;', dataUsStocks);
+                            render(['ph', 'us'].includes(currentStockType) ? currentStockType : 'ph');
                         });
 
-                        if (foundWorkspace) {
-                            const workspaceData = foundWorkspace.data();
-                            const subcollectionsToClone = ['US-Stocks-meta', 'PH-Stocks-meta'];
+                        activeListeners.phStocks = onSnapshot(phStocksRef, (phSnapshot) => {
+                            dataPhStocks = phSnapshot.docs.map(doc => ({
+                                id: doc.id,
+                                ...doc.data()
+                            }));
+                            console.log('%c🇵🇭 PH Stocks (Fallback):', 'color: #ff9800;', dataPhStocks);
+                            render(['ph', 'us'].includes(currentStockType) ? currentStockType : 'ph');
+                        });
 
-                            console.log('%c🔁 Cloning inventory for selected workspaceId:', 'color: #03a9f4;', selectedWorkspaceId);
-                            await cloneInventoryWorkspace('ooOzZBHHLMw2e5lwNd8P', selectedWorkspaceId, subcollectionsToClone);
-
-                            const inventoryDocRef = doc(db, 'InventoryWorkspace', selectedWorkspaceId);
-                            console.log('%c✅ Cloned & loaded inventory:', 'color: green;', inventoryDocRef.path);
-
-                            const usStocksRef = collection(inventoryDocRef, 'US-Stocks-meta');
-                            const phStocksRef = collection(inventoryDocRef, 'PH-Stocks-meta');
-
-                            // Attach fallback listeners
-                            activeListeners.usStocks = onSnapshot(usStocksRef, (usSnapshot) => {
-                                dataUsStocks = usSnapshot.docs.map(doc => ({
-                                    id: doc.id,
-                                    ...doc.data()
-                                }));
-                                console.log('%c🇺🇸 US Stocks (Fallback):', 'color: #00bcd4;', dataUsStocks);
-                                render(['ph', 'us'].includes(currentStockType) ? currentStockType : 'ph');
-                            });
-
-                            activeListeners.phStocks = onSnapshot(phStocksRef, (phSnapshot) => {
-                                dataPhStocks = phSnapshot.docs.map(doc => ({
-                                    id: doc.id,
-                                    ...doc.data()
-                                }));
-                                console.log('%c🇵🇭 PH Stocks (Fallback):', 'color: #ff9800;', dataPhStocks);
-                                render(['ph', 'us'].includes(currentStockType) ? currentStockType : 'ph');
-                            });
-
-                            render('ph');
-                            return;
-                        }
+                        render('ph');
+                        return;
                     }
+                }
 
                 showRestrictedAccessUI('Workspace does not exist or you have no access.');
                 return;
@@ -2129,29 +2129,46 @@ async function render(stockType) {
     const columnRules = Array.isArray(data[`columnRules_${stockType}`]) ? data[`columnRules_${stockType}`] : [];
 
     // Permission check
-    // Get the user's workspace document
-    // --- Get Workspace and check for Ownership ---
-    const myWorkspaceRef = doc(db, `users/${currentUserId}/myworkspace/${currentWorkspaceId}`);
-    const myWorkspaceSnap = await getDoc(myWorkspaceRef);
-    const workspaceData = myWorkspaceSnap.exists() ? myWorkspaceSnap.data() : null;
+    try {
+        // --- Step 1: Search all /users/*/myworkspace/* that match the currentWorkspaceId ---
+        const workspaceQuery = query(
+            collectionGroup(db, 'myworkspace'),
+            where('workspaceId', '==', currentWorkspaceId)
+        );
 
-    // Condition 1: Check if the user is the owner (from workspace data)
-    const ownerRef = workspaceData?.ownerWorkspaceRef;
-    const ownerPath = typeof ownerRef === 'string' ? ownerRef : ownerRef?.path;
-    const isOwner = ownerPath?.includes(currentUserId);
+        const querySnapshot = await getDocs(workspaceQuery);
 
+        let matchedDoc = null;
+        let isOwner = false;
 
-    // --- Get main User Document to check for Role ---
-    const userDocRef = doc(db, 'users', currentUserId);
-    const userDocSnap = await getDoc(userDocRef);
+        for (const docSnap of querySnapshot.docs) {
+            const data = docSnap.data();
+            const ownerRef = data.ownerWorkspaceRef;
+            const ownerPath = typeof ownerRef === 'string' ? ownerRef : ownerRef?.path;
 
-    // Condition 2: Check if the user's role is Admin or Developer (from user data)
-    const userRole = userDocSnap.exists() ? userDocSnap.data()?.role : null;
-    const isAdminOrDev = userRole === 3 || userRole === 0; // 3 = Admin, 0 = Developer
+            if (ownerPath?.includes(currentUserId)) {
+                matchedDoc = docSnap;
+                isOwner = true;
+                break;
+            }
+        }
 
+        // --- Step 2: Check user role from main /users/{uid} ---
+        const userDocRef = doc(db, 'users', currentUserId);
+        const userDocSnap = await getDoc(userDocRef);
 
-    // --- Final Permission: True if EITHER condition is met ---
-    canUserEditProduct = !!(isOwner && isAdminOrDev);
+        let isAdminOrDev = false;
+        if (userDocSnap.exists()) {
+            const userRole = userDocSnap.data()?.role;
+            isAdminOrDev = userRole === 0 || userRole === 3; // 0 = Developer, 3 = Admin
+        }
+
+        // --- Step 3: Combine logic ---
+        canUserEditProduct = isOwner || isAdminOrDev;
+
+    } catch (error) {
+        console.error('Permission check failed:', error);
+    }
 
     if (!canUserEditProduct) {
         console.warn('⚠️ User does not have permission to add products.');
