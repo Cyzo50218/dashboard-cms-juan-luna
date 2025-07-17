@@ -147,15 +147,13 @@ function detachAllListeners() {
     Object.keys(activeListeners).forEach(key => activeListeners[key] = null);
 }
 
-function attachRealtimeListeners(userId) {
+async function attachRealtimeListeners(userId) {
     detachAllListeners();
     currentUserId = userId;
 
     console.groupCollapsed(`%c🔗 Attaching Listeners for User: ${userId}`, 'color: #007bff; font-weight: bold;');
 
     const userDocRef = doc(db, 'users', userId);
-    let hasRenderedPhStocks = false;
-    let hasRenderedUsStocks = false;
     activeListeners.user = onSnapshot(userDocRef, async (userSnap) => {
         if (!userSnap.exists()) {
             console.error(`%c❌ User document not found: ${userId}`, 'color: #dc3545; font-weight: bold;');
@@ -175,7 +173,6 @@ function attachRealtimeListeners(userId) {
         }
 
         currentWorkspaceId = selectedWorkspaceId;
-
         const workspaceDocRef = doc(db, `users/${userId}/myworkspace`, selectedWorkspaceId);
         console.info(`%c📁 Listening to Workspace: ${selectedWorkspaceId}`, 'color: #17a2b8;');
 
@@ -183,9 +180,7 @@ function attachRealtimeListeners(userId) {
             if (!workspaceSnap.exists()) {
                 console.warn('%c⚠️ Workspace document does not exist.', 'color: #ffc107; font-weight: bold;');
 
-                const userData = userSnap.data();
-                const role = userData.role; // assume role is 0 = owner, 3 = admin
-
+                const role = userData.role;
                 if (role === 0 || role === 3) {
                     console.info('%c🔍 Attempting fallback via collectionGroup for admin/owner...', 'color: #6f42c1;');
 
@@ -200,15 +195,20 @@ function attachRealtimeListeners(userId) {
 
                         if (foundWorkspace) {
                             const workspaceData = foundWorkspace.data();
-                            const inventoryDocId = workspaceData.inventoryDocId; // must exist in that doc
-                            const inventoryDocRef = doc(db, 'InventoryWorkspace', inventoryDocId);
 
+                            let inventoryDocId = workspaceData.inventoryDocId;
+                            if (!inventoryDocId) {
+                                console.warn('%c⚠️ Fallback workspace missing inventoryDocId.', 'color: #ffc107; font-weight: bold;');
+                                showRestrictedAccessUI('No inventory linked to fallback workspace.');
+                                return;
+                            }
+
+                            const inventoryDocRef = doc(db, 'InventoryWorkspace', inventoryDocId);
                             console.log('%c✅ Found fallback workspace:', 'color: green;', foundWorkspace.id);
 
                             const usStocksRef = collection(inventoryDocRef, 'US-Stocks-meta');
                             const phStocksRef = collection(inventoryDocRef, 'PH-Stocks-meta');
 
-                            // Attach fallback listeners
                             activeListeners.usStocks = onSnapshot(usStocksRef, (usSnapshot) => {
                                 dataUsStocks = usSnapshot.docs.map(doc => ({
                                     id: doc.id,
@@ -236,8 +236,8 @@ function attachRealtimeListeners(userId) {
                 showRestrictedAccessUI('Workspace does not exist or you have no access.');
                 return;
             }
-            const workspaceData = workspaceSnap.data();
 
+            const workspaceData = workspaceSnap.data();
             if (workspaceData.canShowInventory === false) {
                 console.warn('%c🚫 Access Denied: Inventory is restricted.', 'color: red; font-weight: bold;');
                 showRestrictedAccessUI('Restricted Access: You are not allowed to view this inventory.');
@@ -253,11 +253,17 @@ function attachRealtimeListeners(userId) {
                 return;
             }
 
-            const inventoryDocId = inventorySnapshot.docs[0].id;
+            const firstDoc = inventorySnapshot.docs[0];
+            if (!firstDoc) {
+                console.error('%c❌ No document found in InventoryWorkspace snapshot.', 'color: red;');
+                showRestrictedAccessUI('Inventory data not found.');
+                return;
+            }
+
+            const inventoryDocId = firstDoc.id;
             const inventoryDocRef = doc(db, 'InventoryWorkspace', inventoryDocId);
             console.info(`%c📦 Inventory ID: ${inventoryDocId}`, 'color: #17a2b8;');
             currentInventoryId = inventoryDocId;
-            let inventoryId = inventoryDocId;
             inventoryPath = `InventoryWorkspace/${inventoryDocId}`;
 
             const usStocksRef = collection(inventoryDocRef, 'US-Stocks-meta');
@@ -277,11 +283,10 @@ function attachRealtimeListeners(userId) {
                     id: doc.id,
                     ...doc.data()
                 }));
-
                 console.log('%c🇵🇭 PH Stocks:', 'color: #ff9800;', dataPhStocks);
                 render(['ph', 'us'].includes(currentStockType) ? currentStockType : 'ph');
-
             });
+
             render("ph");
         }, (error) => {
             console.error('%c❌ Error loading workspace snapshot.', 'color: #dc3545; font-weight: bold;', error);
