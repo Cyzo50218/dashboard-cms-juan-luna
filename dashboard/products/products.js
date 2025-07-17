@@ -106,8 +106,8 @@ let canUserModify = false;
 let activeProductList = []; // The list currently being displayed (can be filtered)
 let productsCurrentlyShown = 0;
 let isLoading = false; // Prevents multiple loads at once
-const INITIAL_LOAD_COUNT = 10;
-const PRODUCTS_PER_LOAD = 5;
+const INITIAL_LOAD_COUNT = 30;
+const PRODUCTS_PER_LOAD = 20;
 
 let productListUnsub = null;
 let activeListeners = {
@@ -167,7 +167,7 @@ function attachProductListListener(userId) {
     await checkUserPermissions(userId, currentWorkspaceId, userData.role);
     
     // Listen to the ProductList subcollection within the workspace
-    const productListRef = collection(workspaceDocRef, 'ProductList');
+    const : = collection(workspaceDocRef, 'ProductList');
     const q = query(productListRef);
     
     productListUnsub = onSnapshot(q, async (snapshot) => {
