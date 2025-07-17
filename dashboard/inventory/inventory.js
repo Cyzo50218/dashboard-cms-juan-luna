@@ -217,6 +217,7 @@ function attachRealtimeListeners(userId) {
                 const userData = userSnap.data();
                 const role = userData.role;
                 const selectedWorkspaceId = userData.selectedWorkspace;
+                currentInventoryId = selectedWorkspaceId;
                 console.info('%c🔍 Attempting fallback via collectionGroup for admin/owner...', 'color: #6f42c1;');
 
                 const fallbackQuery = query(collectionGroup(db, 'myworkspace'));
@@ -2111,8 +2112,6 @@ async function render(stockType) {
     let productList = stockType === 'ph' ? dataPhStocks : dataUsStocks;
     let savedColumnWidths = {};
     if (!productListBody || !currentInventoryId) return;
-
-
 
     const docSnap = await getDoc(doc(db, 'InventoryWorkspace', currentInventoryId));
     if (!docSnap.exists()) return;
