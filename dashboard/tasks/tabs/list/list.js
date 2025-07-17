@@ -2266,14 +2266,14 @@ function render() {
                     case 'priority':
                         cell.dataset.control = 'priority';
                         if (task.priority) {
+                            const priorityColumn = project.defaultColumns.find(c => c.id === 'priority');
+                            const option = priorityColumn?.options?.find(p => p.name === task.priority);
+                            const color = option?.color;
                             if (isCompleted) {
+                                const style = `background-color: ${color}20; color: ${color};`;
                                 const grayStyle = `background-color: ${COMPLETED_BG_COLOR}; color: ${COMPLETED_TEXT_COLOR};`;
-                                content = `<div class="priority-tag" style="${grayStyle}">${task.priority}</div>`;
+                                content = `<div class="priority-tag" style="${style}">${task.priority}</div>`;
                             } else {
-                                // ✅ NEW LOGIC: Find the color from the project's column definition
-                                const priorityColumn = project.defaultColumns.find(c => c.id === 'priority');
-                                const option = priorityColumn?.options?.find(p => p.name === task.priority);
-                                const color = option?.color;
 
                                 if (color) {
                                     const style = `background-color: ${color}20; color: ${color};`;
@@ -2288,14 +2288,14 @@ function render() {
                     case 'status':
                         cell.dataset.control = 'status';
                         if (task.status) {
+                            const statusColumn = project.defaultColumns.find(c => c.id === 'status');
+                            const option = statusColumn?.options?.find(s => s.name === task.status);
+                            const color = option?.color;
                             if (isCompleted) {
+                                const style = `background-color: ${color}20; color: ${color};`;
                                 const grayStyle = `background-color: ${COMPLETED_BG_COLOR}; color: ${COMPLETED_TEXT_COLOR};`;
-                                content = `<div class="status-tag" style="${grayStyle}"> ${task.previousStatus}</div>`;
+                                content = `<div class="status-tag" style="${style}"> ${task.previousStatus}</div>`;
                             } else {
-                                // ✅ NEW LOGIC: Find the color from the project's column definition
-                                const statusColumn = project.defaultColumns.find(c => c.id === 'status');
-                                const option = statusColumn?.options?.find(s => s.name === task.status);
-                                const color = option?.color;
 
                                 if (color) {
                                     const style = `background-color: ${color}20; color: ${color};`;
@@ -2739,48 +2739,48 @@ function isCellEditable(column) {
 }
 
 function parseUSPSXML(xmlString) {
-  const parser = new DOMParser();
-  const xml = parser.parseFromString(xmlString, "text/xml");
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(xmlString, "text/xml");
 
-  // Check for error in response
-  const error = xml.querySelector("Error > Description")?.textContent;
-  if (error) {
+    // Check for error in response
+    const error = xml.querySelector("Error > Description")?.textContent;
+    if (error) {
+        return {
+            error,
+            summary: "Unknown Status",
+            details: [],
+        };
+    }
+
+    // Extract the tracking status
+    const trackSummary = xml.querySelector("TrackSummary")?.textContent?.trim();
+    const details = Array.from(xml.querySelectorAll("TrackDetail")).map(el =>
+        el.textContent.trim()
+    );
+
     return {
-      error,
-      summary: "Unknown Status",
-      details: [],
+        error: null,
+        summary: trackSummary || "Unknown Status",
+        details,
     };
-  }
-
-  // Extract the tracking status
-  const trackSummary = xml.querySelector("TrackSummary")?.textContent?.trim();
-  const details = Array.from(xml.querySelectorAll("TrackDetail")).map(el =>
-    el.textContent.trim()
-  );
-
-  return {
-    error: null,
-    summary: trackSummary || "Unknown Status",
-    details,
-  };
 }
 
 
 async function getUSPSTracking({ trackingNumber }) {
-  const response = await fetch(
-    'https://us-central1-juan-luna-db.cloudfunctions.net/getUSPSTracking',
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ data: { trackingNumber } }),
-    }
-  );
+    const response = await fetch(
+        'https://us-central1-juan-luna-db.cloudfunctions.net/getUSPSTracking',
+        {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ data: { trackingNumber } }),
+        }
+    );
 
-  const text = await response.text(); // ✅ read raw XML
-  console.log('Raw USPS XML:', text);
-  return { data: parseUSPSXML(text) }; // ✅ match original structure
+    const text = await response.text(); // ✅ read raw XML
+    console.log('Raw USPS XML:', text);
+    return { data: parseUSPSXML(text) }; // ✅ match original structure
 }
 
 
@@ -2826,10 +2826,10 @@ async function updateAllTrackingStatuses() {
                         const data = parseUSPSXML(result.data);
 
                         if (data.error) {
-  console.warn(`⚠️ USPS error for ${trackingNumber}: ${data.error}`);
-} else {
-  console.log(`✅ USPS status for ${trackingNumber} → ${data.summary}`);
-}
+                            console.warn(`⚠️ USPS error for ${trackingNumber}: ${data.error}`);
+                        } else {
+                            console.log(`✅ USPS status for ${trackingNumber} → ${data.summary}`);
+                        }
 
                         console.log(`Debugging: USPS status for ${trackingNumber} → ${data.summary}`);
                         updateCellWithStatus(trackingNumber, data.summary);
