@@ -733,11 +733,12 @@ export function init(params) {
                                    </div>`;
         }
     })();
-
+    
+/*
     if (!chatController) {
     chatCleanup = floatingChatBox();
   }
-
+*/
     // --- 5. Return the Main Cleanup Function ---
     // This cleans up the tasks section itself when navigating away (e.g., to 'home').
     return function cleanup() {
