@@ -2345,7 +2345,8 @@ function render() {
 
                             // If the task is completed, render a gray version of the tag.
                             if (isCompleted) {
-                                const grayStyle = `background-color: ${COMPLETED_BG_COLOR}; color: ${COMPLETED_TEXT_COLOR};`;
+                                const selectedOption = col.options.find(opt => opt.name === rawValue);
+                                const grayStyle = `background-color: ${selectedOption.color}; color: ${selectedOption.color};`;
                                 // Only show the tag if there's a value to display
                                 if (rawValue) {
                                     content = `<div class="status-tag" style="${grayStyle}">${rawValue}</div>`;
