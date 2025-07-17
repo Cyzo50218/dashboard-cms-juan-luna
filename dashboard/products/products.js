@@ -167,7 +167,7 @@ function attachProductListListener(userId) {
     await checkUserPermissions(userId, currentWorkspaceId, userData.role);
     
     // Listen to the ProductList subcollection within the workspace
-    const : = collection(workspaceDocRef, 'ProductList');
+    const productListRef = collection(workspaceDocRef, 'ProductList');
     const q = query(productListRef);
     
     productListUnsub = onSnapshot(q, async (snapshot) => {
