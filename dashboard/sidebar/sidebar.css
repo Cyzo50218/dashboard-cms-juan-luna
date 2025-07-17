@@ -694,7 +694,7 @@
     align-items: center;       /* Vertically center the text */
     justify-content: center;   /* Horizontally center the text */
     padding: 6px 10px;         /* Adds some nice padding around the text */
-    border-radius: 12px;       /* Gives the tag a modern, pill-shaped look */
+    border-radius: 50px;       /* Gives the tag a modern, pill-shaped look */
     font-size: 13px;           /* A good, readable font size */
     font-weight: 500;
     line-height: 1;            /* Ensures text is vertically aligned cleanly */
