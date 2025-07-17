@@ -444,20 +444,6 @@
     color: #5e6c84; /* Standard label color */
 }
 
-.sidebarprojectfield-value {
-    display: flex;
-    justify-content: flex-end; /* Aligns the entire value block to the right */
-    align-items: center;
-    min-width: 150px; /* Give the value column a consistent width */
-}
-
-/* This targets the clickable control inside the value cell */
-.sidebarprojectfield-value .field-control {
-    display: flex;
-    justify-content: center; /* This centers the text/tag/avatar inside the control */
-    width: 100%;
-}
-
 /* Specific styling for the add assignee button */
 .assignee-add-btn {
     display: flex;
