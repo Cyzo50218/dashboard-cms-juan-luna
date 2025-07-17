@@ -2359,7 +2359,7 @@ window.TaskSidebar = (function () {
             searchable: false,
             itemRenderer: (option) => {
                 const color = option.color || '#ccc'; // Use gray as a fallback for any malformed data
-                return `<div class="dropdown-color-swatch" style="background-color: ${color}; border-radius: 10px;"></div><span>${option.name}</span>`;
+                return `<div class="dropdown-color-swatch" style="background-color: ${color}90; border-radius: 5px;"></div><span>${option.name}</span>`;
             },
             onSelect: onSelectCallback
         });
