@@ -307,7 +307,7 @@ async function fetchDropdownOptions(userId, workspaceId) {
     const { h, s, l } = projectData.color;
     hexColor = hslToHex(h, s, l);
   }
-
+console.log(`color: ${hexColor}`);
   return {
     id: doc.id,
     color: hexColor,
@@ -429,7 +429,6 @@ function createSupplierDisplayHTML(supplierData, fallbackName) {
 
   return `<div class="supplier-display">${iconContent} ${detailsContent}</div>`;
 }
-
 
 function populateSupplierDropdown(options) {
   const triggerText = document.querySelector('#supplierDropdownTrigger .selected-text');
