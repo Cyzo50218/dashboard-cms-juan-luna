@@ -48,11 +48,11 @@
 }
 
 .boardtasks-due-date[data-color-name="green"] {
-    color: #59E166; 
+    color: #59E166;
 }
 
 .boardtasks-due-date[data-color-name="yellow"] {
-    color: #FFD15E; 
+    color: #FFD15E;
 }
 
 .boardtasks-due-date[data-color-name="default"] {
@@ -62,12 +62,14 @@
 /* --- Containers & Headers --- */
 .boardtasks-board-container {
     width: 100%;
-    height: calc(100vh - 100px); /* This remains correct */
+    height: calc(100vh - 100px);
+    /* This remains correct */
     margin: 0;
     position: relative;
     box-sizing: border-box;
     display: flex;
-    overflow-x: auto;       /* Enables horizontal scrolling ONLY for this element */
+    overflow-x: auto;
+    /* Enables horizontal scrolling ONLY for this element */
     flex-direction: column;
 }
 
@@ -161,9 +163,11 @@
     gap: 1.5rem;
     align-items: flex-start;
     padding-bottom: 1rem;
-    flex-grow: 1;           /* Allows this element to expand and fill the remaining height */
-    
-    overflow-y: auto;     /* Prevents vertical scrolling on the board itself */
+    flex-grow: 1;
+    /* Allows this element to expand and fill the remaining height */
+
+    overflow-y: auto;
+    /* Prevents vertical scrolling on the board itself */
 }
 
 
@@ -393,7 +397,7 @@
     height: 100%;
     background: #fff;
     box-shadow: -4px 0 15px rgba(0, 0, 0, 0.1);
-    
+
     transition: right 0.3s ease-in-out;
     padding: 1.5rem;
 }
@@ -434,14 +438,18 @@
 
 .sidebarprojectfield-row {
     display: flex;
-    justify-content: space-between; /* This pushes the label and value to opposite ends */
+    justify-content: space-between;
+    /* This pushes the label and value to opposite ends */
     align-items: center;
-    padding: 8px 0; /* Example vertical spacing */
-    border-bottom: 1px solid #f0f0f0; /* Faint separator line */
+    padding: 8px 0;
+    /* Example vertical spacing */
+    border-bottom: 1px solid #f0f0f0;
+    /* Faint separator line */
 }
 
 .sidebarprojectfield-label {
-    color: #5e6c84; /* Standard label color */
+    color: #5e6c84;
+    /* Standard label color */
 }
 
 /* Specific styling for the add assignee button */
@@ -462,4 +470,28 @@
 
 .assignee-add-btn:hover {
     background-color: #e0e0e0;
+}
+
+/* --- Default State --- */
+.progress-loading-container.hide {
+    display: none;
+}
+
+/* Spinner and text are visible by default, but won't show because their parent is hidden. */
+.progress-spinner {
+    border: 4px solid #f3f3f3;
+    /* Light grey border */
+    border-top: 4px solid #000000;
+    /* Black border for the "spinning" part */
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    /* Animation for spinning effect */
+}
+
+.loading-text {
+    color: #333;
+    /* Darker text color */
+    font-size: 1.1em;
 }
