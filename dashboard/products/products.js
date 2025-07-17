@@ -304,10 +304,15 @@ async function fetchDropdownOptions(userId, workspaceId) {
   // Convert HSL to Hex color string if needed
   let hexColor = '#cccccc'; 
   console.log(`original color: ${projectData.color}`);
-  if (projectData.color) {
-    const { h, s, l } = projectData.color;
+  if (projectData.color && typeof projectData.color === 'string') {
+  const match = projectData.color.match(/^hsl\((\d+),\s*(\d+)%?,\s*(\d+)%?\)$/i);
+  if (match) {
+    const h = parseInt(match[1], 10);
+    const s = parseInt(match[2], 10);
+    const l = parseInt(match[3], 10);
     hexColor = hslToHex(h, s, l);
   }
+}
 console.log(`converted color: ${hexColor}`);
   return {
     id: doc.id,
