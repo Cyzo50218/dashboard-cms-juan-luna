@@ -2289,17 +2289,14 @@ function render() {
                         cell.dataset.control = 'status';
                         if (task.status) {
                             const statusColumn = project.defaultColumns.find(c => c.id === 'status');
-
+                            const option = statusColumn?.options?.find(s => s.name === task.status);
+                            const color = option?.color;
                             if (isCompleted) {
-                                const option = statusColumn?.options?.find(s => s.name === task.previousStatus);
-                                const color = option?.color;
-
-                                const style = `background-color: ${color}60; color: ${color};`;
+                                const style = `background-color: ${color}20; color: ${color};`;
                                 const grayStyle = `background-color: ${COMPLETED_BG_COLOR}; color: ${COMPLETED_TEXT_COLOR};`;
                                 content = `<div class="status-tag" style="${style}"> ${task.previousStatus}</div>`;
                             } else {
-                                const option = statusColumn?.options?.find(s => s.name === task.status);
-                                const color = option?.color;
+
                                 if (color) {
                                     const style = `background-color: ${color}20; color: ${color};`;
                                     content = `<div class="status-tag" style="${style}">${task.status}</div>`;
