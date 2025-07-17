@@ -1270,7 +1270,7 @@ window.TaskSidebar = (function () {
             g = parseInt(hex.substring(2, 4), 16),
             b = parseInt(hex.substring(4, 6), 16);
         const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-        return `<div class="tag" style="background-color: ${color}; color: ${(yiq >= 128) ? '#000' : '#fff'};">${text}</div>`;
+        return `<div class="tag" style="background-color: ${color}; border-radius: 10px; color: ${(yiq >= 128) ? '#000' : '#fff'};">${text}</div>`;
     }
     /**
      * Renders the HTML for the assignee field with the correct design.
@@ -2359,7 +2359,7 @@ window.TaskSidebar = (function () {
             searchable: false,
             itemRenderer: (option) => {
                 const color = option.color || '#ccc'; // Use gray as a fallback for any malformed data
-                return `<div class="dropdown-color-swatch" style="background-color: ${color}"></div><span>${option.name}</span>`;
+                return `<div class="dropdown-color-swatch" style="background-color: ${color}; border-radius: 10px;"></div><span>${option.name}</span>`;
             },
             onSelect: onSelectCallback
         });
