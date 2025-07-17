@@ -2270,13 +2270,13 @@ function render() {
                             const option = priorityColumn?.options?.find(p => p.name === task.priority);
                             const color = option?.color;
                             if (isCompleted) {
-                                const style = `background-color: ${color}20; border-radius: 50px; color: ${color}; border: 1px solid ${color}80;`;
+                                const style = `background-color: ${color}20; border-radius: 10px; color: ${color}; border: 1px solid ${color}80;`;
                                 const grayStyle = `background-color: ${COMPLETED_BG_COLOR}; color: ${COMPLETED_TEXT_COLOR}; `;
                                 content = `<div class="priority-tag" style="${style}">${task.priority}</div>`;
                             } else {
 
                                 if (color) {
-                                    const style = `background-color: ${color}20; border-radius: 50px; color: ${color}; border: 1px solid ${color}80;`;
+                                    const style = `background-color: ${color}20; border-radius: 10px; color: ${color}; border: 1px solid ${color}80;`;
                                     content = `<div class="priority-tag" style="${style}">${task.priority}</div>`;
                                 } else {
                                     content = `<span>${task.priority}</span>`;
@@ -2294,13 +2294,13 @@ function render() {
                             if (isCompleted) {
                                 const optionCompleted = statusColumn?.options?.find(s => s.name === task.previousStatus);
                             const colorCompleted = optionCompleted?.color;
-                                const style = `background-color: ${colorCompleted}20; border-radius: 50px; color: ${colorCompleted}; border: 1px solid ${colorCompleted}80;`;
+                                const style = `background-color: ${colorCompleted}20; border-radius: 10px; color: ${colorCompleted}; border: 1px solid ${colorCompleted}80;`;
                                 const grayStyle = `background-color: ${COMPLETED_BG_COLOR}; color: ${COMPLETED_TEXT_COLOR};`;
                                 content = `<div class="status-tag" style="${style}"> ${task.previousStatus}</div>`;
                             } else {
 
                                 if (color) {
-                                    const style = `background-color: ${color}20; border-radius: 50px; color: ${color}; border: 1px solid ${color}80;`;
+                                    const style = `background-color: ${color}20; border-radius: 10px; color: ${color}; border: 1px solid ${color}80;`;
                                     content = `<div class="status-tag" style="${style}">${task.status}</div>`;
                                 } else {
                                     content = `<span>${task.status}</span>`;
@@ -2346,7 +2346,7 @@ function render() {
                             // If the task is completed, render a gray version of the tag.
                             if (isCompleted) {
                                 const selectedOption = col.options.find(opt => opt.name === rawValue);
-                                const grayStyle = `background-color: ${selectedOption.color}20; color: ${selectedOption.color}; border: 1px solid ${selectedOption.color}80;`;
+                                const grayStyle = `background-color: ${selectedOption.color}20; border-radius: 10px; color: ${selectedOption.color}; border: 1px solid ${selectedOption.color}80;`;
                                 // Only show the tag if there's a value to display
                                 if (rawValue) {
                                     content = `<div class="status-tag" style="${grayStyle}">${rawValue}</div>`;
@@ -2362,7 +2362,7 @@ function render() {
 
                                 if (selectedOption) {
                                     if (selectedOption.color) {
-                                        const style = `background-color: ${selectedOption.color}20; color: ${selectedOption.color}; border: 1px solid ${selectedOption.color}80;`;
+                                        const style = `background-color: ${selectedOption.color}20; border-radius: 10px; color: ${selectedOption.color}; border: 1px solid ${selectedOption.color}80;`;
                                         content = `<div class="status-tag" style="${style}">${selectedOption.name}</div>`;
                                     } else {
                                         const sanitizedName = (selectedOption.name || '').toLowerCase().replace(/\s+/g, '-');
