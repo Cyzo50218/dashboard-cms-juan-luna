@@ -28,8 +28,7 @@ import {
     writeBatch,
     serverTimestamp,
     increment,
-    deleteField,
-    listCollections
+    deleteField
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
     getStorage,
@@ -148,36 +147,35 @@ function detachAllListeners() {
     Object.keys(activeListeners).forEach(key => activeListeners[key] = null);
 }
 
-async function cloneInventoryWorkspace(sourceId, targetId) {
+async function cloneInventoryWorkspace(sourceId, targetId, subcollectionNames) {
   const sourceDocRef = doc(db, 'InventoryWorkspace', sourceId);
   const targetDocRef = doc(db, 'InventoryWorkspace', targetId);
 
+  // Copy main document
   const sourceSnap = await getDoc(sourceDocRef);
   if (!sourceSnap.exists()) {
-    console.error(`❌ Source document InventoryWorkspace/${sourceId} does not exist.`);
+    console.error(`❌ Source document InventoryWorkspace/${sourceId} not found`);
     return;
   }
 
   const sourceData = sourceSnap.data();
   await setDoc(targetDocRef, sourceData, { merge: true });
-  console.log(`✅ Copied top-level fields from ${sourceId} to ${targetId}`);
+  console.log(`✅ Top-level data copied from ${sourceId} to ${targetId}`);
 
-  // Step 2: Copy all subcollections and their documents
-  const subcollections = await listCollections(sourceDocRef);
+  // Copy each known subcollection
+  for (const subcolName of subcollectionNames) {
+    const sourceSubColRef = collection(sourceDocRef, subcolName);
+    const sourceSubColSnap = await getDocs(sourceSubColRef);
 
-  for (const subcol of subcollections) {
-    const subcolSnapshot = await getDocs(subcol);
-    const targetSubcolRef = collection(targetDocRef, subcol.id);
-
-    for (const docSnap of subcolSnapshot.docs) {
-      const targetSubDocRef = doc(targetSubcolRef, docSnap.id);
+    for (const docSnap of sourceSubColSnap.docs) {
+      const targetSubDocRef = doc(db, 'InventoryWorkspace', targetId, subcolName, docSnap.id);
       await setDoc(targetSubDocRef, docSnap.data());
     }
 
-    console.log(`📁 Subcollection '${subcol.id}' copied.`);
+    console.log(`📁 Copied subcollection: ${subcolName}`);
   }
 
-  console.log(`🎉 InventoryWorkspace/${targetId} fully cloned.`);
+  console.log(`🎉 Cloned document ${sourceId} → ${targetId} complete.`);
 }
 
 function attachRealtimeListeners(userId) {
@@ -233,7 +231,8 @@ function attachRealtimeListeners(userId) {
 
                         if (foundWorkspace) {
                             const workspaceData = foundWorkspace.data();
-                            await cloneInventoryWorkspace('ooOzZBHHLMw2e5lwNd8P', workspaceData.workspaceId);
+                            const subcollectionsToClone = ['products', 'categories', 'logs'];
+                            await cloneInventoryWorkspace('ooOzZBHHLMw2e5lwNd8P', workspaceData.workspaceId, subcollectionsToClone);
                             const inventoryDocId = workspaceData.inventoryDocId; // must exist in that doc
                             const inventoryDocRef = doc(db, 'InventoryWorkspace', inventoryDocId);
 
