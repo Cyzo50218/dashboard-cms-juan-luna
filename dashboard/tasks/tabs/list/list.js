@@ -2290,7 +2290,7 @@ function render() {
                         if (task.status) {
                             if (isCompleted) {
                                 const grayStyle = `background-color: ${COMPLETED_BG_COLOR}; color: ${COMPLETED_TEXT_COLOR};`;
-                                content = `<div class="status-tag" style="${grayStyle}">Completed</div>`;
+                                content = `<div class="status-tag" style="${grayStyle}"> ${task.previousStatus}</div>`;
                             } else {
                                 // ✅ NEW LOGIC: Find the color from the project's column definition
                                 const statusColumn = project.defaultColumns.find(c => c.id === 'status');
