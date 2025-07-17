@@ -2292,7 +2292,9 @@ function render() {
                             const option = statusColumn?.options?.find(s => s.name === task.status);
                             const color = option?.color;
                             if (isCompleted) {
-                                const style = `background-color: ${color}20; color: ${color};`;
+                                const optionCompleted = statusColumn?.options?.find(s => s.name === task.status);
+                            const colorCompleted = optionCompleted?.color;
+                                const style = `background-color: ${colorCompleted}20; color: ${colorCompleted};`;
                                 const grayStyle = `background-color: ${COMPLETED_BG_COLOR}; color: ${COMPLETED_TEXT_COLOR};`;
                                 content = `<div class="status-tag" style="${style}"> ${task.previousStatus}</div>`;
                             } else {
