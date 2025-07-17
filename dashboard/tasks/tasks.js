@@ -309,7 +309,7 @@ export function init(params) {
     if (match) return match[1];
 
     // Try matching /tasks/.../boards/...
-    match = path.match(/\/tasks\/[^/]+\/boards\/([^/]+)/);
+    match = path.match(/\/tasks\/[^/]+\/board\/([^/]+)/);
     if (match) return match[1];
 
     // Try matching /tasks/.../dashboard/...
