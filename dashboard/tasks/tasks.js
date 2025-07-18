@@ -40,6 +40,8 @@ let currentLoadedProjectRef = null; // Will store the DocumentReference of the l
 let currentLoadedProjectData = null; // Will store the full data of the loaded project
 let currentLoadedProjectMembers = []; // Store fetched member profiles for avatar stack and recent history
 let projectLoadController = new AbortController();
+let currentUserId = null;
+let currentProjectId = null;
 
 // Global chat controller reference
 let chatController = null;
@@ -333,7 +335,7 @@ export function init(params) {
     }
 
     console.log(`[DEBUG] Looking up projectId from URL: ${projectIdFromUrl}`);
-
+    currentProjectId = projectIdFromUrl;
     // Step 1: Attempt to find the project via direct membership
     let projectDoc = null;
 
@@ -717,8 +719,10 @@ export function init(params) {
       // 1. Authenticate user (ensure auth.currentUser is ready)
       await new Promise(resolve => {
         const unsubscribeAuth = auth.onAuthStateChanged(user => {
+          currentUserId = user.uid;
           if (user) {
             console.log("Auth state confirmed:", user.uid);
+
           } else {
             console.warn("No user authenticated. Some functions may fail.");
           }
@@ -728,7 +732,9 @@ export function init(params) {
       });
 
       await loadProjectHeader();
-
+      if (!chatController) {
+        chatCleanup = floatingChatBox();
+      }
       // 3. Load the initial tab content (which needs project context)
       setActiveTabLink(tabId);
       await loadTabContent(tabId);
@@ -748,11 +754,8 @@ export function init(params) {
     }
   })();
 
-  /*
-      if (!chatController) {
-      chatCleanup = floatingChatBox();
-    }
-  */
+
+
   // --- 5. Return the Main Cleanup Function ---
   // This cleans up the tasks section itself when navigating away (e.g., to 'home').
   return function cleanup() {
@@ -794,6 +797,7 @@ export function init(params) {
   // ======== FLOATING CHAT BOX FUNCTION ========
   function floatingChatBox() {
     console.log("Initializing floating chat box...");
+    initializeChat();
 
     // Check if chat container already exists
     let existingChatContainer = document.getElementById("chat-container");
@@ -1751,120 +1755,10 @@ export function init(params) {
       let _messages = {}; // This will be the mutable store for messages
 
       const initialRooms = [
-        {
-          id: 1,
-          name: "Global Staff Chat",
-          type: CHAT_TYPES.GLOBAL,
-          participants: [
-            { id: 101, name: "Support" },
-            { id: 102, name: "Manager" },
-            { id: 103, name: "Admin" },
-          ],
-        },
-        {
-          id: 2,
-          name: "Project Alpha",
-          type: CHAT_TYPES.PROJECT,
-          participants: [
-            { id: 201, name: "Project Lead" },
-            { id: 202, name: "Designer" },
-            { id: 203, name: "Developer" },
-          ],
-        },
-        {
-          id: 3,
-          name: "Project Beta",
-          type: CHAT_TYPES.PROJECT,
-          participants: [
-            { id: 301, name: "Team Lead" },
-            { id: 302, name: "QA Specialist" },
-          ],
-        },
-        {
-          id: 4,
-          name: "Project Gamma",
-          type: CHAT_TYPES.PROJECT,
-          participants: [
-            { id: 401, name: "Project Manager" },
-            { id: 402, name: "Architect" },
-          ],
-        },
-        {
-          id: 5,
-          name: "Supplier Portal",
-          type: CHAT_TYPES.SUPPLIER,
-          participants: [
-            { id: 501, name: "Procurement" },
-            { id: 502, name: "Supplier Rep" },
-          ],
-        },
+
       ];
 
       const initialMessagesData = {
-        1: [
-          {
-            id: 1,
-            text: "Welcome to the Global Staff Chat! This is for all staff members.",
-            sender: "Support",
-            senderId: 101,
-            timestamp: new Date(Date.now() - 3600000),
-            read: true,
-            reactions: {},
-          },
-          {
-            id: 2,
-            text: "Remember to submit your reports by Friday.",
-            sender: "Manager",
-            senderId: 102,
-            timestamp: new Date(Date.now() - 1800000),
-            read: true,
-            reactions: {},
-          },
-        ],
-        2: [
-          {
-            id: 1,
-            text: "Project Alpha kickoff meeting scheduled for tomorrow at 10 AM.",
-            sender: "Project Lead",
-            senderId: 201,
-            timestamp: new Date(Date.now() - 86400000),
-            read: true,
-            reactions: {},
-          },
-        ],
-        3: [
-          {
-            id: 1,
-            text: "Beta team: We're on track for the Q3 deliverables.",
-            sender: "Team Lead",
-            senderId: 301,
-            timestamp: new Date(Date.now() - 43200000),
-            read: true,
-            reactions: {},
-          },
-        ],
-        4: [
-          {
-            id: 1,
-            text: "Gamma project status update: Phase 1 completed successfully.",
-            sender: "Project Manager",
-            senderId: 401,
-            timestamp: new Date(Date.now() - 172800000),
-            read: true,
-            reactions: {},
-          },
-        ],
-        5: [
-          {
-            id: 1,
-            text: "Supplier portal: New inventory received. Please update your records.",
-            sender: "Procurement",
-            senderId: 501,
-            timestamp: new Date(Date.now() - 259200000),
-            read: true,
-            reactions: {},
-          },
-        ],
       };
 
       // Initialize _chatRooms and _messages on first load
@@ -1872,10 +1766,10 @@ export function init(params) {
       _messages = JSON.parse(JSON.stringify(initialMessagesData)); // Deep copy to ensure mutability
 
       return {
-        getChatRooms: () =>
-          new Promise((resolve) => {
-            setTimeout(() => resolve(_chatRooms), 500);
-          }),
+        getChatRooms: async () => {
+          const snapshot = await getDocs(collection(db, "chatRooms"));
+          return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        },
 
         getMessages: (roomId) =>
           new Promise((resolve) => {
@@ -2074,6 +1968,8 @@ export function init(params) {
     }
 
     async function initializeChat() {
+      console.log("INITALIZED CHAT");
+      await ensureChatRoomExistsForProject(currentProjectId, currentLoadedProjectData);
       await loadChatData();
       setupEventListeners();
       setupParticipantStatusUpdates();
@@ -2081,8 +1977,78 @@ export function init(params) {
       setupEmojiPicker();
     }
 
+    async function ensureChatRoomExistsForProject(currentProjectId, currentLoadedProjectData) {
+      const chatRoomRef = collection(db, "chatRooms");
+
+      // Step 1: Check if chat room already exists using the projectId as the doc ID
+      const existingRoomRef = doc(chatRoomRef, currentProjectId);
+      const existingSnap = await getDoc(existingRoomRef);
+
+      if (existingSnap.exists()) {
+        console.log("Chat room already exists for this project. Skipping creation.", currentProjectId);
+        return;
+      }
+
+      console.log("No existing chat room found for project:", currentProjectId);
+
+      const memberUIDs = currentLoadedProjectData.memberUIDs || [];
+
+      if (memberUIDs.length === 0) {
+        console.log("No members found in currentLoadedProjectData. Skipping chat room creation.");
+        return;
+      }
+
+      // Step 2: Fetch member profiles in parallel
+      const userPromises = memberUIDs.map(async (uid) => {
+        const userRef = doc(db, "users", uid);
+        const userSnap = await getDoc(userRef);
+
+        if (userSnap.exists()) {
+          const userData = userSnap.data();
+          const name = userData.name || userData.displayName || "";
+
+          // Simulated status (in a real app this might come from presence detection)
+          const isOnline = Math.random() > 0.8;
+          const lastSeen = new Date(
+            Date.now() - Math.floor(Math.random() * 3600000 * 24 * 7)
+          ); // last 7 days
+
+          console.log("Fetched user:", uid, "-", name);
+
+          return {
+            id: uid,
+            name,
+            email: userData.email || "",
+            avatar: userData.avatar || "",
+            status: {
+              online: isOnline,
+              lastSeen: lastSeen.toISOString(),
+              name
+            }
+          };
+        } else {
+          console.log("User not found in database:", uid);
+          return null;
+        }
+      });
+
+      const participants = (await Promise.all(userPromises)).filter(p => p !== null);
+
+      // Step 3: Create new chat room using the project ID as the document ID
+      await setDoc(existingRoomRef, {
+        projectId: currentProjectId,
+        participants,
+        createdAt: Date.now(),
+        lastMessage: null
+      });
+
+      console.log("New chat room created with ID:", currentProjectId);
+    }
+
+
+
     async function loadChatData() {
-      const rooms = await ChatService.getChatRooms();
+      const rooms = await ChatService.getChatRooms(currentProjectId);
       const messagesData = {};
 
       for (const room of rooms) {
@@ -2102,6 +2068,7 @@ export function init(params) {
         });
       });
 
+      // Set initial state
       setChatState({
         chatRooms: rooms,
         messages: messagesData,
@@ -2110,8 +2077,27 @@ export function init(params) {
         isMinimized: true,
       });
 
-      calculateUnreadCounts();
-      updateUnreadBadge(chatState.totalUnread);
+      // Attach message listeners for real-time updates
+      rooms.forEach((room) => {
+        ChatService.listenToMessages(room.id, (newMessage) => {
+          // Update message state when a new message is received
+          if (!chatState.messages[room.id]) {
+            chatState.messages[room.id] = [];
+          }
+          chatState.messages[room.id].push(newMessage);
+
+          // Update unread count
+          if (chatState.activeRoom?.id !== room.id) {
+            chatState.messages[room.id].unreadCount = (chatState.messages[room.id].unreadCount || 0) + 1;
+          }
+
+          updateUnreadBadge(calculateUnreadCounts());
+          renderAll();
+        });
+      });
+
+      // Calculate and show unread badge on load
+      updateUnreadBadge(calculateUnreadCounts());
       renderAll();
     }
 
@@ -2928,8 +2914,7 @@ export function init(params) {
       }
     }
 
-    // Initialize chat controller
-    initializeChat();
+
 
     // Return cleanup function
     return () => {

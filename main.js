@@ -313,6 +313,25 @@ document.addEventListener("DOMContentLoaded", () => {
             console.log("✅ Authenticated user found. Initializing dashboard...");
             messageIntervalId = setInterval(showNextMessage, 1000);
 
+            // 👇 Update online status to true and lastSeen timestamp
+            const userStatusRef = doc(db, "users", user.uid);
+            await setDoc(userStatusRef, {
+                online: true,
+                lastSeen: serverTimestamp()
+            }, { merge: true });
+
+            // 👇 Optional: set offline status on window unload
+            window.addEventListener("beforeunload", async () => {
+                try {
+                    await setDoc(userStatusRef, {
+                        online: false,
+                        lastSeen: serverTimestamp()
+                    }, { merge: true });
+                    console.log("🟡 User marked offline before unload.");
+                } catch (err) {
+                    console.warn("Failed to mark user offline:", err.message);
+                }
+            });
             await Promise.all([
                 loadHTML("#top-header", "/dashboard/header/header.html"),
                 loadHTML("#rootdrawer", "/dashboard/drawer/drawer.html"),
@@ -365,7 +384,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             window.TaskSidebar?.init();
             window.addEventListener('popstate', router);
-            
+
             // --- 👇 CHANGE 3: Clear the interval right after hiding the loader ---
             setTimeout(() => {
                 hideInitialLoader();
@@ -374,7 +393,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     console.log("✅ Loader hidden and message interval stopped.");
                 }
             }, navigator.connection?.effectiveType === '4g' ? 1200 : 1800);
-            
+
             router(); // Initial route load
 
         } else {
