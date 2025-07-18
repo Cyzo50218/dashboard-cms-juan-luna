@@ -15,17 +15,30 @@ import {
   getDocs,
   doc,
   updateDoc,
+  limit,
   setDoc,
+  onSnapshot,
   runTransaction,
+  addDoc,
+  orderBy,
   collectionGroup,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+  getStorage,
+  ref,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+
 import { firebaseConfig } from "/services/firebase-config.js";
 import { openShareModal } from '/dashboard/components/shareProjectModel.js';
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app, "juanluna-cms-01");
+const storage = getStorage(app);
 
 // --- Module-Scoped Variables for Cleanup and State ---
 let tabClickListener = null;
@@ -733,7 +746,7 @@ export function init(params) {
 
       await loadProjectHeader();
       if (!chatController) {
-        chatCleanup = floatingChatBox();
+       // chatCleanup = floatingChatBox();
       }
       // 3. Load the initial tab content (which needs project context)
       setActiveTabLink(tabId);
@@ -1752,6 +1765,7 @@ export function init(params) {
     // This service now maintains an internal, mutable state for messages.
     const ChatService = (() => {
       let _chatRooms = [];
+      let _activeListeners = {};
       let _messages = {}; // This will be the mutable store for messages
 
       const initialRooms = [
@@ -1776,6 +1790,36 @@ export function init(params) {
             setTimeout(() => resolve(_messages[roomId] || []), 300);
           }),
 
+        listenToMessages: (roomId, callback, messageLimit = 20) => {
+          // Stop any existing listener for that room
+          if (_activeListeners[roomId]) {
+            _activeListeners[roomId](); // unsubscribe
+            delete _activeListeners[roomId];
+          }
+
+          const messagesRef = collection(db, "MessagesChatRooms", roomId, "messages");
+          const q = query(messagesRef, orderBy("timestamp", "desc"), limit(messageLimit));
+
+          const unsubscribe = onSnapshot(
+            q,
+            (snapshot) => {
+              const messages = snapshot.docs.map((doc) => ({
+                id: doc.id,
+                ...doc.data(),
+              }));
+              messages.reverse();
+              _messages[roomId] = messages;
+              callback(messages);
+            },
+            (error) => {
+              console.error(`❌ Error listening to messages for room ${roomId}:`, error);
+            }
+          );
+
+          _activeListeners[roomId] = unsubscribe;
+          return unsubscribe;
+        },
+
         addMessage: (roomId, message) => {
           return new Promise((resolve) => {
             setTimeout(() => {
@@ -1788,97 +1832,72 @@ export function init(params) {
           });
         },
 
-        sendMessage: (roomId, text) => {
-          const responses = {
-            [CHAT_TYPES.GLOBAL]: [
-              "Thanks for your message. I'll notify the relevant team.",
-              "Your message has been logged in the staff channel.",
-              "All staff members will be notified of this update.",
-            ],
-            [CHAT_TYPES.PROJECT]: [
-              "Your project update has been recorded.",
-              "Team members will review your message shortly.",
-            ],
-            [CHAT_TYPES.SUPPLIER]: [
-              "Your supplier request has been received.",
-              "Procurement team will review your message.",
-              "Supplier portal update acknowledged.",
-            ],
-          };
+        sendMessage: async (roomId, messageData) => {
+          const messagesRef = collection(db, "MessagesChatRooms", roomId, "messages");
 
-          return new Promise((resolve) => {
-            setTimeout(() => {
-              const room = _chatRooms.find((r) => r.id === roomId);
-              const roomType = room?.type || CHAT_TYPES.PROJECT;
-              const responsePool =
-                responses[roomType] || responses[CHAT_TYPES.PROJECT];
-              const randomResponse =
-                responsePool[Math.floor(Math.random() * responsePool.length)];
-              const participant =
-                room?.participants[
-                Math.floor(Math.random() * room.participants.length)
-                ];
+          await addDoc(messagesRef, {
+            ...messageData,
+            createdAt: serverTimestamp(),
+          });
 
-              const botMessage = {
-                id: Date.now() + Math.random(), // Ensure unique ID
-                text: randomResponse,
-                sender: participant?.name || "Support",
-                senderId: participant?.id || 101,
-                timestamp: new Date(),
-                read: false,
-                reactions: {},
-              };
-
-              if (!_messages[roomId]) {
-                _messages[roomId] = [];
-              }
-              _messages[roomId].push(botMessage); // Add bot message to the mutable store
-              resolve(botMessage);
-            }, 1000);
+          // Optionally update lastMessage in `chatRooms/{roomId}`
+          await updateDoc(doc(db, "chatRooms", roomId), {
+            lastMessage: {
+              text: messageData.text,
+              senderId: messageData.senderId,
+              createdAt: serverTimestamp(),
+            }
           });
         },
 
-        addReaction: (roomId, messageId, reaction, userId, allParticipants) => {
-          return new Promise((resolve, reject) => {
-            setTimeout(() => {
-              const roomMessages = _messages[roomId]; // Access the mutable store
-              if (!roomMessages) {
-                return reject(new Error("Room not found for reactions."));
-              }
+        addReaction: async (roomId, messageId, selectedEmoji, userId, allParticipants) => {
+          const messageDocRef = doc(
+            db,
+            "MessagesChatRooms",
+            roomId,
+            "messages",
+            String(messageId) // ✅ fix: ensure string
+          );
 
-              const message = roomMessages.find((msg) => msg.id === messageId);
-              if (!message) {
-                return reject(new Error("Message not found for reaction."));
-              }
+          try {
+            const messageSnap = await getDoc(messageDocRef);
+            if (!messageSnap.exists()) throw new Error("Message not found");
 
-              if (!message.reactions) {
-                message.reactions = {};
-              }
-              if (!message.reactions[reaction]) {
-                message.reactions[reaction] = [];
-              }
+            const messageData = messageSnap.data();
+            const user = allParticipants.find((u) => u.id === userId);
+            const userName = user?.name || "Unknown";
 
-              const userIndex = message.reactions[reaction].findIndex(
-                (r) => r.userId === userId
-              );
-
-              if (userIndex === -1) {
-                // Add reaction
-                const user = allParticipants.find((p) => p.id === userId);
-                message.reactions[reaction].push({
-                  userId: userId,
-                  userName: user ? user.name : "Unknown User",
-                });
-              } else {
-                // Remove reaction (toggle)
-                message.reactions[reaction].splice(userIndex, 1);
-                if (message.reactions[reaction].length === 0) {
-                  delete message.reactions[reaction];
-                }
+            // Build new reactions map, removing existing reactions by this user
+            const newReactions = {};
+            for (const emoji in messageData.reactions || {}) {
+              const others = messageData.reactions[emoji].filter(r => r.userId !== userId);
+              if (others.length > 0) {
+                newReactions[emoji] = others;
               }
-              resolve(message.reactions);
-            }, 200);
-          });
+            }
+
+            // Add the new emoji if not already reacted
+            const alreadyReacted = messageData.reactions?.[selectedEmoji]?.some(r => r.userId === userId);
+            if (!alreadyReacted) {
+              if (!newReactions[selectedEmoji]) {
+                newReactions[selectedEmoji] = [];
+              }
+              newReactions[selectedEmoji].push({ userId, userName });
+            }
+
+            // Merge only the `reactions` field
+            await setDoc(messageDocRef, {
+              reactions: newReactions
+            }, {
+              mergeFields: ['reactions']
+            });
+
+            console.log("✅ Reactions updated safely");
+            return newReactions;
+          } catch (err) {
+            console.error("❌ Failed to update reaction:", err);
+            throw err;
+          }
         },
 
         markMessagesAsRead: (roomId, currentUserId) => {
@@ -1896,6 +1915,7 @@ export function init(params) {
             }, 50);
           });
         },
+
       };
     })();
 
@@ -1912,7 +1932,7 @@ export function init(params) {
       totalUnread: 0,
       isMinimized: true,
       isMaximized: false,
-      currentUserId: 101,
+      currentUserId: currentUserId,
       currentUserName: "You",
     };
 
@@ -1979,17 +1999,8 @@ export function init(params) {
 
     async function ensureChatRoomExistsForProject(currentProjectId, currentLoadedProjectData) {
       const chatRoomRef = collection(db, "chatRooms");
-
-      // Step 1: Check if chat room already exists using the projectId as the doc ID
       const existingRoomRef = doc(chatRoomRef, currentProjectId);
       const existingSnap = await getDoc(existingRoomRef);
-
-      if (existingSnap.exists()) {
-        console.log("Chat room already exists for this project. Skipping creation.", currentProjectId);
-        return;
-      }
-
-      console.log("No existing chat room found for project:", currentProjectId);
 
       const memberUIDs = currentLoadedProjectData.memberUIDs || [];
 
@@ -1998,7 +2009,28 @@ export function init(params) {
         return;
       }
 
-      // Step 2: Fetch member profiles in parallel
+      const participantUIDsSorted = [...memberUIDs].sort(); // Always keep sorted for comparison
+
+      if (existingSnap.exists()) {
+        const existingData = existingSnap.data();
+        const existingUIDs = (existingData.participantUIDs || []).sort();
+
+        // Check if member list has changed
+        const isSame =
+          participantUIDsSorted.length === existingUIDs.length &&
+          participantUIDsSorted.every((uid, idx) => uid === existingUIDs[idx]);
+
+        if (isSame) {
+          console.log("Chat room already exists and participants are unchanged. Skipping update.");
+          return;
+        }
+
+        console.log("Participants changed. Updating chat room for project:", currentProjectId);
+      } else {
+        console.log("No existing chat room found for project:", currentProjectId);
+      }
+
+      // Fetch full participant data
       const userPromises = memberUIDs.map(async (uid) => {
         const userRef = doc(db, "users", uid);
         const userSnap = await getDoc(userRef);
@@ -2006,25 +2038,20 @@ export function init(params) {
         if (userSnap.exists()) {
           const userData = userSnap.data();
           const name = userData.name || userData.displayName || "";
-
-          // Simulated status (in a real app this might come from presence detection)
-          const isOnline = Math.random() > 0.8;
-          const lastSeen = new Date(
-            Date.now() - Math.floor(Math.random() * 3600000 * 24 * 7)
-          ); // last 7 days
-
-          console.log("Fetched user:", uid, "-", name);
+          const email = userData.email || "";
+          const avatar = userData.avatar || "";
+          const status = {
+            online: userData.online || false,
+            lastSeen: userData.lastSeen?.toDate?.() || null,
+            name
+          };
 
           return {
             id: uid,
             name,
-            email: userData.email || "",
-            avatar: userData.avatar || "",
-            status: {
-              online: isOnline,
-              lastSeen: lastSeen.toISOString(),
-              name
-            }
+            email,
+            avatar,
+            status
           };
         } else {
           console.log("User not found in database:", uid);
@@ -2034,21 +2061,48 @@ export function init(params) {
 
       const participants = (await Promise.all(userPromises)).filter(p => p !== null);
 
-      // Step 3: Create new chat room using the project ID as the document ID
+      // Set or update chat room
       await setDoc(existingRoomRef, {
         projectId: currentProjectId,
+        name: currentLoadedProjectData.title,
         participants,
+        participantUIDs: participantUIDsSorted,
         createdAt: Date.now(),
         lastMessage: null
       });
 
-      console.log("New chat room created with ID:", currentProjectId);
+      // Ensure MessageChatRoom exists too
+      const messageChatRoomRef = doc(db, "MessagesChatRooms", currentProjectId);
+      const messageRoomSnap = await getDoc(messageChatRoomRef);
+      if (!messageRoomSnap.exists()) {
+        await setDoc(messageChatRoomRef, {
+          roomId: currentProjectId,
+          createdAt: Date.now()
+        });
+
+        // Now create the nested "messages" subcollection with a welcome message
+        const messagesRef = collection(messageChatRoomRef, "messages");
+
+        const welcomeMessage = {
+          id: Date.now(),
+          text: "Welcome to the project chat room!",
+          sender: "System",
+          senderId: "system",
+          timestamp: new Date(),
+          read: true,
+          status: "sent", // or MESSAGE_STATUS.SENT if you have that constant imported
+          reactions: {}
+        };
+
+        await addDoc(messagesRef, welcomeMessage);
+        console.log("Welcome message created in messages subcollection.");
+      }
+
+      console.log("Chat room (and MessageChatRoom if new) created/updated with ID:", currentProjectId);
     }
 
-
-
     async function loadChatData() {
-      const rooms = await ChatService.getChatRooms(currentProjectId);
+      const rooms = await ChatService.getChatRooms();
       const messagesData = {};
 
       for (const room of rooms) {
@@ -2056,9 +2110,13 @@ export function init(params) {
       }
 
       const statusData = {};
+
       rooms.forEach((room) => {
-        room.participants.forEach((p) => {
-          statusData[p.id] = {
+        const participants = room.participants || []; // Fallback if undefined
+
+        participants.forEach((p) => {
+          // Use existing status object if available
+          statusData[p.id] = p.status || {
             online: Math.random() > 0.8,
             lastSeen: new Date(
               Date.now() - Math.floor(Math.random() * 3600000 * 24 * 7)
@@ -2079,16 +2137,16 @@ export function init(params) {
 
       // Attach message listeners for real-time updates
       rooms.forEach((room) => {
-        ChatService.listenToMessages(room.id, (newMessage) => {
-          // Update message state when a new message is received
-          if (!chatState.messages[room.id]) {
-            chatState.messages[room.id] = [];
-          }
-          chatState.messages[room.id].push(newMessage);
+        ChatService.listenToMessages(room.id, (newMessages) => {
+          // newMessages is an array, replace directly
+          chatState.messages[room.id] = newMessages;
 
-          // Update unread count
+          // Update unread count logic
           if (chatState.activeRoom?.id !== room.id) {
-            chatState.messages[room.id].unreadCount = (chatState.messages[room.id].unreadCount || 0) + 1;
+            const unreadCount = newMessages.filter(
+              (msg) => msg.senderId !== currentUserId && !msg.read
+            ).length;
+            chatState.messages[room.id].unreadCount = unreadCount;
           }
 
           updateUnreadBadge(calculateUnreadCounts());
@@ -2096,10 +2154,12 @@ export function init(params) {
         });
       });
 
-      // Calculate and show unread badge on load
+      await setActiveRoom(rooms[0]);
+
       updateUnreadBadge(calculateUnreadCounts());
       renderAll();
     }
+
 
     function setupFilePicker() {
       const fileButton = document.getElementById("file-button");
@@ -2199,39 +2259,80 @@ export function init(params) {
 
     async function handleFileUpload(file) {
       const { activeRoom } = chatState;
-      if (!activeRoom) return;
+      if (!activeRoom || !file) return;
 
-      const fileMessage = {
-        id: Date.now(),
-        text: `[File: ${file.name}]`,
-        sender: chatState.currentUserName,
-        senderId: chatState.currentUserId,
-        timestamp: new Date(),
-        read: true,
-        status: MESSAGE_STATUS.SENT,
-        isFile: true,
-        fileInfo: { name: file.name, type: file.type, size: file.size },
-        reactions: {},
-      };
+      const roomId = activeRoom.id;
+      const filePath = `chatFiles/${roomId}/${Date.now()}_${file.name}`;
+      const storageRef = ref(storage, filePath);
 
-      await addMessage(activeRoom.id, fileMessage);
-      renderMessages();
+      const userRef = doc(db, "users", currentUserId);
+      const userSnap = await getDoc(userRef);
+      const senderName = userSnap.exists() ? userSnap.data().name : "Unknown";
 
-      setTimeout(async () => {
-        await ChatService.sendMessage(
-          activeRoom.id,
-          `Received your file: ${file.name}`
-        );
-        setChatState({ isTyping: false });
-        const { isOpen, activeRoom: currentRoom } = chatState;
-        if (isOpen && currentRoom?.id === activeRoom.id) {
-          await markRoomAsRead(activeRoom.id);
+      try {
+        // Upload file to Firebase Storage
+        const snapshot = await uploadBytes(storageRef, file);
+        const downloadURL = await getDownloadURL(snapshot.ref);
+
+        const isImage = file.type.startsWith("image/");
+        const isPDF = file.type === "application/pdf";
+        const isWord =
+          file.type === "application/msword" || file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+        // Construct appropriate message text
+        let messageText = "";
+        if (isImage) {
+          messageText = downloadURL; // For images, show preview
         } else {
-          calculateUnreadCounts();
-          updateUnreadBadge(chatState.totalUnread);
+          messageText = `[File: ${file.name}]`; // For documents or other types
         }
+
+        const fileMessage = {
+          id: Date.now(),
+          text: messageText,
+          senderName: senderName,
+          senderId: chatState.currentUserId,
+          timestamp: serverTimestamp(),
+          read: true,
+          status: MESSAGE_STATUS.SENT,
+          isFile: true,
+          fileInfo: {
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            url: downloadURL,
+          },
+          reactions: {},
+        };
+
+        // Save in local store
+        await addMessage(roomId, fileMessage);
         renderMessages();
-      }, 1500);
+
+        // Optionally also send to Firestore (if sendMessage also handles uploads, skip this part)
+        await ChatService.sendMessage(roomId, {
+          ...fileMessage,
+          text: messageText,
+          imageFile: null, // already uploaded
+          imageUrl: isImage ? downloadURL : null,
+        });
+
+        setChatState({ isTyping: false });
+
+        setTimeout(async () => {
+          const { isOpen, activeRoom: currentRoom } = chatState;
+          if (isOpen && currentRoom?.id === roomId) {
+            await markRoomAsRead(roomId);
+          } else {
+            calculateUnreadCounts();
+            updateUnreadBadge(chatState.totalUnread);
+          }
+          renderMessages();
+        }, 1500);
+      } catch (error) {
+        console.error("File upload failed:", error);
+        alert("Failed to upload file. Please try again.");
+      }
     }
 
     function setupParticipantStatusUpdates() {
@@ -2414,6 +2515,41 @@ export function init(params) {
       }
     }
 
+    async function sendMessage(roomId, text, currentUserId) {
+      const trimmedText = text.trim();
+      if (!trimmedText || !currentUserId || !roomId) return;
+
+      // 1. Fetch sender's name from users/{currentUserId}
+      const userRef = doc(db, "users", currentUserId);
+      const userSnap = await getDoc(userRef);
+      const senderName = userSnap.exists() ? userSnap.data().name : "Unknown";
+
+      // 2. Prepare message object
+      const message = {
+        text: trimmedText,
+        senderId: currentUserId,
+        senderName,
+        timestamp: serverTimestamp(),
+        read: true,
+        reactions: {},
+        status: "sent"
+      };
+
+      // 3. Save message to messagesChatRooms/{roomId}/messages
+      const messagesRef = collection(db, "MessagesChatRooms", roomId, "messages");
+      await addDoc(messagesRef, message);
+
+      // 4. Update lastMessage inside chatRooms/{roomId}
+      const chatRoomRef = doc(db, "chatRooms", roomId);
+      await updateDoc(chatRoomRef, {
+        lastMessage: {
+          text: trimmedText,
+          senderId: currentUserId,
+          senderName,
+          timestamp: serverTimestamp()
+        }
+      });
+    }
     async function handleSend() {
       const { inputText, activeRoom } = chatState;
       if (!inputText.trim() || !activeRoom) return;
@@ -2434,12 +2570,8 @@ export function init(params) {
       document.getElementById("message-input").value = "";
       renderMessages();
 
-      setChatState({ isTyping: true });
-      renderMessages();
-
       setTimeout(async () => {
-        await ChatService.sendMessage(activeRoom.id, inputText);
-        setChatState({ isTyping: false });
+        await sendMessage(activeRoom.id, inputText, currentUserId);
 
         const { isOpen, activeRoom: currentRoom } = chatState;
         if (isOpen && currentRoom?.id === activeRoom.id) {
@@ -2499,6 +2631,7 @@ export function init(params) {
         console.error("Error adding reaction:", error);
       }
     }
+
 
     function showReactionPicker(messageId, targetElement) {
       if (reactionPicker) {
@@ -2595,13 +2728,39 @@ export function init(params) {
     }
 
     async function setActiveRoom(room) {
+      const container = document.getElementById("messages-container");
+      const inputField = document.getElementById("message-input");
+
+      // Disable input while loading new room
+      inputField.disabled = true;
+      inputField.value = "";
+
+      // Show loading state
+      container.innerHTML = `<div class="text-center py-4 text-gray-400">Loading messages...</div>`;
+
+      // Update chat state with new room
       setChatState({ activeRoom: room, inputText: "" });
+
+      // Start fresh listener for the new room
+      ChatService.listenToMessages(room.id, (newMessages) => {
+        const updated = { ...chatState.messages, [room.id]: newMessages };
+        setChatState({ messages: updated });
+
+        renderMessages(); // messages are loaded → refresh UI
+
+        // Re-enable input after messages load
+        inputField.disabled = false;
+        inputField.focus(); // optionally refocus
+      });
+
       await markRoomAsRead(room.id);
       updateUnreadBadge(chatState.totalUnread);
+
+      // Update UI
       document.getElementById("active-room-name").textContent = room.name;
-      document.getElementById("message-input").disabled = false;
-      renderMessages();
     }
+
+
 
     function renderAll() {
       renderChatRooms();
@@ -2681,29 +2840,47 @@ export function init(params) {
     }
 
     function formatTimestamp(timestamp) {
-      const now = new Date();
-      const messageDate = new Date(timestamp);
-      const isToday = now.toDateString() === messageDate.toDateString();
+      if (!timestamp) return "";
 
-      if (isToday) {
-        return messageDate.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-      } else {
-        return (
-          messageDate.toLocaleDateString() +
-          " " +
-          messageDate.toLocaleTimeString([], {
+      let messageDate;
+
+      try {
+        if (typeof timestamp === "object" && typeof timestamp.toDate === "function") {
+          // Firestore Timestamp
+          messageDate = timestamp.toDate();
+        } else {
+          // String or number
+          messageDate = new Date(timestamp);
+        }
+
+        if (isNaN(messageDate.getTime())) return ""; // Invalid date fallback
+
+        const now = new Date();
+        const isToday = now.toDateString() === messageDate.toDateString();
+
+        if (isToday) {
+          return messageDate.toLocaleTimeString([], {
             hour: "2-digit",
             minute: "2-digit",
-          })
-        );
+          });
+        } else {
+          return (
+            messageDate.toLocaleDateString() +
+            " " +
+            messageDate.toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          );
+        }
+      } catch (e) {
+        console.error("❌ Error parsing timestamp:", timestamp, e);
+        return "";
       }
     }
 
     function renderMessage(msg, participantStatus) {
-      const isUser = msg.senderId === chatState.currentUserId;
+      const isUser = msg.senderId === currentUserId;
       const isFile = msg.isFile;
       const statusInfo =
         !isUser && participantStatus[msg.senderId]
@@ -2715,26 +2892,38 @@ export function init(params) {
           }</span>`
           : "";
 
+      const isImage = msg.fileInfo?.type?.startsWith("image/");
+      const fileUrl = msg.text;
+
       const content = isFile
-        ? `
-                    <div class="file-message flex items-center p-2 bg-${isUser ? "gray-800" : "gray-100"
-        } rounded-lg">
-                        <i class="fas fa-file ${isUser ? "text-white" : "text-gray-600"
-        } mr-2"></i>
-                        <div>
-                            <p class="text-sm ${isUser ? "text-white" : "text-gray-800"
-        }">${msg.text
-          .replace("[File: ", "")
-          .replace("]", "")}</p>
-                            <p class="text-xs ${isUser ? "text-gray-400" : "text-gray-500"
-        }">${formatFileSize(msg.fileInfo.size)}</p>
-                        </div>
-                    </div>`
+        ? isImage
+          ? `
+      <div class="image-message">
+        <img src="${fileUrl}" alt="${msg.fileInfo.name}" class="max-w-xs max-h-60 rounded-lg" />
+        <p class="text-xs mt-1 ${isUser ? "text-gray-400" : "text-gray-500"}">
+          ${formatFileSize(msg.fileInfo.size)}
+        </p>
+      </div>
+    `
+          : `
+      <div class="file-message flex items-center p-2 bg-${isUser ? "gray-800" : "gray-100"} rounded-lg">
+        <i class="fas fa-file ${isUser ? "text-white" : "text-gray-600"} mr-2"></i>
+        <div>
+          <a href="${fileUrl}" target="_blank" class="text-sm ${isUser ? "text-white" : "text-gray-800"} underline">
+            ${msg.fileInfo.name}
+          </a>
+          <p class="text-xs ${isUser ? "text-gray-400" : "text-gray-500"}">
+            ${formatFileSize(msg.fileInfo.size)}
+          </p>
+        </div>
+      </div>
+    `
         : `<p>${msg.text}</p>`;
 
-      const reactionsHtml = Object.keys(msg.reactions)
+
+      const reactionsHtml = Object.keys(msg.reactions || {})
         .map((reaction) => {
-          const users = msg.reactions[reaction];
+          const users = msg.reactions?.[reaction] || [];
           const userNames = users.map((u) => u.userName).join(", ");
           return users.length > 0
             ? `<span class="reaction-item">${reaction}<span class="reaction-count">${users.length}</span><span class="reaction-users">${userNames}</span></span>`
