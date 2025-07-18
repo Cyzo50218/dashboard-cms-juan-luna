@@ -830,6 +830,10 @@ export function init(params) {
     chatContainer.id = "chat-container";
     chatContainer.className = "chat-container";
     chatContainer.innerHTML = `
+    <div id="image-preview-overlay" class="hidden fixed inset-0 bg-black bg-opacity-25 flex items-center justify-center z-[10000000]">
+  <img id="image-preview-full" src="" alt="Preview" class="max-w-[90%] max-h-[90%] rounded-lg shadow-xl" />
+</div>
+
       <button id="chat-button" class="chat-button">
         <i class="fas fa-comments"></i>
         <span id="unread-badge" class="unread-badge hidden">0</span>
@@ -2448,6 +2452,33 @@ export function init(params) {
       // Make draggable
       makeChatDraggable(currentUserId);
       minimizeChat();
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          const overlay = document.getElementById("image-preview-overlay");
+          overlay.classList.add("hidden");
+          document.getElementById("image-preview-full").src = "";
+        }
+      });
+
+      document.addEventListener("click", (e) => {
+        const target = e.target;
+
+        // Open preview
+        if (target.classList.contains("preview-image")) {
+          const imageUrl = target.dataset.url;
+          const overlay = document.getElementById("image-preview-overlay");
+          const fullImg = document.getElementById("image-preview-full");
+
+          fullImg.src = imageUrl;
+          overlay.classList.remove("hidden");
+        }
+
+        // Close preview when clicking outside the image
+        if (target.id === "image-preview-overlay") {
+          target.classList.add("hidden");
+          document.getElementById("image-preview-full").src = "";
+        }
+      });
 
       document.getElementById("chat-button").addEventListener("click", () => {
         toggleChat();
@@ -3111,7 +3142,7 @@ export function init(params) {
         ? isImage
           ? `
       <div class="image-message">
-        <img src="${fileUrl}" alt="${msg.fileInfo.name}" class="max-w-xs max-h-60 rounded-lg" />
+        <img src="${fileUrl}" alt="${msg.fileInfo.name}" class="max-w-xs max-h-60 rounded-lg cursor-pointer preview-image" data-url="${fileUrl}" />
         <p class="text-xs mt-1 ${isUser ? "text-gray-400" : "text-gray-500"}">
           ${formatFileSize(msg.fileInfo.size)}
         </p>
