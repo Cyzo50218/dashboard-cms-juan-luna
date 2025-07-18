@@ -746,7 +746,7 @@ export function init(params) {
 
       await loadProjectHeader();
       if (!chatController) {
-       // chatCleanup = floatingChatBox();
+        chatCleanup = floatingChatBox();
       }
       // 3. Load the initial tab content (which needs project context)
       setActiveTabLink(tabId);
@@ -863,7 +863,7 @@ export function init(params) {
         </header>
         <div id="chat-body" class="flex flex-col flex-1">
           <!-- Added bottom margin to create space below selector -->
-          <nav id="chat-room-selector" class="border-b border-gray-300 bg-gray-100 px-2 py-2 flex flex-nowrap overflow-x-auto gap-1 mb-2"></nav>
+          <nav id="chat-room-selector" class="border-b border-gray-300 bg-gray-100 px-2 py-2 flex flex-nowrap overflow-x-auto gap-1"></nav>
           <div id="messages-container" class="messages-container bg-gradient-to-b from-gray-50 to-gray-100 p-2 overflow-y-auto flex-1"></div>
           <div class="p-2 border-t border-gray-200 bg-white rounded-b-xl">
             <form id="chat-form" class="flex items-center" onsubmit="return false">
@@ -888,6 +888,9 @@ export function init(params) {
       </div>
     `;
     document.body.appendChild(chatContainer);
+    const chatBox = document.getElementById("chat-box");
+    chatBox.classList.remove("open", "minimized", "maximized");
+    chatBox.style.display = "none";
 
     // 2. Inject chat styles
     const style = document.createElement("style");
@@ -910,6 +913,22 @@ export function init(params) {
         --z-emoji-picker: 10030; /* Highest priority */
         --z-reaction-picker: 10040; /* Even higher priority for reaction picker */
       }
+     #chat-box.align-left {
+  transform: translateX(-20px);
+}
+
+#chat-box.align-right {
+  transform: translateX(20px);
+}
+
+#chat-box.align-up {
+  transform: translateY(-20px);
+}
+
+#chat-box.align-down {
+  transform: translateY(20px);
+}
+
 
       .chat-container { z-index: var(--z-chat-container); }
     .chat-box { z-index: var(--z-chat-box); }
@@ -933,19 +952,26 @@ export function init(params) {
 }
 
       /* ================ Chat Container ================ */
-      .chat-container {
-        position: fixed;
+.chat-container {
+        position: absolute;
         bottom: 20px;
         right: 20px;
         z-index: 10000; /* High z-index to stay on top */
         display: flex;
         flex-direction: column;
         align-items: flex-end;
+        cursor: grab;
       }
-
       .chat-container.scrolled {
         transform: translateY(-3.125rem);
       }
+        #chat-box {
+  display: none;
+}
+
+#chat-box.open {
+  display: block;
+}
 
       /* ================ CHAT BUTTON ================ */
       .chat-button {
@@ -996,20 +1022,14 @@ export function init(params) {
 
       /* ================ Chat Box States ================ */
       .chat-box {
-        width: 320px;
-        height: 0;
-        opacity: 0;
-        overflow: hidden;
-        transform: translateY(1rem);
-        transition: all 0.3s ease;
-        border-radius: 14px;
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
-        background: white;
-        font-size: 0.875rem;
-        z-index: 10000; /* Ensure it's above other content */
-        display: flex; /* Added for flex column layout */
-        flex-direction: column; /* Added for flex column layout */
-      }
+    position: absolute; /* This is CRITICAL for the JS to work */
+    width: 320px;
+    display: none; /* Controlled by JS */
+    flex-direction: column;
+    z-index: 10010;
+
+    /* REMOVE all old 'align-up', 'align-down', 'transform' rules */
+}
 
       .chat-box.open {
         height: 450px; /* Default height */
@@ -1858,7 +1878,7 @@ export function init(params) {
             "messages",
             String(messageId) // ✅ fix: ensure string
           );
-
+          console.log("Adding reaction to message:", messageId, "in room:", roomId);
           try {
             const messageSnap = await getDoc(messageDocRef);
             if (!messageSnap.exists()) throw new Error("Message not found");
@@ -1918,6 +1938,73 @@ export function init(params) {
 
       };
     })();
+
+    // Make the chat container draggable
+    function makeChatDraggable(currentUserId) {
+      const container = document.getElementById("chat-container");
+      const chatBox = document.getElementById("chat-box");
+      const dragTargets = [container, document.getElementById("chat-header")];
+
+      let isDragging = false;
+      let dragged = false;
+      let offsetX = 0;
+      let offsetY = 0;
+
+      dragTargets.forEach((target) => {
+        target.addEventListener("mousedown", (e) => {
+          if (!chatBox.classList.contains("minimized")) return;
+
+          isDragging = true;
+          dragged = false;
+          container.classList.add("dragging");
+
+          const rect = container.getBoundingClientRect();
+          offsetX = e.clientX - rect.left;
+          offsetY = e.clientY - rect.top;
+
+          e.preventDefault();
+        });
+
+        target.addEventListener("click", (e) => {
+          if (dragged) {
+            e.stopImmediatePropagation();
+            e.preventDefault();
+            dragged = false;
+          }
+        });
+      });
+
+      document.addEventListener("mousemove", (e) => {
+        if (!isDragging) return;
+        dragged = true;
+
+        const containerWidth = container.offsetWidth;
+        const containerHeight = container.offsetHeight;
+
+        let x = e.clientX - offsetX;
+        let y = e.clientY - offsetY;
+
+        // Clamp X and Y within viewport bounds
+        x = Math.max(0, Math.min(x, window.innerWidth - containerWidth));
+        y = Math.max(0, Math.min(y, window.innerHeight - containerHeight));
+
+        container.style.left = `${x}px`;
+        container.style.top = `${y}px`;
+        container.style.bottom = "auto";
+        container.style.right = "auto";
+
+        localStorage.setItem(`${currentUserId}-chat-pos-x`, x);
+        localStorage.setItem(`${currentUserId}-chat-pos-y`, y);
+      });
+
+      document.addEventListener("mouseup", () => {
+        if (isDragging) {
+          isDragging = false;
+          container.classList.remove("dragging");
+        }
+      });
+    }
+
 
     // Chat Controller State and Functions
     let chatState = {
@@ -2288,7 +2375,6 @@ export function init(params) {
         }
 
         const fileMessage = {
-          id: Date.now(),
           text: messageText,
           senderName: senderName,
           senderId: chatState.currentUserId,
@@ -2355,33 +2441,57 @@ export function init(params) {
       }, 30000);
     }
 
-    function setupEventListeners() {
-      document
-        .getElementById("chat-button")
-        .addEventListener("click", toggleChat);
-      document
-        .getElementById("minimize-chat")
-        .addEventListener("click", (e) => {
-          e.stopPropagation();
-          minimizeChat();
-        });
-      document
-        .getElementById("toggle-minmax")
-        .addEventListener("click", (e) => {
-          e.stopPropagation();
-          toggleMaximize();
-        });
+    function setupEventListeners(currentUserId) {
+      const container = document.getElementById("chat-container");
+      const chatBox = document.getElementById("chat-box");
+
+      // Make draggable
+      makeChatDraggable(currentUserId);
+      minimizeChat();
+
+      document.getElementById("chat-button").addEventListener("click", () => {
+        toggleChat();
+      });
+
+      document.getElementById("minimize-chat").addEventListener("click", (e) => {
+        e.stopPropagation();
+        minimizeChat();
+
+        // Return to draggable position
+        const savedX = localStorage.getItem(`${currentUserId}-chat-pos-x`);
+        const savedY = localStorage.getItem(`${currentUserId}-chat-pos-y`);
+        if (savedX && savedY) {
+          container.style.left = `${savedX}px`;
+          container.style.top = `${savedY}px`;
+          container.style.right = "auto";
+          container.style.bottom = "auto";
+        }
+      });
+
+      document.getElementById("toggle-minmax").addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleMaximize();
+      });
+
       document.getElementById("close-chat").addEventListener("click", (e) => {
         e.stopPropagation();
-        closeChat();
-      });
-      document
-        .getElementById("chat-header")
-        .addEventListener("click", expandChat);
+        minimizeChat();
 
-      document
-        .getElementById("send-button")
-        .addEventListener("click", handleSend);
+        // Return to draggable position
+        const savedX = localStorage.getItem(`${currentUserId}-chat-pos-x`);
+        const savedY = localStorage.getItem(`${currentUserId}-chat-pos-y`);
+        if (savedX && savedY) {
+          container.style.left = `${savedX}px`;
+          container.style.top = `${savedY}px`;
+          container.style.right = "auto";
+          container.style.bottom = "auto";
+        }
+      });
+
+      document.getElementById("chat-header").addEventListener("click", expandChat);
+
+      document.getElementById("send-button").addEventListener("click", handleSend);
+
       document
         .getElementById("message-input")
         .addEventListener("keypress", (e) => {
@@ -2399,9 +2509,45 @@ export function init(params) {
           updateSendButtonState(!!e.target.value.trim() && !!activeRoom);
         });
 
+      // Restore position on load
+      const savedX = localStorage.getItem(`${currentUserId}-chat-pos-x`);
+      const savedY = localStorage.getItem(`${currentUserId}-chat-pos-y`);
+      if (savedX && savedY) {
+        container.style.left = `${savedX}px`;
+        container.style.top = `${savedY}px`;
+        container.style.right = "auto";
+        container.style.bottom = "auto";
+      }
+
+      // Minimize chat if clicked outside chat-box
+      document.addEventListener("mousedown", (e) => {
+        const chatBox = document.getElementById("chat-box");
+        const chatContainer = document.getElementById("chat-container");
+        const isOpen = chatState.isOpen;
+
+        if (isOpen && chatBox && !chatBox.contains(e.target) && !chatContainer.contains(e.target)) {
+          minimizeChat();
+        }
+      });
+      // Scroll handler
       window.addEventListener("scroll", handleScroll);
     }
 
+    function minimizeChat() {
+      const chatBox = document.getElementById("chat-box");
+      const toggleIcon = document.getElementById("toggle-minmax-icon");
+      chatBox.classList.remove("open");
+      chatBox.classList.add("minimized");
+      chatBox.style.display = "none"; // hide on minimize
+      chatBox.classList.remove("maximized");
+
+      setChatState({ ...chatState, isOpen: false, isMinimized: true });
+      chatBox.classList.remove("maximized");
+      toggleIcon.classList.remove("fa-compress");
+      toggleIcon.classList.add("fa-expand");
+
+      document.getElementById("chat-button").classList.remove("hidden");
+    }
     function handleScroll() {
       const scrollTop =
         window.pageYOffset || document.documentElement.scrollTop;
@@ -2413,39 +2559,74 @@ export function init(params) {
     }
 
     function toggleChat() {
-      const { isOpen, activeRoom } = chatState;
-      const newState = { isOpen: !isOpen };
-
-      if (!isOpen) {
-        if (activeRoom) {
-          markRoomAsRead(activeRoom.id);
-          updateUnreadBadge(chatState.totalUnread);
-        }
-
-        document.getElementById("chat-box").classList.add("open");
-        document.getElementById("chat-box").classList.remove("minimized");
-        setChatState({ ...newState, isMinimized: false });
-        document.getElementById("chat-button").classList.add("hidden");
-        document
-          .getElementById("minimized-unread-badge")
-          .classList.add("hidden");
-      } else {
-        minimizeChat();
-      }
-    }
-
-    function minimizeChat() {
+      const container = document.getElementById("chat-container");
       const chatBox = document.getElementById("chat-box");
-      chatBox.classList.add("minimized");
-      chatBox.classList.remove("open", "maximized");
-      setChatState({ isOpen: false, isMinimized: true, isMaximized: false });
-      document.getElementById("chat-button").classList.add("hidden");
-      updateUnreadBadge(chatState.totalUnread);
+      const chatButton = document.getElementById("chat-button");
 
-      if (reactionPicker) {
-        reactionPicker.remove();
-        reactionPicker = null;
+      // --- 1. Reset the Chatbox from its Minimized State ---
+
+      // NEW: Remove the minimized class to reset its appearance.
+      chatBox.classList.remove("minimized");
+
+      // NEW: Clear any inline display styles from the minimize function.
+      chatBox.style.display = '';
+
+
+      // --- 2. Get Essential Dimensions ---
+      const containerRect = container.getBoundingClientRect();
+      const viewport = {
+        width: window.innerWidth,
+        height: window.innerHeight
+      };
+
+      // Temporarily show the chatbox to measure its actual size
+      chatBox.style.display = "flex"; // Now this will work correctly
+      chatBox.classList.add("open");
+      chatBox.style.visibility = "hidden";
+
+      const chatBoxSize = {
+        width: chatBox.offsetWidth,
+        height: chatBox.offsetHeight
+      };
+
+      // --- 2. Calculate Vertical Position (Flip Up/Down) ---
+
+      // Space available above and below the button
+      const spaceAbove = containerRect.top;
+      const spaceBelow = viewport.height - containerRect.bottom;
+
+      // Reset previous inline styles
+      chatBox.style.top = 'auto';
+      chatBox.style.bottom = 'auto';
+
+      if (spaceBelow < chatBoxSize.height && spaceAbove > chatBoxSize.height) {
+        // Not enough space below, BUT enough space above. FLIP UP!
+        // Position the bottom of the chatbox to the top of the button.
+        chatBox.style.bottom = `${containerRect.height + 0}px`; // 10px margin
+      } else {
+        // Default: Position the top of the chatbox to the bottom of the button.
+        chatBox.style.top = `${containerRect.height + 0}px`; // 10px margin
       }
+
+
+      // --- 3. Calculate Horizontal Position (Flip Left/Right) ---
+
+      // Reset previous inline styles
+      chatBox.style.left = 'auto';
+      chatBox.style.right = 'auto';
+
+      if (containerRect.left + chatBoxSize.width > viewport.width) {
+        // If opening to the right would go off-screen, FLIP LEFT!
+        // Align the right edge of the chatbox with the right edge of the button.
+        chatBox.style.right = '0px';
+      } else {
+        // Default: Align the left edge of the chatbox with the left edge of the button.
+        chatBox.style.left = '0px';
+      }
+
+      chatButton.classList.add("hidden");
+      chatBox.style.visibility = "visible";
+      setChatState({ isOpen: true, isMinimized: false });
     }
 
     function expandChat() {
@@ -2473,24 +2654,53 @@ export function init(params) {
 
     function toggleMaximize() {
       const chatBox = document.getElementById("chat-box");
+      const container = document.getElementById("chat-container");
       const toggleIcon = document.getElementById("toggle-minmax-icon");
 
       if (chatState.isMaximized) {
+        // Restore position
+        const prevStyle = chatState.prevStyle || {};
+        container.style.top = prevStyle.top || "";
+        container.style.left = prevStyle.left || "";
+        container.style.right = prevStyle.right || "";
+        container.style.bottom = prevStyle.bottom || "";
+
         chatBox.classList.remove("maximized");
         toggleIcon.classList.remove("fa-compress");
         toggleIcon.classList.add("fa-expand");
-        setChatState({ isMaximized: false });
+
+        setChatState({ ...chatState, isMaximized: false });
+
+        minimizeChat();
+        toggleChat();
       } else {
+        const prevStyle = {
+          top: container.style.top,
+          left: container.style.left,
+          right: container.style.right,
+          bottom: container.style.bottom,
+        };
+
+        chatBox.classList.remove("align-left", "align-right", "align-up", "align-down");
+        chatBox.style.top = '';
+        chatBox.style.bottom = '';
+        chatBox.style.left = '';
+        chatBox.style.right = '';
+        chatBox.style.transform = '';
+
         chatBox.classList.add("maximized");
         toggleIcon.classList.remove("fa-expand");
         toggleIcon.classList.add("fa-compress");
-        setChatState({ isMaximized: true });
-        scrollToBottom(document.getElementById("messages-container"));
+
+        setChatState({ ...chatState, isMaximized: true, prevStyle });
+
+        scrollToBottom(document.getElementById("messages-container"), true);
       }
-      if (emojiPicker && emojiPicker.classList.contains("open")) {
-        updateEmojiPickerPosition();
-      }
-      if (reactionPicker && reactionPicker.classList.contains("open")) {
+
+
+      // Reposition floating elements if visible
+      if (emojiPicker?.classList.contains("open")) updateEmojiPickerPosition();
+      if (reactionPicker?.classList.contains("open")) {
         updateReactionPickerPosition(
           reactionPicker.dataset.messageId,
           reactionPicker.dataset.targetElementId
@@ -2555,7 +2765,6 @@ export function init(params) {
       if (!inputText.trim() || !activeRoom) return;
 
       const userMessage = {
-        id: Date.now(),
         text: inputText,
         sender: chatState.currentUserName,
         senderId: chatState.currentUserId,
@@ -2616,7 +2825,7 @@ export function init(params) {
           updatedMessages[activeRoom.id] = roomMessages;
           return { messages: updatedMessages };
         });
-        renderMessages();
+        //renderMessages();
 
         if (reactionPicker) {
           reactionPicker.classList.remove("open");
@@ -2796,49 +3005,6 @@ export function init(params) {
       });
     }
 
-    function renderMessages() {
-      const { activeRoom, messages, isTyping, participantStatus } = chatState;
-      const roomMessages = activeRoom ? messages[activeRoom.id] || [] : [];
-      const container = document.getElementById("messages-container");
-
-      if (!activeRoom || roomMessages.length === 0) {
-        container.innerHTML = `
-                        <div class="text-center py-8 text-gray-500">
-                            <i class="fas fa-comment-slash text-3xl mb-2"></i>
-                            <p>No messages yet</p>
-                            <p class="text-sm mt-1">Start the conversation!</p>
-                        </div>
-                    `;
-        return;
-      }
-
-      let messagesHTML = roomMessages
-        .map((msg) => renderMessage(msg, participantStatus))
-        .join("");
-      if (isTyping) messagesHTML += renderTypingIndicator();
-
-      container.innerHTML = messagesHTML;
-      scrollToBottom(container);
-
-      roomMessages.forEach((msg) => {
-        const messageElement = container.querySelector(
-          `[data-message-id="${msg.id}"]`
-        );
-        if (messageElement) {
-          const reactButton = messageElement.querySelector(".react-button");
-          if (reactButton) {
-            if (!reactButton.id) {
-              reactButton.id = `react-btn-${msg.id}`;
-            }
-            reactButton.addEventListener("click", (e) => {
-              e.stopPropagation();
-              showReactionPicker(msg.id, reactButton);
-            });
-          }
-        }
-      });
-    }
-
     function formatTimestamp(timestamp) {
       if (!timestamp) return "";
 
@@ -2879,6 +3045,54 @@ export function init(params) {
       }
     }
 
+    function renderMessages() {
+      const { activeRoom, messages, isTyping, participantStatus } = chatState;
+      const roomMessages = activeRoom ? messages[activeRoom.id] || [] : [];
+      const container = document.getElementById("messages-container");
+
+      const wasScrolledToBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 20; // 20px buffer
+
+      if (!activeRoom || roomMessages.length === 0) {
+        container.innerHTML = `
+                        <div class="text-center py-8 text-gray-500">
+                            <i class="fas fa-comment-slash text-3xl mb-2"></i>
+                            <p>No messages yet</p>
+                            <p class="text-sm mt-1">Start the conversation!</p>
+                        </div>
+                    `;
+        return;
+      }
+
+      let messagesHTML = roomMessages
+        .map((msg) => renderMessage(msg, participantStatus))
+        .join("");
+      if (isTyping) messagesHTML += renderTypingIndicator();
+
+      container.innerHTML = messagesHTML;
+      if (wasScrolledToBottom) {
+        scrollToBottom(container, true); // Force scroll if previously at bottom
+      }
+
+      roomMessages.forEach((msg) => {
+        const messageElement = container.querySelector(
+          `[data-message-id="${msg.id}"]`
+        );
+        if (messageElement) {
+          const reactButton = messageElement.querySelector(".react-button");
+          if (reactButton) {
+            if (!reactButton.id) {
+              reactButton.id = `react-btn-${msg.id}`;
+            }
+            reactButton.addEventListener("click", (e) => {
+              e.stopPropagation();
+              console.log("React button clicked for message:", msg.id);
+              showReactionPicker(msg.id, reactButton);
+            });
+          }
+        }
+      });
+    }
+
     function renderMessage(msg, participantStatus) {
       const isUser = msg.senderId === currentUserId;
       const isFile = msg.isFile;
@@ -2886,9 +3100,7 @@ export function init(params) {
         !isUser && participantStatus[msg.senderId]
           ? `<span class="ml-2 text-xs">${participantStatus[msg.senderId].online
             ? '<span class="text-green-500 flex items-center"><span class="w-2 h-2 bg-green-500 rounded-full mr-1"></span>Online</span>'
-            : `Last seen ${formatLastSeen(
-              participantStatus[msg.senderId].lastSeen
-            )}`
+            : '' // `Last seen ${formatLastSeen( participantStatus[msg.senderId].lastSeen)}`
           }</span>`
           : "";
 
@@ -2939,7 +3151,7 @@ export function init(params) {
                             <div class="message-bubble ${isUser ? "user" : "other"
         }">
                                 <div class="message-header">
-                                    ${isUser ? "You" : msg.sender}
+                                    ${isUser ? "You" : msg.senderName}
                                     ${statusInfo}
                                 </div>
                                 <div class="message-content">
@@ -3017,8 +3229,12 @@ export function init(params) {
                 `;
     }
 
-    function scrollToBottom(element) {
-      element.scrollTop = element.scrollHeight;
+    function scrollToBottom(element, forceScroll = false) {
+      const isAtBottom = element.scrollHeight - element.scrollTop <= element.clientHeight + 20;
+
+      if (forceScroll || isAtBottom) {
+        element.scrollTop = element.scrollHeight;
+      }
     }
 
     function updateSendButtonState(enabled) {
