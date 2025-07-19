@@ -1212,17 +1212,41 @@ function createModalUI() {
     <div class="shareproject-modal">
         <div class="shareproject-modal-header"><h2>Share Project</h2><button id="shareproject-close-modal-btn" class="shareproject-icon-btn"><i class="material-icons">close</i></button></div>
         <div class="shareproject-modal-body">
-            <div class="shareproject-invite-input-wrapper"><div id="shareproject-email-tags" class="shareproject-email-tags-container"></div><input type="text" id="shareproject-email-input" placeholder="Add workspace members or new people by email..."><div class="shareproject-invite-controls"><div class="shareproject-role-selector"><button id="shareproject-invite-role-btn" data-target-dropdown="shareproject-role-dropdown" class="shareproject-dropdown-btn"><span id="shareproject-selected-role">Editor</span><i class="material-icons">arrow_drop_down</i></button></div><button id="shareproject-invite-btn" class="shareproject-invite-btn">Invite</button></div></div>
-            <div class="shareproject-access-settings-wrapper"><button id="shareproject-access-settings-btn" data-target-dropdown="shareproject-access-dropdown" class="shareproject-access-settings-btn"><i class="material-icons" id="shareproject-access-icon"></i><div><strong id="shareproject-access-title"></strong><p id="shareproject-access-desc"></p></div><i class="material-icons">arrow_drop_down</i></button></div>
-           <div class="shareproject-scrollable-section">
-           <br>
-  <p class="shareproject-section-title">Project Members</p>
-  <div class="shareproject-members-list" id="shareproject-members-list"><div class="section-loader"></div></div>
-  <div id="shareproject-pending-list-container"></div>
-</div>
+            <div class="shareproject-invite-input-wrapper">
+                <div id="shareproject-email-tags" class="shareproject-email-tags-container"></div>
+                <input type="text" id="shareproject-email-input" placeholder="Add workspace members or new people by email...">
+                <div class="shareproject-invite-controls">
+                    <div class="shareproject-role-selector">
+                        <button id="shareproject-invite-role-btn" data-target-dropdown="shareproject-role-dropdown" class="shareproject-dropdown-btn">
+                            <span id="shareproject-selected-role">Editor</span>
+                            <i class="material-icons">arrow_drop_down</i>
+                        </button>
+                    </div>
+                    <button id="shareproject-invite-btn" class="shareproject-invite-btn">Invite</button>
+                </div>
+                <div id="shareproject-user-search-dropdown" class="hidden"></div>
+            </div>
+            <div class="shareproject-access-settings-wrapper">
+                <button id="shareproject-access-settings-btn" data-target-dropdown="shareproject-access-dropdown" class="shareproject-access-settings-btn">
+                    <i class="material-icons" id="shareproject-access-icon"></i>
+                    <div>
+                        <strong id="shareproject-access-title"></strong>
+                        <p id="shareproject-access-desc"></p>
+                    </div>
+                    <i class="material-icons">arrow_drop_down</i>
+                </button>
+            </div>
+            <div class="shareproject-scrollable-section">
+                <br>
+                <p class="shareproject-section-title">Project Members</p>
+                <div class="shareproject-members-list" id="shareproject-members-list"><div class="section-loader"></div></div>
+                <div id="shareproject-pending-list-container"></div>
+            </div>
         </div>
         <div class="shareproject-modal-footer">
-            <div id="shareproject-footer-left"><button id="shareproject-leave-btn" class="shareproject-icon-btn"><i class="material-icons">logout</i>Leave Project</button></div>
+            <div id="shareproject-footer-left">
+                <button id="shareproject-leave-btn" class="shareproject-icon-btn"><i class="material-icons">logout</i>Leave Project</button>
+            </div>
             <button class="shareproject-copy-link-btn"><i class="material-icons">link</i>Copy project link</button>
         </div>
         <div id="shareproject-role-dropdown" class="shareproject-dropdown-content hidden"></div>
