@@ -12,6 +12,7 @@ import {
   getDoc,
   query,
   where,
+  deleteField,
   getDocs,
   doc,
   updateDoc,
@@ -1031,7 +1032,7 @@ export function init(params) {
     display: none; /* Controlled by JS */
     flex-direction: column;
     z-index: 10010;
-
+    box-shadow: inset 0 8px 6px -6px rgba(0, 0, 0, 0.4);
     /* REMOVE all old 'align-up', 'align-down', 'transform' rules */
 }
 
@@ -1201,6 +1202,7 @@ export function init(params) {
         padding: 0.5rem;
         background: #f8fafc;
         font-size: 0.8rem;
+        box-shadow: inset 0 8px 6px -6px rgba(0, 0, 0, 0.1);
       }
 
       .messages-container::-webkit-scrollbar {
@@ -1874,6 +1876,37 @@ export function init(params) {
           });
         },
 
+        updateTypingStatus: async (roomId, userId, userName, isTyping) => {
+          const roomRef = doc(db, "chatRooms", roomId);
+          const typingField = `typing.${userId}`;
+
+          if (isTyping) {
+            // Add the user to the 'typing' map.
+            await updateDoc(roomRef, {
+              [typingField]: userName // Store the user's name
+            });
+          } else {
+            await updateDoc(roomRef, {
+              [typingField]: deleteField() // Use deleteField() to remove a key from a map
+            });
+          }
+        },
+
+        listenToTypingStatus: (roomId, callback) => {
+          const roomRef = doc(db, "chatRooms", roomId);
+
+          // Listen for real-time changes to the chat room document
+          const unsubscribe = onSnapshot(roomRef, (docSnapshot) => {
+            if (docSnapshot.exists()) {
+              const roomData = docSnapshot.data();
+              const typingUsers = roomData.typing || {}; // The 'typing' map from Firestore
+              callback(typingUsers);
+            }
+          });
+
+          return unsubscribe; // Return the function to stop listening
+        },
+
         addReaction: async (roomId, messageId, selectedEmoji, userId, allParticipants) => {
           const messageDocRef = doc(
             db,
@@ -2025,8 +2058,11 @@ export function init(params) {
       isMaximized: false,
       currentUserId: currentUserId,
       currentUserName: "You",
+      typingUsers: {},
     };
 
+    let typingListener = null;
+    let typingTimeout = null;
     let statusInterval = null;
     let emojiPicker = null;
     let reactionPicker = null;
@@ -2080,6 +2116,25 @@ export function init(params) {
 
     async function initializeChat() {
       console.log("INITALIZED CHAT");
+      try {
+        const userRef = doc(db, "users", currentUserId);
+        const userSnap = await getDoc(userRef);
+
+        if (userSnap.exists()) {
+          // Get the name from the user's document
+          const userName = userSnap.data().name || "Guest"; // Fallback to "Guest" if name is not set
+          // Update the global state with the fetched name
+          setChatState({ currentUserName: userName });
+          console.log(`✅ Current user name set to: ${userName}`);
+        } else {
+          console.warn(`User document not found for ID: ${currentUserId}. Defaulting name.`);
+          setChatState({ currentUserName: "Guest" });
+        }
+      } catch (error) {
+        console.error("❌ Error fetching user data:", error);
+        // In case of an error, we can still proceed with a default name
+        setChatState({ currentUserName: "Guest" });
+      }
       await ensureChatRoomExistsForProject(currentProjectId, currentLoadedProjectData);
       await loadChatData();
       setupEventListeners();
@@ -2536,8 +2591,10 @@ export function init(params) {
         .getElementById("message-input")
         .addEventListener("input", (e) => {
           const { activeRoom } = chatState;
+          const hasText = !!e.target.value.trim();
           setChatState({ inputText: e.target.value });
-          updateSendButtonState(!!e.target.value.trim() && !!activeRoom);
+          updateSendButtonState(hasText && !!activeRoom);
+          handleTyping(hasText);
         });
 
       // Restore position on load
@@ -2658,6 +2715,7 @@ export function init(params) {
       chatButton.classList.add("hidden");
       chatBox.style.visibility = "visible";
       setChatState({ isOpen: true, isMinimized: false });
+      scrollToBottom(document.getElementById("messages-container"), true);
     }
 
     function expandChat() {
@@ -2681,6 +2739,7 @@ export function init(params) {
           .getElementById("minimized-unread-badge")
           .classList.add("hidden");
       }
+      scrollToBottom(document.getElementById("messages-container"), true);
     }
 
     function toggleMaximize() {
@@ -2792,37 +2851,73 @@ export function init(params) {
       });
     }
     async function handleSend() {
-      const { inputText, activeRoom } = chatState;
-      if (!inputText.trim() || !activeRoom) return;
+      const {
+        inputText,
+        activeRoom,
+        currentUserId,
+        currentUserName
+      } = chatState;
+      const trimmedText = inputText.trim();
 
-      const userMessage = {
-        text: inputText,
-        sender: chatState.currentUserName,
-        senderId: chatState.currentUserId,
-        timestamp: new Date(),
-        read: true,
+      // --- Defensive Checks ---
+      // Exit if there's no text or no active room selected.
+      if (!trimmedText || !activeRoom) {
+        return;
+      }
+
+      // --- FIX: Capture the Room ID at the time of sending ---
+      // This prevents the message from being sent to the wrong room if the user switches rooms quickly.
+      const targetRoomId = activeRoom.id;
+
+      // --- Clear the input immediately for a better user experience ---
+      setChatState({
+        inputText: ""
+      });
+      document.getElementById("message-input").value = "";
+      updateSendButtonState(false); // Disable the send button right away
+
+      // --- Prepare the message object ---
+      // Note: We use serverTimestamp() for consistency across clients.
+      const messageData = {
+        text: trimmedText,
+        senderId: currentUserId,
+        senderName: currentUserName, // Use the name from the state
+        timestamp: serverTimestamp(), // Let Firestore determine the time
+        read: true, // The sender has "read" their own message
         status: MESSAGE_STATUS.SENT,
         reactions: {},
       };
 
-      await addMessage(activeRoom.id, userMessage);
-      setChatState({ inputText: "" });
-      document.getElementById("message-input").value = "";
-      renderMessages();
+      try {
+        // --- The Core Sending Logic ---
+        // We now directly call the service that interacts with Firestore.
+        // We no longer call `addMessage` locally to prevent duplication.
+        // The `onSnapshot` listener will handle adding the message to the UI.
+        await ChatService.sendMessage(targetRoomId, messageData);
 
-      setTimeout(async () => {
-        await sendMessage(activeRoom.id, inputText, currentUserId);
-
-        const { isOpen, activeRoom: currentRoom } = chatState;
-        if (isOpen && currentRoom?.id === activeRoom.id) {
-          await markRoomAsRead(activeRoom.id);
-        } else {
-          calculateUnreadCounts();
-          updateUnreadBadge(chatState.totalUnread);
+        // --- Post-Send Actions ---
+        // After the message is successfully sent, scroll the chat to the bottom.
+        // This ensures the user sees their newly sent message.
+        const messagesContainer = document.getElementById("messages-container");
+        if (messagesContainer) {
+          scrollToBottom(messagesContainer, true); // Force scroll
         }
 
-        renderMessages();
-      }, 1500);
+      } catch (error) {
+        // --- Error Handling ---
+        // If the message fails to send, log the error and inform the user.
+        console.error("❌ Failed to send message:", error);
+
+        // Optional: Restore the input text so the user can retry sending.
+        setChatState({
+          inputText: trimmedText
+        });
+        document.getElementById("message-input").value = trimmedText;
+        updateSendButtonState(true); // Re-enable the button
+
+        // You could also display a more user-friendly error message in the UI.
+        // For example: append a "Failed to send" status to the message.
+      }
     }
 
     async function handleReaction(messageId, reaction) {
@@ -2971,36 +3066,50 @@ export function init(params) {
       const container = document.getElementById("messages-container");
       const inputField = document.getElementById("message-input");
 
-      // Disable input while loading new room
-      inputField.disabled = true;
-      inputField.value = "";
+      // --- Stop the old typing listener if it exists ---
+      if (typingListener) {
+        typingListener(); // Unsubscribe from the previous room's typing status
+        typingListener = null;
+      }
 
-      // Show loading state
+      inputField.disabled = true;
       container.innerHTML = `<div class="text-center py-4 text-gray-400">Loading messages...</div>`;
 
-      // Update chat state with new room
-      setChatState({ activeRoom: room, inputText: "" });
+      setChatState({
+        activeRoom: room,
+        inputText: "",
+        typingUsers: {}
+      }); // Reset typing users on room change
 
-      // Start fresh listener for the new room
+      // --- Start new listeners for the new room ---
+      // Listener for messages
       ChatService.listenToMessages(room.id, (newMessages) => {
-        const updated = { ...chatState.messages, [room.id]: newMessages };
-        setChatState({ messages: updated });
-
-        renderMessages(); // messages are loaded → refresh UI
-
-        // Re-enable input after messages load
+        const updated = {
+          ...chatState.messages,
+          [room.id]: newMessages
+        };
+        setChatState({
+          messages: updated
+        });
+        renderMessages();
         inputField.disabled = false;
-        inputField.focus(); // optionally refocus
+        inputField.focus();
       });
+
+      // --- ADD THIS: Listener for typing status ---
+      typingListener = ChatService.listenToTypingStatus(room.id, (typingData) => {
+        setChatState({
+          typingUsers: typingData
+        });
+        renderMessages(); // Re-render to show/hide the typing indicator
+      });
+
 
       await markRoomAsRead(room.id);
       updateUnreadBadge(chatState.totalUnread);
 
-      // Update UI
       document.getElementById("active-room-name").textContent = room.name;
     }
-
-
 
     function renderAll() {
       renderChatRooms();
@@ -3077,7 +3186,7 @@ export function init(params) {
     }
 
     function renderMessages() {
-      const { activeRoom, messages, isTyping, participantStatus } = chatState;
+      const { activeRoom, messages, typingUsers, participantStatus } = chatState;
       const roomMessages = activeRoom ? messages[activeRoom.id] || [] : [];
       const container = document.getElementById("messages-container");
 
@@ -3097,7 +3206,12 @@ export function init(params) {
       let messagesHTML = roomMessages
         .map((msg) => renderMessage(msg, participantStatus))
         .join("");
-      if (isTyping) messagesHTML += renderTypingIndicator();
+
+      const otherTypingUsers = Object.entries(typingUsers).filter(([id]) => id !== currentUserId);
+      if (otherTypingUsers.length > 0) {
+        const typingNames = otherTypingUsers.map(([, name]) => name);
+        messagesHTML += renderTypingIndicator(typingNames); // Pass names to the renderer
+      }
 
       container.innerHTML = messagesHTML;
       if (wasScrolledToBottom) {
@@ -3241,23 +3355,34 @@ export function init(params) {
                 `;
     }
 
-    function renderTypingIndicator() {
+    function renderTypingIndicator(typingNames) {
+      // --- DYNAMICALLY CREATE THE TYPING TEXT ---
+      let typingText = "";
+      if (typingNames.length === 1) {
+        typingText = `<strong>${typingNames[0]}</strong> is typing...`;
+      } else if (typingNames.length === 2) {
+        typingText = `<strong>${typingNames[0]}</strong> and <strong>${typingNames[1]}</strong> are typing...`;
+      } else {
+        const otherCount = typingNames.length - 1;
+        typingText = `<strong>${typingNames[0]}</strong> and ${otherCount} others are typing...`;
+      }
+
       return `
-                    <div class="message-wrapper other">
-                        <div class="message-container other">
-                            <div class="message-bubble other">
-                                <div class="flex items-center">
-                                    <div class="typing-indicator">
-                                        <span></span>
-                                        <span></span>
-                                        <span></span>
-                                    </div>
-                                    <span class="ml-2 text-xs text-gray-500">typing...</span>
-                                </div>
-                            </div>
+        <div class="message-wrapper other">
+            <div class="message-container other">
+                <div class="message-bubble other" style="background-color: #f0f2f5;">
+                    <div class="flex items-center">
+                        <div class="typing-indicator">
+                            <span></span>
+                            <span></span>
+                            <span></span>
                         </div>
+                        <span class="ml-2 text-xs text-gray-600">${typingText}</span>
                     </div>
-                `;
+                </div>
+            </div>
+        </div>
+    `;
     }
 
     function scrollToBottom(element, forceScroll = false) {
@@ -3334,6 +3459,30 @@ export function init(params) {
         emojiPicker.style.transform = "translateY(20px)";
         emojiPicker.style.top = "auto";
       }
+    }
+
+    function handleTyping(isTyping) {
+      const {
+        activeRoom,
+        currentUserId,
+        currentUserName
+      } = chatState;
+      if (!activeRoom) return;
+
+      // Clear any existing timeout
+      if (typingTimeout) {
+        clearTimeout(typingTimeout);
+      }
+
+      // Update status to "typing" immediately
+      if (isTyping) {
+        ChatService.updateTypingStatus(activeRoom.id, currentUserId, currentUserName, true);
+      }
+
+      // Set a timeout to mark as "not typing" after a period of inactivity (e.g., 2 seconds)
+      typingTimeout = setTimeout(() => {
+        ChatService.updateTypingStatus(activeRoom.id, currentUserId, currentUserName, false);
+      }, 2000); // 2-second delay
     }
 
     function destroyChat() {
