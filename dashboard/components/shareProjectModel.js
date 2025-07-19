@@ -222,9 +222,18 @@ async function handleRoleChangeAction(actionBtn, projectRef) {
   const currentUserId = auth.currentUser.uid;
   const superAdminUID = projectData.project_super_admin_uid;
 
+  const currentUserMemberInfo = (projectData.members || []).find(m => m.uid === currentUserId);
+  const isOwner = currentUserId === superAdminUID;
+  const isProjectAdmin = currentUserMemberInfo?.role === 'Project Admin';
+
   // --- Permission Check ---
-  if (currentUserId !== superAdminUID) {
-    return alert("Only the project owner can modify member roles.");
+  if (!isOwner && !isProjectAdmin) {
+    return alert("Only the project owner or a project admin can modify member roles.");
+  }
+
+  // --- Prevent Admins from modifying the Owner ---
+  if (contextId === superAdminUID && !isOwner) {
+    return alert("Project Admins cannot modify the owner's role.");
   }
 
   const memberId = contextId;

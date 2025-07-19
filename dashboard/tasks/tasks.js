@@ -13,7 +13,9 @@ import {
   query,
   where,
   deleteField,
+  deleteDoc,
   getDocs,
+  arrayUnion,
   doc,
   writeBatch,
   updateDoc,
@@ -838,7 +840,7 @@ export function init(params) {
 
       <button id="chat-button" class="chat-button">
         <i class="fas fa-comments"></i>
-        <span id="unread-badge" class="unread-badge hidden">0</span>
+        <span id="unread-badge" class="unread-badge">0</span>
       </button>
       <div id="chat-box" class="chat-box">
         <header id="chat-header">
@@ -872,6 +874,8 @@ export function init(params) {
           <nav id="chat-room-selector" class="border-b border-gray-300 bg-gray-100 px-2 py-2 flex flex-nowrap overflow-x-auto gap-1"></nav>
           <div id="messages-container" class="messages-container bg-gradient-to-b from-gray-50 to-gray-100 p-2 overflow-y-auto flex-1"></div>
           <div class="p-2 border-t border-gray-200 bg-white rounded-b-xl">
+          <div id="reply-context-bar" class="hidden"></div>
+
             <form id="chat-form" class="flex items-center" onsubmit="return false">
               <div class="flex-1 bg-gray-100 rounded-full pr-1 flex items-center">
                 <input id="message-input" type="text" placeholder="Type your message..." class="flex-1 bg-transparent py-2 px-3 text-sm focus:outline-none" disabled>
@@ -979,6 +983,56 @@ export function init(params) {
   display: block;
 }
 
+#reply-context-bar {
+    padding: 8px 12px;
+    background-color: #f0f2f5;
+    border-top: 1px solid #e0e0e0;
+    font-size: 13px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#reply-context-bar.hidden {
+    display: none;
+}
+
+#reply-context-bar .reply-content {
+    border-left: 3px solid #3b82f6; /* Blue reply indicator */
+    padding-left: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#reply-context-bar .reply-sender {
+    font-weight: 600;
+    display: block;
+}
+
+#reply-context-bar .cancel-reply-btn {
+    background: none;
+    border: none;
+    color: #606770;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.message-reply-quote {
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 6px 10px;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    font-size: 13px;
+    border-left: 3px solid rgba(0, 0, 0, 0.2);
+}
+.message-reply-quote .reply-text {
+    opacity: 0.8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
       /* ================ CHAT BUTTON ================ */
       .chat-button {
         position: relative;
@@ -1023,6 +1077,7 @@ export function init(params) {
         justify-content: center;
         font-size: 10px;
         font-weight: bold;
+        z-index: 100000000;
         padding: 2px; /* Added padding for better appearance */
       }
 
@@ -1106,6 +1161,83 @@ export function init(params) {
       .chat-box:not(.minimized) #minimized-icon {
         display: none !important;
       }
+
+/*
+ * The main container for the floating menu.
+ */
+.options-menu {
+    position: absolute;
+    z-index: 10050;
+
+    /* NARROWER: Adjusted width for a more compact look. 
+       Note: 180px provides enough space for text like "Remove for you".
+       You can adjust this value as needed. */
+    width: 180px;
+
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1), 0 2px 5px rgba(0, 0, 0, 0.05);
+    padding: 6px;
+    overflow: hidden;
+    animation: menu-pop-in 0.15s ease-out forwards;
+
+    /* SHIFT LEFT: This moves the entire menu to the left by 20px 
+       from its original position, making it feel less crowded. */
+    transform: translateX(-20px);
+}
+
+/*
+ * The pop-in animation keyframes.
+ */
+@keyframes menu-pop-in {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(-5px) translateX(-20px); /* Keep transform consistent */
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0) translateX(-20px); /* Keep transform consistent */
+    }
+}
+
+/*
+ * Styling for each individual item within the menu.
+ */
+.options-menu-item {
+    display: flex;
+    align-items: center;
+
+    /* ALIGN LEFT: Ensures the icon and text are always pushed to the left. */
+    justify-content: flex-start; 
+    
+    padding: 8px 10px; /* Adjusted padding for the new width */
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+    border-radius: 8px;
+    transition: background-color 0.1s ease-in-out;
+}
+
+/* The hover effect for menu items */
+.options-menu-item:hover {
+    background-color: #f0f2f5;
+}
+
+/* Icon styling within the menu items */
+.options-menu-item i {
+    margin-right: 10px; /* Slightly reduced margin for a tighter look */
+    width: 16px;
+    text-align: center; /* Centering the icon within its own box looks cleaner */
+    color: #555;
+}
+
+/* The divider line between sections */
+.options-menu-divider {
+    height: 1px;
+    background-color: #f0f2f5;
+    margin: 4px 0;
+}
 
       /* Unread badge for minimized circle state */
       #minimized-unread-badge {
@@ -1514,16 +1646,43 @@ export function init(params) {
         opacity: 0; /* Hidden by default */
         transition: opacity 0.2s ease-in-out;
       }
+      .reply-btn {
+        background: none;
+        border: none;
+        font-size: 0.8rem;
+        cursor: pointer;
+        padding: 0 5px;
+        color: #6b7280;
+        opacity: 0; /* Hidden by default */
+        transition: opacity 0.2s ease-in-out;
+      }
+      .options-btn {
+        background: none;
+        border: none;
+        font-size: 0.8rem;
+        cursor: pointer;
+        padding: 0 5px;
+        color: #6b7280;
+        opacity: 0; /* Hidden by default */
+        transition: opacity 0.2s ease-in-out;
+      }
 
       .message-container:hover .react-button {
         opacity: 1; /* Show on hover */
       }
-
+      .message-container:hover .reply-btn {
+        opacity: 1; /* Show on hover */
+      }  
+      .message-container:hover .options-btn {
+        opacity: 1; /* Show on hover */
+      } 
       .message-container.user .react-button {
         margin-right: 5px; /* Space for user messages */
       }
-
-      .message-container.other .react-button {
+      .message-container.user .reply-btn {
+        margin-right: 5px; /* Space for user messages */
+      }
+      .message-container.other .options-btn {
         margin-left: 5px; /* Space for other messages */
       }
 
@@ -1869,6 +2028,25 @@ export function init(params) {
           });
         },
 
+        deleteMessage: async (roomId, messageId) => {
+          const messageRef = doc(db, "MessagesChatRooms", roomId, "messages", messageId);
+          await deleteDoc(messageRef);
+        },
+
+        pinMessage: async (roomId, message) => {
+          const roomRef = doc(db, "chatRooms", roomId);
+          await updateDoc(roomRef, {
+            pinnedMessage: message // Firestore handles setting the field to null to clear it
+          });
+        },
+
+        hideMessageForUser: async (roomId, messageId, userId) => {
+          const messageRef = doc(db, "MessagesChatRooms", roomId, "messages", messageId);
+          await updateDoc(messageRef, {
+            removeForMe: arrayUnion(userId)
+          });
+        },
+
         sendMessage: async (roomId, messageData) => {
           const messagesRef = collection(db, "MessagesChatRooms", roomId, "messages");
 
@@ -2070,6 +2248,7 @@ export function init(params) {
       currentUserId: currentUserId,
       currentUserName: "You",
       typingUsers: {},
+      replyingTo: null,
     };
 
     let typingListener = null;
@@ -2611,7 +2790,6 @@ export function init(params) {
         e.stopPropagation();
         toggleMaximize();
       });
-
       document.getElementById("close-chat").addEventListener("click", (e) => {
         e.stopPropagation();
         minimizeChat();
@@ -2664,9 +2842,16 @@ export function init(params) {
       document.addEventListener("mousedown", (e) => {
         const chatBox = document.getElementById("chat-box");
         const chatContainer = document.getElementById("chat-container");
-        const isOpen = chatState.isOpen;
+        const optionsMenu = document.querySelector('.options-menu');
 
-        if (isOpen && chatBox && !chatBox.contains(e.target) && !chatContainer.contains(e.target)) {
+        const isOpen = chatState.isOpen;
+        if (
+          isOpen &&
+          chatBox &&
+          !chatBox.contains(e.target) &&
+          !chatContainer.contains(e.target) &&
+          !optionsMenu?.contains(e.target)
+        ) {
           minimizeChat();
         }
       });
@@ -2908,7 +3093,8 @@ export function init(params) {
         inputText,
         activeRoom,
         currentUserId,
-        currentUserName
+        currentUserName,
+        replyingTo
       } = chatState;
       const trimmedText = inputText.trim();
 
@@ -2924,10 +3110,22 @@ export function init(params) {
 
       // --- Clear the input immediately for a better user experience ---
       setChatState({
-        inputText: ""
+        inputText: "",
+        replyingTo: null
       });
       document.getElementById("message-input").value = "";
       updateSendButtonState(false); // Disable the send button right away
+      renderReplyContext();
+
+      let replyData = null;
+      if (replyingTo) {
+        replyData = {
+          messageId: replyingTo.id,
+          senderName: replyingTo.senderName,
+          // Create a short snippet of the text
+          text: replyingTo.text.length > 70 ? replyingTo.text.substring(0, 70) + '...' : replyingTo.text,
+        };
+      }
 
       // --- Prepare the message object ---
       // Note: We use serverTimestamp() for consistency across clients.
@@ -2941,6 +3139,7 @@ export function init(params) {
         },
         status: MESSAGE_STATUS.SENT,
         reactions: {},
+        replyTo: replyData,
       };
 
       try {
@@ -3247,6 +3446,31 @@ export function init(params) {
       }
     }
 
+    function renderReplyContext() {
+      const replyBar = document.getElementById("reply-context-bar");
+      const { replyingTo } = chatState;
+
+      if (replyingTo && replyBar) {
+        replyBar.innerHTML = `
+            <div class="reply-content">
+                <span class="reply-sender">Replying to ${replyingTo.senderName}</span>
+                <span class="reply-text">${replyingTo.text}</span>
+            </div>
+            <button class="cancel-reply-btn" title="Cancel Reply">&times;</button>
+        `;
+
+        replyBar.querySelector('.cancel-reply-btn').onclick = () => {
+          setChatState({ replyingTo: null });
+          renderReplyContext(); // This will hide the bar
+        };
+
+        replyBar.classList.remove("hidden");
+        document.getElementById("message-input").focus();
+      } else if (replyBar) {
+        replyBar.classList.add("hidden");
+      }
+    }
+
     function renderMessages() {
       const { activeRoom, messages, typingUsers, participantStatus } = chatState;
       const roomMessages = activeRoom ? messages[activeRoom.id] || [] : [];
@@ -3254,19 +3478,23 @@ export function init(params) {
 
       const wasScrolledToBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 20; // 20px buffer
 
-      if (!activeRoom || roomMessages.length === 0) {
+      const visibleMessages = roomMessages.filter(
+        msg => !msg.removeForMe?.includes(currentUserId)
+      );
+
+      if (!activeRoom || visibleMessages.length === 0) {
         container.innerHTML = `
-                        <div class="text-center py-8 text-gray-500">
-                            <i class="fas fa-comment-slash text-3xl mb-2"></i>
-                            <p>No messages yet</p>
-                            <p class="text-sm mt-1">Start the conversation!</p>
-                        </div>
-                    `;
-        return;
+            <div class="text-center py-8 text-gray-500">
+                <i class="fas fa-comment-slash text-3xl mb-2"></i>
+                <p>No messages yet</p>
+                <p class="text-sm mt-1">Start the conversation!</p>
+            </div>
+        `;
+        return; 
       }
 
-      let messagesHTML = roomMessages
-        .map((msg) => renderMessage(msg, participantStatus))
+      let messagesHTML = visibleMessages
+        .map((msg) => renderMessage(msg, chatState.participantStatus))
         .join("");
 
       const otherTypingUsers = Object.entries(typingUsers).filter(([id]) => id !== currentUserId);
@@ -3298,88 +3526,226 @@ export function init(params) {
           }
         }
       });
+
+      container.querySelectorAll('.options-btn').forEach(btn => {
+        btn.onclick = (e) => {
+          e.stopPropagation(); // Prevents other click events from firing
+
+          // Find the message data associated with the button that was clicked
+          const messageId = e.target.closest('.message-wrapper').dataset.messageId;
+          const message = roomMessages.find(m => m.id === messageId);
+
+          if (message) {
+            // Call the function to create and show the menu
+            showOptionsMenu(e, message);
+          }
+        };
+      });
+
+      container.querySelectorAll('.reply-btn').forEach(btn => {
+        btn.onclick = (e) => {
+          const messageId = e.target.closest('.message-wrapper').dataset.messageId;
+          const messageToReply = roomMessages.find(m => m.id === messageId);
+          if (messageToReply) {
+            setChatState({ replyingTo: messageToReply });
+            renderReplyContext();
+          }
+        };
+      });
+
     }
 
     function renderMessage(msg, participantStatus) {
       const isUser = msg.senderId === currentUserId;
       const isFile = msg.isFile;
-      const statusInfo =
-        !isUser && participantStatus[msg.senderId]
-          ? `<span class="ml-2 text-xs">${participantStatus[msg.senderId].online
-            ? '<span class="text-green-500 flex items-center"><span class="w-2 h-2 bg-green-500 rounded-full mr-1"></span>Online</span>'
-            : '' // `Last seen ${formatLastSeen( participantStatus[msg.senderId].lastSeen)}`
-          }</span>`
-          : "";
 
+      // --- 1. Determine Online Status ---
+      const statusInfo = !isUser && participantStatus[msg.senderId]
+        ? `<span class="ml-2 text-xs">${participantStatus[msg.senderId].online
+          ? '<span class="text-green-500 flex items-center"><span class="w-2 h-2 bg-green-500 rounded-full mr-1"></span>Online</span>'
+          : ''}</span>`
+        : "";
+
+      // --- 2. Build HTML for File or Text Content ---
       const isImage = msg.fileInfo?.type?.startsWith("image/");
-      const fileUrl = msg.text;
-
       const content = isFile
         ? isImage
           ? `
-      <div class="image-message">
-        <img src="${fileUrl}" alt="${msg.fileInfo.name}" class="max-w-xs max-h-60 rounded-lg cursor-pointer preview-image" data-url="${fileUrl}" />
-        <p class="text-xs mt-1 ${isUser ? "text-gray-400" : "text-gray-500"}">
-          ${formatFileSize(msg.fileInfo.size)}
-        </p>
-      </div>
-    `
+            <div class="image-message">
+                <img src="${msg.text}" alt="${msg.fileInfo.name}" class="max-w-xs max-h-60 rounded-lg cursor-pointer preview-image" data-url="${msg.text}" />
+                <p class="text-xs mt-1 ${isUser ? "text-gray-400" : "text-gray-500"}">${formatFileSize(msg.fileInfo.size)}</p>
+            </div>
+            `
           : `
-      <div class="file-message flex items-center p-2 bg-${isUser ? "gray-800" : "gray-100"} rounded-lg">
-        <i class="fas fa-file ${isUser ? "text-white" : "text-gray-600"} mr-2"></i>
-        <div>
-          <a href="${fileUrl}" target="_blank" class="text-sm ${isUser ? "text-white" : "text-gray-800"} underline">
-            ${msg.fileInfo.name}
-          </a>
-          <p class="text-xs ${isUser ? "text-gray-400" : "text-gray-500"}">
-            ${formatFileSize(msg.fileInfo.size)}
-          </p>
-        </div>
-      </div>
-    `
+            <div class="file-message flex items-center p-2 bg-${isUser ? "gray-800" : "gray-100"} rounded-lg">
+                <i class="fas fa-file ${isUser ? "text-white" : "text-gray-600"} mr-2"></i>
+                <div>
+                    <a href="${msg.text}" target="_blank" class="text-sm ${isUser ? "text-white" : "text-gray-800"} underline">${msg.fileInfo.name}</a>
+                    <p class="text-xs ${isUser ? "text-gray-400" : "text-gray-500"}">${formatFileSize(msg.fileInfo.size)}</p>
+                </div>
+            </div>
+            `
         : `<p>${msg.text}</p>`;
 
+      // --- 3. Build HTML for a Quoted Reply (if it exists) ---
+      let replyHtml = '';
+      if (msg.replyTo) {
+        const replySender = msg.replyTo.senderName || 'User';
+        const replyText = msg.replyTo.text || '...';
+        replyHtml = `
+        <div class="message-reply-quote">
+            <div class="reply-sender">${replySender}</div>
+            <div class="reply-text">${replyText}</div>
+        </div>
+        `;
+      }
 
+      // --- 4. Build HTML for Reactions (Moved to the correct scope) ---
       const reactionsHtml = Object.keys(msg.reactions || {})
         .map((reaction) => {
           const users = msg.reactions?.[reaction] || [];
+          if (users.length === 0) return "";
           const userNames = users.map((u) => u.userName).join(", ");
-          return users.length > 0
-            ? `<span class="reaction-item">${reaction}<span class="reaction-count">${users.length}</span><span class="reaction-users">${userNames}</span></span>`
-            : "";
+          return `<span class="reaction-item" title="${userNames}">${reaction}<span class="reaction-count">${users.length}</span></span>`;
         })
         .join("");
 
       return `
-                    <div class="message-wrapper ${isUser ? "user" : "other"
-        }" data-message-id="${msg.id}">
-                        <div class="message-container ${isUser ? "user" : "other"
-        }">
-                            <div class="message-bubble ${isUser ? "user" : "other"
-        }">
-                                <div class="message-header">
-                                    ${isUser ? "You" : msg.senderName}
-                                    ${statusInfo}
-                                </div>
-                                <div class="message-content">
-                                    ${content}
-                                </div>
-                            </div>
-                            <button class="react-button">
-                              <i class="far fa-smile"></i>
-                            </button>
-                        </div>
-                        <div class="message-timestamp">
-                            ${formatTimestamp(msg.timestamp)}
-                            ${isUser ? renderMessageStatus(msg.status) : ""}
-                        </div>
-                        ${reactionsHtml
-          ? `<div class="message-reactions ${isUser ? "user-reactions" : ""
-          }">${reactionsHtml}</div>`
-          : ""
+<div class="message-wrapper ${isUser ? "user" : "other"}" data-message-id="${msg.id}">
+    <div class="message-container ${isUser ? "user" : "other"}">
+        <div class="message-bubble ${isUser ? "user" : "other"}">
+            <div class="message-header">
+                ${isUser ? "You" : msg.senderName}
+                ${statusInfo}
+            </div>
+            <div class="message-content">
+                ${replyHtml}
+                ${content}
+            </div>
+        </div>
+
+        <button class="react-button" title="React">
+            <i class="far fa-smile"></i>
+        </button>
+        <button class="reply-btn" title="Reply">
+            <i class="fas fa-reply"></i>
+        </button>
+        <button class="options-btn" title="More">
+            <i class="fas fa-ellipsis-h"></i>
+        </button>
+    </div>
+
+    <div class="message-timestamp">
+        ${formatTimestamp(msg.timestamp)}
+        ${isUser ? renderMessageStatus(msg.status) : ""}
+    </div>
+
+    ${reactionsHtml ? `<div class="message-reactions">${reactionsHtml}</div>` : ""}
+</div>
+`;
+    }
+
+    function showOptionsMenu(e, msg) {
+      // Remove any menu that might already be open
+      document.querySelector('.options-menu')?.remove();
+
+      const isUserMessage = msg.senderId === chatState.currentUserId;
+      // Check if the message being acted on is the currently pinned one
+      const isAlreadyPinned = chatState.activeRoom.pinnedMessage?.id === msg.id;
+
+      const menu = document.createElement('div');
+      menu.className = 'options-menu';
+
+      // FIX: The template literal now correctly populates the menu's inner HTML
+      // without the extra container div, and the syntax is corrected.
+      menu.innerHTML = `
+        ${isUserMessage
+          ? /* If it's the user's own message, show "Unsend" */
+          `
+              <div class="options-menu-item" data-action="unsend">
+                  <i class="fas fa-trash-alt"></i>
+                  Unsend
+              </div>
+              `
+          : /* Otherwise, show "Remove" and "Report" */
+          `
+              <div class="options-menu-item" data-action="remove">
+                  <i class="fas fa-eye-slash"></i>
+                  Remove for you
+              </div>
+              <div class="options-menu-divider"></div>
+              <div class="options-menu-item" data-action="report">
+                  <i class="fas fa-flag"></i>
+                  Report
+              </div>
+              `
         }
-                    </div>
-                `;
+
+        <div class="options-menu-divider"></div>
+
+        <div class="options-menu-item" data-action="pin">
+            <i class="fas fa-thumbtack"></i>
+            ${isAlreadyPinned ? 'Unpin' : 'Pin'}
+        </div>
+        
+        <div class="options-menu-item" data-action="forward">
+            <i class="fas fa-share"></i>
+            Forward
+        </div>
+    `;
+
+      document.body.appendChild(menu);
+
+      // Position the menu correctly below the button
+      const rect = e.target.closest('.options-btn').getBoundingClientRect();
+      menu.style.display = 'block';
+      menu.style.top = `${rect.bottom + window.scrollY + 5}px`;
+      menu.style.left = `${rect.right + window.scrollX - menu.offsetWidth}px`;
+
+      // Handle clicks on the menu items
+      menu.onclick = (event) => {
+        event.stopPropagation();
+
+        const action = event.target.closest('.options-menu-item')?.dataset.action;
+        handleMenuAction(action, msg);
+        menu.remove();
+      };
+
+      // Add a one-time event listener to close the menu if the user clicks elsewhere
+      setTimeout(() => {
+        const closeMenuListener = (event) => {
+          event.stopPropagation();
+          menu.remove();
+        };
+        document.addEventListener('click', closeMenuListener, { once: true });
+      }, 0);
+    }
+
+    function handleMenuAction(action, msg) {
+      if (!action) return;
+      const { activeRoom } = chatState;
+
+      switch (action) {
+        case 'unsend':
+          if (confirm("Are you sure you want to unsend this message for everyone?")) {
+            ChatService.deleteMessage(activeRoom.id, msg.id);
+          }
+          break;
+        case 'remove':
+          ChatService.hideMessageForUser(activeRoom.id, msg.id, currentUserId);
+          break;
+        case 'pin':
+          // Pins the message, or unpins it if it's already pinned
+          const isAlreadyPinned = activeRoom.pinnedMessage?.id === msg.id;
+          ChatService.pinMessage(activeRoom.id, isAlreadyPinned ? null : msg);
+          break;
+        case 'forward':
+          alert("Forward functionality has not been implemented yet.");
+          break;
+        case 'report':
+          alert("Report functionality has not been implemented yet.");
+          break;
+      }
     }
 
     function formatFileSize(bytes) {
@@ -3489,7 +3855,7 @@ export function init(params) {
       if (isChatButtonVisible) {
         badge.classList.remove("hidden");
       } else {
-        badge.classList.add("hidden");
+        badge.classList.remove("hidden");
       }
 
       // The minimized circle's badge is visible only when the chat is minimized.
