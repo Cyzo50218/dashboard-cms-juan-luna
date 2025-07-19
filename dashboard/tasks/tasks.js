@@ -1425,7 +1425,17 @@ export function init(params) {
         color: white;
         border-bottom-right-radius: 4px;
       }
-
+      .unread-count {
+    margin-left: 0.4rem; 
+    background-color: #ef4444;
+    color: white;
+    border-radius: 9999px; 
+    padding: 0.15rem 0.45rem;
+    font-size: 0.7rem;
+    font-weight: 600; 
+    line-height: 1; /
+    display: inline-block; 
+}  
       .message-bubble.user::after {
         content: '';
         position: absolute;
@@ -2089,21 +2099,59 @@ export function init(params) {
       await updateRoomMessagesFromService(roomId);
     }
 
+    // Add this new, more efficient markRoomAsRead function
+
     async function markRoomAsRead(roomId) {
-      await ChatService.markMessagesAsRead(roomId, chatState.currentUserId);
-      await updateRoomMessagesFromService(roomId);
-      calculateUnreadCounts();
+      const { messages, currentUserId } = chatState;
+      const roomMessages = messages[roomId] || [];
+      if (!roomMessages.length) return;
+
+      // Find all messages that are unread by the current user
+      const unreadMessages = roomMessages.filter(
+        (msg) => !msg.readBy?.[currentUserId]
+      );
+
+      // If there are no unread messages, do nothing
+      if (unreadMessages.length === 0) {
+        return;
+      }
+
+      // --- EFFICIENT BATCH WRITE ---
+      // Use a batch to update all unread documents in one server request
+      const batch = writeBatch(db);
+
+      unreadMessages.forEach((msg) => {
+        const messageRef = doc(db, "MessagesChatRooms", roomId, "messages", msg.id);
+        // Use dot notation to update a field within a map
+        batch.update(messageRef, { [`readBy.${currentUserId}`]: true });
+      });
+
+      try {
+        await batch.commit();
+        console.log(`✅ Marked ${unreadMessages.length} messages as read for user ${currentUserId} in room ${roomId}.`);
+
+        // After successfully committing, update the local state and UI
+        calculateUnreadCounts();
+
+      } catch (error) {
+        console.error("❌ Failed to mark messages as read:", error);
+      }
     }
 
+    // Replace the existing calculateUnreadCounts function
     function calculateUnreadCounts() {
       const counts = {};
       let total = 0;
+      const { chatRooms, messages, currentUserId } = chatState;
 
-      chatState.chatRooms.forEach((room) => {
-        const count =
-          chatState.messages[room.id]?.filter(
-            (m) => !m.read && m.senderId !== chatState.currentUserId
-          ).length || 0;
+      chatRooms.forEach((room) => {
+        const roomMessages = messages[room.id] || [];
+
+        // --- MODIFIED PART: Check the 'readBy' map ---
+        const count = roomMessages.filter(
+          (m) => !m.readBy?.[currentUserId] // Count if user's ID is NOT in readBy
+        ).length;
+
         counts[room.id] = count;
         total += count;
       });
@@ -2112,6 +2160,10 @@ export function init(params) {
         unreadCounts: counts,
         totalUnread: total,
       });
+
+      // This is a good place to ensure the UI updates
+      updateUnreadBadge(total);
+      renderChatRooms();
     }
 
     async function initializeChat() {
@@ -2883,7 +2935,9 @@ export function init(params) {
         senderId: currentUserId,
         senderName: currentUserName, // Use the name from the state
         timestamp: serverTimestamp(), // Let Firestore determine the time
-        read: true, // The sender has "read" their own message
+        readBy: {
+          [currentUserId]: true // Initialize with the sender's ID
+        },
         status: MESSAGE_STATUS.SENT,
         reactions: {},
       };
@@ -3127,9 +3181,15 @@ export function init(params) {
         const roomButton = document.createElement("button");
         roomButton.className = `chat-room-selector-item ${activeRoom?.id === room.id ? "selected" : ""
           }`;
-        roomButton.innerHTML = `
-                        ${room.name}
-                    `;
+        const unreadCount = unreadCounts[room.id] || 0;
+        let buttonHTML = room.name;
+
+        // If there are unread messages, add the badge
+        if (unreadCount > 0 && !isSelected) {
+          buttonHTML += `<span class="unread-count">${unreadCount}</span>`;
+        }
+
+        roomButton.innerHTML = buttonHTML;
 
         roomButton.addEventListener("click", () => {
           setActiveRoom(room);
@@ -3410,22 +3470,30 @@ export function init(params) {
       const badge = document.getElementById("unread-badge");
       const minimizedBadge = document.getElementById("minimized-unread-badge");
 
-      if (count > 0) {
-        badge.textContent = count;
-        minimizedBadge.textContent = count;
+      // If the count is zero, hide both badges and stop.
+      if (count <= 0) {
+        badge.classList.add("hidden");
+        minimizedBadge.classList.add("hidden");
+        return;
+      }
 
-        if (chatState.isOpen) {
-          badge.classList.remove("hidden");
-          minimizedBadge.classList.add("hidden");
-        } else if (chatState.isMinimized) {
-          badge.classList.add("hidden");
-          minimizedBadge.classList.remove("hidden");
-        } else {
-          badge.classList.remove("hidden");
-          minimizedBadge.classList.add("hidden");
-        }
+      // If there's a count, update the text on both badges.
+      badge.textContent = count;
+      minimizedBadge.textContent = count;
+
+      // --- Visibility Logic ---
+      // The main button's badge is visible only when the chat is fully closed.
+      const isChatButtonVisible = !chatState.isOpen && !chatState.isMinimized;
+      if (isChatButtonVisible) {
+        badge.classList.remove("hidden");
       } else {
         badge.classList.add("hidden");
+      }
+
+      // The minimized circle's badge is visible only when the chat is minimized.
+      if (chatState.isMinimized) {
+        minimizedBadge.classList.remove("hidden");
+      } else {
         minimizedBadge.classList.add("hidden");
       }
     }
