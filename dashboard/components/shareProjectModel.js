@@ -542,8 +542,14 @@ function renderDynamicContent(
   // Determine if the current user has permission to change the project-wide access level.
   const currentUserMemberInfo = (projectData.members || []).find(m => m.uid === currentUserId);
   const isOwner = currentUserId === superAdminUID;
+  const userProfile = userProfilesMap[currentUserId];
+  const userRole = userProfile?.role;
+
+  // --- Permission Checks ---
+  const isGlobalAdminOrDev = userRole === 0 || userRole === 3;
   const isProjectAdmin = currentUserMemberInfo?.role === 'Project Admin';
   const canChangeAccessLevel = isOwner || isProjectAdmin;
+  const canInvite = isOwner || isProjectAdmin || isGlobalAdminOrDev;
 
   let state = {
     members: JSON.parse(JSON.stringify(projectData.members || [])),
@@ -707,6 +713,13 @@ function renderDynamicContent(
       (invite) =>
         (pendingHTML += `<div class="shareproject-pending-item"><div class="shareproject-pending-icon"><i class="material-icons">hourglass_top</i></div><div class="shareproject-member-info"><strong>${invite.email}</strong><p>Invitation sent. Role: ${invite.role}</p></div></div>`)
     );
+  }
+
+  
+
+  const inviteBtn = modal.querySelector("#shareproject-invite-btn");
+  if (inviteBtn) {
+      inviteBtn.classList.toggle('hidden', !canInvite);
   }
 
   modal.querySelector(".shareproject-modal-header h2").textContent = `Share ${projectData.title || "Unnamed Project"
