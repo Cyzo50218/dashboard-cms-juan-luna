@@ -783,7 +783,7 @@ export async function showInviteModal() {
             }
         }
         
-        // --- Step 4: Commit all the queued database operations at once ---
+        // --- Step 4: Commit allz the queued database operations at once ---
         if (successfulInvites.length > 0) {
             await batch.commit();
             alert(`Successfully sent workspace invitations to ${successfulInvites.length} user(s).`);

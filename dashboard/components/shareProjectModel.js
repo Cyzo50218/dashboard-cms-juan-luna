@@ -36,6 +36,7 @@ let isModalOpen = false;
 let listenersAttached = false;
 let modal = null;
 let unsubscribeProjectListener = null;
+let allCollaboratorUIDs = [];
 let invitedEmails = [];
 
 function closeModal() {
@@ -87,86 +88,59 @@ export async function openShareModal(projectRef) {
 
   createModalUI();
   modal = document.querySelector(".shareproject-modal");
-  const modalBody = document.querySelector(".shareproject-modal-body");
   modal.classList.remove("hidden");
 
   try {
     const user = auth.currentUser;
     if (!user) throw new Error("User not authenticated.");
 
-    const userDocRef = doc(db, 'users', user.uid);
-    const userDocSnap = await getDoc(userDocRef);
-    if (!userDocSnap.exists()) throw new Error("User document not found.");
+    // --- Step 1: Fetch all workspace collaborators ONCE ---
+    // ✅ Using your requested 'myworkspace' collectionGroup query for better performance.
+    const allWorkspacesQuery = query(
+      collectionGroup(db, 'myworkspace'),
+      where('members', 'array-contains', user.uid)
+    );
+    const workspacesSnap = await getDocs(allWorkspacesQuery);
+    let allWorkspaceCollaboratorUIDs = [];
+    workspacesSnap.forEach(doc => {
+      allWorkspaceCollaboratorUIDs.push(...(doc.data().members || []));
+    });
 
-    const selectedWorkspaceId = userDocSnap.data()?.selectedWorkspace;
-    if (!selectedWorkspaceId) throw new Error("No selected workspace.");
+    // --- Step 2: Fetch all necessary user profiles ONCE ---
+    const initialProjectSnap = await getDoc(projectRef);
+    const initialProjectData = initialProjectSnap.data() || {};
+    const initialMemberUIDs = (initialProjectData.members || []).map(m => m.uid);
 
-    const myWorkspaceRef = doc(db, `users/${user.uid}/myworkspace/${selectedWorkspaceId}`);
-    const myWorkspaceSnap = await getDoc(myWorkspaceRef);
+    const allUniqueUIDs = [...new Set([
+      initialProjectData.project_super_admin_uid,
+      user.uid,
+      ...initialMemberUIDs,
+      ...allWorkspaceCollaboratorUIDs // Using the new collaborator list
+    ])].filter(Boolean);
 
-    let ownerWorkspaceRef = null;
-    let workspaceMemberUIDs = [];
+    const userProfilePromises = allUniqueUIDs.map(uid => getDoc(doc(db, "users", uid)));
+    const userProfileDocs = await Promise.all(userProfilePromises);
+    const userProfilesMap = userProfileDocs.reduce((acc, docSnap) => {
+      if (docSnap.exists()) acc[docSnap.id] = docSnap.data();
+      return acc;
+    }, {});
 
-    if (myWorkspaceSnap.exists()) {
-      ownerWorkspaceRef = myWorkspaceRef;
-      workspaceMemberUIDs = myWorkspaceSnap.data()?.members || [];
-    } else {
-      console.log("DEBUG: No personal workspace doc. Falling back to collectionGroup lookup.");
-      const fallbackQuery = query(
-        collectionGroup(db, 'myworkspace'),
-        where('workspaceId', '==', selectedWorkspaceId)
-      );
-      const fallbackSnap = await getDocs(fallbackQuery);
-      if (!fallbackSnap.empty) {
-        ownerWorkspaceRef = fallbackSnap.docs[0].ref;
-        workspaceMemberUIDs = fallbackSnap.docs[0].data().members || [];
-      }
-    }
+    modal.dataset.userProfilesMap = JSON.stringify(userProfilesMap);
 
-    const workspaceMemberCount = Array.isArray(workspaceMemberUIDs) ?
-      workspaceMemberUIDs.length :
-      0;
-
-    const workspaceMemberDocRef = doc(db, `workspaces/${selectedWorkspaceId}/members/${user.uid}`);
-    const workspaceMemberSnap = await getDoc(workspaceMemberDocRef);
-
-    const selectedProjectId = workspaceMemberSnap.exists() ?
-      workspaceMemberSnap.data()?.selectedProjectId :
-      null;
-
-    unsubscribeProjectListener = onSnapshot(projectRef, async (projectDocSnap) => {
+    // --- Step 3: Set up the lightweight real-time listener ---
+    unsubscribeProjectListener = onSnapshot(projectRef, (projectDocSnap) => {
       if (!projectDocSnap.exists()) {
         alert("This project has been deleted.");
-        closeModal();
-        return;
+        return closeModal();
       }
 
       const projectData = { id: projectDocSnap.id, ...projectDocSnap.data() };
-      const memberUIDs = (projectData.members || []).map((m) => m.uid);
-
-      const allUniqueUIDs = [...new Set([
-        projectData.project_super_admin_uid,
-        user.uid,
-        ...memberUIDs,
-        ...workspaceMemberUIDs
-      ])].filter(Boolean);
-
-      const userProfilePromises = allUniqueUIDs.map(uid =>
-        getDoc(doc(db, "users", uid))
-      );
-      const userProfileDocs = await Promise.all(userProfilePromises);
-      const userProfilesMap = userProfileDocs.reduce((acc, docSnap) => {
-        if (docSnap.exists()) acc[docSnap.id] = docSnap.data();
-        return acc;
-      }, {});
 
       renderDynamicContent(modal, {
         projectData,
         userProfilesMap,
         currentUserId: user.uid,
-        workspaceMemberCount,
-        selectedProjectId,
-        selectedWorkspaceId
+        workspaceMemberCount: allWorkspaceCollaboratorUIDs.length
       });
 
       if (!listenersAttached) {
@@ -178,11 +152,7 @@ export async function openShareModal(projectRef) {
 
   } catch (error) {
     console.error("openShareModal error:", error);
-    if (modalBody) {
-      modalBody.innerHTML = `<p style="color: #d93025; font-family: sans-serif; text-align: center; padding: 20px;">
-        Could not load sharing details.<br>
-        <small style="color:#666;">Reason: ${error.message}</small></p>`;
-    }
+    modal.querySelector(".shareproject-modal-body").innerHTML = `<p style="color:red;">Could not load details.</p>`;
   }
 }
 
@@ -501,12 +471,105 @@ function setupEventListeners(modal, projectRef) {
 
   const emailInput = modal.querySelector("#shareproject-email-input");
   emailInput.addEventListener("input", () => handleEmailSearch(modal));
-  emailInput.addEventListener("keydown", (e) => {
-    if ((e.key === "Enter" || e.key === ",") && emailInput.value) {
+  emailInput.addEventListener("keydown", async (e) => {
+    if (e.key === "Enter" && emailInput.value) {
       e.preventDefault();
+
+      const projectData = JSON.parse(modal.dataset.projectData || "{}");
+      const userProfilesMap = JSON.parse(modal.dataset.userProfilesMap || "{}");
+      const currentUserProfile = userProfilesMap[auth.currentUser.uid];
+      const currentUserMemberInfo = (projectData.members || []).find(m => m.uid === auth.currentUser.uid);
+
+      const isOwner = auth.currentUser.uid === projectData.project_super_admin_uid;
+      const isProjectAdmin = currentUserMemberInfo?.role === 'Project Admin';
+      const isGlobalAdminOrDev = currentUserProfile?.role === 0 || currentUserProfile?.role === 3;
+
+      if (isOwner || isProjectAdmin || isGlobalAdminOrDev) {
+        let fullInput = emailInput.value.trim();
+        let emailToProcess = fullInput;
+        let explicitRole = null;
+
+        // ✅ Use flexible regex to find role command
+        const roleMatch = fullInput.match(/@(\w+)$/);
+        if (roleMatch) {
+          const command = roleMatch[1].toLowerCase();
+          const validRoles = { editor: "Editor", viewer: "Viewer", commenter: "Commenter", admin: "Project Admin" };
+          if (validRoles[command]) {
+            explicitRole = validRoles[command];
+            // Cleanly remove the command, including the @ and any preceding space
+            emailToProcess = fullInput.substring(0, roleMatch.index).trim();
+          }
+        }
+
+        if (!/^\S+@\S+\.\S+$/.test(emailToProcess)) {
+          return addEmailTag(fullInput); // If not a valid email, just add as tag
+        }
+
+        const targetUser = Object.values(userProfilesMap).find(p => p.email === emailToProcess);
+        const memberInfo = targetUser ? (projectData.members || []).find(m => m.uid === targetUser.id) : null;
+
+        // ✅ If the user is ALREADY a member, perform a direct role change
+        if (targetUser && (memberInfo || targetUser.id === projectData.project_super_admin_uid)) {
+          const roleToSet = explicitRole || document.getElementById('shareproject-selected-role').textContent;
+          await directRoleUpdate(targetUser.id, roleToSet, projectRef);
+        } else {
+          // Otherwise, proceed with the instant invite for a NEW user
+          console.log(`Privileged user: Instantly inviting ${emailToProcess}`);
+          invitedEmails = [emailToProcess];
+          if (explicitRole) document.getElementById('shareproject-selected-role').textContent = explicitRole;
+          await handleInvite(modal, projectRef);
+          invitedEmails = [];
+        }
+
+        emailInput.value = '';
+        modal.querySelector("#shareproject-user-search-dropdown").classList.add("hidden");
+        return;
+      }
+
+      // Fallback for regular users
       addEmailTag(emailInput.value);
+      modal.querySelector("#shareproject-user-search-dropdown").classList.add("hidden");
     }
   });
+}
+
+async function directRoleUpdate(memberId, newRole, projectRef) {
+  console.log(`Performing direct role update for ${memberId} to ${newRole}`);
+  const batch = writeBatch(db);
+  const projectSnap = await getDoc(projectRef);
+  if (!projectSnap.exists()) return alert("Project not found.");
+
+  const projectData = projectSnap.data();
+  const originalMembers = projectData.members || [];
+  let memberFound = false;
+
+  const updatedMembers = originalMembers.map(member => {
+    if (member.uid === memberId) {
+      memberFound = true;
+      return { ...member, role: newRole };
+    }
+    return member;
+  });
+
+  if (!memberFound) {
+    return alert("Could not update role: Member not found in project.");
+  }
+
+  batch.update(projectRef, { members: updatedMembers });
+
+  if (newRole === "Project Admin") {
+    batch.update(projectRef, { project_admin_user: arrayUnion(memberId) });
+  } else {
+    batch.update(projectRef, { project_admin_user: arrayRemove(memberId) });
+  }
+
+  try {
+    await batch.commit();
+    console.log("✅ Role updated successfully.");
+  } catch (error) {
+    console.error("❌ Direct role update failed:", error);
+    alert("An error occurred while updating the role.");
+  }
 }
 
 function renderStaticDropdownContent(modal) {
@@ -541,8 +604,6 @@ function renderDynamicContent(
     modal.dataset.selectedWorkspaceId = selectedWorkspaceId;
   }
   const superAdminUID = projectData.project_super_admin_uid;
-
-  // Determine if the current user has permission to change the project-wide access level.
   const currentUserMemberInfo = (projectData.members || []).find(m => m.uid === currentUserId);
   const isOwner = currentUserId === superAdminUID;
   const userProfile = userProfilesMap[currentUserId];
@@ -551,8 +612,15 @@ function renderDynamicContent(
   // --- Permission Checks ---
   const isGlobalAdminOrDev = userRole === 0 || userRole === 3;
   const isProjectAdmin = currentUserMemberInfo?.role === 'Project Admin';
-  const canChangeAccessLevel = isOwner || isProjectAdmin;
-  const canInvite = isOwner || isProjectAdmin || isGlobalAdminOrDev;
+  const canManageMembers = isOwner || isProjectAdmin;
+
+  const canChangeAccessLevel = isOwner || isProjectAdmin; // Keeping this separate in case rules differ later
+  const canChangeRoles = isOwner || isProjectAdmin;
+
+  const inviteWrapper = modal.querySelector(".shareproject-invite-input-wrapper");
+  if (inviteWrapper) {
+    inviteWrapper.classList.toggle('hidden', !canManageMembers);
+  }
 
   let state = {
     members: JSON.parse(JSON.stringify(projectData.members || [])),
@@ -576,7 +644,6 @@ function renderDynamicContent(
     member: ["Project Admin", "Editor", "Commenter", "Viewer"],
     workspace: ["Editor", "Commenter", "Viewer"],
   };
-  const canChangeRoles = isOwner || isProjectAdmin;
 
   const accessIcon = modal.querySelector("#shareproject-access-icon");
   const accessTitle = modal.querySelector("#shareproject-access-title");
@@ -727,68 +794,161 @@ function renderDynamicContent(
     pendingHTML;
 }
 
-/**
- * Filters and displays a dropdown of users based on the input search term.
- * @param {HTMLElement} modal The modal element.
- */
 async function handleEmailSearch(modal) {
   const emailInput = modal.querySelector("#shareproject-email-input");
   const searchDropdown = modal.querySelector("#shareproject-user-search-dropdown");
-  const searchTerm = emailInput.value.toLowerCase().trim();
+  let searchTerm = emailInput.value.trim();
 
-  if (!searchTerm) {
+  if (!searchDropdown || !searchTerm) {
     searchDropdown.classList.add("hidden");
     return;
   }
 
-  const userProfilesMap = JSON.parse(modal.dataset.userProfilesMap || "{}");
-  const alreadyIncludedEmails = getSanitizedProjectEmails();
+  if (searchTerm.endsWith('@')) {
+    const roles = {
+      '@editor': 'Assign Editor role',
+      '@viewer': 'Assign Viewer role',
+      '@commenter': 'Assign Commenter role',
+      '@admin': 'Assign Project Admin role',
+    };
+    searchDropdown.innerHTML = Object.entries(roles).map(([command, desc]) => `
+            <a href="#" class="shareproject-user-search-result" data-command="${command}">
+                <div class="shareproject-profile-pic" style="background-color:#e0e0e0;color:#333;"><i class="material-icons">sell</i></div>
+                <div class="shareproject-member-info">
+                    <strong>${command}</strong>
+                    <p>${desc}</p>
+                </div>
+            </a>
+        `).join('');
 
-  const searchResults = Object.values(userProfilesMap)
-    .filter(profile => {
-      // Ensure profile and its properties exist
-      if (!profile || !profile.email) return false;
-
-      const nameMatch = profile.name ? profile.name.toLowerCase().includes(searchTerm) : false;
-      const emailMatch = profile.email.toLowerCase().includes(searchTerm);
-
-      // Exclude users already in the project, pending, or added to the invite list
-      const isAlreadyIncluded = alreadyIncludedEmails.includes(profile.email.toLowerCase());
-
-      return (nameMatch || emailMatch) && !isAlreadyIncluded;
+    // Add listeners for role commands
+    searchDropdown.querySelectorAll('.shareproject-user-search-result').forEach(item => {
+      item.addEventListener('click', e => {
+        e.preventDefault();
+        // Append the command (without the @) to the input
+        emailInput.value = `${searchTerm}${item.dataset.command.substring(1)}`;
+        emailInput.focus();
+        searchDropdown.classList.add('hidden');
+      });
     });
 
-  if (searchResults.length === 0) {
-    searchDropdown.classList.add("hidden");
+    searchDropdown.classList.remove('hidden');
     return;
   }
 
-  // Render the results into the dropdown
-  searchDropdown.innerHTML = searchResults.map(profile => {
-    const profilePicHTML = createProfilePic(profile).outerHTML;
+  // --- Command Parsing ---
+  let explicitRole = null;
+  const roleMatch = searchTerm.match(/\s@(\w+)$/); // Look for " @editor" at the end
+  if (roleMatch) {
+    const roleCommand = roleMatch[1].toLowerCase();
+    const validRoles = { editor: "Editor", viewer: "Viewer", commenter: "Commenter", admin: "Project Admin" };
+    if (validRoles[roleCommand]) {
+      explicitRole = validRoles[roleCommand];
+      searchTerm = searchTerm.replace(roleMatch[0], '').trim(); // Remove command from search
+    }
+  }
+
+  // --- Data Retrieval ---
+  const userProfilesMap = JSON.parse(modal.dataset.userProfilesMap || "{}");
+  const userGroups = JSON.parse(modal.dataset.userGroups || "[]");
+  const projectData = JSON.parse(modal.dataset.projectData || "{}");
+
+  let searchResultsHTML = "";
+
+  // --- Search User Groups (no changes here) ---
+  const matchingGroups = userGroups.filter(group => group.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  searchResultsHTML += matchingGroups.map(group => {
+    const membersCount = group.memberUIDs.length;
     return `
-            <a href="#" class="shareproject-user-search-result" data-email="${profile.email}">
-                ${profilePicHTML}
+            <a href="#" class="shareproject-user-search-result" data-group-id="${group.id}">
+                <div class="shareproject-profile-pic" style="background-color:#e5e7eb;color:#4b5563;"><i class="material-icons">group</i></div>
                 <div class="shareproject-member-info">
-                    <strong>${profile.name || 'Unnamed User'}</strong>
-                    <p>${profile.email}</p>
+                    <strong>${group.name}</strong>
+                    <p>${membersCount} members</p>
                 </div>
             </a>
         `;
   }).join('');
 
-  // Attach click listeners to each result
+  // --- Search Individual Users ---
+  const matchingUsers = Object.values(userProfilesMap).filter(profile => {
+    if (!profile || !profile.email) return false;
+    const nameMatch = profile.name && profile.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const emailMatch = profile.email.toLowerCase().includes(searchTerm.toLowerCase());
+    // This now shows all matching users, regardless of whether they are already members
+    return nameMatch || emailMatch;
+  });
+
+  searchResultsHTML += matchingUsers.map(profile => {
+    const profilePicHTML = createProfilePic(profile).outerHTML;
+
+    // ✅ --- NEW: Logic to determine the user's role for display ---
+    let displayRole = '';
+    const projectOwnerUID = projectData.project_super_admin_uid;
+    const memberInfo = (projectData.members || []).find(m => m.uid === profile.id);
+
+    if (profile.id === projectOwnerUID) {
+      displayRole = 'Owner';
+    } else if (memberInfo) {
+      // User is a member of the current project, show their project role
+      displayRole = memberInfo.role;
+    } else if (profile.role === 0) {
+      // User is not in the project, but has a global Developer role
+      displayRole = 'Developer';
+    } else if (profile.role === 3) {
+      // User is not in the project, but has a global Admin role
+      displayRole = 'Admin';
+    }
+    // --- END of new role logic ---
+
+    return `
+            <a href="#" class="shareproject-user-search-result" data-email="${profile.email}">
+                ${profilePicHTML}
+                <div class="shareproject-member-info">
+                    <strong>${profile.name || 'Unnamed User'}</strong>
+                    <p>${profile.email} ${displayRole ? `• <strong style="color: #0052cc;">${displayRole}</strong>` : ''}</p>
+                </div>
+            </a>
+        `;
+  }).join('');
+
+  if (!searchResultsHTML) {
+    searchDropdown.classList.add("hidden");
+    return;
+  }
+
+  searchDropdown.innerHTML = searchResultsHTML;
+  searchDropdown.classList.remove("hidden");
+
+  // --- Attach Event Listeners (no changes here) ---
   searchDropdown.querySelectorAll('.shareproject-user-search-result').forEach(item => {
     item.addEventListener('click', (e) => {
       e.preventDefault();
-      const emailToAdd = e.currentTarget.dataset.email;
-      addEmailTag(emailToAdd);
-      emailInput.focus(); // Keep focus on the input
-      searchDropdown.classList.add('hidden'); // Hide after selection
+      const target = e.currentTarget;
+
+      if (target.dataset.email) { // Clicked on a user
+        addEmailTag(target.dataset.email);
+        if (explicitRole) {
+          document.getElementById('shareproject-selected-role').textContent = explicitRole;
+        }
+      } else if (target.dataset.groupId) { // Clicked on a group
+        const groupId = target.dataset.groupId;
+        const group = userGroups.find(g => g.id === groupId);
+        if (group) {
+          group.memberUIDs.forEach(uid => {
+            const profile = userProfilesMap[uid];
+            if (profile && profile.email) {
+              addEmailTag(profile.email);
+            }
+          });
+        }
+      }
+
+      emailInput.value = '';
+      emailInput.focus();
+      searchDropdown.classList.add('hidden');
     });
   });
-
-  searchDropdown.classList.remove("hidden");
 }
 
 async function handleInvite(modal, projectRef) {
@@ -1201,6 +1361,19 @@ function createModalUI() {
   .shareproject-user-search-result:hover {
       background-color: #f4f4f4;
   }
+  #shareproject-email-suggestion {
+        position: absolute;
+        top: 4px;         /* Align with the real input */
+        left: 8px;        /* Align with the real input's padding */
+        padding: 8px;     /* Match the real input's padding */
+        font-family: 'Inter', sans-serif; /* Match font */
+        font-size: 14px;  /* Match font */
+        color: #B0B0B0;   /* "Ghost text" color */
+        background-color: transparent;
+        border: none;
+        pointer-events: none; /* Make it unclickable */
+        z-index: -1;          /* Position it behind the real input's text */
+    }    
   .shareproject-scrollable-section { max-height: 300px; overflow-y: auto; padding-right: 4px; margin-bottom: 16px; } .shareproject-modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; animation: fadeIn 0.3s ease; } .shareproject-modal { background-color: white; border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); width: 750px; display: flex; flex-direction: column; font-family: 'Inter', sans-serif; animation: slideIn 0.3s ease-out; max-height: 90vh; margin: auto; position: relative; } .shareproject-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid #f0f0f0; } .shareproject-modal-header h2 { margin: 0; font-size: 18px; font-weight: 600; color: #111; } .shareproject-icon-btn { background: none; border: none; cursor: pointer; padding: 6px; border-radius: 50%; display: inline-flex; align-items: center; color: #555; } .shareproject-icon-btn:hover { background-color: #f4f4f4; } .shareproject-modal-body { padding: 16px 24px; overflow-y: auto; min-height:200px; } .shareproject-modal-body > p.shareproject-section-title { font-size: 14px; font-weight: 500; color: #333; margin: 16px 0 8px 0; } .shareproject-invite-input-wrapper { position: relative; display: flex; align-items: center; border: 1px solid #e0e0e0; border-radius: 8px; padding: 4px; margin-bottom: 16px; transition: all 0.2s ease; } .shareproject-invite-input-wrapper:focus-within { border-color: #1267FA; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); } .shareproject-email-tags-container { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding-left: 8px; } .shareproject-email-tag { display: flex; align-items: center; background-color: #eef2ff; color: #4338ca; padding: 4px 10px; border-radius: 6px; font-size: 14px; font-weight: 500; } .shareproject-email-tag .shareproject-remove-tag { cursor: pointer; margin-left: 8px; font-size: 16px; } #shareproject-email-input { flex-grow: 1; border: none; outline: none; padding: 8px; font-size: 14px; background: transparent; min-width: 150px; } .shareproject-invite-controls { display: flex; align-items: center; gap: 8px; padding-right: 4px;} .shareproject-role-selector, .shareproject-member-role { position: relative; } .shareproject-dropdown-btn { background-color: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 8px 12px; cursor: pointer; display: flex; align-items: center; font-size: 14px; white-space: nowrap; } .shareproject-dropdown-btn:hover { background-color: #f9f9f9; } .shareproject-dropdown-btn:disabled { background-color: #f9fafb; cursor: not-allowed; color: #555;} .shareproject-dropdown-content { position: absolute; background-color: white; border: 1px solid #f0f0f0; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 1010; width: auto; min-width: 220px; overflow: hidden; animation: fadeIn 0.2s ease; } .shareproject-dropdown-action { display: block; width: 100%; padding: 12px 16px; text-decoration: none; color: #333; background: none; border: none; cursor: pointer; text-align: left; font-family: 'Inter', sans-serif; font-size: 14px; } .shareproject-dropdown-action:hover, .shareproject-dropdown-content a.shareproject-remove:hover { background-color: #f4f4f4; } .shareproject-dropdown-content a { display: block; padding: 12px 16px; text-decoration: none; color: #333; } .shareproject-dropdown-content strong { font-weight: 500; display: flex; align-items: center; gap: 8px; } .shareproject-dropdown-content p { font-size: 13px; color: #666; margin: 4px 0 0 0; line-height: 1.4; } .shareproject-invite-btn { background-color: #3F7EEB; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500; transition: background-color 0.2s ease; } .shareproject-invite-btn:hover { background-color: #1267FA; } .shareproject-access-settings-btn { display: flex; align-items: flex-start; width: 100%; text-align: left; padding: 12px; border: 1px solid #e0e0e0; border-radius: 8px; cursor: pointer; background: none; } .shareproject-access-settings-btn:hover { background-color: #f9f9f9; } .shareproject-access-settings-btn .material-icons { margin-right: 12px; color: #555; line-height: 1.4; } .shareproject-access-settings-btn div { flex-grow: 1; } .shareproject-members-list { margin-top: 16px; } .shareproject-member-item, .shareproject-pending-item { display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; } .shareproject-member-item:last-child, .shareproject-pending-item:last-child { border-bottom: none; } .shareproject-profile-pic { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 500; font-size: 14px; margin-right: 12px; text-transform: uppercase; background-size: cover; background-position: center; } .shareproject-pending-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; background-color: #f3f4f6; color: #6b7280; } .shareproject-member-info { flex-grow: 1; } .shareproject-member-info strong { font-size: 14px; font-weight: 500; color: #111; } .shareproject-member-info p { font-size: 13px; color: #666; margin: 2px 0 0 0; } .shareproject-member-role .shareproject-dropdown-btn { background: none; border: none; padding: 4px 8px; color: #555; } .shareproject-member-role .shareproject-dropdown-content a.shareproject-remove { color: #ef4444; } .shareproject-modal-footer { padding: 16px 24px; border-top: 1px solid #f0f0f0; background-color: #f9fafb; display: flex; justify-content: space-between; align-items: center; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; } .shareproject-copy-link-btn { background: none; border: 1px solid #e0e0e0; border-radius: 6px; padding: 8px 12px; cursor: pointer; display: flex; align-items: center; font-size: 14px; font-weight: 500; } #shareproject-leave-btn { color: #ef4444; font-weight: 500; font-size: 14px; } #shareproject-leave-btn .material-icons { color: #ef4444; margin-right: 4px; } .section-loader { margin: 40px auto; border: 4px solid #f3f3f3; border-radius: 50%; border-top: 4px solid #3498db; width: 40px; height: 40px; animation: spin 2s linear infinite; } .shareproject-user-search-dropdown { position: absolute; background-color: white; border: 1px solid #e0e0e0; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 1011; max-height: 200px; overflow-y: auto; width: 100%; top: 100%; left: 0; right: 0;} .shareproject-user-search-dropdown a { display: flex; align-items: center; padding: 8px 16px; text-decoration: none; color: #333; } .shareproject-user-search-dropdown a:hover { background-color: #f4f4f4; }
     `;
   const styleSheet = document.createElement("style");
@@ -1214,6 +1387,7 @@ function createModalUI() {
         <div class="shareproject-modal-body">
             <div class="shareproject-invite-input-wrapper">
                 <div id="shareproject-email-tags" class="shareproject-email-tags-container"></div>
+                <input type="text" id="shareproject-email-suggestion" readonly tabindex="-1">
                 <input type="text" id="shareproject-email-input" placeholder="Add workspace members or new people by email...">
                 <div class="shareproject-invite-controls">
                     <div class="shareproject-role-selector">
@@ -1224,7 +1398,7 @@ function createModalUI() {
                     </div>
                     <button id="shareproject-invite-btn" class="shareproject-invite-btn">Invite</button>
                 </div>
-                <div id="shareproject-user-search-dropdown" class="hidden"></div>
+                <div id="shareproject-user-search-dropdown" class="shareproject-user-search-dropdown hidden"></div>
             </div>
             <div class="shareproject-access-settings-wrapper">
                 <button id="shareproject-access-settings-btn" data-target-dropdown="shareproject-access-dropdown" class="shareproject-access-settings-btn">
