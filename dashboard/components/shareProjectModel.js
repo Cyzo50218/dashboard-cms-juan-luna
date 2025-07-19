@@ -544,13 +544,11 @@ function renderDynamicContent(
   }
   const superAdminUID = projectData.project_super_admin_uid;
 
-  // --- ✅ PERMISSION CHECK ADDED ---
   // Determine if the current user has permission to change the project-wide access level.
   const currentUserMemberInfo = (projectData.members || []).find(m => m.uid === currentUserId);
   const isOwner = currentUserId === superAdminUID;
   const isProjectAdmin = currentUserMemberInfo?.role === 'Project Admin';
   const canChangeAccessLevel = isOwner || isProjectAdmin;
-  // --- ✅ END PERMISSION CHECK ---
 
   let state = {
     members: JSON.parse(JSON.stringify(projectData.members || [])),
@@ -574,7 +572,7 @@ function renderDynamicContent(
     member: ["Project Admin", "Editor", "Commenter", "Viewer"],
     workspace: ["Editor", "Commenter", "Viewer"],
   };
-  const canChangeRoles = currentUserId === superAdminUID;
+  const canChangeRoles = isOwner || isProjectAdmin;
 
   const accessIcon = modal.querySelector("#shareproject-access-icon");
   const accessTitle = modal.querySelector("#shareproject-access-title");
