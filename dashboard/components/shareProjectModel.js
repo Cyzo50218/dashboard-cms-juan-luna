@@ -491,13 +491,16 @@ function setupEventListeners(modal, projectRef) {
       closeModal();
       return;
     }
-    if (!e.target.closest("[data-target-dropdown], .shareproject-dropdown-content")) {
+    if (!e.target.closest("[data-target-dropdown], .shareproject-dropdown-content, #shareproject-user-search-dropdown")) {
       document.querySelectorAll(".shareproject-dropdown-content").forEach((el) => el.classList.add("hidden"));
+      // Also hide the search dropdown
+      modal.querySelector("#shareproject-user-search-dropdown")?.classList.add("hidden");
     }
+
   });
 
   const emailInput = modal.querySelector("#shareproject-email-input");
-  emailInput.addEventListener("input", () => handleEmailSearch(modal)); // Assumes handleEmailSearch exists
+  emailInput.addEventListener("input", () => handleEmailSearch(modal));
   emailInput.addEventListener("keydown", (e) => {
     if ((e.key === "Enter" || e.key === ",") && emailInput.value) {
       e.preventDefault();
@@ -715,13 +718,6 @@ function renderDynamicContent(
     );
   }
 
-  
-
-  const inviteBtn = modal.querySelector("#shareproject-invite-btn");
-  if (inviteBtn) {
-      inviteBtn.classList.toggle('hidden', !canInvite);
-  }
-
   modal.querySelector(".shareproject-modal-header h2").textContent = `Share ${projectData.title || "Unnamed Project"
     }`;
   modal.querySelector("#shareproject-members-list").innerHTML = membersHTML;
@@ -731,11 +727,90 @@ function renderDynamicContent(
     pendingHTML;
 }
 
+/**
+ * Filters and displays a dropdown of users based on the input search term.
+ * @param {HTMLElement} modal The modal element.
+ */
+async function handleEmailSearch(modal) {
+  const emailInput = modal.querySelector("#shareproject-email-input");
+  const searchDropdown = modal.querySelector("#shareproject-user-search-dropdown");
+  const searchTerm = emailInput.value.toLowerCase().trim();
+
+  if (!searchTerm) {
+    searchDropdown.classList.add("hidden");
+    return;
+  }
+
+  const userProfilesMap = JSON.parse(modal.dataset.userProfilesMap || "{}");
+  const alreadyIncludedEmails = getSanitizedProjectEmails();
+
+  const searchResults = Object.values(userProfilesMap)
+    .filter(profile => {
+      // Ensure profile and its properties exist
+      if (!profile || !profile.email) return false;
+
+      const nameMatch = profile.name ? profile.name.toLowerCase().includes(searchTerm) : false;
+      const emailMatch = profile.email.toLowerCase().includes(searchTerm);
+
+      // Exclude users already in the project, pending, or added to the invite list
+      const isAlreadyIncluded = alreadyIncludedEmails.includes(profile.email.toLowerCase());
+
+      return (nameMatch || emailMatch) && !isAlreadyIncluded;
+    });
+
+  if (searchResults.length === 0) {
+    searchDropdown.classList.add("hidden");
+    return;
+  }
+
+  // Render the results into the dropdown
+  searchDropdown.innerHTML = searchResults.map(profile => {
+    const profilePicHTML = createProfilePic(profile).outerHTML;
+    return `
+            <a href="#" class="shareproject-user-search-result" data-email="${profile.email}">
+                ${profilePicHTML}
+                <div class="shareproject-member-info">
+                    <strong>${profile.name || 'Unnamed User'}</strong>
+                    <p>${profile.email}</p>
+                </div>
+            </a>
+        `;
+  }).join('');
+
+  // Attach click listeners to each result
+  searchDropdown.querySelectorAll('.shareproject-user-search-result').forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.preventDefault();
+      const emailToAdd = e.currentTarget.dataset.email;
+      addEmailTag(emailToAdd);
+      emailInput.focus(); // Keep focus on the input
+      searchDropdown.classList.add('hidden'); // Hide after selection
+    });
+  });
+
+  searchDropdown.classList.remove("hidden");
+}
+
 async function handleInvite(modal, projectRef) {
   const inviter = auth.currentUser;
 
   if (!inviter) {
     alert("Error: You must be logged in to send invitations.");
+    return;
+  }
+
+  const projectDataForCheck = JSON.parse(modal.dataset.projectData || '{}');
+  const userProfilesMapForCheck = JSON.parse(modal.dataset.userProfilesMap || '{}');
+  const currentUserProfile = userProfilesMapForCheck[inviter.uid];
+  const currentUserMemberInfo = (projectDataForCheck.members || []).find(m => m.uid === inviter.uid);
+
+  const isOwner = inviter.uid === projectDataForCheck.project_super_admin_uid;
+  const isProjectAdmin = currentUserMemberInfo?.role === 'Project Admin';
+  const isGlobalAdminOrDev = currentUserProfile?.role === 0 || currentUserProfile?.role === 3;
+
+  if (!isOwner && !isProjectAdmin && !isGlobalAdminOrDev) {
+    alert("Permission Denied. You are not authorized to invite users or change member roles for this project.");
+    // The function will stop here, preventing any unauthorized changes.
     return;
   }
 
@@ -1100,7 +1175,33 @@ function createProfilePic(profile) {
 
 function createModalUI() {
   const styles = `
-    .hidden { display: none; } .shareproject-scrollable-section { max-height: 300px; overflow-y: auto; padding-right: 4px; margin-bottom: 16px; } .shareproject-modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; animation: fadeIn 0.3s ease; } .shareproject-modal { background-color: white; border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); width: 750px; display: flex; flex-direction: column; font-family: 'Inter', sans-serif; animation: slideIn 0.3s ease-out; max-height: 90vh; margin: auto; position: relative; } .shareproject-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid #f0f0f0; } .shareproject-modal-header h2 { margin: 0; font-size: 18px; font-weight: 600; color: #111; } .shareproject-icon-btn { background: none; border: none; cursor: pointer; padding: 6px; border-radius: 50%; display: inline-flex; align-items: center; color: #555; } .shareproject-icon-btn:hover { background-color: #f4f4f4; } .shareproject-modal-body { padding: 16px 24px; overflow-y: auto; min-height:200px; } .shareproject-modal-body > p.shareproject-section-title { font-size: 14px; font-weight: 500; color: #333; margin: 16px 0 8px 0; } .shareproject-invite-input-wrapper { position: relative; display: flex; align-items: center; border: 1px solid #e0e0e0; border-radius: 8px; padding: 4px; margin-bottom: 16px; transition: all 0.2s ease; } .shareproject-invite-input-wrapper:focus-within { border-color: #1267FA; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); } .shareproject-email-tags-container { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding-left: 8px; } .shareproject-email-tag { display: flex; align-items: center; background-color: #eef2ff; color: #4338ca; padding: 4px 10px; border-radius: 6px; font-size: 14px; font-weight: 500; } .shareproject-email-tag .shareproject-remove-tag { cursor: pointer; margin-left: 8px; font-size: 16px; } #shareproject-email-input { flex-grow: 1; border: none; outline: none; padding: 8px; font-size: 14px; background: transparent; min-width: 150px; } .shareproject-invite-controls { display: flex; align-items: center; gap: 8px; padding-right: 4px;} .shareproject-role-selector, .shareproject-member-role { position: relative; } .shareproject-dropdown-btn { background-color: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 8px 12px; cursor: pointer; display: flex; align-items: center; font-size: 14px; white-space: nowrap; } .shareproject-dropdown-btn:hover { background-color: #f9f9f9; } .shareproject-dropdown-btn:disabled { background-color: #f9fafb; cursor: not-allowed; color: #555;} .shareproject-dropdown-content { position: absolute; background-color: white; border: 1px solid #f0f0f0; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 1010; width: auto; min-width: 220px; overflow: hidden; animation: fadeIn 0.2s ease; } .shareproject-dropdown-action { display: block; width: 100%; padding: 12px 16px; text-decoration: none; color: #333; background: none; border: none; cursor: pointer; text-align: left; font-family: 'Inter', sans-serif; font-size: 14px; } .shareproject-dropdown-action:hover, .shareproject-dropdown-content a.shareproject-remove:hover { background-color: #f4f4f4; } .shareproject-dropdown-content a { display: block; padding: 12px 16px; text-decoration: none; color: #333; } .shareproject-dropdown-content strong { font-weight: 500; display: flex; align-items: center; gap: 8px; } .shareproject-dropdown-content p { font-size: 13px; color: #666; margin: 4px 0 0 0; line-height: 1.4; } .shareproject-invite-btn { background-color: #3F7EEB; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500; transition: background-color 0.2s ease; } .shareproject-invite-btn:hover { background-color: #1267FA; } .shareproject-access-settings-btn { display: flex; align-items: flex-start; width: 100%; text-align: left; padding: 12px; border: 1px solid #e0e0e0; border-radius: 8px; cursor: pointer; background: none; } .shareproject-access-settings-btn:hover { background-color: #f9f9f9; } .shareproject-access-settings-btn .material-icons { margin-right: 12px; color: #555; line-height: 1.4; } .shareproject-access-settings-btn div { flex-grow: 1; } .shareproject-members-list { margin-top: 16px; } .shareproject-member-item, .shareproject-pending-item { display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; } .shareproject-member-item:last-child, .shareproject-pending-item:last-child { border-bottom: none; } .shareproject-profile-pic { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 500; font-size: 14px; margin-right: 12px; text-transform: uppercase; background-size: cover; background-position: center; } .shareproject-pending-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; background-color: #f3f4f6; color: #6b7280; } .shareproject-member-info { flex-grow: 1; } .shareproject-member-info strong { font-size: 14px; font-weight: 500; color: #111; } .shareproject-member-info p { font-size: 13px; color: #666; margin: 2px 0 0 0; } .shareproject-member-role .shareproject-dropdown-btn { background: none; border: none; padding: 4px 8px; color: #555; } .shareproject-member-role .shareproject-dropdown-content a.shareproject-remove { color: #ef4444; } .shareproject-modal-footer { padding: 16px 24px; border-top: 1px solid #f0f0f0; background-color: #f9fafb; display: flex; justify-content: space-between; align-items: center; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; } .shareproject-copy-link-btn { background: none; border: 1px solid #e0e0e0; border-radius: 6px; padding: 8px 12px; cursor: pointer; display: flex; align-items: center; font-size: 14px; font-weight: 500; } #shareproject-leave-btn { color: #ef4444; font-weight: 500; font-size: 14px; } #shareproject-leave-btn .material-icons { color: #ef4444; margin-right: 4px; } .section-loader { margin: 40px auto; border: 4px solid #f3f3f3; border-radius: 50%; border-top: 4px solid #3498db; width: 40px; height: 40px; animation: spin 2s linear infinite; } .shareproject-user-search-dropdown { position: absolute; background-color: white; border: 1px solid #e0e0e0; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 1011; max-height: 200px; overflow-y: auto; width: 100%; top: 100%; left: 0; right: 0;} .shareproject-user-search-dropdown a { display: flex; align-items: center; padding: 8px 16px; text-decoration: none; color: #333; } .shareproject-user-search-dropdown a:hover { background-color: #f4f4f4; }
+    .hidden { display: none; } 
+    .shareproject-user-search-dropdown { 
+      position: absolute; 
+      top: 100%; /* Position right below the input wrapper */
+      left: 0;
+      right: 0;
+      background-color: white; 
+      border: 1px solid #e0e0e0; 
+      border-radius: 8px; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+      z-index: 1011; 
+      max-height: 250px; 
+      overflow-y: auto;
+      margin-top: 4px; /* Small gap */
+  }
+  .shareproject-user-search-result {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      text-decoration: none;
+      color: #333;
+      cursor: pointer;
+  }
+  .shareproject-user-search-result:hover {
+      background-color: #f4f4f4;
+  }
+  .shareproject-scrollable-section { max-height: 300px; overflow-y: auto; padding-right: 4px; margin-bottom: 16px; } .shareproject-modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; animation: fadeIn 0.3s ease; } .shareproject-modal { background-color: white; border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); width: 750px; display: flex; flex-direction: column; font-family: 'Inter', sans-serif; animation: slideIn 0.3s ease-out; max-height: 90vh; margin: auto; position: relative; } .shareproject-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid #f0f0f0; } .shareproject-modal-header h2 { margin: 0; font-size: 18px; font-weight: 600; color: #111; } .shareproject-icon-btn { background: none; border: none; cursor: pointer; padding: 6px; border-radius: 50%; display: inline-flex; align-items: center; color: #555; } .shareproject-icon-btn:hover { background-color: #f4f4f4; } .shareproject-modal-body { padding: 16px 24px; overflow-y: auto; min-height:200px; } .shareproject-modal-body > p.shareproject-section-title { font-size: 14px; font-weight: 500; color: #333; margin: 16px 0 8px 0; } .shareproject-invite-input-wrapper { position: relative; display: flex; align-items: center; border: 1px solid #e0e0e0; border-radius: 8px; padding: 4px; margin-bottom: 16px; transition: all 0.2s ease; } .shareproject-invite-input-wrapper:focus-within { border-color: #1267FA; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); } .shareproject-email-tags-container { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding-left: 8px; } .shareproject-email-tag { display: flex; align-items: center; background-color: #eef2ff; color: #4338ca; padding: 4px 10px; border-radius: 6px; font-size: 14px; font-weight: 500; } .shareproject-email-tag .shareproject-remove-tag { cursor: pointer; margin-left: 8px; font-size: 16px; } #shareproject-email-input { flex-grow: 1; border: none; outline: none; padding: 8px; font-size: 14px; background: transparent; min-width: 150px; } .shareproject-invite-controls { display: flex; align-items: center; gap: 8px; padding-right: 4px;} .shareproject-role-selector, .shareproject-member-role { position: relative; } .shareproject-dropdown-btn { background-color: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 8px 12px; cursor: pointer; display: flex; align-items: center; font-size: 14px; white-space: nowrap; } .shareproject-dropdown-btn:hover { background-color: #f9f9f9; } .shareproject-dropdown-btn:disabled { background-color: #f9fafb; cursor: not-allowed; color: #555;} .shareproject-dropdown-content { position: absolute; background-color: white; border: 1px solid #f0f0f0; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 1010; width: auto; min-width: 220px; overflow: hidden; animation: fadeIn 0.2s ease; } .shareproject-dropdown-action { display: block; width: 100%; padding: 12px 16px; text-decoration: none; color: #333; background: none; border: none; cursor: pointer; text-align: left; font-family: 'Inter', sans-serif; font-size: 14px; } .shareproject-dropdown-action:hover, .shareproject-dropdown-content a.shareproject-remove:hover { background-color: #f4f4f4; } .shareproject-dropdown-content a { display: block; padding: 12px 16px; text-decoration: none; color: #333; } .shareproject-dropdown-content strong { font-weight: 500; display: flex; align-items: center; gap: 8px; } .shareproject-dropdown-content p { font-size: 13px; color: #666; margin: 4px 0 0 0; line-height: 1.4; } .shareproject-invite-btn { background-color: #3F7EEB; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500; transition: background-color 0.2s ease; } .shareproject-invite-btn:hover { background-color: #1267FA; } .shareproject-access-settings-btn { display: flex; align-items: flex-start; width: 100%; text-align: left; padding: 12px; border: 1px solid #e0e0e0; border-radius: 8px; cursor: pointer; background: none; } .shareproject-access-settings-btn:hover { background-color: #f9f9f9; } .shareproject-access-settings-btn .material-icons { margin-right: 12px; color: #555; line-height: 1.4; } .shareproject-access-settings-btn div { flex-grow: 1; } .shareproject-members-list { margin-top: 16px; } .shareproject-member-item, .shareproject-pending-item { display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; } .shareproject-member-item:last-child, .shareproject-pending-item:last-child { border-bottom: none; } .shareproject-profile-pic { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 500; font-size: 14px; margin-right: 12px; text-transform: uppercase; background-size: cover; background-position: center; } .shareproject-pending-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; background-color: #f3f4f6; color: #6b7280; } .shareproject-member-info { flex-grow: 1; } .shareproject-member-info strong { font-size: 14px; font-weight: 500; color: #111; } .shareproject-member-info p { font-size: 13px; color: #666; margin: 2px 0 0 0; } .shareproject-member-role .shareproject-dropdown-btn { background: none; border: none; padding: 4px 8px; color: #555; } .shareproject-member-role .shareproject-dropdown-content a.shareproject-remove { color: #ef4444; } .shareproject-modal-footer { padding: 16px 24px; border-top: 1px solid #f0f0f0; background-color: #f9fafb; display: flex; justify-content: space-between; align-items: center; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; } .shareproject-copy-link-btn { background: none; border: 1px solid #e0e0e0; border-radius: 6px; padding: 8px 12px; cursor: pointer; display: flex; align-items: center; font-size: 14px; font-weight: 500; } #shareproject-leave-btn { color: #ef4444; font-weight: 500; font-size: 14px; } #shareproject-leave-btn .material-icons { color: #ef4444; margin-right: 4px; } .section-loader { margin: 40px auto; border: 4px solid #f3f3f3; border-radius: 50%; border-top: 4px solid #3498db; width: 40px; height: 40px; animation: spin 2s linear infinite; } .shareproject-user-search-dropdown { position: absolute; background-color: white; border: 1px solid #e0e0e0; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 1011; max-height: 200px; overflow-y: auto; width: 100%; top: 100%; left: 0; right: 0;} .shareproject-user-search-dropdown a { display: flex; align-items: center; padding: 8px 16px; text-decoration: none; color: #333; } .shareproject-user-search-dropdown a:hover { background-color: #f4f4f4; }
     `;
   const styleSheet = document.createElement("style");
   styleSheet.id = "share-project-styles";
