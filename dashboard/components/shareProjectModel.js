@@ -211,10 +211,8 @@ async function handleRoleChangeAction(actionBtn, projectRef) {
   const dropdown = actionBtn.closest(".shareproject-dropdown-content");
   if (!dropdown) return;
 
-  // Hide the dropdown immediately for a better UI feel
   dropdown.classList.add("hidden");
 
-  // --- Data Setup ---
   const contextId = dropdown.dataset.contextId;
   const projectData = JSON.parse(modal.dataset.projectData || "{}");
   const newRole = actionBtn.dataset.role;
@@ -222,70 +220,65 @@ async function handleRoleChangeAction(actionBtn, projectRef) {
   const currentUserId = auth.currentUser.uid;
   const superAdminUID = projectData.project_super_admin_uid;
 
-  const currentUserMemberInfo = (projectData.members || []).find(m => m.uid === currentUserId);
-  const isOwner = currentUserId === superAdminUID;
-  const isProjectAdmin = currentUserMemberInfo?.role === 'Project Admin';
+  const userProfile = (JSON.parse(modal.dataset.userProfilesMap || "{}"))[currentUserId];
+  const userRole = userProfile?.role; // Fetching role from user's profile
 
-  // --- Permission Check ---
-  if (!isOwner && !isProjectAdmin) {
-    return alert("Only the project owner or a project admin can modify member roles.");
+  // ✅ FIX: Added check for Developer (0) or Admin (3) roles
+  const isDeveloperOrAdmin = userRole === 0 || userRole === 3;
+  const isOwner = currentUserId === superAdminUID;
+
+  if (!isOwner && !isDeveloperOrAdmin) {
+    return alert("Only the project owner, an admin, or a developer can modify member roles.");
   }
 
-  // --- Prevent Admins from modifying the Owner ---
-  if (contextId === superAdminUID && !isOwner) {
-    return alert("Project Admins cannot modify the owner's role.");
+  if (contextId === superAdminUID && !isOwner && !isDeveloperOrAdmin) {
+    return alert("You cannot modify the owner's role.");
   }
 
   const memberId = contextId;
   const batch = writeBatch(db);
 
-  // --- SCENARIO 1: Removing a member ---
   if (isRemove) {
     if (memberId === superAdminUID) {
       return alert("The project owner cannot be removed. You must transfer ownership first.");
     }
-
     const memberData = (projectData.members || []).find(m => m.uid === memberId);
     if (memberData) {
       batch.update(projectRef, {
         members: arrayRemove(memberData),
-        project_admin_user: arrayRemove(memberId) // Also remove from admins if they were one
+        project_admin_user: arrayRemove(memberId)
       });
     }
-  }
-  // --- SCENARIO 2: Changing a role ---
-  else if (newRole) {
-    // Find the original state of the members array
-    const originalMembers = projectData.members || [];
+  } else if (newRole) {
+    if (newRole === "Project Admin") {
+      const currentAdmins = (projectData.project_admin_user || []);
+      const isAlreadyAdmin = currentAdmins.includes(memberId);
+      if (currentAdmins.length >= 2 && !isAlreadyAdmin) {
+        alert("A project can only have up to 2 Project Admins. You cannot add another.");
+        return;
+      }
+    }
 
-    // Create the new, updated members array using .map()
+    const originalMembers = projectData.members || [];
     const updatedMembers = originalMembers.map(member => {
-      // Find the member we want to change and return their new state
       if (member.uid === memberId) {
         return { ...member, role: newRole };
       }
-      // Return all other members unchanged
       return member;
     });
 
-    // Add the update for the entire 'members' array to the batch
     batch.update(projectRef, { members: updatedMembers });
 
-    // Additionally, update the 'project_admin_user' array if necessary
     if (newRole === "Project Admin") {
       batch.update(projectRef, { project_admin_user: arrayUnion(memberId) });
     } else {
-      // If their new role is NOT admin, ensure they are removed from the admin list
       batch.update(projectRef, { project_admin_user: arrayRemove(memberId) });
     }
   }
 
-  // --- Commit the Batch ---
   try {
     await batch.commit();
     console.log("✅ Update successful. The onSnapshot listener should now refresh the UI.");
-    // There is no need to call render() manually. 
-    // The onSnapshot listener will detect the change and do it for you.
   } catch (error) {
     console.error("❌ Update failed:", error);
     alert("An error occurred while saving changes. Please check the console.");
@@ -388,10 +381,12 @@ function setupEventListeners(modal, projectRef) {
         const currentUserId = auth.currentUser.uid;
         const projectData = JSON.parse(modal.dataset.projectData || '{}');
         const currentUserMemberInfo = (projectData.members || []).find(m => m.uid === currentUserId);
-        const isOwner = currentUserId === projectData.project_super_admin_uid;
         const isProjectAdmin = currentUserMemberInfo?.role === 'Project Admin';
 
-        if (!isOwner && !isProjectAdmin) {
+        const isOwner = currentUserId === projectData.project_super_admin_uid;
+        const isDeveloperOrAdmin = userProfile?.role === 0 || userProfile?.role === 3;
+
+        if (!isOwner && !isDeveloperOrAdmin && !isProjectAdmin) {
           alert("You do not have permission to change the project's access level.");
           accessActionBtn.closest('.shareproject-dropdown-content').classList.add('hidden');
           return;
