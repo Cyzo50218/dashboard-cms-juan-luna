@@ -15,6 +15,7 @@ import {
   deleteField,
   getDocs,
   doc,
+  writeBatch,
   updateDoc,
   limit,
   setDoc,
@@ -3182,6 +3183,7 @@ export function init(params) {
         roomButton.className = `chat-room-selector-item ${activeRoom?.id === room.id ? "selected" : ""
           }`;
         const unreadCount = unreadCounts[room.id] || 0;
+        const isSelected = activeRoom?.id === room.id;
         let buttonHTML = room.name;
 
         // If there are unread messages, add the badge
