@@ -48,7 +48,19 @@ export function init(params) {
   // --- State Variables ---
   let currentUser = null;
   let unsubscribeWorkspaces = null;
+  const generateColorForName = (name) => {
+    const hash = (name || '').split("").reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0);
+      return a & a;
+    }, 0);
 
+    // Limit hue to a cooler range (e.g., 180–300: green-blue-purple)
+    const hue = 180 + (hash % 120); // values between 180 and 300
+    const saturation = 50; // softer saturation
+    const lightness = 60; // brighter but not glaring
+
+    return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+  };
   async function loadAndRenderWorkspaces(uid) {
     if (unsubscribeWorkspaces) unsubscribeWorkspaces();
 
@@ -60,48 +72,48 @@ export function init(params) {
     );
 
     unsubscribeWorkspaces = onSnapshot(workspacesQuery, async (workspacesSnap) => {
-  // 🔁 Always re-fetch current user's selectedWorkspace
-  const userSnap = await getDoc(userRef);
-  const selectedWorkspaceId = userSnap.exists() ? userSnap.data().selectedWorkspace : null;
+      // 🔁 Always re-fetch current user's selectedWorkspace
+      const userSnap = await getDoc(userRef);
+      const selectedWorkspaceId = userSnap.exists() ? userSnap.data().selectedWorkspace : null;
 
-  if (workspacesSnap.empty) {
-    workspaceTitleEl.textContent = "No Workspace";
-    staffListContainer.innerHTML = '<p>Create a workspace to begin.</p>';
-    updateURL(null);
-    return;
-  }
+      if (workspacesSnap.empty) {
+        workspaceTitleEl.textContent = "No Workspace";
+        staffListContainer.innerHTML = '<p>Create a workspace to begin.</p>';
+        updateURL(null);
+        return;
+      }
 
-  let selectedWorkspaceData = null;
-  const otherWorkspaces = [];
+      let selectedWorkspaceData = null;
+      const otherWorkspaces = [];
 
-  workspacesSnap.docs.forEach(doc => {
-    const data = { id: doc.id, ref: doc.ref, ...doc.data() };
-    if (doc.id === selectedWorkspaceId) {
-      selectedWorkspaceData = data;
-    } else {
-      otherWorkspaces.push(data);
-    }
-  });
+      workspacesSnap.docs.forEach(doc => {
+        const data = { id: doc.id, ref: doc.ref, ...doc.data() };
+        if (doc.id === selectedWorkspaceId) {
+          selectedWorkspaceData = data;
+        } else {
+          otherWorkspaces.push(data);
+        }
+      });
 
-  // 🛠 Fallback & force re-write if still no selected
-  if (!selectedWorkspaceData) {
-    selectedWorkspaceData = {
-      id: workspacesSnap.docs[0].id,
-      ref: workspacesSnap.docs[0].ref,
-      ...workspacesSnap.docs[0].data()
-    };
+      // 🛠 Fallback & force re-write if still no selected
+      if (!selectedWorkspaceData) {
+        selectedWorkspaceData = {
+          id: workspacesSnap.docs[0].id,
+          ref: workspacesSnap.docs[0].ref,
+          ...workspacesSnap.docs[0].data()
+        };
 
-    await setDoc(userRef, { selectedWorkspace: selectedWorkspaceData.id }, { merge: true });
+        await setDoc(userRef, { selectedWorkspace: selectedWorkspaceData.id }, { merge: true });
 
-    // 🔁 Rerun load again with updated user doc to refresh UI
-    return loadAndRenderWorkspaces(uid);
-  }
+        // 🔁 Rerun load again with updated user doc to refresh UI
+        return loadAndRenderWorkspaces(uid);
+      }
 
-  // ✅ Now safe to update UI
-  updateURL(selectedWorkspaceData.id);
-  updateWorkspaceUI(selectedWorkspaceData, currentUser);
-  createWorkspaceDropdown(otherWorkspaces, userRef, uid);
-});
+      // ✅ Now safe to update UI
+      updateURL(selectedWorkspaceData.id);
+      updateWorkspaceUI(selectedWorkspaceData, currentUser);
+      createWorkspaceDropdown(otherWorkspaces, userRef, uid);
+    });
 
   }
 
@@ -123,7 +135,7 @@ export function init(params) {
 
     workspaceTitleEl.textContent = workspace.name;
     teamDescriptionEl.textContent = workspace.description || "Click to add team description...";
-    
+
     if (isOwner) {
       workspaceTitleEl.contentEditable = "true";
       teamDescriptionEl.contentEditable = "true";
