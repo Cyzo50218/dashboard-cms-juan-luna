@@ -19,6 +19,7 @@ import {
   doc,
   writeBatch,
   updateDoc,
+  arrayRemove,
   limit,
   setDoc,
   onSnapshot,
@@ -872,11 +873,23 @@ export function init(params) {
         <div id="chat-body" class="flex flex-col flex-1">
           <!-- Added bottom margin to create space below selector -->
           <nav id="chat-room-selector" class="border-b border-gray-300 bg-gray-100 px-2 py-2 flex flex-nowrap overflow-x-auto gap-1"></nav>
+
+          <div id="pinned-messages-container" class="hidden">
+    <div id="pinned-message-display">
+        </div>
+    <div id="pinned-message-nav">
+        <span id="pin-counter"></span>
+        <button id="pin-nav-prev" title="Previous Pin">&lsaquo;</button>
+        <button id="pin-nav-next" title="Next Pin">&rsaquo;</button>
+    </div>
+</div>
+
           <div id="messages-container" class="messages-container bg-gradient-to-b from-gray-50 to-gray-100 p-2 overflow-y-auto flex-1"></div>
           <div class="p-2 border-t border-gray-200 bg-white rounded-b-xl">
           <div id="reply-context-bar" class="hidden"></div>
 
             <form id="chat-form" class="flex items-center" onsubmit="return false">
+
               <div class="flex-1 bg-gray-100 rounded-full pr-1 flex items-center">
                 <input id="message-input" type="text" placeholder="Type your message..." class="flex-1 bg-transparent py-2 px-3 text-sm focus:outline-none" disabled>
                 <input type="file" id="file-input" class="hidden" accept="image/*, .pdf, .doc, .docx">
@@ -890,6 +903,12 @@ export function init(params) {
               <button id="send-button" type="submit" disabled class="ml-2 flex items-center justify-center transition text-gray-400 p-1">
                 <i class="fas fa-paper-plane text-sm"></i>
               </button>
+              <button id="confirm-edit-btn" type="button" class="hidden ml-2 edit-action-btn">
+    <i class="fas fa-check"></i>
+</button>
+<button id="cancel-edit-btn" type="button" class="hidden ml-1 edit-action-btn">
+    <i class="fas fa-times"></i>
+</button>
             </form>
           </div>
         </div>
@@ -923,6 +942,172 @@ export function init(params) {
         --z-emoji-picker: 10030; /* Highest priority */
         --z-reaction-picker: 10040; /* Even higher priority for reaction picker */
       }
+        /* Container for the pinned indicator text and icon */
+.pinned-indicator {
+    display: flex;
+    align-items: center;
+    font-size: 11px;
+    color: #657786;
+    margin-top: -22px;
+    padding-bottom: 2px;
+}
+
+/* Align the indicator correctly based on the message sender */
+.message-wrapper.user .pinned-indicator {
+    align-self: flex-end;
+}
+.message-wrapper.other .pinned-indicator {
+    align-self: flex-start;
+}
+
+.pinned-indicator i {
+    position: relative; /* Crucial for positioning the pseudo-element head */
+    z-index: 2; /* Ensures the needle is on top of the head */
+    font-size: 12px;
+    
+    /* A metallic color for the needle */
+    color: #4a5568; 
+    
+    /* The shadow cast by the entire pin */
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+    
+    /* The iconic thumbtack angle */
+    transform: rotate(-25deg);
+    
+    /* Adjust spacing */
+    margin-right: 12px;
+    margin-left: 4px;
+}
+
+/* This pseudo-element creates the glossy red 'head' of the pin */
+.pinned-indicator i::before {
+    content: ''; /* Required for pseudo-elements */
+    position: absolute;
+    z-index: 1; /* Places the head behind the needle */
+    
+    /* Position and size the head relative to the icon */
+    top: -3px;
+    left: 0;
+    width: 11px;
+    height: 11px;
+    
+    /* A vibrant red gradient to simulate lighting */
+    background-image: linear-gradient(135deg, #ff7575 0%, #e53e3e 100%);
+    
+    /* Make it a perfect circle */
+    border-radius: 50%;
+    
+    /* The key to the 3D effect:
+       - An outer shadow to lift it off the page.
+       - An inset shadow to create a glossy highlight on the top edge. */
+    box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3), 
+                inset 0 -1px 1px rgba(0, 0, 0, 0.2), 
+                inset 0 1px 1px rgba(255, 255, 255, 0.4);
+}
+        #pinned-messages-container {
+    padding: 10px 15px;
+    background-color: rgba(230, 235, 245, 0.7);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    animation: fadeInDown 0.3s ease-out;
+}
+
+#pinned-messages-container.hidden {
+    display: none;
+}
+
+@keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+#pinned-message-display {
+    flex-grow: 1;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 13px;
+    color: #333;
+}
+
+#pinned-message-display .pin-icon {
+    color: #007aff;
+    margin-right: 8px;
+    font-size: 12px;
+}
+
+#pinned-message-display .pinned-sender {
+    font-weight: 600;
+}
+
+#pinned-message-nav {
+    display: flex;
+    align-items: center;
+    color: #555;
+    font-size: 13px;
+}
+
+#pin-counter {
+    margin-right: 8px;
+}
+
+/* Shared style for both the check and cancel buttons */
+.edit-action-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%; /* This makes the background circular */
+    border: none;      /* Removes the border */
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.edit-action-btn:hover {
+    transform: scale(1.05); /* Slight zoom on hover */
+}
+
+/* Specific color for the Confirm (check) button */
+#confirm-edit-btn {
+    background-color: #dfdfdfff; /* Green for confirm */
+    color: #267423ff;
+}
+#confirm-edit-btn:hover {
+    background-color: #dcf7e2ff; /* Darker green */
+}
+
+/* Specific color for the Cancel button */
+#cancel-edit-btn {
+    background-color: #dfdfdfff; /* Red for cancel */
+    color: #692828ff;
+}
+#cancel-edit-btn:hover {
+    background-color: #fff0f1ff; /* Darker red */
+}
+#pinned-message-nav button {
+    background: rgba(0, 0, 0, 0.05);
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    margin-left: 4px;
+    cursor: pointer;
+    color: #333;
+    font-size: 18px;
+    line-height: 18px;
+    transition: background-color 0.1s ease;
+}
+
+#pinned-message-nav button:hover {
+    background: rgba(0, 0, 0, 0.1);
+}
      #chat-box.align-left {
   transform: translateX(-20px);
 }
@@ -1077,7 +1262,7 @@ export function init(params) {
         justify-content: center;
         font-size: 10px;
         font-weight: bold;
-        z-index: 100000000;
+        z-index: 100000000000;
         padding: 2px; /* Added padding for better appearance */
       }
 
@@ -1906,6 +2091,248 @@ export function init(params) {
         top: auto; /* Reset top */
         margin-bottom: 10px; /* Add some margin from the bottom of the screen */
       }
+
+      /* ===== Modern Confirmation Modal ===== */
+
+#modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    
+    /* The semi-transparent black background */
+    background-color: rgba(0, 0, 0, 0.6);
+    
+    /* High z-index to ensure it's on top of everything */
+    z-index: 10000000;
+    
+    /* Frosted glass effect for the background */
+    backdrop-filter: blur(5px);
+    
+    /* Center the modal content */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    /* Fade-in animation */
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.confirmation-modal {
+    background: #1c1c1e; /* Dark charcoal, looks more premium than pure black */
+    color: #f5f5f7;
+    border-radius: 16px;
+    padding: 24px 28px;
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    
+    /* Pop-in and slide-up animation */
+    animation: popInUp 0.3s ease-out forwards;
+}
+
+@keyframes popInUp {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.confirmation-modal .modal-icon {
+    font-size: 24px;
+    color: #f5b84f; /* A warning yellow */
+    margin-bottom: 12px;
+}
+
+.confirmation-modal .modal-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+}
+
+.confirmation-modal .modal-message {
+    font-size: 0.9rem;
+    color: #a1a1a6; /* Lighter gray for the body text */
+    line-height: 1.5;
+    margin-bottom: 24px;
+}
+
+.confirmation-modal .modal-buttons {
+    display: flex;
+    gap: 12px;
+}
+
+.confirmation-modal .modal-btn {
+    flex-grow: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: transform 0.1s ease, background-color 0.1s ease;
+}
+
+.confirmation-modal .modal-btn:hover {
+    transform: scale(1.03);
+}
+
+.confirmation-modal .modal-btn-cancel {
+    background-color: #4a4a4e;
+    color: white;
+}
+
+.confirmation-modal .modal-btn-confirm {
+    background-color: #007aff; /* Default confirm is blue */
+    color: white;
+}
+
+/* Special style for destructive actions like "Unsend" or "Delete" */
+.confirmation-modal .modal-btn-confirm.destructive {
+    background-color: #e53e3e; /* Red for destructive actions */
+}
+
+.forward-modal {
+    background: #1c1c1e;
+    color: #f5f5f7;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 620px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    max-height: 80vh;
+    animation: popInUp 0.3s ease-out forwards;
+}
+
+.forward-modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.forward-modal-header h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.close-modal-btn {
+    background: none;
+    border: none;
+    color: #a1a1a6;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+.forward-modal-search {
+    position: relative;
+    padding: 12px 20px;
+}
+
+.forward-modal-search i {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    left: 35px;
+    color: #a1a1a6;
+}
+
+#room-search-input {
+    width: 100%;
+    padding: 12px 12px 12px 40px;
+    background-color: #3a3a3c;
+    border: 1px solid #4a4a4e;
+    border-radius: 10px;
+    color: white;
+    font-size: 1rem;
+}
+
+.forward-room-list {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 0 20px;
+}
+
+.room-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+}
+.room-item:last-child {
+    border-bottom: none;
+}
+.room-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+.room-item .room-info {
+    flex-grow: 1;
+}
+.room-item .room-name {
+    display: block;
+    font-weight: 500;
+}
+.room-item .room-members {
+    font-size: 0.8rem;
+    color: #a1a1a6;
+}
+.room-item input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    accent-color: #007aff;
+}
+
+.forward-modal-footer {
+    padding: 16px 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+#forward-btn {
+    background-color: #f5f5f7; /* A clean, slightly off-white */
+    color: #1c1c1e;        
+    border: 1px solid #636363ff;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out, transform 0.1s ease;
+}
+
+/* Hover state for the enabled button */
+#forward-btn:not(:disabled):hover {
+    background-color: #e5e5e5;
+    border: 1px solid #636363ff;
+    transform: scale(1.03);
+}
+
+/* Disabled state */
+#forward-btn:disabled {
+    background-color: #4a4a4e; /* Dark gray for disabled */
+    color: #a1a1a6;
+    border: 1px solid #000000;
+    cursor: not-allowed;
+    transform: none;
+}
+.edited-status {
+    font-size: 10px;
+    color: #3d50ffff; /* A muted gray color */
+    margin-left: 5px;
+    font-style: bold;
+}
     `;
     document.head.appendChild(style);
 
@@ -1986,6 +2413,14 @@ export function init(params) {
             setTimeout(() => resolve(_messages[roomId] || []), 300);
           }),
 
+        editMessage: async (roomId, messageId, newText) => {
+          const messageRef = doc(db, "MessagesChatRooms", roomId, "messages", messageId);
+          await updateDoc(messageRef, {
+            text: newText,
+            lastEditedAt: serverTimestamp() // Add a timestamp to mark it as edited
+          });
+        },
+
         listenToMessages: (roomId, callback, messageLimit = 20) => {
           // Stop any existing listener for that room
           if (_activeListeners[roomId]) {
@@ -2035,8 +2470,31 @@ export function init(params) {
 
         pinMessage: async (roomId, message) => {
           const roomRef = doc(db, "chatRooms", roomId);
+          // arrayUnion adds the message to the array only if it's not already there.
           await updateDoc(roomRef, {
-            pinnedMessage: message // Firestore handles setting the field to null to clear it
+            pinnedMessages: arrayUnion(message)
+          });
+        },
+
+        listenToChatRooms: (userId, callback) => {
+          const roomsQuery = query(
+            collection(db, "chatRooms"),
+            where("participantUIDs", "array-contains", userId)
+          );
+
+          const unsubscribe = onSnapshot(roomsQuery, (snapshot) => {
+            const rooms = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            callback(rooms); // Pass the updated list of rooms to the callback
+          });
+
+          return unsubscribe; // Return the function to stop listening
+        },
+
+        unpinMessage: async (roomId, message) => {
+          const roomRef = doc(db, "chatRooms", roomId);
+          // arrayRemove removes all instances of the message from the array.
+          await updateDoc(roomRef, {
+            pinnedMessages: arrayRemove(message)
           });
         },
 
@@ -2146,6 +2604,16 @@ export function init(params) {
           }
         },
 
+        getRoomsForUser: async (userId) => {
+          const roomsQuery = query(
+            collection(db, "chatRooms"),
+            where("participantUIDs", "array-contains", userId)
+          );
+
+          const snapshot = await getDocs(roomsQuery);
+          return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        },
+
         markMessagesAsRead: (roomId, currentUserId) => {
           return new Promise((resolve) => {
             setTimeout(() => {
@@ -2164,6 +2632,103 @@ export function init(params) {
 
       };
     })();
+
+    async function showForwardModal(messageToForward) {
+      // Remove any existing modal first
+      document.querySelector('#modal-overlay')?.remove();
+
+      // 1. Fetch all available chat rooms
+      const userRooms = await ChatService.getRoomsForUser(chatState.currentUserId);
+      let selectedRoomIds = new Set();
+
+      // 2. Create the modal HTML structure
+      const overlay = document.createElement('div');
+      overlay.id = 'modal-overlay';
+      overlay.innerHTML = `
+        <div class="forward-modal">
+            <div class="forward-modal-header">
+                <h2>Forward to...</h2>
+                <button class="close-modal-btn">&times;</button>
+            </div>
+            <div class="forward-modal-search">
+                <i class="fas fa-search"></i>
+                <input type="text" id="room-search-input" placeholder="Search for a chat room...">
+            </div>
+            <div class="forward-room-list">
+                </div>
+            <div class="forward-modal-footer">
+                <button id="forward-btn" class="modal-btn modal-btn-confirm" disabled>Forward</button>
+            </div>
+        </div>
+    `;
+
+      // 3. Get references to key elements
+      const roomListContainer = overlay.querySelector('.forward-room-list');
+      const searchInput = overlay.querySelector('#room-search-input');
+      const forwardBtn = overlay.querySelector('#forward-btn');
+
+      // 4. Function to render the list of rooms
+      const renderList = (rooms) => {
+        roomListContainer.innerHTML = rooms.map(room => `
+            <label class="room-item" for="room-${room.id}">
+                <div class="room-info">
+                    <span class="room-name">${room.name}</span>
+                    <span class="room-members">${room.participantUIDs.length} members</span>
+                </div>
+                <input type="checkbox" id="room-${room.id}" data-room-id="${room.id}">
+            </label>
+        `).join('');
+      };
+
+      // 5. Initial render and event listeners
+      renderList(userRooms);
+      document.body.appendChild(overlay);
+
+      // Search/filter functionality
+      searchInput.addEventListener('input', (e) => {
+        const searchTerm = e.target.value.toLowerCase();
+        const filteredRooms = userRooms.filter(room => room.name.toLowerCase().includes(searchTerm));
+        renderList(filteredRooms);
+      });
+
+      // Checkbox selection logic
+      roomListContainer.addEventListener('change', (e) => {
+        if (e.target.type === 'checkbox') {
+          const roomId = e.target.dataset.roomId;
+          if (e.target.checked) {
+            selectedRoomIds.add(roomId);
+          } else {
+            selectedRoomIds.delete(roomId);
+          }
+          forwardBtn.disabled = selectedRoomIds.size === 0;
+        }
+      });
+
+      // Forward button logic
+      forwardBtn.addEventListener('click', () => {
+        // Prepare the forwarded message object
+        const forwardedMessage = {
+          ...messageToForward,
+          isForwarded: true, // Add a flag to indicate it's a forwarded message
+        };
+        // Remove fields that should not be copied
+        delete forwardedMessage.id;
+        delete forwardedMessage.reactions;
+
+        // Send the message to each selected room
+        selectedRoomIds.forEach(roomId => {
+          ChatService.sendMessage(roomId, forwardedMessage);
+        });
+
+        overlay.remove();
+      });
+
+      // Close button logic
+      overlay.querySelector('.close-modal-btn').addEventListener('click', () => overlay.remove());
+      overlay.addEventListener('click', (e) => {
+        if (e.target.id === 'modal-overlay') overlay.remove();
+      });
+    }
 
     // Make the chat container draggable
     function makeChatDraggable(currentUserId) {
@@ -2249,6 +2814,8 @@ export function init(params) {
       currentUserName: "You",
       typingUsers: {},
       replyingTo: null,
+      initialRoomSet: false,
+      currentPinIndex: 0,
     };
 
     let typingListener = null;
@@ -2344,6 +2911,37 @@ export function init(params) {
       // This is a good place to ensure the UI updates
       updateUnreadBadge(total);
       renderChatRooms();
+    }
+
+    function toggleEditMode(isActive) {
+      const sendButton = document.getElementById('send-button');
+      const fileButton = document.getElementById('file-button');
+      const confirmEditButton = document.getElementById('confirm-edit-btn');
+      const cancelEditButton = document.getElementById('cancel-edit-btn');
+      const messageInput = document.getElementById('message-input');
+
+      if (isActive) {
+        // --- Enter edit mode ---
+
+        // FIX: Enable the input field so it can be edited.
+        messageInput.disabled = false;
+
+        sendButton.classList.add('hidden');
+        fileButton.classList.add('hidden');
+        confirmEditButton.classList.remove('hidden');
+        cancelEditButton.classList.remove('hidden');
+        messageInput.focus();
+      } else {
+        // --- Exit edit mode ---
+        messageInput.disabled = false;
+
+        sendButton.classList.remove('hidden');
+        fileButton.classList.remove('hidden');
+        confirmEditButton.classList.add('hidden');
+        cancelEditButton.classList.add('hidden');
+        messageInput.value = '';
+        setChatState({ editingMessage: null });
+      }
     }
 
     async function initializeChat() {
@@ -2457,30 +3055,13 @@ export function init(params) {
           roomId: currentProjectId,
           createdAt: Date.now()
         });
-
-        // Now create the nested "messages" subcollection with a welcome message
-        const messagesRef = collection(messageChatRoomRef, "messages");
-
-        const welcomeMessage = {
-          id: Date.now(),
-          text: "Welcome to the project chat room!",
-          sender: "System",
-          senderId: "system",
-          timestamp: new Date(),
-          read: true,
-          status: "sent", // or MESSAGE_STATUS.SENT if you have that constant imported
-          reactions: {}
-        };
-
-        await addDoc(messagesRef, welcomeMessage);
-        console.log("Welcome message created in messages subcollection.");
       }
 
       console.log("Chat room (and MessageChatRoom if new) created/updated with ID:", currentProjectId);
     }
 
     async function loadChatData() {
-      const rooms = await ChatService.getChatRooms();
+      const rooms = await ChatService.getRoomsForUser(currentUserId);
       const messagesData = {};
 
       for (const room of rooms) {
@@ -2489,28 +3070,33 @@ export function init(params) {
 
       const statusData = {};
 
-      rooms.forEach((room) => {
-        const participants = room.participants || []; // Fallback if undefined
+      if (rooms.length > 0 && !chatState.initialRoomSet) {
+        const projectRoom = rooms.find(r => r.id === currentProjectId);
 
-        participants.forEach((p) => {
-          // Use existing status object if available
-          statusData[p.id] = p.status || {
-            online: Math.random() > 0.8,
-            lastSeen: new Date(
-              Date.now() - Math.floor(Math.random() * 3600000 * 24 * 7)
-            ),
-            name: p.name,
-          };
-        });
-      });
+        if (projectRoom) {
+          await setActiveRoom(projectRoom);
+        } else {
+          await setActiveRoom(rooms[0]);
+        }
+        setChatState({ initialRoomSet: true });
+      }
 
-      // Set initial state
-      setChatState({
-        chatRooms: rooms,
-        messages: messagesData,
-        participantStatus: statusData,
-        activeRoom: rooms[0],
-        isMinimized: true,
+      ChatService.listenToChatRooms(currentUserId, (updatedRooms) => {
+
+        // When the listener fires, update the chat state with the latest room data.
+        setChatState({ chatRooms: updatedRooms });
+
+        // If there's an active room, find its latest version to keep the state fresh.
+        if (chatState.activeRoom) {
+          const updatedActiveRoom = updatedRooms.find(r => r.id === chatState.activeRoom.id);
+          if (updatedActiveRoom) {
+            setChatState({ activeRoom: updatedActiveRoom });
+          }
+        }
+
+        // Now that the room data is fresh, render the UI that depends on it.
+        renderPinnedMessages();
+        renderChatRooms(); // Re-render the room tabs
       });
 
       // Attach message listeners for real-time updates
@@ -2528,12 +3114,10 @@ export function init(params) {
           }
 
           updateUnreadBadge(calculateUnreadCounts());
+
           renderAll();
         });
       });
-
-      await setActiveRoom(rooms[0]);
-
       updateUnreadBadge(calculateUnreadCounts());
       renderAll();
     }
@@ -2767,6 +3351,21 @@ export function init(params) {
         }
       });
 
+      document.getElementById('confirm-edit-btn').addEventListener('click', () => {
+        const { editingMessage, activeRoom } = chatState;
+        const newText = document.getElementById('message-input').value.trim();
+
+        if (editingMessage && activeRoom && newText) {
+          ChatService.editMessage(activeRoom.id, editingMessage.id, newText);
+        }
+        toggleEditMode(false); // Exit edit mode
+      });
+
+
+      document.getElementById('cancel-edit-btn').addEventListener('click', () => {
+        toggleEditMode(false); // Exit edit mode
+      });
+
       document.getElementById("chat-button").addEventListener("click", () => {
         toggleChat();
       });
@@ -2843,14 +3442,17 @@ export function init(params) {
         const chatBox = document.getElementById("chat-box");
         const chatContainer = document.getElementById("chat-container");
         const optionsMenu = document.querySelector('.options-menu');
+        const modalOverlay = document.querySelector('#modal-overlay');
 
         const isOpen = chatState.isOpen;
+
         if (
           isOpen &&
           chatBox &&
           !chatBox.contains(e.target) &&
           !chatContainer.contains(e.target) &&
-          !optionsMenu?.contains(e.target)
+          !optionsMenu?.contains(e.target) &&
+          !modalOverlay?.contains(e.target)
         ) {
           minimizeChat();
         }
@@ -3346,6 +3948,7 @@ export function init(params) {
           messages: updated
         });
         renderMessages();
+        renderPinnedMessages()
         inputField.disabled = false;
         inputField.focus();
       });
@@ -3490,7 +4093,7 @@ export function init(params) {
                 <p class="text-sm mt-1">Start the conversation!</p>
             </div>
         `;
-        return; 
+        return;
       }
 
       let messagesHTML = visibleMessages
@@ -3572,20 +4175,28 @@ export function init(params) {
         ? isImage
           ? `
             <div class="image-message">
-                <img src="${msg.text}" alt="${msg.fileInfo.name}" class="max-w-xs max-h-60 rounded-lg cursor-pointer preview-image" data-url="${msg.text}" />
+                <img src="${msg.fileInfo.url}" alt="${msg.fileInfo.name}" class="max-w-xs max-h-60 rounded-lg cursor-pointer preview-image" data-url="${msg.fileInfo.url}" />
                 <p class="text-xs mt-1 ${isUser ? "text-gray-400" : "text-gray-500"}">${formatFileSize(msg.fileInfo.size)}</p>
             </div>
             `
           : `
-            <div class="file-message flex items-center p-2 bg-${isUser ? "gray-800" : "gray-100"} rounded-lg">
-                <i class="fas fa-file ${isUser ? "text-white" : "text-gray-600"} mr-2"></i>
+            <div class="file-message flex items-center p-2 bg-${isUser ? "gray-700" : "gray-200"} rounded-lg">
+                <i class="fas fa-file-alt ${isUser ? "text-white" : "text-gray-600"} mr-3"></i>
                 <div>
-                    <a href="${msg.text}" target="_blank" class="text-sm ${isUser ? "text-white" : "text-gray-800"} underline">${msg.fileInfo.name}</a>
-                    <p class="text-xs ${isUser ? "text-gray-400" : "text-gray-500"}">${formatFileSize(msg.fileInfo.size)}</p>
+                    <a href="${msg.fileInfo.url}" 
+                       download="${msg.fileInfo.name}" 
+                       target="_blank" 
+                       class="text-sm ${isUser ? "text-white hover:text-gray-300" : "text-gray-800 hover:text-black"} underline">
+                        ${msg.fileInfo.name}
+                    </a>
+                    <p class="text-xs ${isUser ? "text-gray-400" : "text-gray-500"} mt-1">
+                        ${formatFileSize(msg.fileInfo.size)}
+                    </p>
                 </div>
             </div>
             `
         : `<p>${msg.text}</p>`;
+
 
       // --- 3. Build HTML for a Quoted Reply (if it exists) ---
       let replyHtml = '';
@@ -3600,6 +4211,36 @@ export function init(params) {
         `;
       }
 
+      const isForwarded = msg.isForwarded;
+      let forwardedIndicatorHtml = '';
+      if (isForwarded) {
+        forwardedIndicatorHtml = `
+            <span class="forwarded-indicator">
+                <i class="fas fa-share"></i> Forwarded
+            </span>
+        `;
+      }
+
+      const wasEdited = msg.lastEditedAt;
+      let editedIndicatorHtml = '';
+      if (wasEdited && !isForwarded) {
+        editedIndicatorHtml = `<span class="edited-status">(edited)</span>`;
+      }
+      let finalMessageStatus = msg.status; // Start with the default status
+
+      if (isUser) {
+        // Get the IDs of all *other* participants in the current room
+        const otherParticipantUIDs = chatState.activeRoom.participantUIDs.filter(
+          uid => uid !== currentUserId
+        );
+
+        // Check if at least one of the other participants is in the message's 'readBy' map.
+        // The .some() method makes this very efficient.
+        const isReadByOthers = otherParticipantUIDs.some(uid => msg.readBy?.[uid]);
+
+        // Set the final status based on whether others have read it
+        finalMessageStatus = isReadByOthers ? 'read' : 'sent';
+      }
       // --- 4. Build HTML for Reactions (Moved to the correct scope) ---
       const reactionsHtml = Object.keys(msg.reactions || {})
         .map((reaction) => {
@@ -3610,8 +4251,17 @@ export function init(params) {
         })
         .join("");
 
+      const isPinned = chatState.activeRoom.pinnedMessages?.some(p => p.id === msg.id);
+
       return `
 <div class="message-wrapper ${isUser ? "user" : "other"}" data-message-id="${msg.id}">
+${editedIndicatorHtml}
+${forwardedIndicatorHtml}
+${isPinned ? `
+            <div class="pinned-indicator">
+                <i class="fas fa-thumbtack"></i> Pinned
+            </div>
+        ` : ""}
     <div class="message-container ${isUser ? "user" : "other"}">
         <div class="message-bubble ${isUser ? "user" : "other"}">
             <div class="message-header">
@@ -3650,8 +4300,7 @@ export function init(params) {
       document.querySelector('.options-menu')?.remove();
 
       const isUserMessage = msg.senderId === chatState.currentUserId;
-      // Check if the message being acted on is the currently pinned one
-      const isAlreadyPinned = chatState.activeRoom.pinnedMessage?.id === msg.id;
+      const isAlreadyPinned = chatState.activeRoom.pinnedMessages?.some(p => p.id === msg.id);
 
       const menu = document.createElement('div');
       menu.className = 'options-menu';
@@ -3662,6 +4311,15 @@ export function init(params) {
         ${isUserMessage
           ? /* If it's the user's own message, show "Unsend" */
           `
+              ${!msg.isFile && !msg.isForwarded
+            ? `
+                <div class="options-menu-item" data-action="edit">
+                    <i class="fas fa-pencil-alt"></i>
+                    Edit
+                </div>
+                `
+            : ''
+          }
               <div class="options-menu-item" data-action="unsend">
                   <i class="fas fa-trash-alt"></i>
                   Unsend
@@ -3721,31 +4379,161 @@ export function init(params) {
       }, 0);
     }
 
+    function showConfirmationModal({ title, message, confirmText, onConfirm, isDestructive = false }) {
+      // Remove any existing modal first
+      document.querySelector('#modal-overlay')?.remove();
+
+      // Create the overlay and modal elements
+      const overlay = document.createElement('div');
+      overlay.id = 'modal-overlay';
+
+      overlay.innerHTML = `
+        <div class="confirmation-modal">
+            <div class="modal-icon"><i class="fas fa-exclamation-triangle"></i></div>
+            <h2 class="modal-title">${title}</h2>
+            <p class="modal-message">${message}</p>
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-cancel">Cancel</button>
+                <button class="modal-btn modal-btn-confirm ${isDestructive ? 'destructive' : ''}">${confirmText}</button>
+            </div>
+        </div>
+    `;
+
+      // Function to close the modal
+      const closeModal = () => overlay.remove();
+
+      // Add event listeners
+      overlay.querySelector('.modal-btn-confirm').addEventListener('click', (e) => {
+        e.stopPropagation();
+        onConfirm(); // Execute the action
+        closeModal();
+      });
+
+      overlay.querySelector('.modal-btn-cancel').addEventListener('click', closeModal);
+
+      // Clicking on the dark background also closes the modal
+      overlay.addEventListener('click', (e) => {
+        if (e.target.id === 'modal-overlay') {
+          closeModal();
+        }
+      });
+      document.body.appendChild(overlay);
+    }
+
     function handleMenuAction(action, msg) {
       if (!action) return;
-      const { activeRoom } = chatState;
+      const { activeRoom, currentUserId } = chatState;
 
       switch (action) {
         case 'unsend':
-          if (confirm("Are you sure you want to unsend this message for everyone?")) {
-            ChatService.deleteMessage(activeRoom.id, msg.id);
+          showConfirmationModal({
+            title: 'Unsend Message',
+            message: 'This will be permanently removed for everyone. You can\'t undo this.',
+            confirmText: 'Unsend',
+            isDestructive: true,
+            onConfirm: () => ChatService.deleteMessage(activeRoom.id, msg.id)
+          });
+          break;
+
+        case 'remove':
+          showConfirmationModal({
+            title: 'Remove Message',
+            message: 'This message will be removed for you. Other people in the chat will still be able to see it.',
+            confirmText: 'Remove',
+            onConfirm: () => ChatService.hideMessageForUser(activeRoom.id, msg.id, currentUserId)
+          });
+          break;
+
+        case 'pin':
+          const isAlreadyPinned = activeRoom.pinnedMessages?.some(p => p.id === msg.id);
+
+          if (isAlreadyPinned) {
+            const messageToUnpin = activeRoom.pinnedMessages.find(p => p.id === msg.id);
+            if (messageToUnpin) ChatService.unpinMessage(activeRoom.id, messageToUnpin);
+          } else {
+            ChatService.pinMessage(activeRoom.id, msg);
           }
           break;
-        case 'remove':
-          ChatService.hideMessageForUser(activeRoom.id, msg.id, currentUserId);
-          break;
-        case 'pin':
-          // Pins the message, or unpins it if it's already pinned
-          const isAlreadyPinned = activeRoom.pinnedMessage?.id === msg.id;
-          ChatService.pinMessage(activeRoom.id, isAlreadyPinned ? null : msg);
-          break;
+
         case 'forward':
-          alert("Forward functionality has not been implemented yet.");
+          showForwardModal(msg);
           break;
+
+        case 'edit':
+          // Can't edit a message that is only a file
+          if (msg.isFile) {
+            alert("You can't edit a message with a file attachment.");
+            return;
+          }
+          setChatState({ editingMessage: msg });
+          document.getElementById('message-input').value = msg.text;
+          toggleEditMode(true);
+          break;
+
         case 'report':
           alert("Report functionality has not been implemented yet.");
           break;
       }
+    }
+
+    // Add this new function to your chat controller script
+
+    function renderPinnedMessages() {
+      const { activeRoom, currentPinIndex } = chatState;
+      const container = document.getElementById("pinned-messages-container");
+      const display = document.getElementById("pinned-message-display");
+      const counter = document.getElementById("pin-counter");
+      const btnPrev = document.getElementById("pin-nav-prev");
+      const btnNext = document.getElementById("pin-nav-next");
+
+      const pins = activeRoom?.pinnedMessages || [];
+
+      if (pins.length === 0) {
+        container.classList.add("hidden");
+        return;
+      }
+
+      container.classList.remove("hidden");
+      const currentPin = pins[currentPinIndex];
+
+      // Display the pinned message content
+      display.innerHTML = `
+        <i class="fas fa-thumbtack pin-icon"></i>
+        <span class="pinned-sender">${currentPin.senderName}:</span>
+        <span>${currentPin.text}</span>
+    `;
+
+      // Update the counter and navigation visibility
+      counter.textContent = `Pin ${currentPinIndex + 1} of ${pins.length}`;
+      btnPrev.style.display = pins.length > 1 ? 'block' : 'none';
+      btnNext.style.display = pins.length > 1 ? 'block' : 'none';
+
+      // Event listener to jump to the message in the chat
+      display.onclick = () => {
+        const messageElement = document.querySelector(`[data-message-id="${currentPin.id}"]`);
+        if (messageElement) {
+          messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          messageElement.style.transition = 'background-color 0.5s ease';
+          messageElement.style.backgroundColor = 'rgba(0, 122, 255, 0.1)';
+          setTimeout(() => {
+            messageElement.style.backgroundColor = '';
+          }, 1500);
+        }
+      };
+
+      // Event listener for the "Next" button
+      btnNext.onclick = () => {
+        const nextIndex = (currentPinIndex + 1) % pins.length;
+        setChatState({ currentPinIndex: nextIndex });
+        renderPinnedMessages();
+      };
+
+      // Event listener for the "Previous" button
+      btnPrev.onclick = () => {
+        const prevIndex = (currentPinIndex - 1 + pins.length) % pins.length;
+        setChatState({ currentPinIndex: prevIndex });
+        renderPinnedMessages();
+      };
     }
 
     function formatFileSize(bytes) {

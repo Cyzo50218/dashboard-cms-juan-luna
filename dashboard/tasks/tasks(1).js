@@ -1018,7 +1018,117 @@ export function init(params) {
         --z-emoji-picker: 10030; /* Highest priority */
         --z-reaction-picker: 10040; /* Even higher priority for reaction picker */
       }
+        /* ===== Modern Confirmation Modal ===== */
 
+#modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    
+    /* The semi-transparent black background */
+    background-color: rgba(0, 0, 0, 0.6);
+    
+    /* High z-index to ensure it's on top of everything */
+    z-index: 10000000;
+    
+    /* Frosted glass effect for the background */
+    backdrop-filter: blur(5px);
+    
+    /* Center the modal content */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    /* Fade-in animation */
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.confirmation-modal {
+    background: #1c1c1e; /* Dark charcoal, looks more premium than pure black */
+    color: #f5f5f7;
+    border-radius: 16px;
+    padding: 24px 28px;
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    
+    /* Pop-in and slide-up animation */
+    animation: popInUp 0.3s ease-out forwards;
+}
+
+@keyframes popInUp {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.confirmation-modal .modal-icon {
+    font-size: 24px;
+    color: #f5b84f; /* A warning yellow */
+    margin-bottom: 12px;
+}
+
+.confirmation-modal .modal-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+}
+
+.confirmation-modal .modal-message {
+    font-size: 0.9rem;
+    color: #a1a1a6; /* Lighter gray for the body text */
+    line-height: 1.5;
+    margin-bottom: 24px;
+}
+
+.confirmation-modal .modal-buttons {
+    display: flex;
+    gap: 12px;
+}
+
+.confirmation-modal .modal-btn {
+    flex-grow: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: transform 0.1s ease, background-color 0.1s ease;
+}
+
+.confirmation-modal .modal-btn:hover {
+    transform: scale(1.03);
+}
+
+.confirmation-modal .modal-btn-cancel {
+    background-color: #4a4a4e;
+    color: white;
+}
+
+.confirmation-modal .modal-btn-confirm {
+    background-color: #007aff; /* Default confirm is blue */
+    color: white;
+}
+
+/* Special style for destructive actions like "Unsend" or "Delete" */
+.confirmation-modal .modal-btn-confirm.destructive {
+    background-color: #e53e3e; /* Red for destructive actions */
+}
       .chat-container { z-index: var(--z-chat-container); }
     .chat-box { z-index: var(--z-chat-box); }
     #chat-header { z-index: var(--z-chat-header); }
@@ -2047,7 +2157,7 @@ export function init(params) {
                 responsePool[Math.floor(Math.random() * responsePool.length)];
               const participant =
                 room?.participants[
-                  Math.floor(Math.random() * room.participants.length)
+                Math.floor(Math.random() * room.participants.length)
                 ];
 
               const botMessage = {
@@ -2509,6 +2619,49 @@ export function init(params) {
       }
     }
 
+    /**
+ * Creates and displays a modern, reusable confirmation modal.
+ * @param {object} options - Configuration for the modal.
+ * @param {string} options.title - The main title of the modal.
+ * @param {string} options.message - The descriptive text.
+ * @param {string} options.confirmText - The text for the confirmation button.
+ * @param {function} options.onConfirm - The function to execute when confirmed.
+ * @param {boolean} [options.isDestructive=false] - If true, styles the confirm button as red.
+ */
+    function showConfirmationModal({ title, message, confirmText, onConfirm, isDestructive = false }) {
+      document.querySelector('#modal-overlay')?.remove();
+      const overlay = document.createElement('div');
+      overlay.id = 'modal-overlay';
+
+      overlay.innerHTML = `
+        <div class="confirmation-modal">
+            <div class="modal-icon"><i class="fas fa-exclamation-triangle"></i></div>
+            <h2 class="modal-title">${title}</h2>
+            <p class="modal-message">${message}</p>
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-cancel">Cancel</button>
+                <button class="modal-btn modal-btn-confirm ${isDestructive ? 'destructive' : ''}">${confirmText}</button>
+            </div>
+        </div>
+    `;
+
+      const closeModal = () => overlay.remove();
+      overlay.querySelector('.modal-btn-confirm').addEventListener('click', (e) => {
+        e.stopPropagation();
+        onConfirm(); // Execute the action
+        closeModal();
+      });
+
+      overlay.querySelector('.modal-btn-cancel').addEventListener('click', closeModal);
+      overlay.addEventListener('click', (e) => {
+        if (e.target.id === 'modal-overlay') {
+          closeModal();
+        }
+      });
+
+      document.body.appendChild(overlay);
+    }
+
     function toggleMaximize() {
       const chatBox = document.getElementById("chat-box");
       const toggleIcon = document.getElementById("toggle-minmax-icon");
@@ -2701,12 +2854,10 @@ export function init(params) {
 
       if (isMaximized) {
         reactionPicker.style.position = "fixed";
-        reactionPicker.style.bottom = `${
-          window.innerHeight - targetRect.top + 5
-        }px`;
-        reactionPicker.style.left = `${
-          targetRect.left + targetRect.width / 2
-        }px`;
+        reactionPicker.style.bottom = `${window.innerHeight - targetRect.top + 5
+          }px`;
+        reactionPicker.style.left = `${targetRect.left + targetRect.width / 2
+          }px`;
         reactionPicker.style.transform = `translateX(-50%)`;
         reactionPicker.style.top = "auto";
       } else {
@@ -2758,9 +2909,8 @@ export function init(params) {
 
       chatRooms.forEach((room) => {
         const roomButton = document.createElement("button");
-        roomButton.className = `chat-room-selector-item ${
-          activeRoom?.id === room.id ? "selected" : ""
-        }`;
+        roomButton.className = `chat-room-selector-item ${activeRoom?.id === room.id ? "selected" : ""
+          }`;
         roomButton.innerHTML = `
                         ${room.name}
                     `;
@@ -2849,32 +2999,27 @@ export function init(params) {
       const isFile = msg.isFile;
       const statusInfo =
         !isUser && participantStatus[msg.senderId]
-          ? `<span class="ml-2 text-xs">${
-              participantStatus[msg.senderId].online
-                ? '<span class="text-green-500 flex items-center"><span class="w-2 h-2 bg-green-500 rounded-full mr-1"></span>Online</span>'
-                : `Last seen ${formatLastSeen(
-                    participantStatus[msg.senderId].lastSeen
-                  )}`
-            }</span>`
+          ? `<span class="ml-2 text-xs">${participantStatus[msg.senderId].online
+            ? '<span class="text-green-500 flex items-center"><span class="w-2 h-2 bg-green-500 rounded-full mr-1"></span>Online</span>'
+            : `Last seen ${formatLastSeen(
+              participantStatus[msg.senderId].lastSeen
+            )}`
+          }</span>`
           : "";
 
       const content = isFile
         ? `
-                    <div class="file-message flex items-center p-2 bg-${
-                      isUser ? "gray-800" : "gray-100"
-                    } rounded-lg">
-                        <i class="fas fa-file ${
-                          isUser ? "text-white" : "text-gray-600"
-                        } mr-2"></i>
+                    <div class="file-message flex items-center p-2 bg-${isUser ? "gray-800" : "gray-100"
+        } rounded-lg">
+                        <i class="fas fa-file ${isUser ? "text-white" : "text-gray-600"
+        } mr-2"></i>
                         <div>
-                            <p class="text-sm ${
-                              isUser ? "text-white" : "text-gray-800"
-                            }">${msg.text
-            .replace("[File: ", "")
-            .replace("]", "")}</p>
-                            <p class="text-xs ${
-                              isUser ? "text-gray-400" : "text-gray-500"
-                            }">${formatFileSize(msg.fileInfo.size)}</p>
+                            <p class="text-sm ${isUser ? "text-white" : "text-gray-800"
+        }">${msg.text
+          .replace("[File: ", "")
+          .replace("]", "")}</p>
+                            <p class="text-xs ${isUser ? "text-gray-400" : "text-gray-500"
+        }">${formatFileSize(msg.fileInfo.size)}</p>
                         </div>
                     </div>`
         : `<p>${msg.text}</p>`;
@@ -2890,15 +3035,12 @@ export function init(params) {
         .join("");
 
       return `
-                    <div class="message-wrapper ${
-                      isUser ? "user" : "other"
-                    }" data-message-id="${msg.id}">
-                        <div class="message-container ${
-                          isUser ? "user" : "other"
-                        }">
-                            <div class="message-bubble ${
-                              isUser ? "user" : "other"
-                            }">
+                    <div class="message-wrapper ${isUser ? "user" : "other"
+        }" data-message-id="${msg.id}">
+                        <div class="message-container ${isUser ? "user" : "other"
+        }">
+                            <div class="message-bubble ${isUser ? "user" : "other"
+        }">
                                 <div class="message-header">
                                     ${isUser ? "You" : msg.sender}
                                     ${statusInfo}
@@ -2915,13 +3057,11 @@ export function init(params) {
                             ${formatTimestamp(msg.timestamp)}
                             ${isUser ? renderMessageStatus(msg.status) : ""}
                         </div>
-                        ${
-                          reactionsHtml
-                            ? `<div class="message-reactions ${
-                                isUser ? "user-reactions" : ""
-                              }">${reactionsHtml}</div>`
-                            : ""
-                        }
+                        ${reactionsHtml
+          ? `<div class="message-reactions ${isUser ? "user-reactions" : ""
+          }">${reactionsHtml}</div>`
+          : ""
+        }
                     </div>
                 `;
     }
@@ -2949,16 +3089,14 @@ export function init(params) {
 
     function renderMessageStatus(status) {
       return `
-                    <span class="status-icon ${
-                      status === MESSAGE_STATUS.READ ? "read" : ""
-                    }">
-                        ${
-                          status === MESSAGE_STATUS.SENT
-                            ? '<i class="fas fa-check text-gray-400"></i>'
-                            : status === MESSAGE_STATUS.READ
-                            ? '<i class="fas fa-check-double text-green-400"></i>'
-                            : ""
-                        }
+                    <span class="status-icon ${status === MESSAGE_STATUS.READ ? "read" : ""
+        }">
+                        ${status === MESSAGE_STATUS.SENT
+          ? '<i class="fas fa-check text-gray-400"></i>'
+          : status === MESSAGE_STATUS.READ
+            ? '<i class="fas fa-check-double text-green-400"></i>'
+            : ""
+        }
                     </span>
                 `;
     }
