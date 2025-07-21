@@ -931,38 +931,46 @@ window.TaskSidebar = (function () {
 
     async function handleCommentSubmit() {
         const commentInputEl = document.getElementById('comment-input');
-        const htmlContent = commentInputEl.innerHTML.trim();
-
-        const previewEl = commentInputEl.querySelector('.inline-file-preview');
-        if (previewEl) {
-            previewEl.remove();
-        }
-        const textContent = commentInputEl.innerText || '';
         const fileToUpload = pastedFiles.length > 0 ? pastedFiles[0] : null;
 
-        if (!textContent.trim() && !fileToUpload) return;
+        // 1. Find the preview element BEFORE processing any text.
+        const previewEl = commentInputEl.querySelector('.inline-file-preview');
+
+        // If there's no text and no file, exit.
+        if (!commentInputEl.innerText.trim() && !fileToUpload) return;
 
         sendCommentBtn.disabled = true;
 
         try {
-            let finalHtml = textContent.trim().replace(/\n/g, '<br>');
+            let finalHtml = '';
             let messageHasImage = false;
             let attachmentName = '';
 
-            if (fileToUpload) {
+            // 2. If a file and its preview exist, upload the file and replace the preview.
+            if (fileToUpload && previewEl) {
                 messageHasImage = fileToUpload.type.startsWith('image/');
                 attachmentName = fileToUpload.name;
+
                 const storagePath = `workspaceProjects/${currentProject.id}/messages-attachments/${Date.now()}-${fileToUpload.name}`;
                 const storageRef = ref(storage, storagePath);
                 const snapshot = await uploadBytes(storageRef, fileToUpload);
                 const finalDownloadURL = `/attachments/downloadProxy?path=${encodeURIComponent(snapshot.metadata.fullPath)}`;
 
-                let attachmentHtml = messageHasImage
-                    ? `<img src="${finalDownloadURL}" alt="${fileToUpload.name}" class="scalable-image">`
-                    : `<a href="${finalDownloadURL}" target="_blank" class="file-attachment-container"><i class="fa-solid fa-file"></i><span>${fileToUpload.name}</span></a>`;
+                const attachmentHtml = messageHasImage
+                    ? `<img src="${finalDownloadURL}" alt="${attachmentName}" class="scalable-image">`
+                    : `<a href="${finalDownloadURL}" target="_blank" class="file-attachment-container"><i class="fa-solid fa-file"></i><span>${attachmentName}</span></a>`;
 
-                finalHtml = finalHtml ? `${finalHtml}<br>${attachmentHtml}` : attachmentHtml;
+                // Create a new element from the final HTML string.
+                const tempContainer = document.createElement('div');
+                tempContainer.innerHTML = attachmentHtml;
+                const newAttachmentNode = tempContainer.firstChild;
+
+                // Replace the temporary preview node with the final attachment node in the DOM.
+                previewEl.replaceWith(newAttachmentNode);
             }
+
+            // 3. Get the final, corrected HTML AFTER the replacement has been made.
+            finalHtml = commentInputEl.innerHTML.trim();
 
             if (finalHtml) {
                 await sendMessage({ html: finalHtml, hasImage: messageHasImage });
