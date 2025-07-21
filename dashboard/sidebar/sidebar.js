@@ -347,14 +347,18 @@ window.TaskSidebar = (function () {
                     // Fallback to searching in sections if not found directly under the project
                     const sectionsTaskQuery = query(
                         collectionGroup(db, 'tasks'),
-                        where(documentId(), '==', `projects/${projectRef.id}/sections/` + taskId.split('/tasks/')[0] + `/tasks/` + taskId.split('/tasks/')[1])
+                        where('projectId', '==', projectRef.id),
+                        where('id', '==', taskId)
                     );
+
                     const sectionsQuerySnapshot = await getDocs(sectionsTaskQuery);
 
                     if (!sectionsQuerySnapshot.empty) {
+                        // Success! We found the document.
                         taskSnap = sectionsQuerySnapshot.docs[0];
                         taskRef = taskSnap.ref;
                     } else {
+                        // This error is now accurate, as we have properly searched the project.
                         throw new Error(`Task ${taskId} not found in project ${projectRef.id} via collection group query.`);
                     }
                 }
