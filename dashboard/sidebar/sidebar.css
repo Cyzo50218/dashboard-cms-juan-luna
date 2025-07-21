@@ -1708,6 +1708,8 @@ task-fields-table .field-value {
     display: flex;
     padding: 8px 10px;
     border-radius: 4px;
+    align-items: center; /* Vertically aligns items to the middle */
+    justify-content: flex-start;
     cursor: pointer;
     font-size: 14px;
     transition: background-color 0.2s ease;
