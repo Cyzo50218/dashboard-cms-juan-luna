@@ -665,91 +665,113 @@ window.TaskSidebar = (function () {
     }
 
     async function moveTask(newProjectId) {
-        if (!currentTaskRef || !currentTask || !currentUserId || !currentProject || newProjectId === currentTask.projectId) return;
-
-        const originalProjectTitle = currentProject.title;
-
-        try {
-            const destinationProjectData = workspaceProjects.find(p => p.id === newProjectId);
-
-            if (!destinationProjectData || !destinationProjectData.ownerId || !destinationProjectData.activeWorkspaceId) {
-                console.error("Project data is incomplete:", destinationProjectData);
-                throw new Error("Could not move task because destination project data is missing required path IDs.");
-            }
-
-            const fullPath = `users/${destinationProjectData.ownerId}/myworkspace/${destinationProjectData.activeWorkspaceId}/projects/${newProjectId}`;
-            const newProjectRef = doc(db, fullPath);
-            const projectSnap = await getDoc(newProjectRef);
-
-            if (!projectSnap.exists()) {
-                console.error("CRITICAL: Final path did not resolve:", fullPath);
-                throw new Error("Destination project not found even with the correct path.");
-            }
-
-            const newProjectData = projectSnap.data();
-            const isOwner = newProjectData.project_super_admin_uid === currentUserId;
-            const memberInfo = newProjectData.members?.find(member => member.uid === currentUserId);
-            const isAdmin = memberInfo?.role === 'Project Admin' || memberInfo?.role === 'Project Owner Admin';
-            const isEditor = memberInfo?.role === 'Editor';
-
-            if (!isOwner && !isAdmin && !isEditor) {
-                alert("Permission Denied: You must be an Editor or Admin of the destination project to move this task.");
-                return;
-            }
-
-            const sectionsQuery = query(collection(newProjectRef, 'sections'), orderBy("order", "asc"), limit(1));
-            const sectionsSnapshot = await getDocs(sectionsQuery);
-            if (sectionsSnapshot.empty) {
-                alert("Error: Target project has no sections. Please add a section first.");
-                return;
-            }
-            const newSectionId = sectionsSnapshot.docs[0].id;
-
-            // Prepare the atomic batch write
-            const batch = writeBatch(db);
-
-            // --- NEW LOGIC: ADD ASSIGNEES TO NEW PROJECT ---
-            const assigneesToProcess = currentTask.assignees || [];
-            const existingMemberUIDs = new Set((newProjectData.members || []).map(m => m.uid));
-
-            for (const assigneeId of assigneesToProcess) {
-                // If the assignee is not already a member of the destination project...
-                if (!existingMemberUIDs.has(assigneeId)) {
-                    console.log(`Assignee ${assigneeId} is not in the destination project. Adding as 'Viewer'.`);
-                    const newMemberPayload = { role: 'Viewer', uid: assigneeId };
-                    // ...add them using arrayUnion to prevent duplicates.
-                    batch.update(newProjectRef, {
-                        members: arrayUnion(newMemberPayload),
-                        memberUIDs: arrayUnion(assigneeId)
-                    });
-                }
-            }
-            // --- END OF NEW LOGIC ---
-
-            // Original task move operations are added to the same batch
-            const newTaskData = { ...currentTask, projectId: newProjectId, sectionId: newSectionId };
-            const newTaskRef = doc(newProjectRef, `sections/${newSectionId}/tasks/${currentTask.id}`);
-
-            batch.delete(currentTaskRef);
-            batch.set(newTaskRef, newTaskData);
-
-            // Commit all changes (add members, delete old task, create new task) in one go
-            await batch.commit();
-
-            logActivity({
-                action: 'moved',
-                field: 'Project',
-                from: originalProjectTitle,
-                to: newProjectData.title
-            });
-
-            close();
-
-        } catch (error) {
-            console.error("Failed to move task:", error);
-            alert("An error occurred while moving the task. " + error.message);
-        }
+    // 1. --- PRE-FLIGHT CHECKS ---
+    // Ensure all necessary data is loaded before starting the move.
+    if (!currentTaskRef || !currentTask || !currentUserId || !currentProject || newProjectId === currentTask.projectId) {
+        console.warn("Move task aborted: Missing required data or destination is the same as source.");
+        return;
     }
+
+    const originalTaskRef = currentTaskRef; // Keep a reference to the old path for querying subcollections.
+    const originalProjectTitle = currentProject.title;
+
+    try {
+        // 2. --- VALIDATE DESTINATION PROJECT AND PERMISSIONS ---
+        const destinationProjectData = workspaceProjects.find(p => p.id === newProjectId);
+        if (!destinationProjectData || !destinationProjectData.ownerId || !destinationProjectData.activeWorkspaceId) {
+            throw new Error("Could not move task: Destination project data is incomplete.");
+        }
+
+        const fullPath = `users/${destinationProjectData.ownerId}/myworkspace/${destinationProjectData.activeWorkspaceId}/projects/${newProjectId}`;
+        const newProjectRef = doc(db, fullPath);
+        const projectSnap = await getDoc(newProjectRef);
+        if (!projectSnap.exists()) {
+            throw new Error("Destination project not found at the constructed path.");
+        }
+
+        const newProjectData = projectSnap.data();
+        const memberInfo = newProjectData.members?.find(member => member.uid === currentUserId);
+        const canMove = memberInfo && ['Project Owner Admin', 'Project Admin', 'Editor'].includes(memberInfo.role);
+
+        if (!canMove) {
+            alert("Permission Denied: You must be an Editor or Admin of the destination project to move this task.");
+            return;
+        }
+
+        const sectionsQuery = query(collection(newProjectRef, 'sections'), orderBy("order", "asc"), limit(1));
+        const sectionsSnapshot = await getDocs(sectionsQuery);
+        if (sectionsSnapshot.empty) {
+            alert("Error: The destination project has no sections. Please add a section first.");
+            return;
+        }
+        const newSectionId = sectionsSnapshot.docs[0].id;
+        const newTaskRef = doc(newProjectRef, `sections/${newSectionId}/tasks/${currentTask.id}`);
+
+        // 3. --- PREPARE THE ATOMIC BATCH WRITE ---
+        const batch = writeBatch(db);
+
+        // This is crucial for preserving the task's history.
+        const activityQuery = query(collection(originalTaskRef, "activity"));
+        const activitySnapshot = await getDocs(activityQuery);
+        if (!activitySnapshot.empty) {
+            console.log(`[Move Task] Found ${activitySnapshot.size} activity logs to copy.`);
+            activitySnapshot.forEach(activityDoc => {
+                const newActivityRef = doc(newTaskRef, "activity", activityDoc.id);
+                batch.set(newActivityRef, activityDoc.data());
+            });
+        }
+
+        const assigneesToProcess = currentTask.assignees || [];
+        const existingMemberUIDs = new Set((newProjectData.members || []).map(m => m.uid));
+        for (const assigneeId of assigneesToProcess) {
+            if (!existingMemberUIDs.has(assigneeId)) {
+                console.log(`[Move Task] Adding assignee ${assigneeId} to destination project as 'Viewer'.`);
+                const newMemberPayload = { role: 'Viewer', uid: assigneeId };
+                batch.update(newProjectRef, {
+                    members: arrayUnion(newMemberPayload),
+                    memberUIDs: arrayUnion(assigneeId)
+                });
+            }
+        }
+
+        // Also copy over the memberUIDs from the new project for security rules.
+        const newTaskData = { ...currentTask, projectId: newProjectId, sectionId: newSectionId, memberUIDs: newProjectData.memberUIDs };
+        batch.delete(originalTaskRef);
+        batch.set(newTaskRef, newTaskData);
+        const taskIndexRef = doc(db, "taskIndex", currentTask.id);
+        batch.update(taskIndexRef, { path: newTaskRef.path });
+
+        // 4. --- COMMIT THE ENTIRE OPERATION ---
+        await batch.commit();
+        console.log(`[Move Task] Batch commit successful. Task ${currentTask.id} moved to project ${newProjectId}.`);
+
+        // 5. --- LOG THE ACTIVITY IN THE *NEW* LOCATION ---
+        // We create a new log entry in the now-copied activity subcollection.
+        const finalLogDetails = {
+            action: 'moved this task',
+            from: `project '${originalProjectTitle}'`,
+            to: `project '${newProjectData.title}'`
+        };
+
+        // This uses the new task reference to ensure the log is written to the correct place.
+        await addDoc(collection(newTaskRef, "activity"), {
+            type: 'log',
+            userId: currentUser.id,
+            userName: currentUser.name,
+            userAvatar: currentUser.avatar,
+            timestamp: serverTimestamp(),
+            details: `<strong>${currentUser.name}</strong> ${finalLogDetails.action} from <strong>${finalLogDetails.from}</strong> to <strong>${finalLogDetails.to}</strong>.`
+        });
+
+
+        // 6. --- CLEANUP ---
+        close();
+
+    } catch (error) {
+        console.error("Failed to move task:", error);
+        alert("An error occurred while moving the task. " + error.message);
+    }
+}
 
     async function logActivity({ action, field, from, to }) {
         if (!currentTaskRef || !currentUser) return;
