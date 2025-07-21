@@ -1013,7 +1013,6 @@ export function init(params) {
     padding: 10px 15px;
     background-color: rgba(230, 235, 245, 0.7);
     backdrop-filter: blur(10px);
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
     display: flex;
     justify-content: space-between;
     align-items: center;
