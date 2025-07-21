@@ -1733,31 +1733,40 @@ window.TaskSidebar = (function () {
 
         sendCommentBtn.addEventListener('click', handleCommentSubmit);
         commentInput.addEventListener('keydown', e => {
-            // This condition now handles both 'Enter' and 'Shift+Enter' for creating a new line.
+            // This condition handles a simple "Enter" press for creating a new line.
+            // It excludes "Ctrl+Enter" or "Cmd+Enter", which are used for submitting.
             if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
-                e.preventDefault(); // Stop the default browser action.
+                // Prevent the browser's default behavior (which might submit a form or insert a div).
+                e.preventDefault();
 
+                // Get the user's current cursor position or selected text.
                 const selection = window.getSelection();
                 if (selection.rangeCount > 0) {
                     const range = selection.getRangeAt(0);
+
+                    // Create a <br> element to act as the new line.
                     const br = document.createElement('br');
 
+                    // Clear any text the user has selected.
                     range.deleteContents();
+                    // Insert the new line element at the cursor's position.
                     range.insertNode(br);
 
-                    // Move the cursor immediately after the new line break
+                    // --- Move the cursor to the new line ---
+                    // Set the cursor's starting position to be immediately after the <br> tag.
                     range.setStartAfter(br);
+                    // Collapse the range to a single point, making it a cursor instead of a selection.
                     range.collapse(true);
+                    // Apply this new cursor position to the document.
                     selection.removeAllRanges();
                     selection.addRange(range);
 
-                    // THIS IS THE FIX:
-                    // Gently scroll the view to keep the new line visible.
+                    // If the new line is off-screen, scroll the container to make it visible.
                     br.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 }
             }
 
-            // This handles 'Ctrl+Enter' or 'Cmd+Enter' for submitting the message.
+            // This condition handles "Ctrl+Enter" or "Cmd+Enter" for submitting the message.
             if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                 e.preventDefault();
                 handleCommentSubmit();
