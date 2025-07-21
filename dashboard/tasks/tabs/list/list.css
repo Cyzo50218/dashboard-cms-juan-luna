@@ -1542,7 +1542,7 @@ Custom class
     border: none;
     color: #999;
     cursor: pointer;
-    font-size: 1.5rem;
+    font-size: 14px;
     line-height: 1;
     margin-left: auto;
     opacity: 0;
@@ -1554,9 +1554,9 @@ Custom class
     /* Horizontally centers the '×' */
     padding: 0.5rem;
     /* Use a single padding value for uniform spacing */
-    width: 20px;
+    width: 16px;
     /* Optional: Set a fixed width */
-    height: 20px;
+    height: 16px;
     /* Optional: Set a fixed height */
 }
 
