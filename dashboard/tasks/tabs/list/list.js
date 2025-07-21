@@ -3509,8 +3509,10 @@ async function displaySideBarTasks(taskId) {
 
     try {
         const indexSnap = await getDoc(doc(db, "taskIndex", taskId));
+        
         if (!indexSnap.exists()) {
             console.warn(`TaskIndex not found for task ID: ${taskId}`);
+            window.TaskSidebar.open(taskId, currentProjectRef);
             return;
         }
         window.TaskSidebar.open(taskId, currentProjectRef);
