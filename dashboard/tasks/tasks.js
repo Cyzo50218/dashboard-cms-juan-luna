@@ -3046,6 +3046,7 @@ export function init(params) {
 
     async function loadChatData() {
       const rooms = await ChatService.getRoomsForUser(currentUserId);
+      const container = document.getElementById("chat-container");
       const messagesData = {};
 
       for (const room of rooms) {
@@ -3483,6 +3484,10 @@ export function init(params) {
       const chatBox = document.getElementById("chat-box");
       const chatButton = document.getElementById("chat-button");
 
+      if (dragged) {
+        dragged = false; // Reset the flag for the next click
+        return;          // Exit the function
+      }
       // --- 1. Reset the Chatbox from its Minimized State ---
 
       // NEW: Remove the minimized class to reset its appearance.
@@ -3555,7 +3560,7 @@ export function init(params) {
       if (dragged) {
         dragged = false; // Reset the flag for the next click
         return;          // Exit the function
-    }
+      }
       if (chatBox.classList.contains("minimized")) {
         chatBox.classList.remove("minimized");
         chatBox.classList.add("open");
