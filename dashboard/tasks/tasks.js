@@ -879,8 +879,12 @@ export function init(params) {
         </div>
     <div id="pinned-message-nav">
         <span id="pin-counter"></span>
-        <button id="pin-nav-prev" title="Previous Pin">&lsaquo;</button>
-        <button id="pin-nav-next" title="Next Pin">&rsaquo;</button>
+        <button id="pin-nav-prev" title="Previous Pin">
+        <i class="fas fa-chevron-left"></i>
+    </button>
+    <button id="pin-nav-next" title="Next Pin">
+        <i class="fas fa-chevron-right"></i>
+    </button>
     </div>
 </div>
 
@@ -1101,13 +1105,16 @@ export function init(params) {
     margin-left: 4px;
     cursor: pointer;
     color: #333;
-    font-size: 18px;
+    padding: 0;
     transition: background-color 0.1s ease;
-    padding-bottom: 4px;
-    padding-right: 4px;
+    
+    /* Flexbox handles the perfect centering for the new <i> icons */
     display: flex;
-    align-items: center;    /* Centers content vertically */
-    justify-content: center; /* Centers content horizontally */
+    align-items: center;
+    justify-content: center;
+}
+#pinned-message-nav button i {
+    font-size: 12px;
 }
 
 #pinned-message-nav button:hover {
