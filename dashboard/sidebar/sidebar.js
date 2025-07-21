@@ -318,12 +318,47 @@ window.TaskSidebar = (function () {
         rightSidebarContainer.classList.add('sidebar-open');
 
         try {
-            // ✅ STEP 1: Load taskIndex for fast direct path
-            const indexSnap = await getDoc(doc(db, "taskIndex", taskId));
-            if (!indexSnap.exists()) throw new Error(`Task ${taskId} not indexed.`);
+            let taskRef;
+            let taskSnap;
 
-            const indexData = indexSnap.data();
-            const taskRef = doc(db, indexData.path);
+            // ✅ STEP 1: Load taskIndex for fast direct path
+            try {
+                const indexSnap = await getDoc(doc(db, "taskIndex", taskId));
+                if (indexSnap.exists()) {
+                    const indexData = indexSnap.data();
+                    taskRef = doc(db, indexData.path);
+                } else {
+                    throw new Error(`Task ${taskId} not indexed.`);
+                }
+            } catch (error) {
+                console.warn("Task not found in index, attempting to query collection groups...", error);
+
+                const taskQuery = query(
+                    collectionGroup(db, 'tasks'),
+                    where(documentId(), '==', `projects/${projectRef.id}/tasks/${taskId}`)
+                );
+                const querySnapshot = await getDocs(taskQuery);
+
+                if (!querySnapshot.empty) {
+                    taskSnap = querySnapshot.docs[0];
+                    taskRef = taskSnap.ref;
+                } else {
+                    // Fallback to searching in sections if not found directly under the project
+                    const sectionsTaskQuery = query(
+                        collectionGroup(db, 'tasks'),
+                        where(documentId(), '==', `projects/${projectRef.id}/sections/` + taskId.split('/tasks/')[0] + `/tasks/` + taskId.split('/tasks/')[1])
+                    );
+                    const sectionsQuerySnapshot = await getDocs(sectionsTaskQuery);
+
+                    if (!sectionsQuerySnapshot.empty) {
+                        taskSnap = sectionsQuerySnapshot.docs[0];
+                        taskRef = taskSnap.ref;
+                    } else {
+                        throw new Error(`Task ${taskId} not found in project ${projectRef.id} via collection group query.`);
+                    }
+                }
+            }
+
             currentProjectRef = projectRef;
 
             // ✅ STEP 2: Fetch project data manually from projectRef
@@ -332,11 +367,16 @@ window.TaskSidebar = (function () {
             currentProject = { id: projectSnap.id, ...projectSnap.data() };
 
             // ✅ STEP 3: Fire off task + async extras in parallel
-            const [taskSnap, eligibleProjects, memberProfiles] = await Promise.all([
-                getDoc(taskRef),
+            const results = await Promise.all([
+                taskSnap ? Promise.resolve(taskSnap) : getDoc(taskRef),
                 fetchEligibleMoveProjects(currentUserId),
                 fetchMemberProfiles(currentProject.members?.map(m => m.uid) || [])
             ]);
+
+            taskSnap = results[0];
+            const eligibleProjects = results[1];
+            const memberProfiles = results[2];
+
 
             if (!taskSnap.exists()) throw new Error("Task not found at indexed path.");
 
@@ -348,7 +388,7 @@ window.TaskSidebar = (function () {
             updateUserPermissions(currentProject, currentUserId);
             sidebar.classList.remove('is-loading');
             renderSidebar(currentTask);
-            
+
 
             // ✅ STEP 4: Defer recent history update
             setTimeout(async () => {
@@ -407,10 +447,6 @@ window.TaskSidebar = (function () {
             close();
         }
     }
-
-
-
-
 
     function close() {
         if (sidebar) sidebar.classList.remove('is-visible', 'is-loading');
