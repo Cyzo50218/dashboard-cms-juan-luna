@@ -1733,35 +1733,31 @@ window.TaskSidebar = (function () {
 
         sendCommentBtn.addEventListener('click', handleCommentSubmit);
         commentInput.addEventListener('keydown', e => {
-            // Logic for a simple 'Enter' press to create a new line
-            if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
-                e.preventDefault(); // Prevent the default browser action
+            // This condition now handles both 'Enter' and 'Shift+Enter' for creating a new line.
+            if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault(); // Stop the default browser action.
 
                 const selection = window.getSelection();
                 if (selection.rangeCount > 0) {
                     const range = selection.getRangeAt(0);
                     const br = document.createElement('br');
 
-                    // Create a non-breaking space to ensure the new line renders
-                    const nbsp = document.createTextNode('\u00A0');
-
-                    range.deleteContents(); // Clear any selected text
+                    range.deleteContents();
                     range.insertNode(br);
 
-                    // Insert the space after the line break and place the cursor after it
-                    range.insertNode(nbsp);
-                    range.setStartAfter(nbsp);
-
+                    // Move the cursor immediately after the new line break
+                    range.setStartAfter(br);
                     range.collapse(true);
                     selection.removeAllRanges();
                     selection.addRange(range);
 
-                    // Ensure the new cursor position is visible
-                    nbsp.parentElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    // THIS IS THE FIX:
+                    // Gently scroll the view to keep the new line visible.
+                    br.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 }
             }
 
-            // Logic for 'Ctrl+Enter' or 'Cmd+Enter' to submit the message
+            // This handles 'Ctrl+Enter' or 'Cmd+Enter' for submitting the message.
             if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                 e.preventDefault();
                 handleCommentSubmit();
