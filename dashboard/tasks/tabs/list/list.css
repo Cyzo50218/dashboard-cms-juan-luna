@@ -1554,15 +1554,15 @@ Custom class
     /* Horizontally centers the '×' */
     padding: 0.5rem;
     /* Use a single padding value for uniform spacing */
-    width: 16px;
+    width: 14px;
     /* Optional: Set a fixed width */
-    height: 16px;
+    height: 14px;
     /* Optional: Set a fixed height */
 }
 
 /* Show the remove button on hover */
 .assignee-cell-content:hover .remove-assignee-btn {
-    background-color: #ff2b2b;
+    background-color: #db1010;
     opacity: 1;
 }
 
