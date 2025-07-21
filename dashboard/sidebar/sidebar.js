@@ -743,8 +743,6 @@ window.TaskSidebar = (function () {
 
         // 4. --- COMMIT THE ENTIRE OPERATION ---
         await batch.commit();
-        console.log(`[Move Task] Batch commit successful. Task ${currentTask.id} moved to project ${newProjectId}.`);
-
         // 5. --- LOG THE ACTIVITY IN THE *NEW* LOCATION ---
         // We create a new log entry in the now-copied activity subcollection.
         const finalLogDetails = {
