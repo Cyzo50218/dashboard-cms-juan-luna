@@ -439,6 +439,33 @@ function getProjectIdFromUrl() {
     return match ? match[1] : null;
 }
 
+async function logActivity({ action, field, from, to, taskRef }) {
+    if (!taskRef || !currentUserId) return;
+    const userProfile = allUsers.find(u => u.id === currentUserId);
+    if (!userProfile) {
+        console.warn("Could not log activity: Current user profile not found.");
+        return;
+    }
+
+    const details = `<strong>${userProfile.name}</strong> ${action}` +
+        `${field ? ` <strong>${field}</strong>` : ''}` +
+        `${from ? ` from <strong>'${from}'</strong>` : ''}` +
+        `${to ? ` to <strong>'${to}'</strong>` : ''}.`;
+
+    try {
+        await addDoc(collection(taskRef, "activity"), {
+            type: 'log',
+            userId: userProfile.id,
+            userName: userProfile.name,
+            userAvatar: userProfile.avatar,
+            timestamp: serverTimestamp(),
+            details: details
+        });
+    } catch (error) {
+        console.error("Failed to log activity:", error);
+    }
+}
+
 function attachRealtimeListeners(userId) {
     detachAllListeners();
     currentUserId = userId;
@@ -792,26 +819,16 @@ async function addSectionToFirebase() {
     } catch (error) { console.error("Error adding section:", error); }
 }
 
-/**
- * Saves a new task document to the correct subcollection in Firestore.
- * @param {string} sectionId - The ID of the section to add the task to.
- * @param {object} taskData - An object containing the core task details like name, order, etc.
- */
 async function addTaskToFirebase(sectionId, taskData) {
-    // ✅ Log 1: Announce that the function has been called and show the initial data.
     console.log("[addTaskToFirebase] Function called with:", { sectionId, taskData });
-
-    // ✅ Log 2: Check the critical context variables needed for the operation.
     console.log("[addTaskToFirebase] Checking context state:", {
         currentProjectRef_path: currentProjectRef?.path,
         currentProjectId,
         currentUserId
     });
 
-    // 1. Ensure we have the necessary context to build the path.
     if (!currentProjectRef || !sectionId || !currentProjectId || !currentUserId) {
-        // ✅ Log 3: If any context is missing, log a critical error and stop.
-        console.error("❌ CRITICAL ERROR: Cannot add task because essential context is missing.", {
+        console.error("CRITICAL ERROR: Cannot add task because essential context is missing.", {
             hasProjectRef: !!currentProjectRef,
             hasSectionId: !!sectionId,
             hasProjectId: !!currentProjectId,
@@ -820,17 +837,13 @@ async function addTaskToFirebase(sectionId, taskData) {
         return;
     }
 
-    // Build the path to the 'tasks' subcollection.
     const sectionRef = doc(currentProjectRef, 'sections', sectionId);
     const tasksCollectionRef = collection(sectionRef, 'tasks');
-
-    // ✅ Log 4: Show the exact path we are trying to write to.
     console.log(`[addTaskToFirebase] Attempting to write to path: ${tasksCollectionRef.path}`);
 
     try {
-        const newTaskRef = doc(tasksCollectionRef); // Create a reference to get the ID
+        const newTaskRef = doc(tasksCollectionRef);
 
-        // Prepare the complete data object that will be saved.
         const fullTaskData = {
             ...taskData,
             id: newTaskRef.id,
@@ -840,18 +853,18 @@ async function addTaskToFirebase(sectionId, taskData) {
             createdAt: serverTimestamp()
         };
 
-        // ✅ Log 5: Display the final data object just before the save attempt.
         console.log("[addTaskToFirebase] Preparing to save final data object:", fullTaskData);
-
-        // The actual save operation.
         await setDoc(newTaskRef, fullTaskData);
 
-        // ✅ Log 6: This will ONLY run if the await setDoc() line completes without throwing an error.
-        console.log(`✅ SUCCESS: Firestore reported success for adding task with ID: ${newTaskRef.id}`);
+        console.log(`SUCCESS: Firestore reported success for adding task with ID: ${newTaskRef.id}`);
+
+        logActivity({
+            action: 'created this task',
+            taskRef: newTaskRef // Pass the new task's reference to the log function
+        });
 
     } catch (error) {
-        // ✅ Log 7: If `await setDoc()` fails for any reason (e.g., security rules), this block will run.
-        console.error("❌ FIRESTORE ERROR: Error adding task:", error);
+        console.error("FIRESTORE ERROR: Error adding task:", error);
         alert("A database error occurred while trying to save the task. Please check the console and your security rules.");
     }
 }
