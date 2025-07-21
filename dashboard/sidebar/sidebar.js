@@ -664,112 +664,149 @@ window.TaskSidebar = (function () {
         } catch (error) { console.error(`Failed to update custom field ${column.name}:`, error); }
     }
 
-    async function moveTask(newProjectId) {
-    // 1. --- PRE-FLIGHT CHECKS ---
-    // Ensure all necessary data is loaded before starting the move.
-    if (!currentTaskRef || !currentTask || !currentUserId || !currentProject || newProjectId === currentTask.projectId) {
-        console.warn("Move task aborted: Missing required data or destination is the same as source.");
-        return;
-    }
+    function hslStringToHex(hslStr) {
+        if (!hslStr) return '#ccc'; // Return a default color if input is invalid
 
-    const originalTaskRef = currentTaskRef; // Keep a reference to the old path for querying subcollections.
-    const originalProjectTitle = currentProject.title;
+        const match = hslStr.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+        if (!match) return '#ccc';
 
-    try {
-        // 2. --- VALIDATE DESTINATION PROJECT AND PERMISSIONS ---
-        const destinationProjectData = workspaceProjects.find(p => p.id === newProjectId);
-        if (!destinationProjectData || !destinationProjectData.ownerId || !destinationProjectData.activeWorkspaceId) {
-            throw new Error("Could not move task: Destination project data is incomplete.");
+        let h = parseInt(match[1]);
+        let s = parseInt(match[2]) / 100;
+        let l = parseInt(match[3]) / 100;
+
+        let c = (1 - Math.abs(2 * l - 1)) * s;
+        let x = c * (1 - Math.abs((h / 60) % 2 - 1));
+        let m = l - c / 2;
+        let r = 0, g = 0, b = 0;
+
+        if (0 <= h && h < 60) {
+            r = c; g = x; b = 0;
+        } else if (60 <= h && h < 120) {
+            r = x; g = c; b = 0;
+        } else if (120 <= h && h < 180) {
+            r = 0; g = c; b = x;
+        } else if (180 <= h && h < 240) {
+            r = 0; g = x; b = c;
+        } else if (240 <= h && h < 300) {
+            r = x; g = 0; b = c;
+        } else if (300 <= h && h < 360) {
+            r = c; g = 0; b = x;
         }
 
-        const fullPath = `users/${destinationProjectData.ownerId}/myworkspace/${destinationProjectData.activeWorkspaceId}/projects/${newProjectId}`;
-        const newProjectRef = doc(db, fullPath);
-        const projectSnap = await getDoc(newProjectRef);
-        if (!projectSnap.exists()) {
-            throw new Error("Destination project not found at the constructed path.");
-        }
-
-        const newProjectData = projectSnap.data();
-        const memberInfo = newProjectData.members?.find(member => member.uid === currentUserId);
-        const canMove = memberInfo && ['Project Owner Admin', 'Project Admin', 'Editor'].includes(memberInfo.role);
-
-        if (!canMove) {
-            alert("Permission Denied: You must be an Editor or Admin of the destination project to move this task.");
-            return;
-        }
-
-        const sectionsQuery = query(collection(newProjectRef, 'sections'), orderBy("order", "asc"), limit(1));
-        const sectionsSnapshot = await getDocs(sectionsQuery);
-        if (sectionsSnapshot.empty) {
-            alert("Error: The destination project has no sections. Please add a section first.");
-            return;
-        }
-        const newSectionId = sectionsSnapshot.docs[0].id;
-        const newTaskRef = doc(newProjectRef, `sections/${newSectionId}/tasks/${currentTask.id}`);
-
-        // 3. --- PREPARE THE ATOMIC BATCH WRITE ---
-        const batch = writeBatch(db);
-
-        // This is crucial for preserving the task's history.
-        const activityQuery = query(collection(originalTaskRef, "activity"));
-        const activitySnapshot = await getDocs(activityQuery);
-        if (!activitySnapshot.empty) {
-            console.log(`[Move Task] Found ${activitySnapshot.size} activity logs to copy.`);
-            activitySnapshot.forEach(activityDoc => {
-                const newActivityRef = doc(newTaskRef, "activity", activityDoc.id);
-                batch.set(newActivityRef, activityDoc.data());
-            });
-        }
-
-        const assigneesToProcess = currentTask.assignees || [];
-        const existingMemberUIDs = new Set((newProjectData.members || []).map(m => m.uid));
-        for (const assigneeId of assigneesToProcess) {
-            if (!existingMemberUIDs.has(assigneeId)) {
-                console.log(`[Move Task] Adding assignee ${assigneeId} to destination project as 'Viewer'.`);
-                const newMemberPayload = { role: 'Viewer', uid: assigneeId };
-                batch.update(newProjectRef, {
-                    members: arrayUnion(newMemberPayload),
-                    memberUIDs: arrayUnion(assigneeId)
-                });
-            }
-        }
-
-        // Also copy over the memberUIDs from the new project for security rules.
-        const newTaskData = { ...currentTask, projectId: newProjectId, sectionId: newSectionId, memberUIDs: newProjectData.memberUIDs };
-        batch.delete(originalTaskRef);
-        batch.set(newTaskRef, newTaskData);
-        const taskIndexRef = doc(db, "taskIndex", currentTask.id);
-        batch.update(taskIndexRef, { path: newTaskRef.path });
-
-        // 4. --- COMMIT THE ENTIRE OPERATION ---
-        await batch.commit();
-        // 5. --- LOG THE ACTIVITY IN THE *NEW* LOCATION ---
-        // We create a new log entry in the now-copied activity subcollection.
-        const finalLogDetails = {
-            action: 'moved this task',
-            from: `project '${originalProjectTitle}'`,
-            to: `project '${newProjectData.title}'`
+        const toHex = (c) => {
+            const hex = Math.round(c * 255).toString(16);
+            return hex.length == 1 ? "0" + hex : hex;
         };
 
-        // This uses the new task reference to ensure the log is written to the correct place.
-        await addDoc(collection(newTaskRef, "activity"), {
-            type: 'log',
-            userId: currentUser.id,
-            userName: currentUser.name,
-            userAvatar: currentUser.avatar,
-            timestamp: serverTimestamp(),
-            details: `<strong>${currentUser.name}</strong> ${finalLogDetails.action} from <strong>${finalLogDetails.from}</strong> to <strong>${finalLogDetails.to}</strong>.`
-        });
-
-
-        // 6. --- CLEANUP ---
-        close();
-
-    } catch (error) {
-        console.error("Failed to move task:", error);
-        alert("An error occurred while moving the task. " + error.message);
+        return `#${toHex(r + m)}${toHex(g + m)}${toHex(b + m)}`;
     }
-}
+
+    async function moveTask(newProjectId) {
+        // 1. --- PRE-FLIGHT CHECKS ---
+        // Ensure all necessary data is loaded before starting the move.
+        if (!currentTaskRef || !currentTask || !currentUserId || !currentProject || newProjectId === currentTask.projectId) {
+            console.warn("Move task aborted: Missing required data or destination is the same as source.");
+            return;
+        }
+
+        const originalTaskRef = currentTaskRef; // Keep a reference to the old path for querying subcollections.
+        const originalProjectTitle = currentProject.title;
+
+        try {
+            // 2. --- VALIDATE DESTINATION PROJECT AND PERMISSIONS ---
+            const destinationProjectData = workspaceProjects.find(p => p.id === newProjectId);
+            if (!destinationProjectData || !destinationProjectData.ownerId || !destinationProjectData.activeWorkspaceId) {
+                throw new Error("Could not move task: Destination project data is incomplete.");
+            }
+
+            const fullPath = `users/${destinationProjectData.ownerId}/myworkspace/${destinationProjectData.activeWorkspaceId}/projects/${newProjectId}`;
+            const newProjectRef = doc(db, fullPath);
+            const projectSnap = await getDoc(newProjectRef);
+            if (!projectSnap.exists()) {
+                throw new Error("Destination project not found at the constructed path.");
+            }
+
+            const newProjectData = projectSnap.data();
+            const memberInfo = newProjectData.members?.find(member => member.uid === currentUserId);
+            const canMove = memberInfo && ['Project Owner Admin', 'Project Admin', 'Editor'].includes(memberInfo.role);
+
+            if (!canMove) {
+                alert("Permission Denied: You must be an Editor or Admin of the destination project to move this task.");
+                return;
+            }
+
+            const sectionsQuery = query(collection(newProjectRef, 'sections'), orderBy("order", "asc"), limit(1));
+            const sectionsSnapshot = await getDocs(sectionsQuery);
+            if (sectionsSnapshot.empty) {
+                alert("Error: The destination project has no sections. Please add a section first.");
+                return;
+            }
+            const newSectionId = sectionsSnapshot.docs[0].id;
+            const newTaskRef = doc(newProjectRef, `sections/${newSectionId}/tasks/${currentTask.id}`);
+
+            // 3. --- PREPARE THE ATOMIC BATCH WRITE ---
+            const batch = writeBatch(db);
+
+            // This is crucial for preserving the task's history.
+            const activityQuery = query(collection(originalTaskRef, "activity"));
+            const activitySnapshot = await getDocs(activityQuery);
+            if (!activitySnapshot.empty) {
+                console.log(`[Move Task] Found ${activitySnapshot.size} activity logs to copy.`);
+                activitySnapshot.forEach(activityDoc => {
+                    const newActivityRef = doc(newTaskRef, "activity", activityDoc.id);
+                    batch.set(newActivityRef, activityDoc.data());
+                });
+            }
+
+            const assigneesToProcess = currentTask.assignees || [];
+            const existingMemberUIDs = new Set((newProjectData.members || []).map(m => m.uid));
+            for (const assigneeId of assigneesToProcess) {
+                if (!existingMemberUIDs.has(assigneeId)) {
+                    console.log(`[Move Task] Adding assignee ${assigneeId} to destination project as 'Viewer'.`);
+                    const newMemberPayload = { role: 'Viewer', uid: assigneeId };
+                    batch.update(newProjectRef, {
+                        members: arrayUnion(newMemberPayload),
+                        memberUIDs: arrayUnion(assigneeId)
+                    });
+                }
+            }
+
+            // Also copy over the memberUIDs from the new project for security rules.
+            const newTaskData = { ...currentTask, projectId: newProjectId, sectionId: newSectionId, memberUIDs: newProjectData.memberUIDs };
+            batch.delete(originalTaskRef);
+            batch.set(newTaskRef, newTaskData);
+            const taskIndexRef = doc(db, "taskIndex", currentTask.id);
+            batch.update(taskIndexRef, { path: newTaskRef.path });
+
+            // 4. --- COMMIT THE ENTIRE OPERATION ---
+            await batch.commit();
+            // 5. --- LOG THE ACTIVITY IN THE *NEW* LOCATION ---
+            // We create a new log entry in the now-copied activity subcollection.
+            const finalLogDetails = {
+                action: 'moved this task',
+                from: `project '${originalProjectTitle}'`,
+                to: `project '${newProjectData.title}'`
+            };
+
+            // This uses the new task reference to ensure the log is written to the correct place.
+            await addDoc(collection(newTaskRef, "activity"), {
+                type: 'log',
+                userId: currentUser.id,
+                userName: currentUser.name,
+                userAvatar: currentUser.avatar,
+                timestamp: serverTimestamp(),
+                details: `<strong>${currentUser.name}</strong> ${finalLogDetails.action} from <strong>${finalLogDetails.from}</strong> to <strong>${finalLogDetails.to}</strong>.`
+            });
+
+
+            // 6. --- CLEANUP ---
+            close();
+
+        } catch (error) {
+            console.error("Failed to move task:", error);
+            alert("An error occurred while moving the task. " + error.message);
+        }
+    }
 
     async function logActivity({ action, field, from, to }) {
         if (!currentTaskRef || !currentUser) return;
@@ -1040,7 +1077,24 @@ window.TaskSidebar = (function () {
                 return;
             }
             switch (controlType) {
-                case 'project':
+                case 'project': {
+                    if (!userCanEditProject) return;
+
+                    createAdvancedDropdown(control, {
+                        options: workspaceProjects,
+                        searchable: true,
+                        searchPlaceholder: 'Move to project...',
+                        // --- THIS IS THE UPDATED PART ---
+                        itemRenderer: (p) => {
+                            const projectColorHex = hslStringToHex(p.color);
+                            return `<div class="dropdown-color-swatch" style="background-color: ${projectColorHex}; border: 1px solid #eee; box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1); margin-right: 8px; width: 16px; height: 16px; border-radius: 3px; box-sizing: border-box; display: inline-block; vertical-align: middle;"></div><span>${p.title}</span>`;
+                        },
+                        onSelect: (p) => {
+                            if (p.id !== currentTask.projectId) moveTask(p.id);
+                        }
+                    });
+                    break;
+                }
                 case 'assignee': {
                     // PERMISSION CHECK: Strict. Only project admins/editors can perform these actions.
                     if (!userCanEditProject) {
@@ -1048,30 +1102,17 @@ window.TaskSidebar = (function () {
                         return;
                     }
 
-                    if (controlType === 'project') {
-                        // This logic assumes `workspaceProjects` is populated when the sidebar opens.
-                        createAdvancedDropdown(control, {
-                            options: workspaceProjects,
-                            searchable: true,
-                            searchPlaceholder: 'Move to project...',
-                            itemRenderer: (p) => `<span>${p.title}</span>`,
-                            onSelect: (p) => {
-                                if (p.id !== currentTask.projectId) moveTask(p.id);
-                            }
-                        });
-                    } else { // assignee
-                        const options = [{ id: null, name: 'Unassigned', avatar: '' }, ...allUsers];
-                        createAdvancedDropdown(control, {
-                            options: options,
-                            searchable: true,
-                            searchPlaceholder: 'Search teammates...',
-                            itemRenderer: (user) => {
-                                if (!user.id) return `<span>Unassigned</span>`;
-                                return `<div class="avatar" style="background-image: url(${user.avatar})"></div><span>${user.name}</span>`;
-                            },
-                            onSelect: (user) => updateTaskField('assignees', user.id ? [user.id] : [])
-                        });
-                    }
+                    const options = [{ id: null, name: 'Unassigned', avatar: '' }, ...allUsers];
+                    createAdvancedDropdown(control, {
+                        options: options,
+                        searchable: true,
+                        searchPlaceholder: 'Search teammates...',
+                        itemRenderer: (user) => {
+                            if (!user.id) return `<span>Unassigned</span>`;
+                            return `<div class="avatar" style="background-image: url(${user.avatar})"></div><span>${user.name}</span>`;
+                        },
+                        onSelect: (user) => updateTaskField('assignees', user.id ? [user.id] : [])
+                    });
                     break;
                 }
 
