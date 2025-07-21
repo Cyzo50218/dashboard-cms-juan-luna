@@ -615,13 +615,39 @@ window.TaskSidebar = (function () {
     // --- DATA MUTATION (EDITING & MOVING) ---
     async function updateTaskField(fieldKey, newValue) {
         if (!currentTaskRef || !currentTask) return;
+
         const oldValue = currentTask[fieldKey];
-        if (oldValue === newValue) return;
+        // For assignees, we compare the first ID in the array.
+        const oldValueForCompare = fieldKey === 'assignees' ? (oldValue?.[0] || null) : oldValue;
+        const newValueForCompare = fieldKey === 'assignees' ? (newValue?.[0] || null) : newValue;
+
+        if (oldValueForCompare === newValueForCompare) return;
+
         try {
-            await updateDoc(currentTaskRef, {
-                [fieldKey]: newValue
-            });
-            logActivity({ action: 'updated', field: fieldKey.charAt(0).toUpperCase() + fieldKey.slice(1), from: oldValue, to: newValue });
+            await updateDoc(currentTaskRef, { [fieldKey]: newValue });
+
+            // --- ENHANCED LOGGING ---
+            if (fieldKey === 'name') {
+                logActivity({ action: 'renamed this task', from: oldValue, to: newValue });
+            } else if (fieldKey === 'description') {
+                if (!oldValue || oldValue.trim() === 'Add a description...') {
+                    logActivity({ action: 'added a description' });
+                } else {
+                    logActivity({ action: 'updated the description' });
+                }
+            } else if (fieldKey === 'assignees') {
+                const oldUser = allUsers.find(u => u.id === oldValue?.[0]);
+                const newUser = allUsers.find(u => u.id === newValue?.[0]);
+                if (newUser) {
+                    logActivity({ action: 'assigned this task to', to: newUser.name });
+                } else {
+                    logActivity({ action: 'unassigned this task from', from: oldUser?.name });
+                }
+            } else {
+                // Generic fallback for other fields like dueDate, etc.
+                logActivity({ action: 'updated', field: fieldKey.charAt(0).toUpperCase() + fieldKey.slice(1), from: oldValue, to: newValue });
+            }
+
         } catch (error) { console.error(`Failed to update field ${fieldKey}:`, error); }
     }
 
@@ -727,10 +753,26 @@ window.TaskSidebar = (function () {
 
     async function logActivity({ action, field, from, to }) {
         if (!currentTaskRef || !currentUser) return;
-        const details = `<strong>${currentUser.name}</strong> ${action}` +
-            `${field ? ` <strong>${field}</strong>` : ''}` +
-            `${from ? ` from <strong>'${from}'</strong>` : ''}` +
-            `${to ? ` to <strong>'${to}'</strong>` : ''}.`;
+
+        // Sanitize inputs to prevent showing 'undefined' or 'null' in logs
+        const fromText = from || 'empty';
+        const toText = to || 'empty';
+
+        let details = `<strong>${currentUser.name}</strong> ${action}`;
+
+        if (field) {
+            details += ` <strong>${field}</strong>`;
+        }
+        if (from && to) {
+            details += ` from <strong>'${fromText}'</strong> to <strong>'${toText}'</strong>`;
+        } else if (to) {
+            details += ` to <strong>'${toText}'</strong>`;
+        } else if (from && from !== 'empty') {
+            details += ` from <strong>'${fromText}'</strong>`;
+        }
+        details += '.';
+
+
         await addDoc(collection(currentTaskRef, "activity"), {
             type: 'log',
             userId: currentUser.id,
@@ -744,14 +786,13 @@ window.TaskSidebar = (function () {
     async function updateMessage(messageId, updates) {
         const messageRef = doc(db, `globalTaskChats/${currentTask.id}/Messages`, messageId);
 
-        if (updates.content || updates.message) {
+        // Check if the content is being updated to log the activity
+        if (updates.content) {
             updates.editedAt = serverTimestamp();
-        }
-
-        await updateDoc(messageRef, updates);
-
-        if (updates.content || updates.message) {
-            logActivity({ action: 'edited a message' });
+            await updateDoc(messageRef, updates);
+            logActivity({ action: 'edited a message' }); // Log after successful update
+        } else {
+            await updateDoc(messageRef, updates);
         }
     }
 
@@ -764,17 +805,15 @@ window.TaskSidebar = (function () {
             }
         }
 
-        // THIS IS THE CORRECTED LINE:
-        // It now correctly points to the task-specific chat collection.
         const messageRef = doc(db, `globalTaskChats/${currentTask.id}/Messages`, messageId);
-
         const batch = writeBatch(db);
         batch.delete(messageRef);
         batch.update(currentTaskRef, { commentCount: increment(-1) });
 
         await batch.commit();
 
-        logActivity({ action: 'deleted a comment', field: `"${messageText.substring(0, 30)}..."` });
+        const truncatedText = messageText.length > 30 ? `${messageText.substring(0, 30)}...` : messageText;
+        logActivity({ action: 'deleted a comment', field: `"${truncatedText}"` });
     }
 
     async function toggleReaction(messageId, reactionType) {
@@ -831,86 +870,54 @@ window.TaskSidebar = (function () {
 
         batch.update(currentTaskRef, { commentCount: increment(1) });
         await batch.commit();
-        logActivity({ action: 'added a comment' });
     }
 
     async function handleCommentSubmit() {
         const commentInputEl = document.getElementById('comment-input');
-
         const previewEl = commentInputEl.querySelector('.inline-file-preview');
-
-        // If a preview exists, remove it from the DOM before reading any text.
         if (previewEl) {
             previewEl.remove();
         }
         const textContent = commentInputEl.innerText || '';
         const fileToUpload = pastedFiles.length > 0 ? pastedFiles[0] : null;
 
-        if (!textContent.trim() && !fileToUpload) {
-            return; // Exit if there's nothing to send
-        }
+        if (!textContent.trim() && !fileToUpload) return;
 
         sendCommentBtn.disabled = true;
 
         try {
             let finalHtml = textContent.trim().replace(/\n/g, '<br>');
             let messageHasImage = false;
+            let attachmentName = '';
 
-            // --- CORRECTED UPLOAD LOGIC ---
             if (fileToUpload) {
-                console.log("File detected, uploading to Firebase Storage...");
+                messageHasImage = fileToUpload.type.startsWith('image/');
+                attachmentName = fileToUpload.name;
                 const storagePath = `workspaceProjects/${currentProject.id}/messages-attachments/${Date.now()}-${fileToUpload.name}`;
                 const storageRef = ref(storage, storagePath);
                 const snapshot = await uploadBytes(storageRef, fileToUpload);
                 const finalDownloadURL = `/attachments/downloadProxy?path=${encodeURIComponent(snapshot.metadata.fullPath)}`;
 
-                console.log("Upload complete. Final URL:", finalDownloadURL);
+                let attachmentHtml = messageHasImage
+                    ? `<img src="${finalDownloadURL}" alt="${fileToUpload.name}" class="scalable-image">`
+                    : `<a href="${finalDownloadURL}" target="_blank" class="file-attachment-container"><i class="fa-solid fa-file"></i><span>${fileToUpload.name}</span></a>`;
 
-                // 4. Now, build the attachment HTML with the valid URL.
-                const fileType = fileToUpload.type;
-                const fileName = fileToUpload.name;
-                let attachmentHtml = '';
-                const displayFileName = fileName.replace(/_[\d.]+[KMGT]?B/i, '');
-
-
-                if (fileType.startsWith('image/')) {
-                    messageHasImage = true;
-                    attachmentHtml = `<img src="${finalDownloadURL}" alt="${fileName}" class="scalable-image">`;
-                } else {
-
-                    let iconClass = 'fa-solid fa-file';
-                    if (fileToUpload.type === 'application/pdf') {
-                        iconClass = 'fa-solid fa-file-pdf';
-                    }
-
-                    attachmentHtml = `
-            <a href="${finalDownloadURL}" target="_blank" class="file-attachment-container">
-                <i class="${iconClass}"></i>
-                <span>${displayFileName}</span>
-            </a>
-        `;
-                }
-
-                // 5. Append the attachment HTML to the message content.
-                if (finalHtml) {
-                    finalHtml += `<br>${attachmentHtml}`;
-                } else {
-                    finalHtml = attachmentHtml;
-                }
+                finalHtml = finalHtml ? `${finalHtml}<br>${attachmentHtml}` : attachmentHtml;
             }
 
-            // --- SEND MESSAGE ---
-            if (finalHtml) { // Only send if there's actual content.
+            if (finalHtml) {
                 await sendMessage({ html: finalHtml, hasImage: messageHasImage });
+                if (fileToUpload) {
+                    logActivity({ action: 'attached a file', field: attachmentName });
+                } else {
+                    logActivity({ action: 'added a comment' });
+                }
             }
 
-            // --- CLEANUP ---
             commentInputEl.innerHTML = '';
-            clearImagePreview(); // This now clears the file from pastedFiles and hides the preview.
-
+            clearImagePreview();
         } catch (error) {
             console.error("Failed to send message:", error);
-            alert("There was an error sending your message.");
         } finally {
             sendCommentBtn.disabled = false;
         }
@@ -1622,14 +1629,26 @@ window.TaskSidebar = (function () {
         });
         if (sidebarHeader) {
             sidebarHeader.addEventListener('click', (e) => {
-                // This will catch clicks on the completion button whether the header is scrolled or not
                 if (e.target.closest('.task-complete-btn')) {
                     if (!currentTask) return;
-                    const newStatus = currentTask.status === 'Completed' ? 'On track' : 'Completed';
-                    updateTaskField('status', newStatus);
+
+                    const isCompleted = currentTask.status === 'Completed';
+                    const newStatus = isCompleted ? (currentTask.previousStatus || 'On track') : 'Completed';
+
+                    // --- LOG ACTIVITY FOR COMPLETION ---
+                    if (!isCompleted) {
+                        logActivity({ action: 'completed this task' });
+                    } else {
+                        logActivity({ action: 'marked this task as incomplete' });
+                    }
+
+                    // Update the task status in Firestore.
+                    // The generic 'updated Status' log in updateTaskField will be skipped for this action.
+                    updateDoc(currentTaskRef, { status: newStatus, previousStatus: isCompleted ? null : currentTask.status });
                 }
             });
         }
+
         // Standard listeners
         closeBtn.addEventListener('click', close);
         expandBtn.addEventListener('click', toggleSidebarView);

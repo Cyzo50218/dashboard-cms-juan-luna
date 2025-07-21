@@ -2293,7 +2293,7 @@ function render() {
                             const color = option?.color;
                             if (isCompleted) {
                                 const optionCompleted = statusColumn?.options?.find(s => s.name === task.previousStatus);
-                            const colorCompleted = optionCompleted?.color;
+                                const colorCompleted = optionCompleted?.color;
                                 const style = `background-color: ${colorCompleted}20; border-radius: 10px; color: ${colorCompleted}; border: 1px solid ${colorCompleted}80;`;
                                 const grayStyle = `background-color: ${COMPLETED_BG_COLOR}; color: ${COMPLETED_TEXT_COLOR};`;
                                 content = `<div class="status-tag" style="${style}"> ${task.previousStatus}</div>`;
@@ -3499,6 +3499,33 @@ function findSectionById(sectionId) {
     return project.sections.find(section => section.id === sectionId);
 }
 
+async function logActivity({ action, field, from, to, taskRef }) {
+    if (!taskRef || !currentUserId) return;
+    const userProfile = allUsers.find(u => u.id === currentUserId);
+    if (!userProfile) {
+        console.warn("Could not log activity: Current user profile not found.");
+        return;
+    }
+
+    const details = `<strong>${userProfile.name}</strong> ${action}` +
+        `${field ? ` <strong>${field}</strong>` : ''}` +
+        `${from ? ` from <strong>'${from}'</strong>` : ''}` +
+        `${to ? ` to <strong>'${to}'</strong>` : ''}.`;
+
+    try {
+        await addDoc(collection(taskRef, "activity"), {
+            type: 'log',
+            userId: userProfile.id,
+            userName: userProfile.name,
+            userAvatar: userProfile.avatar,
+            timestamp: serverTimestamp(),
+            details: details
+        });
+    } catch (error) {
+        console.error("Failed to log activity:", error);
+    }
+}
+
 async function displaySideBarTasks(taskId) {
     console.log(`Task name clicked. Opening sidebar for task ID: ${taskId}`);
 
@@ -3509,7 +3536,7 @@ async function displaySideBarTasks(taskId) {
 
     try {
         const indexSnap = await getDoc(doc(db, "taskIndex", taskId));
-        
+
         if (!indexSnap.exists()) {
             console.warn(`TaskIndex not found for task ID: ${taskId}`);
             window.TaskSidebar.open(taskId, currentProjectRef);
@@ -3526,12 +3553,41 @@ function updateTask(taskId, sectionId, newProperties) {
     updateTaskInFirebase(taskId, sectionId, newProperties);
 }
 
-/**
- * Updates specific properties of a task document in Firestore.
- * @param {string} taskId The ID of the task to update.
- * @param {object} propertiesToUpdate An object with the fields to update.
- */
 async function updateTaskInFirebase(taskId, sectionId, propertiesToUpdate) {
+    const { task } = findTaskAndSection(taskId);
+    if (!task) return;
+
+    // Get a reference to the task for logging purposes.
+    const taskRef = doc(currentProjectRef, `sections/${sectionId}/tasks/${taskId}`);
+
+    // --- LOGIC TO DETECT AND LOG CHANGES ---
+    for (const key in propertiesToUpdate) {
+        const newValue = propertiesToUpdate[key];
+        let oldValue = task[key];
+
+        // Special handling for nested customFields
+        if (key.startsWith('customFields.')) {
+            const fieldId = key.split('.')[1];
+            oldValue = task.customFields?.[fieldId];
+        }
+
+        // Only log if the value has actually changed
+        if (oldValue !== newValue) {
+            logActivity({
+                action: 'updated',
+                field: key.replace('customFields.', ''), // Make field name cleaner
+                from: oldValue || 'empty',
+                to: newValue,
+                taskRef: taskRef // Pass the reference to the log function
+            });
+        }
+    }
+
+    // Now, call the original (renamed) function to actually save the data.
+    _updateTaskInFirebase(taskId, sectionId, propertiesToUpdate);
+}
+
+async function _updateTaskInFirebase(taskId, sectionId, propertiesToUpdate) {
     if (!currentProjectRef || !sectionId || !taskId) {
         return console.error("Missing IDs or project reference, cannot update task.");
     }
@@ -3604,6 +3660,11 @@ async function addTaskToFirebase(sectionId, taskData) {
 
         // ✅ Log 6: This will ONLY run if the await setDoc() line completes without throwing an error.
         console.log(`✅ SUCCESS: Firestore reported success for adding task with ID: ${newTaskRef.id}`);
+        const tempTaskRefForLog = doc(db, tasksCollectionRef.path, newTaskRef.id);
+        logActivity({
+            action: 'created this task',
+            taskRef: tempTaskRefForLog // Pass the reference
+        });
 
     } catch (error) {
         // ✅ Log 7: If `await setDoc()` fails for any reason (e.g., security rules), this block will run.
