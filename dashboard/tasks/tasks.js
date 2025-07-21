@@ -2431,14 +2431,23 @@ export function init(params) {
           }
 
           const messagesRef = collection(db, "MessagesChatRooms", roomId, "messages");
-          const q = query(messagesRef, orderBy("timestamp", "asc")); // Order by asc for easier appending
+          const q = query(messagesRef, orderBy("timestamp", "desc"), limit(messageLimit));
 
-          const unsubscribe = onSnapshot(q, (snapshot) => {
-            const changes = snapshot.docChanges();
-            callback(changes);
-          }, (error) => {
-            console.error(`Error listening to messages for room ${roomId}:`, error);
-          });
+          const unsubscribe = onSnapshot(
+            q,
+            (snapshot) => {
+              const messages = snapshot.docs.map((doc) => ({
+                id: doc.id,
+                ...doc.data(),
+              }));
+              messages.reverse();
+              _messages[roomId] = messages;
+              callback(messages);
+            },
+            (error) => {
+              console.error(`❌ Error listening to messages for room ${roomId}:`, error);
+            }
+          );
 
           _activeListeners[roomId] = unsubscribe;
           return unsubscribe;
