@@ -2384,6 +2384,7 @@ export function init(params) {
     ];
 
     const REACTION_EMOJIS = ["❤️", "👍", "😂", "👏", "😢"];
+    let dragged = false;
 
     // --- REVISED MOCK DATA SERVICE ---
     // This service now maintains an internal, mutable state for messages.
@@ -2729,7 +2730,7 @@ export function init(params) {
       const dragTargets = [container, document.getElementById("chat-header")];
 
       let isDragging = false;
-      let dragged = false;
+      dragged = false;
       let offsetX = 0;
       let offsetY = 0;
 
