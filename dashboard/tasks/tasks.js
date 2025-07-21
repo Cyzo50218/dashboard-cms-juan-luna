@@ -1103,7 +1103,8 @@ export function init(params) {
     color: #333;
     font-size: 18px;
     transition: background-color 0.1s ease;
-    padding: 0;
+    padding-bottom: 4px;
+    padding-right: 4px;
     display: flex;
     align-items: center;    /* Centers content vertically */
     justify-content: center; /* Centers content horizontally */
