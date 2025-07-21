@@ -725,7 +725,6 @@
 /* New/Updated styles for the items INSIDE the dropdown for alignment */
 .context-dropdown .dropdown-item {
     display: flex;
-    align-items: center;   /* Vertically aligns the swatch/icon with the text */
     gap: 6px;              /* Creates space between the swatch/icon and text */
     position: relative;    /* Required for positioning the edit button */
     padding: 0.4rem 0.8rem; /* Add padding to the items themselves */
