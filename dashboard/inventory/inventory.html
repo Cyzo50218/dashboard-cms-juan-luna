@@ -3,12 +3,12 @@
     <img id="overlay-image-src" class="overlay-image" src="" alt="Product Image">
 </div>
 <div id="restricted-overlay" class="restricted-overlay hidden">
-  <div class="restricted-content">
-    <i class="fas fa-lock fa-3x"></i>
-    <h2>Restricted Access</h2>
-    <p class="message">You are not allowed to view this inventory.</p>
-    <button id="restricted-ok-btn" class="restricted-ok-btn">OK</button>
-  </div>
+    <div class="restricted-content">
+        <i class="fas fa-lock fa-3x"></i>
+        <h2>Restricted Access</h2>
+        <p class="message">You are not allowed to view this inventory.</p>
+        <button id="restricted-ok-btn" class="restricted-ok-btn">OK</button>
+    </div>
 </div>
 
 <div class="list-view-container">
@@ -35,9 +35,13 @@
 
     <div class="listview-header">
         <button class="add-task-header-btn hidden"><i class="fas fa-plus"></i> Add product</button>
-        <div class="header-controls-right hidden" id="header-right">
-            <button id="filter-btn"><i class="fas fa-filter"></i> Filter</button>
-            <button id="sort-btn"><i class="fas fa-sort"></i> Sort</button>
+
+        <div class="header-controls-right" id="header-right">
+            <button id="move-products-btn" class="header-btn">
+                <span class="material-icons">multiple_stop</span> Move Products
+            </button>
+            <button id="filter-btn"><i class="fas fa-filter hidden"></i> Filter</button>
+            <button id="sort-btn"><i class="fas fa-sort hidden"></i> Sort</button>
         </div>
     </div>
 
@@ -47,4 +51,3 @@
     <div class="custom-scrollbar-placeholder"></div>
 
 </div>
-

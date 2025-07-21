@@ -24,6 +24,7 @@ import {
     documentId,
     setDoc,
     updateDoc,
+    runTransaction,
     deleteDoc,
     writeBatch,
     serverTimestamp,
@@ -50,7 +51,7 @@ console.log("Initialized Firebase on Dashboard.");
 
 // --- Module-Scoped Variables ---
 // DOM Element Holders
-let taskListHeaderEl, drawer, settingsBtn, inventoryTabs, imageOverlay, overlayImageSrc, closeOverlay, restrictedOverlay, addSectionClassBtn, headerRight, productListBody, taskListFooter, addProductHeaderBtn, mainContainer, assigneeDropdownTemplate, filterBtn, sortBtn;
+let taskListHeaderEl, drawer, settingsBtn, moveProductsBtn, inventoryTabs, imageOverlay, overlayImageSrc, closeOverlay, restrictedOverlay, addSectionClassBtn, headerRight, productListBody, taskListFooter, addProductHeaderBtn, mainContainer, assigneeDropdownTemplate, filterBtn, sortBtn;
 
 // Event Handler References
 let headerClickListener, bodyClickListener, settingsBtnListener, bodyFocusOutListener, addProductHeaderBtnListener, windowClickListener, filterBtnListener, sortBtnListener;
@@ -58,6 +59,7 @@ let sortableSections;
 let activeMenuButton = null;
 const sortableTasks = [];
 let isSortActive = false;
+let isCreatingWorkspace = false;
 
 // --- VIRTUAL SCROLLING CONSTANTS ---
 const ROW_HEIGHT = 32; // The fixed height of a single task or section row in pixels.
@@ -401,6 +403,7 @@ function updateUserPermissions(projectData, userId) {
 function initializeListView() {
     imageOverlay = document.getElementById('image-overlay');
     overlayImageSrc = document.getElementById('overlay-image-src');
+    moveProductsBtn = document.getElementById('move-products-btn');
     closeOverlay = document.getElementById('close-overlay');
     restrictedOverlay = document.getElementById('restricted-overlay');
     taskListHeaderEl = document.getElementById('task-list-header');
@@ -648,6 +651,8 @@ async function uploadProductImage(file, productId) {
 }
 
 async function setupEventListeners() {
+
+    moveProductsBtn.addEventListener('click', openMoveProductsModal);
 
     closeOverlay.addEventListener('click', () => {
         imageOverlay.classList.add('hidden');
@@ -1241,6 +1246,360 @@ async function setupEventListeners() {
 
 }
 
+/**
+ * Opens a powerful modal to move specific quantities of multiple products,
+ * featuring an advanced search filter dropdown.
+ */
+function openMoveProductsModal() {
+    // Determine source and target locations
+    const sourceStockType = currentStockType;
+    const targetStockType = sourceStockType === 'ph' ? 'us' : 'ph';
+    const sourceCollectionName = sourceStockType === 'ph' ? 'PH-Stocks-meta' : 'US-Stocks-meta';
+    const targetCollectionName = targetStockType === 'ph' ? 'PH-Stocks-meta' : 'US-Stocks-meta';
+
+    const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    const rawData = sourceStockType === 'ph' ? dataPhStocks : dataUsStocks;
+    const sourceData = rawData.filter(doc => uuidRegex.test(doc.id));
+
+
+    const modalHTML = `
+        <div class="move-products-overlay visible" id="move-products-overlay">
+            <div class="move-products-modal">
+                <div class="move-products-header">
+                    <h2>Move Products</h2>
+                    <button class="close-modal-btn">&times;</button>
+                </div>
+                <div class="move-products-body">
+                    <p class="mb-4 text-sm text-gray-600">
+                        Select products to move from <strong>${sourceStockType.toUpperCase()} Stocks</strong> to <strong>${targetStockType.toUpperCase()} Stocks</strong>.
+                    </p>
+                    <div class="search-controls">
+                        <select id="search-field-select">
+                            <option value="all">Search All</option>
+                            <option value="name">Product Name</option>
+                            <option value="productSku">Product SKU</option>
+                            <option value="supplierName">Supplier Name</option>
+                            <optgroup label="Sizes (Has Stock)">
+                                <option value="s">Size S</option>
+                                <option value="m">Size M</option>
+                                <option value="l">Size L</option>
+                                <option value="xl">Size XL</option>
+                                <option value="xxl">Size XXL</option>
+                                <option value="others">Others</option>
+                            </optgroup>
+                        </select>
+                        <input type="text" id="product-search-input" placeholder="Filter products...">
+                    </div>
+                    <div id="product-list-container"></div>
+                </div>
+                <div class="move-products-footer" id="move-products-footer">
+                    </div>
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    const overlay = document.getElementById('move-products-overlay');
+    const searchInput = document.getElementById('product-search-input');
+    const searchFieldSelect = document.getElementById('search-field-select');
+    const productListContainer = document.getElementById('product-list-container');
+    const footerContainer = document.getElementById('move-products-footer');
+
+    let selectedProductIds = new Set();
+    // MODIFIED: Added 'countStocks' to the array to be processed everywhere.
+    const stockAndSizeFields = ['countStocks', 's', 'm', 'l', 'xl', 'xxl', 'others'];
+
+    // --- Event Listeners ---
+    searchInput.addEventListener('input', handleFilter);
+    searchFieldSelect.addEventListener('change', handleFilter);
+    overlay.querySelector('.close-modal-btn').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', e => (e.target === overlay) && overlay.remove());
+
+    function handleFilter() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const searchField = searchFieldSelect.value;
+
+        const filteredProducts = sourceData.filter(p => {
+            if (!searchTerm) {
+                return true; // If search bar is empty, show all products
+            }
+
+            switch (searchField) {
+                case 'all':
+                    // Search across multiple relevant text fields
+                    return (p.name && p.name.toLowerCase().includes(searchTerm)) ||
+                        (p.productSku && String(p.productSku).toLowerCase().includes(searchTerm)) ||
+                        (p.supplierName && p.supplierName.toLowerCase().includes(searchTerm));
+
+                case 's':
+                case 'm':
+                case 'l':
+                case 'xl':
+                case 'xxl':
+                case 'others':
+                    // When filtering by size, the search term must be a number
+                    const stock = parseInt(p[searchField], 10) || 0;
+                    const searchNum = parseInt(searchTerm, 10);
+
+                    // Only show results if the search term is a valid number
+                    if (isNaN(searchNum)) {
+                        return false;
+                    }
+                    return stock >= searchNum;
+
+                default:
+                    // This handles specific text fields like 'name', 'productSku', etc.
+                    return p[searchField] && String(p[searchField]).toLowerCase().includes(searchTerm);
+            }
+        });
+
+        renderProductList(filteredProducts);
+    }
+
+    /**
+     * MODIFIED: Added color-coding logic for stock values.
+     */
+    function renderProductList(products) {
+        if (products.length === 0) {
+            productListContainer.innerHTML = `<p class="p-4 text-center text-gray-500">No products found for your filter.</p>`;
+            return;
+        }
+
+        const productRowsHTML = products.map(p => {
+            const isChecked = selectedProductIds.has(p.id) ? 'checked' : '';
+
+            const stocksHTML = stockAndSizeFields.map(field => {
+                const isTotalStock = field === 'countStocks';
+                const fieldClass = isTotalStock ? 'size-display total-stock-display' : 'size-display';
+                const label = isTotalStock ? 'STOCKS' : field.toUpperCase();
+                const numericValue = parseInt(p[field], 10) || 0;
+
+                // --- COLOR LOGIC ADDED HERE ---
+                let colorClass = 'text-slate-700'; // Default color
+                if (!isNaN(numericValue)) {
+                    if (numericValue >= 0 && numericValue <= 5) {
+                        colorClass = 'text-red-600 font-bold'; // Red and bold for 0-5
+                    } else if (numericValue < 10) {
+                        colorClass = 'text-yellow-600'; // Yellow for 6-9
+                    } else {
+                        colorClass = 'text-green-600'; // Green for 10+
+                    }
+                }
+
+                return `
+                    <div class="${fieldClass}">
+                        <span class="size-label">${label}</span>
+                        <span class="size-value ${colorClass}">${numericValue}</span>
+                    </div>`;
+            }).join('');
+
+            return `
+                <div class="product-select-item" data-product-id="${p.id}">
+                    <div class="product-info">
+                        <input type="checkbox" data-product-id="${p.id}" ${isChecked}>
+                        <img src="${p.imageUrl || '/img/default-product.png'}" alt="Product">
+                        <div class="product-details">
+                            <div class="name">${p.name}</div>
+                            <div class="sku">SKU: ${p.productSku || 'N/A'}</div>
+                        </div>
+                    </div>
+                    <div class="product-stock-details">
+                        ${stocksHTML}
+                    </div>
+                </div>`;
+        }).join('');
+
+        productListContainer.innerHTML = productRowsHTML;
+
+        productListContainer.querySelectorAll('.product-select-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                const checkbox = item.querySelector('input[type="checkbox"]');
+                if (e.target !== checkbox) checkbox.checked = !checkbox.checked;
+                handleProductSelection(checkbox.dataset.productId, checkbox.checked);
+            });
+        });
+    }
+
+    function handleProductSelection(productId, isChecked) {
+        if (isChecked) {
+            selectedProductIds.add(productId);
+        } else {
+            selectedProductIds.delete(productId);
+        }
+        renderFooter();
+    }
+
+    /**
+     * MODIFIED: Renders the footer, now including an input for 'countStocks'.
+     */
+    function renderFooter() {
+        if (selectedProductIds.size === 0) {
+            footerContainer.innerHTML = `
+                <span class="text-sm text-gray-500">Select one or more products to move.</span>
+                <button class="modal-btn secondary close-modal-btn">Cancel</button>`;
+            footerContainer.querySelector('.close-modal-btn').addEventListener('click', () => overlay.remove());
+            return;
+        }
+
+        const maxStocks = {};
+        for (const field of stockAndSizeFields) {
+            maxStocks[field] = 0;
+            for (const productId of selectedProductIds) {
+                const product = sourceData.find(p => p.id === productId);
+                if (product) {
+                    maxStocks[field] += (parseInt(product[field], 10) || 0);
+                }
+            }
+        }
+
+        const stockInputsHTML = stockAndSizeFields.map(field => {
+            const label = field === 'countStocks' ? 'Stocks' : field.toUpperCase();
+            return `
+                <div class="size-input-group">
+                    <label for="size-${field}">${label}</label>
+                    <input type="number" id="size-${field}" min="0" placeholder="Max: ${maxStocks[field]}">
+                </div>`;
+        }).join('');
+
+        footerContainer.innerHTML = `
+            <div class="footer-details">
+                <div class="selected-count">${selectedProductIds.size} products selected</div>
+                <div class="footer-size-inputs">${stockInputsHTML}</div>
+            </div>
+            <div class="footer-actions">
+                <button class="modal-btn secondary close-modal-btn">Cancel</button>
+                <button class="modal-btn primary" id="confirm-move-btn">Move Quantities</button>
+            </div>`;
+
+        footerContainer.querySelector('.close-modal-btn').addEventListener('click', () => overlay.remove());
+        footerContainer.querySelector('#confirm-move-btn').addEventListener('click', executeMove);
+    }
+
+    async function executeMove() {
+        const confirmBtn = footerContainer.querySelector('#confirm-move-btn');
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Moving...';
+
+        // --- Create a collapsible group for logs ---
+        console.groupCollapsed(`🚚 [Move Products Debug]`);
+
+        const quantitiesToMove = {};
+        let totalToMove = 0;
+        for (const field of stockAndSizeFields) {
+            const input = document.getElementById(`size-${field}`);
+            const value = parseInt(input.value, 10) || 0;
+            if (value > 0) {
+                quantitiesToMove[field] = value;
+                totalToMove += value;
+            }
+        }
+
+        // --- 1. Log Initial Inputs ---
+        console.log("▶️ Initial State:", {
+            productsToMove: Array.from(selectedProductIds),
+            quantities: quantitiesToMove,
+            totalItems: totalToMove
+        });
+
+
+        if (totalToMove === 0) {
+            alert("Please enter a quantity for at least one size or stock.");
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Move Quantities';
+            console.warn("Move cancelled: No quantities entered.");
+            console.groupEnd(); // End the log group
+            return;
+        }
+
+        try {
+            console.log("⏳ Starting Firestore Transaction...");
+            await runTransaction(db, async (transaction) => {
+
+                // --- 2. Log Read Phase ---
+                console.log("   [Step 1: READ Phase]");
+                const targetDocRefs = Array.from(selectedProductIds).map(productId =>
+                    doc(db, `InventoryWorkspace/${currentInventoryId}/${targetCollectionName}`, productId)
+                );
+                const targetDocs = await Promise.all(
+                    targetDocRefs.map(ref => transaction.get(ref))
+                );
+                const targetDocsMap = new Map(targetDocs.map(snapshot => [snapshot.id, snapshot]));
+                console.log("   ✅ READ Phase Complete. Pre-fetched target documents:", Object.fromEntries(targetDocsMap));
+
+
+                // --- 3. Log Write Phase ---
+                console.log("   [Step 2: WRITE Phase]");
+                for (const field in quantitiesToMove) {
+                    let amountToDeduct = quantitiesToMove[field];
+
+                    for (const productId of selectedProductIds) {
+                        if (amountToDeduct <= 0) break;
+
+                        const product = sourceData.find(p => p.id === productId);
+                        const stockInSource = parseInt(product[field], 10) || 0;
+
+                        if (stockInSource > 0) {
+                            const deduction = Math.min(amountToDeduct, stockInSource);
+                            const sourceRef = doc(db, `InventoryWorkspace/${currentInventoryId}/${sourceCollectionName}`, productId);
+                            const targetRef = doc(db, `InventoryWorkspace/${currentInventoryId}/${targetCollectionName}`, productId);
+
+                            console.log(`      - Processing ${field.toUpperCase()} for Product ${productId}:`);
+                            console.log(`        - Stock in source: ${stockInSource}, Amount to deduct: ${deduction}`);
+
+                            const targetDoc = targetDocsMap.get(productId);
+
+                            // Queue source update
+                            transaction.update(sourceRef, { [field]: increment(-deduction) });
+
+                            if (targetDoc && targetDoc.exists()) {
+                                // Queue target update
+                                console.log(`        - Action: UPDATING existing target document.`);
+                                transaction.update(targetRef, { [field]: increment(deduction) });
+                            } else {
+                                // Queue new document creation
+                                const newProductData = { ...product };
+                                stockAndSizeFields.forEach(sf => {
+                                    if (sf !== field) newProductData[sf] = 0;
+                                });
+                                newProductData[field] = deduction;
+
+                                console.log(`        - Action: CREATING new target document with data:`, newProductData);
+                                transaction.set(targetRef, newProductData);
+
+                                // Update map to prevent re-creation
+                                targetDocsMap.set(productId, { exists: () => true });
+                            }
+                            amountToDeduct -= deduction;
+                        }
+                    }
+                    if (amountToDeduct > 0) {
+                        throw new Error(`Not enough stock for ${field.toUpperCase()}. Please check quantities.`);
+                    }
+                }
+            });
+
+            // --- 4. Log Success ---
+            console.log("✅ Transaction committed successfully.");
+            alert('Products moved successfully!');
+            overlay.remove();
+
+        } catch (error) {
+            // --- 5. Log Error ---
+            console.error("❌ Error during move transaction:", error);
+            alert(error.message);
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Move Quantities';
+        } finally {
+            // End the log group regardless of success or failure
+            console.groupEnd();
+        }
+    }
+
+    // --- Initial Render ---
+    renderProductList(sourceData);
+    renderFooter();
+}
 
 function openImageOptionsDropdown(container, product) {
     // Use your custom dropdown UI to offer "Replace" or "Remove" options
@@ -1953,6 +2312,112 @@ async function addNewSizeColumnsToInventory(inventoryId) {
     console.log('Columns added successfully.');
 }
 
+/**
+ * Shows or hides a loading overlay on the screen.
+ * @param {boolean} show - True to show the overlay, false to hide it.
+ * @param {string} [message='Loading...'] - The message to display.
+ */
+function toggleLoadingOverlay(show, message = 'Loading...') {
+    const existingOverlay = document.getElementById('creation-loading-overlay');
+    if (existingOverlay) {
+        existingOverlay.remove();
+    }
+
+    if (show) {
+        const overlay = document.createElement('div');
+        overlay.id = 'creation-loading-overlay';
+        overlay.className = 'loading-overlay';
+        overlay.innerHTML = `
+            <div class="loading-content">
+                <div class="spinner"></div>
+                <p>${message}</p>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+    }
+}
+
+/**
+ * Creates a new InventoryWorkspace document with a default structure,
+ * including the necessary subcollections.
+ * @param {string} inventoryId - The ID for the new workspace document.
+ */
+async function createDefaultInventoryWorkspace(inventoryId) {
+    console.log(`🚀 Creating default inventory workspace for ID: ${inventoryId}`);
+
+    const defaultData = {
+        columns_ph: [
+            { id: "productImage", name: "Product Image Name", type: "Image", isRestricted: false },
+            { id: "productSku", name: "Product SKU", type: "Text", isRestricted: false },
+            { id: "supplierCost", name: "Supplier Cost", type: "Costing", isRestricted: true },
+            { id: "supplierName", name: "Supplier Name", type: "Text", isRestricted: false },
+            { id: "supplierProject", name: "Supplier Project", type: "Dropdown", isRestricted: false },
+            { id: "warehouseLocation", name: "Warehouse Location", type: "Dropdown", isRestricted: false },
+            { id: "s", name: "S", type: "SizeNumber", isRestricted: false },
+            { id: "m", name: "M", type: "SizeNumber", isRestricted: false },
+            { id: "l", name: "L", type: "SizeNumber", isRestricted: false },
+            { id: "xl", name: "XL", type: "SizeNumber", isRestricted: false },
+            { id: "xxl", name: "XXL", type: "SizeNumber", isRestricted: false },
+            { id: "others", name: "Others", type: "Text", isRestricted: false },
+            { id: "total", name: "Total", type: "Text", isRestricted: false },
+            { id: "countStocks", name: "Stocks", type: "Number", isRestricted: false }
+        ],
+        columns_us: [
+            { id: "productImage", name: "Product Image", type: "Image", isRestricted: false },
+            { id: "productSku", name: "Product SKU", type: "Text", isRestricted: false },
+            { id: "supplierCost", name: "Supplier Cost", type: "Costing", isRestricted: true },
+            { id: "supplierName", name: "Supplier Name", type: "Text", isRestricted: false },
+            { id: "supplierProject", name: "Supplier Project", type: "Dropdown", isRestricted: false },
+            { id: "warehouseLocation", name: "Warehouse Location", type: "Dropdown", isRestricted: false },
+            { id: "s", name: "S", type: "SizeNumber", isRestricted: false },
+            { id: "m", name: "M", type: "SizeNumber", isRestricted: false },
+            { id: "l", name: "L", type: "SizeNumber", isRestricted: false },
+            { id: "xl", name: "XL", type: "SizeNumber", isRestricted: false },
+            { id: "xxl", name: "XXL", type: "SizeNumber", isRestricted: false },
+            { id: "others", name: "Others", type: "Text", isRestricted: false },
+            { id: "total", name: "Total", type: "Text", isRestricted: false },
+            { id: "countStocks", name: "Stocks", type: "Number", isRestricted: false }
+        ],
+        customResizeWidthPHStock: {
+            countStocks: 150, l: 145, m: 57, others: 100, productImage: 195,
+            productSku: 160, s: 55, supplierCost: 120, supplierName: 180,
+            supplierProject: 180, total: 75, warehouseLocation: 180, xl: 61, xxl: 65
+        },
+        customResizeWidthUSStock: {
+            productImage: 213, productSku: 160, supplierProject: 180, warehouseLocation: 150
+        },
+        columnOrder_ph: ["productImage", "productSku", "countStocks", "s", "m", "l", "xl", "xxl", "others", "total", "supplierCost", "supplierName", "supplierProject", "warehouseLocation"],
+        columnOrder_us: ["productImage", "productSku", "countStocks", "s", "m", "l", "xl", "xxl", "others", "total", "supplierCost", "supplierName", "supplierProject", "warehouseLocation"]
+    };
+
+    try {
+        const batch = writeBatch(db);
+        const docRef = doc(db, 'InventoryWorkspace', inventoryId);
+
+        // 1. Set the main document data
+        batch.set(docRef, defaultData);
+        console.log("✅ Main inventory document queued for creation.");
+
+        // 2. Create placeholder documents to establish subcollections
+        const phStocksPlaceholderRef = doc(collection(docRef, 'PH-Stocks-meta'));
+        batch.set(phStocksPlaceholderRef, { initialized: serverTimestamp() });
+        console.log("✅ PH-Stocks-meta subcollection queued for initialization.");
+
+        const usStocksPlaceholderRef = doc(collection(docRef, 'US-Stocks-meta'));
+        batch.set(usStocksPlaceholderRef, { initialized: serverTimestamp() });
+        console.log("✅ US-Stocks-meta subcollection queued for initialization.");
+
+        // 3. Commit the batch transaction
+        await batch.commit();
+        console.log("✅ Default inventory workspace and subcollections created successfully.");
+
+    } catch (error) {
+        console.error("❌ Error creating default inventory workspace:", error);
+        toggleLoadingOverlay(false); // Hide overlay on error
+        alert("Failed to initialize your inventory. Please check the console and refresh the page.");
+    }
+}
+
 function createFloatingInput(targetCell, task, column) {
     if (document.querySelector('.floating-input-wrapper')) return;
 
@@ -2113,9 +2578,32 @@ async function render(stockType) {
     let savedColumnWidths = {};
     if (!productListBody || !currentInventoryId) return;
 
-    const docSnap = await getDoc(doc(db, 'InventoryWorkspace', currentInventoryId));
-    if (!docSnap.exists()) return;
-    console.log('✅ Rendering PH with:', dataPhStocks.length, 'items');
+    if (isCreatingWorkspace) return;
+
+    const docRef = doc(db, 'InventoryWorkspace', currentInventoryId);
+    const docSnap = await getDoc(docRef);
+
+    // --- NEW LOGIC: Check for existence and create if needed ---
+    if (!docSnap.exists()) {
+        isCreatingWorkspace = true;
+        toggleLoadingOverlay(true, 'Initializing your inventory workspace...');
+
+        await createDefaultInventoryWorkspace(currentInventoryId);
+
+        // Hide overlay and re-run the render function.
+        toggleLoadingOverlay(false);
+        isCreatingWorkspace = false;
+        render(stockType); // This time, the document will exist.
+        return; // Stop the current render pass.
+    }
+    // --- END OF NEW LOGIC ---
+
+    console.log(`✅ Rendering ${stockType.toUpperCase()} with:`, productList.length, 'items');
+
+    if (!Array.isArray(productList)) {
+        console.warn('⚠️ productList is invalid!', productList);
+        productList = []; // Ensure productList is an array to prevent errors
+    }
 
     if (!Array.isArray(productList) || productList.length === 0) {
         console.warn('⚠️ productList is empty or invalid!', productList);

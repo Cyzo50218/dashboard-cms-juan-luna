@@ -1,12 +1,15 @@
-/* =====================================================================
-// Modern Spreadsheet View CSS
-// Final, consolidated, and corrected styles.
-// ===================================================================== */
-
 :root {
     /* Variables */
     --primary-bg: #ffffff;
     --secondary-bg: #f9fafb;
+    --primary-blue: #3b82f6;
+    --primary-blue-dark: #2563eb;
+    --light-blue-bg: #eff6ff;
+    --border-color: #e5e7eb;
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --surface-bg: #ffffff;
+    --subtle-bg: #f9fafb;
     /* Used for hover and section rows */
     --border-color: #e5e7eb;
     --accent-color: #4c6ef5;
@@ -2376,27 +2379,31 @@ Custom class
 }
 
 .inventory-btn {
-  background-color: #000; /* black */
-  color: #fff;            /* white text */
-  border: none;
-  border-radius: 8px;
-  margin: 20px;
-  padding: 10px 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.3s ease;
+    background-color: #000;
+    /* black */
+    color: #fff;
+    /* white text */
+    border: none;
+    border-radius: 8px;
+    margin: 20px;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s ease;
 }
 
 .inventory-btn:hover {
-  background-color: #333; /* lighter black on hover */
+    background-color: #333;
+    /* lighter black on hover */
 }
 
 .inventory-btn .material-icons {
-  font-size: 20px;
+    font-size: 20px;
 }
+
 .restricted-overlay {
     position: absolute;
     top: 0;
@@ -2418,9 +2425,11 @@ Custom class
 .restricted-overlay.hidden {
     display: none;
 }
-.add-task-header-btn.hidden{
+
+.add-task-header-btn.hidden {
     display: none;
 }
+
 .restricted-content {
     background: #1c1c1e;
     padding: 40px;
@@ -2445,23 +2454,25 @@ Custom class
     font-size: 16px;
     color: #ccc;
 }
+
 .restricted-ok-btn {
-  margin-top: 20px;
-  padding: 10px 24px;
-  font-size: 16px;
-  width: 100%;
-  font-weight: bold;
-  background-color: #007bff;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
+    margin-top: 20px;
+    padding: 10px 24px;
+    font-size: 16px;
+    width: 100%;
+    font-weight: bold;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
 }
 
 .restricted-ok-btn:hover {
-  background-color: #0056b3;
+    background-color: #0056b3;
 }
+
 .image-overlay {
     position: absolute;
     top: 0;
@@ -2492,4 +2503,438 @@ Custom class
     font-size: 40px;
     color: white;
     cursor: pointer;
+}
+
+/* --- Modern Move Products Modal --- */
+
+/* --- Color Classes for Stock Counts --- */
+
+/* Red for low stock (0-5) */
+.text-red-600 {
+    color: #dc2626; /* Tailwind's red-600 */
+}
+
+/* Makes text bold */
+.font-bold {
+    font-weight: 700;
+}
+
+/* Yellow for medium stock (6-9) */
+.text-yellow-600 {
+    color: #ca8a04; /* Tailwind's yellow-600 */
+}
+
+/* Green for high stock (10+) */
+.text-green-600 {
+    color: #16a34a; /* Tailwind's green-600 */
+}
+
+/* Default color for text if needed */
+.text-slate-700 {
+    color: #334155; /* Tailwind's slate-700 */
+}
+
+/* --- Main Overlay and Modal Structure --- */
+.move-products-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(14, 14, 14, 0.685);
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+}
+
+.move-products-overlay.visible {
+    opacity: 1;
+}
+
+.move-products-modal {
+    background: var(--surface-bg);
+    border-radius: 12px;
+    width: 90%;
+    max-width: 800px;
+    /* Increased width for better stock display */
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    transform: scale(0.95) translateY(10px);
+    transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+    opacity: 0;
+}
+
+.move-products-overlay.visible .move-products-modal {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+}
+
+/* --- Header, Body, and Footer Layout --- */
+.move-products-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.move-products-header h2 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.move-products-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex-grow: 1;
+}
+
+.move-products-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border-color);
+    background-color: var(--subtle-bg);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    border-radius: 0 0 12px 12px;
+}
+
+/* --- Search and Filter Controls --- */
+.search-controls {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.search-controls select,
+.search-controls input {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.95rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-controls select:focus,
+.search-controls input:focus {
+    outline: none;
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.search-controls input {
+    flex-grow: 1;
+}
+
+/* --- Product List and Items --- */
+#product-list-container {
+    max-height: 45vh;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+    /* Space for scrollbar */
+}
+
+.product-select-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.product-select-item:hover {
+    background-color: var(--subtle-bg);
+}
+
+/* Style the entire row when its checkbox is checked */
+.product-select-item:has(input[type="checkbox"]:checked) {
+    background-color: var(--light-blue-bg);
+    border-color: var(--primary-blue);
+}
+
+.product-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-grow: 1;
+    /* Allow info to take available space */
+}
+
+.product-info img {
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    object-fit: cover;
+}
+
+.product-details .name {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.product-details .sku {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.product-stock-details {
+    display: flex;
+    gap: 0.75rem;
+    background: var(--subtle-bg);
+    padding: 0.5rem;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+}
+
+.product-select-item:has(input:checked) .product-stock-details {
+    background-color: #fff;
+}
+
+.size-display {
+    text-align: center;
+    min-width: 30px;
+    /* Ensure columns align */
+}
+
+.size-label {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.size-value {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+/* --- Custom Checkbox --- */
+.product-info input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    height: 20px;
+    width: 20px;
+    background-color: var(--surface-bg);
+    border: 1.5px solid #d1d5db;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    outline: none;
+    transition: background-color 0.2s, border-color 0.2s;
+    flex-shrink: 0;
+}
+
+.product-info input[type="checkbox"]:hover {
+    border-color: var(--primary-blue);
+}
+
+.product-info input[type="checkbox"]:checked {
+    background-color: var(--primary-blue);
+    border-color: var(--primary-blue);
+}
+
+.product-info input[type="checkbox"]::after {
+    content: '';
+    display: block;
+    width: 5px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+    opacity: 0;
+    transition: opacity 0.1s ease-in-out;
+}
+
+.product-info input[type="checkbox"]:checked::after {
+    opacity: 1;
+}
+
+.total-stock-display {
+    background-color: #f7f7f7; 
+    border-radius: 4px;
+    padding: 2px 4px;
+}
+
+.product-select-item:has(input:checked) .total-stock-display {
+    background-color: #f5f5f5; 
+}
+
+.total-stock-display .size-label {
+    color: #4939ff; 
+}
+
+.total-stock-display .size-value {
+    color: #5d4ffa;
+}
+
+/* --- Footer Inputs and Actions --- */
+.footer-details {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-grow: 1;
+}
+
+.selected-count {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.footer-size-inputs {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.footer-size-inputs .size-input-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.footer-size-inputs label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.footer-size-inputs input {
+    width: 70px;
+    padding: 0.5rem;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    text-align: center;
+    margin-top: 0.25rem;
+}
+
+.footer-size-inputs input:focus {
+    outline: none;
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.footer-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+/* --- Buttons --- */
+.close-modal-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #9ca3af;
+    transition: color 0.2s;
+}
+
+.close-modal-btn:hover {
+    color: var(--text-primary);
+}
+
+.modal-btn {
+    padding: 0.6rem 1.25rem;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.modal-btn.secondary {
+    background-color: var(--surface-bg);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.modal-btn.secondary:hover {
+    background-color: #f3f4f6;
+    border-color: #d1d5db;
+}
+
+.modal-btn.primary {
+    background-color: var(--primary-blue);
+    color: #fff;
+}
+
+.modal-btn.primary:hover {
+    background-color: var(--primary-blue-dark);
+}
+
+.modal-btn:disabled {
+    background-color: #e5e7eb;
+    color: #9ca3af;
+    cursor: not-allowed;
+    border-color: transparent;
+}
+
+/* --- Custom Scrollbars (for Webkit browsers like Chrome/Safari) --- */
+#product-list-container::-webkit-scrollbar,
+.move-products-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+#product-list-container::-webkit-scrollbar-track,
+.move-products-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#product-list-container::-webkit-scrollbar-thumb,
+.move-products-body::-webkit-scrollbar-thumb {
+    background-color: #d1d5db;
+    border-radius: 10px;
+    border: 2px solid var(--surface-bg);
+}
+
+/* --- Loading Overlay --- */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    color: white;
+    font-family: sans-serif;
+}
+
+.loading-content {
+    text-align: center;
+}
+
+.loading-content .spinner {
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top: 4px solid #fff;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 16px;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
