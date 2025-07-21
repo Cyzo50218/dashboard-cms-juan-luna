@@ -31,6 +31,11 @@
     /* Or use viewport height if it's a top-level container */
     /* height: 100vh; */
 }
+.inventory-actions {
+    display: flex;
+    align-items: center;
+    gap: 1px; /* Adjust this value for more or less space between items */
+}
 
 .section-title-cell,
 .task-name-wrapper {
@@ -2385,7 +2390,7 @@ Custom class
     /* white text */
     border: none;
     border-radius: 8px;
-    margin: 20px;
+    margin: 6px;
     padding: 10px 16px;
     display: flex;
     align-items: center;
@@ -2393,6 +2398,28 @@ Custom class
     cursor: pointer;
     font-size: 14px;
     transition: background-color 0.3s ease;
+}
+
+.quantities-detailed {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.quantities-detailed li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.fulfilled-amount {
+    color: #166534; /* Green */
+    font-weight: 600;
+}
+.requested-amount {
+    color: #6b7280; /* Gray */
+}
+.missing-amount {
+    color: #991b1b; /* Red */
+    font-weight: 600;
 }
 
 .inventory-btn:hover {
@@ -2511,7 +2538,8 @@ Custom class
 
 /* Red for low stock (0-5) */
 .text-red-600 {
-    color: #dc2626; /* Tailwind's red-600 */
+    color: #dc2626;
+    /* Tailwind's red-600 */
 }
 
 /* Makes text bold */
@@ -2521,17 +2549,20 @@ Custom class
 
 /* Yellow for medium stock (6-9) */
 .text-yellow-600 {
-    color: #ca8a04; /* Tailwind's yellow-600 */
+    color: #ca8a04;
+    /* Tailwind's yellow-600 */
 }
 
 /* Green for high stock (10+) */
 .text-green-600 {
-    color: #16a34a; /* Tailwind's green-600 */
+    color: #16a34a;
+    /* Tailwind's green-600 */
 }
 
 /* Default color for text if needed */
 .text-slate-700 {
-    color: #334155; /* Tailwind's slate-700 */
+    color: #334155;
+    /* Tailwind's slate-700 */
 }
 
 /* --- Main Overlay and Modal Structure --- */
@@ -2763,17 +2794,17 @@ Custom class
 }
 
 .total-stock-display {
-    background-color: #f7f7f7; 
+    background-color: #f7f7f7;
     border-radius: 4px;
     padding: 2px 4px;
 }
 
 .product-select-item:has(input:checked) .total-stock-display {
-    background-color: #f5f5f5; 
+    background-color: #f5f5f5;
 }
 
 .total-stock-display .size-label {
-    color: #4939ff; 
+    color: #4939ff;
 }
 
 .total-stock-display .size-value {
@@ -2938,3 +2969,117 @@ Custom class
         transform: rotate(360deg);
     }
 }
+
+/* --- Notification Button & Badge --- */
+.inventory-btn.icon-btn {
+    position: relative;
+    padding: 8px;
+    /* Adjust padding for icon-only buttons */
+}
+
+.notification-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background-color: #ef4444;
+    /* Red */
+    color: white;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid white;
+}
+
+.notification-badge.hidden {
+    display: none;
+}
+
+/* --- Notifications Modal --- */
+/* (You can reuse the .move-products-overlay and .move-products-modal base styles) */
+#notifications-list-container {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.notification-item {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-top: 10px;
+    margin-bottom: 1rem;
+}
+
+.notification-item-header {
+    background-color: var(--subtle-bg);
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.9rem;
+}
+
+.notification-item-header strong {
+    color: var(--text-primary);
+}
+
+.notification-item-body {
+    padding: 1rem;
+}
+
+.notification-product-list .product-info {
+    font-weight: 500;
+}
+
+.notification-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+/* --- Empty Notifications State --- */
+.empty-notifications-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    text-align: center;
+    color: #9ca3af;
+    /* Gray-400 */
+}
+
+.empty-notifications-message .empty-icon {
+    font-size: 48px;
+    margin-bottom: 1rem;
+}
+
+.empty-notifications-message h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #374151;
+    /* Gray-700 */
+}
+
+.empty-notifications-message p {
+    margin-top: 0.25rem;
+}
+/* --- Notification Status Tags --- */
+.status-tag-notification {
+    display: inline-block;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 9999px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.status-pending { background-color: #ffedd5; color: #9a3412; } /* Orange */
+.status-completed { background-color: #dcfce7; color: #166534; } /* Green */
+.status-partial { background-color: #feefc3; color: #c27803; } /* Yellow */
+.status-denied { background-color: #fee2e2; color: #991b1b; } /* Red */
