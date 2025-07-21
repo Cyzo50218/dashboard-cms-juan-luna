@@ -1735,14 +1735,13 @@ window.TaskSidebar = (function () {
         commentInput.addEventListener('keydown', e => {
             // Logic for a simple 'Enter' press to create a new line
             if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
-                e.preventDefault(); // Always prevent the default action first
+                e.preventDefault(); // Prevent the default browser action
 
                 const selection = window.getSelection();
                 if (selection.rangeCount > 0) {
                     const range = selection.getRangeAt(0);
                     const br = document.createElement('br');
 
-                    // --- THIS IS THE FIX ---
                     // Create a non-breaking space to ensure the new line renders
                     const nbsp = document.createTextNode('\u00A0');
 
@@ -1752,7 +1751,6 @@ window.TaskSidebar = (function () {
                     // Insert the space after the line break and place the cursor after it
                     range.insertNode(nbsp);
                     range.setStartAfter(nbsp);
-                    // --- END OF FIX ---
 
                     range.collapse(true);
                     selection.removeAllRanges();
