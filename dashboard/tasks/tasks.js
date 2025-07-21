@@ -885,6 +885,7 @@ export function init(params) {
 </div>
 
           <div id="messages-container" class="messages-container bg-gradient-to-b from-gray-50 to-gray-100 p-2 overflow-y-auto flex-1"></div>
+          <div id="typing-indicator-container"></div>
           <div class="p-2 border-t border-gray-200 bg-white rounded-b-xl">
           <div id="reply-context-bar" class="hidden"></div>
 
@@ -2429,23 +2430,14 @@ export function init(params) {
           }
 
           const messagesRef = collection(db, "MessagesChatRooms", roomId, "messages");
-          const q = query(messagesRef, orderBy("timestamp", "desc"), limit(messageLimit));
+          const q = query(messagesRef, orderBy("timestamp", "asc")); // Order by asc for easier appending
 
-          const unsubscribe = onSnapshot(
-            q,
-            (snapshot) => {
-              const messages = snapshot.docs.map((doc) => ({
-                id: doc.id,
-                ...doc.data(),
-              }));
-              messages.reverse();
-              _messages[roomId] = messages;
-              callback(messages);
-            },
-            (error) => {
-              console.error(`❌ Error listening to messages for room ${roomId}:`, error);
-            }
-          );
+          const unsubscribe = onSnapshot(q, (snapshot) => {
+            const changes = snapshot.docChanges();
+            callback(changes);
+          }, (error) => {
+            console.error(`Error listening to messages for room ${roomId}:`, error);
+          });
 
           _activeListeners[roomId] = unsubscribe;
           return unsubscribe;
@@ -2754,14 +2746,6 @@ export function init(params) {
           offsetY = e.clientY - rect.top;
 
           e.preventDefault();
-        });
-
-        target.addEventListener("click", (e) => {
-          if (dragged) {
-            e.stopImmediatePropagation();
-            e.preventDefault();
-            dragged = false;
-          }
         });
       });
 
@@ -3101,21 +3085,27 @@ export function init(params) {
 
       // Attach message listeners for real-time updates
       rooms.forEach((room) => {
-        ChatService.listenToMessages(room.id, (newMessages) => {
-          // newMessages is an array, replace directly
-          chatState.messages[room.id] = newMessages;
+        ChatService.listenToMessages(room.id, (changes) => {
+          changes.forEach(change => {
+            const messageData = { id: change.doc.id, ...change.doc.data() };
+            const messageElement = document.querySelector(`[data-message-id="${messageData.id}"]`);
 
-          // Update unread count logic
-          if (chatState.activeRoom?.id !== room.id) {
-            const unreadCount = newMessages.filter(
-              (msg) => msg.senderId !== currentUserId && !msg.read
-            ).length;
-            chatState.messages[room.id].unreadCount = unreadCount;
-          }
-
-          updateUnreadBadge(calculateUnreadCounts());
-
-          renderAll();
+            if (change.type === "added") {
+              const messageHtml = renderMessage(messageData, chatState.participantStatus);
+              container.insertAdjacentHTML('beforeend', messageHtml);
+            }
+            if (change.type === "modified") {
+              if (messageElement) {
+                messageElement.outerHTML = renderMessage(messageData, chatState.participantStatus);
+              }
+            }
+            if (change.type === "removed") {
+              if (messageElement) {
+                messageElement.remove();
+              }
+            }
+          });
+          calculateUnreadCounts();
         });
       });
       updateUnreadBadge(calculateUnreadCounts());
@@ -3408,14 +3398,16 @@ export function init(params) {
 
       document.getElementById("send-button").addEventListener("click", handleSend);
 
-      document
-        .getElementById("message-input")
-        .addEventListener("keypress", (e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            handleSend();
+      document.getElementById("message-input").addEventListener("keypress", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) { // Using !e.shiftKey allows Shift+Enter for new lines
+          e.preventDefault();
+          if (chatState.editingMessage) {
+            document.getElementById('confirm-edit-btn').click();
+          } else {
+            document.getElementById('send-button').click();
           }
-        });
+        }
+      });
 
       document
         .getElementById("message-input")
@@ -3560,6 +3552,10 @@ export function init(params) {
 
     function expandChat() {
       const chatBox = document.getElementById("chat-box");
+      if (dragged) {
+        dragged = false; // Reset the flag for the next click
+        return;          // Exit the function
+    }
       if (chatBox.classList.contains("minimized")) {
         chatBox.classList.remove("minimized");
         chatBox.classList.add("open");
@@ -3953,12 +3949,16 @@ export function init(params) {
         inputField.focus();
       });
 
-      // --- ADD THIS: Listener for typing status ---
       typingListener = ChatService.listenToTypingStatus(room.id, (typingData) => {
-        setChatState({
-          typingUsers: typingData
-        });
-        renderMessages(); // Re-render to show/hide the typing indicator
+        const typingContainer = document.getElementById('typing-indicator-container');
+        const otherTypingUsers = Object.entries(typingData).filter(([id]) => id !== currentUserId);
+
+        if (otherTypingUsers.length > 0) {
+          const typingNames = otherTypingUsers.map(([, name]) => name);
+          typingContainer.innerHTML = renderTypingIndicator(typingNames);
+        } else {
+          typingContainer.innerHTML = '';
+        }
       });
 
 
