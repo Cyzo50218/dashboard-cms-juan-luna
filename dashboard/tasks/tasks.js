@@ -3086,27 +3086,18 @@ export function init(params) {
 
       // Attach message listeners for real-time updates
       rooms.forEach((room) => {
-        ChatService.listenToMessages(room.id, (changes) => {
-          changes.forEach(change => {
-            const messageData = { id: change.doc.id, ...change.doc.data() };
-            const messageElement = document.querySelector(`[data-message-id="${messageData.id}"]`);
+        ChatService.listenToMessages(room.id, (newMessages) => {
+          chatState.messages[room.id] = newMessages;
+          if (chatState.activeRoom?.id !== room.id) {
+            const unreadCount = newMessages.filter(
+              (msg) => msg.senderId !== currentUserId && !msg.read
+            ).length;
+            chatState.messages[room.id].unreadCount = unreadCount;
+          }
 
-            if (change.type === "added") {
-              const messageHtml = renderMessage(messageData, chatState.participantStatus);
-              container.insertAdjacentHTML('beforeend', messageHtml);
-            }
-            if (change.type === "modified") {
-              if (messageElement) {
-                messageElement.outerHTML = renderMessage(messageData, chatState.participantStatus);
-              }
-            }
-            if (change.type === "removed") {
-              if (messageElement) {
-                messageElement.remove();
-              }
-            }
-          });
-          calculateUnreadCounts();
+          updateUnreadBadge(calculateUnreadCounts());
+
+          renderAll();
         });
       });
       updateUnreadBadge(calculateUnreadCounts());
