@@ -1102,8 +1102,11 @@ export function init(params) {
     cursor: pointer;
     color: #333;
     font-size: 18px;
-    line-height: 18px;
     transition: background-color 0.1s ease;
+    padding: 0;
+    display: flex;
+    align-items: center;    /* Centers content vertically */
+    justify-content: center; /* Centers content horizontally */
 }
 
 #pinned-message-nav button:hover {
