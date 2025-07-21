@@ -349,6 +349,14 @@ function attachDynamicListeners(stockType) {
     );
     activeListeners.pendingMoves = onSnapshot(pendingMovesQuery, (snapshot) => {
         pendingMoves = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const notificationsList = document.getElementById('notifications-list-container');
+        if (notificationsList) {
+            console.log('🔄 Notifications modal is open. Refreshing content...');
+            // 2. If it is, re-render its content with the fresh data.
+            notificationsList.innerHTML = generateNotificationsListHTML();
+            // 3. Re-attach listeners to the new buttons.
+            reattachNotificationListeners(); 
+        }
         console.log(`🚚 Pending moves for ${stockType.toUpperCase()} updated:`, pendingMoves);
         updateNotificationBadge();
         render(stockType);
@@ -1831,6 +1839,25 @@ function openNotificationsModal() {
 }
 
 /**
+ * Attaches click event listeners to the buttons within the notifications modal.
+ */
+function reattachNotificationListeners() {
+    const overlay = document.getElementById('notifications-overlay');
+    if (!overlay) return;
+
+    // Use event delegation to handle clicks more efficiently
+    overlay.addEventListener('click', (e) => {
+        const button = e.target.closest('button[data-action]');
+        if (!button) return;
+
+        const { action, requestId } = button.dataset;
+        if (action === 'approve' || action === 'deny') {
+            handleApproval(requestId, action);
+        }
+    });
+}
+
+/**
  * Generates the HTML for all pending notification items or an empty state message.
  */
 function generateNotificationsListHTML() {
@@ -1967,40 +1994,106 @@ async function handleApproval(requestId, status) {
 
     try {
         await runTransaction(db, async (transaction) => {
-            // Deduct from source
-            transaction.update(sourceRef, {
-                [field]: newStock
-            });
+            console.log(`🚀 Approving request: ${requestId}`);
+            const productIds = request.products.map(p => p.productId);
+            const refsToRead = productIds.flatMap(id => [
+                doc(db, `InventoryWorkspace/${currentInventoryId}/${sourceCol}`, id),
+                doc(db, `InventoryWorkspace/${currentInventoryId}/${targetCol}`, id)
+            ]);
+            const allDocs = await Promise.all(refsToRead.map(ref => transaction.get(ref)));
+            const docsMap = new Map(allDocs.map(snapshot => [snapshot.ref.path, snapshot]));
 
-            // Add to target
-            if (targetDoc && targetDoc.exists()) {
-                let targetStockRaw = targetDoc.data()[field] || 0;
-                let targetStock = typeof targetStockRaw === 'string' ? parseFloat(targetStockRaw) : targetStockRaw;
-                targetStock = isNaN(targetStock) ? 0 : targetStock;
+            const remainingQuantities = { ...request.quantities };
 
-                console.log(`✅ Target: ${targetRef.path} exists. Incrementing ${field}: ${targetStock} + ${deductionThisStep} = ${targetStock + deductionThisStep}`);
-                transaction.update(targetRef, {
-                    [field]: increment(deductionThisStep)
-                });
-            } else {
-                console.log(`📦 Target: ${targetRef.path} does not exist. Creating new document with ${field}: ${deductionThisStep}`);
-                transaction.set(targetRef, {
-                    ...productInfo,
-                    [field]: deductionThisStep
-                });
+            for (const field in request.quantities) {
+                let amountToDeduct = request.quantities[field];
+                if (amountToDeduct <= 0) continue;
+                console.log(`\n🧮 Processing field: "${field}", Requested deduction: ${amountToDeduct}`);
+
+                for (const productInfo of request.products) {
+                    if (amountToDeduct <= 0) break;
+
+                    const sourceRef = doc(db, `InventoryWorkspace/${currentInventoryId}/${sourceCol}`, productInfo.productId);
+                    const sourceDoc = docsMap.get(sourceRef.path);
+                    let rawStock = sourceDoc?.exists() ? sourceDoc.data()[field] : 0;
+
+                    let stockInSource = typeof rawStock === 'string' ? parseFloat(rawStock) : rawStock;
+                    if (typeof rawStock === 'string') {
+                        console.log(`🔄 Coerced string stock to number: "${rawStock}" → ${stockInSource}`);
+                    }
+                    stockInSource = isNaN(stockInSource) ? 0 : stockInSource;
+
+                    console.log(`📦 Source: ${sourceCol}/${productInfo.productId}, Current Stock: ${stockInSource}`);
+
+                    if (stockInSource > 0) {
+                        const deduction = Math.min(amountToDeduct, stockInSource);
+                        const newSourceStock = stockInSource - deduction;
+
+                        console.log(`➡️ Deducting ${deduction} from source. New source stock: ${stockInSource} - ${deduction} = ${newSourceStock}`);
+                        transaction.update(sourceRef, { [field]: newSourceStock }); // ← direct update instead of increment
+
+                        const targetRef = doc(db, `InventoryWorkspace/${currentInventoryId}/${targetCol}`, productInfo.productId);
+                        const targetDoc = docsMap.get(targetRef.path);
+
+                        if (targetDoc?.exists()) {
+                            let targetRaw = targetDoc.data()[field] ?? 0;
+                            let targetStock = typeof targetRaw === 'string' ? parseFloat(targetRaw) : targetRaw;
+                            targetStock = isNaN(targetStock) ? 0 : targetStock;
+                            const newTargetStock = targetStock + deduction;
+
+                            console.log(`✅ Target: ${targetCol}/${productInfo.productId} exists. Incrementing ${field}: ${targetStock} + ${deduction} = ${newTargetStock}`);
+                            transaction.update(targetRef, { [field]: newTargetStock });
+                        } else {
+                            console.log(`🆕 Target doc does not exist. Creating with ${field}: ${deduction}`);
+                            const originalProductData = (request.from === 'ph' ? dataPhStocks : dataUsStocks).find(p => p.id === productInfo.productId);
+                            const newProductData = { ...originalProductData };
+
+                            const existingNewStock = newProductData[field] || 0;
+                            const newTotal = existingNewStock + deduction;
+                            newProductData[field] = newTotal;
+
+                            console.log(`📄 Setting new doc: ${targetCol}/${productInfo.productId} with ${field}: ${existingNewStock} + ${deduction} = ${newTotal}`);
+                            transaction.set(targetRef, newProductData);
+                            docsMap.set(targetRef.path, {
+                                exists: () => true,
+                                data: () => newProductData
+                            });
+                        }
+
+                        amountToDeduct -= deduction;
+                        console.log(`📉 Remaining to deduct for "${field}": ${amountToDeduct}`);
+                    } else {
+                        console.log(`🚫 No stock in source for ${productInfo.productId} (${field}). Skipping.`);
+                    }
+                }
+
+                remainingQuantities[field] = amountToDeduct;
             }
+
+            const totalRemaining = Object.values(remainingQuantities).reduce((a, b) => a + b, 0);
+            if (totalRemaining > 0) {
+                finalStatus = 'partial';
+                const backorderRef = doc(collection(db, `InventoryWorkspace/${currentInventoryId}/Backorders`));
+                const backorderData = {
+                    ...request,
+                    id: backorderRef.id,
+                    originalRequestId: requestId,
+                    quantities: remainingQuantities,
+                    status: 'backordered'
+                };
+                transaction.set(backorderRef, backorderData);
+                console.warn(`⚠️ Some quantities could not be fulfilled. Backordered:`, remainingQuantities);
+            }
+
+            transaction.update(requestRef, { status: finalStatus });
         });
 
-        remainingDeduction -= deductionThisStep;
+        console.log(`✅ Move request processed. Final status: ${finalStatus}`);
 
-        if (remainingDeduction > 0) {
-            backOrdered[field] = remainingDeduction;
-            console.warn(`⚠️ Some quantities could not be fulfilled. Backordered:`, backOrdered);
-        }
-
-        console.log(`✅ Move request processed. Final status: ${remainingDeduction > 0 ? 'partial' : 'complete'}`);
     } catch (error) {
-        console.error(`❌ Transaction failed:`, error);
+        console.error("❌ Error approving move:", error);
+        alert(error.message);
+        itemEl.querySelectorAll('button').forEach(b => b.disabled = false);
     }
 }
 
@@ -2137,6 +2230,7 @@ function openSectionFilterPanel() {
             closeFloatingPanels();
         }
     });
+    reattachNotificationListeners();
 
 }
 
