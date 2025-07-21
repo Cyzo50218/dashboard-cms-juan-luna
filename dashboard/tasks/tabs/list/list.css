@@ -1554,9 +1554,9 @@ Custom class
     /* Horizontally centers the '×' */
     padding: 0.5rem;
     /* Use a single padding value for uniform spacing */
-    width: 32px;
+    width: 20px;
     /* Optional: Set a fixed width */
-    height: 32px;
+    height: 20px;
     /* Optional: Set a fixed height */
 }
 
