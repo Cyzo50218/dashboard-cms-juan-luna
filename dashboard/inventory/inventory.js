@@ -59,10 +59,12 @@ let sortableSections;
 let backordersBtn, backordersBadge;
 let pendingMoves = [];
 let backorders = [];
+let outgoingMoves = [];
 
 let activeMenuButton = null;
 const sortableTasks = [];
 let isSortActive = false;
+let backorderWatcherInterval = null; // To hold the interval ID
 let isCreatingWorkspace = false;
 
 // --- VIRTUAL SCROLLING CONSTANTS ---
@@ -141,6 +143,18 @@ let inventoryPath = null;
 let dataUsStocks = [];
 let dataPhStocks = [];
 let canUserEditProduct = false; // This will be set based on the user's permissions
+
+// --- Debounce/Throttle Mechanism for Rendering ---
+let renderTimeout = null;
+function debouncedRender(stockType) {
+    if (renderTimeout) {
+        clearTimeout(renderTimeout);
+    }
+    renderTimeout = setTimeout(() => {
+        render(stockType);
+    }, 50); // A 50ms delay to batch rapid updates
+}
+
 // --- New Real-time Data Loading Functions ---
 function detachAllListeners() {
     console.log("Detaching all Firestore listeners...");
@@ -184,15 +198,86 @@ async function cloneInventoryWorkspace(sourceId, targetId, subcollectionNames) {
     console.log(`🎉 Cloned document ${sourceId} → ${targetId} complete.`);
 }
 
+async function attachInventoryListeners(workspaceId, userId) {
+    // Detach only the listeners that depend on the workspace ID
+    if (activeListeners.workspace) activeListeners.workspace();
+    if (activeListeners.usStocks) activeListeners.usStocks();
+    if (activeListeners.phStocks) activeListeners.phStocks();
+
+    let inventoryDocRef;
+    let hasAccess = false;
+
+    // Path 1: Check the user's own workspace subcollection first (most common case)
+    const workspaceDocRef = doc(db, `users/${userId}/myworkspace`, workspaceId);
+    const workspaceSnap = await getDoc(workspaceDocRef);
+
+    if (workspaceSnap.exists()) {
+        const workspaceData = workspaceSnap.data();
+        if (workspaceData.canShowInventory) {
+            inventoryDocRef = doc(db, 'InventoryWorkspace', workspaceId);
+            hasAccess = true;
+            console.log(`✅ Access granted via standard path for workspace: ${workspaceId}`);
+        } else {
+            console.warn('🚫 Access denied: Inventory is restricted.');
+            showRestrictedAccessUI('Restricted Access: You are not allowed to view this inventory.');
+            return;
+        }
+    } else {
+        // Path 2: If not in the user's subcollection, check globally (for shared workspaces/admins)
+        console.info('🔍 Standard workspace doc not found. Attempting fallback via collectionGroup...');
+        const fallbackQuery = query(
+            collectionGroup(db, 'myworkspace'),
+            where('workspaceId', '==', workspaceId),
+            where('canShowInventory', '==', true)
+        );
+        const fallbackSnaps = await getDocs(fallbackQuery);
+
+        if (!fallbackSnaps.empty) {
+            inventoryDocRef = doc(db, 'InventoryWorkspace', workspaceId);
+            hasAccess = true;
+            console.log(`✅ Access granted via fallback path for workspace: ${workspaceId}`);
+        }
+    }
+
+    if (hasAccess && inventoryDocRef) {
+        currentInventoryId = workspaceId;
+        inventoryPath = `InventoryWorkspace/${workspaceId}`;
+
+        // Attach the final, performant listeners in parallel
+        const usStocksRef = collection(inventoryDocRef, 'US-Stocks-meta');
+        const phStocksRef = collection(inventoryDocRef, 'PH-Stocks-meta');
+
+        activeListeners.usStocks = onSnapshot(usStocksRef, (usSnapshot) => {
+            dataUsStocks = usSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            console.log('%c🇺🇸 US Stocks Updated:', 'color: #00bcd4;', dataUsStocks.length, 'items');
+            debouncedRender(currentStockType);
+        }, (error) => console.error("❌ US Stocks listener error:", error));
+
+        activeListeners.phStocks = onSnapshot(phStocksRef, (phSnapshot) => {
+            dataPhStocks = phSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            console.log('%c🇵🇭 PH Stocks Updated:', 'color: #ff9800;', dataPhStocks.length, 'items');
+            debouncedRender(currentStockType);
+        }, (error) => console.error("❌ PH Stocks listener error:", error));
+
+        attachDynamicListeners(currentStockType);
+        render(currentStockType); // Perform the initial render
+    } else {
+        console.error(`❌ No valid path found to inventory for workspace: ${workspaceId}`);
+        showRestrictedAccessUI('Workspace does not exist or you have no access.');
+    }
+}
+
+// 🚀 **REFACTORED AND OPTIMIZED** 🚀
+// This is the main entry point, now much cleaner and more efficient.
 function attachRealtimeListeners(userId) {
     detachAllListeners();
     currentUserId = userId;
+    let lastKnownWorkspaceId = null;
 
-    console.groupCollapsed(`%c🔗 Attaching Listeners for User: ${userId}`, 'color: #007bff; font-weight: bold;');
+    console.groupCollapsed(`%c🔗 Attaching Main Listener for User: ${userId}`, 'color: #007bff; font-weight: bold;');
 
     const userDocRef = doc(db, 'users', userId);
-    let hasRenderedPhStocks = false;
-    let hasRenderedUsStocks = false;
+
     activeListeners.user = onSnapshot(userDocRef, async (userSnap) => {
         if (!userSnap.exists()) {
             console.error(`%c❌ User document not found: ${userId}`, 'color: #dc3545; font-weight: bold;');
@@ -207,163 +292,63 @@ function attachRealtimeListeners(userId) {
         if (!selectedWorkspaceId) {
             console.warn('%c⚠️ No selected workspace found.', 'color: #ffc107; font-weight: bold;');
             showRestrictedAccessUI('No workspace selected.');
-            console.groupEnd();
+            detachAllListeners();
             return;
         }
 
-        currentWorkspaceId = selectedWorkspaceId;
-
-        const workspaceDocRef = doc(db, `users/${userId}/myworkspace`, selectedWorkspaceId);
-        console.info(`%c📁 Listening to Workspace: ${selectedWorkspaceId}`, 'color: #17a2b8;');
-
-        activeListeners.workspace = onSnapshot(workspaceDocRef, async (workspaceSnap) => {
-            if (!workspaceSnap.exists()) {
-                console.warn('%c⚠️ Workspace document does not exist.', 'color: #ffc107; font-weight: bold;');
-
-                const userData = userSnap.data();
-                const role = userData.role;
-                const selectedWorkspaceId = userData.selectedWorkspace;
-                currentInventoryId = selectedWorkspaceId;
-                console.info('%c🔍 Attempting fallback via collectionGroup for admin/owner...', 'color: #6f42c1;');
-
-                const fallbackQuery = query(collectionGroup(db, 'myworkspace'));
-                const fallbackSnaps = await getDocs(fallbackQuery);
-
-                if (!fallbackSnaps.empty) {
-                    const foundWorkspace = fallbackSnaps.docs.find(doc => {
-                        const data = doc.data();
-                        return data?.workspaceId === selectedWorkspaceId && data.canShowInventory === true;
-                    });
-
-                    if (foundWorkspace) {
-                        const workspaceData = foundWorkspace.data();
-                        const subcollectionsToClone = ['US-Stocks-meta', 'PH-Stocks-meta'];
-
-                        console.log('%c🔁 Cloning inventory for selected workspaceId:', 'color: #03a9f4;', selectedWorkspaceId);
-                        //await cloneInventoryWorkspace('ooOzZBHHLMw2e5lwNd8P', selectedWorkspaceId, subcollectionsToClone);
-
-                        const inventoryDocRef = doc(db, 'InventoryWorkspace', selectedWorkspaceId);
-                        console.log('%c✅ Cloned & loaded inventory:', 'color: green;', inventoryDocRef.path);
-
-                        const usStocksRef = collection(inventoryDocRef, 'US-Stocks-meta');
-                        const phStocksRef = collection(inventoryDocRef, 'PH-Stocks-meta');
-
-                        // Attach fallback listeners
-                        activeListeners.usStocks = onSnapshot(usStocksRef, (usSnapshot) => {
-                            dataUsStocks = usSnapshot.docs.map(doc => ({
-                                id: doc.id,
-                                ...doc.data()
-                            }));
-                            console.log('%c🇺🇸 US Stocks (Fallback):', 'color: #00bcd4;', dataUsStocks);
-                            render(['ph', 'us'].includes(currentStockType) ? currentStockType : 'ph');
-                        });
-
-                        activeListeners.phStocks = onSnapshot(phStocksRef, (phSnapshot) => {
-                            dataPhStocks = phSnapshot.docs.map(doc => ({
-                                id: doc.id,
-                                ...doc.data()
-                            }));
-                            console.log('%c🇵🇭 PH Stocks (Fallback):', 'color: #ff9800;', dataPhStocks);
-                            render(['ph', 'us'].includes(currentStockType) ? currentStockType : 'ph');
-                        });
-
-                        render('ph');
-                        return;
-                    }
-                }
-
-                showRestrictedAccessUI('Workspace does not exist or you have no access.');
-                return;
-            }
-
-            const workspaceData = workspaceSnap.data();
-            const selectedWorkspaceId = userData.selectedWorkspace;
-
-            if (workspaceData.canShowInventory === false) {
-                console.warn('%c🚫 Access Denied: Inventory is restricted.', 'color: red; font-weight: bold;');
-                showRestrictedAccessUI('Restricted Access: You are not allowed to view this inventory.');
-                return;
-            }
-
-            const inventoryQuery = query(collection(db, 'InventoryWorkspace'), limit(1));
-            const inventorySnapshot = await getDocs(inventoryQuery);
-
-            if (inventorySnapshot.empty) {
-                console.warn('%c⚠️ No InventoryWorkspace data found.', 'color: #ffc107; font-weight: bold;');
-                showRestrictedAccessUI('Inventory data not found.');
-                return;
-            }
-
-            const inventoryDocId = inventorySnapshot.docs[0].id;
-            const inventoryDocRef = doc(db, 'InventoryWorkspace', selectedWorkspaceId);
-            console.info(`%c📦 Inventory ID: ${inventoryDocId}`, 'color: #17a2b8;');
-            currentInventoryId = selectedWorkspaceId;
-            let inventoryId = selectedWorkspaceId;
-            inventoryPath = `InventoryWorkspace/${selectedWorkspaceId}`;
-
-            const usStocksRef = collection(inventoryDocRef, 'US-Stocks-meta');
-            const phStocksRef = collection(inventoryDocRef, 'PH-Stocks-meta');
-
-            activeListeners.usStocks = onSnapshot(usStocksRef, (usSnapshot) => {
-                dataUsStocks = usSnapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-                console.log('%c🇺🇸 US Stocks:', 'color: #00bcd4;', dataUsStocks);
-                render(['ph', 'us'].includes(currentStockType) ? currentStockType : 'ph');
-            });
-
-            activeListeners.phStocks = onSnapshot(phStocksRef, (phSnapshot) => {
-                dataPhStocks = phSnapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-
-                console.log('%c🇵🇭 PH Stocks:', 'color: #ff9800;', dataPhStocks);
-                render(['ph', 'us'].includes(currentStockType) ? currentStockType : 'ph');
-
-            });
-            attachDynamicListeners(currentStockType);
-            render("ph");
-        }, (error) => {
-            console.error('%c❌ Error loading workspace snapshot.', 'color: #dc3545; font-weight: bold;', error);
-            showRestrictedAccessUI('An error occurred while loading your workspace.');
-        });
-
-        console.groupEnd();
+        // --- Key Optimization ---
+        // Only re-run the expensive logic if the user's selected workspace has actually changed.
+        if (selectedWorkspaceId !== lastKnownWorkspaceId) {
+            console.log(`%c🔄 Workspace changed from ${lastKnownWorkspaceId} to ${selectedWorkspaceId}. Re-attaching inventory listeners...`, 'color: #6f42c1; font-weight: bold;');
+            lastKnownWorkspaceId = selectedWorkspaceId;
+            currentWorkspaceId = selectedWorkspaceId;
+            // Call the new, cleaner function to handle the rest of the setup.
+            await attachInventoryListeners(selectedWorkspaceId, userId);
+        }
+    }, (error) => {
+        console.error('%c❌ Error listening to user document.', 'color: #dc3545; font-weight: bold;', error);
+        showRestrictedAccessUI('An error occurred while loading your profile.');
     });
+
+    console.groupEnd();
 }
 
 function attachDynamicListeners(stockType) {
     // Detach existing listeners to prevent duplicates
     if (activeListeners.pendingMoves) activeListeners.pendingMoves();
+    if (activeListeners.outgoingMoves) activeListeners.outgoingMoves(); // Add this
     if (activeListeners.backorders) activeListeners.backorders();
 
     if (!currentInventoryId) return;
 
-    // --- Listener 1: Pending Moves (Requests YOU need to approve) ---
-    // These are requests where the destination ('to') is your current location.
+    // --- Listener 1: INCOMING Moves (Requests YOU need to approve) ---
+    // This query remains the same.
     const pendingMovesQuery = query(
         collection(db, `InventoryWorkspace/${currentInventoryId}/PendingMoves`),
         where('to', '==', stockType)
     );
     activeListeners.pendingMoves = onSnapshot(pendingMovesQuery, (snapshot) => {
         pendingMoves = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        const notificationsList = document.getElementById('notifications-list-container');
-        if (notificationsList) {
-            console.log('🔄 Notifications modal is open. Refreshing content...');
-            // 2. If it is, re-render its content with the fresh data.
-            notificationsList.innerHTML = generateNotificationsListHTML();
-            // 3. Re-attach listeners to the new buttons.
-            reattachNotificationListeners(); 
-        }
-        console.log(`🚚 Pending moves for ${stockType.toUpperCase()} updated:`, pendingMoves);
+        console.log(`🚚 Incoming moves for ${stockType.toUpperCase()} updated:`, pendingMoves);
+        refreshNotificationsUI(); // Helper function to refresh UI
         updateNotificationBadge();
-        render(stockType);
     });
 
-    // --- Listener 2: Backorders (Orders YOU need to fulfill) ---
-    // These are backorders where the source ('from') is your current location.
+    // --- ✅ Listener 2: OUTGOING Moves (Status of requests YOU sent) ---
+    // This is the new query you need to add.
+    const outgoingMovesQuery = query(
+        collection(db, `InventoryWorkspace/${currentInventoryId}/PendingMoves`),
+        where('from', '==', stockType) // It checks the 'from' field instead of 'to'
+    );
+    activeListeners.outgoingMoves = onSnapshot(outgoingMovesQuery, (snapshot) => {
+        outgoingMoves = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        console.log(`🛫 Outgoing moves from ${stockType.toUpperCase()} updated:`, outgoingMoves);
+        refreshNotificationsUI(); // Also refresh UI on this update
+    });
+
+
+    // --- Listener 3: Backorders ---
+    // This query remains the same.
     const backordersQuery = query(
         collection(db, `InventoryWorkspace/${currentInventoryId}/Backorders`),
         where('from', '==', stockType)
@@ -373,6 +358,15 @@ function attachDynamicListeners(stockType) {
         console.log(`📦 Backorders from ${stockType.toUpperCase()} updated:`, backorders);
         updateBackordersBadge();
     });
+
+    // Helper to avoid code duplication
+    function refreshNotificationsUI() {
+        const notificationsList = document.getElementById('notifications-list-container');
+        if (notificationsList) {
+            notificationsList.innerHTML = generateNotificationsListHTML();
+            reattachNotificationListeners();
+        }
+    }
 
     // --- Badge Update Functions ---
     function updateNotificationBadge() {
@@ -542,10 +536,11 @@ export function init(params) {
         if (user) {
             console.log(`User ${user.uid} signed in. Attaching listeners.`);
             attachRealtimeListeners(user.uid);
-
+            startBackorderFulfillmentWatcher();
         } else {
             console.log("User signed out. Detaching listeners.");
             detachAllListeners();
+            stopBackorderFulfillmentWatcher();
             project = { customColumns: [], sections: [], customPriorities: [], customStatuses: [] };
             render('us');
         }
@@ -560,7 +555,7 @@ export function init(params) {
     return function cleanup() {
         console.log("Cleaning up List View Module...");
         detachAllListeners();
-
+        stopBackorderFulfillmentWatcher();
         if (headerClickListener) taskListHeaderEl.removeEventListener('click', headerClickListener);
         if (bodyClickListener) productListBody.removeEventListener('click', bodyClickListener);
         if (settingsBtnListener) settingsBtn.removeEventListener('click', settingsBtnListener);
@@ -1510,6 +1505,169 @@ async function handleFulfillBackorder(backorderId) {
     }
 }
 
+async function executeAutomaticBackorderFulfillment(backorder) {
+    if (!backorder || !backorder.id) {
+        console.log('Watcher: Invalid backorder object provided. Skipping.');
+        return;
+    }
+
+    const backorderRef = doc(db, `InventoryWorkspace/${currentInventoryId}/Backorders`, backorder.id);
+    const sourceCol = backorder.from === 'ph' ? 'PH-Stocks-meta' : 'US-Stocks-meta';
+    const targetCol = backorder.to === 'ph' ? 'PH-Stocks-meta' : 'US-Stocks-meta';
+    const backorderId = backorder.id;
+    try {
+        let stockWasMoved = false;
+
+        await runTransaction(db, async (transaction) => {
+            console.log(`🚀 Starting transaction for backorder ID: ${backorderId}`);
+            const backorderDoc = await transaction.get(backorderRef);
+            if (!backorderDoc.exists()) {
+                console.warn(`⚠️ Backorder ${backorderId} already fulfilled or does not exist.`);
+                return;
+            }
+            const currentBackorderData = backorderDoc.data();
+            console.log("📦 Current backorder data:", currentBackorderData);
+
+            const refsToRead = currentBackorderData.products.flatMap(p => [
+                doc(db, `InventoryWorkspace/${currentInventoryId}/${sourceCol}`, p.productId),
+                doc(db, `InventoryWorkspace/${currentInventoryId}/${targetCol}`, p.productId)
+            ]);
+            const allDocs = await Promise.all(refsToRead.map(ref => transaction.get(ref)));
+            const docsMap = new Map(allDocs.map(snapshot => [snapshot.ref.path, snapshot]));
+
+            const remainingQuantities = { ...currentBackorderData.quantities };
+
+            for (const field in currentBackorderData.quantities) {
+                let amountToFulfill = currentBackorderData.quantities[field];
+                if (amountToFulfill <= 0) continue;
+                console.log(`🧮 Fulfilling field "${field}" for amount: ${amountToFulfill}`);
+
+                for (const productInfo of currentBackorderData.products) {
+                    if (amountToFulfill <= 0) break;
+
+                    const sourceRef = doc(db, `InventoryWorkspace/${currentInventoryId}/${sourceCol}`, productInfo.productId);
+                    const sourceDoc = docsMap.get(sourceRef.path);
+                    const rawStock = sourceDoc?.exists() ? sourceDoc.data()[field] : 0;
+
+                    let currentStock = typeof rawStock === 'string' ? parseFloat(rawStock) : rawStock;
+                    currentStock = isNaN(currentStock) ? 0 : currentStock;
+
+                    console.log(`🟡 FIELD: ${field}, Product: ${productInfo.productId}`);
+                    console.log(`   🔢 Raw stock:`, rawStock, `| Parsed:`, currentStock);
+
+                    if (currentStock > 0) {
+                        const deduction = Math.min(amountToFulfill, currentStock);
+                        stockWasMoved = true;
+
+                        console.log(`➡️ Deducting ${deduction} from ${sourceCol}/${productInfo.productId} for field ${field}`);
+
+                        if (sourceDoc.exists() && sourceDoc.data()[field] === undefined) {
+                            console.warn(`⚠️ Field "${field}" is undefined in source. Setting to 0.`);
+                            transaction.update(sourceRef, { [field]: 0 });
+                        } else if (typeof rawStock === 'string') {
+                            console.warn(`⚠️ Field "${field}" in source is a string. Forcing number correction.`);
+                            transaction.update(sourceRef, { [field]: currentStock });
+                        }
+
+                        transaction.update(sourceRef, { [field]: increment(-deduction) });
+
+                        const targetRef = doc(db, `InventoryWorkspace/${currentInventoryId}/${targetCol}`, productInfo.productId);
+                        const targetDoc = docsMap.get(targetRef.path);
+
+                        if (targetDoc && targetDoc.exists()) {
+                            console.log(`✅ Target doc exists. Incrementing ${field} by ${deduction} in ${targetCol}/${productInfo.productId}`);
+                            transaction.update(targetRef, { [field]: increment(deduction) });
+                        } else {
+                            console.log(`🆕 Target doc missing. Creating with new data.`);
+                            const originalProductData = (backorder.from === 'ph' ? dataPhStocks : dataUsStocks).find(p => p.id === productInfo.productId);
+                            const newProductData = { ...originalProductData };
+
+                            const existingNewStock = newProductData[field] || 0;
+                            newProductData[field] = existingNewStock + deduction;
+
+                            transaction.set(targetRef, newProductData);
+                            docsMap.set(targetRef.path, {
+                                exists: () => true,
+                                data: () => newProductData
+                            });
+                            console.log(`✅ New target doc created with field "${field}":`, newProductData[field]);
+                        }
+
+                        amountToFulfill -= deduction;
+                        console.log(`📉 Remaining to fulfill for field "${field}":`, amountToFulfill);
+                    } else {
+                        console.log(`🚫 No stock available for field "${field}" in ${sourceCol}/${productInfo.productId}`);
+                    }
+                }
+
+                remainingQuantities[field] = amountToFulfill;
+            }
+
+            const totalRemaining = Object.values(remainingQuantities).reduce((a, b) => a + b, 0);
+            if (totalRemaining <= 0) {
+                console.log(`✅ Watcher: All quantities fulfilled. Deleting backorder: ${backorder.id}`);
+                transaction.delete(backorderRef);
+            } else {
+                console.log(`⏳ Watcher: Partial fulfillment. Remaining:`, remainingQuantities);
+                transaction.update(backorderRef, { quantities: remainingQuantities });
+            }
+        });
+
+        if (stockWasMoved) {
+            console.log(`✅ Watcher: Backorder ${backorder.id} processed successfully.`);
+        } else {
+            console.log(`ℹ️ Watcher: No available stock to fulfill backorder ${backorder.id} at this time.`);
+        }
+    } catch (error) {
+        console.error(`❌ Watcher: Error processing backorder ${backorder.id}:`, error);
+    }
+}
+
+
+/**
+ * Starts a watcher that periodically checks for and fulfills pending backorders.
+ * Ensures that it only runs one instance at a time.
+ */
+function startBackorderFulfillmentWatcher() {
+    // If the watcher is already running, don't start another one.
+    if (backorderWatcherInterval) {
+        console.log('Backorder watcher is already running.');
+        return;
+    }
+
+    console.log('🚀 Starting backorder fulfillment watcher (20-second interval)...');
+
+    backorderWatcherInterval = setInterval(async () => {
+        // The 'backorders' array is updated in real-time by your onSnapshot listener.
+        if (backorders.length === 0) {
+            // No backorders to process, do nothing.
+            return;
+        }
+
+        console.log(`Watchdog: Found ${backorders.length} backorder(s) to check.`);
+
+        // Process each backorder one by one.
+        for (const backorder of backorders) {
+            try {
+                // Call the new, UI-agnostic fulfillment function.
+                await executeAutomaticBackorderFulfillment(backorder);
+            } catch (error) {
+                console.error(`Unhandled error in watcher loop for backorder ${backorder.id}:`, error);
+            }
+        }
+    }, 300); // 20000 milliseconds = 20 seconds
+}
+
+/**
+ * Stops the backorder fulfillment watcher.
+ */
+function stopBackorderFulfillmentWatcher() {
+    if (backorderWatcherInterval) {
+        clearInterval(backorderWatcherInterval);
+        backorderWatcherInterval = null;
+        console.log('🛑 Stopped backorder fulfillment watcher.');
+    }
+}
 
 /**
  * Opens a powerful modal to move specific quantities of multiple products,
@@ -1857,16 +2015,8 @@ function reattachNotificationListeners() {
     });
 }
 
-/**
- * Generates the HTML for all pending notification items or an empty state message.
- */
 function generateNotificationsListHTML() {
-    // We need to check both pending moves and backorders to determine the view
-    const incomingBackorders = backorders.filter(b => b.to === currentStockType);
-    let html = ''; // Initialize the HTML string
-
-    // --- 1. Handle the Empty State ---
-    if (pendingMoves.length === 0 && incomingBackorders.length === 0) {
+    if (pendingMoves.length === 0 && outgoingMoves.length === 0) {
         return `
             <div class="empty-notifications-message">
                 <span class="material-icons empty-icon">notifications_off</span>
@@ -1876,64 +2026,27 @@ function generateNotificationsListHTML() {
         `;
     }
 
-    // --- 2. Generate HTML for Pending Moves (Outgoing Requests) ---
+    let html = '';
+
+    // --- Section 1: INCOMING Requests (Actionable) ---
     if (pendingMoves.length > 0) {
-        html += `<h3>Outgoing Requests</h3>`;
+        html += `<h3>Requests for You to Fulfill</h3>`;
         html += pendingMoves.map(move => {
             const isActionable = move.status === 'pending';
-            const statusClass = `status-${move.status}`;
-
-            let quantitiesHTML = '';
-
-            // --- NEW LOGIC FOR PARTIAL STATUS ---
-            if (move.status === 'partial') {
-                // Find the backorder that was created from this request
-                const correspondingBackorder = backorders.find(bo => bo.originalRequestId === move.id);
-
-                quantitiesHTML += '<ul class="quantities-detailed">';
-                for (const field in move.quantities) {
-                    const requested = move.quantities[field] || 0;
-                    const missing = correspondingBackorder ? (correspondingBackorder.quantities[field] || 0) : 0;
-                    const fulfilled = requested - missing;
-
-                    const label = field === 'countStocks' ? 'Stocks' : field.toUpperCase();
-
-                    quantitiesHTML += `
-                        <li>
-                            <strong>${label}:</strong> 
-                            <span>
-                                <span class="fulfilled-amount">${fulfilled}</span> 
-                                <span class="requested-amount">/ ${requested}</span>
-                                <span class="missing-amount"> (${missing} missing)</span>
-                            </span>
-                        </li>`;
-                }
-                quantitiesHTML += '</ul>';
-
-            } else {
-                // Original simple display for other statuses
-                quantitiesHTML = '<ul>';
-                quantitiesHTML += Object.entries(move.quantities).map(([size, count]) => {
-                    const label = size === 'countStocks' ? 'Stocks' : size.toUpperCase();
-                    return `<li><strong>${label}:</strong> ${count}</li>`;
-                }).join('');
-                quantitiesHTML += '</ul>';
-            }
-
-            const productsHTML = move.products.map(p => `<li>${p.name || '...'} (SKU: ${p.sku || 'N/A'})</li>`).join('');
+            const quantitiesHTML = Object.entries(move.quantities).map(([size, count]) => `<li><strong>${size === 'countStocks' ? 'Stocks' : size.toUpperCase()}:</strong> ${count}</li>`).join('');
+            const productsHTML = move.products.map(p => `<li>${p.name} (SKU: ${p.sku})</li>`).join('');
 
             return `
                 <div class="notification-item" id="request-${move.id}">
                     <div class="notification-item-header">
-                        <span>Request to <strong>${move.to.toUpperCase()}</strong></span>
-                        <span class="status-tag-notification ${statusClass}">${move.status}</span>
+                        <span>Request from <strong>${move.from.toUpperCase()}</strong></span>
+                        <span class="status-tag-notification status-${move.status}">${move.status}</span>
                     </div>
                     <div class="notification-item-body">
-                        <p><strong>Products:</strong></p>
-                        <ul>${productsHTML}</ul>
-                        <p class="mt-4"><strong>Quantities:</strong></p>
-                        ${quantitiesHTML}
-                        
+                         <p><strong>Products:</strong></p>
+                         <ul>${productsHTML}</ul>
+                         <p class="mt-4"><strong>Quantities:</strong></p>
+                         <ul>${quantitiesHTML}</ul>
                         ${isActionable ? `
                         <div class="notification-actions">
                             <button class="modal-btn secondary" data-action="deny" data-request-id="${move.id}">Deny</button>
@@ -1945,35 +2058,58 @@ function generateNotificationsListHTML() {
         }).join('');
     }
 
-    // --- 3. Generate HTML for Backorders (Incoming Orders to Fulfill) ---
-    if (incomingBackorders.length > 0) {
-        html += `<h3 class="mt-6">Incoming Backorders to Fulfill</h3>`;
-        html += incomingBackorders.map(bo => {
-            // ... (The existing logic for generating backorder items is correct)
-            const quantitiesHTML = Object.entries(bo.quantities).map(([size, count]) => `<li><strong>${size.toUpperCase()}:</strong> ${count}</li>`).join('');
+    // --- ✅ Section 2: OUTGOING Requests (Status Updates) ---
+    if (outgoingMoves.length > 0) {
+        html += `<h3 class="mt-6">Status of Your Outgoing Requests</h3>`;
+        html += outgoingMoves.map(move => {
+            const statusClass = `status-${move.status}`;
+            let quantitiesHTML = '';
+
+            // This is where your previous solution shines. It shows the partial breakdown.
+            if (move.status === 'partial') {
+                const correspondingBackorder = backorders.find(bo => bo.originalRequestId === move.id);
+                quantitiesHTML += '<ul class="quantities-detailed">';
+                for (const field in move.quantities) {
+                    const requested = move.quantities[field] || 0;
+                    const missing = correspondingBackorder ? (correspondingBackorder.quantities[field] || 0) : 0;
+                    const fulfilled = requested - missing;
+                    const label = field === 'countStocks' ? 'Stocks' : field.toUpperCase();
+                    quantitiesHTML += `
+                        <li>
+                            <strong>${label}:</strong> 
+                            <span>
+                                <span class="fulfilled-amount">${fulfilled}</span> / ${requested}
+                                ${missing > 0 ? `<span class="missing-amount">(${missing} backordered)</span>` : ''}
+                            </span>
+                        </li>`;
+                }
+                quantitiesHTML += '</ul>';
+            } else {
+                // Standard display for other statuses
+                quantitiesHTML = '<ul>' + Object.entries(move.quantities).map(([size, count]) => `<li><strong>${size === 'countStocks' ? 'Stocks' : size.toUpperCase()}:</strong> ${count}</li>`).join('') + '</ul>';
+            }
+            
+            const productsHTML = move.products.map(p => `<li>${p.name} (SKU: ${p.sku})</li>`).join('');
+
             return `
-                <div class="notification-item" id="backorder-${bo.id}">
+                <div class="notification-item" id="request-${move.id}">
                     <div class="notification-item-header">
-                        Owed to <strong>${bo.to.toUpperCase()}</strong> from original request.
+                        <span>Request to <strong>${move.to.toUpperCase()}</strong></span>
+                        <span class="status-tag-notification ${statusClass}">${move.status}</span>
                     </div>
                     <div class="notification-item-body">
-                        <p><strong>Remaining Quantities Needed:</strong></p>
-                        <ul>${quantitiesHTML}</ul>
-                        <div class="notification-actions">
-                            <button class="modal-btn primary" data-action="fulfill" data-backorder-id="${bo.id}">Fulfill Backorder</button>
-                        </div>
+                         <p><strong>Products:</strong></p>
+                         <ul>${productsHTML}</ul>
+                         <p class="mt-4"><strong>Quantities:</strong></p>
+                         ${quantitiesHTML}
                     </div>
                 </div>`;
         }).join('');
     }
-
-    // --- 4. Return the final, combined HTML string ---
+    
     return html;
 }
 
-/**
- * REWRITTEN: Approves a move with the corrected logic for creating new products in the target location.
- */
 async function handleApproval(requestId, status) {
     const request = pendingMoves.find(p => p.id === requestId);
     if (!request) return;
@@ -1985,115 +2121,240 @@ async function handleApproval(requestId, status) {
     if (status === 'denied') {
         await updateDoc(requestRef, { status: 'denied' });
         console.log("ℹ️ Move request denied.");
+        itemEl.querySelectorAll('button').forEach(b => b.disabled = false); // Re-enable after action
         return;
     }
 
+    // If the action is 'approved', open the new confirmation modal.
+    // The modal will handle the rest of the process.
+    if (status === 'approved') {
+        await openApprovalConfirmationModal(request);
+        // Note: The modal is now responsible for re-enabling buttons if the user cancels.
+    }
+}
+
+async function openApprovalConfirmationModal(request) {
+    const sourceCol = request.from === 'ph' ? 'PH-Stocks-meta' : 'US-Stocks-meta';
+    let totalAvailableQuantities = {};
+
+    // 1. Get the most current total stock levels for the requested items.
+    try {
+        await runTransaction(db, async (transaction) => {
+            for (const field in request.quantities) {
+                totalAvailableQuantities[field] = 0;
+                for (const productInfo of request.products) {
+                    const sourceRef = doc(db, `InventoryWorkspace/${currentInventoryId}/${sourceCol}`, productInfo.productId);
+                    const sourceDoc = await transaction.get(sourceRef);
+                    if (sourceDoc.exists()) {
+                        totalAvailableQuantities[field] += parseFloat(sourceDoc.data()[field] || 0);
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error("Failed to fetch current stock levels:", error);
+        alert("Could not fetch current stock levels. Please try again.");
+        const itemEl = document.getElementById(`request-${request.id}`);
+        if (itemEl) itemEl.querySelectorAll('button').forEach(b => b.disabled = false);
+        return;
+    }
+    let finalStatus = "completed"
+    // 2. Build the HTML for the modal's input fields with a modern UI.
+    let inputsHTML = `
+        <div class="form-row header-row">
+            <span>Item/Size</span>
+            <span>In Stock</span>
+            <span>Originally Requested</span>
+            <span class="text-center">New Amount to Approve</span>
+        </div>
+    `;
+
+    for (const field in request.quantities) {
+        const requested = request.quantities[field];
+        const available = totalAvailableQuantities[field] || 0;
+        const label = field === 'countStocks' ? 'Total Stocks' : `Size ${field.toUpperCase()}`;
+
+        inputsHTML += `
+            <div class="form-row">
+                <label for="approve-qty-${field}" class="input-label">${label}</label>
+                <span class="stock-info available">${available}</span>
+                <span class="stock-info requested">${requested}</span>
+                <input type="number" id="approve-qty-${field}" class="input-field modern-input" data-field="${field}" value="${requested}" min="0">
+            </div>
+        `;
+    }
+
+    // 3. Create and inject the full modal HTML.
+    const modalHTML = `
+        <div class="dialog-overlay modern-overlay" id="approval-confirm-overlay">
+            <div class="dialog-box modern-dialog">
+                <div class="dialog-header">
+                    <h2>Confirm Transfer</h2>
+                    <button class="close-btn">&times;</button>
+                </div>
+                <div class="dialog-content">
+                    <p class="dialog-instruction">
+                        Please confirm or change the amount of stock to transfer. 
+                        Approving more than is available will create a stock deficit.
+                    </p>
+                    <div class="form-grid">${inputsHTML}</div>
+                </div>
+                <div class="dialog-footer">
+                     <button class="btn btn-secondary" id="cancel-approval-btn">Cancel</button>
+                     <button class="btn btn-primary" id="confirm-approval-btn">Confirm & Process Transfer</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    // 4. Add event listeners for the new modal.
+    const overlay = document.getElementById('approval-confirm-overlay');
+    const closeModal = () => {
+        overlay.remove();
+        const itemEl = document.getElementById(`request-${request.id}`);
+        if (itemEl) itemEl.querySelectorAll('button').forEach(b => b.disabled = false);
+    };
+
+    overlay.querySelector('.close-btn').addEventListener('click', closeModal);
+    overlay.querySelector('#cancel-approval-btn').addEventListener('click', closeModal);
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            closeModal();
+        }
+    });
+
+    overlay.querySelector('#confirm-approval-btn').addEventListener('click', () => {
+        const approvedQuantities = {};
+        let totalToMove = 0;
+        overlay.querySelectorAll('.modern-input').forEach(input => {
+            const value = parseInt(input.value, 10);
+            // Use the original request's fields to ensure we only capture relevant data
+            if (request.quantities.hasOwnProperty(input.dataset.field)) {
+                // Even if the value is 0, we include it to handle cases where a user wants to zero out a request for a specific size.
+                approvedQuantities[input.dataset.field] = isNaN(value) ? 0 : value;
+                if (!isNaN(value) && value > 0) {
+                    totalToMove += value;
+                }
+            }
+        });
+
+        if (Object.keys(approvedQuantities).length === 0) {
+            alert("No valid quantities were entered. Please specify an amount to transfer.");
+            return;
+        }
+
+        overlay.remove();
+        executeApprovalWithQuantities(request, approvedQuantities);
+    });
+}
+
+async function executeApprovalWithQuantities(request, approvedQuantities) {
+    const requestId = request.id;
+    const requestRef = doc(db, `InventoryWorkspace/${currentInventoryId}/PendingMoves`, requestId);
     const sourceCol = request.from === 'ph' ? 'PH-Stocks-meta' : 'US-Stocks-meta';
     const targetCol = request.to === 'ph' ? 'PH-Stocks-meta' : 'US-Stocks-meta';
-    let finalStatus = 'completed';
 
     try {
         await runTransaction(db, async (transaction) => {
-            console.log(`🚀 Approving request: ${requestId}`);
-            const productIds = request.products.map(p => p.productId);
-            const refsToRead = productIds.flatMap(id => [
-                doc(db, `InventoryWorkspace/${currentInventoryId}/${sourceCol}`, id),
-                doc(db, `InventoryWorkspace/${currentInventoryId}/${targetCol}`, id)
-            ]);
-            const allDocs = await Promise.all(refsToRead.map(ref => transaction.get(ref)));
-            const docsMap = new Map(allDocs.map(snapshot => [snapshot.ref.path, snapshot]));
+            console.log("🚀 Starting transaction for request ID:", requestId);
+            console.log("🔍 Approved Quantities:", approvedQuantities);
 
-            const remainingQuantities = { ...request.quantities };
+            // --- READ PHASE ---
+            const productDocs = {};
+            const readPromises = request.products.map(productInfo => {
+                const sourceRef = doc(db, `InventoryWorkspace/${currentInventoryId}/${sourceCol}`, productInfo.productId);
+                const targetRef = doc(db, `InventoryWorkspace/${currentInventoryId}/${targetCol}`, productInfo.productId);
+                return Promise.all([transaction.get(sourceRef), transaction.get(targetRef)])
+                    .then(([sourceDoc, targetDoc]) => {
+                        console.log(`📄 Read product ${productInfo.productId}: source exists=${sourceDoc.exists()}, target exists=${targetDoc.exists()}`);
+                        productDocs[productInfo.productId] = { sourceRef, targetRef, sourceDoc, targetDoc };
+                    });
+            });
+            await Promise.all(readPromises);
+            console.log("✅ Completed all reads");
 
-            for (const field in request.quantities) {
-                let amountToDeduct = request.quantities[field];
-                if (amountToDeduct <= 0) continue;
-                console.log(`\n🧮 Processing field: "${field}", Requested deduction: ${amountToDeduct}`);
+            const backorderQuantities = {};
+            let quantitiesToMove = { ...approvedQuantities };
 
-                for (const productInfo of request.products) {
-                    if (amountToDeduct <= 0) break;
-
-                    const sourceRef = doc(db, `InventoryWorkspace/${currentInventoryId}/${sourceCol}`, productInfo.productId);
-                    const sourceDoc = docsMap.get(sourceRef.path);
-                    let rawStock = sourceDoc?.exists() ? sourceDoc.data()[field] : 0;
-
-                    let stockInSource = typeof rawStock === 'string' ? parseFloat(rawStock) : rawStock;
-                    if (typeof rawStock === 'string') {
-                        console.log(`🔄 Coerced string stock to number: "${rawStock}" → ${stockInSource}`);
-                    }
-                    stockInSource = isNaN(stockInSource) ? 0 : stockInSource;
-
-                    console.log(`📦 Source: ${sourceCol}/${productInfo.productId}, Current Stock: ${stockInSource}`);
-
-                    if (stockInSource > 0) {
-                        const deduction = Math.min(amountToDeduct, stockInSource);
-                        const newSourceStock = stockInSource - deduction;
-
-                        console.log(`➡️ Deducting ${deduction} from source. New source stock: ${stockInSource} - ${deduction} = ${newSourceStock}`);
-                        transaction.update(sourceRef, { [field]: newSourceStock }); // ← direct update instead of increment
-
-                        const targetRef = doc(db, `InventoryWorkspace/${currentInventoryId}/${targetCol}`, productInfo.productId);
-                        const targetDoc = docsMap.get(targetRef.path);
-
-                        if (targetDoc?.exists()) {
-                            let targetRaw = targetDoc.data()[field] ?? 0;
-                            let targetStock = typeof targetRaw === 'string' ? parseFloat(targetRaw) : targetRaw;
-                            targetStock = isNaN(targetStock) ? 0 : targetStock;
-                            const newTargetStock = targetStock + deduction;
-
-                            console.log(`✅ Target: ${targetCol}/${productInfo.productId} exists. Incrementing ${field}: ${targetStock} + ${deduction} = ${newTargetStock}`);
-                            transaction.update(targetRef, { [field]: newTargetStock });
-                        } else {
-                            console.log(`🆕 Target doc does not exist. Creating with ${field}: ${deduction}`);
-                            const originalProductData = (request.from === 'ph' ? dataPhStocks : dataUsStocks).find(p => p.id === productInfo.productId);
-                            const newProductData = { ...originalProductData };
-
-                            const existingNewStock = newProductData[field] || 0;
-                            const newTotal = existingNewStock + deduction;
-                            newProductData[field] = newTotal;
-
-                            console.log(`📄 Setting new doc: ${targetCol}/${productInfo.productId} with ${field}: ${existingNewStock} + ${deduction} = ${newTotal}`);
-                            transaction.set(targetRef, newProductData);
-                            docsMap.set(targetRef.path, {
-                                exists: () => true,
-                                data: () => newProductData
-                            });
-                        }
-
-                        amountToDeduct -= deduction;
-                        console.log(`📉 Remaining to deduct for "${field}": ${amountToDeduct}`);
-                    } else {
-                        console.log(`🚫 No stock in source for ${productInfo.productId} (${field}). Skipping.`);
-                    }
+            for (const productInfo of request.products) {
+                if (Object.values(quantitiesToMove).every(v => v <= 0)) {
+                    console.log("🛑 All approved quantities processed. Skipping remaining products.");
+                    break;
                 }
 
-                remainingQuantities[field] = amountToDeduct;
+                const { sourceRef, targetRef, sourceDoc, targetDoc } = productDocs[productInfo.productId];
+                const updates = {};
+
+                for (const field in quantitiesToMove) {
+                    const approved = quantitiesToMove[field];
+                    if (approved > 0) {
+                        const currentStock = sourceDoc.data()[field] || 0;
+                        const canTransfer = Math.min(currentStock, approved);
+                        const deducted = approved;
+                        const newStock = currentStock - deducted;
+                        const missing = deducted > currentStock ? deducted - currentStock : 0;
+
+                        // Deduct from source (even if it goes negative)
+                        transaction.update(sourceRef, { [field]: newStock });
+                        console.log(`➖ Deducting ${deducted} from ${field} @ Source: ${currentStock} - ${deducted} = ${newStock}`);
+
+                        // Add to target
+                        if (targetDoc.exists()) {
+                            transaction.update(targetRef, { [field]: increment(canTransfer) });
+                            console.log(`➕ Adding ${canTransfer} to ${field} @ Target`);
+                        } else {
+                            const sourceProductData = (request.from === 'ph' ? dataPhStocks : dataUsStocks).find(p => p.id === productInfo.productId);
+                            if (sourceProductData) {
+                                const newProductData = { ...sourceProductData };
+                                ['s', 'm', 'l', 'xl', 'xxl', 'others', 'countStocks'].forEach(k => newProductData[k] = 0);
+                                newProductData[field] = deducted;
+                                newProductData.warehouseLocation = request.to === 'ph' ? 'PH Stocks' : 'US Stocks';
+                                transaction.set(targetRef, newProductData);
+                                console.log(`🆕 Created new target product for ${productInfo.productId} with:`, { [field]: deducted });
+                            } else {
+                                console.warn(`⚠️ Source data missing for ${productInfo.productId}, cannot create target product`);
+                            }
+                        }
+
+                        // Track shortfall
+                        if (missing > 0) {
+                            backorderQuantities[field] = (backorderQuantities[field] || 0) + missing;
+                            console.warn(`📦 Not enough stock for ${field}. Approved: ${approved}, Available: ${currentStock}, Backordered: ${missing}`);
+                        }
+
+                        quantitiesToMove[field] = 0;
+                    }
+                }
             }
 
-            const totalRemaining = Object.values(remainingQuantities).reduce((a, b) => a + b, 0);
-            if (totalRemaining > 0) {
-                finalStatus = 'partial';
+            const finalStatus = Object.keys(backorderQuantities).length > 0 ? 'partial' : 'completed';
+            console.log("📦 Backorder Quantities:", backorderQuantities);
+            console.log("📌 Final Status:", finalStatus);
+
+            if (finalStatus === 'partial') {
                 const backorderRef = doc(collection(db, `InventoryWorkspace/${currentInventoryId}/Backorders`));
-                const backorderData = {
+                transaction.set(backorderRef, {
                     ...request,
                     id: backorderRef.id,
                     originalRequestId: requestId,
-                    quantities: remainingQuantities,
-                    status: 'backordered'
-                };
-                transaction.set(backorderRef, backorderData);
-                console.warn(`⚠️ Some quantities could not be fulfilled. Backordered:`, remainingQuantities);
+                    quantities: backorderQuantities,
+                    status: 'backordered',
+                    createdAt: serverTimestamp()
+                });
+                console.log("📤 Backorder document queued:", backorderRef.id);
             }
 
             transaction.update(requestRef, { status: finalStatus });
+            console.log(`📋 Updated request ${requestId} status to: ${finalStatus}`);
         });
 
-        console.log(`✅ Move request processed. Final status: ${finalStatus}`);
-
+        console.log(`✅ Move request ${requestId} processed successfully.`);
     } catch (error) {
-        console.error("❌ Error approving move:", error);
-        alert(error.message);
-        itemEl.querySelectorAll('button').forEach(b => b.disabled = false);
+        console.error("❌ Error executing approval transaction:", error);
+        alert(`An error occurred during approval: ${error.message}`);
+        const itemEl = document.getElementById(`request-${requestId}`);
+        if (itemEl) itemEl.querySelectorAll('button').forEach(b => b.disabled = false);
     }
 }
 

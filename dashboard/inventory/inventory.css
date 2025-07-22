@@ -31,10 +31,12 @@
     /* Or use viewport height if it's a top-level container */
     /* height: 100vh; */
 }
+
 .inventory-actions {
     display: flex;
     align-items: center;
-    gap: 1px; /* Adjust this value for more or less space between items */
+    gap: 1px;
+    /* Adjust this value for more or less space between items */
 }
 
 .section-title-cell,
@@ -2405,20 +2407,27 @@ Custom class
     padding: 0;
     margin: 0;
 }
+
 .quantities-detailed li {
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
+
 .fulfilled-amount {
-    color: #166534; /* Green */
+    color: #166534;
+    /* Green */
     font-weight: 600;
 }
+
 .requested-amount {
-    color: #6b7280; /* Gray */
+    color: #6b7280;
+    /* Gray */
 }
+
 .missing-amount {
-    color: #991b1b; /* Red */
+    color: #991b1b;
+    /* Red */
     font-weight: 600;
 }
 
@@ -3068,6 +3077,7 @@ Custom class
 .empty-notifications-message p {
     margin-top: 0.25rem;
 }
+
 /* --- Notification Status Tags --- */
 .status-tag-notification {
     display: inline-block;
@@ -3079,7 +3089,208 @@ Custom class
     letter-spacing: 0.05em;
 }
 
-.status-pending { background-color: #ffedd5; color: #9a3412; } /* Orange */
-.status-completed { background-color: #dcfce7; color: #166534; } /* Green */
-.status-partial { background-color: #feefc3; color: #c27803; } /* Yellow */
-.status-denied { background-color: #fee2e2; color: #991b1b; } /* Red */
+.status-pending {
+    background-color: #ffedd5;
+    color: #9a3412;
+}
+
+/* Orange */
+.status-completed {
+    background-color: #dcfce7;
+    color: #166534;
+}
+
+/* Green */
+.status-partial {
+    background-color: #feefc3;
+    color: #c27803;
+}
+
+/* Yellow */
+.status-denied {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+/* Red */
+
+/* --- Modern Confirmation Modal Styles --- */
+
+.dialog-overlay.modern-overlay {
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
+}
+
+.dialog-box.modern-dialog {
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 550px;
+    overflow: hidden;
+    animation: fadeInScale 0.3s ease-out;
+}
+
+.modern-dialog .dialog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.modern-dialog .dialog-header h2 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.modern-dialog .close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    line-height: 1;
+    color: #6b7280;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.modern-dialog .close-btn:hover {
+    color: #111827;
+}
+
+.modern-dialog .dialog-content {
+    padding: 24px;
+}
+
+.dialog-instruction {
+    font-size: 0.875rem;
+    color: #4b5563;
+    margin-bottom: 24px;
+    line-height: 1.5;
+}
+
+.form-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1.5fr 1.5fr;
+    gap: 16px;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.form-row:last-child {
+    border-bottom: none;
+}
+
+.form-row.header-row {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 12px;
+}
+
+.input-label {
+    font-weight: 500;
+    color: #374151;
+}
+
+.stock-info {
+    font-size: 0.875rem;
+    color: #4b5563;
+    text-align: center;
+}
+
+.stock-info.available {
+    font-weight: 600;
+    color: #059669;
+    /* Green */
+}
+
+.stock-info.requested {
+    color: #4f46e5;
+    /* Indigo */
+}
+
+.modern-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    text-align: center;
+}
+
+.modern-input:focus {
+    outline: none;
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+}
+
+.modern-dialog .dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 24px;
+    background-color: #f9fafb;
+    border-top: 1px solid #e5e7eb;
+}
+
+/* --- Modern Button Styles --- */
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.btn-primary {
+    background-color: #4f46e5;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #4338ca;
+}
+
+.btn-secondary {
+    background-color: #ffffff;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.btn-secondary:hover {
+    background-color: #f3f4f6;
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
