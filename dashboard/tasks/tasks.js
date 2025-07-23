@@ -1137,7 +1137,6 @@ export function init(params) {
 
 
       .chat-container { z-index: var(--z-chat-container); }
-    .chat-box { z-index: var(--z-chat-box); }
     #chat-header { z-index: var(--z-chat-header); }
     .emoji-picker { z-index: var(--z-emoji-picker); }
     .reaction-picker { z-index: var(--z-reaction-picker); }
@@ -1283,9 +1282,7 @@ export function init(params) {
     width: 320px;
     display: none; /* Controlled by JS */
     flex-direction: column;
-    z-index: 10010;
-    box-shadow: inset 0 8px 6px -6px rgba(0, 0, 0, 0.4);
-    /* REMOVE all old 'align-up', 'align-down', 'transform' rules */
+    z-index: 1000;
 }
 
       .chat-box.open {
@@ -1306,7 +1303,9 @@ export function init(params) {
         z-index: 10010; /* Higher than before */
         border-radius: 14px;
       }
-
+        #minimized-unread-badge{
+           display: none;
+        }
       /* REVISED: Minimized state - circular shape like Messenger */
       .chat-box.minimized {
         width: 3.5rem !important;
@@ -3472,7 +3471,6 @@ export function init(params) {
       chatBox.classList.add("minimized");
       chatBox.style.display = "none"; // hide on minimize
       chatBox.classList.remove("maximized");
-
       setChatState({ ...chatState, isOpen: false, isMinimized: true });
       chatBox.classList.remove("maximized");
       toggleIcon.classList.remove("fa-compress");
@@ -3494,6 +3492,7 @@ export function init(params) {
       const container = document.getElementById("chat-container");
       const chatBox = document.getElementById("chat-box");
       const chatButton = document.getElementById("chat-button");
+      const minimizedBadge = document.getElementById("minimized-unread-badge");
 
       if (dragged) {
         dragged = false; // Reset the flag for the next click
@@ -3503,7 +3502,7 @@ export function init(params) {
 
       // NEW: Remove the minimized class to reset its appearance.
       chatBox.classList.remove("minimized");
-
+      minimizedBadge.classList.add("hidden");
       // NEW: Clear any inline display styles from the minimize function.
       chatBox.style.display = '';
 
