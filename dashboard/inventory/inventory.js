@@ -185,6 +185,34 @@ function updateUrlWithQueryParams(inventoryId, stockType) {
     }
 }
 
+function updateUrlForAction(action) {
+    if (!currentInventoryId || !currentStockType) return;
+
+    const params = new URLSearchParams(window.location.search);
+    if (action) {
+        params.set('action', action);
+    } else {
+        params.delete('action');
+    }
+
+    const newUrl = `/inventory?${params.toString()}`;
+    history.pushState({ inventoryId: currentInventoryId, stockType: currentStockType, action }, '', newUrl);
+    console.log(`URL updated for action: ${newUrl}`);
+}
+
+function applyActionFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const action = params.get('action');
+
+    if (action === 'new') {
+        console.log("Found 'new' action in URL, opening Add Product modal.");
+        // We use a short timeout to ensure the rest of the UI is ready
+        setTimeout(() => {
+            openAddProductModal(currentInventoryId, currentStockType, () => { });
+        }, 100);
+    }
+}
+
 async function cloneInventoryWorkspace(sourceId, targetId, subcollectionNames) {
     const sourceDocRef = doc(db, 'InventoryWorkspace', sourceId);
     const targetDocRef = doc(db, 'InventoryWorkspace', targetId);
@@ -214,6 +242,50 @@ async function cloneInventoryWorkspace(sourceId, targetId, subcollectionNames) {
     }
 
     console.log(`🎉 Cloned document ${sourceId} → ${targetId} complete.`);
+}
+
+function updateUrlForImageView(productId) {
+    if (!currentInventoryId) return;
+
+    const params = new URLSearchParams(window.location.search);
+    if (productId) {
+        params.set('viewImage', productId);
+    } else {
+        params.delete('viewImage');
+    }
+
+    const newUrl = `/inventory?${params.toString()}`;
+    // Use replaceState for image viewing so it doesn't clutter browser history too much
+    history.replaceState(history.state, '', newUrl);
+}
+
+/**
+ * Checks the URL on page load for an image to view and opens the overlay if found.
+ */
+function applyImageViewFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const imageId = params.get('viewImage');
+
+    // Ensure the overlay is hidden if the param is not present
+    if (!imageId) {
+        if (imageOverlay && !imageOverlay.classList.contains('hidden')) {
+            imageOverlay.classList.add('hidden');
+        }
+        return;
+    }
+
+    // Combine all available products to find the one with the matching ID
+    const allProducts = [...dataPhStocks, ...dataUsStocks];
+    const product = allProducts.find(p => p.id === imageId);
+
+    if (product && product.imageUrl) {
+        overlayImageSrc.src = product.imageUrl;
+        imageOverlay.classList.remove('hidden');
+    } else if (product) {
+        console.warn(`URL requested to view image for product ${imageId}, but it has no image URL.`);
+        // If the product exists but has no image, remove the invalid parameter from the URL
+        updateUrlForImageView(null);
+    }
 }
 
 async function attachInventoryListeners(workspaceId, userId) {
@@ -270,12 +342,14 @@ async function attachInventoryListeners(workspaceId, userId) {
             dataUsStocks = usSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
             console.log('%c🇺🇸 US Stocks Updated:', 'color: #00bcd4;', dataUsStocks.length, 'items');
             debouncedRender(currentStockType);
+            applyImageViewFromUrl();
         }, (error) => console.error("❌ US Stocks listener error:", error));
 
         activeListeners.phStocks = onSnapshot(phStocksRef, (phSnapshot) => {
             dataPhStocks = phSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
             console.log('%c🇵🇭 PH Stocks Updated:', 'color: #ff9800;', dataPhStocks.length, 'items');
             debouncedRender(currentStockType);
+            applyImageViewFromUrl();
         }, (error) => console.error("❌ PH Stocks listener error:", error));
 
         attachDynamicListeners(currentStockType);
@@ -549,13 +623,43 @@ function distributeTasksToSections(tasks) {
 
 export function init(params) {
     console.log("Initializing List View Module...", params);
+    let popstateListener = null; // Keep track of the listener
 
-    // Listen for authentication state changes
+    // Initial view setup
+    initializeListView(params);
+
     onAuthStateChanged(auth, (user) => {
         if (user) {
-            console.log(`User ${user.uid} signed in. Attaching listeners.`);
-            attachRealtimeListeners(user.uid);
+            console.log(`User ${user.uid} signed in.`);
+            currentUserId = user.uid;
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlInventoryId = urlParams.get('id');
+            const urlStockType = urlParams.get('tab');
+
+            if (window.location.pathname === '/inventory' && urlInventoryId && urlStockType) {
+                // ... (existing URL logic for id and tab)
+                attachInventoryListeners(urlInventoryId, user.uid).then(() => {
+                    applyActionFromUrl();
+                    applyImageViewFromUrl();
+                });
+            } else {
+                attachRealtimeListeners(user.uid);
+            }
             startBackorderFulfillmentWatcher();
+
+            // ✅ ADD POPSTATE LISTENER FOR BACK/FORWARD NAVIGATION
+            popstateListener = (event) => {
+                console.log('Popstate event detected. Restoring state:', event.state);
+                if (event.state && event.state.inventoryId) {
+                    // Re-render the main view
+                    attachInventoryListeners(event.state.inventoryId, currentUserId);
+                    // Apply any actions like opening the modal
+                    applyActionFromUrl();
+                }
+            };
+            window.addEventListener('popstate', popstateListener);
+
         } else {
             console.log("User signed out. Detaching listeners.");
             detachAllListeners();
@@ -587,6 +691,10 @@ export function init(params) {
         if (sortableSections) sortableSections.destroy();
         sortableTasks.forEach(st => st.destroy());
         sortableTasks.length = 0;
+
+        if (popstateListener) {
+            window.removeEventListener('popstate', popstateListener);
+        }
     };
 }
 
@@ -752,11 +860,15 @@ async function setupEventListeners() {
 
     closeOverlay.addEventListener('click', () => {
         imageOverlay.classList.add('hidden');
+        // ✅ Remove image parameter from URL when closing
+        updateUrlForImageView(null);
     });
 
     imageOverlay.addEventListener('click', (e) => {
         if (e.target === imageOverlay) {
             imageOverlay.classList.add('hidden');
+            // ✅ Remove image parameter from URL when closing
+            updateUrlForImageView(null);
         }
     });
 
@@ -1312,15 +1424,20 @@ async function setupEventListeners() {
         }
     };
 
-
-
     addProductHeaderBtnListener = () => {
-        openAddProductModal(currentInventoryId, currentStockType, () => {
+        // This function is now passed to the modal
+        const onModalOpen = () => updateUrlForAction('new');
 
-        });
+        // This function will be called by the modal when it closes
+        const onModalClose = () => updateUrlForAction(null);
+
+        openAddProductModal(
+            currentInventoryId,
+            currentStockType,
+            onModalOpen,
+            onModalClose
+        );
     };
-
-
 
     filterBtnListener = () => {
         // DEBUG: Confirm the listener is firing
@@ -3760,7 +3877,10 @@ async function render(stockType) {
                                     itemRenderer: (option) => `<span class="material-icons text-slate-500">${option.icon}</span><span>${option.name}</span>`,
                                     onSelect: (selected) => {
                                         if (selected.name === 'View Image') {
-                                            window.open(product.imageUrl, '_blank');
+                                            // ✅ MODIFIED BEHAVIOR
+                                            overlayImageSrc.src = product.imageUrl;
+                                            imageOverlay.classList.remove('hidden');
+                                            updateUrlForImageView(product.id);
                                         } else if (selected.name === 'Replace Image') {
                                             fileInput.click();
                                         }

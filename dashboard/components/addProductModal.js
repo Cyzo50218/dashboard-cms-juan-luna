@@ -27,7 +27,7 @@ const auth = getAuth(app);
 const db = getFirestore(app, "juanluna-cms-01");
 const storage = getStorage(app);
 
-export function openAddProductModal(inventoryId, currentStockType, onSaved) {
+export function openAddProductModal(inventoryId, currentStockType, onOpen, onClose) {
   generateAddProductModal();
 
   const modal = document.getElementById('productModal');
@@ -51,9 +51,26 @@ export function openAddProductModal(inventoryId, currentStockType, onSaved) {
   document.getElementById('imagePreview').classList.add('hidden');
   modal.classList.remove('hidden');
 
-  cancelBtn.onclick = closeModalBtn.onclick = () => {
+  if (typeof onOpen === 'function') {
+    onOpen();
+  }
+
+  function closeModal() {
     modal.classList.add('hidden');
-  };
+    if (typeof onClose === 'function') {
+        onClose();
+    }
+  }
+
+  cancelBtn.onclick = closeModalBtn.onclick = closeModal;
+
+  modal.addEventListener('click', (e) => {
+    // If the click target is the overlay (the element with the 'modal-overlay' class)
+    // and not a child element, then close the modal.
+    if (e.target === modal) {
+        closeModal();
+    }
+  });
 
   if (currentStockType === 'ph') {
     warehouseLocationSelect.value = 'PH-Stocks-meta';
@@ -107,13 +124,13 @@ export function openAddProductModal(inventoryId, currentStockType, onSaved) {
 
     const supplierName = product.supplier?.name;
     if (supplierName) {
-        // Find the option in the project dropdown that matches the supplier name
-        for (const option of supplierProjectSelect.options) {
-            if (option.textContent === supplierName) {
-                supplierProjectSelect.value = option.value;
-                break; // Stop searching once found
-            }
+      // Find the option in the project dropdown that matches the supplier name
+      for (const option of supplierProjectSelect.options) {
+        if (option.textContent === supplierName) {
+          supplierProjectSelect.value = option.value;
+          break; // Stop searching once found
         }
+      }
     }
 
     // Handle the image preview
@@ -262,14 +279,14 @@ export function openAddProductModal(inventoryId, currentStockType, onSaved) {
     const existingImageUrl = productImage.value;
 
     if (file) {
-        // Case 1: A new file was selected by the user. Upload it.
-        console.log("New file detected. Uploading to Firebase Storage...");
-        const storageRef = ref(storage, `products/${id}/${file.name}`);
-        await uploadBytes(storageRef, file);
-        imageUrl = await getDownloadURL(storageRef);
+      // Case 1: A new file was selected by the user. Upload it.
+      console.log("New file detected. Uploading to Firebase Storage...");
+      const storageRef = ref(storage, `products/${id}/${file.name}`);
+      await uploadBytes(storageRef, file);
+      imageUrl = await getDownloadURL(storageRef);
     } else if (existingImageUrl && existingImageUrl.includes("firebasestorage.googleapis.com")) {
-        console.log("Reusing existing Firebase Storage URL.");
-        imageUrl = existingImageUrl;
+      console.log("Reusing existing Firebase Storage URL.");
+      imageUrl = existingImageUrl;
     }
     const warehouseLocationLabel = warehouseLocation === "PH-Stocks-meta" ? "PH Stocks" :
       warehouseLocation === "US-Stocks-meta" ? "US Stocks" : "";
@@ -306,12 +323,14 @@ export function openAddProductModal(inventoryId, currentStockType, onSaved) {
       modal.classList.add('hidden');
 
       if (typeof onSaved === 'function') onSaved();
-
+      if (typeof onClose === 'function') {
+            onClose();
+        }
     } catch (error) {
       console.error('Error saving product:', error);
       alert('Something went wrong while saving. Please try again.');
     } finally {
-      savingModal.classList.add('hidden'); // 👈 Always hide it at the end
+      savingModal.classList.add('hidden'); 
     }
   };
 }

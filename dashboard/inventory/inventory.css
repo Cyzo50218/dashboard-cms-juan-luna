@@ -2250,10 +2250,11 @@ Custom class
     align-items: center;
     justify-content: space-between;
     /* To space out name and edit button */
-    padding: 8px 10px;
+    padding: 8px 1px;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 11px;
+    width: 180px;
     transition: background-color 0.2s ease;
 }
 
@@ -2264,6 +2265,10 @@ Custom class
 .advanced-dropdown .dropdown-item-content {
     display: flex;
     align-items: center;
+}
+
+.advanced-dropdown .dropdown-item-content span {
+    margin-left: 8px;
 }
 
 .advanced-dropdown .dropdown-item-edit-btn {
