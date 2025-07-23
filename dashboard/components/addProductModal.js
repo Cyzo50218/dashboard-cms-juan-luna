@@ -39,6 +39,8 @@ export function openAddProductModal(inventoryId, currentStockType, onSaved) {
   const cancelBtn = document.getElementById('cancelBtn');
   const closeModalBtn = document.getElementById('closeModalBtn');
   const saveBtn = document.getElementById('saveBtn');
+  const quickProductSelect = document.getElementById('quickProductSelect');
+  const warehouseLocationSelect = document.getElementById('warehouseLocation');
 
   // Reset form
   productForm.reset();
@@ -52,6 +54,85 @@ export function openAddProductModal(inventoryId, currentStockType, onSaved) {
   cancelBtn.onclick = closeModalBtn.onclick = () => {
     modal.classList.add('hidden');
   };
+
+  if (currentStockType === 'ph') {
+    warehouseLocationSelect.value = 'PH-Stocks-meta';
+  } else if (currentStockType === 'us') {
+    warehouseLocationSelect.value = 'US-Stocks-meta';
+  }
+
+  async function loadQuickProducts() {
+    try {
+      const productListRef = collection(db, 'ProductListWorkspace', inventoryId, 'ProductList');
+      const querySnap = await getDocs(productListRef);
+
+      quickProductSelect.innerHTML = `<option value="">-- Select a product to pre-fill --</option>`; // Reset
+
+      querySnap.forEach(doc => {
+        const product = doc.data();
+        const option = document.createElement('option');
+        option.value = doc.id;
+        option.textContent = product.name;
+        // Store the full product data on the option element for easy access
+        option.dataset.productData = JSON.stringify(product);
+        quickProductSelect.appendChild(option);
+      });
+    } catch (error) {
+      console.error("Could not load quick products:", error);
+      quickProductSelect.innerHTML = `<option value="">Could not load products</option>`;
+    }
+  }
+
+  /**
+   * Handles the selection change on the quick products dropdown.
+   */
+  function onQuickProductSelect() {
+    const selectedOption = quickProductSelect.options[quickProductSelect.selectedIndex];
+    if (!selectedOption || !selectedOption.dataset.productData) {
+      // If the user selects the default option, you might want to clear the form
+      // productForm.reset(); 
+      return;
+    }
+
+    const product = JSON.parse(selectedOption.dataset.productData);
+
+    // Pre-fill the form fields
+    document.getElementById('productName').value = product.name || '';
+    document.getElementById('productSku').value = product.sku || '';
+    document.getElementById('productCost').value = product.cost || '';
+    // The master list stores supplier as an object, so we access its name property
+    document.getElementById('productSupplier').value = product.supplier?.name || '';
+    document.getElementById('supplierName').value = product.supplier?.name || '';
+    document.getElementById('productDescription').value = product.description || '';
+
+    const supplierName = product.supplier?.name;
+    if (supplierName) {
+        // Find the option in the project dropdown that matches the supplier name
+        for (const option of supplierProjectSelect.options) {
+            if (option.textContent === supplierName) {
+                supplierProjectSelect.value = option.value;
+                break; // Stop searching once found
+            }
+        }
+    }
+
+    // Handle the image preview
+    if (product.image) {
+      document.getElementById('uploadInstructions').classList.add('hidden');
+      imagePreview.classList.remove('hidden');
+      document.getElementById('previewImg').src = product.image;
+      // Store the URL in the hidden input for saving
+      productImage.value = product.image;
+    } else {
+      imagePreview.classList.add('hidden');
+      document.getElementById('uploadInstructions').classList.remove('hidden');
+      document.getElementById('previewImg').src = '';
+      productImage.value = '';
+    }
+  }
+
+  quickProductSelect.addEventListener('change', onQuickProductSelect);
+  loadQuickProducts();
 
   function previewImage(file) {
     const reader = new FileReader();
@@ -168,7 +249,6 @@ export function openAddProductModal(inventoryId, currentStockType, onSaved) {
     const size_others = parseInt(document.getElementById('size_others').value) || 0;
 
     const description = document.getElementById('productDescription').value.trim();
-    const file = imageFileInput.files[0];
 
     if (!name || !sku || isNaN(cost) || !supplier) {
       alert('Please fill all required fields.');
@@ -178,10 +258,18 @@ export function openAddProductModal(inventoryId, currentStockType, onSaved) {
     const id = uuidv4();
     let imageUrl = '';
 
+    const file = imageFileInput.files[0];
+    const existingImageUrl = productImage.value;
+
     if (file) {
-      const storageRef = ref(storage, `products/${id}/${file.name}`);
-      await uploadBytes(storageRef, file);
-      imageUrl = await getDownloadURL(storageRef);
+        // Case 1: A new file was selected by the user. Upload it.
+        console.log("New file detected. Uploading to Firebase Storage...");
+        const storageRef = ref(storage, `products/${id}/${file.name}`);
+        await uploadBytes(storageRef, file);
+        imageUrl = await getDownloadURL(storageRef);
+    } else if (existingImageUrl && existingImageUrl.includes("firebasestorage.googleapis.com")) {
+        console.log("Reusing existing Firebase Storage URL.");
+        imageUrl = existingImageUrl;
     }
     const warehouseLocationLabel = warehouseLocation === "PH-Stocks-meta" ? "PH Stocks" :
       warehouseLocation === "US-Stocks-meta" ? "US Stocks" : "";
@@ -198,7 +286,7 @@ export function openAddProductModal(inventoryId, currentStockType, onSaved) {
         supplierCost: cost,
         supplier: supplier,
         supplierName,
-        countStocks: Stocks,
+        countStocks: Stocks || 0,
         supplierProject: supplierProject,
         warehouseLocation: warehouseLocationLabel,
         description,
@@ -228,7 +316,6 @@ export function openAddProductModal(inventoryId, currentStockType, onSaved) {
   };
 }
 
-
 function generateAddProductModal() {
   if (document.getElementById('productModal')) return;
 
@@ -248,6 +335,12 @@ function generateAddProductModal() {
         </div>
         <div class="modal-body">
           <form id="productForm">
+            <div class="form-group">
+              <label class="form-label">Quick Products Selection</label>
+              <select class="form-input" id="quickProductSelect">
+                <option value="">-- Select a product to pre-fill --</option>
+              </select>
+            </div>
             <div class="form-group">
               <label class="form-label">Product Name</label>
               <input type="text" class="form-input" id="productName" required />

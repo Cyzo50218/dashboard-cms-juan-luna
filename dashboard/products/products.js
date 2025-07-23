@@ -26,7 +26,8 @@ import {
   increment,
   deleteField,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+import { v4 as uuidv4 } from "https://jspm.dev/uuid"; // For unique file IDs
 import { firebaseConfig } from "/services/firebase-config.js";
 import { openInventoryModal } from '/dashboard/components/settingsInventoryWorkspace.js';
 
@@ -35,36 +36,37 @@ console.log("Initializing Firebase...");
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app, "juanluna-cms-01");
+const storage = getStorage(app);
 console.log("Initialized Firebase on Dashboard.");
 
 const products = [
-{
-  id: 1,
-  name: "Phone 16 Pro Max",
-  sku: "PHN-16PM",
-  cost: 62093.5,
-  supplier: "Apple Inc.",
-  description: "Flagship smartphone with advanced camera system and A18 chip",
-  image: "https://img.freepik.com/free-photo/shirt-hanger-with-green-background_23-2150264156.jpg?semt=ais_hybrid&w=740",
-},
-{
-  id: 2,
-  name: "Predator Helios 16 AI",
-  sku: "LAP-PH16AI",
-  cost: 107293.5,
-  supplier: "Acer Corporation",
-  description: "Gaming laptop with AI-enhanced performance and cooling",
-  image: "https://d1csarkz8obe9u.cloudfront.net/posterpreviews/plain-dark-green-t-shirt-mock-up-instagram-po-design-template-93bc81ccc943b866ffa3e1003b523c79_screen.jpg?ts=1723107646",
-},
-{
-  id: 3,
-  name: "Närro V 17",
-  sku: "LAP-NV17",
-  cost: 73393.5,
-  supplier: "Närro Technologies",
-  description: "Ultra-slim laptop with 17-inch OLED display and all-day battery",
-  image: "https://png.pngtree.com/thumb_back/fh260/background/20241030/pngtree-plain-white-t-shirt-on-hanger-image_16329568.jpg",
-}, ];
+  {
+    id: 1,
+    name: "Phone 16 Pro Max",
+    sku: "PHN-16PM",
+    cost: 62093.5,
+    supplier: "Apple Inc.",
+    description: "Flagship smartphone with advanced camera system and A18 chip",
+    image: "https://img.freepik.com/free-photo/shirt-hanger-with-green-background_23-2150264156.jpg?semt=ais_hybrid&w=740",
+  },
+  {
+    id: 2,
+    name: "Predator Helios 16 AI",
+    sku: "LAP-PH16AI",
+    cost: 107293.5,
+    supplier: "Acer Corporation",
+    description: "Gaming laptop with AI-enhanced performance and cooling",
+    image: "https://d1csarkz8obe9u.cloudfront.net/posterpreviews/plain-dark-green-t-shirt-mock-up-instagram-po-design-template-93bc81ccc943b866ffa3e1003b523c79_screen.jpg?ts=1723107646",
+  },
+  {
+    id: 3,
+    name: "Närro V 17",
+    sku: "LAP-NV17",
+    cost: 73393.5,
+    supplier: "Närro Technologies",
+    description: "Ultra-slim laptop with 17-inch OLED display and all-day battery",
+    image: "https://png.pngtree.com/thumb_back/fh260/background/20241030/pngtree-plain-white-t-shirt-on-hanger-image_16329568.jpg",
+  },];
 
 // State management
 let selectedProductId = null;
@@ -134,19 +136,19 @@ function detachAllListeners() {
 function attachProductListListener(userId) {
   detachAllListeners(); // Ensure no old listeners are running
   currentUserId = userId;
-  
+
   const userDocRef = doc(db, 'users', userId);
-  
+
   onSnapshot(userDocRef, async (userSnap) => {
     if (!userSnap.exists()) {
       console.error(`❌ User document not found for ID: ${userId}`);
       showRestrictedAccessUI('User profile not found.');
       return;
     }
-    
+
     const userData = userSnap.data();
     const selectedWorkspaceId = userData.selectedWorkspace;
-    
+
     if (!selectedWorkspaceId || selectedWorkspaceId === currentWorkspaceId) {
       if (!selectedWorkspaceId) {
         console.warn('%c⚠️ No selected workspace found for user.', 'color: #ffc107;');
@@ -154,41 +156,45 @@ function attachProductListListener(userId) {
       }
       return; // No change or no workspace, do nothing
     }
-    
+
     currentWorkspaceId = selectedWorkspaceId;
     console.log(`%c🚀 Switching to workspace: ${currentWorkspaceId}`, 'color: #8a2be2; font-weight: bold;');
-    
+    updateUrl({ workspace: currentWorkspaceId });
+
     // Detach previous product listener if it exists
     if (productListUnsub) productListUnsub();
-    
+
     const workspaceDocRef = doc(db, 'ProductListWorkspace', currentWorkspaceId);
-    
+
     // ** NEW: Permission Check Logic **
     await checkUserPermissions(userId, currentWorkspaceId, userData.role);
-    
+
     // Listen to the ProductList subcollection within the workspace
     const productListRef = collection(workspaceDocRef, 'ProductList');
     const q = query(productListRef);
-    
+
     productListUnsub = onSnapshot(q, async (snapshot) => {
       productList = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
       console.log('%c📦 Product List Updated:', 'color: #4caf50;', productList);
-      
+
       await fetchDropdownOptions(userId, currentWorkspaceId);
-      
+
       activeProductList = [...productList]; // Set the active list to the full list
       productsCurrentlyShown = 0; // Reset the counter
       const initialBatch = activeProductList.slice(0, INITIAL_LOAD_COUNT);
       renderProducts(initialBatch, false); // Render the initial 10 products
       productsCurrentlyShown = initialBatch.length;
+
+      applyStateFromUrl();
+
     }, (error) => {
       console.error(`%c❌ Error listening to product list for workspace ${currentWorkspaceId}:`, 'color: #dc3545;', error);
       showRestrictedAccessUI('Could not load products for this workspace.');
     });
-    
+
   }, (error) => {
     console.error('%c❌ Error loading user snapshot.', 'color: #dc3545;', error);
     showRestrictedAccessUI('An error occurred while loading your profile.');
@@ -201,30 +207,30 @@ async function checkUserPermissions(userId, workspaceId, userRole) {
     console.warn("Cannot check permissions without User ID and Workspace ID.");
     return;
   }
-  
+
   try {
     // --- Get Workspace and check for Ownership ---
     const myWorkspaceRef = doc(db, `users/${userId}/myworkspace/${workspaceId}`);
     const myWorkspaceSnap = await getDoc(myWorkspaceRef);
     const workspaceData = myWorkspaceSnap.exists() ? myWorkspaceSnap.data() : null;
-    
+
     // Condition 1: Check if the user is the owner (from workspace data)
     const ownerRef = workspaceData?.ownerWorkspaceRef;
     const ownerPath = typeof ownerRef === 'string' ? ownerRef : ownerRef?.path;
     const isOwner = ownerPath?.includes(currentUserId);
-    
+
     // Condition 2: Check if the user's role is Admin or Developer
     const isAdminOrDev = userRole === 3 || userRole === 0; // 3 = Admin, 0 = Developer
-    
+
     // --- Final Permission: True if EITHER condition is met ---
-    canUserModify = isOwner && isAdminOrDev;
-    
+    canUserModify = isOwner || isAdminOrDev;
+
     if (canUserModify) {
       console.log(`%c✅ Permission Granted: User is ${isOwner ? 'Owner' : ''}${isOwner && isAdminOrDev ? ' and ' : ''}${isAdminOrDev ? 'Admin/Dev' : ''}.`, 'color: #28a745;');
     } else {
       console.log('%c🚫 Permission Denied: User is not Owner, Admin, or Developer.', 'color: #dc3545;');
     }
-    
+
   } catch (error) {
     console.error("Error checking permissions:", error);
     canUserModify = false; // Default to no permissions on error
@@ -246,25 +252,25 @@ function renderFilteredProducts(filteredProducts) {
 
 function loadMoreProducts() {
   if (isLoading) return;
-  
+
   const remainingProducts = activeProductList.length - productsCurrentlyShown;
   if (remainingProducts <= 0) {
     console.log("All products loaded.");
     return; // No more products to load
   }
-  
+
   isLoading = true;
   console.log("Loading more products...");
-  
+
   // Get the next batch of products to load
   const nextBatch = activeProductList.slice(
     productsCurrentlyShown,
     productsCurrentlyShown + PRODUCTS_PER_LOAD
   );
-  
+
   // Append the new products to the grid
   renderProducts(nextBatch, true);
-  
+
   // Update the count of shown products
   productsCurrentlyShown += nextBatch.length;
   isLoading = false;
@@ -285,47 +291,47 @@ async function fetchDropdownOptions(userId, workspaceId) {
     // This is the main logical change.
     const projectsRef = collection(db, `users/${userId}/myworkspace/${workspaceId}/projects`);
     const projectDocsSnap = await getDocs(projectsRef);
-    
+
     if (projectDocsSnap.empty) {
       console.log("No projects found in the subcollection.");
       populateSupplierDropdown([]);
       return;
     }
-    
+
     // --- 2. Process the projects and collect all unique member UIDs ---
     const allMemberUids = new Set();
-    
+
     const projectSuppliers = projectDocsSnap.docs.map(doc => {
-  const projectData = doc.data();
+      const projectData = doc.data();
 
-  const members = projectData.memberUIDs || [];
-  members.forEach(uid => allMemberUids.add(uid));
+      const members = projectData.memberUIDs || [];
+      members.forEach(uid => allMemberUids.add(uid));
 
-  // Convert HSL to Hex color string if needed
-  let hexColor = '#cccccc'; 
-  console.log(`original color: ${projectData.color}`);
-  if (projectData.color && typeof projectData.color === 'string') {
-  const match = projectData.color.match(/^hsl\((\d+),\s*(\d+)%?,\s*(\d+)%?\)$/i);
-  if (match) {
-    const h = parseInt(match[1], 10);
-    const s = parseInt(match[2], 10);
-    const l = parseInt(match[3], 10);
-    hexColor = hslToHex(h, s, l);
-  }
-}
-console.log(`converted color: ${hexColor}`);
-  return {
-    id: doc.id,
-    color: hexColor,
-    name: projectData.title,
-    type: 'Project'
-  };
-});
-    
+      // Convert HSL to Hex color string if needed
+      let hexColor = '#cccccc';
+      console.log(`original color: ${projectData.color}`);
+      if (projectData.color && typeof projectData.color === 'string') {
+        const match = projectData.color.match(/^hsl\((\d+),\s*(\d+)%?,\s*(\d+)%?\)$/i);
+        if (match) {
+          const h = parseInt(match[1], 10);
+          const s = parseInt(match[2], 10);
+          const l = parseInt(match[3], 10);
+          hexColor = hslToHex(h, s, l);
+        }
+      }
+      console.log(`converted color: ${hexColor}`);
+      return {
+        id: doc.id,
+        color: hexColor,
+        name: projectData.title,
+        type: 'Project'
+      };
+    });
+
     // --- 3. Fetch all unique User documents ---
     let userSuppliers = [];
     const uniqueMemberUidsArray = [...allMemberUids]; // Convert Set to Array
-    
+
     if (uniqueMemberUidsArray.length > 0) {
       const usersRef = collection(db, 'users');
       const userQuery = query(usersRef, where(documentId(), 'in', uniqueMemberUidsArray));
@@ -338,15 +344,15 @@ console.log(`converted color: ${hexColor}`);
         type: 'User'
       }));
     }
-    
+
     // --- 4. Combine and Sort the final list ---
     // to be use soon ..projectSuppliers,
     supplierList = [...projectSuppliers];
     supplierList.sort((a, b) => a.name.localeCompare(b.name));
-    
+
     console.log('%c✅ All options loaded and sorted:', 'color: #28a745;', supplierList);
     populateSupplierDropdown(supplierList);
-    
+
   } catch (error) {
     console.error("Error fetching dropdown options:", error);
     supplierList = [];
@@ -357,14 +363,14 @@ console.log(`converted color: ${hexColor}`);
 function hslToRgb(h, s, l) {
   s /= 100;
   l /= 100;
-  
+
   let c = (1 - Math.abs(2 * l - 1)) * s,
     x = c * (1 - Math.abs((h / 60) % 2 - 1)),
     m = l - c / 2,
     r = 0,
     g = 0,
     b = 0;
-  
+
   if (0 <= h && h < 60) {
     r = c;
     g = x;
@@ -393,7 +399,7 @@ function hslToRgb(h, s, l) {
   r = Math.round((r + m) * 255);
   g = Math.round((g + m) * 255);
   b = Math.round((b + m) * 255);
-  
+
   return [r, g, b];
 }
 
@@ -567,14 +573,14 @@ function renderProducts(productsToRender, shouldAppend = false) {
   if (!shouldAppend) {
     grid.innerHTML = "";
   }
-  
+
   if (!productsToRender || productsToRender.length === 0) {
     if (!shouldAppend) {
       grid.innerHTML = `<p class="col-span-full text-center text-gray-500">No products found.</p>`;
     }
     return;
   }
-  
+
   if (!canUserModify) {
     if (addBtn) {
       addBtn.classList.add('hidden');
@@ -612,7 +618,7 @@ function renderProducts(productsToRender, shouldAppend = false) {
     if (!canUserModify) {
       const editIcon = card.querySelector('.edit-icon');
       const deleteIcon = card.querySelector('.delete-icon');
-      
+
       if (editIcon) editIcon.classList.add('hidden');
       if (deleteIcon) deleteIcon.classList.add('hidden');
     }
@@ -622,7 +628,7 @@ function renderProducts(productsToRender, shouldAppend = false) {
     }
     grid.appendChild(card);
   });
-  
+
   // Simulate loading effect
   const images = document.querySelectorAll(".product-image img");
   images.forEach((img) => {
@@ -646,12 +652,12 @@ function showNotification(message, duration = 3000) {
 function showModal(product = null) {
   const modalTitle = document.getElementById("modalTitle");
   const imagePreview = document.getElementById("imagePreview");
-  
+
   // Reset form and preview
   document.getElementById("productForm").reset();
   imagePreview.innerHTML = "";
   productImageInput.value = "";
-  
+
   if (product) {
     // Edit mode
     modalTitle.textContent = "Edit Product";
@@ -661,26 +667,28 @@ function showModal(product = null) {
     productSupplierInput.value = product.supplier;
     productDescriptionInput.value = product.description || "";
     productImageInput.value = product.image;
-    
+
     // Show preview of existing image
     if (product.image) {
       imagePreview.innerHTML = `
         <img src="${product.image}" alt="Preview" style="max-width: 100px; max-height: 100px; margin-top: 10px;" />
       `;
     }
-    
+
     isEditing = true;
   } else {
     // Add mode
     modalTitle.textContent = "Add New Product";
+    updateUrl({ workspace: currentWorkspaceId, selected: null, action: 'new' });
     isEditing = false;
   }
-  
+
   modal.classList.remove("hidden");
 }
 
 // Hide modal
 function hideModal() {
+  updateUrl({ workspace: currentWorkspaceId, selected: selectedProductId, action: null });
   modal.classList.add("hidden");
 }
 
@@ -688,7 +696,7 @@ function renderProductSidebar(product) {
   const { name, sku, cost, supplier, description, image } = product;
   const formattedCost = formatCurrency(cost);
   const supplierDisplayHtml = createSupplierDisplayHTML(supplier, supplier.name);
-  
+
   return `
         <div class="settings-section">
             <span class="settings-label">Product Name</span>
@@ -732,10 +740,10 @@ function updateSidebar(product) {
     productSettings.classList.add("hidden");
     return;
   }
-  
+
   // Render the product details into the sidebar
   productSettings.innerHTML = renderProductSidebar(product);
-  
+
   // Toggle visibility
   productContent.classList.add("hidden");
   productSettings.classList.remove("hidden");
@@ -744,7 +752,7 @@ function updateSidebar(product) {
 // Handle image file
 function handleImageFile(file) {
   const reader = new FileReader();
-  reader.onload = function(event) {
+  reader.onload = function (event) {
     const dataURL = event.target.result;
     productImageInput.value = dataURL;
     const preview = document.getElementById("imagePreview");
@@ -786,9 +794,23 @@ async function addProduct() {
     type: supplierData?.type || 'Unknown',
   };
 
-  // If it's a project, and not a user (no avatar/email), include the color
   if (supplierInfoToSave.type === 'Project' && !supplierData?.avatar && !supplierData?.email) {
     supplierInfoToSave.color = supplierData?.color || '#cccccc';
+  }
+
+  let imageUrl = ''; // Default to an empty string
+  const file = fileInput.files[0]; // Get the file from the file input
+
+  if (file) {
+    const uniqueId = uuidv4(); // Generate a unique ID for the file path
+    // Create a reference in Firebase Storage (e.g., products/unique-id/filename.jpg)
+    const storageRef = ref(storage, `productListWorkspace/${uniqueId}/${file.name}`);
+
+    // Upload the file
+    await uploadBytes(storageRef, file);
+
+    // Get the public URL of the uploaded file
+    imageUrl = await getDownloadURL(storageRef);
   }
 
   const newProduct = {
@@ -797,7 +819,7 @@ async function addProduct() {
     cost: parseFloat(productCostInput.value),
     supplier: supplierInfoToSave,
     description: productDescriptionInput.value,
-    image: productImageInput.value,
+    image: imageUrl,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
@@ -839,6 +861,16 @@ async function updateProduct() {
     supplierInfoToSave.color = supplierData?.color || '#cccccc';
   }
 
+  let imageUrl = productImageInput.value; // Start with the existing image URL
+  const file = fileInput.files[0]; // Check if a NEW file was selected
+
+  if (file) {
+    const uniqueId = uuidv4();
+    const storageRef = ref(storage, `productListWorkspace/${uniqueId}/${file.name}`);
+    await uploadBytes(storageRef, file);
+    imageUrl = await getDownloadURL(storageRef); // Get the URL of the NEW image
+  }
+
   const productDocRef = doc(db, 'ProductListWorkspace', currentWorkspaceId, 'ProductList', selectedProductId);
   const updatedData = {
     name: productNameInput.value,
@@ -846,7 +878,7 @@ async function updateProduct() {
     cost: parseFloat(productCostInput.value),
     supplier: supplierInfoToSave,
     description: productDescriptionInput.value,
-    image: productImageInput.value,
+    image: imageUrl,
     updatedAt: serverTimestamp(),
   };
 
@@ -870,21 +902,51 @@ async function deleteProduct(productId) {
     showNotification("Permission Denied: You cannot delete products.", 5000);
     return;
   }
-  
-  const productName = productList.find(p => p.id === productId)?.name || "The product";
+
+  // Get a reference to the document first to read its data
   const productDocRef = doc(db, 'ProductListWorkspace', currentWorkspaceId, 'ProductList', productId);
-  
+
   try {
+    const docSnap = await getDoc(productDocRef);
+
+    if (!docSnap.exists()) {
+      console.error("Product document not found, cannot delete.");
+      showNotification("Error: Product not found.", 5000);
+      return;
+    }
+
+    const productData = docSnap.data();
+    const imageUrl = productData.image;
+    const productName = productData.name || "The product";
+
+    // --- START: NEW IMAGE DELETION LOGIC ---
+    // If there is an image URL, attempt to delete the file from Storage
+    if (imageUrl) {
+      try {
+        const imageRef = ref(storage, imageUrl); // Create a reference from the URL
+        await deleteObject(imageRef); // Delete the file
+        console.log(`Successfully deleted image from Storage: ${imageUrl}`);
+      } catch (error) {
+        // Log a warning if the image deletion fails, but don't stop the process.
+        // The file might have already been deleted or the URL might be invalid.
+        console.warn(`Could not delete image from Storage. It might not exist.`, error);
+      }
+    }
+    // --- END: NEW IMAGE DELETION LOGIC ---
+
+    // Now, delete the document from Firestore
     await deleteDoc(productDocRef);
-    
+
     if (selectedProductId === productId) {
       selectedProductId = null;
       updateSidebar(null);
     }
+
     showNotification(`"${productName}" has been deleted.`);
-    // UI will update automatically via the onSnapshot listener
+    // The UI will update automatically from your onSnapshot listener.
+
   } catch (error) {
-    console.error("Error deleting product: ", error);
+    console.error("Error during product deletion process: ", error);
     showNotification("Error: Could not delete product.", 5000);
   }
 }
@@ -894,12 +956,12 @@ async function handleGridClick(e) {
   const card = e.target.closest(".product-card");
   const editBtn = e.target.closest(".edit-icon");
   const deleteBtn = e.target.closest(".delete-icon");
-  
+
   if (!card) {
     handleCloseClick();
     return;
   }
-  
+
   if (editBtn) {
     e.stopPropagation(); // Prevent card selection
     const productId = editBtn.dataset.id;
@@ -910,7 +972,7 @@ async function handleGridClick(e) {
     }
     return;
   }
-  
+
   if (deleteBtn) {
     e.stopPropagation(); // Prevent card selection
     const productId = deleteBtn.dataset.id;
@@ -919,17 +981,71 @@ async function handleGridClick(e) {
     }
     return;
   }
-  
+
   if (!card) return;
-  
+
   selectedProductId = card.dataset.id;
+
+  updateUrl({ workspace: currentWorkspaceId, selected: selectedProductId, action: null });
+
   document.querySelectorAll(".product-card").forEach((c) => c.classList.remove("selected"));
   card.classList.add("selected");
-  
+
+
   const product = productList.find((p) => p.id === selectedProductId);
   if (product) {
     updateSidebar(product);
   }
+}
+
+function updateUrl(state) {
+    const params = new URLSearchParams(window.location.search);
+    
+    // Set parameters from the state object, or remove them if null
+    for (const key in state) {
+        if (state[key]) {
+            params.set(key, state[key]);
+        } else {
+            params.delete(key);
+        }
+    }
+
+    const newUrl = `/products?${params.toString()}`;
+    
+    // Only push state if the URL actually changes
+    if (window.location.href !== window.location.origin + newUrl) {
+        history.pushState(state, '', newUrl);
+        console.log(`%cURL updated: ${newUrl}`, 'color: #007bff;');
+    }
+}
+
+function applyStateFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const workspaceId = params.get('workspace');
+    const selectedId = params.get('selected');
+    const action = params.get('action');
+
+    if (workspaceId !== currentWorkspaceId) {
+        // This will be handled by the main listener, but we log it for clarity
+        console.log(`URL specifies workspace ${workspaceId}. Waiting for listener to switch.`);
+    }
+
+    if (selectedId) {
+        const product = productList.find(p => p.id === selectedId);
+        if (product) {
+            selectedProductId = selectedId;
+            updateSidebar(product);
+            // Highlight the card after a short delay to ensure it's rendered
+            setTimeout(() => {
+                const card = grid.querySelector(`.product-card[data-id="${selectedId}"]`);
+                if (card) card.classList.add('selected');
+            }, 100);
+        }
+    }
+
+    if (action === 'new') {
+        showModal(); // Opens the 'Add New Product' modal
+    }
 }
 
 function handleOutsideClick(e) {
@@ -937,18 +1053,18 @@ function handleOutsideClick(e) {
   if (selectedProductId === null) {
     return;
   }
-  
+
   // Define the areas where a click should NOT trigger a deselect
   const isClickInGrid = e.target.closest("#productGridList");
   const isClickInSidebar = e.target.closest("#productSettings");
   const isClickOnAddButton = e.target.closest("#addBtn");
   const isModalOpen = !modal.classList.contains('hidden');
-  
+
   // If the click is inside any of these "safe" areas, or if the modal is open, do nothing.
   if (isClickInGrid || isClickInSidebar || isClickOnAddButton || isModalOpen) {
     return;
   }
-  
+
   // If the click was outside, trigger the deselection logic.
   handleCloseClick();
 }
@@ -961,12 +1077,13 @@ function handleSettingsClick() {
   /*const sidebar = document.querySelector("aside");
   const isVisible = sidebar.style.right === "0px";
   sidebar.style.right = isVisible ? "-300px" : "0px";*/
-  
+
 }
 
 function handleCloseClick() {
   if (selectedProductId !== null) {
     console.log("Closing selection and sidebar.");
+    updateUrl({ workspace: currentWorkspaceId, selected: null, action: null });
     document
       .querySelectorAll(".product-card.selected")
       .forEach((c) => c.classList.remove("selected"));
@@ -1001,7 +1118,7 @@ function handleFileInputChange(e) {
 
 function handlePaste(e) {
   if (modal.classList.contains("hidden")) return;
-  
+
   const items = e.clipboardData.items;
   for (let i = 0; i < items.length; i++) {
     if (items[i].type.indexOf("image") !== -1) {
@@ -1030,8 +1147,8 @@ function filterProducts(searchTerm) {
   const term = searchTerm.toLowerCase();
   return productList.filter(
     (product) =>
-    product.name.toLowerCase().includes(term) ||
-    product.sku.toLowerCase().includes(term)
+      product.name.toLowerCase().includes(term) ||
+      product.sku.toLowerCase().includes(term)
   );
 }
 
@@ -1039,7 +1156,7 @@ function filterProducts(searchTerm) {
 function handleSearchInput(e) {
   const term = e.target.value.trim();
   clearSearchBtn.classList.toggle("hidden", !term);
-  
+
   activeProductList = filterProducts(term); // filterProducts now returns the filtered list
   productsCurrentlyShown = 0; // Reset counter for the new filtered list
   const initialBatch = activeProductList.slice(0, INITIAL_LOAD_COUNT);
@@ -1079,7 +1196,7 @@ function initElements() {
   console.log("productContent:", productContent);
   productSettings = document.getElementById("productSettings");
   console.log("productSettings:", productSettings);
-  
+
   // Modal Elements
   modal = document.getElementById("productModal");
   console.log("modal:", modal);
@@ -1089,19 +1206,19 @@ function initElements() {
   console.log("cancelBtn:", cancelBtn);
   saveBtn = document.getElementById("saveBtn");
   console.log("saveBtn:", saveBtn);
-  
+
   // Notification Elements
   notification = document.getElementById("notification");
   console.log("notification:", notification);
   notificationMessage = document.getElementById("notificationMessage");
   console.log("notificationMessage:", notificationMessage);
-  
+
   // Image Upload Elements
   imageUploadContainer = document.getElementById("imageUploadContainer");
   console.log("imageUploadContainer:", imageUploadContainer);
   fileInput = document.getElementById("productImageFile");
   console.log("fileInput:", fileInput);
-  
+
   // Form Input Elements
   console.log("%c--- Initializing Form Inputs ---", "color: cyan;");
   productNameInput = document.getElementById("productName");
@@ -1117,10 +1234,10 @@ function initElements() {
   console.log("productSupplierInput:", productSupplierInput);
   productDescriptionInput = document.getElementById("productDescription");
   console.log("productDescriptionInput:", productDescriptionInput);
-  
+
   productImageInput = document.getElementById("productImage");
   console.log("productImageInput:", productImageInput);
-  
+
   console.log(
     "%c--- DOM Element Initialization Complete ---",
     "color: yellow; font-weight: bold;"
@@ -1136,14 +1253,14 @@ function setupEventListeners() {
   closeModalBtn.addEventListener("click", hideModal);
   cancelBtn.addEventListener("click", hideModal);
   saveBtn.addEventListener("click", handleSaveClick);
-  
+
   imageUploadContainer.addEventListener("click", () => fileInput.click());
   imageUploadContainer.addEventListener("dragover", handleDragOver);
   imageUploadContainer.addEventListener("dragleave", handleDragLeave);
   imageUploadContainer.addEventListener("drop", handleDrop);
   fileInput.addEventListener("change", handleFileInputChange);
   document.addEventListener("paste", handlePaste);
-  
+
   searchInput.addEventListener("input", handleSearchInput);
   clearSearchBtn.addEventListener("click", handleClearSearch);
   trigger.addEventListener('click', toggleSupplierDropdown);
@@ -1154,9 +1271,9 @@ function setupEventListeners() {
 // Cleanup event listeners
 function cleanup() {
   console.log("[Products Module] Cleaning up old event listeners.");
-  
+
   detachAllListeners();
-  
+
   if (grid) grid.removeEventListener("click", handleGridClick);
   if (addBtn) addBtn.removeEventListener("click", handleAddClick);
   if (settingsBtn)
@@ -1177,7 +1294,7 @@ function cleanup() {
   if (clearSearchBtn)
     clearSearchBtn.removeEventListener("click", handleClearSearch);
   document.removeEventListener("paste", handlePaste);
-  
+
   window.removeEventListener('scroll', handleScroll);
 }
 
@@ -1186,10 +1303,10 @@ function showRestrictedAccessUI(message) {
     overlay.querySelector('.message').textContent = message || 'Restricted Access';
     overlay.classList.remove('hidden');
   }
-  
+
   const container = document.querySelector('.product-list-container');
   if (container) container.classList.add('hidden');
-  
+
   const okBtn = document.getElementById('restricted-ok-btn');
   if (okBtn) {
     okBtn.onclick = () => {
@@ -1201,7 +1318,8 @@ function showRestrictedAccessUI(message) {
 // Initialize app
 export function init(params) {
   console.log("[Products Module] Initializing...");
-  
+  let popstateListener = null;
+
   onAuthStateChanged(auth, (user) => {
     if (user) {
       console.log(`User ${user.uid} signed in. Attaching listeners.`);
@@ -1210,7 +1328,11 @@ export function init(params) {
       setupEventListeners();
       renderProducts([]);
       updateSidebar(null);
-      
+      popstateListener = () => {
+          console.log("Popstate triggered. Applying state from URL.");
+          applyStateFromUrl();
+      };
+      window.addEventListener('popstate', popstateListener);
     } else {
       console.log("User signed out. Detaching listeners.");
       detachAllListeners();
@@ -1221,15 +1343,20 @@ export function init(params) {
       setupEventListeners();
       renderProducts([]);
       updateSidebar(null);
-      
+
     }
   });
-  
+
   const loadingScreen = document.getElementById("loadingScreen");
   if (loadingScreen) {
     setTimeout(() => {
       loadingScreen.classList.add("hidden");
     }, 1000);
   }
-  return cleanup;
+  return () => {
+      cleanup(); 
+      if (popstateListener) {
+          window.removeEventListener('popstate', popstateListener);
+      }
+  };
 }
