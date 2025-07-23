@@ -2262,6 +2262,9 @@ Custom class
     background-color: #f5f5f5;
 }
 
+.delete-product-btn {
+    font-size: 20px;
+}
 .advanced-dropdown .dropdown-item-content {
     display: flex;
     align-items: center;
