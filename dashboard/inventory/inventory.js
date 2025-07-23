@@ -142,6 +142,7 @@ let currentStockType = 'ph'; // or 'ph'
 let inventoryPath = null;
 let dataUsStocks = [];
 let dataPhStocks = [];
+let isWatcherBusy = false
 let canUserEditProduct = false; // This will be set based on the user's permissions
 
 // --- Debounce/Throttle Mechanism for Rendering ---
@@ -1623,48 +1624,61 @@ async function executeAutomaticBackorderFulfillment(backorder) {
     }
 }
 
-
-/**
- * Starts a watcher that periodically checks for and fulfills pending backorders.
- * Ensures that it only runs one instance at a time.
- */
 function startBackorderFulfillmentWatcher() {
-    // If the watcher is already running, don't start another one.
     if (backorderWatcherInterval) {
         console.log('Backorder watcher is already running.');
         return;
     }
 
-    console.log('🚀 Starting backorder fulfillment watcher (20-second interval)...');
+    // Set a more reasonable interval (e.g., 20 seconds as originally commented)
+    // to prevent Firestore contention. 300ms is far too aggressive.
+    const WATCHER_INTERVAL_MS = 20000;
+
+    console.log(`🚀 Starting backorder fulfillment watcher (${WATCHER_INTERVAL_MS / 1000}-second interval)...`);
 
     backorderWatcherInterval = setInterval(async () => {
-        // The 'backorders' array is updated in real-time by your onSnapshot listener.
-        if (backorders.length === 0) {
-            // No backorders to process, do nothing.
+        // 1. If the previous run is still busy, skip this cycle.
+        if (isWatcherBusy) {
+            console.log('Watchdog: Previous cycle still running. Skipping.');
             return;
         }
 
-        console.log(`Watchdog: Found ${backorders.length} backorder(s) to check.`);
-
-        // Process each backorder one by one.
-        for (const backorder of backorders) {
-            try {
-                // Call the new, UI-agnostic fulfillment function.
-                await executeAutomaticBackorderFulfillment(backorder);
-            } catch (error) {
-                console.error(`Unhandled error in watcher loop for backorder ${backorder.id}:`, error);
-            }
+        // 2. Only run if there are actual backorders detected by the live listener.
+        if (backorders.length === 0) {
+            // This is a quiet exit, no need to log every 20 seconds.
+            return;
         }
-    }, 300); // 20000 milliseconds = 20 seconds
+
+        // 3. Check for necessary context.
+        if (!currentInventoryId || !currentUserId) {
+            console.warn("Watchdog: Missing current inventory or user ID. Skipping run.");
+            return;
+        }
+
+
+        console.log(`Watchdog: Found ${backorders.length} backorder(s) to check.`);
+        isWatcherBusy = true; // Set the flag to true before starting work
+
+        try {
+            // Process a copy of the array so modifications don't affect the loop.
+            const backordersToCheck = [...backorders];
+            for (const backorder of backordersToCheck) {
+                await executeAutomaticBackorderFulfillment(backorder);
+            }
+        } catch (error) {
+            console.error(`Unhandled error in watcher main loop:`, error);
+        } finally {
+            isWatcherBusy = false; // ✅ Always reset the flag when done, even if errors occur.
+        }
+
+    }, WATCHER_INTERVAL_MS);
 }
 
-/**
- * Stops the backorder fulfillment watcher.
- */
 function stopBackorderFulfillmentWatcher() {
     if (backorderWatcherInterval) {
         clearInterval(backorderWatcherInterval);
         backorderWatcherInterval = null;
+        isWatcherBusy = false; // Also reset the busy flag
         console.log('🛑 Stopped backorder fulfillment watcher.');
     }
 }
