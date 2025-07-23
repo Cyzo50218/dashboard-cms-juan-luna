@@ -171,13 +171,13 @@ function detachAllListeners() {
 
 function updateUrlWithQueryParams(inventoryId, stockType) {
     if (!inventoryId || !stockType) return;
-    
+
     const params = new URLSearchParams(window.location.search);
     params.set('id', inventoryId);
     params.set('tab', stockType);
-    
+
     const newUrl = `/inventory?${params.toString()}`;
-    
+
     // Only push a new state if the URL has actually changed
     if (window.location.href !== window.location.origin + newUrl) {
         console.log(`Updating URL to: ${newUrl}`);
@@ -188,14 +188,14 @@ function updateUrlWithQueryParams(inventoryId, stockType) {
 
 function updateUrlForAction(action) {
     if (!currentInventoryId || !currentStockType) return;
-    
+
     const params = new URLSearchParams(window.location.search);
     if (action) {
         params.set('action', action);
     } else {
         params.delete('action');
     }
-    
+
     const newUrl = `/inventory?${params.toString()}`;
     history.pushState({ inventoryId: currentInventoryId, stockType: currentStockType, action }, '', newUrl);
     console.log(`URL updated for action: ${newUrl}`);
@@ -204,12 +204,12 @@ function updateUrlForAction(action) {
 function applyActionFromUrl() {
     const params = new URLSearchParams(window.location.search);
     const action = params.get('action');
-    
+
     if (action === 'new') {
         console.log("Found 'new' action in URL, opening Add Product modal.");
         // We use a short timeout to ensure the rest of the UI is ready
         setTimeout(() => {
-            openAddProductModal(currentInventoryId, currentStockType, () => {});
+            openAddProductModal(currentInventoryId, currentStockType, () => { });
         }, 100);
     }
 }
@@ -217,44 +217,44 @@ function applyActionFromUrl() {
 async function cloneInventoryWorkspace(sourceId, targetId, subcollectionNames) {
     const sourceDocRef = doc(db, 'InventoryWorkspace', sourceId);
     const targetDocRef = doc(db, 'InventoryWorkspace', targetId);
-    
+
     // Copy main document
     const sourceSnap = await getDoc(sourceDocRef);
     if (!sourceSnap.exists()) {
         console.error(`❌ Source document InventoryWorkspace/${sourceId} not found`);
         return;
     }
-    
+
     const sourceData = sourceSnap.data();
     await setDoc(targetDocRef, sourceData, { merge: true });
     console.log(`✅ Top-level data copied from ${sourceId} to ${targetId}`);
-    
+
     // Copy each known subcollection
     for (const subcolName of subcollectionNames) {
         const sourceSubColRef = collection(sourceDocRef, subcolName);
         const sourceSubColSnap = await getDocs(sourceSubColRef);
-        
+
         for (const docSnap of sourceSubColSnap.docs) {
             const targetSubDocRef = doc(db, 'InventoryWorkspace', targetId, subcolName, docSnap.id);
             await setDoc(targetSubDocRef, docSnap.data());
         }
-        
+
         console.log(`📁 Copied subcollection: ${subcolName}`);
     }
-    
+
     console.log(`🎉 Cloned document ${sourceId} → ${targetId} complete.`);
 }
 
 function updateUrlForImageView(productId) {
     if (!currentInventoryId) return;
-    
+
     const params = new URLSearchParams(window.location.search);
     if (productId) {
         params.set('viewImage', productId);
     } else {
         params.delete('viewImage');
     }
-    
+
     const newUrl = `/inventory?${params.toString()}`;
     // Use replaceState for image viewing so it doesn't clutter browser history too much
     history.replaceState(history.state, '', newUrl);
@@ -266,7 +266,7 @@ function updateUrlForImageView(productId) {
 function applyImageViewFromUrl() {
     const params = new URLSearchParams(window.location.search);
     const imageId = params.get('viewImage');
-    
+
     // Ensure the overlay is hidden if the param is not present
     if (!imageId) {
         if (imageOverlay && !imageOverlay.classList.contains('hidden')) {
@@ -274,11 +274,11 @@ function applyImageViewFromUrl() {
         }
         return;
     }
-    
+
     // Combine all available products to find the one with the matching ID
     const allProducts = [...dataPhStocks, ...dataUsStocks];
     const product = allProducts.find(p => p.id === imageId);
-    
+
     if (product && product.imageUrl) {
         overlayImageSrc.src = product.imageUrl;
         imageOverlay.classList.remove('hidden');
@@ -294,14 +294,14 @@ async function attachInventoryListeners(workspaceId, userId) {
     if (activeListeners.workspace) activeListeners.workspace();
     if (activeListeners.usStocks) activeListeners.usStocks();
     if (activeListeners.phStocks) activeListeners.phStocks();
-    
+
     let inventoryDocRef;
     let hasAccess = false;
-    
+
     // Path 1: Check the user's own workspace subcollection first (most common case)
     const workspaceDocRef = doc(db, `users/${userId}/myworkspace`, workspaceId);
     const workspaceSnap = await getDoc(workspaceDocRef);
-    
+
     if (workspaceSnap.exists()) {
         const workspaceData = workspaceSnap.data();
         if (workspaceData.canShowInventory) {
@@ -322,37 +322,37 @@ async function attachInventoryListeners(workspaceId, userId) {
             where('canShowInventory', '==', true)
         );
         const fallbackSnaps = await getDocs(fallbackQuery);
-        
+
         if (!fallbackSnaps.empty) {
             inventoryDocRef = doc(db, 'InventoryWorkspace', workspaceId);
             hasAccess = true;
             console.log(`✅ Access granted via fallback path for workspace: ${workspaceId}`);
         }
     }
-    
+
     if (hasAccess && inventoryDocRef) {
         currentInventoryId = workspaceId;
         inventoryPath = `InventoryWorkspace/${workspaceId}`;
-        
+
         updateUrlWithQueryParams(currentInventoryId, currentStockType);
         // Attach the final, performant listeners in parallel
         const usStocksRef = collection(inventoryDocRef, 'US-Stocks-meta');
         const phStocksRef = collection(inventoryDocRef, 'PH-Stocks-meta');
-        
+
         activeListeners.usStocks = onSnapshot(usStocksRef, (usSnapshot) => {
             dataUsStocks = usSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
             console.log('%c🇺🇸 US Stocks Updated:', 'color: #00bcd4;', dataUsStocks.length, 'items');
             debouncedRender(currentStockType);
             applyImageViewFromUrl();
         }, (error) => console.error("❌ US Stocks listener error:", error));
-        
+
         activeListeners.phStocks = onSnapshot(phStocksRef, (phSnapshot) => {
             dataPhStocks = phSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
             console.log('%c🇵🇭 PH Stocks Updated:', 'color: #ff9800;', dataPhStocks.length, 'items');
             debouncedRender(currentStockType);
             applyImageViewFromUrl();
         }, (error) => console.error("❌ PH Stocks listener error:", error));
-        
+
         attachDynamicListeners(currentStockType);
         render(currentStockType); // Perform the initial render
     } else {
@@ -367,11 +367,11 @@ function attachRealtimeListeners(userId) {
     detachAllListeners();
     currentUserId = userId;
     let lastKnownWorkspaceId = null;
-    
+
     console.groupCollapsed(`%c🔗 Attaching Main Listener for User: ${userId}`, 'color: #007bff; font-weight: bold;');
-    
+
     const userDocRef = doc(db, 'users', userId);
-    
+
     activeListeners.user = onSnapshot(userDocRef, async (userSnap) => {
         if (!userSnap.exists()) {
             console.error(`%c❌ User document not found: ${userId}`, 'color: #dc3545; font-weight: bold;');
@@ -379,17 +379,17 @@ function attachRealtimeListeners(userId) {
             console.groupEnd();
             return;
         }
-        
+
         const userData = userSnap.data();
         const selectedWorkspaceId = userData.selectedWorkspace;
-        
+
         if (!selectedWorkspaceId) {
             console.warn('%c⚠️ No selected workspace found.', 'color: #ffc107; font-weight: bold;');
             showRestrictedAccessUI('No workspace selected.');
             detachAllListeners();
             return;
         }
-        
+
         // --- Key Optimization ---
         // Only re-run the expensive logic if the user's selected workspace has actually changed.
         if (selectedWorkspaceId !== lastKnownWorkspaceId) {
@@ -403,7 +403,7 @@ function attachRealtimeListeners(userId) {
         console.error('%c❌ Error listening to user document.', 'color: #dc3545; font-weight: bold;', error);
         showRestrictedAccessUI('An error occurred while loading your profile.');
     });
-    
+
     console.groupEnd();
 }
 
@@ -412,9 +412,9 @@ function attachDynamicListeners(stockType) {
     if (activeListeners.pendingMoves) activeListeners.pendingMoves();
     if (activeListeners.outgoingMoves) activeListeners.outgoingMoves(); // Add this
     if (activeListeners.backorders) activeListeners.backorders();
-    
+
     if (!currentInventoryId) return;
-    
+
     // --- Listener 1: INCOMING Moves (Requests YOU need to approve) ---
     // This query remains the same.
     const pendingMovesQuery = query(
@@ -427,7 +427,7 @@ function attachDynamicListeners(stockType) {
         refreshNotificationsUI(); // Helper function to refresh UI
         updateNotificationBadge();
     });
-    
+
     // --- ✅ Listener 2: OUTGOING Moves (Status of requests YOU sent) ---
     // This is the new query you need to add.
     const outgoingMovesQuery = query(
@@ -439,8 +439,8 @@ function attachDynamicListeners(stockType) {
         console.log(`🛫 Outgoing moves from ${stockType.toUpperCase()} updated:`, outgoingMoves);
         refreshNotificationsUI(); // Also refresh UI on this update
     });
-    
-    
+
+
     // --- Listener 3: Backorders ---
     // This query remains the same.
     const backordersQuery = query(
@@ -452,7 +452,7 @@ function attachDynamicListeners(stockType) {
         console.log(`📦 Backorders from ${stockType.toUpperCase()} updated:`, backorders);
         updateBackordersBadge();
     });
-    
+
     // Helper to avoid code duplication
     function refreshNotificationsUI() {
         const notificationsList = document.getElementById('notifications-list-container');
@@ -461,20 +461,20 @@ function attachDynamicListeners(stockType) {
             reattachNotificationListeners();
         }
     }
-    
+
     // --- Badge Update Functions ---
     function updateNotificationBadge() {
         if (notificationBadge) {
             const actionableMovesCount = pendingMoves.filter(move =>
                 move.status === 'pending' || move.status === 'partial'
             ).length;
-            
+
             // Use the new count to update the badge
             notificationBadge.textContent = actionableMovesCount;
             notificationBadge.classList.toggle('hidden', actionableMovesCount === 0);
         }
     }
-    
+
     function updateBackordersBadge() {
         if (backordersBadge) {
             backordersBadge.textContent = backorders.length;
@@ -488,9 +488,9 @@ function showRestrictedAccessUI(message) {
         restrictedOverlay.querySelector('.message').textContent = message || 'Restricted Access';
         restrictedOverlay.classList.remove('hidden');
     }
-    
+
     document.querySelector('.list-view-container')?.classList.add('hidden');
-    
+
     const okBtn = document.getElementById('restricted-ok-btn');
     if (okBtn) {
         okBtn.onclick = () => {
@@ -503,19 +503,19 @@ async function fetchMemberProfiles(uids) {
     if (!uids || uids.length === 0) {
         return []; // Return empty if no UIDs are provided
     }
-    
+
     try {
         // Create an array of promises, where each promise fetches one user document
         const userPromises = uids.map(uid => getDoc(doc(db, `users/${uid}`)));
-        
+
         // Wait for all promises to resolve
         const userDocs = await Promise.all(userPromises);
-        
+
         // Filter out any users that might not exist and format the data
         const validUsers = userDocs
             .filter(d => d.exists())
             .map(d => ({ uid: d.id, ...d.data() }));
-        
+
         console.log("[DEBUG] Fetched member profiles:", validUsers);
         return validUsers;
     } catch (error) {
@@ -539,16 +539,16 @@ function updateUserPermissions(projectData, userId) {
         console.warn("[Permissions] Cannot set permissions. Missing project data or user ID.");
         return;
     }
-    
+
     const members = projectData.members || [];
     const userMemberInfo = members.find(member => member.uid === userId);
-    
+
     currentUserRole = userMemberInfo ? userMemberInfo.role : null;
-    
+
     const isMemberWithEditPermission = userMemberInfo && (userMemberInfo.role === "Project Admin" || userMemberInfo.role === "Project Owner Admin" || userMemberInfo.role === "Editor");
-    
+
     userCanEditProject = isMemberWithEditPermission || isSuperAdmin || isAdminUser;
-    
+
     console.log(`[Permissions] User: ${userId}, Role: ${currentUserRole}, Can Edit Project: ${userCanEditProject}`);
 }
 
@@ -576,16 +576,16 @@ function initializeListView() {
     assigneeDropdownTemplate = document.getElementById('assignee-dropdown-template');
     filterBtn = document.getElementById('filter-btn');
     sortBtn = document.getElementById('sort-btn');
-    
+
     if (!mainContainer || !productListBody) {
         console.error("List view could not initialize: Essential containers not found.");
-        return () => {};
+        return () => { };
     }
-    
+
     // Attach tab switching logic
     inventoryTabs = document.querySelectorAll('.inventory-tabs .tab-item');
     setupEventListeners();
-    
+
 }
 
 export function getHeaderRight() {
@@ -597,19 +597,19 @@ export function getHeaderRight() {
 
 function distributeTasksToSections(tasks) {
     console.log("--- Running Task Distribution ---");
-    
+
     const availableSectionIds = project.sections.map(s => s.id);
     console.log("Available section IDs on client:", availableSectionIds);
-    
+
     // Reset tasks on all sections
     project.sections.forEach(section => section.tasks = []);
-    
+
     let unmatchedTasks = 0;
     for (const task of tasks) {
         console.log(`Processing Task "${task.name || 'New Task'}" (ID: ${task.id}). Looking for sectionId: "${task.sectionId}"`);
-        
+
         const section = project.sections.find(s => s.id === task.sectionId);
-        
+
         if (section) {
             console.log(`   ✅ SUCCESS: Matched with section "${section.title}" (ID: "${section.id}")`);
             section.tasks.push(task);
@@ -618,12 +618,12 @@ function distributeTasksToSections(tasks) {
             unmatchedTasks++;
         }
     }
-    
+
     // ✅ NOW sort the tasks inside each section by their `order`
     project.sections.forEach(section => {
         section.tasks.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     });
-    
+
     console.log(`--- Distribution Complete. ${unmatchedTasks} tasks could not be matched. ---`);
 }
 
@@ -631,19 +631,19 @@ function distributeTasksToSections(tasks) {
 export function init(params) {
     console.log("Initializing List View Module...", params);
     let popstateListener = null; // Keep track of the listener
-    
+
     // Initial view setup
     initializeListView(params);
-    
+
     onAuthStateChanged(auth, (user) => {
         if (user) {
             console.log(`User ${user.uid} signed in.`);
             currentUserId = user.uid;
-            
+
             const urlParams = new URLSearchParams(window.location.search);
             const urlInventoryId = urlParams.get('id');
             const urlStockType = urlParams.get('tab');
-            
+
             if (window.location.pathname === '/inventory' && urlInventoryId && urlStockType) {
                 // ... (existing URL logic for id and tab)
                 attachInventoryListeners(urlInventoryId, user.uid).then(() => {
@@ -654,7 +654,7 @@ export function init(params) {
                 attachRealtimeListeners(user.uid);
             }
             startBackorderFulfillmentWatcher();
-            
+
             // ✅ ADD POPSTATE LISTENER FOR BACK/FORWARD NAVIGATION
             popstateListener = (event) => {
                 console.log('Popstate event detected. Restoring state:', event.state);
@@ -666,7 +666,7 @@ export function init(params) {
                 }
             };
             window.addEventListener('popstate', popstateListener);
-            
+
         } else {
             console.log("User signed out. Detaching listeners.");
             detachAllListeners();
@@ -675,12 +675,12 @@ export function init(params) {
             render('us');
         }
     });
-    
+
     // Initial view setup
     initializeListView(params);
-    
-    
-    
+
+
+
     // Cleanup
     return function cleanup() {
         console.log("Cleaning up List View Module...");
@@ -694,11 +694,11 @@ export function init(params) {
         if (windowClickListener) window.removeEventListener('click', windowClickListener);
         if (filterBtnListener) filterBtn.removeEventListener('click', filterBtnListener);
         if (sortBtnListener) sortBtn.removeEventListener('click', sortBtnListener);
-        
+
         if (sortableSections) sortableSections.destroy();
         sortableTasks.forEach(st => st.destroy());
         sortableTasks.length = 0;
-        
+
         if (popstateListener) {
             window.removeEventListener('popstate', popstateListener);
         }
@@ -709,45 +709,45 @@ export function init(params) {
 async function handleProductListClick(e) {
     const cell = e.target.closest('[data-control]');
     if (!cell) return; // Exit if the click wasn't on a controllable cell
-    
+
     const row = e.target.closest('.product-row-wrapper');
     if (!row) return; // Exit if we can't find the product row
-    
+
     const productId = row.dataset.productId;
     const controlType = cell.dataset.control;
     const stockType = currentStockType; // Assuming 'currentStockType' is globally available
-    
+
     // Find the product data from your local list
     const productList = stockType === 'ph' ? dataPhStocks : dataUsStocks;
     const product = productList.find(p => p.id === productId);
-    
+
     if (!product) {
         console.error("Could not find product data for ID:", productId);
         return;
     }
-    
+
     // Now, handle the specific dropdown logic
     switch (controlType) {
         case 'supplierProject': {
             if (!canUserEditProduct) return;
-            
+
             const userSnap = await getDoc(doc(db, 'users', auth.currentUser.uid));
             const selectedWorkspace = userSnap.data()?.selectedWorkspace;
             if (!selectedWorkspace) return;
-            
+
             const projectsQuery = query(
                 collectionGroup(db, 'projects'),
                 where('workspaceId', '==', selectedWorkspace),
                 where('memberUIDs', 'array-contains', auth.currentUser.uid)
             );
-            
+
             const querySnap = await getDocs(projectsQuery);
             const options = querySnap.docs.map(doc => ({
                 id: doc.id,
                 name: doc.data().title || 'Unnamed Project',
                 ref: doc.ref
             }));
-            
+
             createAdvancedDropdown(cell, {
                 options,
                 itemRenderer: (opt) => `<span>${opt.name}</span>`,
@@ -767,15 +767,15 @@ async function handleProductListClick(e) {
             });
             break;
         }
-        
+
         case 'warehouseLocation': {
             if (!canUserEditProduct) return;
-            
+
             const stockOptions = [
                 { name: 'PH Stocks', path: 'PH-Stocks-meta' },
                 { name: 'US Stocks', path: 'US-Stocks-meta' }
             ];
-            
+
             createAdvancedDropdown(cell, {
                 options: stockOptions,
                 itemRenderer: (opt) => `<span>${opt.name}</span>`,
@@ -783,10 +783,10 @@ async function handleProductListClick(e) {
                     // Logic to move the document in Firestore
                     const currentPath = `${stockType === 'us' ? 'US-Stocks-meta' : 'PH-Stocks-meta'}`;
                     if (currentPath === selectedOption.path) return; // No change needed
-                    
+
                     const currentRef = doc(db, `InventoryWorkspace/${currentInventoryId}/${currentPath}`, product.id);
                     const targetRef = doc(db, `InventoryWorkspace/${currentInventoryId}/${selectedOption.path}`, product.id);
-                    
+
                     try {
                         const docSnap = await getDoc(currentRef);
                         if (docSnap.exists()) {
@@ -814,28 +814,28 @@ async function handleProductListClick(e) {
 async function uploadProductImage(file, productId) {
     const imageWrapper = document.querySelector(`.product-row-wrapper[data-product-id="${productId}"] .product-image-wrapper`);
     if (!imageWrapper) return;
-    
+
     // 1. Show a loading spinner in the cell for immediate feedback
     imageWrapper.innerHTML = `<div class="w-full h-full flex items-center justify-center"><div class="loading-spinner"></div></div>`;
-    
+
     try {
         // 2. Define the path in Firebase Storage
         const storageRef = ref(storage, `products/${productId}/${file.name}`);
-        
+
         // 3. Upload the file
         await uploadBytes(storageRef, file);
-        
+
         // 4. Get the public download URL
         const imageUrl = await getDownloadURL(storageRef);
-        
+
         // 5. Update the product document in Firestore
         const stockTypeCollection = currentStockType === 'us' ? 'US-Stocks-meta' : 'PH-Stocks-meta';
         const productRef = doc(db, `InventoryWorkspace/${currentInventoryId}/${stockTypeCollection}`, productId);
         await updateDoc(productRef, { imageUrl: imageUrl });
-        
+
         // 6. Update the UI with the new image (the list will re-render on the next data update)
         console.log('✅ Image uploaded and product updated successfully!');
-        
+
     } catch (error) {
         console.error("❌ Error uploading image:", error);
         // Revert UI to the placeholder on error
@@ -845,7 +845,7 @@ async function uploadProductImage(file, productId) {
 
 function toggleLoadingIndicator(show) {
     if (!productListBody) return;
-    
+
     if (show) {
         productListBody.innerHTML = `
             <div class="loading-overlay-container">
@@ -860,17 +860,17 @@ function toggleLoadingIndicator(show) {
 
 async function setupEventListeners() {
     backordersBtn.addEventListener('click', openBackordersModal);
-    
+
     notificationBtn.addEventListener('click', openNotificationsModal);
-    
+
     moveProductsBtn.addEventListener('click', openMoveProductsModal);
-    
+
     closeOverlay.addEventListener('click', () => {
         imageOverlay.classList.add('hidden');
         // ✅ Remove image parameter from URL when closing
         updateUrlForImageView(null);
     });
-    
+
     imageOverlay.addEventListener('click', (e) => {
         if (e.target === imageOverlay) {
             imageOverlay.classList.add('hidden');
@@ -878,59 +878,59 @@ async function setupEventListeners() {
             updateUrlForImageView(null);
         }
     });
-    
+
     inventoryTabs.forEach((tab, index) => {
         tab.addEventListener('click', () => {
             // Do nothing if the clicked tab is already active
             if (tab.classList.contains('active')) {
                 return;
             }
-            
+
             // 1. Immediately update the active tab UI and show the spinner
             inventoryTabs.forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
             toggleLoadingIndicator(true);
-            
+
             // 2. Defer the heavy data loading until the next browser paint cycle.
             // This guarantees the spinner will be visible before the new list renders.
             setTimeout(() => {
                 currentStockType = index === 0 ? 'ph' : 'us';
                 updateUrlWithQueryParams(currentInventoryId, currentStockType);
-                
+
                 // Update subtitle
                 const subtitle = document.getElementById('inventory-subtitle');
                 subtitle.textContent = currentStockType.toUpperCase() + ' Stocks';
-                
+
                 // Render relevant stock data (this will replace the spinner)
                 attachDynamicListeners(currentStockType);
                 render(currentStockType);
             }, 0); // Using 0ms pushes this task to the end of the execution queue.
         });
     });
-    
+
     document.addEventListener('click', (e) => {
         const optionsButton = e.target.closest('.section-options-btn');
-        
+
         if (!canUserEditProduct) {
             console.warn("[Permissions] Blocked dropdown menu action. User cannot edit project.");
             closeOpenMenu();
             return;
         }
-        
+
         if (e.target.closest('.options-dropdown-menu')) {
             const dropdownItem = e.target.closest('.dropdown-item');
             if (dropdownItem) {
                 const { action, sectionId } = dropdownItem.dataset;
                 console.log(`Action: ${action}, Section ID: ${sectionId || 'N/A'}`);
-                
-                
+
+
                 // NEW: Handle the specific actions from the menu
                 switch (action) {
                     case 'addTask':
                         const section = project.sections.find(s => s.id === sectionId);
                         if (section) addNewTask(section);
                         break;
-                        
+
                     case 'renameSection':
                         const sectionTitleEl = document.querySelector(`.section-title-wrapper[data-section-id="${sectionId}"] .section-title`);
                         if (sectionTitleEl) {
@@ -938,25 +938,25 @@ async function setupEventListeners() {
                             document.execCommand('selectAll', false, null);
                         }
                         break;
-                        
+
                     case 'deleteSection':
                         // This calls your new function
                         deleteSectionInFirebase(sectionId);
                         break;
                 }
-                
-                
+
+
                 closeOpenMenu();
             }
             return; // Do nothing more if click is inside a menu
         }
-        
+
         // If we clicked an options button...
         if (optionsButton) {
             // Check if its menu is already open. If so, this click should close it.
             const wrapper = optionsButton.parentElement;
             const existingMenu = wrapper.querySelector('.options-dropdown-menu');
-            
+
             if (existingMenu) {
                 closeOpenMenu(); // It's open, so close it.
             } else {
@@ -967,10 +967,10 @@ async function setupEventListeners() {
             closeOpenMenu();
         }
     });
-    
+
     bodyClickListener = async (e) => {
         console.log('%cbodyClickListener Triggered', 'color: #888;', 'Clicked on:', e.target);
-        
+
         // --- 0. Guard clause: Prevent other clicks if a temp task is still blank ---
         const activeTempTask = document.querySelector('.task-row-wrapper[data-task-id^="temp_"] .task-name');
         if (activeTempTask && activeTempTask.innerText.trim() === '' && !e.target.closest('.task-name')) {
@@ -978,7 +978,7 @@ async function setupEventListeners() {
             activeTempTask.focus();
             return;
         }
-        
+
         // --- 1. Section Toggle ---
         const sectionToggle = e.target.closest('.section-toggle');
         if (sectionToggle) {
@@ -992,11 +992,11 @@ async function setupEventListeners() {
             }
             return;
         }
-        
+
         // --- 2. "Add Task" Button inside section ---
         const addTaskBtn = e.target.closest('.add-task-btn');
         if (addTaskBtn) {
-            
+
             if (!userCanEditProject) {
                 console.warn("[Permissions] Blocked 'Add Task'. User cannot edit project.");
                 return;
@@ -1009,17 +1009,17 @@ async function setupEventListeners() {
             }
             return;
         }
-        
+
         // --- 2.5: Add task row clicked ---
         const addTaskRow = e.target.closest('.add-task-row-wrapper');
         if (addTaskRow) {
-            
+
             // *** PERMISSION CHECK ***
             if (!userCanEditProject) {
                 console.warn("[Permissions] Blocked 'Add Task Row'. User cannot edit project.");
                 return;
             }
-            
+
             console.log('%cACTION: Add Task Row clicked', 'color: blue; font-weight: bold;');
             const sectionId = addTaskRow.dataset.sectionId;
             const section = project.sections.find(s => s.id == sectionId);
@@ -1028,20 +1028,20 @@ async function setupEventListeners() {
             }
             return;
         }
-        
+
         const taskRow = e.target.closest('.task-row-wrapper');
         if (!taskRow) return; // Exit if the click was not on a task row
-        
+
         const taskId = taskRow.dataset.taskId;
         const sectionId = taskRow.dataset.sectionId;
         const { task } = findTaskAndSection(taskId);
-        
+
         // Find the specific control element that was clicked (e.g., the due date button, task name, etc.)
         const controlElement = e.target.closest('[data-control]');
         if (!controlElement) return; // Exit if not a specific interactive element
-        
+
         const controlType = controlElement.dataset.control;
-        
+
         if (taskId && taskId.startsWith('temp_')) {
             const control = e.target.closest('[data-control]');
             if (control && control.dataset.control !== 'open-sidebar') {
@@ -1059,14 +1059,14 @@ async function setupEventListeners() {
         if (taskId.startsWith('temp_') && controlType !== 'open-sidebar') {
             return;
         }
-        
+
         switch (controlType) {
             case 'open-sidebar':
             case 'comment':
                 displaySideBarTasks(taskId); // Assumes this function is defined elsewhere
                 headerRight.classList.add('hide'); // Your existing UI logic
                 break;
-                
+
             case 'check':
                 e.stopPropagation();
                 if (!canUserEditProduct(task)) {
@@ -1075,7 +1075,7 @@ async function setupEventListeners() {
                 }
                 handleTaskCompletion(task, taskRow); // Your existing function
                 break;
-                
+
             case 'due-date':
                 if (!canUserEditProduct(task)) {
                     console.warn(`[Permissions] Blocked 'move-task' action. User cannot edit project.`);
@@ -1083,7 +1083,7 @@ async function setupEventListeners() {
                 }
                 showDatePicker(controlElement, taskId, sectionId);
                 break;
-                
+
             case 'assignee':
                 if (!canUserEditProduct(task)) {
                     console.warn(`[Permissions] Blocked 'move-task' action. User cannot edit project.`);
@@ -1091,7 +1091,7 @@ async function setupEventListeners() {
                 }
                 showAssigneeDropdown(controlElement, taskId, sectionId);
                 break;
-                
+
             case 'priority':
             case 'status': {
                 if (!canUserEditProduct(task)) {
@@ -1107,19 +1107,19 @@ async function setupEventListeners() {
                     console.warn(`[Permissions] Blocked 'warehouseLocation' change. User cannot edit project.`);
                     return;
                 }
-                
+
                 const stockOptions = [
                     { name: 'PH Stocks', path: 'PH-Stocks-meta' },
                     { name: 'US Stocks', path: 'US-Stocks-meta' }
                 ];
-                
+
                 createAdvancedDropdown(controlElement, {
                     options: stockOptions,
                     itemRenderer: (opt) => `<span>${opt.name}</span>`,
                     onSelect: async (selectedOption) => {
                         const currentRef = doc(db, `InventoryWorkspace/${currentInventoryId}/${currentStockType === 'us' ? 'US-Stocks-meta' : 'PH-Stocks-meta'}`, task.id);
                         const targetRef = doc(db, `InventoryWorkspace/${currentInventoryId}/${selectedOption.path}`, task.id);
-                        
+
                         try {
                             const docSnap = await getDoc(currentRef);
                             if (docSnap.exists()) {
@@ -1141,20 +1141,20 @@ async function setupEventListeners() {
                     console.warn(`[Permissions] Blocked 'supplierProject' change. User cannot edit project.`);
                     return;
                 }
-                
+
                 const userSnap = await getDoc(doc(db, 'users', auth.currentUser.uid));
                 const selectedWorkspace = userSnap.data()?.selectedWorkspace;
                 if (!selectedWorkspace) return;
-                
+
                 const projectsQuery = query(
                     collectionGroup(db, 'projects'),
                     where('workspaceId', '==', selectedWorkspace),
                     where('memberUIDs', 'array-contains', auth.currentUser.uid)
                 );
-                
+
                 const querySnap = await getDocs(projectsQuery);
                 const options = [];
-                
+
                 querySnap.forEach(doc => {
                     const data = doc.data();
                     options.push({
@@ -1163,7 +1163,7 @@ async function setupEventListeners() {
                         ref: doc.ref
                     });
                 });
-                
+
                 createAdvancedDropdown(controlElement, {
                     options,
                     itemRenderer: (opt) => `<span>${opt.name}</span>`,
@@ -1183,7 +1183,7 @@ async function setupEventListeners() {
                     }
                 });
                 break;
-                
+
             case 'productImage':
                 const hasImage = !!product.imageUrl;
                 cell.innerHTML = `
@@ -1195,10 +1195,10 @@ async function setupEventListeners() {
             <input type="file" accept="image/*" class="hidden image-file-input">
         </div>
     `;
-                
+
                 const wrapper = cell.querySelector('.product-image-wrapper');
                 const fileInput = wrapper.querySelector('.image-file-input');
-                
+
                 wrapper.addEventListener('click', (e) => {
                     e.stopPropagation();
                     if (hasImage) {
@@ -1208,24 +1208,24 @@ async function setupEventListeners() {
                         fileInput.click();
                     }
                 });
-                
+
                 fileInput.addEventListener('change', (e) => {
                     const file = e.target.files[0];
                     if (file) {
                         uploadProductImage(file, product.id);
                     }
                 });
-                
+
                 // --- Drag and Drop ---
                 wrapper.addEventListener('dragover', (e) => {
                     e.preventDefault();
                     wrapper.classList.add('drag-hover');
                 });
-                
+
                 wrapper.addEventListener('dragleave', () => {
                     wrapper.classList.remove('drag-hover');
                 });
-                
+
                 wrapper.addEventListener('drop', (e) => {
                     e.preventDefault();
                     wrapper.classList.remove('drag-hover');
@@ -1234,9 +1234,9 @@ async function setupEventListeners() {
                         uploadProductImage(file, product.id);
                     }
                 });
-                
+
                 break;
-                
+
             case 'custom-select': {
                 if (!canUserEditProduct(task)) {
                     console.warn(`[Permissions] Blocked 'move-task' action. User cannot edit project.`);
@@ -1244,7 +1244,7 @@ async function setupEventListeners() {
                 }
                 const columnId = controlElement.dataset.columnId;
                 const column = project.customColumns.find(c => String(c.id) === columnId);
-                
+
                 if (column && column.options) {
                     createAdvancedDropdown(controlElement, {
                         options: column.options,
@@ -1260,7 +1260,7 @@ async function setupEventListeners() {
                 }
                 break;
             }
-            
+
             case 'move-task': {
                 if (!canUserEditProduct(task)) {
                     console.warn(`[Permissions] Blocked 'move-task' action. User cannot edit project.`);
@@ -1269,7 +1269,7 @@ async function setupEventListeners() {
                 // REFACTORED: Moving tasks also uses the universal advanced dropdown
                 const { section: currentSection } = findTaskAndSection(taskId);
                 const otherSections = project.sections.filter(s => s.id !== currentSection?.id);
-                
+
                 if (otherSections.length > 0) {
                     createAdvancedDropdown(controlElement, {
                         options: otherSections,
@@ -1286,17 +1286,17 @@ async function setupEventListeners() {
                 }
                 break;
             }
-            
+
             // --- These cases remain unchanged ---
             case 'like': {
                 const { task, section } = findTaskAndSection(taskId);
                 if (!task || !section || !currentUserId) return;
-                
+
                 const sectionRef = collection(currentProjectRef, 'sections');
                 const taskRef = doc(sectionRef, section.id, 'tasks', taskId);
-                
+
                 const liked = task.likedBy?.[currentUserId];
-                
+
                 updateDoc(taskRef, liked ? {
                     likedAmount: increment(-1),
                     [`likedBy.${currentUserId}`]: deleteField()
@@ -1317,18 +1317,18 @@ async function setupEventListeners() {
                 break;
             }
         }
-        
+
         console.log('No specific interactive element was clicked.');
     };
-    
+
     settingsBtnListener = () => {
         openInventoryModal(currentInventoryId);
     }
-    
+
     bodyFocusOutListener = (e) => {
         const focusedOutElement = e.target;
         console.log('%cbodyFocusOutListener Triggered', 'color: #888;', 'Element that lost focus:', focusedOutElement);
-        
+
         // --- Section Title Save ---
         if (focusedOutElement.matches('.section-title')) {
             if (!userCanEditProject) {
@@ -1338,37 +1338,37 @@ async function setupEventListeners() {
             }
             const sectionEl = focusedOutElement.closest('.section-title-wrapper');
             if (!sectionEl) return;
-            
+
             const sectionId = sectionEl.dataset.sectionId;
             const newTitle = focusedOutElement.innerText.trim();
             const section = project.sections.find(s => s.id === sectionId);
-            
+
             if (!section) return;
-            
+
             if (section.title !== newTitle) {
                 console.log(`Updated section title: ${newTitle}`);
                 updateSectionInFirebase(sectionId, { title: newTitle });
             }
             return;
         }
-        
+
         // --- Task Name Save ---
         if (focusedOutElement.matches('.task-name')) {
             const taskRow = focusedOutElement.closest('.task-row-wrapper');
             if (!taskRow) return;
-            
+
             if (!userCanEditProject) {
                 console.warn("[Permissions] Blocked task rename. User role is insufficient.");
                 render('us'); // Re-render to discard change.
                 return;
             }
-            
+
             const taskId = taskRow.dataset.taskId;
             const { task, section } = findTaskAndSection(taskId);
             if (!task || !section) return;
-            
+
             const newName = focusedOutElement.innerText.trim();
-            
+
             if (task.isNew) {
                 if (newName) {
                     section.tasks = section.tasks.filter(t => t.id !== taskId);
@@ -1385,24 +1385,24 @@ async function setupEventListeners() {
             }
             return;
         }
-        
+
         // --- Custom Field Save ---
         const customFieldCell = focusedOutElement.closest('[data-control="custom"]');
         if (customFieldCell) {
-            
+
             const taskRow = customFieldCell.closest('.task-row-wrapper');
             const taskId = taskRow?.dataset.taskId;
             const columnId = customFieldCell.dataset.columnId;
-            
+
             const { task, section } = findTaskAndSection(taskId);
             const column = project.customColumns.find(c => c.id == columnId);
-            
+
             if (!task || !section || !column) return;
-            
+
             let rawValue = customFieldCell.innerText.trim();
             const oldValue = task.customFields?.[columnId] ?? null;
             let newValue = rawValue;
-            
+
             if (column.type === 'Costing') {
                 const numeric = rawValue.replace(/[^0-9.-]+/g, '');
                 if (/^-?\d+(\.\d+)?$/.test(numeric)) {
@@ -1419,7 +1419,7 @@ async function setupEventListeners() {
                     return;
                 }
             }
-            
+
             if (newValue !== oldValue) {
                 console.log(`Updating customFields.${columnId} →`, newValue);
                 updateTask(task.id, section.id, {
@@ -1430,14 +1430,14 @@ async function setupEventListeners() {
             }
         }
     };
-    
+
     addProductHeaderBtnListener = () => {
         // This function is now passed to the modal
         const onModalOpen = () => updateUrlForAction('new');
-        
+
         // This function will be called by the modal when it closes
         const onModalClose = () => updateUrlForAction(null);
-        
+
         openAddProductModal(
             currentInventoryId,
             currentStockType,
@@ -1445,13 +1445,13 @@ async function setupEventListeners() {
             onModalClose
         );
     };
-    
+
     filterBtnListener = () => {
         // DEBUG: Confirm the listener is firing
         console.log("Filter button clicked. Opening section filter panel...");
         openSectionFilterPanel();
     }
-    
+
     sortBtnListener = () => {
         if (activeSortState === 'default') {
             activeSortState = 'asc'; // asc = Oldest first
@@ -1462,7 +1462,7 @@ async function setupEventListeners() {
         }
         render('us');
     };
-    
+
     productListBody.addEventListener('click', handleProductListClick);
     settingsBtn.addEventListener('click', settingsBtnListener);
     productListBody.addEventListener('focusout', bodyFocusOutListener);
@@ -1470,13 +1470,13 @@ async function setupEventListeners() {
     window.addEventListener('click', setupGlobalClickListeners);
     if (filterBtn) filterBtn.addEventListener('click', filterBtnListener);
     if (sortBtn) sortBtn.addEventListener('click', sortBtnListener);
-    
+
     window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' || e.key === 'Esc') {
             closeFloatingPanels();
         }
     });
-    
+
 }
 
 /**
@@ -1498,13 +1498,13 @@ function openBackordersModal() {
             </div>
         </div>
     `;
-    
+
     document.body.insertAdjacentHTML('beforeend', modalHTML);
-    
+
     const overlay = document.getElementById('backorders-overlay');
     overlay.querySelector('.close-modal-btn').addEventListener('click', () => overlay.remove());
     overlay.addEventListener('click', e => (e.target === overlay) && overlay.remove());
-    
+
     // Add event listeners for fulfill buttons
     overlay.querySelectorAll('[data-action="fulfill"]').forEach(btn =>
         btn.addEventListener('click', () => handleFulfillBackorder(btn.dataset.backorderId))
@@ -1524,13 +1524,13 @@ function generateBackordersListHTML() {
             </div>
         `;
     }
-    
+
     return backorders.map(bo => {
         const productsHTML = bo.products.map(p => `<li>${p.name} (SKU: ${p.sku})</li>`).join('');
         const quantitiesHTML = Object.entries(bo.quantities)
             .map(([size, count]) => `<li><strong>${size === 'countStocks' ? 'Stocks' : size.toUpperCase()}:</strong> ${count}</li>`)
             .join('');
-        
+
         return `
             <div class="notification-item" id="backorder-${bo.id}">
                 <div class="notification-item-header">
@@ -1555,17 +1555,17 @@ function generateBackordersListHTML() {
 async function handleFulfillBackorder(backorderId) {
     const backorder = backorders.find(bo => bo.id === backorderId);
     if (!backorder) return;
-    
+
     const itemEl = document.getElementById(`backorder-${backorderId}`);
     itemEl.querySelector('button').disabled = true;
-    
+
     const sourceCol = backorder.from === 'ph' ? 'PH-Stocks-meta' : 'US-Stocks-meta';
     const targetCol = backorder.to === 'ph' ? 'PH-Stocks-meta' : 'US-Stocks-meta';
     const backorderRef = doc(db, `InventoryWorkspace/${currentInventoryId}/Backorders`, backorderId);
-    
+
     try {
         let stockWasMoved = false;
-        
+
         await runTransaction(db, async (transaction) => {
             console.log(`🚀 Starting transaction for backorder ID: ${backorderId}`);
             const backorderDoc = await transaction.get(backorderRef);
@@ -1575,68 +1575,72 @@ async function handleFulfillBackorder(backorderId) {
             }
             const currentBackorderData = backorderDoc.data();
             console.log("📦 Current backorder data:", currentBackorderData);
-            
+
             const refsToRead = currentBackorderData.products.flatMap(p => [
                 doc(db, `InventoryWorkspace/${currentInventoryId}/${sourceCol}`, p.productId),
                 doc(db, `InventoryWorkspace/${currentInventoryId}/${targetCol}`, p.productId)
             ]);
             const allDocs = await Promise.all(refsToRead.map(ref => transaction.get(ref)));
             const docsMap = new Map(allDocs.map(snapshot => [snapshot.ref.path, snapshot]));
-            
+
             const remainingQuantities = { ...currentBackorderData.quantities };
-            
+
             for (const field in currentBackorderData.quantities) {
                 let amountToFulfill = currentBackorderData.quantities[field];
                 if (amountToFulfill <= 0) continue;
                 console.log(`🧮 Fulfilling field "${field}" for amount: ${amountToFulfill}`);
-                
+
                 for (const productInfo of currentBackorderData.products) {
                     if (amountToFulfill <= 0) break;
-                    
+
                     const sourceRef = doc(db, `InventoryWorkspace/${currentInventoryId}/${sourceCol}`, productInfo.productId);
                     const sourceDoc = docsMap.get(sourceRef.path);
                     const rawStock = sourceDoc?.exists() ? sourceDoc.data()[field] : 0;
-                    
+
                     let currentStock = typeof rawStock === 'string' ? parseFloat(rawStock) : rawStock;
                     currentStock = isNaN(currentStock) ? 0 : currentStock;
-                    
+
                     console.log(`🟡 FIELD: ${field}, Product: ${productInfo.productId}`);
                     console.log(`   🔢 Raw stock:`, rawStock, `| Parsed:`, currentStock);
-                    
+
                     if (currentStock > 0) {
                         const deduction = Math.min(amountToFulfill, currentStock);
                         stockWasMoved = true;
-                        
+
                         console.log(`➡️ Deducting ${deduction} from ${sourceCol}/${productInfo.productId} for field ${field}`);
-                        
+
                         if (sourceDoc.exists() && sourceDoc.data()[field] === undefined) {
                             console.warn(`⚠️ Field "${field}" is undefined in source. Setting to 0.`);
                             transaction.update(sourceRef, {
-                                [field]: 0 });
+                                [field]: 0
+                            });
                         } else if (typeof rawStock === 'string') {
                             console.warn(`⚠️ Field "${field}" in source is a string. Forcing number correction.`);
                             transaction.update(sourceRef, {
-                                [field]: currentStock });
+                                [field]: currentStock
+                            });
                         }
-                        
+
                         transaction.update(sourceRef, {
-                            [field]: increment(-deduction) });
-                        
+                            [field]: increment(-deduction)
+                        });
+
                         const targetRef = doc(db, `InventoryWorkspace/${currentInventoryId}/${targetCol}`, productInfo.productId);
                         const targetDoc = docsMap.get(targetRef.path);
-                        
+
                         if (targetDoc && targetDoc.exists()) {
                             console.log(`✅ Target doc exists. Incrementing ${field} by ${deduction} in ${targetCol}/${productInfo.productId}`);
                             transaction.update(targetRef, {
-                                [field]: increment(deduction) });
+                                [field]: increment(deduction)
+                            });
                         } else {
                             console.log(`🆕 Target doc missing. Creating with new data.`);
                             const originalProductData = (backorder.from === 'ph' ? dataPhStocks : dataUsStocks).find(p => p.id === productInfo.productId);
                             const newProductData = { ...originalProductData };
-                            
+
                             const existingNewStock = newProductData[field] || 0;
                             newProductData[field] = existingNewStock + deduction;
-                            
+
                             transaction.set(targetRef, newProductData);
                             docsMap.set(targetRef.path, {
                                 exists: () => true,
@@ -1644,17 +1648,17 @@ async function handleFulfillBackorder(backorderId) {
                             });
                             console.log(`✅ New target doc created with field "${field}":`, newProductData[field]);
                         }
-                        
+
                         amountToFulfill -= deduction;
                         console.log(`📉 Remaining to fulfill for field "${field}":`, amountToFulfill);
                     } else {
                         console.log(`🚫 No stock available for field "${field}" in ${sourceCol}/${productInfo.productId}`);
                     }
                 }
-                
+
                 remainingQuantities[field] = amountToFulfill;
             }
-            
+
             const totalRemaining = Object.values(remainingQuantities).reduce((a, b) => a + b, 0);
             if (totalRemaining <= 0) {
                 console.log(`✅ All quantities fulfilled. Deleting backorder: ${backorderId}`);
@@ -1662,7 +1666,7 @@ async function handleFulfillBackorder(backorderId) {
                 if (originalRequestId) {
                     // Create a reference to the original document in PendingMoves
                     const originalMoveRef = doc(db, `InventoryWorkspace/${currentInventoryId}/PendingMoves`, originalRequestId);
-                    
+
                     // Update its status to 'completed' within the same transaction
                     transaction.update(originalMoveRef, { status: 'completed' });
                     console.log(`🎉 Marking original move request ${originalRequestId} as completed.`);
@@ -1673,13 +1677,13 @@ async function handleFulfillBackorder(backorderId) {
                 transaction.update(backorderRef, { quantities: remainingQuantities });
             }
         });
-        
+
         if (stockWasMoved) {
             alert("✅ Backorder fulfilled with available stock!");
         } else {
             alert("⚠️ No stock available to fulfill this backorder. The request remains open.");
         }
-        
+
         document.getElementById('backorders-overlay')?.remove();
     } catch (error) {
         console.error("❌ Error fulfilling backorder:", error);
@@ -1693,14 +1697,14 @@ async function executeAutomaticBackorderFulfillment(backorder) {
         console.log('Watcher: Invalid backorder object provided. Skipping.');
         return;
     }
-    
+
     const backorderRef = doc(db, `InventoryWorkspace/${currentInventoryId}/Backorders`, backorder.id);
     const sourceCol = backorder.from === 'ph' ? 'PH-Stocks-meta' : 'US-Stocks-meta';
     const targetCol = backorder.to === 'ph' ? 'PH-Stocks-meta' : 'US-Stocks-meta';
     const backorderId = backorder.id;
     try {
         let stockWasMoved = false;
-        
+
         await runTransaction(db, async (transaction) => {
             console.log(`🚀 Starting transaction for backorder ID: ${backorderId}`);
             const backorderDoc = await transaction.get(backorderRef);
@@ -1710,68 +1714,72 @@ async function executeAutomaticBackorderFulfillment(backorder) {
             }
             const currentBackorderData = backorderDoc.data();
             console.log("📦 Current backorder data:", currentBackorderData);
-            
+
             const refsToRead = currentBackorderData.products.flatMap(p => [
                 doc(db, `InventoryWorkspace/${currentInventoryId}/${sourceCol}`, p.productId),
                 doc(db, `InventoryWorkspace/${currentInventoryId}/${targetCol}`, p.productId)
             ]);
             const allDocs = await Promise.all(refsToRead.map(ref => transaction.get(ref)));
             const docsMap = new Map(allDocs.map(snapshot => [snapshot.ref.path, snapshot]));
-            
+
             const remainingQuantities = { ...currentBackorderData.quantities };
-            
+
             for (const field in currentBackorderData.quantities) {
                 let amountToFulfill = currentBackorderData.quantities[field];
                 if (amountToFulfill <= 0) continue;
                 console.log(`🧮 Fulfilling field "${field}" for amount: ${amountToFulfill}`);
-                
+
                 for (const productInfo of currentBackorderData.products) {
                     if (amountToFulfill <= 0) break;
-                    
+
                     const sourceRef = doc(db, `InventoryWorkspace/${currentInventoryId}/${sourceCol}`, productInfo.productId);
                     const sourceDoc = docsMap.get(sourceRef.path);
                     const rawStock = sourceDoc?.exists() ? sourceDoc.data()[field] : 0;
-                    
+
                     let currentStock = typeof rawStock === 'string' ? parseFloat(rawStock) : rawStock;
                     currentStock = isNaN(currentStock) ? 0 : currentStock;
-                    
+
                     console.log(`🟡 FIELD: ${field}, Product: ${productInfo.productId}`);
                     console.log(`   🔢 Raw stock:`, rawStock, `| Parsed:`, currentStock);
-                    
+
                     if (currentStock > 0) {
                         const deduction = Math.min(amountToFulfill, currentStock);
                         stockWasMoved = true;
-                        
+
                         console.log(`➡️ Deducting ${deduction} from ${sourceCol}/${productInfo.productId} for field ${field}`);
-                        
+
                         if (sourceDoc.exists() && sourceDoc.data()[field] === undefined) {
                             console.warn(`⚠️ Field "${field}" is undefined in source. Setting to 0.`);
                             transaction.update(sourceRef, {
-                                [field]: 0 });
+                                [field]: 0
+                            });
                         } else if (typeof rawStock === 'string') {
                             console.warn(`⚠️ Field "${field}" in source is a string. Forcing number correction.`);
                             transaction.update(sourceRef, {
-                                [field]: currentStock });
+                                [field]: currentStock
+                            });
                         }
-                        
+
                         transaction.update(sourceRef, {
-                            [field]: increment(-deduction) });
-                        
+                            [field]: increment(-deduction)
+                        });
+
                         const targetRef = doc(db, `InventoryWorkspace/${currentInventoryId}/${targetCol}`, productInfo.productId);
                         const targetDoc = docsMap.get(targetRef.path);
-                        
+
                         if (targetDoc && targetDoc.exists()) {
                             console.log(`✅ Target doc exists. Incrementing ${field} by ${deduction} in ${targetCol}/${productInfo.productId}`);
                             transaction.update(targetRef, {
-                                [field]: increment(deduction) });
+                                [field]: increment(deduction)
+                            });
                         } else {
                             console.log(`🆕 Target doc missing. Creating with new data.`);
                             const originalProductData = (backorder.from === 'ph' ? dataPhStocks : dataUsStocks).find(p => p.id === productInfo.productId);
                             const newProductData = { ...originalProductData };
-                            
+
                             const existingNewStock = newProductData[field] || 0;
                             newProductData[field] = existingNewStock + deduction;
-                            
+
                             transaction.set(targetRef, newProductData);
                             docsMap.set(targetRef.path, {
                                 exists: () => true,
@@ -1779,17 +1787,17 @@ async function executeAutomaticBackorderFulfillment(backorder) {
                             });
                             console.log(`✅ New target doc created with field "${field}":`, newProductData[field]);
                         }
-                        
+
                         amountToFulfill -= deduction;
                         console.log(`📉 Remaining to fulfill for field "${field}":`, amountToFulfill);
                     } else {
                         console.log(`🚫 No stock available for field "${field}" in ${sourceCol}/${productInfo.productId}`);
                     }
                 }
-                
+
                 remainingQuantities[field] = amountToFulfill;
             }
-            
+
             const totalRemaining = Object.values(remainingQuantities).reduce((a, b) => a + b, 0);
             if (totalRemaining <= 0) {
                 console.log(`✅ Watcher: All quantities fulfilled. Deleting backorder: ${backorder.id}`);
@@ -1797,7 +1805,7 @@ async function executeAutomaticBackorderFulfillment(backorder) {
                 if (originalRequestId) {
                     // Create a reference to the original document in PendingMoves
                     const originalMoveRef = doc(db, `InventoryWorkspace/${currentInventoryId}/PendingMoves`, originalRequestId);
-                    
+
                     // Update its status to 'completed' as part of the transaction
                     transaction.update(originalMoveRef, { status: 'completed' });
                     console.log(`🎉 Watcher: Marking original move request ${originalRequestId} as completed.`);
@@ -1808,7 +1816,7 @@ async function executeAutomaticBackorderFulfillment(backorder) {
                 transaction.update(backorderRef, { quantities: remainingQuantities });
             }
         });
-        
+
         if (stockWasMoved) {
             console.log(`✅ Watcher: Backorder ${backorder.id} processed successfully.`);
         } else {
@@ -1824,36 +1832,36 @@ function startBackorderFulfillmentWatcher() {
         console.log('Backorder watcher is already running.');
         return;
     }
-    
+
     // Set a more reasonable interval (e.g., 20 seconds as originally commented)
     // to prevent Firestore contention. 300ms is far too aggressive.
     const WATCHER_INTERVAL_MS = 20000;
-    
+
     console.log(`🚀 Starting backorder fulfillment watcher (${WATCHER_INTERVAL_MS / 1000}-second interval)...`);
-    
+
     backorderWatcherInterval = setInterval(async () => {
         // 1. If the previous run is still busy, skip this cycle.
         if (isWatcherBusy) {
             console.log('Watchdog: Previous cycle still running. Skipping.');
             return;
         }
-        
+
         // 2. Only run if there are actual backorders detected by the live listener.
         if (backorders.length === 0) {
             // This is a quiet exit, no need to log every 20 seconds.
             return;
         }
-        
+
         // 3. Check for necessary context.
         if (!currentInventoryId || !currentUserId) {
             console.warn("Watchdog: Missing current inventory or user ID. Skipping run.");
             return;
         }
-        
-        
+
+
         console.log(`Watchdog: Found ${backorders.length} backorder(s) to check.`);
         isWatcherBusy = true; // Set the flag to true before starting work
-        
+
         try {
             // Process a copy of the array so modifications don't affect the loop.
             const backordersToCheck = [...backorders];
@@ -1865,7 +1873,7 @@ function startBackorderFulfillmentWatcher() {
         } finally {
             isWatcherBusy = false; // ✅ Always reset the flag when done, even if errors occur.
         }
-        
+
     }, WATCHER_INTERVAL_MS);
 }
 
@@ -1888,12 +1896,12 @@ function openMoveProductsModal() {
     const targetStockType = sourceStockType === 'ph' ? 'us' : 'ph';
     const sourceCollectionName = sourceStockType === 'ph' ? 'PH-Stocks-meta' : 'US-Stocks-meta';
     const targetCollectionName = targetStockType === 'ph' ? 'PH-Stocks-meta' : 'US-Stocks-meta';
-    
+
     const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
     const rawData = sourceStockType === 'ph' ? dataPhStocks : dataUsStocks;
     const sourceData = rawData.filter(doc => uuidRegex.test(doc.id));
-    
-    
+
+
     const modalHTML = `
         <div class="move-products-overlay visible" id="move-products-overlay">
             <div class="move-products-modal">
@@ -1929,41 +1937,41 @@ function openMoveProductsModal() {
             </div>
         </div>
     `;
-    
+
     document.body.insertAdjacentHTML('beforeend', modalHTML);
-    
+
     const overlay = document.getElementById('move-products-overlay');
     const searchInput = document.getElementById('product-search-input');
     const searchFieldSelect = document.getElementById('search-field-select');
     const productListContainer = document.getElementById('product-list-container');
     const footerContainer = document.getElementById('move-products-footer');
-    
+
     let selectedProductIds = new Set();
     // MODIFIED: Added 'countStocks' to the array to be processed everywhere.
     const stockAndSizeFields = ['countStocks', 's', 'm', 'l', 'xl', 'xxl', 'others'];
-    
+
     // --- Event Listeners ---
     searchInput.addEventListener('input', handleFilter);
     searchFieldSelect.addEventListener('change', handleFilter);
     overlay.querySelector('.close-modal-btn').addEventListener('click', () => overlay.remove());
     overlay.addEventListener('click', e => (e.target === overlay) && overlay.remove());
-    
+
     function handleFilter() {
         const searchTerm = searchInput.value.toLowerCase();
         const searchField = searchFieldSelect.value;
-        
+
         const filteredProducts = sourceData.filter(p => {
             if (!searchTerm) {
                 return true; // If search bar is empty, show all products
             }
-            
+
             switch (searchField) {
                 case 'all':
                     // Search across multiple relevant text fields
                     return (p.name && p.name.toLowerCase().includes(searchTerm)) ||
                         (p.productSku && String(p.productSku).toLowerCase().includes(searchTerm)) ||
                         (p.supplierName && p.supplierName.toLowerCase().includes(searchTerm));
-                    
+
                 case 's':
                 case 'm':
                 case 'l':
@@ -1973,22 +1981,22 @@ function openMoveProductsModal() {
                     // When filtering by size, the search term must be a number
                     const stock = parseInt(p[searchField], 10) || 0;
                     const searchNum = parseInt(searchTerm, 10);
-                    
+
                     // Only show results if the search term is a valid number
                     if (isNaN(searchNum)) {
                         return false;
                     }
                     return stock >= searchNum;
-                    
+
                 default:
                     // This handles specific text fields like 'name', 'productSku', etc.
                     return p[searchField] && String(p[searchField]).toLowerCase().includes(searchTerm);
             }
         });
-        
+
         renderProductList(filteredProducts);
     }
-    
+
     /**
      * MODIFIED: Added color-coding logic for stock values.
      */
@@ -1997,16 +2005,16 @@ function openMoveProductsModal() {
             productListContainer.innerHTML = `<p class="p-4 text-center text-gray-500">No products found for your filter.</p>`;
             return;
         }
-        
+
         const productRowsHTML = products.map(p => {
             const isChecked = selectedProductIds.has(p.id) ? 'checked' : '';
-            
+
             const stocksHTML = stockAndSizeFields.map(field => {
                 const isTotalStock = field === 'countStocks';
                 const fieldClass = isTotalStock ? 'size-display total-stock-display' : 'size-display';
                 const label = isTotalStock ? 'STOCKS' : field.toUpperCase();
                 const numericValue = parseInt(p[field], 10) || 0;
-                
+
                 // --- COLOR LOGIC ADDED HERE ---
                 let colorClass = 'text-slate-700'; // Default color
                 if (!isNaN(numericValue)) {
@@ -2018,14 +2026,14 @@ function openMoveProductsModal() {
                         colorClass = 'text-green-600'; // Green for 10+
                     }
                 }
-                
+
                 return `
                     <div class="${fieldClass}">
                         <span class="size-label">${label}</span>
                         <span class="size-value ${colorClass}">${numericValue}</span>
                     </div>`;
             }).join('');
-            
+
             return `
                 <div class="product-select-item" data-product-id="${p.id}">
                     <div class="product-info">
@@ -2041,9 +2049,9 @@ function openMoveProductsModal() {
                     </div>
                 </div>`;
         }).join('');
-        
+
         productListContainer.innerHTML = productRowsHTML;
-        
+
         productListContainer.querySelectorAll('.product-select-item').forEach(item => {
             item.addEventListener('click', (e) => {
                 const checkbox = item.querySelector('input[type="checkbox"]');
@@ -2052,7 +2060,7 @@ function openMoveProductsModal() {
             });
         });
     }
-    
+
     function handleProductSelection(productId, isChecked) {
         if (isChecked) {
             selectedProductIds.add(productId);
@@ -2061,7 +2069,7 @@ function openMoveProductsModal() {
         }
         renderFooter();
     }
-    
+
     /**
      * MODIFIED: Renders the footer, now including an input for 'countStocks'.
      */
@@ -2073,7 +2081,7 @@ function openMoveProductsModal() {
             footerContainer.querySelector('.close-modal-btn').addEventListener('click', () => overlay.remove());
             return;
         }
-        
+
         const maxStocks = {};
         for (const field of stockAndSizeFields) {
             maxStocks[field] = 0;
@@ -2084,7 +2092,7 @@ function openMoveProductsModal() {
                 }
             }
         }
-        
+
         const stockInputsHTML = stockAndSizeFields.map(field => {
             const label = field === 'countStocks' ? 'Stocks' : field.toUpperCase();
             return `
@@ -2093,7 +2101,7 @@ function openMoveProductsModal() {
                     <input type="number" id="size-${field}" min="0" placeholder="Max: ${maxStocks[field]}">
                 </div>`;
         }).join('');
-        
+
         footerContainer.innerHTML = `
             <div class="footer-details">
                 <div class="selected-count">${selectedProductIds.size} products selected</div>
@@ -2103,16 +2111,16 @@ function openMoveProductsModal() {
                 <button class="modal-btn secondary close-modal-btn">Cancel</button>
                 <button class="modal-btn primary" id="confirm-move-btn">Move Quantities</button>
             </div>`;
-        
+
         footerContainer.querySelector('.close-modal-btn').addEventListener('click', () => overlay.remove());
         footerContainer.querySelector('#confirm-move-btn').addEventListener('click', executeMove);
     }
-    
+
     async function executeMove() {
         const confirmBtn = footerContainer.querySelector('#confirm-move-btn');
         confirmBtn.disabled = true;
         confirmBtn.textContent = 'Submitting Request...';
-        
+
         const quantitiesToMove = {};
         let totalToMove = 0;
         for (const field of stockAndSizeFields) {
@@ -2123,14 +2131,14 @@ function openMoveProductsModal() {
                 totalToMove += value;
             }
         }
-        
+
         if (totalToMove === 0) {
             alert("Please enter a quantity for at least one size or stock.");
             confirmBtn.disabled = false;
             confirmBtn.textContent = 'Move Quantities';
             return;
         }
-        
+
         // Prepare the data for the request document
         const requestData = {
             requestedBy: auth.currentUser.uid,
@@ -2148,15 +2156,15 @@ function openMoveProductsModal() {
                 };
             })
         };
-        
+
         try {
             // Create the new document in the 'PendingMoves' subcollection
             const pendingMovesRef = collection(db, `InventoryWorkspace/${currentInventoryId}/PendingMoves`);
             await addDoc(pendingMovesRef, requestData);
-            
+
             alert('Move request submitted successfully for approval!');
             overlay.remove();
-            
+
         } catch (error) {
             console.error("Error submitting move request:", error);
             alert("Failed to submit move request. Please try again.");
@@ -2164,7 +2172,7 @@ function openMoveProductsModal() {
             confirmBtn.textContent = 'Move Quantities';
         }
     }
-    
+
     // --- Initial Render ---
     renderProductList(sourceData);
     renderFooter();
@@ -2189,13 +2197,13 @@ function openNotificationsModal() {
             </div>
         </div>
     `;
-    
+
     document.body.insertAdjacentHTML('beforeend', modalHTML);
-    
+
     const overlay = document.getElementById('notifications-overlay');
     overlay.querySelector('.close-modal-btn').addEventListener('click', () => overlay.remove());
     overlay.addEventListener('click', e => (e.target === overlay) && overlay.remove());
-    
+
     // Add event listeners for approve/deny buttons
     overlay.querySelectorAll('[data-action="approve"]').forEach(btn =>
         btn.addEventListener('click', () => handleApproval(btn.dataset.requestId, 'approved'))
@@ -2211,12 +2219,12 @@ function openNotificationsModal() {
 function reattachNotificationListeners() {
     const overlay = document.getElementById('notifications-overlay');
     if (!overlay) return;
-    
+
     // Use event delegation to handle clicks more efficiently
     overlay.addEventListener('click', (e) => {
         const button = e.target.closest('button[data-action]');
         if (!button) return;
-        
+
         const { action, requestId } = button.dataset;
         if (action === 'approve' || action === 'deny') {
             handleApproval(requestId, action);
@@ -2234,9 +2242,9 @@ function generateNotificationsListHTML() {
             </div>
         `;
     }
-    
+
     let html = '';
-    
+
     // --- Section 1: INCOMING Requests (Actionable) ---
     if (pendingMoves.length > 0) {
         html += `<h3>Requests for You to Fulfill</h3>`;
@@ -2244,7 +2252,7 @@ function generateNotificationsListHTML() {
             const isActionable = move.status === 'pending';
             const quantitiesHTML = Object.entries(move.quantities).map(([size, count]) => `<li><strong>${size === 'countStocks' ? 'Stocks' : size.toUpperCase()}:</strong> ${count}</li>`).join('');
             const productsHTML = move.products.map(p => `<li>${p.name} (SKU: ${p.sku})</li>`).join('');
-            
+
             return `
                 <div class="notification-item" id="request-${move.id}">
                     <div class="notification-item-header">
@@ -2266,14 +2274,14 @@ function generateNotificationsListHTML() {
                 </div>`;
         }).join('');
     }
-    
+
     // --- ✅ Section 2: OUTGOING Requests (Status Updates) ---
     if (outgoingMoves.length > 0) {
         html += `<h3 class="mt-6">Status of Your Outgoing Requests</h3>`;
         html += outgoingMoves.map(move => {
             const statusClass = `status-${move.status}`;
             let quantitiesHTML = '';
-            
+
             // This is where your previous solution shines. It shows the partial breakdown.
             if (move.status === 'partial') {
                 const correspondingBackorder = backorders.find(bo => bo.originalRequestId === move.id);
@@ -2297,9 +2305,9 @@ function generateNotificationsListHTML() {
                 // Standard display for other statuses
                 quantitiesHTML = '<ul>' + Object.entries(move.quantities).map(([size, count]) => `<li><strong>${size === 'countStocks' ? 'Stocks' : size.toUpperCase()}:</strong> ${count}</li>`).join('') + '</ul>';
             }
-            
+
             const productsHTML = move.products.map(p => `<li>${p.name} (SKU: ${p.sku})</li>`).join('');
-            
+
             return `
                 <div class="notification-item" id="request-${move.id}">
                     <div class="notification-item-header">
@@ -2315,25 +2323,25 @@ function generateNotificationsListHTML() {
                 </div>`;
         }).join('');
     }
-    
+
     return html;
 }
 
 async function handleApproval(requestId, status) {
     const request = pendingMoves.find(p => p.id === requestId);
     if (!request) return;
-    
+
     const itemEl = document.getElementById(`request-${requestId}`);
     itemEl.querySelectorAll('button').forEach(b => b.disabled = true);
     const requestRef = doc(db, `InventoryWorkspace/${currentInventoryId}/PendingMoves`, requestId);
-    
+
     if (status === 'denied') {
         await updateDoc(requestRef, { status: 'denied' });
         console.log("ℹ️ Move request denied.");
         itemEl.querySelectorAll('button').forEach(b => b.disabled = false); // Re-enable after action
         return;
     }
-    
+
     // If the action is 'approved', open the new confirmation modal.
     // The modal will handle the rest of the process.
     if (status === 'approved') {
@@ -2345,7 +2353,7 @@ async function handleApproval(requestId, status) {
 async function openApprovalConfirmationModal(request) {
     const sourceCol = request.from === 'ph' ? 'PH-Stocks-meta' : 'US-Stocks-meta';
     let totalAvailableQuantities = {};
-    
+
     // 1. Get the most current total stock levels for the requested items.
     try {
         await runTransaction(db, async (transaction) => {
@@ -2377,12 +2385,12 @@ async function openApprovalConfirmationModal(request) {
             <span class="text-center">New Amount to Approve</span>
         </div>
     `;
-    
+
     for (const field in request.quantities) {
         const requested = request.quantities[field];
         const available = totalAvailableQuantities[field] || 0;
         const label = field === 'countStocks' ? 'Total Stocks' : `Size ${field.toUpperCase()}`;
-        
+
         inputsHTML += `
             <div class="form-row">
                 <label for="approve-qty-${field}" class="input-label">${label}</label>
@@ -2392,7 +2400,7 @@ async function openApprovalConfirmationModal(request) {
             </div>
         `;
     }
-    
+
     // 3. Create and inject the full modal HTML.
     const modalHTML = `
         <div class="dialog-overlay modern-overlay" id="approval-confirm-overlay">
@@ -2416,7 +2424,7 @@ async function openApprovalConfirmationModal(request) {
         </div>
     `;
     document.body.insertAdjacentHTML('beforeend', modalHTML);
-    
+
     // 4. Add event listeners for the new modal.
     const overlay = document.getElementById('approval-confirm-overlay');
     const closeModal = () => {
@@ -2424,7 +2432,7 @@ async function openApprovalConfirmationModal(request) {
         const itemEl = document.getElementById(`request-${request.id}`);
         if (itemEl) itemEl.querySelectorAll('button').forEach(b => b.disabled = false);
     };
-    
+
     overlay.querySelector('.close-btn').addEventListener('click', closeModal);
     overlay.querySelector('#cancel-approval-btn').addEventListener('click', closeModal);
     overlay.addEventListener('click', (e) => {
@@ -2432,7 +2440,7 @@ async function openApprovalConfirmationModal(request) {
             closeModal();
         }
     });
-    
+
     overlay.querySelector('#confirm-approval-btn').addEventListener('click', () => {
         const approvedQuantities = {};
         let totalToMove = 0;
@@ -2447,12 +2455,12 @@ async function openApprovalConfirmationModal(request) {
                 }
             }
         });
-        
+
         if (Object.keys(approvedQuantities).length === 0) {
             alert("No valid quantities were entered. Please specify an amount to transfer.");
             return;
         }
-        
+
         overlay.remove();
         executeApprovalWithQuantities(request, approvedQuantities);
     });
@@ -2463,12 +2471,12 @@ async function executeApprovalWithQuantities(request, approvedQuantities) {
     const requestRef = doc(db, `InventoryWorkspace/${currentInventoryId}/PendingMoves`, requestId);
     const sourceCol = request.from === 'ph' ? 'PH-Stocks-meta' : 'US-Stocks-meta';
     const targetCol = request.to === 'ph' ? 'PH-Stocks-meta' : 'US-Stocks-meta';
-    
+
     try {
         await runTransaction(db, async (transaction) => {
             console.log("🚀 Starting transaction for request ID:", requestId);
             console.log("🔍 Approved Quantities:", approvedQuantities);
-            
+
             // --- READ PHASE ---
             const productDocs = {};
             const readPromises = request.products.map(productInfo => {
@@ -2482,49 +2490,39 @@ async function executeApprovalWithQuantities(request, approvedQuantities) {
             });
             await Promise.all(readPromises);
             console.log("✅ Completed all reads");
-            
+
             const backorderQuantities = {};
             let quantitiesToMove = { ...approvedQuantities };
-            
+
             for (const productInfo of request.products) {
                 if (Object.values(quantitiesToMove).every(v => v <= 0)) {
                     console.log("🛑 All approved quantities processed. Skipping remaining products.");
                     break;
                 }
+
                 const { sourceRef, targetRef, sourceDoc, targetDoc } = productDocs[productInfo.productId];
-                
-                // --- FIX START: PRE-EMPTIVELY CREATE TARGET DOCUMENT IF IT DOESN'T EXIST ---
+
+                // --- GUARANTEE TARGET DOCUMENT EXISTS ---
                 if (!targetDoc.exists()) {
                     const sourceData = sourceDoc.data();
                     if (sourceData) {
                         console.log(`Target for product ${productInfo.productId} doesn't exist. Creating a zero-stock copy from source.`);
-                        
-                        // 1. Create a new product object by copying all data from the source.
                         const newTargetProductData = {
                             ...sourceData,
-                            // 2. Set all stock counts to 0 for a clean slate.
-                            s: 0,
-                            m: 0,
-                            l: 0,
-                            xl: 0,
-                            xxl: 0,
-                            c: 0,
-                            others: 0,
-                            countStocks: 0,
-                            // 3. Update the warehouse location and creation time for the new entry.
+                            s: 0, m: 0, l: 0, xl: 0, xxl: 0, c: 0, others: 0, countStocks: 0,
                             warehouseLocation: request.to === 'ph' ? 'PH Stocks' : 'US Stocks',
-                            createdAt: serverTimestamp() // Use server timestamp for consistency
+                            createdAt: serverTimestamp()
                         };
-                        
-                        // 4. Create the new document in the transaction. It will now exist for the updates below.
+                        // Create the document. It will now exist for all subsequent operations in this transaction.
                         transaction.set(targetRef, newTargetProductData);
                     } else {
                         console.warn(`⚠️ Source document ${sourceDoc.id} does not exist. Cannot create target or transfer stock. Skipping product.`);
                         continue; // Skip to the next product.
                     }
                 }
-                const updates = {};
-                
+
+                // --- PROCESS QUANTITY UPDATES ---
+                // No 'if/else' is needed here because the block above guarantees the target document exists.
                 for (const field in quantitiesToMove) {
                     const approved = quantitiesToMove[field];
                     if (approved > 0) {
@@ -2533,47 +2531,34 @@ async function executeApprovalWithQuantities(request, approvedQuantities) {
                         const deducted = approved;
                         const newStock = currentStock - deducted;
                         const missing = deducted > currentStock ? deducted - currentStock : 0;
-                        
+
                         // Deduct from source (even if it goes negative)
                         transaction.update(sourceRef, {
-                            [field]: newStock });
+                            [field]: newStock
+                        });
                         console.log(`➖ Deducting ${deducted} from ${field} @ Source: ${currentStock} - ${deducted} = ${newStock}`);
-                        
-                        // Add to target
-                        if (targetDoc.exists()) {
-                            transaction.update(targetRef, {
-                                [field]: increment(canTransfer) });
-                            console.log(`➕ Adding ${canTransfer} to ${field} @ Target`);
-                        } else {
-                            const sourceProductData = (request.from === 'ph' ? dataPhStocks : dataUsStocks).find(p => p.id === productInfo.productId);
-                            if (sourceProductData) {
-                                const newProductData = { ...sourceProductData };
-                                ['s', 'm', 'l', 'xl', 'xxl', 'others', 'countStocks'].forEach(k => newProductData[k] = 0);
-                                newProductData[field] = deducted;
-                                newProductData.warehouseLocation = request.to === 'ph' ? 'PH Stocks' : 'US Stocks';
-                                transaction.set(targetRef, newProductData);
-                                console.log(`🆕 Created new target product for ${productInfo.productId} with:`, {
-                                    [field]: deducted });
-                            } else {
-                                console.warn(`⚠️ Source data missing for ${productInfo.productId}, cannot create target product`);
-                            }
-                        }
-                        
+
+                        transaction.update(targetRef, {
+                            [field]: increment(canTransfer)
+                        });
+                        console.log(`➕ Adding ${canTransfer} to ${field} @ Target`);
+
                         // Track shortfall
                         if (missing > 0) {
                             backorderQuantities[field] = (backorderQuantities[field] || 0) + missing;
                             console.warn(`📦 Not enough stock for ${field}. Approved: ${approved}, Available: ${currentStock}, Backordered: ${missing}`);
                         }
-                        
+
                         quantitiesToMove[field] = 0;
                     }
                 }
             }
-            
+
+            // --- Handle final status and backorders ---
             const finalStatus = Object.keys(backorderQuantities).length > 0 ? 'partial' : 'completed';
             console.log("📦 Backorder Quantities:", backorderQuantities);
             console.log("📌 Final Status:", finalStatus);
-            
+
             if (finalStatus === 'partial') {
                 const backorderRef = doc(collection(db, `InventoryWorkspace/${currentInventoryId}/Backorders`));
                 transaction.set(backorderRef, {
@@ -2586,11 +2571,11 @@ async function executeApprovalWithQuantities(request, approvedQuantities) {
                 });
                 console.log("📤 Backorder document queued:", backorderRef.id);
             }
-            
+
             transaction.update(requestRef, { status: finalStatus });
             console.log(`📋 Updated request ${requestId} status to: ${finalStatus}`);
         });
-        
+
         console.log(`✅ Move request ${requestId} processed successfully.`);
     } catch (error) {
         console.error("❌ Error executing approval transaction:", error);
@@ -2608,21 +2593,21 @@ function openImageOptionsDropdown(container, product) {
 
 
 function setupGlobalClickListeners() {
-    
+
     // Use 'true' for the capture phase. This lets our listener inspect the click
     // before it reaches the target element, which is ideal for "click outside" logic.
     document.addEventListener('click', (e) => {
-        
+
         // --- 1. Handle Closing the Main Task Sidebar ---
         // Find the sidebar element. This assumes TaskSidebar is a separate module.
         const taskSidebar = document.getElementById('task-sidebar');
-        
+
         // Only run this check if the sidebar is actually visible.
         if (taskSidebar && taskSidebar.classList.contains('is-visible')) {
             // Define all the areas that are "safe" to click without closing the sidebar.
             // This includes the sidebar itself AND any floating panels it may have opened.
             const safeAreas = '#task-sidebar, .advanced-dropdown, .floating-panel, .flatpickr-calendar';
-            
+
             // If the click was NOT inside any of the safe areas...
             if (!e.target.closest(safeAreas)) {
                 // ...then call the public 'close' method for the sidebar.
@@ -2633,11 +2618,11 @@ function setupGlobalClickListeners() {
                 }
             }
         }
-        
+
         // --- 2. Handle Closing Modals/Dialogs ---
         // Find the top-most dialog overlay.
         const dialogOverlay = e.target.closest('.dialog-overlay, .filterlistview-dialog-overlay');
-        
+
         // If a dialog was clicked...
         if (dialogOverlay) {
             // ...and the click was on the overlay background itself (not its children)...
@@ -2646,18 +2631,18 @@ function setupGlobalClickListeners() {
                 dialogOverlay.remove();
             }
         }
-        
+
         // --- 3. Handle Your Other UI Logic (e.g., headerRight) ---
         // This logic can remain if it's still needed. It checks if the left drawer is closed.
         const drawer = document.getElementById('drawer'); // Assuming 'drawer' is the ID of the left sidebar
         const headerRight = document.getElementById('listview-header-right'); // Make sure this has a specific ID
-        
+
         // This condition is a bit confusing. A clearer way to write this might be:
         // if the left sidebar is closed or doesn't exist, show the header right controls.
         if (headerRight && (!drawer || !drawer.classList.contains('is-open'))) {
             headerRight.classList.remove('hide');
         }
-        
+
     }, true);
 }
 
@@ -2677,15 +2662,15 @@ function openSectionFilterPanel() {
     const dialogOverlay = document.createElement('div');
     // MODIFIED: Changed class name
     dialogOverlay.className = 'filterlistview-dialog-overlay';
-    
+
     const sectionOptionsHTML = project.sections.map(s => {
         const isChecked = !activeFilters.visibleSections || activeFilters.visibleSections.includes(s.id);
         // MODIFIED: Changed class name for checkboxes
         return `<div><label><input type="checkbox" class="filterlistview-section-checkbox" name="section" value="${s.id}" ${isChecked ? 'checked' : ''}> ${s.title}</label></div>`;
     }).join('');
-    
+
     const allChecked = !activeFilters.visibleSections;
-    
+
     // MODIFIED: Changed all class names within the HTML string
     dialogOverlay.innerHTML = `
     <div class="filterlistview-dialog-box filterlistview-filter-dialog">
@@ -2702,31 +2687,31 @@ function openSectionFilterPanel() {
                 <button class="filterlistview-dialog-button filterlistview-primary" id="apply-filters-btn">Apply</button>
             </div>
         </div>`;
-    
+
     document.body.appendChild(dialogOverlay);
-    
+
     const applyBtn = dialogOverlay.querySelector('#apply-filters-btn');
     const selectAllBox = dialogOverlay.querySelector('#select-all-sections');
     // MODIFIED: Changed selector to match new class name
     const allSectionBoxes = dialogOverlay.querySelectorAll('.filterlistview-section-checkbox');
-    
+
     selectAllBox.addEventListener('change', (e) => {
         allSectionBoxes.forEach(box => box.checked = e.target.checked);
     });
-    
+
     applyBtn.addEventListener('click', () => {
         const checkedBoxes = Array.from(allSectionBoxes).filter(box => box.checked);
-        
+
         if (checkedBoxes.length === allSectionBoxes.length) {
             delete activeFilters.visibleSections;
         } else {
             activeFilters.visibleSections = checkedBoxes.map(box => Number(box.value));
         }
-        
+
         closeFloatingPanels();
         render('us');
     });
-    
+
     // MODIFIED: Changed selector to match new class name
     dialogOverlay.addEventListener('click', e => {
         if (e.target.classList.contains('filterlistview-dialog-overlay')) {
@@ -2734,20 +2719,20 @@ function openSectionFilterPanel() {
         }
     });
     reattachNotificationListeners();
-    
+
 }
 
 function getFilteredProject() {
     // DEBUG: See what filters are being applied at the start of the render cycle
     // console.log("getFilteredProject called with state:", JSON.stringify(activeFilters));
     const projectCopy = JSON.parse(JSON.stringify(project));
-    
+
     if (activeFilters.visibleSections && activeFilters.visibleSections.length < project.sections.length) {
         projectCopy.sections = projectCopy.sections.filter(section =>
             activeFilters.visibleSections.includes(section.id)
         );
     }
-    
+
     return projectCopy;
 }
 
@@ -2766,7 +2751,7 @@ function getSortedProject(project) {
  * @returns {Promise<string>} A promise that resolves to the full path of the project document.
  */
 async function _getSelectedProjectPath(db, userId) {
-    
+
     // Step 1: Find the user's active workspace.
     const workspaceQuery = query(
         collection(db, `users/${userId}/myworkspace`),
@@ -2774,19 +2759,19 @@ async function _getSelectedProjectPath(db, userId) {
         limit(1) // Optimization as we only need one
     );
     const workspaceSnap = await getDocs(workspaceQuery);
-    
+
     if (workspaceSnap.empty) {
         throw new Error("No selected workspace found for the user.");
     }
-    
+
     // Step 2: Read the 'selectedProjectId' from the workspace document's data.
     const workspaceData = workspaceSnap.docs[0].data();
     const selectedProjectId = workspaceData.selectedProjectId;
-    
+
     if (!selectedProjectId) {
         throw new Error("The active workspace does not have a selected project.");
     }
-    
+
     // Step 3: Use a collectionGroup query to find the project by its ID, no matter where it's nested.
     // This is the key change that supports shared projects.
     const projectQuery = query(
@@ -2795,11 +2780,11 @@ async function _getSelectedProjectPath(db, userId) {
         where('memberUIDs', 'array-contains', userId) // Ensures security rules are met
     );
     const projectSnap = await getDocs(projectQuery);
-    
+
     if (projectSnap.empty) {
         throw new Error(`Project with ID '${selectedProjectId}' not found, or user does not have permission.`);
     }
-    
+
     // Step 4: Return the full path from the found document's reference.
     const projectPath = projectSnap.docs[0].ref.path;
     console.log(`[DEBUG] _getSelectedProjectPath resolved to: ${projectPath}`);
@@ -2819,10 +2804,10 @@ function findTaskAndSection(taskId) {
 function _getTasksForSectionFromDOM(sectionHeaderEl) {
     const tasks = [];
     if (!sectionHeaderEl) return tasks;
-    
+
     // Start with the element right after the header
     let nextElement = sectionHeaderEl.nextElementSibling;
-    
+
     // Loop as long as we have a sibling AND it's not another section header
     while (nextElement && !nextElement.classList.contains('section-row-wrapper')) {
         // If it's a valid task, add it
@@ -2837,13 +2822,13 @@ function _getTasksForSectionFromDOM(sectionHeaderEl) {
 
 async function handleSectionReorder(evt) {
     console.log("🔄 Section reorder triggered.");
-    
+
     const user = auth.currentUser;
     if (!user) throw new Error("User not authenticated.");
-    
+
     try {
         const sectionRef = doc(collection(currentProjectRef, 'sections'), sectionId);
-        
+
         const batch = writeBatch(db);
         sectionEls.forEach((el, index) => {
             const sectionId = el.dataset.sectionId;
@@ -2853,10 +2838,10 @@ async function handleSectionReorder(evt) {
                 console.log(`🔢 Set order ${index} for section ${sectionId}`);
             }
         });
-        
+
         await batch.commit();
         console.log("✅ Sections reordered and saved to Firestore.");
-        
+
     } catch (err) {
         console.error("❌ Error committing section reordering batch:", err);
         // Re-throw to allow the calling function to revert the UI.
@@ -2866,91 +2851,91 @@ async function handleSectionReorder(evt) {
 
 async function handleTaskMoved(evt) {
     console.log("🧪 Drag Event Details:", evt);
-    
+
     const user = auth.currentUser;
     if (!user) {
         console.error("❌ User not authenticated.");
         return;
     }
-    
+
     const taskEl = evt.item;
     const taskId = taskEl.dataset.taskId;
-    
+
     const newSectionEl = evt.to.closest(".section-wrapper");
     const oldSectionEl = evt.from.closest(".section-wrapper");
     const newSectionId = newSectionEl?.dataset.sectionId;
     const oldSectionId = oldSectionEl?.dataset.sectionId;
-    
+
     if (!taskId || !newSectionId || !oldSectionId) {
         console.error("❌ Critical ID missing.", { taskId, newSectionId, oldSectionId });
         return;
     }
-    
+
     try {
         const batch = writeBatch(db);
-        
+
         if (newSectionId === oldSectionId) {
             console.log(`Reordering task "${taskId}" in section "${newSectionId}"`);
             const tasksToUpdate = Array.from(newSectionEl.querySelectorAll(".task-row-wrapper"));
-            
+
             tasksToUpdate.forEach((el, index) => {
                 const currentTaskId = el.dataset.taskId;
                 if (!currentTaskId) return;
-                
+
                 const taskRef = doc(db, `${currentProjectRef.path}/sections/${newSectionId}/tasks/${currentTaskId}`);
                 batch.update(taskRef, { order: index });
             });
-            
+
         } else {
             console.log(`Moving task "${taskId}" from section "${oldSectionId}" to "${newSectionId}"`);
-            
+
             const sourceRef = doc(db, `${currentProjectRef.path}/sections/${oldSectionId}/tasks/${taskId}`);
             const sourceSnap = await getDoc(sourceRef);
             if (!sourceSnap.exists()) {
                 console.error("❌ Task not found in the source section. Cannot move.");
                 return;
             }
-            
+
             const newDocRef = doc(collection(db, `${currentProjectRef.path}/sections/${newSectionId}/tasks`));
             const taskData = {
                 ...sourceSnap.data(),
                 sectionId: newSectionId,
                 id: newDocRef.id
             };
-            
+
             const targetSection = project.sections.find(s => s.id === newSectionId);
             if (targetSection?.sectionType === 'completed') {
                 console.log(`Destination is a 'completed' section. Updating task status.`);
                 taskData.status = 'Completed';
             }
-            
+
             batch.delete(sourceRef);
             batch.set(newDocRef, taskData);
-            
+
             taskEl.dataset.taskId = newDocRef.id;
-            
+
             const newSectionTasks = Array.from(newSectionEl.querySelectorAll(".task-row-wrapper"));
             newSectionTasks.forEach((el, index) => {
                 const currentTaskId = el.dataset.taskId;
                 if (!currentTaskId) return;
-                
+
                 const taskRef = doc(db, `${currentProjectRef.path}/sections/${newSectionId}/tasks/${currentTaskId}`);
                 batch.update(taskRef, { order: index, sectionId: newSectionId });
             });
-            
+
             const oldSectionTasks = Array.from(oldSectionEl.querySelectorAll(".task-row-wrapper"));
             oldSectionTasks.forEach((el, index) => {
                 const currentTaskId = el.dataset.taskId;
                 if (!currentTaskId) return;
-                
+
                 const taskRef = doc(db, `${currentProjectRef.path}/sections/${oldSectionId}/tasks/${currentTaskId}`);
                 batch.update(taskRef, { order: index });
             });
         }
-        
+
         await batch.commit();
         console.log("✅ Batch commit successful. Task positions updated.");
-        
+
     } catch (err) {
         console.error("❌ Error handling task move:", err);
     }
@@ -2964,51 +2949,51 @@ async function handleTaskMoved(evt) {
  */
 function enableColumnRename(columnEl, stockType) {
     closeFloatingPanels();
-    
+
     const cellText = columnEl.querySelector('span');
     const originalName = cellText.textContent.trim();
     cellText.contentEditable = 'true';
     cellText.focus();
     document.execCommand('selectAll', false, null);
-    
+
     const columnId = columnEl.dataset.columnId;
-    
+
     const finishEditing = async (saveChanges) => {
         cellText.removeEventListener('blur', onBlur);
         cellText.removeEventListener('keydown', onKeyDown);
         cellText.contentEditable = 'false';
-        
+
         const newName = cellText.textContent.trim();
         if (!saveChanges || !newName || newName === originalName) {
             cellText.textContent = originalName;
             return;
         }
-        
+
         try {
             const invRef = doc(db, 'InventoryWorkspace', currentInventoryId);
             const invSnap = await getDoc(invRef);
             if (!invSnap.exists()) return;
-            
+
             const data = invSnap.data();
             const columnKey = stockType === 'us' ? 'columns_us' : 'columns_ph';
             const columns = Array.isArray(data[columnKey]) ? [...data[columnKey]] : [];
-            
+
             const colIndex = columns.findIndex(c => c.id === columnId);
             if (colIndex === -1) return;
-            
+
             columns[colIndex] = { ...columns[colIndex], name: newName };
-            
+
             await updateDoc(invRef, {
                 [columnKey]: columns
             });
-            
+
             console.log(`✅ Column '${columnId}' renamed to '${newName}' and saved to ${columnKey}`);
         } catch (err) {
             console.error('❌ Failed to rename column:', err);
             cellText.textContent = originalName;
         }
     };
-    
+
     const onBlur = () => finishEditing(true);
     const onKeyDown = (e) => {
         if (e.key === 'Enter' || e.key === 'Escape') {
@@ -3016,7 +3001,7 @@ function enableColumnRename(columnEl, stockType) {
             finishEditing(e.key === 'Enter');
         }
     };
-    
+
     cellText.addEventListener('blur', onBlur);
     cellText.addEventListener('keydown', onKeyDown);
 }
@@ -3030,14 +3015,14 @@ async function flattenProjectData() {
     project.sections.forEach(section => {
         // Add the section itself as an item
         flatListOfItems.push({ type: 'section', data: section });
-        
+
         // Add its tasks if not collapsed
         if (!section.isCollapsed && section.tasks) {
             section.tasks.forEach(task => {
                 flatListOfItems.push({ type: 'task', data: task });
             });
         }
-        
+
         // Add the "Add Task" row for the section
         flatListOfItems.push({ type: 'add_task', sectionId: section.id });
     });
@@ -3051,18 +3036,18 @@ async function flattenProjectData() {
 function renderVisibleRows(bodyContainer, bodyGrid) {
     const scrollTop = bodyContainer.scrollTop;
     const viewportHeight = bodyContainer.clientHeight;
-    
+
     // 1. Calculate the start and end index of visible items
     let startIndex = Math.floor(scrollTop / ROW_HEIGHT);
     let endIndex = Math.ceil((scrollTop + viewportHeight) / ROW_HEIGHT);
-    
+
     // 2. Apply the buffer
     startIndex = Math.max(0, startIndex - VISIBLE_ROW_BUFFER);
     endIndex = Math.min(flatListOfItems.length, endIndex + VISIBLE_ROW_BUFFER);
-    
+
     // 3. Slice the visible items from our flat list
     const visibleItems = flatListOfItems.slice(startIndex, endIndex);
-    
+
     // 4. Clear the existing rows and render the new visible ones
     bodyGrid.innerHTML = '';
     visibleItems.forEach(item => {
@@ -3074,12 +3059,12 @@ function renderVisibleRows(bodyContainer, bodyGrid) {
         } else if (item.type === 'add_task') {
             rowElement = createAddTaskRow(project.customColumns, item.sectionId);
         }
-        
+
         if (rowElement) {
             bodyGrid.appendChild(rowElement);
         }
     });
-    
+
     // 5. Position the "window" of rows correctly inside the giant spacer
     // This is the most important step for virtual scrolling.
     const offsetY = startIndex * ROW_HEIGHT;
@@ -3095,22 +3080,22 @@ function allowNumericChars(cell) {
     cell.addEventListener('input', (e) => {
         const target = e.target;
         const originalText = target.textContent;
-        
+
         // Allow digits, one leading hyphen, one decimal, and commas
         let sanitizedText = originalText
             .replace(/[^-\d.,]/g, '') // 1. Remove all invalid characters
             .replace(/(?!^)-/g, '') // 2. Remove hyphens unless they are the first character
             .replace(/(\..*)\./g, '$1'); // 3. Remove any subsequent decimal points
-        
+
         if (originalText !== sanitizedText) {
             // Restore cursor position if text was changed
             const selection = window.getSelection();
             const originalOffset = selection.focusOffset;
             const lengthDifference = originalText.length - sanitizedText.length;
             const newOffset = Math.max(0, originalOffset - lengthDifference);
-            
+
             target.textContent = sanitizedText;
-            
+
             try {
                 const range = document.createRange();
                 const textNode = target.firstChild || target;
@@ -3134,21 +3119,21 @@ async function toggleColumnRestriction(column, stockType) {
         const invRef = doc(db, 'InventoryWorkspace', currentInventoryId);
         const invSnap = await getDoc(invRef);
         if (!invSnap.exists()) return console.error('InventoryWorkspace document not found');
-        
+
         const data = invSnap.data();
         const columnKey = stockType === 'us' ? 'columns_us' : 'columns_ph';
         const columns = Array.isArray(data[columnKey]) ? [...data[columnKey]] : [];
-        
+
         const index = columns.findIndex(c => c.id === column.id);
         if (index === -1) return console.warn(`Column ${column.id} not found in ${columnKey}`);
-        
+
         // Toggle the `isRestricted` flag
         columns[index].isRestricted = !columns[index].isRestricted;
-        
+
         await updateDoc(invRef, {
             [columnKey]: columns
         });
-        
+
         console.log(`✅ ${column.id} restriction toggled to: ${columns[index].isRestricted}`);
     } catch (err) {
         console.error('❌ Failed to toggle column restriction:', err);
@@ -3166,15 +3151,15 @@ function formatNumberOnBlur(cell) {
         const target = e.target;
         // Get the raw text and remove commas to prepare for parsing
         const rawText = target.textContent.replace(/,/g, '');
-        
+
         // If empty or not a valid number, clear the cell and stop
         if (rawText.trim() === '' || isNaN(parseFloat(rawText))) {
             target.textContent = '';
             return;
         }
-        
+
         const numberValue = parseFloat(rawText);
-        
+
         // Check if the number has decimals
         if (numberValue % 1 !== 0) {
             // If it has decimals, format with 2 decimal places
@@ -3195,27 +3180,27 @@ function formatDueDate(dueDateString) {
     // --- Setup ---
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Normalize today to the start of the day for accurate comparisons.
-    
+
     // Handle empty or invalid dates
     if (!dueDateString) {
         return { text: '', color: 'default' }; // Return empty text as requested
     }
-    
+
     const dueDate = new Date(dueDateString); // Directly parse the string
     if (isNaN(dueDate.getTime())) {
         return { text: 'Invalid date', color: 'red' };
     }
     dueDate.setHours(0, 0, 0, 0); // Also normalize the due date
-    
+
     // --- Calculations ---
     const todayYear = today.getFullYear();
     const todayMonth = today.getMonth();
     const dueYear = dueDate.getFullYear();
     const dueMonth = dueDate.getMonth();
-    
+
     // Calculate the difference in milliseconds and convert to days
     const dayDifference = (dueDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
-    
+
     // --- 1. Handle Past Dates ---
     if (dayDifference < 0) {
         if (dayDifference === -1) {
@@ -3241,7 +3226,7 @@ function formatDueDate(dueDateString) {
         const MmmDddYyyyFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         return { text: MmmDddYyyyFormat.format(dueDate), color: 'red' };
     }
-    
+
     // --- 2. Handle Present and Immediate Future ---
     if (dayDifference === 0) {
         return { text: 'Today', color: 'green' };
@@ -3249,15 +3234,15 @@ function formatDueDate(dueDateString) {
     if (dayDifference === 1) {
         return { text: 'Tomorrow', color: 'yellow' }; // Changed to yellow for "approaching"
     }
-    
+
     // --- 3. Handle Future Dates ---
-    
+
     // If the due date is in the current year
     if (dueYear === todayYear) {
         const MmmDddFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
         return { text: MmmDddFormat.format(dueDate), color: 'default' }; // e.g., "30 Jun"
     }
-    
+
     // If the due date is in a future year
     else {
         const MmmDddYyyyFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -3267,10 +3252,10 @@ function formatDueDate(dueDateString) {
 
 async function updateProduct(productId, stockType, data) {
     if (!currentInventoryId || !productId) return;
-    
+
     const stockCollection = stockType === 'us' ? 'US-Stocks-meta' : 'PH-Stocks-meta';
     const productRef = doc(db, 'InventoryWorkspace', currentInventoryId, stockCollection, productId);
-    
+
     try {
         await updateDoc(productRef, data);
         console.log(`✅ Product ${productId} updated in ${stockCollection}:`, data);
@@ -3288,7 +3273,7 @@ async function addNewSizeColumnsToInventory(inventoryId) {
         console.error('Inventory not found');
         return;
     }
-    
+
     const newColumnsToAdd = [
         { id: "s", name: "S", type: "SizeNumber", isRestricted: false },
         { id: "m", name: "M", type: "SizeNumber", isRestricted: false },
@@ -3299,17 +3284,17 @@ async function addNewSizeColumnsToInventory(inventoryId) {
         { id: "others", name: "Others", type: "Text", isRestricted: false },
         { id: "total", name: "Total", type: "Text", isRestricted: false },
     ];
-    
+
     const data = snap.data();
-    
+
     const updatedColumnsPH = (data.columns_ph || []).concat(newColumnsToAdd);
     const updatedColumnsUS = (data.columns_us || []).concat(newColumnsToAdd);
-    
+
     await updateDoc(ref, {
         columns_ph: updatedColumnsPH,
         columns_us: updatedColumnsUS
     });
-    
+
     console.log('Columns added successfully.');
 }
 
@@ -3323,7 +3308,7 @@ function toggleLoadingOverlay(show, message = 'Loading...') {
     if (existingOverlay) {
         existingOverlay.remove();
     }
-    
+
     if (show) {
         const overlay = document.createElement('div');
         overlay.id = 'creation-loading-overlay';
@@ -3345,7 +3330,7 @@ function toggleLoadingOverlay(show, message = 'Loading...') {
  */
 async function createDefaultInventoryWorkspace(inventoryId) {
     console.log(`🚀 Creating default inventory workspace for ID: ${inventoryId}`);
-    
+
     const defaultData = {
         columns_ph: [
             { id: "productImage", name: "Product Image Name", type: "Image", isRestricted: false },
@@ -3404,28 +3389,28 @@ async function createDefaultInventoryWorkspace(inventoryId) {
         columnOrder_ph: ["productImage", "productSku", "countStocks", "s", "m", "l", "xl", "xxl", "others", "total", "supplierCost", "supplierName", "supplierProject", "warehouseLocation"],
         columnOrder_us: ["productImage", "productSku", "countStocks", "s", "m", "l", "xl", "xxl", "others", "total", "supplierCost", "supplierName", "supplierProject", "warehouseLocation"]
     };
-    
+
     try {
         const batch = writeBatch(db);
         const docRef = doc(db, 'InventoryWorkspace', inventoryId);
-        
+
         // 1. Set the main document data
         batch.set(docRef, defaultData);
         console.log("✅ Main inventory document queued for creation.");
-        
+
         // 2. Create placeholder documents to establish subcollections
         const phStocksPlaceholderRef = doc(collection(docRef, 'PH-Stocks-meta'));
         batch.set(phStocksPlaceholderRef, { initialized: serverTimestamp() });
         console.log("✅ PH-Stocks-meta subcollection queued for initialization.");
-        
+
         const usStocksPlaceholderRef = doc(collection(docRef, 'US-Stocks-meta'));
         batch.set(usStocksPlaceholderRef, { initialized: serverTimestamp() });
         console.log("✅ US-Stocks-meta subcollection queued for initialization.");
-        
+
         // 3. Commit the batch transaction
         await batch.commit();
         console.log("✅ Default inventory workspace and subcollections created successfully.");
-        
+
     } catch (error) {
         console.error("❌ Error creating default inventory workspace:", error);
         toggleLoadingOverlay(false); // Hide overlay on error
@@ -3435,13 +3420,13 @@ async function createDefaultInventoryWorkspace(inventoryId) {
 
 function createFloatingInput(targetCell, task, column) {
     if (document.querySelector('.floating-input-wrapper')) return;
-    
+
     const scrollContainer = targetCell.closest('.juanlunacms-spreadsheetlist-custom-scrollbar');
     if (!scrollContainer) return;
-    
+
     const cellRect = targetCell.getBoundingClientRect();
     const currentValue = task[column.id] || '';
-    
+
     const wrapper = document.createElement('div');
     wrapper.className = 'floating-input-wrapper';
     wrapper.style.position = 'fixed';
@@ -3449,11 +3434,11 @@ function createFloatingInput(targetCell, task, column) {
     wrapper.style.left = `${cellRect.left}px`;
     wrapper.style.width = `${cellRect.width}px`;
     wrapper.style.minHeight = `${cellRect.height}px`;
-    
+
     let editor;
     let saveButton;
     let outsideClickListener;
-    
+
     if (column.type === 'Tracking') {
         wrapper.classList.add('tracking-input-mode');
         editor = document.createElement('input');
@@ -3461,11 +3446,11 @@ function createFloatingInput(targetCell, task, column) {
         editor.className = 'floating-input';
         editor.value = currentValue;
         editor.placeholder = 'Enter USPS Tracking No...';
-        
+
         saveButton = document.createElement('button');
         saveButton.className = 'floating-save-btn';
         saveButton.textContent = 'Save';
-        
+
         const validate = () => {
             const isValid = isValidUPSTrackingNumber(editor.value);
             saveButton.disabled = !isValid;
@@ -3473,7 +3458,7 @@ function createFloatingInput(targetCell, task, column) {
         };
         editor.addEventListener('input', validate);
         setTimeout(validate, 0);
-        
+
     } else if (column.type === 'Text') {
         editor = document.createElement('textarea');
         editor.className = 'floating-input';
@@ -3485,7 +3470,7 @@ function createFloatingInput(targetCell, task, column) {
         };
         editor.addEventListener('input', autoGrow);
         setTimeout(autoGrow, 0);
-        
+
     } else {
         editor = document.createElement('input');
         editor.type = 'number';
@@ -3493,34 +3478,34 @@ function createFloatingInput(targetCell, task, column) {
         editor.value = currentValue;
         wrapper.style.height = `${cellRect.height}px`;
     }
-    
+
     const repositionOnScroll = () => {
         const newRect = targetCell.getBoundingClientRect();
         wrapper.style.top = `${newRect.top}px`;
         wrapper.style.left = `${newRect.left}px`;
     };
-    
+
     const cleanup = () => {
         scrollContainer.removeEventListener('scroll', repositionOnScroll);
         document.removeEventListener('click', outsideClickListener, true);
         wrapper.remove();
     };
-    
+
     const saveAndClose = () => {
-        
+
         const newValue = editor.value.trim();
         const oldValue = String(currentValue).trim();
-        
+
         if (newValue !== oldValue) {
             const parsedValue = (column.type === 'Costing' || column.type === 'Numbers') ?
                 parseFloat(newValue) || 0 :
                 newValue;
-            
+
             updateProduct(task.id, currentStockType, {
                 [column.id]: parsedValue
             });
-            
-            
+
+
             if (column.type === 'Tracking' && parsedValue) {
                 const cellContent = targetCell.querySelector('.cell-content');
                 if (cellContent) {
@@ -3533,10 +3518,10 @@ function createFloatingInput(targetCell, task, column) {
                 }
             }
         }
-        
+
         cleanup();
     };
-    
+
     editor.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && editor.tagName !== 'TEXTAREA') {
             e.preventDefault();
@@ -3545,7 +3530,7 @@ function createFloatingInput(targetCell, task, column) {
             cleanup();
         }
     });
-    
+
     // ✅ Save when user clicks anywhere outside
     outsideClickListener = (e) => {
         if (!wrapper.contains(e.target)) {
@@ -3553,15 +3538,15 @@ function createFloatingInput(targetCell, task, column) {
         }
     };
     document.addEventListener('click', outsideClickListener, true);
-    
+
     scrollContainer.addEventListener('scroll', repositionOnScroll);
-    
+
     wrapper.appendChild(editor);
     if (saveButton) {
         wrapper.appendChild(saveButton);
         saveButton.addEventListener('click', saveAndClose);
     }
-    
+
     document.body.appendChild(wrapper);
     editor.focus();
     editor.select();
@@ -3574,10 +3559,10 @@ function createFloatingInput(targetCell, task, column) {
 async function deleteProduct(productId) {
     const stockTypeCollection = currentStockType === 'us' ? 'US-Stocks-meta' : 'PH-Stocks-meta';
     const productRef = doc(db, `InventoryWorkspace/${currentInventoryId}/${stockTypeCollection}`, productId);
-    
+
     try {
         await deleteDoc(productRef);
-        
+
         console.log(`✅ Product with ID: ${productId} has been deleted.`);
         render(currentStockType);
         // The list will automatically update when your real-time listener detects the deletion.
@@ -3592,19 +3577,19 @@ async function render(stockType) {
     let productList = stockType === 'ph' ? dataPhStocks : dataUsStocks;
     let savedColumnWidths = {};
     if (!productListBody || !currentInventoryId) return;
-    
+
     if (isCreatingWorkspace) return;
-    
+
     const docRef = doc(db, 'InventoryWorkspace', currentInventoryId);
     const docSnap = await getDoc(docRef);
-    
+
     // --- NEW LOGIC: Check for existence and create if needed ---
     if (!docSnap.exists()) {
         isCreatingWorkspace = true;
         toggleLoadingOverlay(true, 'Initializing your inventory workspace...');
-        
+
         await createDefaultInventoryWorkspace(currentInventoryId);
-        
+
         // Hide overlay and re-run the render function.
         toggleLoadingOverlay(false);
         isCreatingWorkspace = false;
@@ -3612,24 +3597,24 @@ async function render(stockType) {
         return; // Stop the current render pass.
     }
     // --- END OF NEW LOGIC ---
-    
+
     console.log(`✅ Rendering ${stockType.toUpperCase()} with:`, productList.length, 'items');
-    
+
     if (!Array.isArray(productList)) {
         console.warn('⚠️ productList is invalid!', productList);
         productList = []; // Ensure productList is an array to prevent errors
     }
-    
+
     if (!Array.isArray(productList) || productList.length === 0) {
         console.warn('⚠️ productList is empty or invalid!', productList);
     }
-    
+
     const data = docSnap.data();
     savedColumnWidths = stockType === 'us' ?
         data.customResizeWidthUSStock || {} :
         data.customResizeWidthPHStock || {};
     const columnRules = Array.isArray(data[`columnRules_${stockType}`]) ? data[`columnRules_${stockType}`] : [];
-    
+
     // Permission check
     try {
         // --- Step 1: Search all /users/*/myworkspace/* that match the currentWorkspaceId ---
@@ -3637,41 +3622,41 @@ async function render(stockType) {
             collectionGroup(db, 'myworkspace'),
             where('workspaceId', '==', currentWorkspaceId)
         );
-        
+
         const querySnapshot = await getDocs(workspaceQuery);
-        
+
         let matchedDoc = null;
         let isOwner = false;
-        
+
         for (const docSnap of querySnapshot.docs) {
             const data = docSnap.data();
             const ownerRef = data.ownerWorkspaceRef;
             const ownerPath = typeof ownerRef === 'string' ? ownerRef : ownerRef?.path;
-            
+
             if (ownerPath?.includes(currentUserId)) {
                 matchedDoc = docSnap;
                 isOwner = true;
                 break;
             }
         }
-        
+
         // --- Step 2: Check user role from main /users/{uid} ---
         const userDocRef = doc(db, 'users', currentUserId);
         const userDocSnap = await getDoc(userDocRef);
-        
+
         let isAdminOrDev = false;
         if (userDocSnap.exists()) {
             const userRole = userDocSnap.data()?.role;
             isAdminOrDev = userRole === 0 || userRole === 3; // 0 = Developer, 3 = Admin
         }
-        
+
         // --- Step 3: Combine logic ---
         canUserEditProduct = isOwner || isAdminOrDev;
-        
+
     } catch (error) {
         console.error('Permission check failed:', error);
     }
-    
+
     if (!canUserEditProduct) {
         console.warn('⚠️ User does not have permission to add products.');
         addProductHeaderBtn.classList.add('hidden');
@@ -3684,7 +3669,7 @@ async function render(stockType) {
     const firestoreColumns = stockType === 'us' ?
         data.columns_us || [] :
         data.columns_ph || [];
-    
+
     // 🟢 Apply saved column order
     const columnOrder = data[`columnOrder_${stockType}`] || [];
     if (Array.isArray(columnOrder) && columnOrder.length > 0) {
@@ -3697,63 +3682,63 @@ async function render(stockType) {
     const allColumns = firestoreColumns.map(col => ({ ...col }));
     const pendingProductIds = new Set(
         pendingMoves
-        .flatMap(move => move.products.map(p => p.productId))
+            .flatMap(move => move.products.map(p => p.productId))
     );
-    
+
     const visibleProductList = productList.filter(product => !pendingProductIds.has(product.id));
-    
+
     // Structure data
     const project = {
         id: `project_${stockType}`,
         name: `${stockType.toUpperCase()} Stock Inventory`,
         products: Array.isArray(productList) ?
             productList
-            .filter(item => {
-                if (!item || typeof item !== 'object' || !item.id) return false;
-                
-                const meaningfulKeys = Object.entries(item).filter(([key, value]) => {
-                    if (['id', 'productId', 'createdAt'].includes(key)) return false;
-                    
-                    if (typeof value === 'string') return value.trim() !== '';
-                    if (typeof value === 'number') return value !== 0; // ✅ This will allow non-zero sizes
-                    if (typeof value === 'object') return value !== null;
-                    return value !== undefined;
-                });
-                
-                return meaningfulKeys.length > 0;
-                
-            })
-            .map(item => ({
-                ...item,
-                productId: item.id,
-                name: item.name || 'Unnamed Product'
-            })) : [],
+                .filter(item => {
+                    if (!item || typeof item !== 'object' || !item.id) return false;
+
+                    const meaningfulKeys = Object.entries(item).filter(([key, value]) => {
+                        if (['id', 'productId', 'createdAt'].includes(key)) return false;
+
+                        if (typeof value === 'string') return value.trim() !== '';
+                        if (typeof value === 'number') return value !== 0; // ✅ This will allow non-zero sizes
+                        if (typeof value === 'object') return value !== null;
+                        return value !== undefined;
+                    });
+
+                    return meaningfulKeys.length > 0;
+
+                })
+                .map(item => ({
+                    ...item,
+                    productId: item.id,
+                    name: item.name || 'Unnamed Product'
+                })) : [],
         columnRules: columnRules
     };
-    
-    
+
+
     const headerClickListener = (e) => {
         const columnOptionsIcon = e.target.closest('.options-icon');
-        
+
         if (columnOptionsIcon) {
             e.stopPropagation();
-            
+
             const columnEl = columnOptionsIcon.closest('[data-column-id]');
             if (!columnEl) return;
-            
+
             const columnId = columnEl.dataset.columnId;
             const column = allColumns.find(c => String(c.id) === String(columnId));
             if (!column) return;
-            
+
             const dropdownOptions = [{ name: 'Rename column' }];
-            
+
             if (canUserEditProduct) {
                 const isCurrentlyRestricted = column.isRestricted === true;
                 dropdownOptions.push({
                     name: isCurrentlyRestricted ? 'Unrestrict Column' : 'Restrict Column'
                 });
             }
-            
+
             createAdvancedDropdown(columnOptionsIcon, {
                 options: dropdownOptions,
                 itemRenderer: (option) => `<span>${option.name}</span>`,
@@ -3765,30 +3750,30 @@ async function render(stockType) {
                     }
                 }
             });
-            
+
             return;
         }
     };
-    
+
     // UI rendering
     productListBody.innerHTML = '';
     const container = document.createElement('div');
     container.className = 'w-full h-full overflow-auto bg-white border border-slate-200 juanlunacms-spreadsheetlist-custom-scrollbar';
     const table = document.createElement('div');
     table.className = 'min-w-max relative';
-    
+
     const header = document.createElement('div');
     header.className = 'flex sticky top-0 z-20 bg-white h-[22px]';
-    
+
     const leftHeader = document.createElement('div');
     leftHeader.className = 'sticky left-0 z-30 bg-white w-80 md:w-96 lg:w-[400px] flex-shrink-0 px-4 font-semibold text-slate-600 border-b border-r border-slate-200 text-xs flex items-center';
     leftHeader.textContent = 'Product Name';
-    
+
     const rightHeaderContent = document.createElement('div');
     rightHeaderContent.className = 'flex flex-grow border-b border-slate-200 juanlunacms-column-header';
-    
-    
-    
+
+
+
     allColumns.forEach(col => {
         const fixedColumnWidths = {
             total: 80,
@@ -3801,62 +3786,62 @@ async function render(stockType) {
             c: 50,
             others: 100
         };
-        
+
         const width = fixedColumnWidths[col.id] || savedColumnWidths[col.id] || 150;
-        
+
         const cell = document.createElement('div');
         cell.dataset.columnId = col.id;
         cell.className = 'group relative px-2 py-1 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center text-xs';
         cell.style.width = `${width}px`;
         cell.style.minWidth = `${width}px`;
-        
+
         const wrapper = document.createElement('div');
         wrapper.className = 'flex flex-grow items-center justify-between min-w-0';
-        
+
         const text = document.createElement('span');
         text.textContent = col.name;
         text.className = 'header-cell-content flex-grow truncate text-ellipsis overflow-hidden';
-        
+
         const optionsIcon = document.createElement('span');
         optionsIcon.className = 'material-icons options-icon text-slate-400 hover:text-slate-600 cursor-pointer text-[18px] ml-2';
         optionsIcon.textContent = 'more_vert'; // vertical three dots
-        
+
         wrapper.appendChild(text);
         if (canUserEditProduct) {
             wrapper.appendChild(optionsIcon);
         }
-        
+
         const resizeHandle = document.createElement('div');
         resizeHandle.className = 'resize-handle';
-        
+
         cell.appendChild(wrapper);
         if (canUserEditProduct) {
             cell.appendChild(resizeHandle);
         }
-        
+
         rightHeaderContent.appendChild(cell);
     });
-    
+
     if (canUserEditProduct) {
         rightHeaderContent.addEventListener('click', headerClickListener);
     }
-    
+
     header.appendChild(leftHeader);
     header.appendChild(rightHeaderContent);
-    
+
     const body = document.createElement('div');
     const productsContainer = document.createElement('div');
     productsContainer.className = 'products-container';
-    
+
     const sortedProducts = project.products.sort((a, b) => (a.order || 0) - (b.order || 0));
     sortedProducts.forEach(product => {
         const row = document.createElement('div');
         row.className = 'product-row-wrapper flex group border-b border-slate-200 h-[32px]';
         row.dataset.productId = product.id;
-        
+
         const leftCell = document.createElement('div');
         leftCell.className = 'sticky left-0 z-10 bg-white px-1 w-80 md:w-96 lg:w-[400px] flex-shrink-0 flex items-center border-r border-transparent group-hover:bg-slate-50 py-0.5';
-        
+
         leftCell.innerHTML = `
     <div class="drag-handle ${!canUserEditProduct ? 'hidden' : ''} cursor-grab p-1">
         <span class="material-icons text-slate-500" style="font-size: 20px;">drag_indicator</span>
@@ -3873,15 +3858,15 @@ async function render(stockType) {
         </span>
     ` : ''}
 `;
-        
+
         // Find the delete icon we just created
         const deleteIcon = leftCell.querySelector('.delete-product-btn');
-        
+
         // If the delete icon exists, add the click listener
         if (deleteIcon) {
             deleteIcon.addEventListener('click', (e) => {
                 e.stopPropagation(); // Prevent other clicks from firing
-                
+
                 // Show a confirmation dialog
                 if (confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
                     // If user clicks "Yes", call the delete function
@@ -3889,10 +3874,10 @@ async function render(stockType) {
                 }
             });
         }
-        
+
         const rightCells = document.createElement('div');
         rightCells.className = 'flex-grow flex group-hover:bg-slate-50';
-        
+
         const fixedColumnWidths = {
             total: 80,
             productVendor: 100,
@@ -3904,28 +3889,28 @@ async function render(stockType) {
             c: 50,
             others: 100
         };
-        
+
         allColumns.forEach(col => {
             const width = fixedColumnWidths[col.id] || savedColumnWidths[col.id] || 150;
             const cell = document.createElement('div');
             const rule = project.columnRules?.find(r => r.name === col.name);
             const isRestricted = !!rule?.isRestricted;
             const isEditable = canUserEditProduct && !isRestricted;
-            
+
             const rawValue = product[col.id] !== undefined && product[col.id] !== null ? product[col.id] : '';
             cell.dataset.columnId = col.id;
             cell.style.width = `${width}px`;
             cell.style.minWidth = `${width}px`;
             cell.className = `table-cell px-2 py-1 flex items-center border-r border-slate-200 text-sm ${!isEditable ? 'bg-slate-50 cursor-not-allowed' : ''}`;
-            
+
             switch (col.id) {
                 case 'productImage': { // Brackets create a block scope for our variables
                     const hasImage = !!product.imageUrl;
-                    
+
                     if (canUserEditProduct) {
                         // ✅ --- EDITABLE STATE ---
                         // If the user has permission, create the fully interactive cell.
-                        
+
                         // 1. Set the initial HTML.
                         cell.innerHTML = `
             <div class="product-image-wrapper w-6 h-6 bg-gray-200 rounded-md flex items-center justify-center overflow-hidden relative cursor-pointer" data-column-id="productImage">
@@ -3936,13 +3921,13 @@ async function render(stockType) {
                 <input type="file" accept="image/*" class="hidden image-file-input">
             </div>
         `;
-                        
+
                         // 2. Get references to interactive elements.
                         const wrapper = cell.querySelector('.product-image-wrapper');
                         const fileInput = cell.querySelector('.image-file-input');
-                        
+
                         // 3. Attach event listeners for uploading and editing.
-                        
+
                         // --- Click Handler ---
                         wrapper.addEventListener('click', (e) => {
                             e.stopPropagation();
@@ -3970,7 +3955,7 @@ async function render(stockType) {
                                 fileInput.click();
                             }
                         });
-                        
+
                         // --- File Input Handler ---
                         fileInput.addEventListener('change', (e) => {
                             const file = e.target.files[0];
@@ -3978,7 +3963,7 @@ async function render(stockType) {
                                 uploadProductImage(file, product.id);
                             }
                         });
-                        
+
                         // --- Drag and Drop Handlers ---
                         wrapper.addEventListener('dragover', (e) => {
                             e.preventDefault();
@@ -3995,11 +3980,11 @@ async function render(stockType) {
                                 uploadProductImage(file, product.id);
                             }
                         });
-                        
+
                     } else {
                         // 🛑 --- VIEW-ONLY STATE ---
-                        
-                        
+
+
                         if (hasImage) {
                             // If there's an image, create a clickable element to open the overlay.
                             cell.innerHTML = `
@@ -4009,12 +3994,12 @@ async function render(stockType) {
                     </div>
                 </div>
             `;
-                            
+
                             cell.querySelector('.product-image-container').addEventListener('click', () => {
                                 overlayImageSrc.src = product.imageUrl;
                                 imageOverlay.classList.remove('hidden');
                             });
-                            
+
                         } else {
                             // If there's no image, just show the static placeholder icon.
                             cell.innerHTML = `
@@ -4026,11 +4011,11 @@ async function render(stockType) {
                     }
                     break;
                 }
-                
+
                 case 'supplierCost':
                     const cost = typeof rawValue === 'number' ? `$${rawValue.toFixed(2)}` : '';
                     cell.innerHTML = `<span class="px-1 w-full block truncate">${cost}</span>`;
-                    
+
                     if (isEditable) {
                         col.type = 'Costing';
                         cell.dataset.control = 'supplierCost'; // Add control type
@@ -4039,16 +4024,16 @@ async function render(stockType) {
                         });
                     }
                     break;
-                    
+
                 case 'supplierProject':
                     cell.dataset.control = 'supplierProject'; // 👈 required for dropdown click handler
                     const displayValue = (typeof rawValue === 'object' && rawValue !== null) ?
                         rawValue.name || 'Unnamed Project' :
                         rawValue || (isEditable ? 'Select Project' : 'N/A');
-                    
+
                     cell.innerHTML = `<div class="status-tag ${isEditable ? 'cursor-pointer' : ''}">${displayValue}</div>`;
                     break;
-                    
+
                 case 'warehouseLocation':
                     cell.dataset.control = 'warehouseLocation'; // 👈 required for dropdown click handler
                     cell.innerHTML = `
@@ -4060,7 +4045,7 @@ async function render(stockType) {
             </div>
         `;
                     break;
-                    
+
                 case 'total':
                     const sizeFields = ['s', 'm', 'l', 'xl', 'xxl', 'c', 'others'];
                     const total = sizeFields.reduce((sum, field) => {
@@ -4070,7 +4055,7 @@ async function render(stockType) {
                     cell.innerHTML = `<span class="px-1 w-full text-right">${total}</span>`;
                     // ❌ Not editable
                     break;
-                    
+
                 case 'productVendor':
                 case 's':
                 case 'm':
@@ -4081,7 +4066,7 @@ async function render(stockType) {
                 case 'others':
                     let colorClass = 'text-slate-700'; // Default color
                     const numericValue = parseInt(rawValue, 10);
-                    
+
                     if (!isNaN(numericValue)) {
                         if (numericValue >= 0 && numericValue <= 5) {
                             colorClass = 'text-red-600 font-bold'; // Red and bold for 0-5
@@ -4091,10 +4076,10 @@ async function render(stockType) {
                             colorClass = 'text-green-600'; // Green for 10+
                         }
                     }
-                    
+
                     // Apply the dynamic color class to the span
                     cell.innerHTML = `<span class="px-1 w-full block truncate ${colorClass}">${rawValue}</span>`;
-                    
+
                     if (isEditable) {
                         col.type = 'Text';
                         cell.dataset.control = col.id;
@@ -4103,7 +4088,7 @@ async function render(stockType) {
                         });
                     }
                     break;
-                    
+
                 default:
                     cell.innerHTML = `<span class="px-1 w-full block truncate">${rawValue}</span>`;
                     if (isEditable) {
@@ -4114,22 +4099,22 @@ async function render(stockType) {
                         });
                     }
             }
-            
-            
+
+
             rightCells.appendChild(cell);
         });
-        
+
         row.appendChild(leftCell);
         row.appendChild(rightCells);
         productsContainer.appendChild(row);
     });
-    
+
     table.appendChild(header);
     body.appendChild(productsContainer);
     table.appendChild(body);
     container.appendChild(table);
     productListBody.appendChild(container);
-    
+
     if (canUserEditProduct) {
         Sortable.create(productsContainer, {
             group: 'products',
@@ -4141,7 +4126,7 @@ async function render(stockType) {
         });
         initColumnDragging(allColumns);
     }
-    
+
     initColumnResizing(stockType, savedColumnWidths);
     requestAnimationFrame(syncColumnWidths);
 }
@@ -4149,24 +4134,24 @@ async function render(stockType) {
 function initColumnDragging(allColumns) {
     const headerContainer = document.querySelector('.juanlunacms-column-header');
     if (!headerContainer) return;
-    
+
     Sortable.create(headerContainer, {
         animation: 150,
         handle: '.group', // make sure .group is applied on draggable cell
         filter: '.resize-handle',
         onEnd: async (evt) => {
             if (evt.oldIndex === evt.newIndex) return;
-            
+
             // Get new column order
             const newColumnOrder = Array.from(evt.to.children)
                 .map(el => el.dataset.columnId)
                 .filter(id => id);
-            
+
             // Update local order
             const newOrderedColumns = newColumnOrder.map(id =>
                 allColumns.find(col => col.id === id)
             ).filter(Boolean);
-            
+
             // Save column order to Firestore
             try {
                 const docRef = doc(db, 'InventoryWorkspace', currentInventoryId);
@@ -4177,7 +4162,7 @@ function initColumnDragging(allColumns) {
             } catch (error) {
                 console.error("❌ Failed to save column order:", error);
             }
-            
+
             // Re-render
             await render(currentStockType);
         }
@@ -4188,12 +4173,12 @@ function initColumnDragging(allColumns) {
 function syncColumnWidths() {
     const table = document.querySelector('.min-w-max.relative');
     if (!table) return;
-    
+
     const headerContainer = table.querySelector('.juanlunacms-spreadsheetlist-sticky-header');
     if (!headerContainer) return;
-    
+
     const allColumnIds = Array.from(headerContainer.querySelectorAll('[data-column-id]')).map(cell => cell.dataset.columnId);
-    
+
     const fixedColumnWidths = {
         total: 80,
         productVendor: 100,
@@ -4205,18 +4190,18 @@ function syncColumnWidths() {
         c: 50,
         others: 100
     };
-    
+
     let minWidth = fixedColumnWidths[columnId] || 50;
-    
+
     allColumnIds.forEach(columnId => {
         const headerCell = headerContainer.querySelector(`[data-column-id="${columnId}"]`);
         if (!headerCell) return;
-        
+
         const textElement = headerCell.querySelector('.header-cell-content');
         const headerContentWidth = textElement ? textElement.scrollWidth : 0;
-        
+
         let minWidth = 150;
-        
+
         if (fixed20pxColumns.includes(columnId)) {
             minWidth = 20; // Force 20px for fixed columns
         } else if (columnId === 'productImage') {
@@ -4228,75 +4213,75 @@ function syncColumnWidths() {
         } else if (['supplierName', 'supplierProject'].includes(columnId)) {
             minWidth = 180;
         }
-        
+
         const finalWidth = fixedColumnWidths[columnId] || Math.max(minWidth, headerContentWidth) + 32;
-        
+
         const allCellsInColumn = table.querySelectorAll(`[data-column-id="${columnId}"]`);
         allCellsInColumn.forEach(cell => {
             cell.style.width = `${finalWidth}px`;
             cell.style.minWidth = `${finalWidth}px`;
         });
     });
-    
+
 }
 
 function initColumnResizing() {
     const table = document.querySelector('.min-w-max.relative');
     if (!table) return;
-    
+
     let initialX, initialWidth, columnId;
     let columnSpecificMinWidth;
     let finalWidth = 0; // ✅ define in outer scope so it can be used in onDragEnd
-    
+
     const onDragMove = (e) => {
         const currentX = e.touches ? e.touches[0].clientX : e.clientX;
         const deltaX = currentX - initialX;
         finalWidth = Math.max(columnSpecificMinWidth, initialWidth + deltaX); // ✅ update here
-        
+
         const cellsToResize = table.querySelectorAll(`[data-column-id="${columnId}"]`);
         cellsToResize.forEach(cell => {
             cell.style.width = `${finalWidth}px`;
             cell.style.minWidth = `${finalWidth}px`;
         });
     };
-    
+
     const onDragEnd = async () => {
         document.removeEventListener('mousemove', onDragMove);
         document.removeEventListener('mouseup', onDragEnd);
         document.removeEventListener('touchmove', onDragMove);
         document.removeEventListener('touchend', onDragEnd);
-        
+
         if (!currentInventoryId || !currentStockType || !columnId || !finalWidth) return;
-        
+
         const isUS = currentStockType === 'us';
         const fieldPath = isUS ?
             `customResizeWidthUSStock.${columnId}` :
             `customResizeWidthPHStock.${columnId}`;
-        
+
         const workspaceRef = doc(db, 'InventoryWorkspace', currentInventoryId);
-        
+
         try {
             await updateDoc(workspaceRef, {
                 [fieldPath]: finalWidth
             });
-            
+
             console.log(`✅ Saved width for ${columnId} (${finalWidth}px) to ${fieldPath}`);
         } catch (err) {
             console.error('❌ Failed to save column width to InventoryWorkspace root:', err);
         }
     };
-    
-    
+
+
     const onDragStart = (e) => {
         if (!e.target.classList.contains('resize-handle')) return;
-        
+
         e.preventDefault();
-        
+
         const headerCell = e.target.parentElement;
         columnId = headerCell.dataset.columnId;
         initialX = e.touches ? e.touches[0].clientX : e.clientX;
         initialWidth = headerCell.offsetWidth;
-        
+
         // Set custom min width for each column
         const fixedMinWidths = {
             productImage: 80,
@@ -4315,16 +4300,16 @@ function initColumnResizing() {
             c: 50,
             others: 100
         };
-        
+
         let minWidth = fixedMinWidths[columnId] || 150;
         columnSpecificMinWidth = minWidth;
-        
+
         document.addEventListener('mousemove', onDragMove);
         document.addEventListener('mouseup', onDragEnd);
         document.addEventListener('touchmove', onDragMove);
         document.addEventListener('touchend', onDragEnd);
     };
-    
+
     table.addEventListener('mousedown', onDragStart);
     table.addEventListener('touchstart', onDragStart, { passive: false });
 }
@@ -4338,14 +4323,14 @@ function handleMouseMoveDragGhost(e) {
 // This function will run ONLY when a menu is open and the user scrolls
 function updateMenuPosition() {
     if (!activeMenuButton) return;
-    
+
     const menu = document.querySelector('.options-dropdown-menu');
     if (!menu) return;
-    
+
     // Recalculate button position and update the menu's style
     const rect = activeMenuButton.getBoundingClientRect();
     const menuWidth = menu.offsetWidth;
-    
+
     menu.style.top = `${rect.bottom + window.scrollY + 4}px`;
     menu.style.left = `${rect.right + window.scrollX - menuWidth}px`;
 }
@@ -4363,32 +4348,32 @@ function closeOpenMenu() {
 
 function openOptionsMenu(buttonEl) {
     closeOpenMenu(); // Close any other menus first
-    
+
     const sectionWrapper = buttonEl.closest('.section-row-wrapper, .section-title-wrapper');
     const sectionId = sectionWrapper ? sectionWrapper.dataset.sectionId : null;
-    
+
     if (!sectionId) {
         console.error("Could not find sectionId for the options menu.");
         return;
     }
-    
+
     // --- NEW LOGIC TO CHECK SECTION TYPE ---
-    
+
     // 1. Find the full section object from our project data using the sectionId.
     const section = project.sections.find(s => s.id === sectionId);
-    
+
     // 2. Define the list of protected section types that cannot be deleted.
     const protectedTypes = ['completed', 'todo', 'doing'];
-    
+
     // 3. Check if the current section is a protected type.
     //    We check if `section` exists and if its `sectionType` is in our list.
     const isProtected = section && protectedTypes.includes(section.sectionType);
-    
+
     // --- END OF NEW LOGIC ---
-    
+
     const menu = document.createElement('div');
     menu.className = 'options-dropdown-menu';
-    
+
     // 4. Conditionally build the menu's HTML.
     // Start with the options that are always available.
     let menuHTML = `
@@ -4401,7 +4386,7 @@ function openOptionsMenu(buttonEl) {
             <span>Rename section</span>
         </div>
     `;
-    
+
     // ONLY if the section is NOT protected, add the "Delete" option.
     if (!isProtected) {
         menuHTML += `
@@ -4411,9 +4396,9 @@ function openOptionsMenu(buttonEl) {
             </div>
         `;
     }
-    
+
     menu.innerHTML = menuHTML;
-    
+
     document.body.appendChild(menu);
     activeMenuButton = buttonEl;
     updateMenuPosition();
@@ -4425,18 +4410,18 @@ async function deleteSectionInFirebase(sectionId) {
         'Are you sure you want to delete this section? All tasks within it will be permanently lost. This action cannot be undone.'
     );
     if (!confirmed) return;
-    
+
     // THE FIX: Check for the correct project reference.
     if (!currentProjectRef) {
         return console.error("Cannot delete section: Project reference is missing.");
     }
-    
+
     // Create correct references from the main project reference.
     const sectionRef = doc(currentProjectRef, 'sections', sectionId);
     const tasksCollectionRef = collection(sectionRef, 'tasks');
-    
+
     const batch = writeBatch(db);
-    
+
     try {
         const tasksSnapshot = await getDocs(tasksCollectionRef);
         tasksSnapshot.forEach(taskDoc => batch.delete(taskDoc.ref));
@@ -4456,34 +4441,34 @@ async function deleteSectionInFirebase(sectionId) {
  */
 async function handleTaskCompletion(task, taskRowEl) {
     if (!task || !taskRowEl) return;
-    
+
     const sourceSection = findSectionById(task.sectionId);
     if (!sourceSection) {
         console.error("Could not find the source section for the task.");
         return;
     }
-    
+
     const taskId = task.id;
     const batch = writeBatch(db);
     const isCurrentlyCompleted = task.status === 'Completed';
-    
+
     if (isCurrentlyCompleted) {
         // --- LOGIC FOR UN-COMPLETING A TASK ---
         console.log(`Un-completing task: "${task.name}"`);
-        
+
         const targetSectionId = task.previousSectionId || sourceSection.id;
         const targetSection = findSectionById(targetSectionId);
-        
+
         if (!targetSection) {
             console.error(`Cannot un-complete task. Target section with ID "${targetSectionId}" not found.`);
             return;
         }
-        
+
         // *** THE FIX IS HERE ***
         // 1. Use destructuring to pull out the fields we want to discard (`previousStatus`, `previousSectionId`).
         //    The `...restOfTask` variable will contain all other properties from the original task object.
         const { previousStatus, previousSectionId, ...restOfTask } = task;
-        
+
         // 2. Build the new data object from the `restOfTask`, ensuring the unwanted fields are gone.
         const updatedTaskData = {
             ...restOfTask,
@@ -4491,24 +4476,24 @@ async function handleTaskCompletion(task, taskRowEl) {
             sectionId: targetSection.id,
         };
         // *** END OF FIX ***
-        
+
         const sourceTaskRef = doc(currentProjectRef, `sections/${sourceSection.id}/tasks/${taskId}`);
         const targetTaskRef = doc(currentProjectRef, `sections/${targetSection.id}/tasks/${taskId}`);
-        
+
         batch.delete(sourceTaskRef);
         // Now, this `set` operation works because `updatedTaskData` is a clean object without any `deleteField()` instructions.
         batch.set(targetTaskRef, updatedTaskData);
-        
+
     } else {
         // --- LOGIC FOR COMPLETING A TASK (This part was already correct) ---
         console.log(`Completing task: "${task.name}"`);
         const completedSection = project.sections.find(s => s.sectionType === 'completed');
-        
+
         if (!completedSection) {
             console.error("Cannot complete task: A section with sectionType: 'completed' was not found.");
             return;
         }
-        
+
         const updatedTaskData = {
             ...task,
             status: 'Completed',
@@ -4516,21 +4501,21 @@ async function handleTaskCompletion(task, taskRowEl) {
             previousSectionId: sourceSection.id,
             sectionId: completedSection.id,
         };
-        
+
         const sourceTaskRef = doc(currentProjectRef, `sections/${sourceSection.id}/tasks/${taskId}`);
         const targetTaskRef = doc(currentProjectRef, `sections/${completedSection.id}/tasks/${taskId}`);
-        
+
         batch.delete(sourceTaskRef);
         batch.set(targetTaskRef, updatedTaskData);
     }
-    
+
     // --- Execute the batch and update the UI ---
     try {
         await batch.commit();
         console.log(`Task ${taskId} completion status updated successfully in Firestore.`);
         taskRowEl.classList.toggle('is-completed', !isCurrentlyCompleted);
         render('us');
-        
+
     } catch (error) {
         console.error(`Error updating task completion for ${taskId}:`, error);
     }
@@ -4544,27 +4529,27 @@ async function handleTaskCompletion(task, taskRowEl) {
  */
 async function moveTaskToSection(taskId, targetSectionId) {
     if (!currentProjectRef) return console.error("Cannot move task: Project reference is missing.");
-    
+
     const { task: taskToMove, section: sourceSection } = findTaskAndSection(taskId);
     const targetSection = findSectionById(targetSectionId);
-    
+
     if (!taskToMove || !sourceSection || !targetSection || sourceSection.id === targetSectionId) {
         return console.error("Cannot move task. Invalid source or target.");
     }
-    
+
     // Prepare the initial data object for the new task document.
     const newTaskData = {
         ...taskToMove,
         id: taskId,
         sectionId: targetSectionId,
     };
-    
+
     // --- UPDATED LOGIC FOR STATUS CHANGES ---
-    
+
     // Case 1: Moving INTO a 'completed' section
     if (targetSection.sectionType === 'completed') {
         console.log(`Task moved to 'Completed' section. Updating status.`);
-        
+
         // If the task isn't already completed, save its current status for potential reversal.
         if (newTaskData.status !== 'Completed') {
             newTaskData.previousStatus = newTaskData.status;
@@ -4575,18 +4560,18 @@ async function moveTaskToSection(taskId, targetSectionId) {
     // Case 2: Moving OUT OF a 'completed' section
     else if (sourceSection.sectionType === 'completed') {
         console.log(`Task moved out of 'Completed' section. Reverting status.`);
-        
+
         // Revert to the stored previous status, or a sensible default like 'On track'.
         newTaskData.status = taskToMove.previousStatus || 'On track';
-        
+
         // Clean up the previousStatus field as it's no longer needed.
         newTaskData.previousStatus = deleteField();
     }
     // --- END OF UPDATED LOGIC ---
-    
+
     const sourceTaskRef = doc(currentProjectRef, `sections/${sourceSection.id}/tasks/${taskId}`);
     const newTaskRef = doc(currentProjectRef, `sections/${targetSectionId}/tasks/${taskId}`);
-    
+
     try {
         const batch = writeBatch(db);
         batch.delete(sourceTaskRef);
@@ -4651,7 +4636,7 @@ async function addTaskToFirebase(sectionId, taskData) {
     }
     const sectionRef = doc(currentProjectRef, 'sections', sectionId);
     const tasksCollectionRef = collection(sectionRef, 'tasks');
-    
+
     try {
         const newTaskRef = doc(tasksCollectionRef); // Create a reference to get the ID
         const fullTaskData = {
@@ -4678,23 +4663,23 @@ async function addSectionToFirebase() {
     if (!currentProjectRef) {
         return console.error("Cannot add section: Project reference is missing.");
     }
-    
+
     // This logic remains the same.
     const newOrder = project.sections ? project.sections.length : 0;
-    
+
     try {
         // THE FIX: Get a reference to the 'sections' subcollection from the correct project reference.
         const sectionsCollectionRef = collection(currentProjectRef, 'sections');
-        
+
         // Use the correct reference to add the new document.
         await addDoc(sectionsCollectionRef, {
             title: 'New Section',
             isCollapsed: false,
             order: newOrder
         });
-        
+
         console.log("Section added successfully to the correct project.");
-        
+
     } catch (error) {
         console.error("Error adding section:", error);
     }
@@ -4707,7 +4692,7 @@ async function addSectionToFirebase() {
  */
 async function updateSectionInFirebase(sectionId, propertiesToUpdate) {
     if (!currentProjectRef || !sectionId) return console.error("Missing IDs or project reference.");
-    
+
     const sectionRef = doc(currentProjectRef, `sections/${sectionId}`);
     try {
         await updateDoc(sectionRef, propertiesToUpdate);
@@ -4752,7 +4737,7 @@ function showConfirmationModal(message) {
             justify-content: center;
             z-index: 9999;
         `;
-        
+
         // Set modal content
         dialogOverlay.innerHTML = `
             <div class="dialog-box" style="background: white; border-radius: 8px; width: 400px; overflow: hidden;">
@@ -4765,11 +4750,11 @@ function showConfirmationModal(message) {
                 </div>
             </div>
         `;
-        
+
         document.body.appendChild(dialogOverlay);
-        
+
         const dialogBox = dialogOverlay.querySelector('.dialog-box');
-        
+
         // Close function
         const close = (result) => {
             if (dialogOverlay.parentNode) {
@@ -4777,11 +4762,11 @@ function showConfirmationModal(message) {
                 resolve(result);
             }
         };
-        
+
         // Event delegation for buttons
         dialogOverlay.addEventListener('click', (e) => {
             const action = e.target.getAttribute('data-action');
-            
+
             if (action === 'cancel') close(false);
             else if (action === 'confirm') close(true);
             else if (!dialogBox.contains(e.target)) close(false); // click outside
@@ -4804,43 +4789,43 @@ async function deleteColumnInFirebase(columnId) {
         alert("You do not have permission to perform this action.");
         return;
     }
-    
+
     if (!currentProjectRef) {
         return console.error("Cannot delete column: Project reference is missing.");
     }
-    
+
     const confirmed = await showConfirmationModal(
         'Are you sure you want to delete this column and all its data? This action cannot be undone.'
     );
     if (!confirmed) {
         return;
     }
-    
+
     const batch = writeBatch(db);
-    
+
     // 1. Update the project document using the correct reference
     const newColumnsArray = project.customColumns.filter(col => String(col.id) !== String(columnId));
     batch.update(currentProjectRef, { customColumns: newColumnsArray });
-    
+
     // 2. Query for ALL tasks within the project to remove the field data
     const tasksQuery = query(
         collectionGroup(db, "tasks"),
         where("projectId", "==", currentProjectId)
     );
-    
+
     try {
         const tasksSnapshot = await getDocs(tasksQuery);
         console.log(`Found ${tasksSnapshot.size} tasks in project to update.`);
-        
+
         tasksSnapshot.forEach(taskDoc => {
             batch.update(taskDoc.ref, {
                 [`customFields.${columnId}`]: deleteField()
             });
         });
-        
+
         await batch.commit();
         console.log("Column and its data were deleted successfully from all relevant tasks.");
-        
+
     } catch (error) {
         console.error("Error deleting column and its data:", error);
         alert("Error: Could not completely delete the column. Check console for details.");
@@ -4871,24 +4856,24 @@ function createStatusTag(s) {
     if (typeof s !== 'string' || !s) {
         return '';
     }
-    
+
     // Sanitize the string once to create a valid CSS class name.
     // This replaces spaces with dashes and removes any non-alphanumeric characters (except dashes).
     const sanitizedName = s.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
     const className = `status-${sanitizedName}`;
-    
+
     // Check if it's a known default or custom status, then create the tag.
     if (statusOptions.includes(s)) {
         return createTag(s, 'status', className);
     }
-    
+
     if (project.customStatuses) {
         const customStatus = project.customStatuses.find(cs => cs.name === s);
         if (customStatus) {
             return createTag(s, 'status', className);
         }
     }
-    
+
     // If the status is not found, return an empty string.
     return '';
 }
@@ -4899,11 +4884,11 @@ function closeFloatingPanels() {
 
 function createAdvancedDropdown(targetEl, config) {
     closeFloatingPanels();
-    
+
     const dropdown = document.createElement('div');
     dropdown.className = 'advanced-dropdown';
     document.body.appendChild(dropdown);
-    
+
     // --- Event listener for closing the dropdown ---
     const clickOutsideHandler = (event) => {
         if (!dropdown.contains(event.target) && !targetEl.contains(event.target)) {
@@ -4913,7 +4898,7 @@ function createAdvancedDropdown(targetEl, config) {
     };
     // Use a timeout to attach the listener, preventing it from firing on the same click that opened it
     setTimeout(() => document.addEventListener('click', clickOutsideHandler, true), 0);
-    
+
     // --- Search Input ---
     if (config.searchable) {
         const searchInput = document.createElement('input');
@@ -4922,12 +4907,12 @@ function createAdvancedDropdown(targetEl, config) {
         searchInput.placeholder = 'Search teammates...';
         dropdown.appendChild(searchInput);
     }
-    
+
     // --- List Container ---
     const listContainer = document.createElement('ul');
     listContainer.className = 'dropdown-list';
     dropdown.appendChild(listContainer);
-    
+
     // --- Render Items Function ---
     const renderItems = (filter = '') => {
         listContainer.innerHTML = '';
@@ -4935,23 +4920,23 @@ function createAdvancedDropdown(targetEl, config) {
         const filteredOptions = config.options.filter(opt =>
             (opt.name || opt.label || '').toLowerCase().includes(lowerFilter)
         );
-        
+
         filteredOptions.forEach(option => {
             const li = document.createElement('li');
             li.className = 'dropdown-item';
-            
+
             const content = document.createElement('div');
             content.className = 'dropdown-item-content';
             content.innerHTML = config.itemRenderer(option);
             li.appendChild(content);
-            
+
             // Handle main item click
             content.addEventListener('click', (e) => {
                 e.stopPropagation();
                 config.onSelect(option);
                 closeFloatingPanels();
             });
-            
+
             // Add optional edit button
             if (config.onEdit) {
                 const editBtn = document.createElement('button');
@@ -4968,7 +4953,7 @@ function createAdvancedDropdown(targetEl, config) {
             listContainer.appendChild(li);
         });
     };
-    
+
     // --- Footer for "Add New" action ---
     if (config.onAdd) {
         const footer = document.createElement('div');
@@ -4980,7 +4965,7 @@ function createAdvancedDropdown(targetEl, config) {
         });
         dropdown.appendChild(footer);
     }
-    
+
     // --- Initial Render & Positioning ---
     renderItems();
     // Use the same robust positioning logic from the sidebar answer
@@ -4993,7 +4978,7 @@ function createAdvancedDropdown(targetEl, config) {
     } else {
         dropdown.style.top = `${rect.bottom + 4}px`;
     }
-    
+
     setTimeout(() => dropdown.classList.add('visible'), 10);
 }
 
@@ -5005,7 +4990,7 @@ function showStatusDropdown(targetEl, taskId, sectionId, optionType) {
     const options = isPriority ? priorityOptions : statusOptions; // Your existing options arrays
     const customOptions = isPriority ? project.customPriorities : project.customStatuses;
     const allOptions = [...options.map(o => ({ name: o })), ...(customOptions || [])];
-    
+
     createAdvancedDropdown(targetEl, {
         options: allOptions,
         itemRenderer: (option) => {
@@ -5032,7 +5017,7 @@ function showStatusDropdown(targetEl, taskId, sectionId, optionType) {
 function showAssigneeDropdown(targetEl, taskId, sectionId) {
     const { task } = findTaskAndSection(taskId);
     if (!task) return;
-    
+
     createAdvancedDropdown(targetEl, {
         options: allUsers, // Your array of user objects
         searchable: true,
@@ -5053,19 +5038,19 @@ function showAssigneeDropdown(targetEl, taskId, sectionId) {
 function showDatePicker(targetEl, taskId, sectionId) {
     // 1. Create a perfectly positioned, empty panel.
     const panel = createFloatingPanel(targetEl);
-    
+
     // 2. Initialize the Datepicker library inside our new panel.
     const datepicker = new Datepicker(panel, {
         autohide: true,
         format: 'yyyy-mm-dd',
         todayHighlight: true,
     });
-    
+
     const { task } = findTaskAndSection(taskId);
     if (task && task.dueDate) {
         datepicker.setDate(task.dueDate);
     }
-    
+
     // 3. Add the event listener to handle date changes.
     panel.addEventListener('changeDate', (e) => {
         const formattedDate = Datepicker.formatDate(e.detail.date, 'yyyy-mm-dd');
@@ -5083,12 +5068,12 @@ function showDatePicker(targetEl, taskId, sectionId) {
 function createFloatingPanel(targetEl) {
     // 1. Clean up any existing panels first.
     closeFloatingPanels();
-    
+
     // 2. Create the panel element and add it to the body.
     const panel = document.createElement('div');
     panel.className = 'floating-panel'; // Use this class for styling
     document.body.appendChild(panel);
-    
+
     // 3. Add a "click outside" listener to close the panel.
     const clickOutsideHandler = (event) => {
         if (!panel.contains(event.target) && !targetEl.contains(event.target)) {
@@ -5097,17 +5082,17 @@ function createFloatingPanel(targetEl) {
         }
     };
     setTimeout(() => document.addEventListener('click', clickOutsideHandler, true), 0);
-    
+
     // 4. Calculate the correct position on the screen.
     const rect = targetEl.getBoundingClientRect();
     panel.style.left = `${rect.left}px`;
-    
+
     // Wait a moment for the panel to be rendered to get its height,
     // then decide whether to show it above or below the target.
     setTimeout(() => {
         const spaceBelow = window.innerHeight - rect.bottom;
         const panelHeight = panel.offsetHeight;
-        
+
         if (spaceBelow < panelHeight && rect.top > panelHeight) {
             // Not enough space below, plenty of space above: Position it above the target.
             panel.style.top = `${rect.top - panelHeight - 4}px`;
@@ -5115,11 +5100,11 @@ function createFloatingPanel(targetEl) {
             // Default behavior: Position it below the target.
             panel.style.top = `${rect.bottom + 4}px`;
         }
-        
+
         // 5. Make the panel visible with a smooth transition.
         panel.classList.add('visible');
     }, 10);
-    
+
     // 6. Return the created panel so it can be used.
     return panel;
 }
@@ -5129,14 +5114,14 @@ function createAssigneeHTML(assignees) {
     if (!assignees || assignees.length === 0) {
         return `<div class="add-assignee-btn" data-control="assignee"><i class="fas fa-plus"></i></div>`;
     }
-    
+
     const assigneeId = assignees[0];
     const user = allUsers.find(u => u.id === assigneeId);
-    
+
     if (!user) {
         return `<div class="add-assignee-btn" data-control="assignee"><i class="fas fa-plus"></i></div>`;
     }
-    
+
     return `
         <div class="assignee-cell-content assigneelistviewprofile-${user.id}" data-control="assignee">
             <img class="profile-picture rounded-avatar" src="${user.avatar}" title="${user.name}">
@@ -5173,7 +5158,7 @@ function syncScroll(scrollStates = new Map()) {
 
 function addNewColumn(config) {
     const newId = Date.now();
-    
+
     const newColumn = {
         id: newId,
         name: config.name,
@@ -5184,16 +5169,16 @@ function addNewColumn(config) {
         options: (config.type === 'Type' || config.type === 'Custom') ?
             (config.type === 'Type' ? typeColumnOptions : []) : null
     };
-    
+
     // Step 1: Update customColumns with the new column
     updateProjectInFirebase({
         customColumns: arrayUnion(newColumn)
     });
-    
+
     // Step 2: Update columnOrder with the new column ID
     const currentOrder = project.columnOrder || [];
     const newOrder = [...currentOrder, String(newId)];
-    
+
     updateProjectInFirebase({
         columnOrder: newOrder
     });
@@ -5209,7 +5194,7 @@ function openAddColumnDialog(columnType) {
         openCustomColumnCreatorDialog();
         return;
     }
-    
+
     const dialogOverlay = document.createElement('div');
     dialogOverlay.className = 'dialog-overlay';
     console.log('opened');
@@ -5221,7 +5206,7 @@ function openAddColumnDialog(columnType) {
     } else {
         previewHTML = `<div class="preview-value">Any text value</div><p>Freeform label or comment.</p>`;
     }
-    
+
     let typeSpecificFields = '';
     if (columnType === 'Costing') {
         typeSpecificFields = `
@@ -5234,7 +5219,7 @@ function openAddColumnDialog(columnType) {
                 </select>
             </div>`;
     }
-    
+
     dialogOverlay.innerHTML = `
         <div class="dialog-box">
             <div class="dialog-header">Add "${columnType}" Column</div>
@@ -5252,22 +5237,22 @@ function openAddColumnDialog(columnType) {
             </div>
         </div>
     `;
-    
+
     // Append to body
     document.body.appendChild(dialogOverlay);
-    
+
     // Focus input on open
     const inputEl = document.getElementById('column-name');
     if (inputEl) inputEl.focus();
-    
+
     // Close function
     const closeDialog = () => {
         dialogOverlay.remove();
     };
-    
+
     // Cancel Button
     document.getElementById('cancel-add-column').addEventListener('click', closeDialog);
-    
+
     // Confirm Add Column
     document.getElementById('confirm-add-column').addEventListener('click', () => {
         const columnName = document.getElementById('column-name').value.trim();
@@ -5275,17 +5260,17 @@ function openAddColumnDialog(columnType) {
             alert('Please enter a column name.');
             return;
         }
-        
+
         const config = {
             name: columnName,
             type: columnType,
             currency: document.getElementById('column-currency')?.value || null
         };
-        
+
         addNewColumn(config); // Your logic to push column into Firestore/local data
         closeDialog(); // Close dialog after
     });
-    
+
     // Dismiss modal when clicking outside
     dialogOverlay.addEventListener('click', (e) => {
         if (e.target === dialogOverlay) closeDialog();
@@ -5294,14 +5279,14 @@ function openAddColumnDialog(columnType) {
 
 function openCustomColumnCreatorDialog() {
     closeFloatingPanels();
-    
+
     const dialogOverlay = document.createElement('div');
     dialogOverlay.className = 'dialog-overlay';
-    
+
     const baseTypeOptionsHTML = baseColumnTypes
         .map(type => `<option value="${type}">${type}</option>`)
         .join('');
-    
+
     dialogOverlay.innerHTML = `
         <div class="dialog-box">
             <div class="dialog-header">Create Custom Column</div>
@@ -5322,16 +5307,16 @@ function openCustomColumnCreatorDialog() {
             </div>
         </div>
     `;
-    
+
     document.body.appendChild(dialogOverlay);
-    
+
     // Auto-focus
     const columnNameInput = document.getElementById('custom-column-name');
     if (columnNameInput) columnNameInput.focus();
-    
+
     const baseTypeSelect = document.getElementById('base-column-type');
     const specificOptionsContainer = document.getElementById('type-specific-options-custom');
-    
+
     const renderTypeSpecificOptions = (selectedType) => {
         let extraFields = '';
         if (selectedType === 'Costing') {
@@ -5347,31 +5332,31 @@ function openCustomColumnCreatorDialog() {
         }
         specificOptionsContainer.innerHTML = extraFields;
     };
-    
+
     // Render on change and init
     baseTypeSelect.addEventListener('change', () => renderTypeSpecificOptions(baseTypeSelect.value));
     renderTypeSpecificOptions(baseTypeSelect.value);
-    
+
     // Confirm button
     document.getElementById('confirm-custom-column').addEventListener('click', () => {
         const name = document.getElementById('custom-column-name').value.trim();
         const type = baseTypeSelect.value;
         const currency = document.getElementById('column-currency')?.value || null;
-        
+
         if (!name) {
             alert('Please enter a column name.');
             return;
         }
-        
+
         addNewColumn({ name, type, currency });
         dialogOverlay.remove(); // Close modal
     });
-    
+
     // Cancel button
     document.getElementById('cancel-custom-column').addEventListener('click', () => {
         dialogOverlay.remove();
     });
-    
+
     // Click outside closes dialog
     dialogOverlay.addEventListener('click', e => {
         if (e.target === dialogOverlay) dialogOverlay.remove();
@@ -5392,14 +5377,14 @@ function addNewTask(section) {
         customFields: {},
         order: section.tasks.length
     };
-    
+
     section.tasks.push(newTask);
     productIdToFocus = tempId;
-    
+
     if (section.isCollapsed) {
         section.isCollapsed = false;
     }
-    
+
     render('us');
 }
 
@@ -5411,7 +5396,7 @@ function openCustomOptionDialog(optionType) {
     closeFloatingPanels();
     const dialogOverlay = document.createElement('div');
     dialogOverlay.className = 'dialog-overlay';
-    
+
     dialogOverlay.innerHTML = `
 <div class="dialog-box">
     <div class="dialog-header">Add Custom ${optionType}</div>
@@ -5430,14 +5415,14 @@ function openCustomOptionDialog(optionType) {
         <button class="dialog-button primary" id="confirm-add-option">Add Option</button>
     </div>
 </div>`;
-    
+
     document.body.appendChild(dialogOverlay);
     document.getElementById('custom-option-name').focus();
-    
+
     const closeDialog = () => dialogOverlay.remove();
-    
+
     document.getElementById('cancel-add-option').addEventListener('click', closeDialog);
-    
+
     document.getElementById('confirm-add-option').addEventListener('click', () => {
         const name = document.getElementById('custom-option-name').value.trim();
         const color = document.getElementById('custom-option-color').value;
@@ -5448,7 +5433,7 @@ function openCustomOptionDialog(optionType) {
             alert('Please enter a name for the option.');
         }
     });
-    
+
     dialogOverlay.addEventListener('click', e => {
         if (e.target === dialogOverlay) closeDialog();
     });
@@ -5474,10 +5459,10 @@ function addNewCustomOption(optionType, newOption) {
 function openCustomColumnOptionDialog(columnId) {
     if (!columnId) return;
     closeFloatingPanels();
-    
+
     const dialogOverlay = document.createElement('div');
     dialogOverlay.className = 'dialog-overlay';
-    
+
     dialogOverlay.innerHTML = `
 <div class="dialog-box">
     <div class="dialog-header">Add New Option</div>
@@ -5496,14 +5481,14 @@ function openCustomColumnOptionDialog(columnId) {
         <button class="dialog-button primary" id="confirm-add-option">Add Option</button>
     </div>
 </div>`;
-    
+
     document.body.appendChild(dialogOverlay);
     document.getElementById('custom-option-name').focus();
-    
+
     const closeDialog = () => dialogOverlay.remove();
-    
+
     document.getElementById('cancel-add-option').addEventListener('click', closeDialog);
-    
+
     document.getElementById('confirm-add-option').addEventListener('click', () => {
         const name = document.getElementById('custom-option-name').value.trim();
         const color = document.getElementById('custom-option-color').value;
@@ -5514,7 +5499,7 @@ function openCustomColumnOptionDialog(columnId) {
             alert('Please enter a name for the option.');
         }
     });
-    
+
     dialogOverlay.addEventListener('click', e => {
         if (e.target === dialogOverlay) closeDialog();
     });
@@ -5548,18 +5533,18 @@ async function addNewCustomColumnOption(columnId, newOption) {
 function generateCustomTagStyles(projectData) {
     const styleId = 'custom-tag-styles';
     let styleElement = document.getElementById(styleId);
-    
+
     if (!styleElement) {
         styleElement = document.createElement('style');
         styleElement.id = styleId;
         document.head.appendChild(styleElement);
     }
-    
+
     let cssRules = '';
-    
+
     const generateRules = (items, prefix) => {
         if (!items) return;
-        
+
         // This loop is where the error occurs
         items.forEach(item => {
             // --- FIX STARTS HERE ---
@@ -5575,10 +5560,10 @@ function generateCustomTagStyles(projectData) {
             // --- FIX ENDS HERE ---
         });
     };
-    
+
     generateRules(projectData.customPriorities, 'priority');
     generateRules(projectData.customStatuses, 'status');
-    
+
     if (projectData.customColumns) {
         projectData.customColumns.forEach(col => {
             if (col.options && Array.isArray(col.options)) {
@@ -5612,11 +5597,11 @@ function openEditOptionDialog(optionType, originalOption, columnId = null) {
     closeFloatingPanels();
     const dialogOverlay = document.createElement('div');
     dialogOverlay.className = 'dialog-overlay';
-    
+
     // --- FIX STARTS HERE ---
     // Determine the correct dialog title based on the option type.
     let dialogTitle = `Edit ${optionType} Option`; // Default title
-    
+
     if (optionType === 'CustomColumn' && columnId) {
         // Find the custom column by its ID in our project data
         const column = project.customColumns.find(c => c.id === columnId);
@@ -5626,7 +5611,7 @@ function openEditOptionDialog(optionType, originalOption, columnId = null) {
         }
     }
     // --- FIX ENDS HERE ---
-    
+
     dialogOverlay.innerHTML = `
     <div class="dialog-box">
         <div class="dialog-header">${dialogTitle}</div>
@@ -5645,11 +5630,11 @@ function openEditOptionDialog(optionType, originalOption, columnId = null) {
             <button class="dialog-button primary" id="confirm-edit-option">Save Changes</button>
         </div>
     </div>`;
-    
+
     document.body.appendChild(dialogOverlay);
     const nameInput = document.getElementById('edit-option-name');
     nameInput.focus();
-    
+
     document.getElementById('confirm-edit-option').addEventListener('click', () => {
         const newOption = {
             name: document.getElementById('edit-option-name').value.trim(),
@@ -5663,7 +5648,7 @@ function openEditOptionDialog(optionType, originalOption, columnId = null) {
             showConfirmationModal('Please enter a name for the option.');
         }
     });
-    
+
     dialogOverlay.addEventListener('click', e => {
         if (e.target === e.currentTarget || e.target.id === 'cancel-edit-option') {
             closeFloatingPanels();
@@ -5683,7 +5668,7 @@ async function updateCustomOptionInFirebase(optionType, originalOption, newOptio
     const projectCopy = JSON.parse(JSON.stringify(project));
     let fieldToUpdate = null;
     let newArray = [];
-    
+
     if (optionType === 'Priority') {
         fieldToUpdate = 'customPriorities';
         newArray = projectCopy.customPriorities || [];
@@ -5701,7 +5686,7 @@ async function updateCustomOptionInFirebase(optionType, originalOption, newOptio
         }
         newArray = projectCopy.customColumns;
     }
-    
+
     // For non-column options, find and replace the option in the array
     if (optionType === 'Priority' || optionType === 'Status') {
         const optionIndex = newArray.findIndex(opt => opt.name === originalOption.name && opt.color === originalOption.color);
@@ -5709,7 +5694,7 @@ async function updateCustomOptionInFirebase(optionType, originalOption, newOptio
             newArray[optionIndex] = newOption;
         }
     }
-    
+
     if (fieldToUpdate) {
         // Update the entire array in Firestore
         await updateProjectInFirebase({
@@ -5727,21 +5712,21 @@ async function collapseExpandedSection(sectionId) {
     // Note: We find the toggle icon inside the '.section-title-wrapper' as per your code
     const sectionHeader = document.querySelector(`.section-title-wrapper[data-section-id="${sectionId}"]`);
     const chevron = sectionHeader ? sectionHeader.querySelector('.section-toggle') : null;
-    
+
     // --- 1. Update the UI immediately ---
     chevron.classList.replace('fa-chevron-down', 'fa-chevron-right');
-    
+
     // --- 2. Update Firestore in the background ---
     try {
         const user = auth.currentUser;
         if (!user) throw new Error("User not authenticated.");
-        
+
         const basePath = await _getSelectedProjectPath(db, user.uid);
         const sectionRef = doc(db, `${basePath}/sections/${sectionId}`);
         await updateDoc(sectionRef, { isCollapsed: false });
         console.log(`✅ Section ${sectionId} marked as collapsed in Firestore.`);
-        
-        
+
+
     } catch (error) {
         console.error("❌ Error updating section collapse state:", error);
         // Optional: Revert UI changes if Firestore update fails
@@ -5755,20 +5740,20 @@ async function expandCollapsedSection(sectionId) {
     // Note: We find the toggle icon inside the '.section-title-wrapper' as per your code
     const sectionHeader = document.querySelector(`.section-title-wrapper[data-section-id="${sectionId}"]`);
     const chevron = sectionHeader ? sectionHeader.querySelector('.section-toggle') : null;
-    
+
     // --- 1. Update the UI immediately ---
     chevron.classList.replace('fa-chevron-right', 'fa-chevron-down');
-    
+
     // --- 2. Update Firestore in the background ---
     try {
         const user = auth.currentUser;
         if (!user) throw new Error("User not authenticated.");
-        
+
         const basePath = await _getSelectedProjectPath(db, user.uid);
         const sectionRef = doc(db, `${basePath}/sections/${sectionId}`);
         await updateDoc(sectionRef, { isCollapsed: true });
         console.log(`✅ Section ${sectionId} marked as collapsed in Firestore.`);
-        
+
     } catch (error) {
         console.error("❌ Error updating section collapse state:", error);
         // Optional: Revert UI changes if Firestore update fails
@@ -5793,7 +5778,7 @@ function initializeDragAndDrop(gridWrapper) {
     // Ensure we don't attach multiple listeners on re-renders
     if (gridWrapper.dataset.dragInit === 'true') return;
     gridWrapper.dataset.dragInit = 'true';
-    
+
     gridWrapper.addEventListener('mousedown', handleDragStart);
     gridWrapper.addEventListener('touchstart', handleDragStart, { passive: false });
 }
@@ -5801,12 +5786,12 @@ function initializeDragAndDrop(gridWrapper) {
 function handleDragStart(e) {
     const dragHandle = e.target.closest('.drag-handle');
     if (!dragHandle) return;
-    
+
     e.preventDefault();
-    
+
     const taskRow = dragHandle.closest('.task-row-wrapper');
     const sectionRow = dragHandle.closest('.section-row-wrapper');
-    
+
     if (taskRow) {
         draggedElement = taskRow;
     } else if (sectionRow) {
@@ -5815,32 +5800,32 @@ function handleDragStart(e) {
     } else {
         return;
     }
-    
+
     if (!draggedElement) return;
-    
+
     sourceContainer = draggedElement.closest('.grid-wrapper');
     originalNextSibling = draggedElement.nextSibling;
     dragHasMoved = false;
-    
+
     // --- Placeholder for CSS Grid ---
     placeholder = document.createElement('div');
     placeholder.classList.add('drag-placeholder-ghost');
-    
+
     const draggedHeight = draggedElement.getBoundingClientRect().height;
     placeholder.style.height = `${draggedHeight}px`;
-    
+
     // CRITICAL: Make the placeholder span all columns in the grid
     placeholder.style.gridColumn = '1 / -1';
-    
+
     draggedElement.parentNode.insertBefore(placeholder, draggedElement);
     placeholder.style.display = 'none'; // Hide until drag moves
-    
+
     setTimeout(() => {
         if (draggedElement) draggedElement.classList.add('dragging');
     }, 0);
-    
+
     document.body.classList.add('is-dragging');
-    
+
     // Attach follow-up events
     document.addEventListener('mousemove', handleDragMove);
     document.addEventListener('touchmove', handleDragMove, { passive: false });
@@ -5850,7 +5835,7 @@ function handleDragStart(e) {
 
 function handleDragMove(e) {
     if (!draggedElement) return;
-    
+
     if (e.type === 'touchmove') e.preventDefault();
     if (!dragHasMoved) {
         dragHasMoved = true;
@@ -5861,7 +5846,7 @@ function handleDragMove(e) {
     const elementOver = document.elementFromPoint(coords.x, coords.y);
     placeholder.style.display = '';
     if (!elementOver) return;
-    
+
     // Auto-expand logic (remains the same)
     const isDraggingTask = draggedElement.matches('.task-row-wrapper');
     const hoveredSectionHeader = elementOver.closest('.section-row-wrapper');
@@ -5879,9 +5864,9 @@ function handleDragMove(e) {
         clearTimeout(expansionTimeout);
         lastHoveredSectionId = null;
     }
-    
+
     // ▼▼▼ NEW & IMPROVED POSITIONING LOGIC ▼▼▼
-    
+
     // Rule 1: Prioritize the "Add Task" row as a primary drop zone.
     const addTaskTarget = elementOver.closest('.add-task-row-wrapper');
     if (addTaskTarget) {
@@ -5889,12 +5874,12 @@ function handleDragMove(e) {
         addTaskTarget.before(placeholder);
         return;
     }
-    
+
     // Rule 2: Handle dropping in the empty space at the bottom of a section.
     const hoveredSection = elementOver.closest('.section-wrapper');
     const isHoveringTask = elementOver.closest('.task-row-wrapper');
     const isHoveringHeader = elementOver.closest('.section-row-wrapper');
-    
+
     if (hoveredSection && !isHoveringTask && !isHoveringHeader) {
         // We are inside a section, but not over a specific task or header.
         // This means we're in the empty space (likely at the bottom).
@@ -5905,13 +5890,13 @@ function handleDragMove(e) {
             return;
         }
     }
-    
+
     // Rule 3: General logic for dropping relative to other tasks and sections.
     const finalTarget = elementOver.closest('.task-row-wrapper, .section-wrapper');
     if (finalTarget && finalTarget !== draggedElement && !finalTarget.contains(draggedElement)) {
         const dropZoneRect = finalTarget.getBoundingClientRect();
         const isAfter = coords.y > dropZoneRect.top + dropZoneRect.height / 2;
-        
+
         if (isAfter) {
             finalTarget.after(placeholder);
         } else {
@@ -5930,18 +5915,18 @@ async function handleDragEnd(e) {
         cleanUpDragState();
         return;
     }
-    
+
     // Optimistic UI update
     placeholder.parentNode.replaceChild(draggedElement, placeholder);
-    
+
     const isTask = draggedElement.classList.contains('task-row-wrapper');
     const gridWrapper = draggedElement.closest('.grid-wrapper');
-    
+
     try {
         const user = auth.currentUser;
         if (!user) throw new Error("User not authenticated.");
         const basePath = await _getSelectedProjectPath(db, user.uid);
-        
+
         if (isTask) {
             // Call our new, grid-aware function
             await handleTaskMoved(draggedElement, gridWrapper, basePath);
@@ -5971,12 +5956,12 @@ function cleanUpDragState() {
         placeholder.parentNode.removeChild(placeholder);
     }
     document.body.classList.remove('is-dragging');
-    
+
     draggedElement = null;
     placeholder = null;
     sourceContainer = null;
     dragHasMoved = false;
-    
+
     // --- Remove ALL potential listeners ---
     document.removeEventListener('mousemove', handleDragMove);
     document.removeEventListener('touchmove', handleDragMove);
@@ -5994,7 +5979,7 @@ function updateDataOnDrop(draggedId, isTask, targetSectionId, targetId) {
     let itemToMove;
     let sourceArray;
     let sourceIndex = -1;
-    
+
     // 1. Find and remove the item from its original location
     if (isTask) {
         for (const section of project.sections) {
@@ -6012,12 +5997,12 @@ function updateDataOnDrop(draggedId, isTask, targetSectionId, targetId) {
             itemToMove = sourceArray.splice(sourceIndex, 1)[0];
         }
     }
-    
+
     if (!itemToMove) {
         console.error("Could not find the dragged item in the data source.");
         return;
     }
-    
+
     // 2. Add the item to its new location
     if (isTask) {
         const targetSection = project.sections.find(s => s.id === targetSectionId);
@@ -6051,17 +6036,17 @@ function positionFloatingPanel(targetEl, dropdownEl) {
     const panelRect = dropdownEl.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
     const viewportWidth = window.innerWidth;
-    
+
     let top = targetRect.bottom + 4;
     if (top + panelRect.height > viewportHeight) {
         top = targetRect.top - panelRect.height - 4;
     }
-    
+
     let left = targetRect.left;
     if (left + panelRect.width > viewportWidth) {
         left = viewportWidth - panelRect.width - 8;
     }
-    
+
     dropdownEl.style.top = `${top}px`;
     dropdownEl.style.left = `${left}px`;
     dropdownEl.style.position = 'absolute';
