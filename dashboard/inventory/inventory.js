@@ -464,8 +464,13 @@ function attachDynamicListeners(stockType) {
     // --- Badge Update Functions ---
     function updateNotificationBadge() {
         if (notificationBadge) {
-            notificationBadge.textContent = pendingMoves.length;
-            notificationBadge.classList.toggle('hidden', pendingMoves.length === 0);
+            const actionableMovesCount = pendingMoves.filter(move =>
+                move.status === 'pending' || move.status === 'partial'
+            ).length;
+
+            // Use the new count to update the badge
+            notificationBadge.textContent = actionableMovesCount;
+            notificationBadge.classList.toggle('hidden', actionableMovesCount === 0);
         }
     }
     function updateBackordersBadge() {
@@ -1647,6 +1652,15 @@ async function handleFulfillBackorder(backorderId) {
             const totalRemaining = Object.values(remainingQuantities).reduce((a, b) => a + b, 0);
             if (totalRemaining <= 0) {
                 console.log(`✅ All quantities fulfilled. Deleting backorder: ${backorderId}`);
+                const originalRequestId = currentBackorderData.originalRequestId;
+                if (originalRequestId) {
+                    // Create a reference to the original document in PendingMoves
+                    const originalMoveRef = doc(db, `InventoryWorkspace/${currentInventoryId}/PendingMoves`, originalRequestId);
+
+                    // Update its status to 'completed' within the same transaction
+                    transaction.update(originalMoveRef, { status: 'completed' });
+                    console.log(`🎉 Marking original move request ${originalRequestId} as completed.`);
+                }
                 transaction.delete(backorderRef);
             } else {
                 console.log(`⏳ Partial fulfillment. Updating backorder with remaining quantities:`, remainingQuantities);
@@ -1769,6 +1783,15 @@ async function executeAutomaticBackorderFulfillment(backorder) {
             const totalRemaining = Object.values(remainingQuantities).reduce((a, b) => a + b, 0);
             if (totalRemaining <= 0) {
                 console.log(`✅ Watcher: All quantities fulfilled. Deleting backorder: ${backorder.id}`);
+                const originalRequestId = currentBackorderData.originalRequestId;
+                if (originalRequestId) {
+                    // Create a reference to the original document in PendingMoves
+                    const originalMoveRef = doc(db, `InventoryWorkspace/${currentInventoryId}/PendingMoves`, originalRequestId);
+
+                    // Update its status to 'completed' as part of the transaction
+                    transaction.update(originalMoveRef, { status: 'completed' });
+                    console.log(`🎉 Watcher: Marking original move request ${originalRequestId} as completed.`);
+                }
                 transaction.delete(backorderRef);
             } else {
                 console.log(`⏳ Watcher: Partial fulfillment. Remaining:`, remainingQuantities);
@@ -3779,11 +3802,11 @@ async function render(stockType) {
         leftCell.className = 'sticky left-0 z-10 bg-white px-1 w-80 md:w-96 lg:w-[400px] flex-shrink-0 flex items-center border-r border-transparent group-hover:bg-slate-50 py-0.5';
 
         leftCell.innerHTML = `
-    <div class="drag-handle ${!canUserEditProduct ? 'hidden' : ''} cursor-grab p-1 hover:bg-slate-200">
+    <div class="drag-handle ${!canUserEditProduct ? 'hidden' : ''} cursor-grab p-1">
         <span class="material-icons text-slate-500" style="font-size: 20px;">drag_indicator</span>
     </div>
     <div class="flex items-center flex-grow min-w-0">
-        <span class="product-name truncate text-[13px] px-4 ${canUserEditProduct ? 'focus:bg-white focus:ring-1 focus:ring-slate-300' : 'cursor-default'}" 
+        <span class="product-name truncate text-[13px] ${canUserEditProduct ? 'focus:bg-white focus:ring-1 focus:ring-slate-300' : 'cursor-default'}" 
               contenteditable="${canUserEditProduct}" data-product-id="${product.id}">
             ${product.name}
         </span>
