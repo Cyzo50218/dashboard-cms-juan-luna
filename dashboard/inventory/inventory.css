@@ -3283,6 +3283,42 @@ Custom class
     background-color: #f3f4f6;
 }
 
+.loading-overlay-container {
+    /* Make it an overlay that covers the entire parent */
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    
+    /* Use flexbox to center the spinner within the overlay */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    /* Ensure it's on top of any other potential content */
+    z-index: 10; 
+    
+    /* A subtle background can improve user experience */
+    background-color: rgba(255, 255, 255, 0.7); 
+
+    min-height: 200px; /* Keep this to ensure it has height */
+}
+
+.loading-spinner-circular {
+    width: 48px;
+    height: 48px;
+    border: 4px solid #f0f0f0; /* Light grey */
+    border-top: 4px solid #161616; /* Blue */
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
 @keyframes fadeInScale {
     from {
         opacity: 0;

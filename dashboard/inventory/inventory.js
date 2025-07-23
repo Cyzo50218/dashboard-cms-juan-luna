@@ -168,6 +168,23 @@ function detachAllListeners() {
     Object.keys(activeListeners).forEach(key => activeListeners[key] = null);
 }
 
+function updateUrlWithQueryParams(inventoryId, stockType) {
+    if (!inventoryId || !stockType) return;
+
+    const params = new URLSearchParams(window.location.search);
+    params.set('id', inventoryId);
+    params.set('tab', stockType);
+
+    const newUrl = `/inventory?${params.toString()}`;
+
+    // Only push a new state if the URL has actually changed
+    if (window.location.href !== window.location.origin + newUrl) {
+        console.log(`Updating URL to: ${newUrl}`);
+        const state = { inventoryId, stockType };
+        history.pushState(state, '', newUrl);
+    }
+}
+
 async function cloneInventoryWorkspace(sourceId, targetId, subcollectionNames) {
     const sourceDocRef = doc(db, 'InventoryWorkspace', sourceId);
     const targetDocRef = doc(db, 'InventoryWorkspace', targetId);
@@ -244,6 +261,7 @@ async function attachInventoryListeners(workspaceId, userId) {
         currentInventoryId = workspaceId;
         inventoryPath = `InventoryWorkspace/${workspaceId}`;
 
+        updateUrlWithQueryParams(currentInventoryId, currentStockType);
         // Attach the final, performant listeners in parallel
         const usStocksRef = collection(inventoryDocRef, 'US-Stocks-meta');
         const phStocksRef = collection(inventoryDocRef, 'PH-Stocks-meta');
@@ -710,6 +728,21 @@ async function uploadProductImage(file, productId) {
     }
 }
 
+function toggleLoadingIndicator(show) {
+    if (!productListBody) return;
+
+    if (show) {
+        productListBody.innerHTML = `
+            <div class="loading-overlay-container">
+                <div class="loading-spinner-circular"></div>
+            </div>
+        `;
+    } else {
+        // Clearing is handled by the render function, but this can be a fallback.
+        productListBody.innerHTML = '';
+    }
+}
+
 async function setupEventListeners() {
     backordersBtn.addEventListener('click', openBackordersModal);
 
@@ -729,18 +762,30 @@ async function setupEventListeners() {
 
     inventoryTabs.forEach((tab, index) => {
         tab.addEventListener('click', () => {
+            // Do nothing if the clicked tab is already active
+            if (tab.classList.contains('active')) {
+                return;
+            }
+
+            // 1. Immediately update the active tab UI and show the spinner
             inventoryTabs.forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
+            toggleLoadingIndicator(true);
 
-            currentStockType = index === 0 ? 'ph' : 'us';
+            // 2. Defer the heavy data loading until the next browser paint cycle.
+            // This guarantees the spinner will be visible before the new list renders.
+            setTimeout(() => {
+                currentStockType = index === 0 ? 'ph' : 'us';
+                updateUrlWithQueryParams(currentInventoryId, currentStockType);
 
-            // Update subtitle
-            const subtitle = document.getElementById('inventory-subtitle');
-            subtitle.textContent = currentStockType.toUpperCase() + ' Stocks';
+                // Update subtitle
+                const subtitle = document.getElementById('inventory-subtitle');
+                subtitle.textContent = currentStockType.toUpperCase() + ' Stocks';
 
-            // Render relevant stock data
-            attachDynamicListeners(currentStockType);
-            render(currentStockType);
+                // Render relevant stock data (this will replace the spinner)
+                attachDynamicListeners(currentStockType);
+                render(currentStockType);
+            }, 0); // Using 0ms pushes this task to the end of the execution queue.
         });
     });
 
@@ -2102,7 +2147,7 @@ function generateNotificationsListHTML() {
                 // Standard display for other statuses
                 quantitiesHTML = '<ul>' + Object.entries(move.quantities).map(([size, count]) => `<li><strong>${size === 'countStocks' ? 'Stocks' : size.toUpperCase()}:</strong> ${count}</li>`).join('') + '</ul>';
             }
-            
+
             const productsHTML = move.products.map(p => `<li>${p.name} (SKU: ${p.sku})</li>`).join('');
 
             return `
@@ -2120,7 +2165,7 @@ function generateNotificationsListHTML() {
                 </div>`;
         }).join('');
     }
-    
+
     return html;
 }
 
@@ -3433,8 +3478,10 @@ async function render(stockType) {
     if (!canUserEditProduct) {
         console.warn('⚠️ User does not have permission to add products.');
         addProductHeaderBtn.classList.add('hidden');
+        moveProductsBtn.classList.add('hidden');
     } else {
         addProductHeaderBtn.classList.remove('hidden');
+        moveProductsBtn.classList.remove('hidden');
     }
     // Column setup from Firestore
     const firestoreColumns = stockType === 'us' ?
