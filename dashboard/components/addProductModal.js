@@ -376,7 +376,7 @@ function generateAddProductModal() {
               <label class="form-label">Cost</label>
               <input type="number" class="form-input" id="productCost" min="0" step="0.01" required />
             </div>
-            <div class="form-group">
+            <div class="form-group" style="display: none;">
   <label class="form-label">Supplier</label>
   <input type="text" class="form-input" id="productSupplier" required />
 </div>
@@ -390,7 +390,7 @@ function generateAddProductModal() {
   <option value="">-- Select Project --</option>
 </select>
 </div>
-<div class="form-group">
+<div class="form-group" style="display: none;">
   <label class="form-label">Warehouse Location</label>
   <select class="form-input" id="warehouseLocation" required>
     <option value="">-- Select Warehouse --</option>
@@ -398,7 +398,7 @@ function generateAddProductModal() {
     <option value="US-Stocks-meta">US Stocks</option>
   </select>
 </div>
-<div class="form-group">
+<div class="form-group" style="display: none;">
   <label class="form-label">Vendor</label>
   <input type="text" class="form-input" id="productVendor" />
 </div>

@@ -1997,9 +1997,6 @@ function openMoveProductsModal() {
         renderProductList(filteredProducts);
     }
 
-    /**
-     * MODIFIED: Added color-coding logic for stock values.
-     */
     function renderProductList(products) {
         if (products.length === 0) {
             productListContainer.innerHTML = `<p class="p-4 text-center text-gray-500">No products found for your filter.</p>`;
@@ -2009,45 +2006,46 @@ function openMoveProductsModal() {
         const productRowsHTML = products.map(p => {
             const isChecked = selectedProductIds.has(p.id) ? 'checked' : '';
 
-            const stocksHTML = stockAndSizeFields.map(field => {
-                const isTotalStock = field === 'countStocks';
-                const fieldClass = isTotalStock ? 'size-display total-stock-display' : 'size-display';
-                const label = isTotalStock ? 'STOCKS' : field.toUpperCase();
-                const numericValue = parseInt(p[field], 10) || 0;
+            // MODIFIED: Added a filter to exclude 'countstocks' from being displayed.
+            const stocksHTML = stockAndSizeFields
+                .filter(field => field.toLowerCase() !== 'countstocks')
+                .map(field => {
+                    const label = field.toUpperCase();
+                    const numericValue = parseInt(p[field], 10) || 0;
 
-                // --- COLOR LOGIC ADDED HERE ---
-                let colorClass = 'text-slate-700'; // Default color
-                if (!isNaN(numericValue)) {
-                    if (numericValue >= 0 && numericValue <= 5) {
-                        colorClass = 'text-red-600 font-bold'; // Red and bold for 0-5
-                    } else if (numericValue < 10) {
-                        colorClass = 'text-yellow-600'; // Yellow for 6-9
-                    } else {
-                        colorClass = 'text-green-600'; // Green for 10+
+                    // --- COLOR LOGIC ---
+                    let colorClass = 'text-slate-700'; // Default color
+                    if (!isNaN(numericValue)) {
+                        if (numericValue >= 0 && numericValue <= 5) {
+                            colorClass = 'text-red-600 font-bold'; // Red and bold for 0-5
+                        } else if (numericValue < 10) {
+                            colorClass = 'text-yellow-600'; // Yellow for 6-9
+                        } else {
+                            colorClass = 'text-green-600'; // Green for 10+
+                        }
                     }
-                }
 
-                return `
-                    <div class="${fieldClass}">
+                    return `
+                    <div class="size-display">
                         <span class="size-label">${label}</span>
                         <span class="size-value ${colorClass}">${numericValue}</span>
                     </div>`;
-            }).join('');
+                }).join('');
 
             return `
-                <div class="product-select-item" data-product-id="${p.id}">
-                    <div class="product-info">
-                        <input type="checkbox" data-product-id="${p.id}" ${isChecked}>
-                        <img src="${p.imageUrl || '/img/default-product.png'}" alt="Product">
-                        <div class="product-details">
-                            <div class="name">${p.name}</div>
-                            <div class="sku">SKU: ${p.productSku || 'N/A'}</div>
-                        </div>
+            <div class="product-select-item" data-product-id="${p.id}">
+                <div class="product-info">
+                    <input type="checkbox" data-product-id="${p.id}" ${isChecked}>
+                    <img src="${p.imageUrl || '/img/default-product.png'}" alt="Product">
+                    <div class="product-details">
+                        <div class="name">${p.name}</div>
+                        <div class="sku">SKU: ${p.productSku || 'N/A'}</div>
                     </div>
-                    <div class="product-stock-details">
-                        ${stocksHTML}
-                    </div>
-                </div>`;
+                </div>
+                <div class="product-stock-details">
+                    ${stocksHTML}
+                </div>
+            </div>`;
         }).join('');
 
         productListContainer.innerHTML = productRowsHTML;
@@ -2060,6 +2058,7 @@ function openMoveProductsModal() {
             });
         });
     }
+
 
     function handleProductSelection(productId, isChecked) {
         if (isChecked) {
@@ -2076,14 +2075,18 @@ function openMoveProductsModal() {
     function renderFooter() {
         if (selectedProductIds.size === 0) {
             footerContainer.innerHTML = `
-                <span class="text-sm text-gray-500">Select one or more products to move.</span>
-                <button class="modal-btn secondary close-modal-btn">Cancel</button>`;
+            <span class="text-sm text-gray-500">Select one or more products to move.</span>
+            <button class="modal-btn secondary close-modal-btn">Cancel</button>`;
             footerContainer.querySelector('.close-modal-btn').addEventListener('click', () => overlay.remove());
             return;
         }
 
+        // Correctly filter out 'countstocks' before any processing
+        const fieldsToDisplay = stockAndSizeFields.filter(field => field.toLowerCase() !== 'countstocks');
+
         const maxStocks = {};
-        for (const field of stockAndSizeFields) {
+        // Loop over the correctly filtered fields for calculations
+        for (const field of fieldsToDisplay) {
             maxStocks[field] = 0;
             for (const productId of selectedProductIds) {
                 const product = sourceData.find(p => p.id === productId);
@@ -2093,24 +2096,25 @@ function openMoveProductsModal() {
             }
         }
 
-        const stockInputsHTML = stockAndSizeFields.map(field => {
-            const label = field === 'countStocks' ? 'Stocks' : field.toUpperCase();
+        // Loop over the filtered fields again to generate the HTML
+        const stockInputsHTML = fieldsToDisplay.map(field => {
+            const label = field.toUpperCase();
             return `
-                <div class="size-input-group">
-                    <label for="size-${field}">${label}</label>
-                    <input type="number" id="size-${field}" min="0" placeholder="Max: ${maxStocks[field]}">
-                </div>`;
+            <div class="size-input-group">
+                <label for="size-${field}">${label}</label>
+                <input type="number" id="size-${field}" min="0" placeholder="Max: ${maxStocks[field]}">
+            </div>`;
         }).join('');
 
         footerContainer.innerHTML = `
-            <div class="footer-details">
-                <div class="selected-count">${selectedProductIds.size} products selected</div>
-                <div class="footer-size-inputs">${stockInputsHTML}</div>
-            </div>
-            <div class="footer-actions">
-                <button class="modal-btn secondary close-modal-btn">Cancel</button>
-                <button class="modal-btn primary" id="confirm-move-btn">Move Quantities</button>
-            </div>`;
+        <div class="footer-details">
+            <div class="selected-count">${selectedProductIds.size} products selected</div>
+            <div class="footer-size-inputs">${stockInputsHTML}</div>
+        </div>
+        <div class="footer-actions">
+            <button class="modal-btn secondary close-modal-btn">Cancel</button>
+            <button class="modal-btn primary" id="confirm-move-btn">Move Quantities</button>
+        </div>`;
 
         footerContainer.querySelector('.close-modal-btn').addEventListener('click', () => overlay.remove());
         footerContainer.querySelector('#confirm-move-btn').addEventListener('click', executeMove);
@@ -3908,55 +3912,43 @@ async function render(stockType) {
                     const hasImage = !!product.imageUrl;
 
                     if (canUserEditProduct) {
-                        // ✅ --- EDITABLE STATE ---
-                        // If the user has permission, create the fully interactive cell.
-
-                        // 1. Set the initial HTML.
+                        // --- EDITABLE STATE ---
+                        // New layout with a clickable image and a separate edit icon.
                         cell.innerHTML = `
-            <div class="product-image-wrapper w-6 h-6 bg-gray-200 rounded-md flex items-center justify-center overflow-hidden relative cursor-pointer" data-column-id="productImage">
-                ${hasImage
-                                ? `<img src="${product.imageUrl}" class="w-full h-full object-cover pointer-events-none">`
-                                : '<span class="material-icons text-gray-400 text-[18px] pointer-events-none">photo_camera</span>'
-                            }
+            <div class="product-image-container-editable flex items-center justify-between w-full">
+                <div class="product-image-wrapper w-6 h-6 bg-gray-200 rounded-md flex items-center justify-center overflow-hidden relative cursor-pointer" title="${hasImage ? 'View Image' : 'Add Image'}">
+                    ${hasImage ? `<img src="${product.imageUrl}" class="w-full h-full object-cover pointer-events-none">` : '<span class="material-icons text-gray-400 text-[18px] pointer-events-none">photo_camera</span>'}
+                </div>
+                <span class="material-icons edit-image-btn text-slate-400 hover:text-slate-600 cursor-pointer text-[14px] ml-2 opacity-1">edit</span>
                 <input type="file" accept="image/*" class="hidden image-file-input">
             </div>
         `;
 
-                        // 2. Get references to interactive elements.
-                        const wrapper = cell.querySelector('.product-image-wrapper');
-                        const fileInput = cell.querySelector('.image-file-input');
+                        const container = cell.querySelector('.product-image-container-editable');
+                        const wrapper = container.querySelector('.product-image-wrapper');
+                        const editBtn = container.querySelector('.edit-image-btn');
+                        const fileInput = container.querySelector('.image-file-input');
 
-                        // 3. Attach event listeners for uploading and editing.
-
-                        // --- Click Handler ---
+                        // Event 1: Click the image itself to view it in the overlay.
                         wrapper.addEventListener('click', (e) => {
                             e.stopPropagation();
                             if (hasImage) {
-                                // If an image exists, show the options dropdown.
-                                createAdvancedDropdown(wrapper, {
-                                    options: [
-                                        { name: 'View Image', icon: 'visibility' },
-                                        { name: 'Replace Image', icon: 'file_upload' }
-                                    ],
-                                    itemRenderer: (option) => `<span class="material-icons text-slate-500">${option.icon}</span><span>${option.name}</span>`,
-                                    onSelect: (selected) => {
-                                        if (selected.name === 'View Image') {
-                                            // ✅ MODIFIED BEHAVIOR
-                                            overlayImageSrc.src = product.imageUrl;
-                                            imageOverlay.classList.remove('hidden');
-                                            updateUrlForImageView(product.id);
-                                        } else if (selected.name === 'Replace Image') {
-                                            fileInput.click();
-                                        }
-                                    }
-                                });
+                                overlayImageSrc.src = product.imageUrl;
+                                imageOverlay.classList.remove('hidden');
+                                updateUrlForImageView(product.id);
                             } else {
-                                // If no image, clicking opens the file picker directly.
+                                // If no image, clicking the placeholder prompts for an upload.
                                 fileInput.click();
                             }
                         });
 
-                        // --- File Input Handler ---
+                        // Event 2: Click the new pencil icon to open the edit dropdown.
+                        editBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            fileInput.click();
+                        });
+
+                        // Event 3: File input handler remains the same.
                         fileInput.addEventListener('change', (e) => {
                             const file = e.target.files[0];
                             if (file) {
@@ -3964,17 +3956,17 @@ async function render(stockType) {
                             }
                         });
 
-                        // --- Drag and Drop Handlers ---
-                        wrapper.addEventListener('dragover', (e) => {
+                        // Event 4: Drag and drop handlers are now on the main container for a larger drop zone.
+                        container.addEventListener('dragover', (e) => {
                             e.preventDefault();
-                            wrapper.classList.add('drag-hover');
+                            container.classList.add('drag-hover');
                         });
-                        wrapper.addEventListener('dragleave', () => {
-                            wrapper.classList.remove('drag-hover');
+                        container.addEventListener('dragleave', () => {
+                            container.classList.remove('drag-hover');
                         });
-                        wrapper.addEventListener('drop', (e) => {
+                        container.addEventListener('drop', (e) => {
                             e.preventDefault();
-                            wrapper.classList.remove('drag-hover');
+                            container.classList.remove('drag-hover');
                             const file = e.dataTransfer.files[0];
                             if (file && file.type.startsWith('image/')) {
                                 uploadProductImage(file, product.id);
@@ -3982,11 +3974,9 @@ async function render(stockType) {
                         });
 
                     } else {
-                        // 🛑 --- VIEW-ONLY STATE ---
-
-
+                        // --- VIEW-ONLY STATE ---
+                        // This logic already works as requested. Clicking the image opens the overlay.
                         if (hasImage) {
-                            // If there's an image, create a clickable element to open the overlay.
                             cell.innerHTML = `
                 <div class="product-image-container cursor-pointer" title="View Image">
                     <div class="w-6 h-6 bg-gray-200 rounded-md flex items-center justify-center overflow-hidden">
@@ -3994,12 +3984,11 @@ async function render(stockType) {
                     </div>
                 </div>
             `;
-
                             cell.querySelector('.product-image-container').addEventListener('click', () => {
                                 overlayImageSrc.src = product.imageUrl;
                                 imageOverlay.classList.remove('hidden');
+                                updateUrlForImageView(product.id); // Sync URL for consistency
                             });
-
                         } else {
                             // If there's no image, just show the static placeholder icon.
                             cell.innerHTML = `
@@ -4011,7 +4000,6 @@ async function render(stockType) {
                     }
                     break;
                 }
-
                 case 'supplierCost':
                     const cost = typeof rawValue === 'number' ? `$${rawValue.toFixed(2)}` : '';
                     cell.innerHTML = `<span class="px-1 w-full block truncate">${cost}</span>`;

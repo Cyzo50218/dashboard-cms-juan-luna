@@ -2258,6 +2258,7 @@ Custom class
     transition: background-color 0.2s ease;
 }
 
+
 .product-name {
     text-align: left;
     font-size: 13px;
@@ -2284,6 +2285,29 @@ Custom class
 
 .advanced-dropdown .dropdown-item-content span {
     margin-left: 8px;
+}
+
+/* Style for the new container in editable cells */
+.product-image-container-editable {
+    padding: 2px; /* Add a little space for the hover effect */
+    border-radius: 4px;
+    transition: background-color 0.2s ease-in-out;
+}
+
+/* Style for the drag-and-drop hover state */
+.product-image-container-editable.drag-hover {
+    background-color: #e0f2fe; /* A light blue to indicate a drop zone */
+    outline: 2px dashed #0ea5e9;
+}
+
+/* The edit icon is hidden by default and appears on row hover */
+.edit-image-btn {
+    opacity: 1;
+}
+
+/* When hovering over the entire row (.group), the icon becomes visible */
+.edit-image-btn:hover{
+    opacity: 1;
 }
 
 .advanced-dropdown .dropdown-item-edit-btn {
