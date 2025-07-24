@@ -681,6 +681,7 @@ textarea.form-input {
 }
 .option-name {
     color: #1f2937;
+    margin-left: 4px;
     line-height: 1.2;
 }
 
