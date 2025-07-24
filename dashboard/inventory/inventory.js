@@ -1910,9 +1910,9 @@ function openMoveProductsModal() {
                     <button class="close-modal-btn">&times;</button>
                 </div>
                 <div class="move-products-body">
-                    <p class="mb-4 text-sm text-gray-600">
-                        Select products to move from <strong>${sourceStockType.toUpperCase()} Stocks</strong> to <strong>${targetStockType.toUpperCase()} Stocks</strong>.
-                    </p>
+                    <p class="mb-4 pl-4 text-sm text-gray-600">
+    Select products to move from <strong>${sourceStockType.toUpperCase()} Stocks</strong> to <strong>${targetStockType.toUpperCase()} Stocks</strong>.
+</p>
                     <div class="search-controls">
                         <select id="search-field-select">
                             <option value="all">Search All</option>
@@ -2069,53 +2069,41 @@ function openMoveProductsModal() {
         renderFooter();
     }
 
-    /**
-     * MODIFIED: Renders the footer, now including an input for 'countStocks'.
-     */
     function renderFooter() {
         if (selectedProductIds.size === 0) {
-            footerContainer.innerHTML = `
-            <span class="text-sm text-gray-500">Select one or more products to move.</span>
-            <button class="modal-btn secondary close-modal-btn">Cancel</button>`;
+            footerContainer.innerHTML = `<span class="text-sm text-gray-500">Select one or more products to move.</span><button class="modal-btn secondary close-modal-btn">Cancel</button>`;
             footerContainer.querySelector('.close-modal-btn').addEventListener('click', () => overlay.remove());
             return;
         }
-
-        // Correctly filter out 'countstocks' before any processing
         const fieldsToDisplay = stockAndSizeFields.filter(field => field.toLowerCase() !== 'countstocks');
-
         const maxStocks = {};
-        // Loop over the correctly filtered fields for calculations
         for (const field of fieldsToDisplay) {
             maxStocks[field] = 0;
             for (const productId of selectedProductIds) {
                 const product = sourceData.find(p => p.id === productId);
-                if (product) {
-                    maxStocks[field] += (parseInt(product[field], 10) || 0);
-                }
+                if (product) maxStocks[field] += (parseInt(product[field], 10) || 0);
             }
         }
-
-        // Loop over the filtered fields again to generate the HTML
-        const stockInputsHTML = fieldsToDisplay.map(field => {
-            const label = field.toUpperCase();
-            return `
+        const stockInputsHTML = fieldsToDisplay.map(field => `
             <div class="size-input-group">
-                <label for="size-${field}">${label}</label>
+                <label for="size-${field}">${field.toUpperCase()}</label>
                 <input type="number" id="size-${field}" min="0" placeholder="Max: ${maxStocks[field]}">
-            </div>`;
-        }).join('');
+            </div>`).join('');
 
+        // ✅ ADDED: Note input text area
         footerContainer.innerHTML = `
         <div class="footer-details">
             <div class="selected-count">${selectedProductIds.size} products selected</div>
             <div class="footer-size-inputs">${stockInputsHTML}</div>
+            <div class="footer-note-input">
+                 <label for="move-product-note">Note (Optional)</label>
+                 <textarea id="move-product-note" rows="2" placeholder="e.g., Special handling required..."></textarea>
+            </div>
         </div>
         <div class="footer-actions">
             <button class="modal-btn secondary close-modal-btn">Cancel</button>
             <button class="modal-btn primary" id="confirm-move-btn">Move Quantities</button>
         </div>`;
-
         footerContainer.querySelector('.close-modal-btn').addEventListener('click', () => overlay.remove());
         footerContainer.querySelector('#confirm-move-btn').addEventListener('click', executeMove);
     }
@@ -2125,9 +2113,13 @@ function openMoveProductsModal() {
         confirmBtn.disabled = true;
         confirmBtn.textContent = 'Submitting Request...';
 
+        const fieldsWithInputs = stockAndSizeFields.filter(field => field.toLowerCase() !== 'countstocks');
+
+        const note = document.getElementById('move-product-note')?.value.trim() || '';
+
         const quantitiesToMove = {};
         let totalToMove = 0;
-        for (const field of stockAndSizeFields) {
+        for (const field of fieldsWithInputs) {
             const input = document.getElementById(`size-${field}`);
             const value = parseInt(input.value, 10) || 0;
             if (value > 0) {
@@ -2161,6 +2153,10 @@ function openMoveProductsModal() {
             })
         };
 
+        if (note) {
+            requestData.note = note;
+        }
+
         try {
             // Create the new document in the 'PendingMoves' subcollection
             const pendingMovesRef = collection(db, `InventoryWorkspace/${currentInventoryId}/PendingMoves`);
@@ -2183,38 +2179,64 @@ function openMoveProductsModal() {
 }
 
 /**
- * Opens the notifications modal to display pending move requests.
+ * Opens the notifications modal with a new tabbed interface to filter requests.
  */
 function openNotificationsModal() {
     const modalHTML = `
-        <div class="move-products-overlay visible" id="notifications-overlay">
-            <div class="move-products-modal">
-                <div class="move-products-header">
-                    <h2>Pending Notifications</h2>
-                    <button class="close-modal-btn">&times;</button>
-                </div>
-                <div class="move-products-body">
-                    <div id="notifications-list-container">
-                        ${generateNotificationsListHTML()}
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
+<div class="move-products-overlay visible" id="notifications-overlay">
+<div class="move-products-modal">
+<div class="modal-header-custom">
+<h2>Transfer</h2>
+<button class="close-modal-btn">&times;</button>
+</div>
+<div class="move-products-body">
+<div class="notification-tabs">
+<div class="notification-tab active" data-tab-filter="all">All</div>
+<div class="notification-tab" data-tab-filter="incoming">Incoming</div>
+<div class="notification-tab" data-tab-filter="on-transit">On Transit</div>
+<div class="notification-tab" data-tab-filter="partial">Partial</div>
+<div class="notification-tab" data-tab-filter="completed">Completed</div>
+<div class="notification-tab-add" title="Add new tab">
+<span class="material-icons">add</span>
+</div>
+</div>
+<div id="notifications-list-container">
+</div>
+</div>
+</div>
+</div>
+`;
 
     document.body.insertAdjacentHTML('beforeend', modalHTML);
 
     const overlay = document.getElementById('notifications-overlay');
+    const contentContainer = document.getElementById('notifications-list-container');
+    const tabs = overlay.querySelectorAll('.notification-tab');
+
+    // Function to render content based on the active tab
+    const renderTabContent = (filter) => {
+        contentContainer.innerHTML = generateNotificationsListHTML(filter);
+        reattachNotificationListeners();
+    };
+
+    // Add click event listeners to tabs
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            // Update active state
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            // Render content for the selected tab
+            const filter = tab.dataset.tabFilter;
+            renderTabContent(filter);
+        });
+    });
+
     overlay.querySelector('.close-modal-btn').addEventListener('click', () => overlay.remove());
     overlay.addEventListener('click', e => (e.target === overlay) && overlay.remove());
 
-    // Add event listeners for approve/deny buttons
-    overlay.querySelectorAll('[data-action="approve"]').forEach(btn =>
-        btn.addEventListener('click', () => handleApproval(btn.dataset.requestId, 'approved'))
-    );
-    overlay.querySelectorAll('[data-action="deny"]').forEach(btn =>
-        btn.addEventListener('click', () => handleApproval(btn.dataset.requestId, 'denied'))
-    );
+    // Initial render for the default "All" tab
+    renderTabContent('all');
 }
 
 /**
@@ -2236,99 +2258,100 @@ function reattachNotificationListeners() {
     });
 }
 
-function generateNotificationsListHTML() {
-    if (pendingMoves.length === 0 && outgoingMoves.length === 0) {
+function generateNotificationsListHTML(filter = 'all') {
+    let filteredIncoming = pendingMoves;
+    let filteredOutgoing = outgoingMoves;
+
+    switch (filter) {
+        case 'incoming':
+            filteredIncoming = pendingMoves.filter(move => move.status === 'pending');
+            filteredOutgoing = []; // Incoming tab only shows actionable items for the user
+            break;
+        case 'on-transit':
+            filteredOutgoing = outgoingMoves.filter(move => move.status === 'pending');
+            filteredIncoming = [];
+            break;
+        case 'partial':
+            // Partial can apply to both incoming (waiting for fulfillment) and outgoing (partially fulfilled)
+            filteredIncoming = pendingMoves.filter(move => move.status === 'partial');
+            filteredOutgoing = outgoingMoves.filter(move => move.status === 'partial');
+            break;
+        case 'completed':
+            // Completed can mean approved, denied, or fully fulfilled
+            filteredIncoming = pendingMoves.filter(move => ['completed', 'denied'].includes(move.status));
+            filteredOutgoing = outgoingMoves.filter(move => ['completed', 'denied'].includes(move.status));
+            break;
+        case 'all':
+        default:
+            // No filtering needed for 'all'
+            break;
+    }
+
+    const allMoves = [...filteredIncoming, ...filteredOutgoing];
+
+    if (allMoves.length === 0) {
         return `
-            <div class="empty-notifications-message">
-                <span class="material-icons empty-icon">notifications_off</span>
-                <h2>No New Notifications</h2>
-                <p>You're all caught up!</p>
+            <div class="empty-notifications-message">
+<span class="material-icons empty-icon">notifications_off</span>
+<h2>No Notifications Found</h2>
+<p>There are no items matching this filter.</p>
+            </div>
+        `;
+    }
+
+    // Sort combined list by date, newest first
+    allMoves.sort((a, b) => (b.createdAt?.toDate() || 0) - (a.createdAt?.toDate() || 0));
+
+    return allMoves.map(move => {
+        const isIncoming = move.to === currentStockType;
+        const isActionable = isIncoming && move.status === 'pending';
+        const title = isIncoming ? `Request from <strong>${move.from.toUpperCase()}</strong>` : `Request to <strong>${move.to.toUpperCase()}</strong>`;
+
+        const noteHTML = move.note ? `
+            <div class="notification-note-section">
+                <div class="note-pill">${move.note}</div>
             </div>
-        `;
-    }
+        ` : '';
 
-    let html = '';
-
-    // --- Section 1: INCOMING Requests (Actionable) ---
-    if (pendingMoves.length > 0) {
-        html += `<h3>Requests for You to Fulfill</h3>`;
-        html += pendingMoves.map(move => {
-            const isActionable = move.status === 'pending';
-            const quantitiesHTML = Object.entries(move.quantities).map(([size, count]) => `<li><strong>${size === 'countStocks' ? 'Stocks' : size.toUpperCase()}:</strong> ${count}</li>`).join('');
-            const productsHTML = move.products.map(p => `<li>${p.name} (SKU: ${p.sku})</li>`).join('');
-
-            return `
-                <div class="notification-item" id="request-${move.id}">
-                    <div class="notification-item-header">
-                        <span>Request from <strong>${move.from.toUpperCase()}</strong></span>
-                        <span class="status-tag-notification status-${move.status}">${move.status}</span>
-                    </div>
-                    <div class="notification-item-body">
-                         <p><strong>Products:</strong></p>
-                         <ul>${productsHTML}</ul>
-                         <p class="mt-4"><strong>Quantities:</strong></p>
-                         <ul>${quantitiesHTML}</ul>
-                        ${isActionable ? `
-                        <div class="notification-actions">
-                            <button class="modal-btn secondary" data-action="deny" data-request-id="${move.id}">Deny</button>
-                            <button class="modal-btn primary" data-action="approve" data-request-id="${move.id}">Approve</button>
-                        </div>
-                        ` : ''}
-                    </div>
-                </div>`;
-        }).join('');
-    }
-
-    // --- ✅ Section 2: OUTGOING Requests (Status Updates) ---
-    if (outgoingMoves.length > 0) {
-        html += `<h3 class="mt-6">Status of Your Outgoing Requests</h3>`;
-        html += outgoingMoves.map(move => {
-            const statusClass = `status-${move.status}`;
-            let quantitiesHTML = '';
-
-            // This is where your previous solution shines. It shows the partial breakdown.
-            if (move.status === 'partial') {
-                const correspondingBackorder = backorders.find(bo => bo.originalRequestId === move.id);
-                quantitiesHTML += '<ul class="quantities-detailed">';
-                for (const field in move.quantities) {
-                    const requested = move.quantities[field] || 0;
-                    const missing = correspondingBackorder ? (correspondingBackorder.quantities[field] || 0) : 0;
-                    const fulfilled = requested - missing;
-                    const label = field === 'countStocks' ? 'Stocks' : field.toUpperCase();
-                    quantitiesHTML += `
-                        <li>
-                            <strong>${label}:</strong> 
-                            <span>
-                                <span class="fulfilled-amount">${fulfilled}</span> / ${requested}
-                                ${missing > 0 ? `<span class="missing-amount">(${missing} backordered)</span>` : ''}
-                            </span>
-                        </li>`;
-                }
-                quantitiesHTML += '</ul>';
-            } else {
-                // Standard display for other statuses
-                quantitiesHTML = '<ul>' + Object.entries(move.quantities).map(([size, count]) => `<li><strong>${size === 'countStocks' ? 'Stocks' : size.toUpperCase()}:</strong> ${count}</li>`).join('') + '</ul>';
+        let quantitiesHTML = '';
+        if (move.status === 'partial') {
+            const correspondingBackorder = backorders.find(bo => bo.originalRequestId === move.id);
+            quantitiesHTML += '<ul class="quantities-detailed">';
+            for (const field in move.quantities) {
+                const requested = move.quantities[field] || 0;
+                const missing = correspondingBackorder ? (correspondingBackorder.quantities[field] || 0) : 0;
+                const fulfilled = requested - missing;
+                const label = field === 'countStocks' ? 'Stocks' : field.toUpperCase();
+                quantitiesHTML += `<li><strong>${label}:</strong> <span><span class="fulfilled-amount">${fulfilled}</span> / ${requested}${missing > 0 ? `<span class="missing-amount">(${missing} backordered)</span>` : ''}</span></li>`;
             }
+            quantitiesHTML += '</ul>';
+        } else {
+            quantitiesHTML = '<ul>' + Object.entries(move.quantities).map(([size, count]) => `<li><strong>${size === 'countStocks' ? 'Stocks' : size.toUpperCase()}:</strong> ${count}</li>`).join('') + '</ul>';
+        }
 
-            const productsHTML = move.products.map(p => `<li>${p.name} (SKU: ${p.sku})</li>`).join('');
+        const productsHTML = move.products.map(p => `<li>${p.name} (SKU: ${p.sku})</li>`).join('');
 
-            return `
-                <div class="notification-item" id="request-${move.id}">
-                    <div class="notification-item-header">
-                        <span>Request to <strong>${move.to.toUpperCase()}</strong></span>
-                        <span class="status-tag-notification ${statusClass}">${move.status}</span>
-                    </div>
-                    <div class="notification-item-body">
-                         <p><strong>Products:</strong></p>
-                         <ul>${productsHTML}</ul>
-                         <p class="mt-4"><strong>Quantities:</strong></p>
-                         ${quantitiesHTML}
-                    </div>
-                </div>`;
-        }).join('');
-    }
-
-    return html;
+        return `
+            <div class="notification-item" id="request-${move.id}">
+                <div class="notification-item-header">
+                    <span>${title}</span>
+                    <span class="status-tag-notification status-${move.status}">${move.status}</span>
+                </div>
+                <div class="notification-item-body">
+                     <p><strong>Products:</strong></p>
+                     <ul>${productsHTML}</ul>
+                     ${noteHTML} 
+                     <p class="mt-1"><strong>Quantities:</strong></p>
+                     ${quantitiesHTML}
+                     ${isActionable ? `
+                     <div class="notification-actions">
+                         <button class="modal-btn secondary" data-action="deny" data-request-id="${move.id}">Deny</button>
+                         <button class="modal-btn primary" data-action="approve" data-request-id="${move.id}">Approve</button>
+                     </div>
+                     ` : ''}
+                </div>
+            </div>`;
+    }).join('');
 }
 
 async function handleApproval(requestId, status) {
@@ -3795,7 +3818,7 @@ async function render(stockType) {
 
         const cell = document.createElement('div');
         cell.dataset.columnId = col.id;
-        cell.className = 'group relative px-2 py-1 font-semibold text-slate-600 border-r border-slate-200 bg-white flex items-center text-xs';
+        cell.className = 'group relative px-2 py-1 font-semibold text-slate-600 border-r border-slate-200 bg-transparent flex items-center text-xs';
         cell.style.width = `${width}px`;
         cell.style.minWidth = `${width}px`;
 
@@ -3807,7 +3830,7 @@ async function render(stockType) {
         text.className = 'header-cell-content flex-grow truncate text-ellipsis overflow-hidden';
 
         const optionsIcon = document.createElement('span');
-        optionsIcon.className = 'material-icons options-icon text-slate-400 hover:text-slate-600 cursor-pointer text-[18px] ml-2';
+        optionsIcon.className = 'material-icons options-icon bg-transparent text-slate-400 hover:text-slate-600 cursor-pointer text-[18px] ml-2';
         optionsIcon.textContent = 'more_vert'; // vertical three dots
 
         wrapper.appendChild(text);
