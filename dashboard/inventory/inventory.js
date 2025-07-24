@@ -2096,8 +2096,8 @@ function openMoveProductsModal() {
             <div class="selected-count">${selectedProductIds.size} products selected</div>
             <div class="footer-size-inputs">${stockInputsHTML}</div>
             <div class="footer-note-input">
-                 <label for="move-product-note">Note (Optional)</label>
-                 <textarea id="move-product-note" rows="2" placeholder="e.g., Special handling required..."></textarea>
+                 <label for="move-product-note">Note</label>
+                 <textarea id="move-product-note" rows="2" placeholder="Optional Note"></textarea>
             </div>
         </div>
         <div class="footer-actions">

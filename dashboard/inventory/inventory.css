@@ -2343,6 +2343,43 @@ Custom class
     margin-left: 8px;
 }
 
+.footer-note-input {
+  display: flex;
+  flex-direction: column;
+  margin-top: 1rem;
+  width: 100%;
+}
+
+.footer-note-input label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #4b5563;
+  margin-bottom: 6px;
+}
+
+.footer-note-input textarea {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #1f2937;
+  background-color: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  resize: vertical;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.footer-note-input textarea::placeholder {
+  color: #9ca3af;
+}
+
+.footer-note-input textarea:focus {
+  outline: none;
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
 /* Style for the new container in editable cells */
 .product-image-container-editable {
     padding: 2px; /* Add a little space for the hover effect */
