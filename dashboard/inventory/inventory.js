@@ -1906,7 +1906,7 @@ function openMoveProductsModal() {
         <div class="move-products-overlay visible" id="move-products-overlay">
             <div class="move-products-modal">
                 <div class="move-products-header">
-                    <h2>Move Products</h2>
+                    <h2>Transfer</h2>
                     <button class="close-modal-btn">&times;</button>
                 </div>
                 <div class="move-products-body">
@@ -1948,7 +1948,7 @@ function openMoveProductsModal() {
 
     let selectedProductIds = new Set();
     // MODIFIED: Added 'countStocks' to the array to be processed everywhere.
-    const stockAndSizeFields = ['countStocks', 's', 'm', 'l', 'xl', 'xxl', 'others'];
+    const stockAndSizeFields = ['s', 'm', 'l', 'xl', 'xxl', 'others'];
 
     // --- Event Listeners ---
     searchInput.addEventListener('input', handleFilter);
@@ -2075,35 +2075,51 @@ function openMoveProductsModal() {
             footerContainer.querySelector('.close-modal-btn').addEventListener('click', () => overlay.remove());
             return;
         }
-        const fieldsToDisplay = stockAndSizeFields.filter(field => field.toLowerCase() !== 'countstocks');
-        const maxStocks = {};
-        for (const field of fieldsToDisplay) {
-            maxStocks[field] = 0;
-            for (const productId of selectedProductIds) {
-                const product = sourceData.find(p => p.id === productId);
-                if (product) maxStocks[field] += (parseInt(product[field], 10) || 0);
-            }
-        }
-        const stockInputsHTML = fieldsToDisplay.map(field => `
-            <div class="size-input-group">
-                <label for="size-${field}">${field.toUpperCase()}</label>
-                <input type="number" id="size-${field}" min="0" placeholder="Max: ${maxStocks[field]}">
-            </div>`).join('');
 
-        // ✅ ADDED: Note input text area
+        // --- Build an entry for EACH selected product ---
+        const productEntriesHTML = Array.from(selectedProductIds).map(id => {
+            const product = sourceData.find(p => p.id === id);
+            if (!product) return '';
+
+            // Create unique size inputs for this specific product
+            const stockInputsHTML = stockAndSizeFields.map(field => `
+                <div class="size-input-group">
+                    <label for="size-${field}-${product.id}">${field.toUpperCase()}</label>
+                    <input type="number" id="size-${field}-${product.id}" min="0" placeholder="${product[field] || 0}">
+                </div>`).join('');
+
+            return `
+                <div class="product-entry-item">
+                    <div class="product-entry-info">
+                        <img src="${product.imageUrl || '/img/default-product.png'}" alt="${product.name}">
+                        <span class="product-entry-name">${product.name}</span>
+                    </div>
+                    <div class="product-entry-inputs">
+                        ${stockInputsHTML}
+                    </div>
+                    <div class="product-entry-note">
+                         <textarea id="note-input-${product.id}" rows="1" placeholder="Add a note for this item..."></textarea>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // --- Final Footer HTML ---
         footerContainer.innerHTML = `
-        <div class="footer-details">
-            <div class="selected-count">${selectedProductIds.size} products selected</div>
-            <div class="footer-size-inputs">${stockInputsHTML}</div>
-            <div class="footer-note-input">
-                 <label for="move-product-note">Note</label>
-                 <textarea id="move-product-note" rows="2" placeholder="Optional Note"></textarea>
+        <div class="footer-details vertical-layout">
+            <div class="footer-box-name-input">
+                <label for="box-name-input">Reference Name</label>
+                <input type="text" id="box-name-input" placeholder="Add a reference name here">
+            </div>
+            <div class="product-entries-list">
+                ${productEntriesHTML}
             </div>
         </div>
         <div class="footer-actions">
             <button class="modal-btn secondary close-modal-btn">Cancel</button>
-            <button class="modal-btn primary" id="confirm-move-btn">Move Quantities</button>
+            <button class="modal-btn primary" id="confirm-move-btn">Submit Request</button>
         </div>`;
+
         footerContainer.querySelector('.close-modal-btn').addEventListener('click', () => overlay.remove());
         footerContainer.querySelector('#confirm-move-btn').addEventListener('click', executeMove);
     }
@@ -2111,65 +2127,68 @@ function openMoveProductsModal() {
     async function executeMove() {
         const confirmBtn = footerContainer.querySelector('#confirm-move-btn');
         confirmBtn.disabled = true;
-        confirmBtn.textContent = 'Submitting Request...';
+        confirmBtn.textContent = 'Submitting...';
 
-        const fieldsWithInputs = stockAndSizeFields.filter(field => field.toLowerCase() !== 'countstocks');
-
-        const note = document.getElementById('move-product-note')?.value.trim() || '';
-
-        const quantitiesToMove = {};
+        const boxName = document.getElementById('box-name-input')?.value.trim() || '';
         let totalToMove = 0;
-        for (const field of fieldsWithInputs) {
-            const input = document.getElementById(`size-${field}`);
-            const value = parseInt(input.value, 10) || 0;
-            if (value > 0) {
-                quantitiesToMove[field] = value;
-                totalToMove += value;
+
+        const productsToMove = Array.from(selectedProductIds).map(id => {
+            const product = sourceData.find(p => p.id === id);
+            const noteInput = document.getElementById(`note-input-${id}`);
+            const note = noteInput ? noteInput.value.trim() : '';
+
+            const quantities = {};
+            for (const field of stockAndSizeFields) {
+                const input = document.getElementById(`size-${field}-${id}`);
+                const value = parseInt(input.value, 10) || 0;
+                if (value > 0) {
+                    quantities[field] = value;
+                    totalToMove += value;
+                }
             }
-        }
+
+            const productData = {
+                productId: id,
+                name: product.name,
+                sku: product.productSku,
+                quantities: quantities
+            };
+            if (note) {
+                productData.note = note;
+            }
+            return productData;
+        }).filter(p => Object.keys(p.quantities).length > 0); // Only include products with quantities
 
         if (totalToMove === 0) {
-            alert("Please enter a quantity for at least one size or stock.");
+            alert("Please enter a quantity for at least one product size.");
             confirmBtn.disabled = false;
-            confirmBtn.textContent = 'Move Quantities';
+            confirmBtn.textContent = 'Submit Request';
             return;
         }
 
-        // Prepare the data for the request document
         const requestData = {
             requestedBy: auth.currentUser.uid,
             createdAt: serverTimestamp(),
             status: 'pending',
             from: sourceStockType,
             to: targetStockType,
-            quantities: quantitiesToMove,
-            products: Array.from(selectedProductIds).map(id => {
-                const product = sourceData.find(p => p.id === id);
-                return {
-                    productId: id,
-                    name: product.name,
-                    sku: product.productSku
-                };
-            })
+            products: productsToMove
         };
 
-        if (note) {
-            requestData.note = note;
+        if (boxName) {
+            requestData.boxName = boxName;
         }
 
         try {
-            // Create the new document in the 'PendingMoves' subcollection
             const pendingMovesRef = collection(db, `InventoryWorkspace/${currentInventoryId}/PendingMoves`);
             await addDoc(pendingMovesRef, requestData);
-
-            alert('Move request submitted successfully for approval!');
+            alert('Move request submitted successfully!');
             overlay.remove();
-
         } catch (error) {
             console.error("Error submitting move request:", error);
             alert("Failed to submit move request. Please try again.");
             confirmBtn.disabled = false;
-            confirmBtn.textContent = 'Move Quantities';
+            confirmBtn.textContent = 'Submit Request';
         }
     }
 
@@ -2261,75 +2280,57 @@ function reattachNotificationListeners() {
 function generateNotificationsListHTML(filter = 'all') {
     let filteredIncoming = pendingMoves;
     let filteredOutgoing = outgoingMoves;
-
     switch (filter) {
         case 'incoming':
             filteredIncoming = pendingMoves.filter(move => move.status === 'pending');
-            filteredOutgoing = []; // Incoming tab only shows actionable items for the user
+            filteredOutgoing = [];
             break;
         case 'on-transit':
             filteredOutgoing = outgoingMoves.filter(move => move.status === 'pending');
             filteredIncoming = [];
             break;
         case 'partial':
-            // Partial can apply to both incoming (waiting for fulfillment) and outgoing (partially fulfilled)
             filteredIncoming = pendingMoves.filter(move => move.status === 'partial');
             filteredOutgoing = outgoingMoves.filter(move => move.status === 'partial');
             break;
         case 'completed':
-            // Completed can mean approved, denied, or fully fulfilled
             filteredIncoming = pendingMoves.filter(move => ['completed', 'denied'].includes(move.status));
             filteredOutgoing = outgoingMoves.filter(move => ['completed', 'denied'].includes(move.status));
             break;
-        case 'all':
-        default:
-            // No filtering needed for 'all'
-            break;
+        case 'all': default: break;
     }
-
     const allMoves = [...filteredIncoming, ...filteredOutgoing];
-
     if (allMoves.length === 0) {
-        return `
-            <div class="empty-notifications-message">
-<span class="material-icons empty-icon">notifications_off</span>
-<h2>No Notifications Found</h2>
-<p>There are no items matching this filter.</p>
-            </div>
-        `;
+        return `<div class="empty-notifications-message">...</div>`; // Empty state
     }
-
-    // Sort combined list by date, newest first
     allMoves.sort((a, b) => (b.createdAt?.toDate() || 0) - (a.createdAt?.toDate() || 0));
 
-    return allMoves.map(move => {
+     return allMoves.map(move => {
         const isIncoming = move.to === currentStockType;
         const isActionable = isIncoming && move.status === 'pending';
         const title = isIncoming ? `Request from <strong>${move.from.toUpperCase()}</strong>` : `Request to <strong>${move.to.toUpperCase()}</strong>`;
-
-        const noteHTML = move.note ? `
-            <div class="notification-note-section">
-                <div class="note-pill">${move.note}</div>
+        
+        const boxNameHTML = move.boxName ? `
+            <div class="notification-box-name">
+                <span>Reference Name: </span>
+                <span>${move.boxName}</span>
             </div>
         ` : '';
 
-        let quantitiesHTML = '';
-        if (move.status === 'partial') {
-            const correspondingBackorder = backorders.find(bo => bo.originalRequestId === move.id);
-            quantitiesHTML += '<ul class="quantities-detailed">';
-            for (const field in move.quantities) {
-                const requested = move.quantities[field] || 0;
-                const missing = correspondingBackorder ? (correspondingBackorder.quantities[field] || 0) : 0;
-                const fulfilled = requested - missing;
-                const label = field === 'countStocks' ? 'Stocks' : field.toUpperCase();
-                quantitiesHTML += `<li><strong>${label}:</strong> <span><span class="fulfilled-amount">${fulfilled}</span> / ${requested}${missing > 0 ? `<span class="missing-amount">(${missing} backordered)</span>` : ''}</span></li>`;
-            }
-            quantitiesHTML += '</ul>';
-        } else {
-            quantitiesHTML = '<ul>' + Object.entries(move.quantities).map(([size, count]) => `<li><strong>${size === 'countStocks' ? 'Stocks' : size.toUpperCase()}:</strong> ${count}</li>`).join('') + '</ul>';
-        }
+        const productsHTML = move.products.map(p => {
+            const noteTag = p.note ? `<div class="note-tag">${p.note}</div>` : '';
+            
+            const quantitiesString = p.quantities ? 
+                Object.entries(p.quantities).map(([size, count]) => `<strong>${size.toUpperCase()}:</strong> ${count}`).join(' &bull; ') 
+                : 'No quantities specified';
 
-        const productsHTML = move.products.map(p => `<li>${p.name} (SKU: ${p.sku})</li>`).join('');
+            return `
+                <li class="notification-product-list-item">
+                    <span class="product-name">${p.name} (SKU: ${p.sku})</span>
+                    ${noteTag}
+                    <span class="product-quantities">${quantitiesString}</span>
+                </li>`;
+        }).join('');
 
         return `
             <div class="notification-item" id="request-${move.id}">
@@ -2338,12 +2339,10 @@ function generateNotificationsListHTML(filter = 'all') {
                     <span class="status-tag-notification status-${move.status}">${move.status}</span>
                 </div>
                 <div class="notification-item-body">
-                     <p><strong>Products:</strong></p>
-                     <ul>${productsHTML}</ul>
-                     ${noteHTML} 
-                     <p class="mt-1"><strong>Quantities:</strong></p>
-                     ${quantitiesHTML}
-                     ${isActionable ? `
+                     ${boxNameHTML}
+                     <p><strong>Products & Quantities:</strong></p>
+                     <ul class="product-details-list">${productsHTML}</ul>
+                    ${isActionable ? `
                      <div class="notification-actions">
                          <button class="modal-btn secondary" data-action="deny" data-request-id="${move.id}">Deny</button>
                          <button class="modal-btn primary" data-action="approve" data-request-id="${move.id}">Approve</button>

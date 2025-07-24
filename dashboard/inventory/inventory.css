@@ -87,7 +87,25 @@ button {
     gap: 0.4rem;
     /* Reduced gap inside buttons */
 }
-
+.transfer-header-btn {
+    background-color: #000;
+    border: 1px solid var(--text-secondary-color);
+    border-radius: 8px;
+    /* Slightly reduced button padding */
+    padding: 0.4rem 0.8rem;
+    cursor: pointer;
+    margin-left: 8px;
+    font-size: 0.85rem;
+    /* Slightly smaller font size for buttons */
+    font-weight: 500;
+    color: #ffffff;
+    transition: background-color 0.2s, color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    /* Reduced gap inside buttons */
+}
 .add-task-header-btn {
     background-color: transparent;
     border: 1px solid var(--text-secondary-color);
@@ -2393,6 +2411,25 @@ Custom class
     outline: 2px dashed #0ea5e9;
 }
 
+/* Styling for the Box Name container */
+.notification-box-name {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Space between icon and text */
+  background-color: #f3f4f6; /* A slightly darker gray to stand out */
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  font-weight: 600;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+}
+
+.notification-box-name .material-icons {
+  font-size: 22px;
+  color: #6b7280;
+}
+
 /* The edit icon is hidden by default and appears on row hover */
 .edit-image-btn {
     opacity: 1;
@@ -2793,7 +2830,7 @@ Custom class
 
 /* --- Header, Body, and Footer Layout --- */
 .move-products-header {
-    padding: 1rem 1.5rem;
+    padding: 0.5rem 1rem;
     border-bottom: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
@@ -2803,6 +2840,7 @@ Custom class
 
 .move-products-header h2 {
     font-size: 1.125rem;
+    padding-top: 15px;
     font-weight: 600;
     color: var(--text-primary);
 }
@@ -3026,7 +3064,187 @@ Custom class
     color: #5d4ffa;
 }
 
+
 /* --- Footer Inputs and Actions --- */
+
+/* --- Footer Redesign --- */
+.footer-details.vertical-layout {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+.footer-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+}  
+.footer-actions {
+    display: flex;
+    gap: 0.75rem;
+    width: 100%;
+    justify-content: flex-end;
+}      
+.footer-section {
+    width: 100%;
+}
+.footer-box-name-input {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.footer-box-name-input label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #4b5563;
+  margin-bottom: 6px;
+}
+
+.footer-box-name-input input {
+  height: 38px;
+  padding: 0 12px;
+  font-size: 14px;
+  color: #1f2937;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.footer-box-name-input input::placeholder {
+  color: #9ca3af;
+}
+
+.footer-box-name-input input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+}
+
+.size-input-group {
+  display: flex;
+  align-items: center;
+  height: 38px;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.size-input-group:focus-within {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+}
+
+.size-input-group label {
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  border-right: 1px solid #e2e8f0;
+}
+
+.size-input-group input {
+  width: 55px;
+  height: 100%;
+  border: none;
+  background-color: transparent;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1e293b;
+  padding: 0 4px;
+}
+
+.size-input-group input:focus {
+  outline: none;
+}
+
+.size-input-group input::-webkit-outer-spin-button,
+.size-input-group input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.size-input-group input[type=number] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.product-entries-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-height: 250px; /* Limit height and make it scrollable */
+    overflow-y: auto;
+    padding-right: 10px;
+}
+.product-entry-item {
+    padding: 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background-color: #f9fafb;
+}
+.product-entry-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+.product-entry-info img {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    object-fit: cover;
+}
+.product-entry-name {
+    font-weight: 500;
+}
+.product-entry-inputs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+.product-entry-note textarea {
+    width: 100%;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    padding: 8px;
+    font-size: 13px;
+    resize: none; /* Disable resizing for a cleaner look */
+}
+
+/* --- Notification Redesign --- */
+.product-details-list li {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+}
+.product-list-item-details {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.product-list-item-details .product-name {
+    font-weight: 500;
+}
+.product-list-item-details .product-quantities {
+    font-size: 13px;
+    color: #4b5563;
+}
+
+.note-pill-small {
+    background-color: #eef2ff;
+    color: #4338ca;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-style: italic;
+    border-radius: 9999px;
+}
+
+/*
 .footer-details {
     display: flex;
     align-items: center;
@@ -3070,11 +3288,7 @@ Custom class
     border-color: var(--primary-blue);
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
 }
-
-.footer-actions {
-    display: flex;
-    gap: 0.75rem;
-}
+}*/
 
 /* --- Buttons --- */
 .close-modal-btn {
@@ -3543,4 +3757,47 @@ Custom class
         opacity: 1;
         transform: scale(1);
     }
+}
+
+.product-details-list {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+/* Updated to a vertical flex layout */
+.notification-product-list-item {
+  display: flex;
+  flex-direction: column; /* Stacks items vertically */
+  align-items: flex-start;
+  gap: 8px; /* Consistent space between name, note, and quantities */
+  padding: 12px 14px;
+}
+
+.notification-product-list-item:not(:last-child) {
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.product-name {
+  font-weight: 500;
+  color: #374151;
+  font-size: 14px;
+}
+
+.product-quantities {
+  font-size: 16px;
+  color: #6b7280;
+}
+
+.note-tag {
+  background-color: #f3f4f6;
+  color: #4b5563;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
