@@ -719,7 +719,7 @@ function renderProductSidebar(product) {
             <span class="settings-label">Supplier</span>
             <div class="settings-value">${supplierDisplayHtml}</div>
         </div>
-        <div class="settings-section">
+        <div class="settings-section" style="display: none;">
             <span class="settings-label">Description</span>
             <div class="settings-value">${description || "No description available"}</div>
         </div>
