@@ -58,7 +58,7 @@ export function openAddProductModal(inventoryId, currentStockType, onOpen, onClo
   function closeModal() {
     modal.classList.add('hidden');
     if (typeof onClose === 'function') {
-        onClose();
+      onClose();
     }
   }
 
@@ -68,7 +68,7 @@ export function openAddProductModal(inventoryId, currentStockType, onOpen, onClo
     // If the click target is the overlay (the element with the 'modal-overlay' class)
     // and not a child element, then close the modal.
     if (e.target === modal) {
-        closeModal();
+      closeModal();
     }
   });
 
@@ -267,8 +267,16 @@ export function openAddProductModal(inventoryId, currentStockType, onOpen, onClo
 
     const description = document.getElementById('productDescription').value.trim();
 
-    if (!name || !sku || isNaN(cost) || !supplier) {
-      alert('Please fill all required fields.');
+    const missingFields = [];
+    if (!name) {
+      missingFields.push('Product Name');
+    }
+    if (!sku) {
+      missingFields.push('Product SKU');
+    }
+
+    if (missingFields.length > 0) {
+      alert(`Please fill in the following required fields: ${missingFields.join(', ')}.`);
       return;
     }
 
@@ -324,13 +332,13 @@ export function openAddProductModal(inventoryId, currentStockType, onOpen, onClo
 
       if (typeof onSaved === 'function') onSaved();
       if (typeof onClose === 'function') {
-            onClose();
-        }
+        onClose();
+      }
     } catch (error) {
       console.error('Error saving product:', error);
       alert('Something went wrong while saving. Please try again.');
     } finally {
-      savingModal.classList.add('hidden'); 
+      savingModal.classList.add('hidden');
     }
   };
 }
@@ -415,7 +423,7 @@ function generateAddProductModal() {
     <input type="number" class="form-input col-span-3" placeholder="Others" id="size_others" min="0" />
   </div>
 </div>
-            <div class="form-group">
+            <div class="form-group" style="display: none;">
               <label class="form-label">Description</label>
               <textarea class="form-input" id="productDescription" rows="3"></textarea>
             </div>
