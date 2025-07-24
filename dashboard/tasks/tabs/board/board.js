@@ -31,13 +31,19 @@ import {
     increment,
     deleteField,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
+import {
+    getStorage,
+    ref,
+    uploadBytes,
+    getDownloadURL
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 import { firebaseConfig } from "/services/firebase-config.js";
 
 // Initialize Firebase
 console.log("Initializing Firebase...");
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const storage = getStorage(app);
 const db = getFirestore(app, "juanluna-cms-01");
 console.log("Initialized Firebase on Dashboard.");
 
@@ -67,6 +73,11 @@ let currentUserRole = null;
 let currentProjectRef = null;
 let taskIdToFocus = null;
 let isMovingTask = false;
+
+let activeInlineEditor = {
+    taskId: null,
+    element: null
+};
 
 const defaultPriorityColors = {
     'High': '#EF4D3D',
@@ -637,13 +648,23 @@ const renderBoard = () => {
     kanbanBoard.scrollLeft = scrollLeft;
     kanbanBoard.scrollTop = scrollTop;
     if (taskIdToFocus) {
-        const taskInput = document.querySelector(`#task-${taskIdToFocus} .boardtasks-task-name-editable`);
-        if (taskInput) {
-            taskInput.focus();
-            document.execCommand('selectAll', false, null);
-        }
-        taskIdToFocus = null;
+        requestAnimationFrame(() => {
+            const taskInput = document.querySelector(`#task-${taskIdToFocus} .boardtasks-task-name-editable`);
+            console.log("🔍 Attempting to focus on:", taskIdToFocus, taskInput);
+            if (taskInput) {
+                taskInput.focus();
+                // Move cursor to end if needed
+                const range = document.createRange();
+                const sel = window.getSelection();
+                range.selectNodeContents(taskInput);
+                range.collapse(false);
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+            taskIdToFocus = null;
+        });
     }
+
 };
 
 const renderColumn = (section) => {
@@ -666,15 +687,7 @@ const renderTask = (task) => {
     const isEditable = canEditThisTask ? 'true' : 'false';
 
     if (task.isNew) {
-        return `
-            <div class="boardtasks-task-card is-new" id="task-${task.id}" data-task-id="${task.id}">
-                <div class="boardtasks-task-content">
-                    <div class="boardtasks-task-header">
-                        <span class="boardtasks-task-check"><i class="fa-regular fa-circle"></i></span>
-                        <p contenteditable="true" class="boardtasks-task-name-editable"></p>
-                    </div>
-                </div>
-            </div>`;
+        return `<div class="boardtasks-task-card is-new" id="task-${task.id}" data-task-id="${task.id}"><div class="boardtasks-task-content"><div class="boardtasks-task-header"><span class="boardtasks-task-check"><i class="fa-regular fa-circle"></i></span><p contenteditable="true" class="boardtasks-task-name-editable">\u200B</p></div></div></div>`;
     }
 
     const assigneesHTML = (task.assignees || []).map(uid => {
@@ -687,62 +700,84 @@ const renderTask = (task) => {
     const cardCompletedClass = isCompleted ? 'boardtasks-task-checked' : '';
     const hasLiked = task.likedBy && task.likedBy[currentUserId];
 
-    // --- DYNAMIC TAG GENERATION LOGIC ---
+    let coverImageHTML = '';
+    const hasCoverImage = task.coverImage;
+    const hasAttachmentImage = oldestImageUrl;
 
-    // 1. PRIORITY TAG
-    let priorityTagHTML = '';
-    const priorityName = task.priority;
-    if (priorityName) {
-        const priorityColumn = project.defaultColumns.find(c => c.id === 'priority');
-        const option = priorityColumn?.options?.find(p => p.name === priorityName);
-        const color = option?.color;
+    if (canEditThisTask || hasCoverImage || hasAttachmentImage) {
+        const menuIconHTML = canEditThisTask ? `
+            <div class="boardtasks-cover-menu-btn" data-control="cover-menu">
+                <i class="fas fa-ellipsis-h"></i>
+            </div>
+        ` : '';
 
-        if (color) {
-            const style = `background-color: ${color}20; color: ${color};`;
-            priorityTagHTML = `<span class="boardtasks-tag" style="${style}">${priorityName}</span>`;
+        let imageContentHTML;
+        if (hasCoverImage) {
+            // Priority 1: Show the dedicated cover image.
+            imageContentHTML = `<img src="${task.coverImage}" class="boardtasks-task-cover-image">`;
+        } else if (hasAttachmentImage) {
+            // Priority 2: Fallback to the oldest image from chat.
+            imageContentHTML = `<img src="${oldestImageUrl}" class="boardtasks-task-cover-image">`;
         } else {
-            priorityTagHTML = `<span class="boardtasks-tag">${priorityName}</span>`;
+            // Priority 3: Show the placeholder.
+            imageContentHTML = `<div class="boardtasks-task-cover-placeholder"></div>`;
         }
+
+        coverImageHTML = `
+            <div class="boardtasks-task-cover-container">
+                ${imageContentHTML}
+                ${menuIconHTML}
+            </div>
+        `;
     }
 
-    // 2. STATUS TAG
-    let statusTagHTML = '';
-    const statusName = task.status || 'No Status';
-    if (statusName) {
-        const statusColumn = project.defaultColumns.find(c => c.id === 'status');
-        const option = statusColumn?.options?.find(s => s.name === statusName);
-        const color = option?.color;
 
-        if (color) {
-            const style = `background-color: ${color}20; color: ${color};`;
-            statusTagHTML = `<span class="boardtasks-tag" style="${style}">${statusName}</span>`;
-        } else {
-            statusTagHTML = `<span class="boardtasks-tag">${statusName}</span>`;
+    let existingTagsHTML = '';
+
+    const allSelectableColumns = [
+        ...project.defaultColumns.filter(c => c.id === 'priority' || c.id === 'status'),
+        ...project.customColumns.filter(c => c.type === 'Type' && c.options)
+    ];
+
+    // 1. Render existing tags as clickable elements
+    allSelectableColumns.forEach(col => {
+        const isDefault = col.id === 'priority' || col.id === 'status';
+        const currentValue = isDefault ? task[col.id] : task.customFields?.[col.id];
+
+        if (currentValue) {
+            const currentOption = col.options.find(o => o.name === currentValue);
+            const color = currentOption?.color || '#cccccc';
+            existingTagsHTML += `
+                <div class="boardtasks-tag-clickable" data-control="edit-tag" data-column-id="${col.id}">
+                    <span class="boardtasks-tag" style="background-color:${color}20; color:${color};">${currentValue}</span>
+                </div>
+            `;
         }
-    }
+    });
 
-    // 3. CUSTOM "TYPE" TAGS
-    let customTypeTagsHTML = '';
-    if (project.customColumns && task.customFields) {
-        const typeColumns = project.customColumns.filter(col => col.type === 'Type');
-        typeColumns.forEach(col => {
-            const valueName = task.customFields[col.id];
-            if (valueName && col.options) {
-                const selectedOption = col.options.find(opt => opt.name === valueName);
-                if (selectedOption && selectedOption.color) {
-                    const style = `background-color: ${selectedOption.color}20; color: ${selectedOption.color};`;
-                    customTypeTagsHTML += `<span class="boardtasks-tag" style="${style}">${valueName}</span>`;
-                }
-            }
-        });
+    // 2. Check if there are any empty fields left to add
+    const hasEmptyFields = allSelectableColumns.some(col => {
+        const isDefault = col.id === 'priority' || col.id === 'status';
+        const currentValue = isDefault ? task[col.id] : task.customFields?.[col.id];
+        return !currentValue;
+    });
+
+    // 3. Render the "Add Field" button ONLY if there are empty fields
+    let addFieldButtonHTML = '';
+    if (canEditThisTask) {
+        addFieldButtonHTML = `
+            <div class="boardtasks-edit-fields-btn" data-control="add-new-field">
+                <i class="fa-solid fa-pencil fa-xs"></i>
+                <span>Add fields</span>
+            </div>
+        `;
     }
 
     const dueDateInfo = formatDueDate(task.dueDate);
 
-    // --- FINAL HTML TEMPLATE ---
     return `
         <div class="boardtasks-task-card ${cardCompletedClass}" id="task-${task.id}" data-task-id="${task.id}" draggable="${isEditable}" data-control="open-sidebar">
-            ${oldestImageUrl ? `<img src="${oldestImageUrl}" class="boardtasks-task-attachment">` : ''}
+            ${coverImageHTML}
             <div class="boardtasks-task-content">
                 <div class="boardtasks-task-header">
                     <span class="boardtasks-task-check" style="pointer-events: ${isEditable ? 'auto' : 'none'};" data-control="check">
@@ -750,12 +785,11 @@ const renderTask = (task) => {
                     </span>
                     <p contenteditable="${isEditable}" class="boardtasks-task-name-editable">${task.name}</p>
                 </div>
-                <div class="boardtasks-task-assignees">${assigneesHTML}</div>
                 <div class="boardtasks-task-tags">
-                    ${priorityTagHTML}
-                    ${statusTagHTML}
-                    ${customTypeTagsHTML}
+                    ${existingTagsHTML}
+                    ${addFieldButtonHTML}
                 </div>
+                <div class="boardtasks-task-assignees">${assigneesHTML}</div>
                 <div class="boardtasks-task-footer">
                     <span class="boardtasks-due-date" data-due-date="${task.dueDate}" data-color-name="${dueDateInfo.color}">${dueDateInfo.text}</span>
                     <div class="boardtasks-task-actions">
@@ -766,7 +800,6 @@ const renderTask = (task) => {
             </div>
         </div>`;
 };
-
 
 // --- 9. DATA MODIFICATION & EVENT HANDLERS ---
 /**
@@ -782,15 +815,14 @@ function createTemporaryTask(section) {
 
     const tempId = `temp_${Date.now()}`;
 
-    // ✅ NEW: Create a complete task object with all default fields.
     const newTask = {
         id: tempId,
         name: '',
         isNew: true,
         sectionId: section.id, // Keep the sectionId for proper handling
         dueDate: '',
-        priority: 'Low',
-        status: 'On track',
+        priority: '',
+        status: '',
         assignees: [],
         customFields: {},
         order: section.tasks.length
@@ -798,6 +830,7 @@ function createTemporaryTask(section) {
 
     section.tasks.push(newTask);
     taskIdToFocus = tempId;
+    console.log('new add task', taskIdToFocus);
 
     // If the section is collapsed, expand it to show the new task.
     if (section.isCollapsed) {
@@ -869,6 +902,71 @@ async function addTaskToFirebase(sectionId, taskData) {
     }
 }
 
+/**
+ * Handles the cover image upload process for a specific task.
+ * @param {object} task - The task object to update.
+ */
+function handleCoverImageUpload(task) {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.style.display = 'none';
+
+    fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // 1. Define the storage path as requested
+        const filePath = `TaskboardCovers/${currentProjectId}/${task.id}/${file.name}`;
+        const storageRef = ref(storage, filePath);
+
+        try {
+            // 2. Show a temporary uploading state (optional but good UX)
+            // For example, you could add a class to the task card.
+
+            // 3. Upload the file to Firebase Storage
+            const snapshot = await uploadBytes(storageRef, file);
+
+            // 4. Get the public URL for the uploaded image
+            const downloadURL = await getDownloadURL(snapshot.ref);
+
+            // 5. Update the task document in Firestore with the new image URL
+            const taskRef = doc(currentProjectRef, `sections/${task.sectionId}/tasks/${task.id}`);
+            await updateDoc(taskRef, {
+                coverImage: downloadURL
+            });
+
+            console.log("Cover image updated successfully!");
+
+        } catch (error) {
+            console.error("Error uploading cover image:", error);
+            alert("Failed to upload cover image. Please check the console for details.");
+        }
+    });
+
+    document.body.appendChild(fileInput);
+    fileInput.click();
+    fileInput.remove();
+}
+
+/**
+ * Removes the cover image URL from a task document in Firestore.
+ * @param {object} task - The task object to update.
+ */
+async function removeCoverImage(task) {
+    const taskRef = doc(currentProjectRef, `sections/${task.sectionId}/tasks/${task.id}`);
+    try {
+        // Use deleteField() to completely remove the coverImage property
+        await updateDoc(taskRef, {
+            coverImage: deleteField()
+        });
+        console.log("Cover image removed successfully!");
+    } catch (error) {
+        console.error("Error removing cover image:", error);
+        alert("Failed to remove cover image.");
+    }
+}
+
 const handleBlur = async (e) => {
     // Only proceed if the event target is an editable field
     if (!e.target.isContentEditable) return;
@@ -896,8 +994,8 @@ const handleBlur = async (e) => {
             const taskData = {
                 name: newName,
                 order: order,
-                priority: 'Low',
-                status: 'On track',
+                priority: '',
+                status: '',
                 assignees: [],
                 customFields: {}
             };
@@ -968,6 +1066,66 @@ const handleKanbanClick = (e) => {
             // This is the default action for the card itself and the comment icon.
             displaySideBarTasks(taskId, currentProjectRef);
             break;
+
+        case 'add-new-field':
+            e.stopPropagation();
+            showInlineTagEditor(task, control);
+            break;
+
+        case 'cover-menu': {
+            e.stopPropagation();
+
+            // Determine which images are present for this task
+            const hasCoverImage = !!task.coverImage;
+            const oldestImageUrl = task.chatuuid ? taskImageMap[task.chatuuid] : null;
+            const hasAnyImage = hasCoverImage || oldestImageUrl;
+
+            // Start with the default option
+            const menuOptions = [{ id: 'change-cover', name: 'Upload Cover' }];
+
+            if (hasCoverImage) {
+                menuOptions.push({ id: 'remove-cover', name: 'Remove Cover' });
+            }
+
+            createAdvancedDropdown(control, {
+                options: menuOptions,
+                itemRenderer: (option) => `<span>${option.name}</span>`,
+                onSelect: (selected) => {
+                    if (selected.id === 'change-cover') {
+                        handleCoverImageUpload(task);
+                    } else if (selected.id === 'remove-cover') {
+                        removeCoverImage(task);
+                    }
+                }
+            });
+            break;
+        }
+
+        case 'edit-tag': {
+            e.stopPropagation();
+            const columnId = control.dataset.columnId;
+
+            const allColumns = [...project.defaultColumns, ...project.customColumns];
+            const column = allColumns.find(c => String(c.id) === String(columnId));
+
+            if (!column || !column.options) return;
+
+            const taskRef = doc(currentProjectRef, `sections/${section.id}/tasks/${task.id}`);
+
+            createAdvancedDropdown(control, {
+                options: column.options,
+                itemRenderer: (option) => `<div class="dropdown-color-swatch" style="background-color: ${option.color || '#ccc'}"></div><span>${option.name}</span>`,
+                onSelect: (selected) => {
+                    const isDefault = column.id === 'priority' || column.id === 'status';
+                    const fieldToUpdate = isDefault
+                        ? { [column.id]: selected.name }
+                        : { [`customFields.${column.id}`]: selected.name };
+
+                    updateDoc(taskRef, fieldToUpdate);
+                }
+            });
+            break;
+        }
 
         case 'check':
             // Stop the event from bubbling up to the card, which would also open the sidebar.
@@ -1090,6 +1248,185 @@ async function handleTaskMoved(evt) {
         renderBoard();
     }
     isMovingTask = false;
+}
+
+/**
+ * Closes any currently open inline tag editor or floating dropdown panel.
+ */
+function closeFloatingPanels() {
+    document.querySelectorAll('.advanced-dropdown, .inline-tag-editor').forEach(p => p.remove());
+    if (activeInlineEditor.element) {
+        activeInlineEditor.element = null;
+        activeInlineEditor.taskId = null;
+        document.removeEventListener('click', handleClickOutsideEditor, true);
+    }
+}
+
+/**
+ * Closes the inline editor if a click occurs outside of it.
+ */
+function handleClickOutsideEditor(event) {
+    if (activeInlineEditor.element && !activeInlineEditor.element.contains(event.target)) {
+        // Also check if the click was inside a dropdown opened by the editor
+        if (!event.target.closest('.advanced-dropdown')) {
+            closeFloatingPanels();
+        }
+    }
+}
+
+function showInlineTagEditor(task, anchorElement) {
+    closeFloatingPanels();
+
+    const editorPanel = document.createElement('div');
+    editorPanel.className = 'inline-tag-editor';
+    document.body.appendChild(editorPanel);
+
+    activeInlineEditor.taskId = task.id;
+    activeInlineEditor.element = editorPanel;
+
+    const createEditorRow = (label, onClick) => {
+        const row = document.createElement('div');
+        row.className = 'editor-row';
+        row.innerHTML = `<span class="editor-label">${label}</span>`;
+        row.addEventListener('click', () => onClick(row));
+        return row;
+    };
+
+    const taskRef = doc(currentProjectRef, `sections/${task.sectionId}/tasks/${task.id}`);
+
+    // Define all columns that can be added
+    const allSelectableColumns = [
+        ...project.defaultColumns.filter(c => c.id === 'priority' || c.id === 'status'),
+        ...project.customColumns.filter(c => c.type === 'Type' && c.options)
+    ];
+
+    const emptyFieldsToAdd = allSelectableColumns.filter(col => {
+        const isDefault = col.id === 'priority' || col.id === 'status';
+        const currentValue = isDefault ? task[col.id] : task.customFields?.[col.id];
+        return !currentValue; // Return true only if the value is missing
+    });
+
+    if (emptyFieldsToAdd.length > 0) {
+        // Loop through the list of empty fields and create a row for each one.
+        emptyFieldsToAdd.forEach(col => {
+            const editorRow = createEditorRow(col.name, (rowAnchor) => {
+                createAdvancedDropdown(rowAnchor, {
+                    options: col.options, // Show all possible values for this field
+                    itemRenderer: (option) => `<div class="dropdown-color-swatch" style="background-color: ${option.color || '#ccc'}"></div><span>${option.name}</span>`,
+                    onSelect: (selected) => {
+                        const isDefault = col.id === 'priority' || col.id === 'status';
+                        const fieldToUpdate = isDefault
+                            ? { [col.id]: selected.name }
+                            : { [`customFields.${col.id}`]: selected.name };
+
+                        updateDoc(taskRef, fieldToUpdate);
+                        closeFloatingPanels();
+                    }
+                });
+            });
+            editorPanel.appendChild(editorRow);
+        });
+    } else {
+        editorPanel.innerHTML = `<div class="editor-no-fields">All fields have been added.</div>`;
+    }
+
+    // Positioning Logic
+    const rect = anchorElement.getBoundingClientRect();
+    editorPanel.style.position = 'fixed';
+    editorPanel.style.visibility = 'hidden';
+
+    setTimeout(() => {
+        const panelWidth = editorPanel.offsetWidth;
+        const panelHeight = editorPanel.offsetHeight;
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const spaceAbove = rect.top;
+
+        if (spaceBelow < panelHeight && spaceAbove > panelHeight) {
+            editorPanel.style.top = `${rect.top - panelHeight - 4}px`;
+        } else {
+            editorPanel.style.top = `${rect.bottom + 4}px`;
+        }
+
+        let left = rect.right - panelWidth;
+        if (left < 4) left = 4;
+        editorPanel.style.left = `${left}px`;
+
+        editorPanel.style.visibility = 'visible';
+    }, 0);
+
+    setTimeout(() => {
+        document.addEventListener('click', handleClickOutsideEditor, true);
+    }, 0);
+}
+
+function createAdvancedDropdown(targetEl, config) {
+    document.querySelectorAll('.advanced-dropdown').forEach(el => el.remove());
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'advanced-dropdown';
+    document.body.appendChild(dropdown);
+
+    const closeDropdown = () => {
+        dropdown.remove();
+        document.removeEventListener('click', clickOutsideHandler, true);
+        if (config.onClose) {
+            config.onClose();
+        }
+    };
+
+    const clickOutsideHandler = (event) => {
+        if (!dropdown.contains(event.target) && !targetEl.contains(event.target)) {
+            closeDropdown();
+        }
+    };
+    setTimeout(() => document.addEventListener('click', clickOutsideHandler, true), 0);
+
+    const listContainer = document.createElement('ul');
+    listContainer.className = 'dropdown-list';
+    dropdown.appendChild(listContainer);
+
+    config.options.forEach(option => {
+        const li = document.createElement('li');
+        li.className = 'dropdown-item';
+        li.innerHTML = config.itemRenderer(option);
+        li.addEventListener('click', (e) => {
+            e.stopPropagation();
+            config.onSelect(option);
+            dropdown.remove();
+        });
+        listContainer.appendChild(li);
+    });
+
+    setTimeout(() => {
+        const rect = targetEl.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) {
+            console.error("Dropdown target is not visible:", targetEl);
+            dropdown.remove();
+            return;
+        }
+
+        dropdown.style.minWidth = `${rect.width}px`;
+        dropdown.style.visibility = 'hidden';
+        dropdown.style.top = '-9999px';
+        dropdown.style.left = '-9999px';
+
+        requestAnimationFrame(() => {
+            const dropdownHeight = dropdown.offsetHeight;
+            const spaceBelow = window.innerHeight - rect.bottom;
+            const spaceAbove = rect.top;
+
+            // ✅ **FIX: Changed incorrect 'panelHeight' variable to 'dropdownHeight'**
+            if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
+                dropdown.style.top = `${rect.top - dropdownHeight - 4}px`;
+            } else {
+                dropdown.style.top = `${rect.bottom + 4}px`;
+            }
+
+            dropdown.style.left = `${rect.left}px`;
+            dropdown.style.visibility = 'visible';
+            dropdown.classList.add('visible');
+        });
+    }, 0);
 }
 
 // --- 11. EXPORT ---

@@ -477,3 +477,239 @@
     /* Darker text color */
     font-size: 1.1em;
 }
+/* --- Inline Tag Editor --- */
+/* Container for tags and the new edit button */
+.boardtasks-tags-container {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Space between tags and button */
+    margin-top: 8px;
+    min-height: 24px; /* Ensures consistent card height */
+}
+
+/* Let the tags container grow to push the button to the end */
+.boardtasks-task-tags {
+    flex-grow: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+/* The new "Add/Edit Fields" button */
+.boardtasks-edit-fields-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px dashed #cbd5e0; /* Dashed border */
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 12px;
+    color: #4a5568;
+    cursor: pointer;
+    flex-shrink: 0; /* Prevent the button from shrinking on small cards */
+    transition: all 0.2s ease-in-out;
+}
+
+.boardtasks-edit-fields-btn:hover {
+    background-color: #f7fafc;
+    border-color: #a0aec0;
+    color: #2d3748;
+}
+
+/* Deprecated styles for old hover icon - can be removed or kept for safety */
+.boardtasks-tags-wrapper {
+   position: static;
+}
+.boardtasks-edit-tags-icon {
+   display: none !important;
+}
+.inline-tag-editor {
+    position: fixed;
+    background-color: white;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e2e8f0;
+    z-index: 1000;
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.editor-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.15s ease-in-out;
+}
+
+.editor-row:hover {
+    background-color: #f7fafc;
+}
+
+.editor-label {
+    font-size: 13px;
+    color: #4a5568;
+    margin-right: 16px;
+}
+
+.editor-value-wrapper {
+    min-width: 80px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.editor-tag {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 500;
+}
+
+.editor-value-none {
+    font-size: 12px;
+    color: #a0aec0;
+    font-style: italic;
+}
+
+/* --- Copied from list.js --- */
+.advanced-dropdown {
+    position: fixed;
+    background-color: white;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e2e8f0;
+    z-index: 1000;
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.advanced-dropdown.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+.dropdown-list {
+    list-style: none;
+    margin: 0;
+    padding: 4px;
+    max-height: 250px;
+    overflow-y: auto;
+}
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 10px;
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+.dropdown-item:hover {
+    background-color: #f4f5f7;
+}
+.dropdown-color-swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+.editor-no-fields {
+    padding: 12px 16px;
+    font-size: 13px;
+    color: #718096;
+    text-align: center;
+}
+/* The main container for both tags and the button */
+.boardtasks-tags-container {
+    display: flex;
+    justify-content: space-between; 
+    align-items: flex-end; 
+    gap: 8px;
+    margin-top: 8px;
+    min-height: 24px;
+}
+
+/* The container for just the tags */
+.boardtasks-task-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+/* The "Add Field" button */
+.boardtasks-edit-fields-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 12px;
+    color: #a0aec0;
+    opacity: 0;
+    cursor: pointer;
+    flex-shrink: 0; /* Prevents the button from shrinking */
+    transition: all 0.2s ease-in-out;
+}
+
+.boardtasks-edit-fields-btn:hover {
+    background-color: #f7fafc;
+    border-color: #e2e8f0;
+    opacity: 1;
+    color: #4a5568;
+}
+/* Container for the cover image and its menu */
+.boardtasks-task-cover-container {
+    position: relative;
+    width: 100%;
+    background-color: #f1f5f9;
+}
+
+/* The actual cover image */
+.boardtasks-task-cover-image {
+    display: block;
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+}
+
+/* The placeholder for tasks without an image */
+.boardtasks-task-cover-placeholder {
+    width: 100%;
+    height: 40px; /* A smaller height for the empty placeholder */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+}
+
+/* The three-dots menu button */
+.boardtasks-cover-menu-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 24px;
+    height: 24px;
+    background-color: rgba(0, 0, 0, 0.199);
+    color: white;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    cursor: pointer;
+    opacity: 0; /* Hidden by default */
+    transition: opacity 0.2s ease-in-out;
+}
+
+/* Show menu button when hovering over the container */
+.boardtasks-task-cover-container:hover .boardtasks-cover-menu-btn {
+    opacity: 1;
+}
