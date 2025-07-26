@@ -14,6 +14,96 @@
     --overdue-color: var(--high-priority-color);
 }
 
+.boardtasks-add-task-btn-main {
+    background-color: transparent;
+    border: 1px solid #000000;
+    border-radius: 8px;
+    /* Slightly reduced button padding */
+    padding: 0.4rem 0.8rem;
+    cursor: pointer;
+    margin-left: 8px;
+    font-size: 0.85rem;
+    /* Slightly smaller font size for buttons */
+    font-weight: 500;
+    color: #000000;
+    transition: background-color 0.2s, color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+}
+#boardtasks-add-section-btn {
+    background-color: transparent;
+    border: 1px solid #000000;
+    border-radius: 8px;
+    /* Slightly reduced button padding */
+    padding: 0.4rem 0.8rem;
+    cursor: pointer;
+    margin-left: 8px;
+    font-size: 0.85rem;
+    /* Slightly smaller font size for buttons */
+    font-weight: 500;
+    color: #000000;
+    transition: background-color 0.2s, color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+}
+
+.boardtasks-add-section-placeholder {
+    flex-shrink: 0;
+    width: 220px; 
+    padding: 1px;
+}
+
+.boardtasks-add-section-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #718096; 
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.boardtasks-add-section-content:hover {
+    background-color: #f4f5f7; /* Light gray on hover */
+    color: #2d3748;
+}
+#boardtasks-tools-btn {
+    background-color: transparent;
+    border: 1px solid #000000;
+    border-radius: 8px;
+    /* Slightly reduced button padding */
+    padding: 0.4rem 0.8rem;
+    cursor: pointer;
+    margin-left: 8px;
+    font-size: 0.85rem;
+    /* Slightly smaller font size for buttons */
+    font-weight: 500;
+    color: #000000;
+    transition: background-color 0.2s, color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+}
+#boardtasks-add-section-btn:hover{
+    background-color: #000000;
+    color: #fff;
+}
+#boardtasks-tools-btn:hover{
+    background-color: #000000;
+    color: #fff;
+}
+.boardtasks-add-task-btn-main:hover{
+    background-color: #000000;
+    color: #fff;
+}
 /* --- Task Completion Styles --- */
 .boardtasks-task-checked .boardtasks-task-check {
     color: var(--on-track-color);
@@ -80,25 +170,9 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 1rem;
+    margin-right: 12px;
+    margin-top: 18px;
     background-color: #ffffff;
-    border-bottom: 1px solid #e0e0e0;
-}
-
-.boardtasks-board-header button {
-    background: #fff;
-    border: 1px solid #e0e0e0;
-    border-radius: 6px;
-    padding: 0.5rem 1rem;
-    font-size: 0.9rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: #333;
-}
-
-.boardtasks-board-header button:hover {
-    background-color: #f0f0f0;
 }
 
 .boardtasks-header-options {
@@ -164,6 +238,7 @@
     align-items: flex-start;
     padding-bottom: 1rem;
     flex-grow: 1;
+    padding-left: 8px;
     /* Allows this element to expand and fill the remaining height */
 
     overflow-y: auto;
@@ -184,22 +259,54 @@
 
 .boardtasks-column-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 1rem;
+    gap: 8px; /* Adds a little space between elements */
+    width: 100%;
+    padding: 8px 12px;
     cursor: move;
     border-bottom: 1px solid #EAECEE;
     position: sticky;
     top: 0;
     background-color: #f7f8fa;
-    /* MODIFIED: Lowered z-index to be below the main header but above the cards */
     z-index: 10;
 }
 
+/* ✅ KEY CHANGE: Make the title grow to fill empty space */
 .boardtasks-column-header h3 {
-    margin: 0;
+    flex-grow: 1;
     font-size: 1rem;
-    font-weight: 600;
+    padding-top: 8px;
+}
+
+/* This group for the count and menu icon will now be pushed to the right */
+.boardtasks-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    flex-shrink: 0; /* Prevents this group from shrinking */
+}
+
+.boardtasks-add-task-btn button {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #333;
+}
+
+.lucide-icon-delete {
+    stroke: currentColor; 
+    transition: stroke 0.2s ease-in-out;
+}
+
+.lucide-icon-delete:hover {
+    stroke: #ef4444; /* A standard red color */
 }
 
 .boardtasks-task-count {
@@ -284,6 +391,25 @@
 
 .boardtasks-assignee-avatar:not(:first-child) {
     margin-left: -8px;
+}
+
+.boardtasks-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Space between the count and the icon */
+}
+
+.boardtasks-section-menu-btn {
+    cursor: pointer;
+    color: #a0aec0; /* A neutral gray color */
+    padding: 4px;
+    border-radius: 4px;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.boardtasks-section-menu-btn:hover {
+    background-color: #edf2f7; /* Light gray background on hover */
+    color: #4a5568;
 }
 
 /* --- Tags & Status --- */
@@ -629,7 +755,6 @@
     justify-content: space-between; 
     align-items: flex-end; 
     gap: 8px;
-    margin-top: 8px;
     min-height: 24px;
 }
 
@@ -712,4 +837,30 @@
 /* Show menu button when hovering over the container */
 .boardtasks-task-cover-container:hover .boardtasks-cover-menu-btn {
     opacity: 1;
+}
+
+.boardtasks-meta-container {
+    display: flex;
+    justify-content: space-between; /* Pushes left and right groups apart */
+    align-items: center;
+    margin-top: 12px;
+}
+
+.boardtasks-meta-left {
+    display: flex;
+    font-size: 12px;
+    align-items: center;
+    gap: 4px; /* Creates space between assignees and the due date */
+}
+
+/* Assignees container */
+.boardtasks-task-assignees {
+    display: flex;
+}
+
+/* Right-side group for action icons */
+.boardtasks-task-actions {
+    display: flex;
+    font-size: 14px;
+    gap: 6px; /* Space between the like and comment icons */
 }

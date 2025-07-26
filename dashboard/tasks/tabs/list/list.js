@@ -2183,7 +2183,7 @@ function render() {
         </div>
     </div>
     <div class="flex-shrink-0 ml-auto pr-2">
-        <span class="material-icons text-sm text-slate-400 ${!canEditThisTask ? 'hidden' : 'cursor-pointer hover:text-slate-600 transition'}" data-control="move-task" data-task-id="${task.id}">
+        <span class="material-icons text-sm text-slate-400 text-[14px] ${!canEditThisTask ? 'hidden' : 'cursor-pointer hover:text-slate-600 transition'}" data-control="move-task" data-task-id="${task.id}">
             swap_vert
         </span>
     </div>
@@ -3583,21 +3583,47 @@ async function updateTaskInFirebase(taskId, sectionId, propertiesToUpdate) {
         }
     }
 
-    // Now, call the original (renamed) function to actually save the data.
-    _updateTaskInFirebase(taskId, sectionId, propertiesToUpdate);
+    // MODIFIED: Pass the entire `task` object to the next function.
+    _updateTaskInFirebase(taskId, sectionId, propertiesToUpdate, task);
 }
 
-async function _updateTaskInFirebase(taskId, sectionId, propertiesToUpdate) {
+/**
+ * MODIFIED: This function now uses a batch to update the original task and
+ * CREATE or UPDATE the document in the 'taskIndex' collection.
+ */
+async function _updateTaskInFirebase(taskId, sectionId, propertiesToUpdate, fullTaskData) {
     if (!currentProjectRef || !sectionId || !taskId) {
         return console.error("Missing IDs or project reference, cannot update task.");
     }
-    console.log('updating task');
+
+    // 1. Get references to both documents
     const taskRef = doc(currentProjectRef, `sections/${sectionId}/tasks/${taskId}`);
+    const taskIndexRef = doc(db, "taskIndex", taskId);
+
+    // 2. Prepare the complete data payload for the taskIndex.
+    // This combines the existing task data with the new changes.
+    const indexPayload = { ...fullTaskData,
+        ...propertiesToUpdate
+    };
+
+
+    // 3. Create a batch to perform an atomic operation
+    const batch = writeBatch(db);
+
+    // Update the original task document
+    batch.update(taskRef, propertiesToUpdate);
+
+    // Create or merge the data into the taskIndex document
+    batch.set(taskIndexRef, indexPayload, {
+        merge: true
+    });
+
+    // 4. Commit the batch
     try {
-        await updateDoc(taskRef, propertiesToUpdate);
-        console.log(`Task ${taskId} updated successfully.`);
+        await batch.commit();
+        console.log(`Task ${taskId} updated successfully in both its original location and the taskIndex.`);
     } catch (error) {
-        console.error(`Error updating task ${taskId}:`, error);
+        console.error(`Batch update failed for task ${taskId}:`, error);
     }
 }
 

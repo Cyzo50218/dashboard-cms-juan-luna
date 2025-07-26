@@ -84,7 +84,6 @@
   border-radius: 30px;
   cursor: pointer;
   transition: background-color 0.25s ease, color 0.25s ease;
-  margin-bottom: 4px;
   font-weight: 700;
   color: var(--drawer-text-color);
   text-decoration: none;
@@ -120,11 +119,10 @@
 
 /* 1. Create a GLOBAL style for all Font Awesome icons in the nav */
 .sidebar-nav [class*="fa-"] {
-  font-size: 16px;
   opacity: var(--drawer-icon-opacity);
   flex-shrink: 0;
   /* Prevents icons from shrinking */
-  width: 20px;
+  width: 10px;
   /* Gives all icons a consistent width for alignment */
   text-align: center;
   transition: opacity 0.3s ease;
@@ -132,7 +130,6 @@
 
 /* 2. Override for the smaller expand chevron */
 .sidebar .expand-icon {
-  font-size: 12px;
   opacity: 0.6;
   width: auto;
   /* Let this smaller icon size itself */
@@ -184,14 +181,26 @@
   margin-bottom: 4px;
 }
 
-.sidebar .section-header:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-}
+.sidebar .section-header:hover {}
 
 .sidebar .section-header .section-header-title {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.dropdown-container-icon {
+  border-radius: 6px;
+  display: flex;
+  height: 26px;
+  width: 26px;
+  font-size: 13px;
+  justify-content: center;
+  align-items: center;
+}
+
+.dropdown-container-icon:hover {
+  background-color: rgba(255, 255, 255, 0.05);
 }
 
 /* === START: CORRECTED ADD PROJECT BUTTON === */
@@ -245,12 +254,12 @@
   list-style: none;
   padding: 0;
   margin: 0;
-  
+
   /* By default, the list is completely collapsed and hidden */
   max-height: 0;
   overflow: hidden;
   /* This hides the items when max-height is 0 */
-  
+
   /* This creates the smooth slide animation */
   transition: max-height 0.3s ease-in-out;
 }
@@ -273,11 +282,11 @@
   /* Hide the overflowed text */
   text-overflow: ellipsis;
   /* Show "..." */
-  
+
   /* --- THE MAGIC FIX FOR FLEXBOX --- */
   /* This tells the text to grow and shrink as needed */
   flex: 1;
-  
+
   /* This is the key property. It allows the element to shrink
      smaller than its own content, which is required for the
      ellipsis to appear in a flex container. */
@@ -295,13 +304,13 @@
 .sidebar .section-items .nav-item span {
   /* Prevents the text from wrapping to a new line */
   white-space: nowrap;
-  
+
   /* Hides the part of the text that doesn't fit */
   overflow: hidden;
-  
+
   /* Adds the "..." at the end */
-  
-  
+
+
   /* These ensure the span behaves correctly for truncation */
   display: block;
   width: 100%;
@@ -342,7 +351,7 @@
   justify-content: flex-start;
   gap: 12px;
   padding: 0px;
-  
+
   width: 100%;
 }
 
@@ -368,7 +377,6 @@
   /* A bit wider for better spacing */
   padding: 6px;
   /* Add some padding around the list */
-  font-size: 14px;
 }
 
 /* Remove default list styling */
@@ -402,7 +410,6 @@
 .drawerprojects-dropdown li .fa-plus {
   width: 16px;
   /* A specific width for alignment */
-  font-size: 14px;
   text-align: center;
   color: #495057;
   /* A slightly softer icon color */
@@ -426,10 +433,10 @@
 
 /* Style for the project item when it is selected */
 .projects-item.selected {
-    /* A subtle background highlight to make it stand out */
-    border: transparent;
-    background-color: transparent;
-    
+  /* A subtle background highlight to make it stand out */
+  border: transparent;
+  background-color: transparent;
+
 }
 
 .projects-item:hover {
@@ -439,11 +446,10 @@
 }
 
 .projects-item.selected a {
-    font-weight: 600;
+  font-weight: 600;
 }
 
 .projects-item {
   white-space: nowrap;
   overflow: hidden;
 }
-

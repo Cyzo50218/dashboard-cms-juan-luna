@@ -78,7 +78,8 @@ button {
     gap: 0.4rem;
     /* Reduced gap inside buttons */
 }
-button:hover{
+
+button:hover {
     background-color: #000000;
     color: #fff;
 }
@@ -2526,4 +2527,40 @@ textarea.floating-input {
     /* Ensure icons are aligned */
     text-align: center;
     margin-top: 0;
+}
+
+.project-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px;
+    /* Reduced */
+}
+
+.project-title-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    /* Reduced */
+}
+
+.project-icon {
+    width: 28px;
+    /* Reduced */
+    height: 28px;
+    /* Reduced */
+    background-color: #20c95e;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.project-icon-glyph {
+    width: 16px;
+    /* Slightly larger for better visibility */
+    height: 16px;
+    color: #FFFFFF;
+    stroke-width: 2.5;
+    /* Lucide icons look great with a thicker stroke */
 }

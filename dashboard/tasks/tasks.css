@@ -19,7 +19,6 @@ svg {
     align-items: center;
     padding: 8px 16px;
     /* Reduced */
-    border-bottom: 1px solid #e8e8e8;
 }
 
 .project-title-group {
@@ -125,6 +124,7 @@ button:hover {
     padding: 0 16px;
     /* Reduced */
     display: flex;
+    border-bottom: 1px solid #e8e8e8;
     gap: 12px;
     /* Reduced */
 }

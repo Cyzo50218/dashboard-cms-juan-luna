@@ -648,6 +648,27 @@ window.TaskSidebar = (function () {
                 logActivity({ action: 'updated', field: fieldKey.charAt(0).toUpperCase() + fieldKey.slice(1), from: oldValue, to: newValue });
             }
 
+            const batch = writeBatch(db);
+            const newProjectData = (await getDoc(newProjectRef)).data();
+            const newTaskData = {
+                ...currentTask,
+                projectId: newProjectId,
+                sectionId: newSectionId,
+                memberUIDs: newProjectData.memberUIDs
+            };
+            const newIndexData = {
+                ...newTaskData,
+                path: newTaskRef.path
+            };
+
+            batch.delete(currentTaskRef);
+            batch.set(newTaskRef, newTaskData);
+
+            const taskIndexRef = doc(db, "taskIndex", currentTask.id);
+            batch.set(taskIndexRef, newIndexData); // Use set to overwrite with all new info
+
+            await batch.commit();
+
         } catch (error) { console.error(`Failed to update field ${fieldKey}:`, error); }
     }
 
@@ -863,9 +884,12 @@ window.TaskSidebar = (function () {
         }
 
         const messageRef = doc(db, `globalTaskChats/${currentTask.id}/Messages`, messageId);
+        const taskIndexRef = doc(db, "taskIndex", currentTask.id);
+
         const batch = writeBatch(db);
         batch.delete(messageRef);
         batch.update(currentTaskRef, { commentCount: increment(-1) });
+        batch.update(taskIndexRef, { commentCount: increment(-1) });
 
         await batch.commit();
 
@@ -906,6 +930,8 @@ window.TaskSidebar = (function () {
         if (!messageData.html.trim()) return;
 
         const messagesPath = `globalTaskChats/${currentTask.id}/Messages`;
+        const taskIndexRef = doc(db, "taskIndex", currentTask.id);
+
         const newMessageRef = doc(collection(db, messagesPath));
         const batch = writeBatch(db);
 
@@ -926,6 +952,8 @@ window.TaskSidebar = (function () {
         });
 
         batch.update(currentTaskRef, { commentCount: increment(1) });
+        batch.update(taskIndexRef, { commentCount: increment(1) });
+
         await batch.commit();
     }
 
@@ -1699,7 +1727,7 @@ window.TaskSidebar = (function () {
             }
         });
         if (sidebarHeader) {
-            sidebarHeader.addEventListener('click', (e) => {
+            sidebarHeader.addEventListener('click', async (e) => {
                 if (e.target.closest('.task-complete-btn')) {
                     if (!currentTask) return;
 
@@ -1716,6 +1744,13 @@ window.TaskSidebar = (function () {
                     // Update the task status in Firestore.
                     // The generic 'updated Status' log in updateTaskField will be skipped for this action.
                     updateDoc(currentTaskRef, { status: newStatus, previousStatus: isCompleted ? null : currentTask.status });
+                    const batch = writeBatch(db);
+                    const taskIndexRef = doc(db, "taskIndex", currentTask.id);
+
+                    batch.update(currentTaskRef, propertiesToUpdate);
+                    batch.update(taskIndexRef, propertiesToUpdate);
+
+                    await batch.commit();
                 }
             });
         }

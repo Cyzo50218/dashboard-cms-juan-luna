@@ -123,81 +123,62 @@ async function fetchMemberProfiles(uids) {
  * @param {object} task - The task object being completed.
  * @param {HTMLElement} taskCardEl - The DOM element for the task card.
  */
-async function handleTaskCompletion(task, taskCardEl) {
-    if (!task || !currentProjectRef) {
-        console.error("Task data or project reference is missing.");
-        return;
-    }
+async function handleTaskCompletion(task) {
+    if (!task || !currentProjectRef) return;
 
     const taskId = task.id;
     const batch = writeBatch(db);
+    const taskIndexRef = doc(db, "taskIndex", taskId);
     const isCurrentlyCompleted = task.status === 'Completed';
 
-    if (isCurrentlyCompleted) {
-        // --- LOGIC FOR UN-COMPLETING A TASK ---
+    let finalTaskData;
 
-        // Find the section where the task should return. Use its 'previousSectionId' if it exists,
-        // otherwise, assume it goes back to the first non-completed section.
+    if (isCurrentlyCompleted) {
+        // --- UN-COMPLETING ---
         const targetSectionId = task.previousSectionId || project.sections.find(s => s.sectionType !== 'completed')?.id;
-        if (!targetSectionId) {
-            console.error("Cannot un-complete task: No target section found.");
-            return;
-        }
+        if (!targetSectionId) return console.error("No target section found to un-complete task.");
 
         const sourceTaskRef = doc(currentProjectRef, `sections/${task.sectionId}/tasks/${taskId}`);
         const targetTaskRef = doc(currentProjectRef, `sections/${targetSectionId}/tasks/${taskId}`);
-
-        // Prepare the restored task data, removing the 'previous' fields
         const { previousStatus, previousSectionId, ...restOfTask } = task;
-        const restoredTaskData = {
+
+        finalTaskData = {
             ...restOfTask,
-            status: previousStatus || 'On track', // Restore previous status or a default
+            status: previousStatus || 'On track',
             sectionId: targetSectionId,
         };
 
-        // Move the task by deleting the old and setting the new
         batch.delete(sourceTaskRef);
-        batch.set(targetTaskRef, restoredTaskData);
+        batch.set(targetTaskRef, finalTaskData);
+        batch.set(taskIndexRef, { ...finalTaskData, path: targetTaskRef.path }, { merge: true });
 
     } else {
-        // --- LOGIC FOR COMPLETING A TASK ---
-
-        // Find the project's designated "Completed" section
+        // --- COMPLETING ---
         const completedSection = project.sections.find(s => s.sectionType === 'completed');
-        if (!completedSection) {
-            console.error("Cannot complete task: A section with sectionType: 'completed' was not found.");
-            alert("Please create a 'Completed' section in your project settings to use this feature.");
-            return;
-        }
+        if (!completedSection) return alert("Please create a 'Completed' section first.");
 
         const sourceTaskRef = doc(currentProjectRef, `sections/${task.sectionId}/tasks/${taskId}`);
         const targetTaskRef = doc(currentProjectRef, `sections/${completedSection.id}/tasks/${taskId}`);
 
-        // Prepare the new task data, saving its current state before marking as completed
-        const updatedTaskData = {
+        finalTaskData = {
             ...task,
             status: 'Completed',
-            previousStatus: task.status, // Remember the original status
-            previousSectionId: task.sectionId, // Remember the original section
-            sectionId: completedSection.id, // Set the new section
+            previousStatus: task.status,
+            previousSectionId: task.sectionId,
+            sectionId: completedSection.id,
         };
 
-        // Move the task
         batch.delete(sourceTaskRef);
-        batch.set(targetTaskRef, updatedTaskData);
+        batch.set(targetTaskRef, finalTaskData);
+        batch.set(taskIndexRef, { ...finalTaskData, path: targetTaskRef.path }, { merge: true });
     }
 
-    // --- Execute the batch update ---
     try {
         await batch.commit();
-        console.log(`Task ${taskId} completion status updated successfully.`);
-        // Note: The real-time listener will automatically call renderBoard(),
-        // so no manual re-render is needed here.
     } catch (error) {
         console.error(`Error updating task completion for ${taskId}:`, error);
     }
 }
-
 /**
  * Sets the global permission flags based on the user's role in the current project.
  * @param {object} projectData - The full project document data.
@@ -628,12 +609,47 @@ function displaySideBarTasks(taskId) {
     }
 }
 
+async function deleteSection(sectionId) {
+    const section = findSection(sectionId);
+    if (!section || !confirm(`Delete "${section.title}" and all its tasks?`)) return;
+    if (!currentProjectRef) return console.error("Project reference is missing.");
+
+    const sectionRef = doc(currentProjectRef, 'sections', sectionId);
+    const tasksCollectionRef = collection(sectionRef, 'tasks');
+    const batch = writeBatch(db);
+
+    try {
+        const tasksSnapshot = await getDocs(tasksCollectionRef);
+        tasksSnapshot.forEach(taskDoc => {
+            batch.delete(taskDoc.ref); // Delete original task
+            batch.delete(doc(db, "taskIndex", taskDoc.id)); // Delete from index
+        });
+        batch.delete(sectionRef); // Delete the section itself
+        await batch.commit();
+    } catch (error) {
+        console.error("Error deleting section:", error);
+    }
+}
 // --- 8. RENDERING ---
 const renderBoard = () => {
     if (!kanbanBoard) return;
     const { scrollLeft, scrollTop } = kanbanBoard;
     kanbanBoard.innerHTML = '';
     project.sections.forEach(renderColumn);
+
+    if (userCanEditProject) {
+        const addSectionEl = document.createElement('div');
+        addSectionEl.className = 'boardtasks-add-section-placeholder';
+        // This data-control attribute is used by the click handler
+        addSectionEl.innerHTML = `
+            <div class="boardtasks-add-section-content" data-control="add-section">
+                <i class="fas fa-plus"></i>
+                <span>Add new section</span>
+            </div>
+        `;
+        kanbanBoard.appendChild(addSectionEl);
+    }
+
     checkDueDates();
     // Only initialize drag-and-drop if the user has edit permissions.
     if (userCanEditProject) {
@@ -672,11 +688,23 @@ const renderColumn = (section) => {
     columnEl.className = 'boardtasks-kanban-column';
     columnEl.dataset.sectionId = section.id;
 
+    const deleteIconHTML = userCanEditProject ? `
+        <div class="boardtasks-section-menu-btn" data-control="delete-section" title="Delete Section">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon-delete">
+                <path d="M3 6h18"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                <line x1="10" x2="10" y1="11" y2="17"/>
+                <line x1="14" x2="14" y1="11" y2="17"/>
+            </svg>
+        </div>
+    ` : '';
+
     columnEl.innerHTML = `
         <div class="boardtasks-column-header">
             <h3 contenteditable="${userCanEditProject}" class="boardtasks-section-title-editable">${section.title}</h3>
             <span class="boardtasks-task-count">${section.tasks.filter(t => !t.isNew).length}</span>
-        </div>
+            ${deleteIconHTML}
+         </div>
         <div class="boardtasks-tasks-container">${section.tasks.map(renderTask).join('')}</div>
         <button class="boardtasks-add-task-btn" style="display: ${userCanEditProject ? 'flex' : 'none'};"><i class="fas fa-plus"></i> Add task</button>`;
     kanbanBoard.appendChild(columnEl);
@@ -713,13 +741,10 @@ const renderTask = (task) => {
 
         let imageContentHTML;
         if (hasCoverImage) {
-            // Priority 1: Show the dedicated cover image.
             imageContentHTML = `<img src="${task.coverImage}" class="boardtasks-task-cover-image">`;
         } else if (hasAttachmentImage) {
-            // Priority 2: Fallback to the oldest image from chat.
             imageContentHTML = `<img src="${oldestImageUrl}" class="boardtasks-task-cover-image">`;
         } else {
-            // Priority 3: Show the placeholder.
             imageContentHTML = `<div class="boardtasks-task-cover-placeholder"></div>`;
         }
 
@@ -789,9 +814,12 @@ const renderTask = (task) => {
                     ${existingTagsHTML}
                     ${addFieldButtonHTML}
                 </div>
-                <div class="boardtasks-task-assignees">${assigneesHTML}</div>
-                <div class="boardtasks-task-footer">
-                    <span class="boardtasks-due-date" data-due-date="${task.dueDate}" data-color-name="${dueDateInfo.color}">${dueDateInfo.text}</span>
+                
+                <div class="boardtasks-meta-container">
+                    <div class="boardtasks-meta-left">
+                        <div class="boardtasks-task-assignees">${assigneesHTML}</div>
+                        <span class="boardtasks-due-date" data-due-date="${task.dueDate}" data-color-name="${dueDateInfo.color}">${dueDateInfo.text}</span>
+                    </div>
                     <div class="boardtasks-task-actions">
                         <i class="fa-regular fa-heart ${hasLiked ? 'liked' : ''}" title="Like" data-control="like"></i>
                         <i class="fa-regular fa-comment" title="Comment" data-control="open-sidebar"></i>
@@ -853,52 +881,34 @@ async function addSectionToFirebase() {
 }
 
 async function addTaskToFirebase(sectionId, taskData) {
-    console.log("[addTaskToFirebase] Function called with:", { sectionId, taskData });
-    console.log("[addTaskToFirebase] Checking context state:", {
-        currentProjectRef_path: currentProjectRef?.path,
-        currentProjectId,
-        currentUserId
-    });
-
-    if (!currentProjectRef || !sectionId || !currentProjectId || !currentUserId) {
-        console.error("CRITICAL ERROR: Cannot add task because essential context is missing.", {
-            hasProjectRef: !!currentProjectRef,
-            hasSectionId: !!sectionId,
-            hasProjectId: !!currentProjectId,
-            hasUserId: !!currentUserId
-        });
-        return;
+    if (!currentProjectRef || !sectionId || !project.id || !currentUserId) {
+        return console.error("Cannot add task: missing essential context.");
     }
 
-    const sectionRef = doc(currentProjectRef, 'sections', sectionId);
-    const tasksCollectionRef = collection(sectionRef, 'tasks');
-    console.log(`[addTaskToFirebase] Attempting to write to path: ${tasksCollectionRef.path}`);
+    const tasksCollectionRef = collection(currentProjectRef, `sections/${sectionId}/tasks`);
+    const newTaskRef = doc(tasksCollectionRef);
+    const taskIndexRef = doc(db, "taskIndex", newTaskRef.id);
+
+    const fullTaskData = {
+        ...taskData,
+        id: newTaskRef.id,
+        projectId: project.id,
+        userId: currentUserId,
+        sectionId: sectionId,
+        createdAt: serverTimestamp()
+    };
+
+    const indexData = { ...fullTaskData, path: newTaskRef.path };
+
+    const batch = writeBatch(db);
+    batch.set(newTaskRef, fullTaskData);
+    batch.set(taskIndexRef, indexData);
 
     try {
-        const newTaskRef = doc(tasksCollectionRef);
-
-        const fullTaskData = {
-            ...taskData,
-            id: newTaskRef.id,
-            projectId: currentProjectId,
-            userId: currentUserId,
-            sectionId: sectionId,
-            createdAt: serverTimestamp()
-        };
-
-        console.log("[addTaskToFirebase] Preparing to save final data object:", fullTaskData);
-        await setDoc(newTaskRef, fullTaskData);
-
-        console.log(`SUCCESS: Firestore reported success for adding task with ID: ${newTaskRef.id}`);
-
-        logActivity({
-            action: 'created this task',
-            taskRef: newTaskRef // Pass the new task's reference to the log function
-        });
-
+        await batch.commit();
+        logActivity({ action: 'created this task', taskRef: newTaskRef });
     } catch (error) {
-        console.error("FIRESTORE ERROR: Error adding task:", error);
-        alert("A database error occurred while trying to save the task. Please check the console and your security rules.");
+        console.error("Error adding task:", error);
     }
 }
 
@@ -1041,24 +1051,37 @@ const handleBlur = async (e) => {
 };
 
 const handleKanbanClick = (e) => {
+    // This part for the column's "Add task" button is fine
     if (e.target.closest('.boardtasks-add-task-btn')) {
         createTemporaryTask(findSection(e.target.closest('.boardtasks-kanban-column').dataset.sectionId));
         return;
     }
 
     const control = e.target.closest('[data-control]');
-    if (!control) return; // If the click was not on a designated control, do nothing.
+    if (!control) return;
 
-    // Find the parent task card to get the task's context.
+    const controlType = control.dataset.control;
+
+    if (controlType === 'delete-section') {
+        e.stopPropagation();
+        const columnEl = control.closest('.boardtasks-kanban-column');
+        const sectionId = columnEl.dataset.sectionId;
+        deleteSection(sectionId); // This calls the delete function
+        return; // IMPORTANT: Stop execution here
+    }
+
+    if (controlType === 'add-section') {
+        addSectionToFirebase(); // This calls your existing function
+        return;
+    }
+
+    // --- All code below this point is for TASK-LEVEL actions ---
     const taskCard = control.closest('.boardtasks-task-card');
-    if (!taskCard) return;
+    if (!taskCard) return; // If it's not a section action, it MUST be a task action
 
     const taskId = taskCard.dataset.taskId;
     const { task, section } = findTaskAndSection(taskId);
     if (!task) return;
-
-    // Get the specific action type from the data-control attribute.
-    const controlType = control.dataset.control;
 
     // Use a switch statement to perform the correct action.
     switch (controlType) {
@@ -1127,6 +1150,14 @@ const handleKanbanClick = (e) => {
             break;
         }
 
+        case 'delete-section': {
+            e.stopPropagation();
+            const columnEl = control.closest('.boardtasks-kanban-column');
+            const sectionId = columnEl.dataset.sectionId;
+            deleteSection(sectionId); // Calls the delete function
+            break;
+        }
+
         case 'check':
             // Stop the event from bubbling up to the card, which would also open the sidebar.
             e.stopPropagation();
@@ -1137,19 +1168,21 @@ const handleKanbanClick = (e) => {
             }
             break;
 
-        case 'like':
-            // Stop the event from bubbling up.
+        case 'like': {
             e.stopPropagation();
-
-            // Liking is allowed for all roles.
             const taskRef = doc(currentProjectRef, `sections/${section.id}/tasks/${task.id}`);
+            const taskIndexRef = doc(db, "taskIndex", task.id);
             const hasLiked = task.likedBy && task.likedBy[currentUserId];
-
-            updateDoc(taskRef, {
+            const propertiesToUpdate = {
                 likedAmount: increment(hasLiked ? -1 : 1),
                 [`likedBy.${currentUserId}`]: hasLiked ? deleteField() : true
-            });
+            };
+            const batch = writeBatch(db);
+            batch.update(taskRef, propertiesToUpdate);
+            batch.update(taskIndexRef, propertiesToUpdate);
+            batch.commit().catch(err => console.error("Like update failed:", err));
             break;
+        }
     }
 
 };

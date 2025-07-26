@@ -46,7 +46,7 @@ function parseRoute() {
         };
     }
 
-    const simpleRoutes = ['home', 'myworkspace', 'inbox', 'inventory', 'reports', 'products', 'searchresults', 'settings'];
+    const simpleRoutes = ['home', 'mytasks', 'myworkspace', 'inbox', 'inventory', 'reports', 'products', 'searchresults', 'settings'];
     if (simpleRoutes.includes(resourceType)) {
         return { section: resourceType };
     }
@@ -170,7 +170,7 @@ function updateActiveNav() {
     // 1. Check if the current URL is any kind of tasks page.
     if (currentPath.startsWith('/tasks/')) {
         // If it is, find the "My Tasks" link by its unique ID.
-        linkToActivate = drawer.querySelector('#my-tasks-link');
+        //linkToActivate = drawer.querySelector('#my-tasks-link');
     } else {
         // 2. For any other page (e.g., "/home", "/inbox"), find the link with an exact href match.
         linkToActivate = drawer.querySelector(`.nav-item a[href="${currentPath}"]`);
