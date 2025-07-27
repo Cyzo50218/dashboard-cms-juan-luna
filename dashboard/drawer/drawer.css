@@ -115,9 +115,6 @@
   overflow: hidden;
 }
 
-/* === START: CORRECTED ICON STYLING === */
-
-/* 1. Create a GLOBAL style for all Font Awesome icons in the nav */
 .sidebar-nav [class*="fa-"] {
   opacity: var(--drawer-icon-opacity);
   flex-shrink: 0;
@@ -128,20 +125,22 @@
   transition: opacity 0.3s ease;
 }
 
-/* 2. Override for the smaller expand chevron */
+.sidebar .nav-item  [class*="fa-"]  {
+  font-size: 15px;
+}
+
 .sidebar .expand-icon {
   opacity: 0.6;
   width: auto;
   /* Let this smaller icon size itself */
 }
 
-/* === END: CORRECTED ICON STYLING === */
 
-
-/* === Text and Expand Icon Styling === */
 .sidebar .nav-item span,
 .sidebar .section-header span {
   white-space: nowrap;
+  font-size: 14px;
+  margin-left: 8px;
   opacity: 1;
   transition: opacity 0.2s ease, max-width 0.3s ease;
   max-width: 180px;

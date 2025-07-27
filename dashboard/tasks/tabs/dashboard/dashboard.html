@@ -1,14 +1,58 @@
-<!DOCTYPE html>
-<html>
+<div class="dashboard-container bg-gray-50 font-sans text-gray-900 py-2 px-4">
+  <header class="max-w-6xl mx-auto w-full py-6 mb-4 border-b border-gray-200">
+    <h1 class="text-3xl font-bold text-gray-900">Your Dashboard</h1>
+    <p class="text-lg text-gray-900 font-medium">Analytics Overview</p>
+  </header>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title></title>
-</head>
+  <section class="max-w-6xl mx-auto w-full">
+    <!-- Card Grid Section: This is where the dynamic cards will be inserted by JavaScript -->
+    <div class="card-grid">
+      <!-- Cards will be inserted here by dashboard.js -->
+    </div>
 
-<body>
-    
-</body>
+    <!-- Charts Section: Contains two columns for various charts -->
+    <div class="chart-section">
+      <!-- Left Column for Charts -->
+      <div class="chart-column">
+        <div class="bg-white rounded-xl shadow-lg p-6 chart-container" id="bar-chart-container">
+          <h3 class="text-xl font-bold text-gray-900 mb-4">
+            Task Completion Overview
+          </h3>
+          <div class="chart-canvas-container">
+            <canvas id="barChart"></canvas>
+          </div>
+        </div>
 
-</html>
+        <div class="bg-white rounded-xl shadow-lg p-6 chart-container" id="pie-chart-container">
+          <h3 class="text-xl font-bold text-gray-900 mb-4">
+            Task Distribution
+          </h3>
+          <div class="chart-canvas-container">
+            <canvas id="pieChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column for Charts -->
+      <div class="chart-column">
+        <div class="bg-white rounded-xl shadow-lg p-6 chart-container" id="line-chart-container">
+          <h3 class="text-xl font-bold text-gray-900 mb-4">
+            Task Timeline
+          </h3>
+          <div class="chart-canvas-container">
+            <canvas id="lineChart"></canvas>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-lg p-6 chart-container" id="doughnut-chart-container">
+          <h3 class="text-xl font-bold text-gray-900 mb-4">
+            Priority Distribution
+          </h3>
+          <div class="chart-canvas-container">
+            <canvas id="doughnutChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

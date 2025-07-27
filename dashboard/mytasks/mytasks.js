@@ -20,6 +20,7 @@ import {
     orderBy,
     getDoc,
     getDocs,
+    writeBatch,
     updateDoc,
     increment,
     deleteField,
@@ -47,6 +48,17 @@ let allUsersMap = new Map(); // Shared user data cache for both views
 // State for "My Tasks" view
 let myTasks = [];
 let projectsMap = new Map();
+let myTasksSort = { field: 'dueDate', direction: 'asc' };
+let myTasksFilter = { hideCompleted: false };
+const sortCycle = [
+    { field: 'dueDate', direction: 'asc' },
+    { field: 'dueDate', direction: 'desc' },
+    { field: 'project', direction: 'asc' },
+    { field: 'project', direction: 'desc' },
+    { field: 'status', direction: 'asc' },
+    { field: 'status', direction: 'desc' },
+];
+let currentSortIndex = 0;
 
 // State for "Project View"
 let project = {
@@ -75,7 +87,8 @@ export function init(routeParams) {
     const isMyTasksView = window.location.pathname === '/mytasks';
     currentViewMode = isMyTasksView ? 'myTasks' : 'projectView';
     initializeCommonViewElements();
-
+    const projectIconColor = document.getElementById('project-color');
+    setRandomProjectIcon(projectIconColor);
     onAuthStateChanged(auth, (user) => {
         detachAllListeners();
         if (user) {
@@ -201,13 +214,22 @@ function renderMyTasksView() {
     if (addTaskHeaderBtn) addTaskHeaderBtn.style.display = 'none';
     if (addSectionBtn) addSectionBtn.style.display = 'none';
 
-    if (myTasks.length === 0) {
-        taskListBody.innerHTML = `
-            <div style="text-align: center; padding: 60px 20px; font-family: sans-serif; color: #555;">
+    const tasksToRender = getProcessedMyTasks();
+
+    if (tasksToRender.length === 0) {
+        // Provide a more contextual empty state message
+        const messageHTML = myTasks.length > 0 ?
+            `<div style="text-align: center; padding: 60px 20px; font-family: sans-serif; color: #555;">
+                <i class="material-icons" style="font-size: 48px; margin-bottom: 16px;">filter_list_off</i>
+                <h3 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600;">No Tasks Found</h3>
+                <p style="margin: 0; font-size: 14px;">No tasks match your current filter settings.</p>
+            </div>` :
+            `<div style="text-align: center; padding: 60px 20px; font-family: sans-serif; color: #555;">
                 <i class="material-icons" style="font-size: 48px; margin-bottom: 16px;">check_box</i>
                 <h3 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600;">All clear!</h3>
                 <p style="margin: 0; font-size: 14px;">You have no tasks assigned to you.</p>
             </div>`;
+        taskListBody.innerHTML = messageHTML;
         return;
     }
 
@@ -229,10 +251,11 @@ function renderMyTasksView() {
     `;
 
     const body = document.createElement('div');
-    myTasks.forEach(task => {
+    tasksToRender.forEach(task => {
         const taskRow = createTaskRowForMyTasks(task);
         if (taskRow) body.appendChild(taskRow);
     });
+
     table.appendChild(header);
     table.appendChild(body);
     container.appendChild(table);
@@ -326,6 +349,30 @@ function setupMyTasksEventListeners() {
         }
     };
     taskListBody.addEventListener('click', bodyClickListener);
+
+    const sortBtn = document.getElementById('sort-btn');
+    const filterBtn = document.getElementById('filter-btn');
+
+    if (sortBtn) {
+        sortBtn.addEventListener('click', () => {
+            currentSortIndex = (currentSortIndex + 1) % sortCycle.length;
+            myTasksSort = sortCycle[currentSortIndex];
+            updateSortButtonUI();
+            render();
+        });
+    }
+
+    if (filterBtn) {
+        filterBtn.addEventListener('click', () => {
+            myTasksFilter.hideCompleted = !myTasksFilter.hideCompleted;
+            updateFilterButtonUI();
+            render();
+        });
+    }
+
+    // Initialize button UI on setup
+    updateSortButtonUI();
+    updateFilterButtonUI();
 }
 
 async function handleTaskLike(task) {
@@ -426,6 +473,27 @@ function renderProjectView() {
     console.log("Rendered Project View (placeholder)");
 }
 
+function updateSortButtonUI() {
+    const sortBtn = document.getElementById('sort-btn');
+    if (!sortBtn) return;
+    const { field, direction } = myTasksSort;
+    const fieldName = field.charAt(0).toUpperCase() + field.slice(1).replace('Date', ' Date');
+    sortBtn.innerHTML = `<i class="fas fa-sort"></i> Sort: ${fieldName} (${direction})`;
+    sortBtn.classList.add('active-sort-filter'); // Add a class for styling active buttons
+}
+
+function updateFilterButtonUI() {
+    const filterBtn = document.getElementById('filter-btn');
+    if (!filterBtn) return;
+    if (myTasksFilter.hideCompleted) {
+        filterBtn.innerHTML = `<i class="fas fa-filter"></i> Hide Completed`;
+        filterBtn.classList.add('active-sort-filter');
+    } else {
+        filterBtn.innerHTML = `<i class="fas fa-filter"></i> Filter`;
+        filterBtn.classList.remove('active-sort-filter');
+    }
+}
+
 function setupProjectViewEventListeners() {
     console.log("Setting up Project View event listeners (placeholder).");
 }
@@ -440,6 +508,52 @@ function distributeTasksToSections(tasks) {
     project.sections.forEach(section => {
         section.tasks.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     });
+}
+
+function getProcessedMyTasks() {
+    let processedTasks = [...myTasks];
+
+    // 1. Apply Filter
+    if (myTasksFilter.hideCompleted) {
+        processedTasks = processedTasks.filter(task => task.status !== 'Completed');
+    }
+
+    // 2. Apply Sort
+    processedTasks.sort((a, b) => {
+        const field = myTasksSort.field;
+        const dir = myTasksSort.direction === 'asc' ? 1 : -1;
+
+        let valA, valB;
+
+        switch (field) {
+            case 'dueDate':
+                // Handle null/undefined dates by sorting them to the end
+                valA = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
+                valB = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
+                break;
+            case 'project':
+                const projectA = projectsMap.get(a.projectId);
+                const projectB = projectsMap.get(b.projectId);
+                valA = projectA ? projectA.title.toLowerCase() : '';
+                valB = projectB ? projectB.title.toLowerCase() : '';
+                break;
+            case 'status':
+                valA = a.status ? a.status.toLowerCase() : '';
+                valB = b.status ? b.status.toLowerCase() : '';
+                break;
+            default:
+                valA = a[field] || '';
+                valB = b[field] || '';
+        }
+
+        // Handle cases where values might not be comparable
+        if (typeof valA === 'string') valA = valA.localeCompare(valB);
+        else valA = valA < valB ? -1 : (valA > valB ? 1 : 0);
+
+        return valA * dir;
+    });
+
+    return processedTasks;
 }
 
 // ===================================================================================
@@ -506,6 +620,34 @@ function canUserEditTask(task, project) {
         return (task.assignees || []).includes(currentUserId);
     }
     return false;
+}
+
+function setRandomProjectIcon(iconContainer) {
+    const miscellaneousIcons = [
+        'anchor', 'archive', 'award', 'axe', 'banknote', 'beaker', 'bell',
+        'bomb', 'book', 'box', 'briefcase', 'building', 'camera', 'candy',
+        'clapperboard', 'clipboard', 'cloud', 'compass', 'cpu', 'crown',
+        'diamond', 'dice-5', 'drafting-compass', 'feather', 'flag', 'flame',
+        'folder', 'gem', 'gift', 'graduation-cap', 'hammer', 'hard-hat',
+        'heart-pulse', 'key-round', 'landmark', 'layers', 'leaf', 'lightbulb',
+        'map', 'medal', 'mouse-pointer', 'package', 'palette', 'plane',
+        'puzzle', 'rocket', 'shield', 'ship', 'sprout', 'star', 'swords',
+        'ticket', 'tractor', 'trophy', 'umbrella', 'wallet', 'wrench'
+    ];
+    const iconGlyph = iconContainer.querySelector('.project-icon-glyph');
+    if (!iconGlyph) {
+        console.error("Could not find the '.project-icon-glyph' element inside the container.");
+        return;
+    }
+    const randomIndex = Math.floor(Math.random() * miscellaneousIcons.length);
+    const randomIconName = miscellaneousIcons[randomIndex];
+    iconGlyph.setAttribute('data-lucide', randomIconName);
+    // Ensure Lucide is globally available or imported if not using CDN
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
+    } else {
+        console.warn("Lucide library not found or createIcons not available.");
+    }
 }
 
 function formatDueDate(dueDateString) {

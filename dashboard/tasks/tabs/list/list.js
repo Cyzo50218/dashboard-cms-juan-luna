@@ -343,7 +343,32 @@ function attachRealtimeListeners(userId) {
     })();
 }
 
+function updateSortButtonUI() {
+    if (!sortBtn) return;
+    let text = 'Sort';
+    sortBtn.classList.remove('active-sort-filter'); // Use a consistent class for active state
 
+    if (activeSortState === 'asc') {
+        text = 'Sort: Oldest First';
+        sortBtn.classList.add('active-sort-filter');
+    } else if (activeSortState === 'desc') {
+        text = 'Sort: Newest First';
+        sortBtn.classList.add('active-sort-filter');
+    }
+    sortBtn.innerHTML = `<i class="fas fa-sort"></i> ${text}`;
+}
+
+function updateFilterButtonUI() {
+    if (!filterBtn) return;
+    filterBtn.classList.remove('active-sort-filter');
+    if (activeFilters.visibleSections && activeFilters.visibleSections.length < project.sections.length) {
+        filterBtn.classList.add('active-sort-filter');
+        const count = activeFilters.visibleSections.length;
+        filterBtn.innerHTML = `<i class="fas fa-filter"></i> Filter (${count} Section${count > 1 ? 's' : ''})`;
+    } else {
+        filterBtn.innerHTML = `<i class="fas fa-filter"></i> Filter`;
+    }
+}
 
 async function fetchMemberProfiles(uids) {
     if (!uids || uids.length === 0) {
@@ -985,8 +1010,6 @@ function setupEventListeners() {
     };
 
     filterBtnListener = () => {
-        // DEBUG: Confirm the listener is firing
-        console.log("Filter button clicked. Opening section filter panel...");
         openSectionFilterPanel();
     }
 
@@ -998,6 +1021,7 @@ function setupEventListeners() {
         } else {
             activeSortState = 'default';
         }
+        updateSortButtonUI();
         render();
     };
 
@@ -1008,8 +1032,14 @@ function setupEventListeners() {
     addTaskHeaderBtn.addEventListener('click', addTaskHeaderBtnListener);
     addSectionBtn.addEventListener('click', addSectionBtnListener);
     window.addEventListener('click', setupGlobalClickListeners);
-    if (filterBtn) filterBtn.addEventListener('click', filterBtnListener);
-    if (sortBtn) sortBtn.addEventListener('click', sortBtnListener);
+    if (filterBtn) {
+        filterBtn.addEventListener('click', filterBtnListener);
+        updateFilterButtonUI(); // Set initial state
+    }
+    if (sortBtn) {
+        sortBtn.addEventListener('click', sortBtnListener);
+        updateSortButtonUI(); // Set initial state
+    }
 
     window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' || e.key === 'Esc') {
@@ -1087,18 +1117,16 @@ function handleAddSectionClick() {
 function openSectionFilterPanel() {
     closeFloatingPanels();
     const dialogOverlay = document.createElement('div');
-    // MODIFIED: Changed class name
     dialogOverlay.className = 'filterlistview-dialog-overlay';
 
     const sectionOptionsHTML = project.sections.map(s => {
         const isChecked = !activeFilters.visibleSections || activeFilters.visibleSections.includes(s.id);
-        // MODIFIED: Changed class name for checkboxes
+        // Ensure value is the string ID
         return `<div><label><input type="checkbox" class="filterlistview-section-checkbox" name="section" value="${s.id}" ${isChecked ? 'checked' : ''}> ${s.title}</label></div>`;
     }).join('');
 
     const allChecked = !activeFilters.visibleSections;
 
-    // MODIFIED: Changed all class names within the HTML string
     dialogOverlay.innerHTML = `
     <div class="filterlistview-dialog-box filterlistview-filter-dialog">
         <div class="filterlistview-dialog-header">Filter by Section</div>
@@ -1119,7 +1147,6 @@ function openSectionFilterPanel() {
 
     const applyBtn = dialogOverlay.querySelector('#apply-filters-btn');
     const selectAllBox = dialogOverlay.querySelector('#select-all-sections');
-    // MODIFIED: Changed selector to match new class name
     const allSectionBoxes = dialogOverlay.querySelectorAll('.filterlistview-section-checkbox');
 
     selectAllBox.addEventListener('change', (e) => {
@@ -1132,42 +1159,61 @@ function openSectionFilterPanel() {
         if (checkedBoxes.length === allSectionBoxes.length) {
             delete activeFilters.visibleSections;
         } else {
-            activeFilters.visibleSections = checkedBoxes.map(box => Number(box.value));
+            activeFilters.visibleSections = checkedBoxes.map(box => box.value);
         }
-
         closeFloatingPanels();
+        updateFilterButtonUI();
         render();
     });
 
-    // MODIFIED: Changed selector to match new class name
     dialogOverlay.addEventListener('click', e => {
         if (e.target.classList.contains('filterlistview-dialog-overlay')) {
             closeFloatingPanels();
         }
     });
-
 }
 
-function getFilteredProject() {
-    // DEBUG: See what filters are being applied at the start of the render cycle
-    // console.log("getFilteredProject called with state:", JSON.stringify(activeFilters));
-    const projectCopy = JSON.parse(JSON.stringify(project));
+function getProcessedProjectData() {
+    // Start with a safe, deep copy to avoid changing the original state
+    let processedProject = JSON.parse(JSON.stringify(project));
 
-    if (activeFilters.visibleSections && activeFilters.visibleSections.length < project.sections.length) {
-        projectCopy.sections = projectCopy.sections.filter(section =>
-            activeFilters.visibleSections.includes(section.id)
+    // 1. Apply Section Filtering
+    // This condition is now corrected to filter properly.
+    if (activeFilters.visibleSections && activeFilters.visibleSections.length > 0) {
+        processedProject.sections = processedProject.sections.filter(section =>
+            activeFilters.visibleSections.includes(section.id) // Compare string to string
         );
     }
 
-    return projectCopy;
+    // 2. Always sort sections by their designated 'order'
+    processedProject.sections.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    // 3. Sort tasks *within* each section based on the activeSortState
+    processedProject.sections.forEach(section => {
+        if (!section.tasks) section.tasks = []; // Ensure tasks array exists
+
+        section.tasks.sort((a, b) => {
+            if (activeSortState === 'default') {
+                // Default sort: use the task's 'order' field (from drag-and-drop)
+                return (a.order || 0) - (b.order || 0);
+            } else {
+                // Date sort: use 'dueDate'
+                const dir = activeSortState === 'asc' ? 1 : -1;
+                const dateA = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
+                const dateB = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
+
+                if (dateA === Infinity && dateB === Infinity) return 0;
+                if (dateA === Infinity) return 1;
+                if (dateB === Infinity) return -1;
+
+                return (dateA - dateB) * dir;
+            }
+        });
+    });
+
+    return processedProject;
 }
 
-function getSortedProject(project) {
-    return {
-        ...project,
-        sections: [...project.sections].sort((a, b) => a.order - b.order)
-    };
-}
 async function _getSelectedProjectPath(db, userId) {
 
     // Step 4: Use a collectionGroup query to find the project by its ID.
@@ -1667,6 +1713,7 @@ function formatDueDate(dueDateString) {
 }
 
 function render() {
+    const project = getProcessedProjectData();
     if (!project || !project.id) {
         if (taskListBody) {
             taskListBody.innerHTML = `
@@ -3602,7 +3649,8 @@ async function _updateTaskInFirebase(taskId, sectionId, propertiesToUpdate, full
 
     // 2. Prepare the complete data payload for the taskIndex.
     // This combines the existing task data with the new changes.
-    const indexPayload = { ...fullTaskData,
+    const indexPayload = {
+        ...fullTaskData,
         ...propertiesToUpdate
     };
 
@@ -3924,26 +3972,14 @@ function createStatusTag(s) {
 }
 
 function closeFloatingPanels() {
-    document.querySelectorAll('.advanced-dropdown, .floating-panel').forEach(p => p.remove());
+     const selector = '.advanced-dropdown, .floating-panel, .filterlistview-dialog-overlay';
+     document.querySelectorAll(selector).forEach(panel => panel.remove());
 }
 
 function closeFloatingPanelsOnButton() {
     document.querySelectorAll('.dialog-overlay, .advanced-dropdown, .floating-panel').forEach(p => p.remove());
 }
 
-/**
- * Creates a highly configurable, advanced dropdown menu.
- *
- * @param {HTMLElement} targetEl - The element to anchor the dropdown to.
- * @param {object} config - The configuration object.
- * @param {Array<object>} config.options - The array of items to display.
- * @param {function(object):string} config.itemRenderer - Function to render the HTML for each item.
- * @param {function(object):void} config.onSelect - Callback for when an item is selected.
- * @param {boolean} [config.searchable=false] - Whether to include a search input.
- * @param {function():void} [config.onAdd] - Callback for an "Add New" button in the footer.
- * @param {function(object):void} [config.onEdit] - Callback for an "Edit" button on each item.
- * @param {function(object):void} [config.onDelete] - Callback for a "Delete" button on each item.
- */
 function createAdvancedDropdown(targetEl, config) {
     closeFloatingPanels();
 
@@ -4079,16 +4115,6 @@ function createAdvancedDropdown(targetEl, config) {
     }, 10);
 }
 
-/**
- * Shows the status or priority dropdown for a task in the list view.
- */
-/**
- * Creates and shows a dropdown for Priority or Status columns.
- * @param {HTMLElement} targetEl - The element to anchor the dropdown to.
- * @param {string} taskId - The ID of the task being updated.
- * @param {string} sectionId - The ID of the section containing the task.
- * @param {string} columnId - The ID of the column being edited (e.g., 'priority', 'status').
- */
 function showStatusDropdown(targetEl, taskId, sectionId, columnId) {
     // Find the full column definition from the project data
     const allColumns = [...project.defaultColumns, ...project.customColumns];
@@ -4131,9 +4157,6 @@ function showStatusDropdown(targetEl, taskId, sectionId, columnId) {
     });
 }
 
-/**
- * Shows the assignee dropdown for a task in the list view.
- */
 function showAssigneeDropdown(targetEl, taskId, sectionId) {
     const { task } = findTaskAndSection(taskId);
     if (!task) return;
@@ -4152,9 +4175,6 @@ function showAssigneeDropdown(targetEl, taskId, sectionId) {
     });
 }
 
-/**
- * Shows the date picker for a task in the list view.
- */
 function showDatePicker(targetEl, taskId, sectionId) {
     // 1. Create a perfectly positioned, empty panel.
     const panel = createFloatingPanel(targetEl);
@@ -4179,12 +4199,6 @@ function showDatePicker(targetEl, taskId, sectionId) {
     }, { once: true });
 }
 
-/**
- * Creates a generic, empty, floating panel positioned relative to a target element.
- * This is used as a container for more complex widgets like a date picker.
- * @param {HTMLElement} targetEl - The element that the panel should be positioned next to.
- * @returns {HTMLElement} The created (but empty) panel element.
- */
 function createFloatingPanel(targetEl) {
     // 1. Clean up any existing panels first.
     closeFloatingPanels();
