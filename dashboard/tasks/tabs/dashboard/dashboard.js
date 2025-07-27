@@ -1,96 +1,265 @@
 import { Chart, registerables } from 'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.esm.js';
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getAuth,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore,
+  collectionGroup,
+  query,
+  where,
+  getDocs
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { firebaseConfig } from "/services/firebase-config.js";
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app, "juanluna-cms-01");
+console.log("Initialized Firebase on Dashboard.");
 
 // 2. Register all the components (controllers, scales, elements, etc.) with Chart.js.
 Chart.register(...registerables);
 
-// Dashboard data: Defines the cards and their filter options
-const dashboardData = [
-  {
-    id: "completedTasks",
-    title: "Total completed tasks",
-    value: 2602,
-    filterOptions: {
-      customFields: ["Field A", "Field B", "Field C"],
-      status: ["Completed", "Pending", "In Progress"],
-      dueDate: ["Overdue", "Due Today", "Due This Week", "No Due Date"],
-      priority: ["High", "Medium", "Low"],
-    },
-  },
-  {
-    id: "incompleteTasks",
-    title: "Total incomplete tasks",
-    value: 44,
-    filterOptions: {
-      customFields: ["Field A", "Field B"],
-      status: ["Pending", "In Progress"],
-      dueDate: ["Overdue", "Due Today", "Due This Week"],
-      priority: ["High", "Medium"],
-    },
-  },
-  {
-    id: "overdueTasks",
-    title: "Total overdue tasks",
-    value: 12,
-    filterOptions: {
-      customFields: ["Field C"],
-      status: ["Overdue"],
-      dueDate: ["Overdue"],
-      priority: ["High"],
-    },
-  },
-  {
-    id: "totalTasks",
-    title: "Total tasks",
-    value: 2646,
-    filterOptions: {
-      customFields: ["Field A", "Field B", "Field C"],
-      status: ["Completed", "Pending", "In Progress", "Overdue"],
-      dueDate: ["Overdue", "Due Today", "Due This Week", "No Due Date"],
-      priority: ["High", "Medium", "Low"],
-    },
-  },
-  {
-    id: "totalPayment",
-    title: "Total Payment made",
-    value: -10027228,
-    filterOptions: {
-      customFields: ["Finance", "Accounts"],
-      status: ["Paid", "Unpaid"],
-      dueDate: ["Past Due", "Due Soon"],
-      priority: ["High", "Low"],
-    },
-  },
-  {
-    id: "supplierCost",
-    title: "Supplier Cost",
-    value: 9867143,
-    filterOptions: {
-      customFields: ["Supplier A", "Supplier B", "Supplier C"],
-      status: ["Confirmed", "Pending"],
-      dueDate: ["Due Soon", "No Due Date"],
-      priority: ["Medium", "Low"],
-    },
-  },
-  {
-    id: "balance",
-    title: "BALANCE",
-    value: -160085,
-    filterOptions: {
-      customFields: [], // Example with no custom fields
-      status: ["Negative", "Positive"],
-      dueDate: ["Past Due", "Upcoming"],
-      priority: ["High", "Low"],
-    },
-  },
-];
+let filtersState = {};
+let cardsContainer = null;
+let bodyClickHandler = null;
+let filterButtonHandlers = [];
+let charts = {};
+let sortables = [];
+let dashboardData = [];
+let activeDashboardFilters = {}; // Stores the current global filters
+let fullTasksSnapshot = null;    // Stores the complete, unfiltered task list
+let projectConfig = null;        // Stores the current project's configuration
 
-// State variables for the dashboard
-let filtersState = {}; // Stores the current filter selections for each card
-let cardsContainer = null; // Reference to the HTML element that holds the cards
-let bodyClickHandler = null; // Stores the reference to the body click event listener for cleanup
-let filterButtonHandlers = []; // Stores references to filter button event listeners for cleanup
-let charts = {}; // Stores Chart.js instances for destruction
-let sortables = []; // Stores Sortable.js instances for destruction
+async function fetchInitialData(projectId) {
+  if (!projectId) {
+    console.error("Project ID is required.");
+    return false;
+  }
+  try {
+    const projectQuery = query(collectionGroup(db, 'projects'), where('projectId', '==', projectId));
+    const projectSnapshot = await getDocs(projectQuery);
+    if (projectSnapshot.empty) throw new Error(`Project ${projectId} not found.`);
+
+    projectConfig = projectSnapshot.docs[0].data();
+
+    const tasksQuery = query(collectionGroup(db, 'tasks'), where('projectId', '==', projectId));
+    fullTasksSnapshot = await getDocs(tasksQuery);
+
+    // --- Added Console Logs ---
+    console.log("Project Configuration Loaded:", projectConfig);
+    console.log(`Found ${fullTasksSnapshot.size} tasks in this project.`);
+    // --- End of Added Logs ---
+
+    console.log("Initial project data and tasks fetched successfully.");
+    return true;
+  } catch (error) {
+    console.error(`Error fetching initial data for project ${projectId}:`, error);
+    return false;
+  }
+}
+
+function aggregateTaskData(tasksSnapshot) {
+  if (!projectConfig || !tasksSnapshot) return [];
+
+  const statusColumn = projectConfig.defaultColumns.find(c => c.id === 'status');
+  const sourceColumn = projectConfig.defaultColumns.find(c => c.id === 'priority');
+  const costingColumns = projectConfig.customColumns.filter(c => c.type === 'Costing');
+  const completionStatusName = statusColumn?.options?.find(o => o.name.toLowerCase() === 'completed')?.name;
+  const cancelledStatusName = statusColumn?.options?.find(o => o.name.toLowerCase() === 'cancelled')?.name;
+
+  let generalCounts = { completed: 0, incomplete: 0, overdue: 0 };
+  const costingTotals = {};
+  costingColumns.forEach(col => costingTotals[col.id] = 0);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  tasksSnapshot.forEach((doc) => {
+    const task = doc.data();
+    if (task.status === completionStatusName) {
+      generalCounts.completed++;
+    } else if (task.status !== cancelledStatusName) {
+      generalCounts.incomplete++;
+      if (task.dueDate && new Date(task.dueDate) < today) {
+        generalCounts.overdue++;
+      }
+    }
+    costingColumns.forEach(col => {
+      const costValue = task.customFields?.[col.id];
+      if (typeof costValue === 'number') {
+        costingTotals[col.id] += costValue;
+      }
+    });
+  });
+
+  let finalData = [];
+  const statusOptions = statusColumn?.options?.map(o => o.name) || [];
+  const sourceOptions = sourceColumn?.options?.map(o => o.name) || [];
+
+  // This creates the curated set of summary cards.
+  finalData.push({ id: 'totalTasks', title: 'Total Tasks', value: tasksSnapshot.size, filterOptions: { Status: statusOptions, Source: sourceOptions } });
+  finalData.push({ id: 'completedTasks', title: 'Completed Tasks', value: generalCounts.completed, filterOptions: { Status: statusOptions, Source: sourceOptions } });
+  finalData.push({ id: 'incompleteTasks', title: 'Incomplete Tasks', value: generalCounts.incomplete, filterOptions: { Status: statusOptions, Source: sourceOptions } });
+  finalData.push({ id: 'overdueTasks', title: 'Overdue Tasks', value: generalCounts.overdue, filterOptions: { Status: statusOptions, Source: sourceOptions } });
+
+  costingColumns.forEach(col => {
+    finalData.push({
+      id: `cost-${col.id}`,
+      title: `Total ${col.name} (${col.currency || ''})`.trim(),
+      value: costingTotals[col.id] || 0,
+      filterOptions: {} // Costing cards do not have filters
+    });
+  });
+
+  return finalData;
+}
+
+function createCards() {
+  try {
+    if (!cardsContainer) return;
+    cardsContainer.innerHTML = "";
+
+    dashboardData.forEach((card) => {
+      const cardEl = document.createElement("div");
+      cardEl.className = "card";
+      cardEl.dataset.id = card.id;
+      cardEl.innerHTML = `
+                <div class="flex flex-col items-center justify-center h-full pt-2">
+                    <h2 class="text-sm font-medium mb-1 text-center px-1">${card.title}</h2>
+                    <p class="text-xl font-light mb-4 text-center">${formatNumber(card.value)}</p>
+                    <div class="card-filter-container relative inline-block text-left w-full flex justify-center"></div>
+                </div>
+            `;
+      const filterContainer = cardEl.querySelector('.card-filter-container');
+
+      if (card.filterOptions && Object.keys(card.filterOptions).length > 0) {
+        const filterButton = document.createElement("button");
+        filterButton.type = "button";
+        filterButton.className = "filter-button";
+        filterButton.innerHTML = `<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="18" x2="20" y2="18"></line></svg>Filter`;
+        filterContainer.appendChild(filterButton);
+
+        const dropdown = document.createElement("div");
+        dropdown.className = "origin-top-left";
+        dropdown.addEventListener("click", (e) => e.stopPropagation());
+
+        function createFilterGroup(title, options, filterTypeId) {
+          const group = document.createElement("div");
+          group.className = "px-3 py-2 border-b border-gray-300";
+          group.innerHTML = `<p class="font-semibold mb-1">${title}</p>`;
+
+          const handleFilterChange = (event) => {
+            const value = event.target.value;
+            if (value === 'all') {
+              delete activeDashboardFilters[filterTypeId];
+            } else {
+              activeDashboardFilters[filterTypeId] = value;
+            }
+            renderDashboard();
+          };
+
+          const createRadioOption = (value, text, isChecked) => {
+            const label = document.createElement("label");
+            label.className = "flex items-center space-x-2 mb-1 cursor-pointer";
+            const radio = document.createElement("input");
+            radio.type = "radio";
+            radio.name = `filter-${card.id}-${filterTypeId}`;
+            radio.value = value;
+            radio.checked = isChecked;
+            radio.addEventListener('change', handleFilterChange);
+            label.appendChild(radio);
+            label.appendChild(document.createTextNode(text));
+            return label;
+          };
+
+          group.appendChild(createRadioOption('all', 'All', !activeDashboardFilters[filterTypeId]));
+          options.forEach(opt => {
+            group.appendChild(createRadioOption(opt, opt, activeDashboardFilters[filterTypeId] === opt));
+          });
+          return group;
+        }
+
+        for (const filterTitle in card.filterOptions) {
+          const options = card.filterOptions[filterTitle];
+          // **THE FIX**: Search both default and custom columns to find the correct ID
+          const column = [...projectConfig.defaultColumns, ...projectConfig.customColumns].find(c => c.name === filterTitle);
+          const filterTypeId = column ? column.id : filterTitle.toLowerCase();
+
+          if (options && Array.isArray(options) && options.length > 0) {
+            dropdown.appendChild(createFilterGroup(filterTitle, options, filterTypeId));
+          }
+        }
+        filterContainer.appendChild(dropdown);
+        filterButton.addEventListener("click", (e) => {
+          e.stopPropagation();
+          document.querySelectorAll(".origin-top-left").forEach((dd) => {
+            if (dd !== dropdown) dd.style.display = "none";
+          });
+          dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+        });
+      }
+      cardsContainer.appendChild(cardEl);
+    });
+  } catch (error) {
+    console.error("Error creating cards:", error);
+  }
+}
+
+function renderDashboard() {
+  console.log("Rendering dashboard with filters:", activeDashboardFilters);
+
+  const filteredDocs = fullTasksSnapshot.docs.filter(doc => {
+    const task = doc.data();
+
+    // This loop now checks the task against every active filter
+    for (const columnId in activeDashboardFilters) {
+      const filterValue = activeDashboardFilters[columnId];
+      let matches = false; // Start by assuming the task does not match
+
+      // **THE FIX IS HERE**: We now check all possible fields for a match.
+      if (columnId === 'status') {
+        // For status, we check BOTH the current and previous status.
+        if (task.status === filterValue || task.previousStatus === filterValue) {
+          matches = true;
+        }
+      } else if (columnId === 'priority') {
+        // For source/priority, we check the top-level 'priority' field.
+        if (task.priority === filterValue) {
+          matches = true;
+        }
+      } else {
+        if (task.customFields && task.customFields[columnId] === filterValue) {
+          matches = true;
+        }
+      }
+
+      // If after all checks, this one filter did not find a match, we exclude the task.
+      if (!matches) {
+        return false;
+      }
+    }
+
+    // If the task passed all active filters, we include it.
+    return true;
+  });
+
+  const filteredSnapshot = {
+    docs: filteredDocs,
+    size: filteredDocs.length,
+    forEach: (callback) => filteredDocs.forEach(callback)
+  };
+
+  dashboardData = aggregateTaskData(filteredSnapshot);
+  createCards();
+  initCharts(projectConfig, filteredSnapshot);
+}
+
+function getProjectIdFromUrl() {
+  const match = window.location.pathname.match(/\/tasks\/[^/]+\/dashboard\/([^/]+)/);
+  return match ? match[1] : null;
+}
 
 /**
  * Utility function to format numbers with commas.
@@ -103,281 +272,6 @@ function formatNumber(num) {
   return sign + val;
 }
 
-/**
- * Creates and appends dashboard cards to the DOM, including filter buttons and dropdowns.
- */
-function createCards() {
-  try {
-    console.log("Creating cards...");
-    // Clear any existing cards before re-creating
-    if (cardsContainer) {
-      cardsContainer.innerHTML = "";
-    } else {
-      console.error("Cards container not found during card creation.");
-      return;
-    }
-
-    dashboardData.forEach((card) => {
-      const cardEl = document.createElement("div");
-      cardEl.className = "card";
-      cardEl.id = `card-${card.id}`;
-      cardEl.dataset.id = card.id; // Store card ID as a data attribute
-
-      // Card content container
-      const contentEl = document.createElement("div");
-      contentEl.className =
-        "flex flex-col items-center justify-center h-full pt-2";
-      cardEl.appendChild(contentEl);
-
-      // Title element
-      const titleEl = document.createElement("h2");
-      titleEl.className = "text-sm font-medium mb-1 text-center px-1";
-      titleEl.textContent = card.title;
-
-      // Value element
-      const valueEl = document.createElement("p");
-      valueEl.className = "text-xl font-light mb-4 text-center";
-      valueEl.textContent = formatNumber(card.value);
-
-      // Filter button container
-      const filterContainer = document.createElement("div");
-      filterContainer.className =
-        "relative inline-block text-left w-full flex justify-center";
-
-      // Filter button
-      const filterButton = document.createElement("button");
-      filterButton.type = "button";
-      filterButton.className = "filter-button";
-      filterButton.innerHTML = `
-        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-          viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-          <line x1="4" y1="6" x2="20" y2="6"></line>
-          <line x1="4" y1="12" x2="20" y2="12"></line>
-          <line x1="4" y1="18" x2="20" y2="18"></line>
-        </svg>
-        Filter
-      `;
-      filterContainer.appendChild(filterButton);
-
-      // Dropdown menu container
-      const dropdown = document.createElement("div");
-      dropdown.className = "origin-top-left";
-
-      // Prevent clicks inside dropdown from closing it
-      dropdown.addEventListener("click", (e) => {
-        e.stopPropagation();
-      });
-
-      /**
-       * Creates a filter group (e.g., Custom Fields, Status) within the dropdown.
-       * @param {string} title - The title of the filter group.
-       * @param {string[]} options - An array of filter options.
-       * @param {string} filterType - The key for this filter type in filtersState (e.g., 'customFields').
-       * @returns {HTMLElement} The created filter group div.
-       */
-      function createFilterGroup(title, options, filterType) {
-        // Always include "None" option for filter groups
-        const displayOptions = [...options, "None"];
-
-        const group = document.createElement("div");
-        group.className = "px-3 py-2 border-b border-gray-300";
-
-        const groupLabel = document.createElement("p");
-        groupLabel.className = "font-semibold mb-1";
-        groupLabel.textContent = title;
-        group.appendChild(groupLabel);
-
-        // "All" checkbox for the group
-        const allId = `filter-${card.id}-${filterType}-all`;
-        const allLabel = document.createElement("label");
-        allLabel.className = "flex items-center space-x-2 mb-1 cursor-pointer";
-        const allCheckbox = document.createElement("input");
-        allCheckbox.type = "checkbox";
-        allCheckbox.id = allId;
-        // Check "All" if no specific filters are selected for this type
-        allCheckbox.checked = filtersState[card.id][filterType].size === 0;
-
-        allCheckbox.dataset.filterType = filterType;
-        allCheckbox.dataset.cardId = card.id;
-        allCheckbox.dataset.value = "all"; // Special value for "All"
-
-        allLabel.appendChild(allCheckbox);
-        const allSpan = document.createElement("span");
-        allSpan.className = "text-sm";
-        allSpan.textContent = "All";
-        allLabel.appendChild(allSpan);
-        group.appendChild(allLabel);
-
-        // Event listener for "All" checkbox
-        allCheckbox.addEventListener("change", (e) => {
-          e.stopPropagation();
-          if (e.target.checked) {
-            // If "All" is checked, clear all other filters for this type
-            filtersState[card.id][filterType].clear();
-            const checkboxes = dropdown.querySelectorAll(
-              `input[type=checkbox][data-filter-type="${filterType}"]:not(#${allId})`
-            );
-            checkboxes.forEach((cb) => (cb.checked = false)); // Uncheck all other options
-            updateCardValue(card);
-          } else {
-            // If "All" is unchecked, ensure at least one other option is selected, or re-check "All"
-            if (filtersState[card.id][filterType].size === 0) {
-              e.target.checked = true; // Prevent "All" from being unchecked if no other options are selected
-            }
-          }
-        });
-
-        // Create individual filter options
-        displayOptions.forEach((opt) => {
-          const optionId = `filter-${card.id}-${filterType}-${opt
-            .replace(/\s+/g, "-")
-            .toLowerCase()}`; // Unique ID for each checkbox
-
-          const label = document.createElement("label");
-          label.className = "flex items-center space-x-2 mb-1 cursor-pointer";
-
-          const checkbox = document.createElement("input");
-          checkbox.type = "checkbox";
-          checkbox.id = optionId;
-          checkbox.dataset.filterType = filterType;
-          checkbox.dataset.cardId = card.id;
-          checkbox.dataset.value = opt;
-
-          // Set initial checked state based on filtersState
-          checkbox.checked = filtersState[card.id][filterType].has(opt);
-          label.appendChild(checkbox);
-
-          const span = document.createElement("span");
-          span.className = "text-sm";
-          span.textContent = opt;
-          label.appendChild(span);
-          group.appendChild(label);
-
-          // Event listener for individual filter options
-          checkbox.addEventListener("change", (e) => {
-            e.stopPropagation();
-            if (e.target.checked) {
-              filtersState[card.id][filterType].add(opt); // Add filter
-              const allCheckbox = dropdown.querySelector(`#${allId}`);
-              if (allCheckbox) allCheckbox.checked = false; // Uncheck "All" if a specific option is selected
-            } else {
-              filtersState[card.id][filterType].delete(opt); // Remove filter
-              // If no options are selected for this type, check "All"
-              if (filtersState[card.id][filterType].size === 0) {
-                const allCheckbox = dropdown.querySelector(`#${allId}`);
-                if (allCheckbox) allCheckbox.checked = true;
-              }
-            }
-            updateCardValue(card); // Update card value based on new filters
-          });
-        });
-
-        return group;
-      }
-
-      // Append filter groups to the dropdown
-      dropdown.appendChild(
-        createFilterGroup(
-          "Custom Fields",
-          card.filterOptions.customFields,
-          "customFields"
-        )
-      );
-      dropdown.appendChild(
-        createFilterGroup("Status", card.filterOptions.status, "status")
-      );
-      dropdown.appendChild(
-        createFilterGroup("Due Date", card.filterOptions.dueDate, "dueDate")
-      );
-      dropdown.appendChild(
-        createFilterGroup("Priority", card.filterOptions.priority, "priority")
-      );
-
-      // Assemble card elements
-      filterContainer.appendChild(dropdown);
-      contentEl.appendChild(titleEl);
-      contentEl.appendChild(valueEl);
-      cardEl.appendChild(filterContainer);
-
-      cardsContainer.appendChild(cardEl);
-
-      // Toggle dropdown visibility on button click
-      const buttonHandler = (e) => {
-        e.stopPropagation(); // Prevent click from propagating to body and closing dropdown immediately
-
-        // Close all other open dropdowns
-        document.querySelectorAll(".origin-top-left").forEach((dd) => {
-          if (dd !== dropdown) dd.style.display = "none";
-        });
-
-        // Toggle dropdown visibility
-        dropdown.style.display =
-          dropdown.style.display === "block" ? "none" : "block";
-      };
-      filterButton.addEventListener("click", buttonHandler);
-      // Store handler for cleanup
-      filterButtonHandlers.push({
-        button: filterButton,
-        handler: buttonHandler,
-      });
-    });
-    console.log("Cards created successfully");
-  } catch (error) {
-    console.error("Error creating cards:", error);
-  }
-}
-
-/**
- * Updates a card's displayed value based on the currently applied filters.
- * This function simulates a filter effect for demonstration purposes.
- * @param {object} card - The card data object from dashboardData.
- */
-function updateCardValue(card) {
-  try {
-    const filters = filtersState[card.id];
-
-    // Check if "None" is selected in any filter category
-    let hasNoneFilter = false;
-    for (const filterType in filters) {
-      if (filters[filterType].has("None")) {
-        hasNoneFilter = true;
-        break;
-      }
-    }
-
-    if (hasNoneFilter) {
-      setCardValue(card.id, 0); // If "None" is selected, value becomes 0
-      return;
-    }
-
-    // Count how many filter categories have active selections (excluding "All")
-    let activeCategoryCount = 0;
-    for (const filterType in filters) {
-      if (filters[filterType].size > 0) {
-        activeCategoryCount++;
-      }
-    }
-
-    // If no filters are applied across all categories, revert to original value
-    if (activeCategoryCount === 0) {
-      setCardValue(card.id, card.value);
-      return;
-    }
-
-    // Simulate a reduction in value based on the number of active filter categories
-    // This is a simplified simulation; real filtering would involve data manipulation.
-    let base = Math.abs(card.value);
-    const sign = card.value < 0 ? -1 : 1;
-
-    // Apply a 25% reduction for each active filter category
-    let adjusted = base * Math.max(0, 1 - 0.25 * activeCategoryCount);
-    adjusted = Math.round(adjusted); // Round to nearest whole number
-
-    setCardValue(card.id, sign * adjusted);
-  } catch (error) {
-    console.error("Error updating card value:", error);
-  }
-}
 
 /**
  * Sets the displayed value of a specific card in the DOM.
@@ -404,221 +298,83 @@ function setCardValue(cardId, value) {
   }
 }
 
-/**
- * Initializes Chart.js charts on the dashboard.
- */
-function initCharts() {
+function initCharts(projectConfig, tasksSnapshot) {
+  if (!projectConfig || !tasksSnapshot) return;
   try {
-    console.log("Initializing charts...");
-
-    // Function to create chart with proper initialization
+    console.log("Initializing charts with data...");
     const createChart = (id, config) => {
       const ctx = document.getElementById(id);
-      if (!ctx) return null;
-
-      // Ensure we destroy any existing chart instance
-      if (charts[id]) {
-        charts[id].destroy();
-      }
-
-      // Create new chart instance
+      if (!ctx) return;
+      if (charts[id]) charts[id].destroy();
       charts[id] = new Chart(ctx, config);
-      return charts[id];
     };
 
-    // Bar Chart - Task Overview
-    createChart("barChart", {
-      type: "bar",
-      data: {
-        labels: ["Completed", "Incomplete", "Overdue", "Total"],
-        datasets: [
-          {
-            label: "Tasks",
-            data: [2602, 44, 12, 2646],
-            backgroundColor: ["#4f46e5", "#f59e0b", "#ef4444", "#10b981"],
-            borderColor: ["#4f46e5", "#f59e0b", "#ef4444", "#10b981"],
-            borderWidth: 1,
-            borderRadius: 6,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: false,
-          },
-          tooltip: {
-            backgroundColor: "rgba(0, 0, 0, 0.8)",
-            padding: 12,
-            titleFont: {
-              size: 14,
-            },
-            bodyFont: {
-              size: 14,
-            },
-          },
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            grid: {
-              color: "rgba(0, 0, 0, 0.05)",
-            },
-            ticks: {
-              color: "#4b5563",
-            },
-          },
-          x: {
-            grid: {
-              display: false,
-            },
-            ticks: {
-              color: "#4b5563",
-            },
-          },
-        },
-      },
+    // --- 1. Aggregate Data for Charts ---
+    const statusCounts = {};
+    const sourceCounts = {};
+    tasksSnapshot.forEach(doc => {
+      const task = doc.data();
+      if (task.status) statusCounts[task.status] = (statusCounts[task.status] || 0) + 1;
+      if (task.priority) sourceCounts[task.priority] = (sourceCounts[task.priority] || 0) + 1;
     });
 
-    // Pie Chart - Task Distribution
-    createChart("pieChart", {
-      type: "pie",
-      data: {
-        labels: ["Completed", "Pending", "In Progress", "Overdue"],
-        datasets: [
-          {
-            data: [2602, 32, 12, 12],
-            backgroundColor: ["#4f46e5", "#f59e0b", "#0ea5e9", "#ef4444"],
-            borderColor: "#fff",
-            borderWidth: 2,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: "right",
-            labels: {
-              padding: 20,
-              font: {
-                size: 12,
-              },
-              color: "#1f2937",
-            },
-          },
-          tooltip: {
-            backgroundColor: "rgba(0, 0, 0, 0.8)",
-            padding: 12,
-          },
-        },
-      },
+    // --- 2. Create Bar & Pie Charts (Status Distribution) ---
+    const statusColumn = projectConfig.defaultColumns.find(c => c.id === 'status');
+    if (statusColumn && statusColumn.options) {
+      const labels = statusColumn.options.map(opt => opt.name);
+      const colors = statusColumn.options.map(opt => opt.color);
+      const data = labels.map(label => statusCounts[label] || 0);
+      createChart("barChart", { type: "bar", data: { labels, datasets: [{ label: "Tasks by Status", data, backgroundColor: colors }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+      createChart("pieChart", { type: "pie", data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: '#fff' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "right" } } } });
+    }
+
+    // --- 3. Create Doughnut Chart (Source Distribution) ---
+    const sourceColumn = projectConfig.defaultColumns.find(c => c.id === 'priority');
+    if (sourceColumn && sourceColumn.options) {
+      const labels = sourceColumn.options.map(opt => opt.name);
+      const colors = sourceColumn.options.map(opt => opt.color);
+      const data = labels.map(label => sourceCounts[label] || 0);
+      createChart("doughnutChart", { type: "doughnut", data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: "#fff" }] }, options: { responsive: true, maintainAspectRatio: false, cutout: "70%", plugins: { legend: { position: "right" } } } });
+    }
+
+    // --- 4. Create Line Chart (Task Trends) ---
+    const completionStatusName = statusColumn?.options?.find(o => o.name.toLowerCase() === 'completed')?.name;
+    const trendLabels = [];
+    const now = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      trendLabels.push(d.toLocaleString('default', { month: 'short' }));
+    }
+    const newTasksData = new Array(7).fill(0);
+    const completedTasksData = new Array(7).fill(0);
+
+    tasksSnapshot.forEach(doc => {
+      const task = doc.data();
+      if (task.createdAt && task.createdAt.seconds) {
+        const createdAt = new Date(task.createdAt.seconds * 1000);
+        const monthDiff = (now.getFullYear() - createdAt.getFullYear()) * 12 + (now.getMonth() - createdAt.getMonth());
+        if (monthDiff >= 0 && monthDiff < 7) {
+          const index = 6 - monthDiff;
+          newTasksData[index]++;
+          if (task.status === completionStatusName) {
+            completedTasksData[index]++;
+          }
+        }
+      }
     });
 
-    // Line Chart - Task Timeline
     createChart("lineChart", {
       type: "line",
       data: {
-        labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul"],
+        labels: trendLabels,
         datasets: [
-          {
-            label: "Completed Tasks",
-            data: [320, 420, 510, 580, 610, 750, 820],
-            borderColor: "#4f46e5",
-            backgroundColor: "rgba(79, 70, 229, 0.1)",
-            tension: 0.3,
-            fill: true,
-            pointBackgroundColor: "#4f46e5",
-            pointBorderColor: "#fff",
-            pointBorderWidth: 2,
-          },
-          {
-            label: "New Tasks",
-            data: [450, 380, 410, 520, 610, 590, 680],
-            borderColor: "#f59e0b",
-            backgroundColor: "rgba(245, 158, 11, 0.1)",
-            tension: 0.3,
-            fill: true,
-            pointBackgroundColor: "#f59e0b",
-            pointBorderColor: "#fff",
-            pointBorderWidth: 2,
-          },
-        ],
+          { label: "Completed Tasks", data: completedTasksData, borderColor: "#4f46e5", backgroundColor: "rgba(79, 70, 229, 0.1)", tension: 0.3, fill: true },
+          { label: "New Tasks", data: newTasksData, borderColor: "#f59e0b", backgroundColor: "rgba(245, 158, 11, 0.1)", tension: 0.3, fill: true }
+        ]
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: "top",
-            labels: {
-              color: "#1f2937",
-            },
-          },
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            grid: {
-              color: "rgba(0, 0, 0, 0.05)",
-            },
-            ticks: {
-              color: "#4b5563",
-            },
-          },
-          x: {
-            grid: {
-              color: "rgba(0, 0, 0, 0.05)",
-            },
-            ticks: {
-              color: "#4b5563",
-            },
-          },
-        },
-      },
+      options: { responsive: true, maintainAspectRatio: false }
     });
 
-    // Doughnut Chart - Priority Distribution
-    createChart("doughnutChart", {
-      type: "doughnut",
-      data: {
-        labels: ["High Priority", "Medium Priority", "Low Priority"],
-        datasets: [
-          {
-            data: [420, 850, 1376],
-            backgroundColor: ["#ef4444", "#f59e0b", "#10b981"],
-            borderColor: "#fff",
-            borderWidth: 2,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: "right",
-            labels: {
-              padding: 20,
-              font: {
-                size: 12,
-              },
-              color: "#1f2937",
-            },
-          },
-          tooltip: {
-            backgroundColor: "rgba(0, 0, 0, 0.8)",
-            padding: 12,
-          },
-        },
-        cutout: "70%",
-      },
-    });
-
-    console.log("Charts initialized successfully");
   } catch (error) {
     console.error("Error initializing charts:", error);
   }
@@ -728,64 +484,39 @@ function cleanup() {
   }
 }
 
-/**
- * Initializes the dashboard: sets up state, creates cards, initializes charts, and enables drag-and-drop.
- */
 function init() {
-  try {
-    console.log("Starting dashboard initialization...");
-
-    // Always perform cleanup first to ensure a fresh start
-    cleanup();
-
-    // Initialize filtersState for each card
-    dashboardData.forEach((card) => {
-      filtersState[card.id] = {
-        customFields: new Set(),
-        status: new Set(),
-        dueDate: new Set(),
-        priority: new Set(),
-      };
-    });
-
-    // Get the main container element for cards
-    cardsContainer = document.querySelector(".card-grid");
-    if (!cardsContainer) {
-      console.error(
-        "Cards container (.card-grid) not found in the DOM. Dashboard cannot be initialized."
-      );
-      return; // Exit if the container is not found
-    }
-
-    // Create the dashboard cards
-    createCards();
-
-    // Setup a global click handler to close dropdowns when clicking outside
-    bodyClickHandler = (e) => {
-      // Check if the click target is inside any dropdown
-      const isInsideDropdown = e.target.closest(".origin-top-left");
-      // Check if the click target is a filter button
-      const isFilterButton = e.target.closest(".filter-button");
-
-      // If the click is not inside a dropdown AND not on a filter button, close all dropdowns
-      if (!isInsideDropdown && !isFilterButton) {
-        document
-          .querySelectorAll(".origin-top-left")
-          .forEach((dd) => (dd.style.display = "none"));
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      const projectId = getProjectIdFromUrl();
+      if (!projectId) {
+        cleanup();
+        return console.log("No project ID in URL.");
       }
-    };
-    document.body.addEventListener("click", bodyClickHandler);
 
-    // Initialize the charts
-    initCharts();
+      cleanup();
+      cardsContainer = document.querySelector(".card-grid");
+      if (!cardsContainer) return console.error("Cards container not found.");
 
-    // Setup drag and drop functionality
-    setupDragAndDrop();
+      const success = await fetchInitialData(projectId);
 
-    console.log("Dashboard initialized successfully");
-  } catch (error) {
-    console.error("Dashboard initialization failed:", error);
-  }
+      if (success) {
+        renderDashboard(); // Perform the first render
+
+        // Setup persistent elements
+        document.body.addEventListener("click", (e) => {
+          if (!e.target.closest(".origin-top-left") && !e.target.closest(".filter-button")) {
+            document.querySelectorAll(".origin-top-left").forEach((dd) => (dd.style.display = "none"));
+          }
+        });
+        console.log("Dashboard initialized successfully.");
+      } else {
+        console.error("Dashboard initialization failed.");
+      }
+    } else {
+      console.log("User signed out.");
+      cleanup();
+    }
+  });
 }
 
 export { init };
