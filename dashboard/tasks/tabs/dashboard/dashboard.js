@@ -28,6 +28,7 @@ let filterButtonHandlers = [];
 let charts = {};
 let sortables = [];
 let dashboardData = [];
+let masterDashboardData = []; // Stores ALL possible cards calculated once
 let activeDashboardFilters = {}; // Stores the current global filters
 let fullTasksSnapshot = null;    // Stores the complete, unfiltered task list
 let projectConfig = null;        // Stores the current project's configuration
@@ -66,54 +67,90 @@ function aggregateTaskData(tasksSnapshot) {
   const statusColumn = projectConfig.defaultColumns.find(c => c.id === 'status');
   const sourceColumn = projectConfig.defaultColumns.find(c => c.id === 'priority');
   const costingColumns = projectConfig.customColumns.filter(c => c.type === 'Costing');
+  const allSelectColumns = [
+    ...projectConfig.defaultColumns.filter(c => c.options && c.options.length > 0),
+    ...projectConfig.customColumns.filter(c => c.options && c.options.length > 0)
+  ];
   const completionStatusName = statusColumn?.options?.find(o => o.name.toLowerCase() === 'completed')?.name;
   const cancelledStatusName = statusColumn?.options?.find(o => o.name.toLowerCase() === 'cancelled')?.name;
 
+  // --- Aggregation Logic ---
   let generalCounts = { completed: 0, incomplete: 0, overdue: 0 };
-  const costingTotals = {};
-  costingColumns.forEach(col => costingTotals[col.id] = 0);
+  let paymentMadeTotal = 0;
+  let balanceTotal = 0;
+  const selectOptionCounts = {};
+  allSelectColumns.forEach(col => {
+    selectOptionCounts[col.id] = {};
+    if (col.options) {
+      col.options.forEach(opt => selectOptionCounts[col.id][opt.name] = 0);
+    }
+  });
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   tasksSnapshot.forEach((doc) => {
     const task = doc.data();
+    let taskTotalCost = 0;
+    costingColumns.forEach(col => {
+      const costValue = task.customFields?.[col.id];
+      if (typeof costValue === 'number') { taskTotalCost += costValue; }
+    });
+
     if (task.status === completionStatusName) {
       generalCounts.completed++;
+      paymentMadeTotal += taskTotalCost;
     } else if (task.status !== cancelledStatusName) {
       generalCounts.incomplete++;
+      balanceTotal += taskTotalCost;
       if (task.dueDate && new Date(task.dueDate) < today) {
         generalCounts.overdue++;
       }
     }
-    costingColumns.forEach(col => {
-      const costValue = task.customFields?.[col.id];
-      if (typeof costValue === 'number') {
-        costingTotals[col.id] += costValue;
+
+    allSelectColumns.forEach(col => {
+      const isCustom = !projectConfig.defaultColumns.some(dc => dc.id === col.id);
+      const value = (isCustom ? task.customFields?.[col.id] : task[col.id]);
+      if (value && selectOptionCounts[col.id]?.hasOwnProperty(value)) {
+        selectOptionCounts[col.id][value]++;
       }
     });
   });
 
-  let finalData = [];
-  const statusOptions = statusColumn?.options?.map(o => o.name) || [];
-  const sourceOptions = sourceColumn?.options?.map(o => o.name) || [];
-
-  // This creates the curated set of summary cards.
-  finalData.push({ id: 'totalTasks', title: 'Total Tasks', value: tasksSnapshot.size, filterOptions: { Status: statusOptions, Source: sourceOptions } });
-  finalData.push({ id: 'completedTasks', title: 'Completed Tasks', value: generalCounts.completed, filterOptions: { Status: statusOptions, Source: sourceOptions } });
-  finalData.push({ id: 'incompleteTasks', title: 'Incomplete Tasks', value: generalCounts.incomplete, filterOptions: { Status: statusOptions, Source: sourceOptions } });
-  finalData.push({ id: 'overdueTasks', title: 'Overdue Tasks', value: generalCounts.overdue, filterOptions: { Status: statusOptions, Source: sourceOptions } });
-
-  costingColumns.forEach(col => {
-    finalData.push({
-      id: `cost-${col.id}`,
-      title: `Total ${col.name} (${col.currency || ''})`.trim(),
-      value: costingTotals[col.id] || 0,
-      filterOptions: {} // Costing cards do not have filters
+  // --- Build Card Lists ---
+  let allPossibleCards = [];
+  const cardFilterOptions = {};
+  const allColumns = [...projectConfig.defaultColumns, ...projectConfig.customColumns];
+  allColumns
+    .filter(col => col.options && col.options.length > 0)
+    .forEach(col => {
+      cardFilterOptions[col.name] = col.options.map(o => o.name);
     });
+
+  // Populate SUMMARY cards (these get filters)
+  allPossibleCards.push({ id: 'totalTasks', title: 'Total Tasks', value: tasksSnapshot.size, filterOptions: cardFilterOptions });
+  allPossibleCards.push({ id: 'completedTasks', title: 'Completed Tasks', value: generalCounts.completed, filterOptions: cardFilterOptions });
+  allPossibleCards.push({ id: 'incompleteTasks', title: 'Incomplete Tasks', value: generalCounts.incomplete, filterOptions: cardFilterOptions });
+  allPossibleCards.push({ id: 'overdueTasks', title: 'Overdue Tasks', value: generalCounts.overdue, filterOptions: cardFilterOptions });
+  allPossibleCards.push({ id: 'totalPaymentMade', title: 'Total Payment Made', value: paymentMadeTotal, filterOptions: {} });
+  allPossibleCards.push({ id: 'cardBalance', title: 'Card Balance', value: balanceTotal, filterOptions: {} });
+
+  // Populate METRIC cards (these can be added by the user and have no filters)
+  allSelectColumns.forEach(col => {
+    if (col.options) {
+      col.options.forEach(option => {
+        allPossibleCards.push({
+          id: `count-${col.id}-${option.name.replace(/\s+/g, '-')}`,
+          title: `${col.name}: ${option.name}`,
+          value: selectOptionCounts[col.id][option.name] || 0,
+          filterOptions: {} // Metric cards do not have filters
+        });
+      });
+    }
   });
 
-  return finalData;
+  // **THE FIX**: Return a single, flat array of all possible cards.
+  return allPossibleCards;
 }
 
 function createCards() {
@@ -123,89 +160,232 @@ function createCards() {
 
     dashboardData.forEach((card) => {
       const cardEl = document.createElement("div");
-      cardEl.className = "card";
+      cardEl.className = "card relative"; // Add relative for positioning
       cardEl.dataset.id = card.id;
       cardEl.innerHTML = `
-                <div class="flex flex-col items-center justify-center h-full pt-2">
-                    <h2 class="text-sm font-medium mb-1 text-center px-1">${card.title}</h2>
-                    <p class="text-xl font-light mb-4 text-center">${formatNumber(card.value)}</p>
-                    <div class="card-filter-container relative inline-block text-left w-full flex justify-center"></div>
-                </div>
-            `;
+        <button class="remove-card-btn absolute top-2 right-2 text-gray-400 hover:text-red-500">
+          <i class="fas fa-times"></i>
+        </button>
+        <div class="flex flex-col items-center justify-center h-full pt-2">
+          <h2 class="text-sm font-medium mb-1 text-center px-1">${card.title}</h2>
+          <p class="text-xl font-light mb-4 text-center">${formatNumber(card.value)}</p>
+          <div class="card-filter-container relative inline-block text-left w-full flex justify-center"></div>
+        </div>
+      `;
+
+      // Add remove button functionality
+      const removeBtn = cardEl.querySelector(".remove-card-btn");
+      removeBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        dashboardData = dashboardData.filter(c => c.id !== card.id);
+        saveCardLayout(); // Update layout
+        renderDashboard();
+      });
+
       const filterContainer = cardEl.querySelector('.card-filter-container');
-
       if (card.filterOptions && Object.keys(card.filterOptions).length > 0) {
-        const filterButton = document.createElement("button");
-        filterButton.type = "button";
-        filterButton.className = "filter-button";
-        filterButton.innerHTML = `<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="18" x2="20" y2="18"></line></svg>Filter`;
-        filterContainer.appendChild(filterButton);
+      // Always add filter button
+      const filterButton = document.createElement("button");
+      filterButton.type = "button";
+      filterButton.className = "filter-button mt-4";
+      filterButton.innerHTML = `
+        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M6 12h12M9 18h6"></path>
+        </svg>
+    `;
+      filterContainer.appendChild(filterButton);
 
-        const dropdown = document.createElement("div");
-        dropdown.className = "origin-top-left";
-        dropdown.addEventListener("click", (e) => e.stopPropagation());
+      // Dropdown
+      const dropdown = document.createElement("div");
+      dropdown.className = "origin-top-left";
+      dropdown.style.zIndex = "9999999999";
+      dropdown.addEventListener("click", (e) => e.stopPropagation());
 
-        function createFilterGroup(title, options, filterTypeId) {
-          const group = document.createElement("div");
-          group.className = "px-3 py-2 border-b border-gray-300";
-          group.innerHTML = `<p class="font-semibold mb-1">${title}</p>`;
+      const globalAllGroup = document.createElement("div");
+      globalAllGroup.className = "px-3 py-2 border-b border-gray-300";
+      const globalAllLabel = document.createElement("label");
+      globalAllLabel.className = "flex items-center space-x-2 py-1 cursor-pointer font-semibold";
+      const globalAllRadio = document.createElement("input");
+      globalAllRadio.type = "radio";
+      globalAllRadio.name = `filter-${card.id}-master-reset`;
+      globalAllRadio.checked = Object.keys(activeDashboardFilters).length === 0;
+      globalAllRadio.addEventListener('change', () => {
+        activeDashboardFilters = {};
+        renderDashboard();
+      });
+      globalAllLabel.appendChild(globalAllRadio);
+      const globalAllText = document.createElement('span');
+      globalAllText.textContent = "All Tasks";
+      globalAllLabel.appendChild(globalAllText);
+      globalAllGroup.appendChild(globalAllLabel);
+      dropdown.appendChild(globalAllGroup);
 
-          const handleFilterChange = (event) => {
-            const value = event.target.value;
-            if (value === 'all') {
-              delete activeDashboardFilters[filterTypeId];
-            } else {
-              activeDashboardFilters[filterTypeId] = value;
-            }
-            renderDashboard();
-          };
+      // Filter groups
+      function createFilterGroup(title, options, filterTypeId, showInternalAll) {
+        const group = document.createElement("div");
+        group.className = "px-3 py-2 border-b border-gray-300";
+        group.innerHTML = `<p class="font-semibold mb-1">${title}</p>`;
+        const radioGroupName = `filter-${card.id}-${filterTypeId}`;
 
-          const createRadioOption = (value, text, isChecked) => {
-            const label = document.createElement("label");
-            label.className = "flex items-center space-x-2 mb-1 cursor-pointer";
-            const radio = document.createElement("input");
-            radio.type = "radio";
-            radio.name = `filter-${card.id}-${filterTypeId}`;
-            radio.value = value;
-            radio.checked = isChecked;
-            radio.addEventListener('change', handleFilterChange);
-            label.appendChild(radio);
-            label.appendChild(document.createTextNode(text));
-            return label;
-          };
-
-          group.appendChild(createRadioOption('all', 'All', !activeDashboardFilters[filterTypeId]));
-          options.forEach(opt => {
-            group.appendChild(createRadioOption(opt, opt, activeDashboardFilters[filterTypeId] === opt));
-          });
-          return group;
-        }
-
-        for (const filterTitle in card.filterOptions) {
-          const options = card.filterOptions[filterTitle];
-          // **THE FIX**: Search both default and custom columns to find the correct ID
-          const column = [...projectConfig.defaultColumns, ...projectConfig.customColumns].find(c => c.name === filterTitle);
-          const filterTypeId = column ? column.id : filterTitle.toLowerCase();
-
-          if (options && Array.isArray(options) && options.length > 0) {
-            dropdown.appendChild(createFilterGroup(filterTitle, options, filterTypeId));
+        const handleFilterChange = (event) => {
+          const value = event.target.value;
+          if (value === 'all') {
+            delete activeDashboardFilters[filterTypeId];
+          } else {
+            activeDashboardFilters[filterTypeId] = value;
           }
+          if (globalAllRadio) globalAllRadio.checked = false;
+          renderDashboard();
+        };
+
+        const createRadioOption = (value, text, isChecked) => {
+          const label = document.createElement("label");
+          label.className = "flex items-center space-x-2 py-1 cursor-pointer";
+          const radio = document.createElement("input");
+          radio.type = "radio";
+          radio.name = radioGroupName;
+          radio.value = value;
+          radio.checked = isChecked;
+          radio.addEventListener('change', handleFilterChange);
+          label.appendChild(radio);
+          const textSpan = document.createElement('span');
+          textSpan.textContent = text;
+          label.appendChild(textSpan);
+          return label;
+        };
+
+        if (showInternalAll) {
+          group.appendChild(createRadioOption('all', 'All', !activeDashboardFilters[filterTypeId]));
         }
-        filterContainer.appendChild(dropdown);
-        filterButton.addEventListener("click", (e) => {
-          e.stopPropagation();
-          document.querySelectorAll(".origin-top-left").forEach((dd) => {
-            if (dd !== dropdown) dd.style.display = "none";
-          });
-          dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+        options.forEach(opt => {
+          group.appendChild(createRadioOption(opt, opt, activeDashboardFilters[filterTypeId] === opt));
         });
+        return group;
       }
+
+      for (const filterTitle in card.filterOptions) {
+        const options = card.filterOptions[filterTitle];
+        const column = [...projectConfig.defaultColumns, ...projectConfig.customColumns].find(c => c.name === filterTitle);
+        if (!column) continue;
+
+        const isDefaultCol = projectConfig.defaultColumns.some(c => c.id === column.id);
+        const displayTitle = isDefaultCol ? filterTitle : "Custom Fields";
+        const showAll = true;
+
+        if (options && Array.isArray(options) && options.length > 0) {
+          dropdown.appendChild(createFilterGroup(displayTitle, options, column.id, showAll));
+        }
+      }
+
+      filterContainer.appendChild(dropdown);
+      filterButton.addEventListener("click", (e) => {
+        e.stopPropagation();
+        document.querySelectorAll(".origin-top-left").forEach((dd) => {
+          if (dd !== dropdown) dd.style.display = "none";
+        });
+        dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+      });
+      }
+
       cardsContainer.appendChild(cardEl);
     });
+
+    const displayedIds = new Set(dashboardData.map(c => c.id));
+    const hasMoreCards = masterDashboardData.some(c => !displayedIds.has(c.id));
+
+    if (hasMoreCards) {
+      const addCardWidget = document.createElement("div");
+      addCardWidget.className = "card card-placeholder cannot-drag";
+      addCardWidget.innerHTML = `
+                <div class="flex flex-col items-center justify-center h-full">
+                    <svg class="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                    <span class="mt-2 text-sm font-medium text-gray-500">Add Card</span>
+                </div>
+            `;
+
+      addCardWidget.addEventListener('click', () => {
+        const nextCardToAdd = masterDashboardData.find(c => !displayedIds.has(c.id));
+        if (nextCardToAdd) {
+          dashboardData.push(nextCardToAdd);
+          saveCardLayout();
+          createCards();
+        }
+      });
+      cardsContainer.appendChild(addCardWidget);
+    }
   } catch (error) {
     console.error("Error creating cards:", error);
   }
 }
+
+function openAddWidgetModal() {
+  // Remove any existing modal first
+  const existingModal = document.querySelector('.widget-modal-overlay');
+  if (existingModal) existingModal.remove();
+
+  const modalOverlay = document.createElement('div');
+  modalOverlay.className = 'widget-modal-overlay'; // Style this class with CSS
+  modalOverlay.innerHTML = `
+        <div class="widget-modal">
+            <h3 class="widget-modal-title">Add New Widget</h3>
+            <p class="widget-modal-text">Select a widget to add to your dashboard.</p>
+            <div class="form-group">
+                <label for="widget-type">Widget Type</label>
+                <select id="widget-type">
+                    <option value="totalTasks">Total Tasks</option>
+                    <option value="completedTasks">Completed Tasks</option>
+                    <option value="cardBalance">Card Balance</option>
+                </select>
+            </div>
+            <div class="widget-modal-actions">
+                <button id="cancel-widget-btn">Cancel</button>
+                <button id="add-widget-btn">Add Widget</button>
+            </div>
+        </div>
+    `;
+
+  document.body.appendChild(modalOverlay);
+
+  const closeModal = () => modalOverlay.remove();
+
+  modalOverlay.addEventListener('click', (e) => {
+    if (e.target === modalOverlay) closeModal();
+  });
+  document.getElementById('cancel-widget-btn').addEventListener('click', closeModal);
+  document.getElementById('add-widget-btn').addEventListener('click', () => {
+    const selectedWidget = document.getElementById('widget-type').value;
+    alert(`Logic to add the "${selectedWidget}" card would go here.`);
+    closeModal();
+  });
+}
+
+function addPlaceholderWidgets() {
+  // Find the container for the charts
+  const chartArea = document.querySelector('.chart-section');
+  if (!chartArea) return;
+
+  // Avoid adding duplicate "Add Graph" widgets
+  if (chartArea.querySelector(".chart-placeholder")) return;
+
+  // Create and add the "Add Graph" widget
+  const addGraphWidget = document.createElement("div");
+  addGraphWidget.className = "chart-container chart-placeholder flex items-center justify-center cursor-pointer border-2 border-dashed border-gray-300 hover:border-blue-500 transition-colors duration-300 rounded-xl p-6 bg-gray-50 hover:bg-blue-50";
+  addGraphWidget.innerHTML = `
+        <div class="flex flex-col items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-400 group-hover:text-blue-500 transition-colors duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            <span class="mt-3 text-sm font-medium text-gray-600 group-hover:text-blue-600 transition-colors">Add Graph</span>
+        </div>
+    `;
+
+  addGraphWidget.addEventListener('click', () => {
+    addNewChart();
+  });
+
+  chartArea.appendChild(addGraphWidget);
+}
+
 
 function renderDashboard() {
   console.log("Rendering dashboard with filters:", activeDashboardFilters);
@@ -245,13 +425,15 @@ function renderDashboard() {
     return true;
   });
 
-  const filteredSnapshot = {
-    docs: filteredDocs,
-    size: filteredDocs.length,
-    forEach: (callback) => filteredDocs.forEach(callback)
-  };
+  const filteredSnapshot = { docs: filteredDocs, size: filteredDocs.length, forEach: cb => filteredDocs.forEach(cb) };
 
-  dashboardData = aggregateTaskData(filteredSnapshot);
+  const updatedCardValues = aggregateTaskData(filteredSnapshot);
+
+  // Keep only the existing cards (preserve layout)
+  dashboardData.forEach(card => {
+    const updatedCard = updatedCardValues.find(c => c.id === card.id);
+    if (updatedCard) card.value = updatedCard.value;
+  });
   createCards();
   initCharts(projectConfig, filteredSnapshot);
 }
@@ -380,63 +562,89 @@ function initCharts(projectConfig, tasksSnapshot) {
   }
 }
 
-/**
- * Sets up drag-and-drop functionality using Sortable.js for cards and chart containers.
- */
 function setupDragAndDrop() {
   try {
     console.log("Setting up drag and drop...");
-
-    // Initialize Sortable for the card grid
     const cardGrid = document.querySelector(".card-grid");
     if (cardGrid) {
-      sortables.push(
-        new Sortable(cardGrid, {
-          group: "shared", // Allows dragging between different Sortable lists
-          animation: 150, // Milliseconds for animation
-          ghostClass: "dragging", // Class applied to the ghost element
-          handle: ".card", // Only drag by the card itself
-          filter: ".filter-button", // Prevent dragging when clicking the filter button
-          preventOnFilter: false, // Allow filter button to be clicked
-        })
-      );
-    }
+      if (sortables[0]) sortables[0].destroy(); // Destroy previous instance
 
-    // Initialize Sortable for the left chart column
-    const leftColumn = document.querySelector(".chart-column:first-child");
-    if (leftColumn) {
-      sortables.push(
-        new Sortable(leftColumn, {
-          group: "shared",
-          animation: 150,
-          ghostClass: "dragging",
-          handle: ".chart-container", // Only drag by the chart container
-        })
-      );
+      sortables[0] = new Sortable(cardGrid, {
+        animation: 200, // Smooth animation
+        handle: ".card",
+        filter: ".cannot-drag",
+        ghostClass: "drag-ghost",    // Class applied to the placeholder
+        chosenClass: "drag-chosen",  // Class applied when picking up
+        dragClass: "dragging-active", // Class applied during drag
+        onMove: (evt) => {
+          return !evt.related.classList.contains("cannot-drag");
+        },
+        onEnd: () => {
+          const newOrderIds = Array.from(
+            cardGrid.querySelectorAll('.card:not(.cannot-drag)')
+          ).map(el => el.dataset.id);
+          dashboardData = newOrderIds
+            .map(id => dashboardData.find(c => c.id === id))
+            .filter(Boolean);
+          saveCardLayout();
+        }
+      });
     }
-
-    // Initialize Sortable for the right chart column
-    const rightColumn = document.querySelector(".chart-column:last-child");
-    if (rightColumn) {
-      sortables.push(
-        new Sortable(rightColumn, {
-          group: "shared",
-          animation: 150,
-          ghostClass: "dragging",
-          handle: ".chart-container",
-        })
-      );
-    }
-    console.log("Drag and drop setup complete");
   } catch (error) {
     console.error("Error setting up drag and drop:", error);
   }
 }
 
-/**
- * Cleans up all event listeners, chart instances, and Sortable instances
- * to prevent memory leaks and ensure a clean state.
- */
+function setupChartDragAndDrop() {
+  try {
+    console.log("Setting up chart drag and drop...");
+    const chartColumns = document.querySelectorAll(".chart-column");
+
+    chartColumns.forEach((column, index) => {
+      if (sortables[index + 1]) sortables[index + 1].destroy(); // Avoid duplicate sortables
+
+      sortables[index + 1] = new Sortable(column, {
+        animation: 200,
+        handle: ".chart-container", // Make the entire chart container draggable
+        ghostClass: "chart-drag-ghost",
+        chosenClass: "chart-drag-chosen",
+        dragClass: "chart-dragging-active",
+        group: "charts", // Shared group so charts can move between columns
+        onEnd: () => {
+          console.log("Charts reordered!");
+          saveChartLayout();
+        }
+      });
+    });
+  } catch (error) {
+    console.error("Error setting up chart drag and drop:", error);
+  }
+}
+
+function saveChartLayout() {
+  const columns = document.querySelectorAll(".chart-column");
+  const layout = Array.from(columns).map(column =>
+    Array.from(column.querySelectorAll(".chart-container")).map(el => el.id)
+  );
+  localStorage.setItem("chartLayout", JSON.stringify(layout));
+  console.log("Chart layout saved:", layout);
+}
+
+function loadChartLayout() {
+  const layout = JSON.parse(localStorage.getItem("chartLayout"));
+  if (!layout) return;
+  const columns = document.querySelectorAll(".chart-column");
+
+  layout.forEach((columnChartIds, index) => {
+    const column = columns[index];
+    if (!column) return;
+    columnChartIds.forEach(chartId => {
+      const chartEl = document.getElementById(chartId);
+      if (chartEl) column.appendChild(chartEl);
+    });
+  });
+}
+
 function cleanup() {
   try {
     console.log("Cleaning up dashboard...");
@@ -500,9 +708,23 @@ function init() {
       const success = await fetchInitialData(projectId);
 
       if (success) {
-        renderDashboard(); // Perform the first render
+        masterDashboardData = aggregateTaskData(fullTasksSnapshot);
 
-        // Setup persistent elements
+        const savedCardIds = JSON.parse(localStorage.getItem(`dashboardLayout_${projectId}`));
+        if (savedCardIds && savedCardIds.length > 0) {
+          // Re-create the dashboardData array based on the saved order of IDs
+          dashboardData = savedCardIds.map(id => masterDashboardData.find(card => card.id === id)).filter(Boolean);
+        } else {
+          // If nothing is saved, show the first 6 cards by default
+          dashboardData = masterDashboardData.slice(0, 6);
+        }
+
+        renderDashboard();
+       // addPlaceholderWidgets();
+        setupDragAndDrop();
+        setupChartDragAndDrop();
+        loadChartLayout();
+
         document.body.addEventListener("click", (e) => {
           if (!e.target.closest(".origin-top-left") && !e.target.closest(".filter-button")) {
             document.querySelectorAll(".origin-top-left").forEach((dd) => (dd.style.display = "none"));
@@ -517,6 +739,14 @@ function init() {
       cleanup();
     }
   });
+}
+
+function saveCardLayout() {
+  const projectId = getProjectIdFromUrl();
+  if (!projectId) return;
+
+  const visibleIds = dashboardData.map(card => card.id);
+  localStorage.setItem(`dashboardLayout_${projectId}`, JSON.stringify(visibleIds));
 }
 
 export { init };
