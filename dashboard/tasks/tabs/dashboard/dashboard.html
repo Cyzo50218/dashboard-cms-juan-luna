@@ -1,12 +1,32 @@
 <div class="dashboard-container font-sans text-gray-900">
-  <header class="w-full py-6 mb-4 border-b border-gray-200">
+  <header class="projecttask-header">
+    <div class="header-verytop">
+      <button class="addWidgetButton" id="addwidget-btn" aria-label="Add Widget">
+        <span class="material-icons-outlined">add</span>
+        Add WIdget
+      </button>
+    </div>
+    <div id="widget-dropdown" class="hidden">
+      <div class="py-1" role="menu" aria-orientation="vertical" aria-labelledby="addwidget-btn">
+        <a href="#" class="text-gray-700 block px-4 py-2 text-sm hover:bg-gray-100 flex items-center" role="menuitem">
+          <span class="material-icons-outlined mr-3">bar_chart</span>
+          Add Chart Widget
+        </a>
+        <a href="#" class="text-gray-700 block px-4 py-2 text-sm hover:bg-gray-100 flex items-center" role="menuitem">
+          <span class="material-icons-outlined mr-3">view_quilt</span>
+          Add Card Widget
+        </a>
+      </div>
+    </div>
     <h1 class="text-3xl font-bold text-gray-900">Your Dashboard</h1>
     <p class="text-lg text-gray-900 font-medium">Analytics Overview</p>
     <button id="dashboard-filter-btn" class="filter-button" style='display: none;'>
-        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
-        </svg>
-        Filter Cards
+      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path
+          d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z">
+        </path>
+      </svg>
+      Filter Cards
     </button>
   </header>
 

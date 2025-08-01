@@ -2393,12 +2393,16 @@ function render() {
                             // If the task is completed, render a gray version of the tag.
                             if (isCompleted) {
                                 const selectedOption = col.options.find(opt => opt.name === rawValue);
-                                const grayStyle = `background-color: ${selectedOption.color}20; border-radius: 10px; color: ${selectedOption.color}; border: 1px solid ${selectedOption.color}80;`;
-                                // Only show the tag if there's a value to display
-                                if (rawValue) {
-                                    content = `<div class="status-tag" style="${grayStyle}">${rawValue}</div>`;
+                                if (selectedOption) {
+                                    const grayStyle = `background-color: ${selectedOption.color}20; border-radius: 10px; color: ${selectedOption.color}; border: 1px solid ${selectedOption.color}80;`;
+                                    if (rawValue) {
+                                        content = `<div class="status-tag" style="${grayStyle}">${rawValue}</div>`;
+                                    } else {
+                                        content = '';
+                                    }
                                 } else {
-                                    content = ''; // Render empty if no value in a completed task
+                                    // This task has an invalid or deleted option value. Render it plainly.
+                                    content = `<div class="status-tag status-invalid">${rawValue || 'None'}</div>`;
                                 }
                             }
                             // If the task is NOT completed, use the normal color logic.
@@ -3972,8 +3976,8 @@ function createStatusTag(s) {
 }
 
 function closeFloatingPanels() {
-     const selector = '.advanced-dropdown, .floating-panel, .filterlistview-dialog-overlay';
-     document.querySelectorAll(selector).forEach(panel => panel.remove());
+    const selector = '.advanced-dropdown, .floating-panel, .filterlistview-dialog-overlay';
+    document.querySelectorAll(selector).forEach(panel => panel.remove());
 }
 
 function closeFloatingPanelsOnButton() {

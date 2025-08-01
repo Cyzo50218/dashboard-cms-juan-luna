@@ -7,6 +7,7 @@ import {
 import {
   getFirestore,
   collectionGroup,
+  collection,
   query,
   where,
   getDocs
@@ -33,6 +34,8 @@ let activeDashboardFilters = {}; // Stores the current global filters
 let fullTasksSnapshot = null;    // Stores the complete, unfiltered task list
 let projectConfig = null;        // Stores the current project's configuration
 
+let projectDocRef = null;
+
 async function fetchInitialData(projectId) {
   if (!projectId) {
     console.error("Project ID is required.");
@@ -42,16 +45,11 @@ async function fetchInitialData(projectId) {
     const projectQuery = query(collectionGroup(db, 'projects'), where('projectId', '==', projectId));
     const projectSnapshot = await getDocs(projectQuery);
     if (projectSnapshot.empty) throw new Error(`Project ${projectId} not found.`);
-
-    projectConfig = projectSnapshot.docs[0].data();
-
+    const projectDoc = projectSnapshot.docs[0]; // Get the full document
+    projectConfig = projectDoc.data();           // Store the data as before
+    projectDocRef = projectDoc.ref;              // **Store the document reference**
     const tasksQuery = query(collectionGroup(db, 'tasks'), where('projectId', '==', projectId));
     fullTasksSnapshot = await getDocs(tasksQuery);
-
-    // --- Added Console Logs ---
-    console.log("Project Configuration Loaded:", projectConfig);
-    console.log(`Found ${fullTasksSnapshot.size} tasks in this project.`);
-    // --- End of Added Logs ---
 
     console.log("Initial project data and tasks fetched successfully.");
     return true;
@@ -162,18 +160,44 @@ function createCards() {
       const cardEl = document.createElement("div");
       cardEl.className = "card relative"; // Add relative for positioning
       cardEl.dataset.id = card.id;
-      cardEl.innerHTML = `
-        <button class="remove-card-btn absolute top-2 right-2 text-gray-400 hover:text-red-500">
-          <i class="fas fa-times"></i>
-        </button>
-        <div class="flex flex-col items-center justify-center h-full pt-2">
-          <h2 class="text-sm font-medium mb-1 text-center px-1">${card.title}</h2>
-          <p class="text-xl font-light mb-4 text-center">${formatNumber(card.value)}</p>
-          <div class="card-filter-container relative inline-block text-left w-full flex justify-center"></div>
-        </div>
-      `;
 
-      // Add remove button functionality
+      const filterCount = card.localFilters ? Object.keys(card.localFilters).length : 0;
+      const badgeHTML = filterCount > 0 ? `<span class="filter-count-badge">${filterCount}</span>` : '';
+
+      let formattedValue;
+      switch (card.valueFormat) {
+        case 'currency':
+          formattedValue = "₱" + formatNumber(card.value);
+          break;
+        case 'percent':
+          formattedValue = (card.value || 0).toFixed(2) + "%";
+          break;
+        default:
+          formattedValue = formatNumber(card.value);
+      }
+      cardEl.innerHTML = `
+  <button class="edit-card-btn absolute top-2 right-8 text-gray-400 hover:text-blue-500">
+    <i class="fas fa-edit"></i>
+  </button>
+  <button class="remove-card-btn absolute top-2 right-2 text-gray-400 hover:text-red-500">
+    <i class="fas fa-times"></i>
+  </button>
+  <div class="flex flex-col items-center justify-center h-full pt-2">
+    <h2 class="text-sm font-medium mb-1 text-center px-1">${card.title}</h2>
+    <p class="text-xl font-light mb-4 text-center">${formattedValue}</p>
+    <div class="card-filter-container relative inline-block text-left w-full flex justify-center"></div>
+  </div>
+`;
+
+      const editBtn = cardEl.querySelector(".edit-card-btn");
+      editBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const cardToEdit = dashboardData.find(c => c.id === card.id);
+        if (cardToEdit) {
+          openAddCardModal(cardToEdit);
+        }
+      });
+
       const removeBtn = cardEl.querySelector(".remove-card-btn");
       removeBtn.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -183,16 +207,11 @@ function createCards() {
       });
 
       const filterContainer = cardEl.querySelector('.card-filter-container');
-      if (card.filterOptions && Object.keys(card.filterOptions).length > 0) {
-      // Always add filter button
+      // if (card.filterOptions && Object.keys(card.filterOptions).length > 0) {
       const filterButton = document.createElement("button");
       filterButton.type = "button";
-      filterButton.className = "filter-button mt-4";
-      filterButton.innerHTML = `
-        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M6 12h12M9 18h6"></path>
-        </svg>
-    `;
+      filterButton.className = "filter-button mt-4 relative flex items-center justify-center";
+      filterButton.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="2 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M6 12h12M9 18h6"></path></svg>${badgeHTML}`;
       filterContainer.appendChild(filterButton);
 
       // Dropdown
@@ -208,10 +227,15 @@ function createCards() {
       const globalAllRadio = document.createElement("input");
       globalAllRadio.type = "radio";
       globalAllRadio.name = `filter-${card.id}-master-reset`;
-      globalAllRadio.checked = Object.keys(activeDashboardFilters).length === 0;
+      globalAllRadio.checked = filterCount === 0;
+
       globalAllRadio.addEventListener('change', () => {
-        activeDashboardFilters = {};
-        renderDashboard();
+        const targetCard = dashboardData.find(c => c.id === card.id);
+        if (targetCard) {
+          targetCard.localFilters = {};
+          recalculateCardValue(targetCard);
+          renderDashboard();
+        }
       });
       globalAllLabel.appendChild(globalAllRadio);
       const globalAllText = document.createElement('span');
@@ -221,7 +245,7 @@ function createCards() {
       dropdown.appendChild(globalAllGroup);
 
       // Filter groups
-      function createFilterGroup(title, options, filterTypeId, showInternalAll) {
+      function createFilterGroup(title, options, filterTypeId) {
         const group = document.createElement("div");
         group.className = "px-3 py-2 border-b border-gray-300";
         group.innerHTML = `<p class="font-semibold mb-1">${title}</p>`;
@@ -229,12 +253,18 @@ function createCards() {
 
         const handleFilterChange = (event) => {
           const value = event.target.value;
+          const targetCard = dashboardData.find(c => c.id === card.id);
+          if (!targetCard) return;
+
+          if (!targetCard.localFilters) targetCard.localFilters = {};
+
           if (value === 'all') {
-            delete activeDashboardFilters[filterTypeId];
+            delete targetCard.localFilters[filterTypeId];
           } else {
-            activeDashboardFilters[filterTypeId] = value;
+            targetCard.localFilters[filterTypeId] = value;
           }
-          if (globalAllRadio) globalAllRadio.checked = false;
+
+          recalculateCardValue(targetCard);
           renderDashboard();
         };
 
@@ -253,12 +283,9 @@ function createCards() {
           label.appendChild(textSpan);
           return label;
         };
-
-        if (showInternalAll) {
-          group.appendChild(createRadioOption('all', 'All', !activeDashboardFilters[filterTypeId]));
-        }
+        group.appendChild(createRadioOption('all', 'All', !card.localFilters?.[filterTypeId]));
         options.forEach(opt => {
-          group.appendChild(createRadioOption(opt, opt, activeDashboardFilters[filterTypeId] === opt));
+          group.appendChild(createRadioOption(opt, opt, card.localFilters?.[filterTypeId] === opt));
         });
         return group;
       }
@@ -285,7 +312,7 @@ function createCards() {
         });
         dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
       });
-      }
+      //}
 
       cardsContainer.appendChild(cardEl);
     });
@@ -293,149 +320,473 @@ function createCards() {
     const displayedIds = new Set(dashboardData.map(c => c.id));
     const hasMoreCards = masterDashboardData.some(c => !displayedIds.has(c.id));
 
-    if (hasMoreCards) {
-      const addCardWidget = document.createElement("div");
-      addCardWidget.className = "card card-placeholder cannot-drag";
-      addCardWidget.innerHTML = `
-                <div class="flex flex-col items-center justify-center h-full">
-                    <svg class="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                    <span class="mt-2 text-sm font-medium text-gray-500">Add Card</span>
-                </div>
-            `;
+    const addCardWidget = document.createElement("div");
+    addCardWidget.className = "card card-placeholder cannot-drag";
+    addCardWidget.innerHTML = `
+<div class="flex flex-col items-center justify-center h-full">
+<svg class="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+<span class="mt-2 text-sm font-medium text-gray-500">Add Card</span>
+</div>
+`;
 
-      addCardWidget.addEventListener('click', () => {
-        const nextCardToAdd = masterDashboardData.find(c => !displayedIds.has(c.id));
-        if (nextCardToAdd) {
-          dashboardData.push(nextCardToAdd);
-          saveCardLayout();
-          createCards();
-        }
-      });
-      cardsContainer.appendChild(addCardWidget);
-    }
+    addCardWidget.addEventListener('click', () => {
+      openAddCardModal();
+    });
+    cardsContainer.appendChild(addCardWidget);
+
   } catch (error) {
     console.error("Error creating cards:", error);
   }
 }
 
-function openAddWidgetModal() {
-  // Remove any existing modal first
+async function openAddCardModal(cardToEdit = null) {
+  const isEditMode = cardToEdit !== null;
+
+  // Remove existing modal
   const existingModal = document.querySelector('.widget-modal-overlay');
   if (existingModal) existingModal.remove();
 
   const modalOverlay = document.createElement('div');
-  modalOverlay.className = 'widget-modal-overlay'; // Style this class with CSS
+  modalOverlay.className = 'widget-modal-overlay';
+
   modalOverlay.innerHTML = `
-        <div class="widget-modal">
-            <h3 class="widget-modal-title">Add New Widget</h3>
-            <p class="widget-modal-text">Select a widget to add to your dashboard.</p>
-            <div class="form-group">
-                <label for="widget-type">Widget Type</label>
-                <select id="widget-type">
-                    <option value="totalTasks">Total Tasks</option>
-                    <option value="completedTasks">Completed Tasks</option>
-                    <option value="cardBalance">Card Balance</option>
-                </select>
+    <div class="add-card-modal">
+      <div class="modal-header">
+        <h3>${isEditMode ? 'Edit Card' : 'Add Card'}</h3>
+      </div>
+
+      <div class="modal-body">
+        <div class="modal-preview-pane">
+          <div class="preview-card-container">
+            <div class="card relative preview-card">
+              <input type="text" id="preview-title-input" class="preview-title-input" value="New Metric Card">
+              <p id="preview-value" class="preview-value-text">0</p>
             </div>
-            <div class="widget-modal-actions">
-                <button id="cancel-widget-btn">Cancel</button>
-                <button id="add-widget-btn">Add Widget</button>
-            </div>
+          </div>
         </div>
-    `;
+
+        <div class="modal-config-pane">
+          <!-- Card Data Section -->
+          <div class="config-section">
+            <h4 class="config-header">Card Data</h4>
+            <div class="form-group">
+              <label for="metric-type">Value Type</label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <select id="metric-type" class="modal-select" style="flex: 1;"></select>
+                <select id="calc-type" class="modal-select" style="width: 140px; display: none;">
+                  <option value="sum">Sum</option>
+                  <option value="avg">Average</option>
+                  <option value="min">Min</option>
+                  <option value="max">Max</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Display Format -->
+            <div class="form-group">
+              <label for="value-format">Display Format</label>
+              <select id="value-format" class="modal-select">
+                <option value="number">Plain Number</option>
+                <option value="currency">Currency</option>
+                <option value="percent">Percentage</option>
+              </select>
+            </div>
+          </div>
+          
+          <hr class="config-divider">
+
+          <div class="config-section">
+            <h4 class="config-header">Card Styles</h4>
+            <div class="form-group">
+              <label>Background Color</label>
+              <div class="color-picker-container">
+                <button id="bg-color-button" class="color-display"></button>
+                <div id="bg-color-palette" class="color-palette hidden">
+                  <div class="palette-section">
+                    <div class="palette-title">Suggested Colors</div>
+                    <div class="palette-grid" id="bg-relaxing-colors"></div>
+                  </div>
+                  <div class="palette-section">
+                    <div class="palette-title">Recent Colors</div>
+                    <div class="palette-grid" id="bg-recent-colors"></div>
+                  </div>
+                  <div class="palette-section">
+                    <input type="color" id="bg-color-picker">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Text Color</label>
+              <div class="color-picker-container">
+                <button id="text-color-button" class="color-display"></button>
+                <div id="text-color-palette" class="color-palette hidden">
+                  <div class="palette-section">
+                    <div class="palette-title">Suggested Colors</div>
+                    <div class="palette-grid" id="text-relaxing-colors"></div>
+                  </div>
+                  <div class="palette-section">
+                    <div class="palette-title">Recent Colors</div>
+                    <div class="palette-grid" id="text-recent-colors"></div>
+                  </div>
+                  <div class="palette-section">
+                    <input type="color" id="text-color-picker">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Font Style</label>
+              <select id="font-style-select" class="modal-select">
+                <option value="normal">Normal</option>
+                <option value="bold">Bold</option>
+                <option value="italic">Italic</option>
+              </select>
+            </div>
+          </div>
+
+          <hr class="config-divider">
+
+          <div class="config-section">
+            <h4 class="config-header">Filters</h4>
+            <div class="add-filter-wrapper">
+              <button id="add-filter-btn" class="add-filter-button">
+                <span class="material-icons-outlined">add</span>
+                Add Filter
+              </button>
+              <div id="add-filter-menu" class="add-filter-menu hidden"></div>
+            </div>
+            <div id="active-filters-container"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="cancel-add-card" class="modal-button-secondary">Cancel</button>
+        <button id="confirm-add-card" class="modal-button-primary">${isEditMode ? 'Save Changes' : 'Add Card'}</button>
+      </div>
+    </div>
+  `;
 
   document.body.appendChild(modalOverlay);
 
-  const closeModal = () => modalOverlay.remove();
+  // --- State ---
+  let cardConfig = {
+    title: isEditMode ? cardToEdit.title : 'New Card',
+    metric: isEditMode ? cardToEdit.metric || 'count' : 'count',
+    costCalcType: isEditMode ? cardToEdit.costCalcType || 'sum' : 'sum', // NEW
+    valueFormat: isEditMode ? cardToEdit.valueFormat || 'number' : 'number',
+    filters: isEditMode ? { ...(cardToEdit.baseFilters || {}) } : {}
+  };
 
-  modalOverlay.addEventListener('click', (e) => {
-    if (e.target === modalOverlay) closeModal();
-  });
-  document.getElementById('cancel-widget-btn').addEventListener('click', closeModal);
-  document.getElementById('add-widget-btn').addEventListener('click', () => {
-    const selectedWidget = document.getElementById('widget-type').value;
-    alert(`Logic to add the "${selectedWidget}" card would go here.`);
-    closeModal();
-  });
-}
+  const titleInput = modalOverlay.querySelector('#preview-title-input');
+  const metricSelect = modalOverlay.querySelector('#metric-type');
+  const calcTypeSelect = modalOverlay.querySelector('#calc-type');
+  const formatSelect = modalOverlay.querySelector('#value-format');
+  titleInput.value = cardConfig.title;
+  formatSelect.value = cardConfig.valueFormat;
 
-function addPlaceholderWidgets() {
-  // Find the container for the charts
-  const chartArea = document.querySelector('.chart-section');
-  if (!chartArea) return;
+  const previewValueEl = modalOverlay.querySelector('#preview-value');
+  const addFilterBtn = modalOverlay.querySelector('#add-filter-btn');
+  const addFilterMenu = modalOverlay.querySelector('#add-filter-menu');
+  const activeFiltersContainer = modalOverlay.querySelector('#active-filters-container');
 
-  // Avoid adding duplicate "Add Graph" widgets
-  if (chartArea.querySelector(".chart-placeholder")) return;
+  const allFilterableColumns = [...projectConfig.defaultColumns, ...projectConfig.customColumns]
+    .filter(c => c.options && c.options.length > 0);
 
-  // Create and add the "Add Graph" widget
-  const addGraphWidget = document.createElement("div");
-  addGraphWidget.className = "chart-container chart-placeholder flex items-center justify-center cursor-pointer border-2 border-dashed border-gray-300 hover:border-blue-500 transition-colors duration-300 rounded-xl p-6 bg-gray-50 hover:bg-blue-50";
-  addGraphWidget.innerHTML = `
-        <div class="flex flex-col items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-400 group-hover:text-blue-500 transition-colors duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            <span class="mt-3 text-sm font-medium text-gray-600 group-hover:text-blue-600 transition-colors">Add Graph</span>
-        </div>
-    `;
-
-  addGraphWidget.addEventListener('click', () => {
-    addNewChart();
+  const allPossibleFilterOptions = {};
+  allFilterableColumns.forEach(col => {
+    if (col.options) {
+      allPossibleFilterOptions[col.name] = col.options.map(o => o.name);
+    }
   });
 
-  chartArea.appendChild(addGraphWidget);
-}
+  try {
+    if (!projectDocRef) throw new Error("Project reference is not available.");
+    const sectionsQuery = query(collection(projectDocRef, 'sections'));
+    const sectionsSnapshot = await getDocs(sectionsQuery);
+    const sectionOptions = sectionsSnapshot.docs.map(doc => ({ name: doc.data().title }));
 
+    if (sectionOptions.length > 0) {
+      allFilterableColumns.push({
+        id: 'sectionTitle',
+        name: 'Section',
+        options: sectionOptions
+      });
+    }
+  } catch (error) {
+    console.error("Error fetching sections for filter:", error);
+  }
 
-function renderDashboard() {
-  console.log("Rendering dashboard with filters:", activeDashboardFilters);
-
-  const filteredDocs = fullTasksSnapshot.docs.filter(doc => {
-    const task = doc.data();
-
-    // This loop now checks the task against every active filter
-    for (const columnId in activeDashboardFilters) {
-      const filterValue = activeDashboardFilters[columnId];
-      let matches = false; // Start by assuming the task does not match
-
-      // **THE FIX IS HERE**: We now check all possible fields for a match.
-      if (columnId === 'status') {
-        // For status, we check BOTH the current and previous status.
-        if (task.status === filterValue || task.previousStatus === filterValue) {
-          matches = true;
+  // --- Update Preview ---
+  const updatePreview = () => {
+    const filteredDocs = fullTasksSnapshot.docs.filter(doc => {
+      const task = doc.data();
+      return Object.entries(cardConfig.filters).every(([colId, filterValue]) => {
+        if (!filterValue) return true;
+        if (colId === 'status') {
+          const isCurrentStatus = task.status === filterValue;
+          const wasPreviousAndIsNowCompleted =
+            task.previousStatus === filterValue && task.status === 'Completed';
+          return isCurrentStatus || wasPreviousAndIsNowCompleted;
         }
-      } else if (columnId === 'priority') {
-        // For source/priority, we check the top-level 'priority' field.
-        if (task.priority === filterValue) {
-          matches = true;
+        let taskVal;
+        if (colId === 'sectionTitle') {
+          taskVal = task.sectionTitle;
+        } else {
+          const isCustom = !projectConfig.defaultColumns.some(c => c.id == colId);
+          taskVal = isCustom ? task.customFields?.[colId] : task[colId];
         }
-      } else {
-        if (task.customFields && task.customFields[columnId] === filterValue) {
-          matches = true;
+        return taskVal === filterValue;
+      });
+    });
+
+    const filteredSnapshot = { docs: filteredDocs, size: filteredDocs.length };
+    const statusColumn = projectConfig.defaultColumns.find(c => c.id === 'status');
+    const costingColumns = projectConfig.customColumns.filter(c => c.type === 'Costing' || c.type === 'Number');
+
+    const completionStatusName = statusColumn?.options?.find(o => o.name.toLowerCase() === 'completed')?.name;
+    const cancelledStatusName = statusColumn?.options?.find(o => o.name.toLowerCase() === 'cancelled')?.name;
+
+    let generalCounts = { completed: 0, overdue: 0 };
+    let paymentMadeTotal = 0;
+    let balanceTotal = 0;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    filteredSnapshot.docs.forEach(doc => {
+      const task = doc.data();
+      let taskTotalCost = 0;
+      costingColumns.forEach(col => {
+        const costValue = task.customFields?.[col.id];
+        if (typeof costValue === 'number') taskTotalCost += costValue;
+      });
+
+      if (task.status === completionStatusName) {
+        generalCounts.completed++;
+        paymentMadeTotal += taskTotalCost;
+      } else if (task.status !== cancelledStatusName) {
+        balanceTotal += taskTotalCost;
+        if (task.dueDate && new Date(task.dueDate) < today) {
+          generalCounts.overdue++;
         }
       }
+    });
 
-      // If after all checks, this one filter did not find a match, we exclude the task.
-      if (!matches) {
-        return false;
+    let value = 0;
+
+    // --- Cost-specific calculation ---
+    if (cardConfig.metric.startsWith('cost-')) {
+      const fieldId = cardConfig.metric.replace('cost-', '');
+      const nums = filteredSnapshot.docs
+        .map(doc => doc.data().customFields?.[fieldId])
+        .filter(v => typeof v === 'number');
+
+      switch (cardConfig.costCalcType) {
+        case 'sum':
+          value = nums.reduce((a, b) => a + b, 0);
+          break;
+        case 'avg':
+          value = nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : 0;
+          break;
+        case 'min':
+          value = nums.length ? Math.min(...nums) : 0;
+          break;
+        case 'max':
+          value = nums.length ? Math.max(...nums) : 0;
+          break;
+      }
+    }
+    else {
+      // --- Existing metric calculation ---
+      switch (cardConfig.metric) {
+        case 'count': value = filteredSnapshot.size; break;
+        case 'completedTasks': value = generalCounts.completed; break;
+        case 'overdueTasks': value = generalCounts.overdue; break;
+        case 'cardBalance': value = balanceTotal; break;
+        case 'totalPaymentMade': value = paymentMadeTotal; break;
       }
     }
 
-    // If the task passed all active filters, we include it.
-    return true;
+    // Apply display format
+    if (cardConfig.valueFormat === 'currency') {
+      previewValueEl.textContent = "₱" + formatNumber(value);
+    } else if (cardConfig.valueFormat === 'percent') {
+      previewValueEl.textContent = value.toFixed(2) + "%";
+    } else {
+      previewValueEl.textContent = formatNumber(value);
+    }
+  };
+
+  // --- Build Value Type dropdown ---
+  let calculationOptions = [
+    { id: 'count', name: 'Count of Tasks' },
+    { id: 'completedTasks', name: 'Completed Tasks' },
+    { id: 'overdueTasks', name: 'Overdue Tasks' },
+    { id: 'cardBalance', name: 'Card Balance' },
+    { id: 'totalPaymentMade', name: 'Total Payment Made' }
+  ];
+
+  // Add each costing column as a "Cost" type option
+  projectConfig.customColumns
+    .filter(c => c.type === 'Costing')
+    .forEach(c => {
+      calculationOptions.push({
+        id: `cost-${c.id}`, // unique per costing column
+        name: `${c.name}` // shows column name
+      });
+    });
+
+  // Fill metric select
+  metricSelect.innerHTML = calculationOptions
+    .map(opt => `<option value="${opt.id}">${opt.name}</option>`)
+    .join('');
+
+  metricSelect.value = cardConfig.metric || 'count';
+  calcTypeSelect.value = cardConfig.costCalcType || 'sum';
+
+  // --- Event Listeners ---
+  titleInput.addEventListener('input', e => { cardConfig.title = e.target.value; });
+
+  metricSelect.addEventListener('change', e => {
+    cardConfig.metric = e.target.value;
+    calcTypeSelect.style.display = cardConfig.metric.startsWith('cost-') ? 'block' : 'none';
+    updatePreview();
   });
 
-  const filteredSnapshot = { docs: filteredDocs, size: filteredDocs.length, forEach: cb => filteredDocs.forEach(cb) };
-
-  const updatedCardValues = aggregateTaskData(filteredSnapshot);
-
-  // Keep only the existing cards (preserve layout)
-  dashboardData.forEach(card => {
-    const updatedCard = updatedCardValues.find(c => c.id === card.id);
-    if (updatedCard) card.value = updatedCard.value;
+  calcTypeSelect.addEventListener('change', e => {
+    cardConfig.costCalcType = e.target.value;
+    updatePreview();
   });
+
+  formatSelect.addEventListener('change', e => { cardConfig.valueFormat = e.target.value; updatePreview(); });
+
+  // Filters (unchanged)
+  addFilterBtn.addEventListener('click', e => { e.stopPropagation(); addFilterMenu.classList.toggle('hidden'); });
+
+  addFilterMenu.innerHTML = allFilterableColumns.map(col => `<a href="#" class="add-filter-menu-item" data-col-id="${col.id}">${col.name}</a>`).join('');
+  addFilterMenu.querySelectorAll('.add-filter-menu-item').forEach(item => {
+    item.addEventListener('click', e => {
+      e.preventDefault();
+      const colId = item.dataset.colId;
+      if (!cardConfig.filters.hasOwnProperty(colId)) {
+        cardConfig.filters[colId] = null;
+        renderActiveFilterPanels();
+      }
+      addFilterMenu.classList.add('hidden');
+    });
+  });
+
+  const closeModal = () => {
+    modalOverlay.remove();
+    document.removeEventListener('click', globalClickHandler);
+  };
+
+  modalOverlay.querySelector('#cancel-add-card').addEventListener('click', closeModal);
+
+  let globalClickHandler = e => {
+    if (!addFilterBtn.contains(e.target) && !addFilterMenu.contains(e.target)) {
+      addFilterMenu.classList.add('hidden');
+    }
+    if (e.target === modalOverlay) {
+      closeModal();
+    }
+  };
+  document.addEventListener('click', globalClickHandler);
+
+  modalOverlay.querySelector('#confirm-add-card').addEventListener('click', () => {
+    if (isEditMode) {
+      const cardToUpdate = dashboardData.find(c => c.id === cardToEdit.id);
+      if (cardToUpdate) {
+        cardToUpdate.title = cardConfig.title;
+        cardToUpdate.metric = cardConfig.metric;
+        cardToUpdate.valueFormat = cardConfig.valueFormat;
+        cardToUpdate.baseFilters = cardConfig.filters;
+        cardToUpdate.localFilters = { ...cardConfig.filters };
+        cardToUpdate.costCalcType = cardConfig.costCalcType || 'sum';
+
+        console.log(cardToUpdate);
+        recalculateCardValue(cardToUpdate);
+      }
+    } else {
+      const finalValue = parseFloat(previewValueEl.textContent.replace(/,/g, '').replace(/[₱%]/g, ''));
+      const newCardId = `metric-${Date.now()}`;
+      dashboardData.push({
+        id: newCardId,
+        title: cardConfig.title,
+        value: finalValue,
+        metric: cardConfig.metric,
+        valueFormat: cardConfig.valueFormat,
+        baseFilters: cardConfig.filters,
+        filterOptions: allPossibleFilterOptions,
+        localFilters: { ...cardConfig.filters },
+        costCalcType: cardConfig.costCalcType || 'sum'
+      });
+    }
+    saveCardLayout();
+    renderDashboard();
+    closeModal();
+  });
+
+  renderActiveFilterPanels();
+  calcTypeSelect.style.display = cardConfig.metric.startsWith('cost-') ? 'block' : 'none';
+  updatePreview();
+
+  function renderActiveFilterPanels() {
+    activeFiltersContainer.innerHTML = '';
+    Object.keys(cardConfig.filters).forEach(colId => {
+      const column = allFilterableColumns.find(c => c.id == colId);
+      if (!column) return;
+      const panel = document.createElement('div');
+      panel.className = 'filter-panel';
+      panel.innerHTML = `
+        <div class="filter-panel-header">
+          <span>${column.name}</span>
+          <button class="remove-filter-btn" data-col-id="${colId}">
+            <span class="material-icons-outlined">close</span>
+          </button>
+        </div>
+      `;
+      const panelBody = document.createElement('div');
+      panelBody.className = 'filter-panel-body';
+      const radioGroupName = `modal-filter-${colId}`;
+
+      const allOptionLabel = document.createElement('label');
+      allOptionLabel.className = 'radio-label';
+      allOptionLabel.innerHTML = `<input type="radio" name="${radioGroupName}" value=""> <span>All ${column.name}</span>`;
+      allOptionLabel.querySelector('input').checked = !cardConfig.filters[colId];
+      allOptionLabel.querySelector('input').onchange = () => {
+        delete cardConfig.filters[colId];
+        renderActiveFilterPanels();
+        updatePreview();
+      };
+      panelBody.appendChild(allOptionLabel);
+
+      column.options.forEach(opt => {
+        const optLabel = document.createElement('label');
+        optLabel.className = 'radio-label';
+        optLabel.innerHTML = `<input type="radio" name="${radioGroupName}" value="${opt.name}"> <span>${opt.name}</span>`;
+        optLabel.querySelector('input').checked = cardConfig.filters[colId] === opt.name;
+        optLabel.querySelector('input').onchange = e => {
+          cardConfig.filters[colId] = e.target.value;
+          updatePreview();
+        };
+        panelBody.appendChild(optLabel);
+      });
+
+      panel.appendChild(panelBody);
+      activeFiltersContainer.appendChild(panel);
+    });
+  }
+}
+
+function renderDashboard() {
+  console.log("Rendering dashboard from current state.");
   createCards();
-  initCharts(projectConfig, filteredSnapshot);
+  initCharts(projectConfig, fullTasksSnapshot);
 }
 
 function getProjectIdFromUrl() {
@@ -443,47 +794,81 @@ function getProjectIdFromUrl() {
   return match ? match[1] : null;
 }
 
-/**
- * Utility function to format numbers with commas.
- * @param {number} num - The number to format.
- * @returns {string} The formatted number string.
- */
 function formatNumber(num) {
   const sign = num < 0 ? "-" : "";
   const val = Math.abs(num).toLocaleString("en-US");
   return sign + val;
 }
 
+function recalculateCardValue(targetCard) {
+  if (!targetCard || !fullTasksSnapshot) return 0;
+  const metric = typeof targetCard.metric === "string" ? targetCard.metric : "count";
 
-/**
- * Sets the displayed value of a specific card in the DOM.
- * @param {string} cardId - The ID of the card to update.
- * @param {number} value - The new value to display.
- */
-function setCardValue(cardId, value) {
-  try {
-    // Iterate through the actual DOM elements to find the correct card
-    const cardElements = cardsContainer.children;
-    for (let i = 0; i < cardElements.length; i++) {
-      const cardEl = cardElements[i];
-      // Check if the data-id matches the target cardId
-      if (cardEl.dataset.id === cardId) {
-        const valEl = cardEl.querySelector("p.text-xl");
-        if (valEl) {
-          valEl.textContent = formatNumber(value);
-        }
-        break; // Found and updated, exit loop
+  const baseFilters = targetCard.baseFilters || {};
+  const localFilters = targetCard.localFilters || {};
+  const combinedFilters = { ...baseFilters, ...localFilters };
+
+  const filteredDocs = fullTasksSnapshot.docs.filter(doc => {
+    const task = doc.data();
+    return Object.entries(combinedFilters).every(([colId, filterValue]) => {
+      if (!filterValue) return true; // allow "All"
+      if (colId === 'status') {
+        const isCurrentStatus = task.status === filterValue;
+        const wasPreviousAndIsNowCompleted =
+          task.previousStatus === filterValue && task.status === 'Completed';
+        return isCurrentStatus || wasPreviousAndIsNowCompleted;
       }
+      const isCustom = !projectConfig.defaultColumns.some(c => c.id === colId);
+      const taskValue = isCustom ? task.customFields?.[colId] : task[colId];
+      return taskValue === filterValue;
+    });
+  });
+
+  let finalValue = 0;
+
+  // --- Handle cost-based metrics ---
+  if (metric.startsWith("cost-")) {
+    const fieldId = metric.replace("cost-", "");
+    const nums = filteredDocs
+      .map(doc => doc.data().customFields?.[fieldId])
+      .filter(v => typeof v === "number");
+
+    switch (targetCard.costCalcType || "sum") {
+      case "sum":
+        finalValue = nums.reduce((a, b) => a + b, 0);
+        break;
+      case "avg":
+        finalValue = nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : 0;
+        break;
+      case "min":
+        finalValue = nums.length ? Math.min(...nums) : 0;
+        break;
+      case "max":
+        finalValue = nums.length ? Math.max(...nums) : 0;
+        break;
     }
-  } catch (error) {
-    console.error("Error setting card value:", error);
   }
+  // --- Handle normal metrics ---
+  else if (metric === "count") {
+    finalValue = filteredDocs.length;
+  } else if (metric === "completedTasks") {
+    finalValue = filteredDocs.filter(doc => doc.data().status === "Completed").length;
+  } else if (metric === "overdueTasks") {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    finalValue = filteredDocs.filter(doc => doc.data().dueDate && new Date(doc.data().dueDate) < today).length;
+  }
+
+  targetCard.value = finalValue;
+  return finalValue;
 }
+
 
 function initCharts(projectConfig, tasksSnapshot) {
   if (!projectConfig || !tasksSnapshot) return;
   try {
     console.log("Initializing charts with data...");
+
     const createChart = (id, config) => {
       const ctx = document.getElementById(id);
       if (!ctx) return;
@@ -692,9 +1077,13 @@ function cleanup() {
   }
 }
 
+
 function init() {
   onAuthStateChanged(auth, async (user) => {
     if (user) {
+      const widgetButton = document.getElementById('addwidget-btn');
+
+      const widgetDropdown = document.getElementById('widget-dropdown');
       const projectId = getProjectIdFromUrl();
       if (!projectId) {
         cleanup();
@@ -706,21 +1095,28 @@ function init() {
       if (!cardsContainer) return console.error("Cards container not found.");
 
       const success = await fetchInitialData(projectId);
-
       if (success) {
-        masterDashboardData = aggregateTaskData(fullTasksSnapshot);
+        const savedData = JSON.parse(localStorage.getItem(`dashboardLayout_${projectId}`));
 
-        const savedCardIds = JSON.parse(localStorage.getItem(`dashboardLayout_${projectId}`));
-        if (savedCardIds && savedCardIds.length > 0) {
-          // Re-create the dashboardData array based on the saved order of IDs
-          dashboardData = savedCardIds.map(id => masterDashboardData.find(card => card.id === id)).filter(Boolean);
+        if (savedData && savedData.length > 0 && typeof savedData[0] === 'object' && savedData[0] !== null) {
+          // It's the new format (array of objects), so we can use it.
+          dashboardData = savedData;
+          console.log("Loaded card layout from new object format.");
         } else {
-          // If nothing is saved, show the first 6 cards by default
+          // It's the old string format or empty/invalid. Load a default layout.
+          console.log("Old layout format detected. Loading default cards.");
+          masterDashboardData = aggregateTaskData(fullTasksSnapshot);
           dashboardData = masterDashboardData.slice(0, 6);
+          saveCardLayout();
         }
 
+        dashboardData.forEach(card => {
+          if (!card.localFilters) card.localFilters = {};
+          if (!card.baseFilters) card.baseFilters = {};
+          recalculateCardValue(card);
+        });
+
         renderDashboard();
-       // addPlaceholderWidgets();
         setupDragAndDrop();
         setupChartDragAndDrop();
         loadChartLayout();
@@ -728,6 +1124,34 @@ function init() {
         document.body.addEventListener("click", (e) => {
           if (!e.target.closest(".origin-top-left") && !e.target.closest(".filter-button")) {
             document.querySelectorAll(".origin-top-left").forEach((dd) => (dd.style.display = "none"));
+          }
+        });
+
+        widgetButton.addEventListener('click', (event) => {
+          event.stopPropagation();
+          widgetDropdown.classList.toggle('hidden');
+        });
+
+        const options = widgetDropdown.querySelectorAll('a');
+        const chartOption = options[0];
+        const cardOption = options[1];
+        chartOption.addEventListener('click', (event) => {
+          event.preventDefault();
+          console.log('Chart Widget option clicked!');
+          openAddCardModal();
+          widgetDropdown.classList.add('hidden');
+        });
+
+        cardOption.addEventListener('click', (event) => {
+          event.preventDefault();
+          console.log('Card Widget option clicked!');
+
+          widgetDropdown.classList.add('hidden');
+        });
+
+        document.addEventListener('click', () => {
+          if (!widgetDropdown.classList.contains('hidden')) {
+            widgetDropdown.classList.add('hidden');
           }
         });
         console.log("Dashboard initialized successfully.");
@@ -745,8 +1169,19 @@ function saveCardLayout() {
   const projectId = getProjectIdFromUrl();
   if (!projectId) return;
 
-  const visibleIds = dashboardData.map(card => card.id);
-  localStorage.setItem(`dashboardLayout_${projectId}`, JSON.stringify(visibleIds));
+  const layoutToSave = dashboardData.map(card => ({
+    id: card.id,
+    title: card.title,
+    metric: card.metric,
+    valueFormat: card.valueFormat,
+    costCalcType: card.costCalcType || 'sum',
+    baseFilters: card.baseFilters || {},
+    localFilters: card.localFilters || {},
+    filterOptions: card.filterOptions
+  }));
+
+  localStorage.setItem(`dashboardLayout_${projectId}`, JSON.stringify(layoutToSave));
+  console.log("Dashboard layout saved to localStorage.");
 }
 
 export { init };

@@ -64,6 +64,11 @@ let currentProjectId = null;
 // Global chat controller reference
 let chatController = null;
 let chatCleanup = null;
+let customTabLabels = {
+  list: '<span class="material-icons">list</span><span class="tab-name">List</span>',
+  board: '<span class="material-icons">view_week</span><span class="tab-name">Board</span>',
+  dashboard: '<span class="material-icons">insert_chart</span><span class="tab-name">Dashboard</span>'
+};
 
 /**
  * Main initialization function for the entire tasks section.
@@ -190,17 +195,7 @@ export function init(params) {
     };
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
   }
-  /**
-   * Fetches the data and reference for the currently selected project.
-   * This function is crucial as it determines which project's tasks are shown.
-   */
 
-
-  /**
-   * Fetches multiple user profiles by their UIDs.
-   * @param {string[]} uids - An array of user UIDs.
-   * @returns {Promise<Array<Object>>} A promise that resolves to an array of user profile objects.
-   */
   async function fetchMemberProfiles(uids) {
     if (!uids || uids.length === 0) return [];
     try {
@@ -211,6 +206,293 @@ export function init(params) {
       console.error("Error fetching member profiles:", error);
       return [];
     }
+  }
+
+  function applyCustomTabLabels() {
+    document.querySelectorAll('.tab-link').forEach(tabLink => {
+      const tabId = tabLink.getAttribute('data-tab');
+      const labelDiv = tabLink.querySelector('.tab-label');
+      if (tabId && labelDiv && customTabLabels[tabId]) {
+        labelDiv.innerHTML = customTabLabels[tabId];
+      }
+    });
+  }
+  async function saveCustomTabLabel(tabId, newLabelHtml) {
+    if (!currentUserId || !currentProjectId || !tabId || !newLabelHtml) return;
+
+    const userProjectStorageRef = doc(db, 'projectuserstorage', currentUserId, 'projects', currentProjectId);
+
+    try {
+      await setDoc(userProjectStorageRef, {
+        // Using a new field 'tabLabels' to store HTML
+        tabLabels: { [tabId]: newLabelHtml }
+      }, { merge: true });
+
+      customTabLabels[tabId] = newLabelHtml;
+      console.log(`✅ Successfully saved tab label for "${tabId}".`);
+    } catch (error) {
+      console.error("❌ Failed to save custom tab label:", error);
+      applyCustomTabLabels(); // Revert on failure
+    }
+  }
+
+  async function saveDefaultTab(tabId) {
+    if (!currentUserId || !currentProjectId) return;
+    const userProjectStorageRef = doc(db, 'projectuserstorage', currentUserId, 'projects', currentProjectId);
+    try {
+      await setDoc(userProjectStorageRef, { defaultTab: tabId }, { merge: true });
+      // Optionally provide user feedback
+      console.log(`✅ Default tab set to "${tabId}".`);
+    } catch (error) {
+      console.error("❌ Failed to set default tab:", error);
+    }
+  }
+
+  async function saveTabOrder(newOrder) {
+    if (!currentUserId || !currentProjectId) return;
+    console.log("Saving new tab order:", newOrder);
+    const userProjectStorageRef = doc(db, 'projectuserstorage', currentUserId, 'projects', currentProjectId);
+    try {
+      await setDoc(userProjectStorageRef, { tabOrder: newOrder }, { merge: true });
+    } catch (error) {
+      console.error("❌ Failed to save tab order:", error);
+    }
+  }
+
+  function enableTabFeatures() {
+    const tabsContainer = document.querySelector('.project-tabs ul');
+    if (!tabsContainer) return;
+
+    const closeExistingMenu = () => document.querySelector('.tab-options-menu')?.remove();
+
+    tabsContainer.addEventListener('click', (e) => {
+      const optionsBtn = e.target.closest('.tab-options-btn');
+      if (!optionsBtn) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      closeExistingMenu();
+
+      const link = optionsBtn.closest('.tab-link');
+      const tabId = link.getAttribute('data-tab');
+
+      // Create the feature-rich menu
+      const menu = document.createElement('div');
+      menu.className = 'tab-options-menu';
+      menu.innerHTML = `
+    <button data-action="rename">
+        <span class="material-icons">edit</span> Rename
+    </button>
+    <div class="menu-divider"></div>
+    <button data-action="duplicate">
+        <span class="material-icons">content_copy</span> Duplicate View
+    </button>
+    <button data-action="default">
+        <span class="material-icons">push_pin</span> Set as Default
+    </button>
+    <div class="menu-divider"></div>
+    <button data-action="moveLeft">
+        <span class="material-icons">arrow_back</span> Move Left
+    </button>
+    <button data-action="moveRight">
+        <span class="material-icons">arrow_forward</span> Move Right
+    </button>
+    <div class="menu-divider"></div>
+    <button data-action="copyLink">
+        <span class="material-icons">link</span> Copy Link to View
+    </button>
+`;
+
+      document.body.appendChild(menu);
+
+      // Position menu
+      const rect = optionsBtn.getBoundingClientRect();
+      menu.style.top = `${rect.bottom + 5}px`;
+      menu.style.left = `${rect.left - menu.offsetWidth + rect.width}px`;
+
+      // Handle menu actions
+      menu.addEventListener('click', async (menuEvent) => {
+        const button = menuEvent.target.closest('button');
+        if (!button) return;
+
+        closeExistingMenu();
+
+        switch (button.dataset.action) {
+          case 'rename':
+            setTimeout(() => triggerRename(link.querySelector('.tab-label'), link), 50);
+            break;
+          case 'default':
+            saveDefaultTab(tabId);
+            break;
+          case 'copyLink':
+            const url = `${window.location.origin}/tasks/${currentUserId}/${tabId}/${currentProjectId}`;
+            navigator.clipboard.writeText(url).then(() => {
+              // Simple feedback
+              button.textContent = 'Copied!';
+              setTimeout(() => menu.remove(), 1000);
+            });
+            break;
+          case 'duplicate':
+            const newName = prompt(`Enter a name for the duplicated view:`, `${nameSpan.textContent} Copy`);
+            if (newName) {
+              // In a real app, this would duplicate the view's configuration (filters, etc.)
+              // For now, we simulate by creating a new tab that points to the same component type.
+              const newTabId = `${tabId}_${Date.now()}`;
+              const newLabelHtml = nameSpan.parentElement.innerHTML.replace(nameSpan.textContent, newName);
+
+              // Add to Firestore
+              await saveCustomTabLabel(newTabId, newLabelHtml);
+              const newOrder = [...currentOrder, newTabId];
+              await saveTabOrder(newOrder);
+
+              // Re-render tabs from Firestore to show the new one
+              renderTabsFromOrder();
+            }
+            break;
+
+          case 'moveLeft':
+            if (currentIndex > 0) {
+              const newOrder = [...currentOrder];
+              [newOrder[currentIndex - 1], newOrder[currentIndex]] = [newOrder[currentIndex], newOrder[currentIndex - 1]];
+              await saveTabOrder(newOrder);
+              renderTabsFromOrder(newOrder);
+            }
+            break;
+
+          case 'moveRight':
+            if (currentIndex < currentOrder.length - 1) {
+              const newOrder = [...currentOrder];
+              [newOrder[currentIndex + 1], newOrder[currentIndex]] = [newOrder[currentIndex], newOrder[currentIndex + 1]];
+              await saveTabOrder(newOrder);
+              renderTabsFromOrder(newOrder);
+            }
+            break;
+        }
+      });
+
+      setTimeout(() => document.addEventListener('click', closeExistingMenu, { once: true }), 0);
+    });
+
+    const triggerRename = (labelDiv, link) => {
+      const originalHTML = labelDiv.innerHTML;
+      labelDiv.contentEditable = true;
+      labelDiv.focus();
+
+      const handleSave = async () => {
+        labelDiv.contentEditable = false;
+        const newLabelHtml = labelDiv.innerHTML.trim();
+        const tabId = link.getAttribute('data-tab');
+
+        labelDiv.removeEventListener('blur', handleSave);
+        labelDiv.removeEventListener('keydown', handleKeydown);
+
+        if (!newLabelHtml || newLabelHtml === originalHTML) {
+          labelDiv.innerHTML = originalHTML;
+          return;
+        }
+        await saveCustomTabLabel(tabId, newLabelHtml);
+      };
+
+      const handleKeydown = (ev) => {
+        if (ev.key === 'Enter') {
+          ev.preventDefault();
+          labelDiv.blur();
+        } else if (ev.key === 'Escape') {
+          labelDiv.innerHTML = originalHTML;
+          labelDiv.blur();
+        }
+      };
+
+      labelDiv.addEventListener('blur', handleSave);
+      labelDiv.addEventListener('keydown', handleKeydown);
+    };
+  }
+
+  function enableTabDragAndDrop() {
+    const tabsContainer = document.querySelector('.project-tabs ul');
+    if (!tabsContainer) return;
+
+    tabsContainer.addEventListener('dragstart', (e) => {
+      const draggingLi = e.target.closest('li');
+      if (!draggingLi) return;
+      // The timeout prevents the element from disappearing instantly
+      setTimeout(() => draggingLi.classList.add('dragging'), 0);
+    });
+
+    tabsContainer.addEventListener('dragend', (e) => {
+      const draggingLi = e.target.closest('li');
+      if (!draggingLi) return;
+      draggingLi.classList.remove('dragging');
+    });
+
+    tabsContainer.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      const afterElement = getDragAfterElement(tabsContainer, e.clientY);
+      document.querySelectorAll('.project-tabs li').forEach(li => {
+        li.classList.remove('drag-over-indicator');
+      });
+
+      if (afterElement == null) {
+        tabsContainer.lastElementChild.classList.add('drag-over-indicator');
+      } else {
+        afterElement.classList.add('drag-over-indicator');
+      }
+    });
+
+    tabsContainer.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      document.querySelectorAll('.project-tabs li').forEach(li => {
+        li.classList.remove('drag-over-indicator');
+      });
+      const draggingLi = document.querySelector('.project-tabs li.dragging');
+      if (!draggingLi) return;
+
+      const afterElement = getDragAfterElement(tabsContainer, e.clientY);
+      if (afterElement == null) {
+        tabsContainer.appendChild(draggingLi);
+      } else {
+        tabsContainer.insertBefore(draggingLi, afterElement);
+      }
+
+      // Create the new order array from the DOM
+      const newOrder = Array.from(tabsContainer.querySelectorAll('li a')).map(a => a.dataset.tab);
+      await saveTabOrder(newOrder);
+    });
+
+    const getDragAfterElement = (container, y) => {
+      const draggableElements = [...container.querySelectorAll('li:not(.dragging)')];
+      return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        if (offset < 0 && offset > closest.offset) {
+          return { offset: offset, element: child };
+        } else {
+          return closest;
+        }
+      }, { offset: Number.NEGATIVE_INFINITY }).element;
+    };
+  }
+
+  function renderTabsFromOrder(order) {
+    const tabsContainer = document.querySelector('.project-tabs ul');
+    const allTabs = Array.from(tabsContainer.querySelectorAll('li'));
+
+    // Create a map for quick lookup
+    const tabMap = new Map();
+    allTabs.forEach(li => {
+      const tabId = li.querySelector('a')?.dataset.tab;
+      if (tabId) tabMap.set(tabId, li);
+    });
+
+    // Clear the container and append in the correct order
+    tabsContainer.innerHTML = '';
+    order.forEach(tabId => {
+      const tabElement = tabMap.get(tabId);
+      if (tabElement) {
+        tabsContainer.appendChild(tabElement);
+      }
+    });
   }
 
   /**
@@ -557,6 +839,20 @@ export function init(params) {
         console.log("✅ Project icon color set.");
       }
 
+      console.log("Fetching custom tab names...");
+      if (currentUserId && currentProjectId) {
+        const userProjectStorageRef = doc(db, 'projectuserstorage', currentUserId, 'projects', currentProjectId);
+        const userStorageSnap = await getDoc(userProjectStorageRef);
+        if (userStorageSnap.exists() && userStorageSnap.data().tabNames) {
+          // Merge fetched names with defaults to handle cases where not all names are saved.
+          customTabNames = { ...customTabNames, ...userStorageSnap.data().tabNames };
+          console.log("✅ Custom tab names loaded:", customTabNames);
+        } else {
+          console.log("No custom tab names found, using defaults.");
+        }
+      }
+      applyCustomTabLabels();
+
       // --- SAVE TO RECENT HISTORY AFTER LOADING PROJECT HEADER ---
       console.log("Saving project to recent history...");
       await saveProjectToRecentHistory(
@@ -750,12 +1046,24 @@ export function init(params) {
       });
 
       await loadProjectHeader();
+      let defaultTabId = 'list'; // Fallback
+      if (currentUserId && currentProjectId) {
+        const userProjectStorageRef = doc(db, 'projectuserstorage', currentUserId, 'projects', currentProjectId);
+        const docSnap = await getDoc(userProjectStorageRef);
+        if (docSnap.exists() && docSnap.data().defaultTab) {
+          defaultTabId = docSnap.data().defaultTab;
+        }
+      }
+      const initialTabId = params.tabId || defaultTabId;
+      enableTabDragAndDrop();
+      enableTabFeatures();
+
       if (!chatController) {
         chatCleanup = floatingChatBox();
       }
       // 3. Load the initial tab content (which needs project context)
-      setActiveTabLink(tabId);
-      await loadTabContent(tabId);
+      setActiveTabLink(initialTabId);
+      await loadTabContent(initialTabId);
 
       console.log("Tasks section initialized and loaded successfully.");
 
@@ -786,7 +1094,6 @@ export function init(params) {
     currentLoadedProjectData = null;
     currentLoadedProjectMembers = []; // Also clear the members array
     console.log("Nullified project context (Ref, Data, Members).");
-
 
     // --- 2. CLEAN UP TAB-SPECIFIC MODULE ---
     // Clean up the last active tab's JS module (e.g., list.js, board.js)

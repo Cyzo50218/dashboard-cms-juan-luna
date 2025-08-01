@@ -1,3 +1,19 @@
+:root {
+  /* Variables */
+  --primary-bg: #ffffff;
+  --secondary-bg: #f9fafb;
+  /* Used for hover and section rows */
+  --border-color: #e5e7eb;
+  --accent-color: #4c6ef5;
+  --high-priority: #ff4d4f;
+  --medium-priority: #ffa940;
+  --low-priority: #52c41a;
+  --header-border-color: #d1d5db;
+  /* A slightly darker border for the header */
+  --header-height: 35px;
+  --task-row-padding: 0px 4px;
+}
+
 /* Card Styling */
 .card {
   display: flex;
@@ -121,7 +137,68 @@
   }
 }
 
+.add-card-modal .modal-select {
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  /* Rounded edges */
+  padding: 6px 10px;
+  background-color: white;
+  color: #333;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.add-card-modal .modal-select:hover {
+  background-color: transparent;
+  border-color: #000;
+  cursor: pointer;
+}
+
+/* Make the form-group spacing consistent */
+.add-card-modal .form-group {
+  margin-bottom: 16px;
+}
+
+.add-card-modal .form-group label {
+  font-weight: 500;
+  margin-bottom: 6px;
+  font-size: 12px;
+  display: block;
+}
+
+/* Align the metric + calc type neatly */
+.add-card-modal .form-group>div {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Make the second dropdown fixed width */
+.add-card-modal #calc-type {
+  min-width: 140px;
+}
+
+.edit-card-btn {
+  border: transparent;
+  position: absolute;
+  transform: translateX(6px);
+  background: transparent;
+}
+
+.edit-card-btn:hover {
+  border: transparent;
+  position: absolute;
+  background: transparent;
+}
+
 .remove-card-btn {
+  border: transparent;
+  position: absolute;
+  background: transparent;
+}
+
+.remove-card-btn:hover {
   border: transparent;
   position: absolute;
   background: transparent;
@@ -304,12 +381,77 @@
   /* Fix canvas rendering */
 }
 
-header h1 {
+.projecttask-header h1 {
+  margin-top: 8px;
   margin-left: 16px;
 }
 
-header p {
+.header-verytop {
+  border-bottom: 1px solid var(--border-color);
+  padding-left: 16px;
+  padding-bottom: 12px;
+}
+
+.header-verytop button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  background-color: transparent;
+  border: 1px solid var(--text-secondary-color);
+  border-radius: 8px;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-color);
+  transition: background-color 0.2s, color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.addWidgetButton span {
+  font-size: 14px;
+}
+
+button:hover {
+  background-color: #000000;
+  color: #fff;
+}
+
+#widget-dropdown {
+  position: absolute;
+  z-index: 10000;
+  width: 14rem;
+  margin-top: -8px;
+  margin-left: 15px;
+  background-color: #ffffff;
+  border-bottom: 1px solid transparent;
+  border-radius: 12px;
+  --tw-ring-color: rgba(0, 0, 0, 0);
+  --tw-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.176), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  box-shadow: 5px 0 5px 1px var(--tw-ring-color), var(--tw-shadow);
+}
+
+.hidden {
+  display: none;
+}
+
+.projecttask-header p {
   margin-left: 16px;
+}
+
+.projecttask-header {
+  width: 100%;
+  padding-top: 0.625rem;
+  /* 10px, from py-2.5 */
+  padding-bottom: 0.625rem;
+  /* 10px, from py-2.5 */
+  margin-bottom: 1rem;
+  /* 16px, from mb-4 */
+  border-bottom: 1px solid #e5e7eb;
+  /* from border-b and border-gray-200 */
 }
 
 .dashboard-container {
@@ -322,4 +464,325 @@ header p {
 
   overflow-y: auto;
   /* Prevents vertical scrolling on the board itself */
+}
+
+/* --- Add Card Modal Style Overhaul --- */
+.widget-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  backdrop-filter: blur(5px);
+}
+
+/* --- Add Card Modal Layout Refinements --- */
+.add-card-modal {
+  display: flex;
+  flex-direction: column;
+  /* Stack header, body, footer vertically */
+  width: 800px;
+  max-width: 90vw;
+  height: 620px;
+  /* Slightly increased height */
+  background-color: #f9fafb;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  animation: modal-fade-in 0.3s ease-out;
+}
+
+/* New Modal Header */
+.modal-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+  /* Prevent header from shrinking */
+}
+
+.modal-header h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+/* New Modal Body Wrapper */
+.modal-body {
+  display: flex;
+  flex-grow: 1;
+  /* Allow body to fill all available space */
+  overflow: hidden;
+  /* Important for child scrolling */
+}
+
+/* Panes are now children of .modal-body */
+.modal-preview-pane {
+  flex-basis: 45%;
+  background-color: #ffffff;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-config-pane {
+  flex-basis: 55%;
+  padding: 24px;
+  overflow-y: auto;
+  /* Allow this pane to scroll if content overflows */
+  border-left: 1px solid #e5e7eb;
+}
+
+/* New Modal Footer */
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  background-color: #ffffff;
+  flex-shrink: 0;
+  /* Prevent footer from shrinking */
+}
+
+/* Filter Section Refinement */
+.add-filter-wrapper {
+  margin-top: 12px;
+  /* Space between header and button */
+  margin-bottom: 20px;
+  /* Space between button and active filter panels */
+}
+
+/* --- Right Pane Enhancements --- */
+.config-header {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.config-divider {
+  border: none;
+  border-top: 2px solid #cccccc;
+  margin: 10px 0;
+}
+
+.config-header-action {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.preview-card-container {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+  gap: 8px;
+}
+
+.preview-title-input {
+  width: 100%;
+  border: none;
+  text-align: center;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  background-color: transparent;
+  padding: 4px;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+.preview-title-input:focus {
+  outline: none;
+  background-color: #e5e7eb;
+}
+
+.preview-value-text {
+  font-size: 2.25rem;
+  font-weight: 300;
+  color: #111827;
+  line-height: 1;
+}
+
+.color-picker-container {
+  position: relative;
+  display: inline-block;
+}
+
+.color-display {
+  width: 40px;
+  height: 32px;
+  border-radius: 8px;
+  /* rounded */
+  border: 1px solid #ccc;
+  cursor: pointer;
+}
+
+.color-palette {
+  position: absolute;
+  top: 40px;
+  left: 0;
+  background: white;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  padding: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 9999;
+}
+
+.palette-section {
+  margin-bottom: 8px;
+}
+
+.palette-title {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 5px;
+}
+
+.palette-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 24px);
+  gap: 5px;
+}
+
+.palette-swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid #ccc;
+}
+
+.palette-swatch.selected {
+  outline: 2px solid #007BFF;
+}
+
+.hidden {
+  display: none;
+}
+
+.add-filter-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: transparent;
+  border: none;
+  color: #3b82f6;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 8px;
+  transition: background-color 0.2s;
+}
+
+.add-filter-button:hover {
+  background-color: #eff6ff;
+}
+
+.add-filter-button .material-icons-outlined {
+  font-size: 20px;
+}
+
+.add-filter-menu {
+  position: absolute;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+  width: 200px;
+  overflow: hidden;
+  padding: 8px 0;
+}
+
+.add-filter-menu-item {
+  display: block;
+  padding: 8px 16px;
+  text-decoration: none;
+  color: #374151;
+  font-size: 0.875rem;
+}
+
+.add-filter-menu-item:hover {
+  background-color: #f3f4f6;
+}
+
+/* --- Active Filter Panel Styles --- */
+#active-filters-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.filter-panel {
+  background-color: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.filter-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  font-weight: 500;
+  color: #4b5563;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.remove-filter-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.remove-filter-btn:hover {
+  background-color: #fee2e2;
+  color: #ef4444;
+}
+
+.remove-filter-btn .material-icons-outlined {
+  font-size: 18px;
+}
+
+.filter-panel-body {
+  padding: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #2563eb;
 }
