@@ -397,6 +397,7 @@ async function openAddCardModal(cardToEdit = null) {
 
           <div class="config-section">
             <h4 class="config-header">Card Styles</h4>
+
             <div class="form-group">
               <label>Background Color</label>
               <div class="color-picker-container">
@@ -437,6 +438,7 @@ async function openAddCardModal(cardToEdit = null) {
               </div>
             </div>
 
+
             <div class="form-group">
     <label>Font Style</label>
     <select id="font-style-select" class="modal-select">
@@ -475,7 +477,6 @@ async function openAddCardModal(cardToEdit = null) {
 
   document.body.appendChild(modalOverlay);
 
-  // --- State ---
   let cardConfig = {
     title: isEditMode ? cardToEdit.title : 'New Card',
     metric: isEditMode ? cardToEdit.metric || 'count' : 'count',
@@ -494,6 +495,18 @@ async function openAddCardModal(cardToEdit = null) {
   const formatSelect = modalOverlay.querySelector('#value-format');
   titleInput.value = cardConfig.title;
   formatSelect.value = cardConfig.valueFormat;
+
+  const bgButton = modalOverlay.querySelector('#bg-color-button');
+  const bgPalette = modalOverlay.querySelector('#bg-color-palette');
+  const bgPicker = modalOverlay.querySelector('#bg-color-picker');
+  const bgRelaxing = modalOverlay.querySelector('#bg-relaxing-colors');
+  const bgRecent = modalOverlay.querySelector('#bg-recent-colors');
+
+  const textButton = modalOverlay.querySelector('#text-color-button');
+  const textPalette = modalOverlay.querySelector('#text-color-palette');
+  const textPicker = modalOverlay.querySelector('#text-color-picker');
+  const textRelaxing = modalOverlay.querySelector('#text-relaxing-colors');
+  const textRecent = modalOverlay.querySelector('#text-recent-colors');
 
   const previewValueEl = modalOverlay.querySelector('#preview-value');
   const addFilterBtn = modalOverlay.querySelector('#add-filter-btn');
@@ -527,7 +540,6 @@ async function openAddCardModal(cardToEdit = null) {
     console.error("Error fetching sections for filter:", error);
   }
 
-  // --- Update Preview ---
   const updatePreview = () => {
     const filteredDocs = fullTasksSnapshot.docs.filter(doc => {
       const task = doc.data();
@@ -628,7 +640,6 @@ async function openAddCardModal(cardToEdit = null) {
     }
   };
 
-  // --- Build Value Type dropdown ---
   let calculationOptions = [
     { id: 'count', name: 'Count of Tasks' },
     { id: 'completedTasks', name: 'Completed Tasks' },
@@ -700,19 +711,82 @@ async function openAddCardModal(cardToEdit = null) {
 
   function updatePreviewStyle() {
     const cardEl = modalOverlay.querySelector('.preview-card');
+    cardEl.style.backgroundColor = cardConfig.bgColor;
+    cardEl.style.color = cardConfig.textColor;
     cardEl.style.fontFamily = cardConfig.fontStyle;
   }
 
+  const relaxingColors = ["#F5F9FF", "#F2FFF5", "#FAF9F7", "#F5F5F5", "#FFFFFF", "#E3E3E3", "#FFD6D6", "#FFE7B8"];
+  let recentBgColors = [];
+  let recentTextColors = [];
+
+  function renderPalette(container, colors, currentColor, setColorFn) {
+    container.innerHTML = "";
+    colors.forEach(color => {
+      const swatch = document.createElement("div");
+      swatch.className = "palette-swatch";
+      swatch.style.backgroundColor = color;
+      if (color.toLowerCase() === currentColor.toLowerCase()) swatch.classList.add("selected");
+      swatch.addEventListener("click", () => setColorFn(color));
+      container.appendChild(swatch);
+    });
+  }
+
+  function setBgColor(color) {
+    cardConfig.bgColor = color;
+    bgButton.style.backgroundColor = color;
+    updatePreviewStyle();
+    if (!recentBgColors.includes(color)) {
+      recentBgColors.unshift(color);
+      if (recentBgColors.length > 6) recentBgColors.pop();
+    }
+    renderPalette(bgRelaxing, relaxingColors, color, setBgColor);
+    renderPalette(bgRecent, recentBgColors, color, setBgColor);
+  }
+
+  function setTextColor(color) {
+    cardConfig.textColor = color;
+    textButton.style.backgroundColor = color;
+    updatePreviewStyle();
+    if (!recentTextColors.includes(color)) {
+      recentTextColors.unshift(color);
+      if (recentTextColors.length > 6) recentTextColors.pop();
+    }
+    renderPalette(textRelaxing, relaxingColors, color, setTextColor);
+    renderPalette(textRecent, recentTextColors, color, setTextColor);
+  }
+
+  setBgColor(cardConfig.bgColor);
+  setTextColor(cardConfig.textColor);
+
   modalOverlay.querySelector('#cancel-add-card').addEventListener('click', closeModal);
+  bgButton.addEventListener("click", () => bgPalette.classList.toggle("hidden"));
+  textButton.addEventListener("click", () => textPalette.classList.toggle("hidden"));
+  bgPicker.addEventListener("input", e => { setBgColor(e.target.value); bgPalette.classList.add("hidden"); });
+  textPicker.addEventListener("input", e => { setTextColor(e.target.value); textPalette.classList.add("hidden"); });
 
   let globalClickHandler = e => {
+    // --- Close Add Filter Menu ---
     if (!addFilterBtn.contains(e.target) && !addFilterMenu.contains(e.target)) {
       addFilterMenu.classList.add('hidden');
     }
+
+    // --- Close Background Color Palette ---
+    if (!bgButton.contains(e.target) && !bgPalette.contains(e.target)) {
+      bgPalette.classList.add('hidden');
+    }
+
+    // --- Close Text Color Palette ---
+    if (!textButton.contains(e.target) && !textPalette.contains(e.target)) {
+      textPalette.classList.add('hidden');
+    }
+
+    // --- Close Modal if click outside ---
     if (e.target === modalOverlay) {
       closeModal();
     }
   };
+
   document.addEventListener('click', globalClickHandler);
 
   modalOverlay.querySelector('#confirm-add-card').addEventListener('click', () => {

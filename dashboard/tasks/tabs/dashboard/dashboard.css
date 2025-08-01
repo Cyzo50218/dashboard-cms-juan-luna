@@ -488,7 +488,7 @@ button:hover {
   /* Stack header, body, footer vertically */
   width: 800px;
   max-width: 90vw;
-  height: 620px;
+  height: 680px;
   /* Slightly increased height */
   background-color: #f9fafb;
   border-radius: 16px;
@@ -547,6 +547,7 @@ button:hover {
   gap: 12px;
   background-color: #ffffff;
   flex-shrink: 0;
+  z-index: 0;
   /* Prevent footer from shrinking */
 }
 
@@ -621,14 +622,12 @@ button:hover {
 
 .color-picker-container {
   position: relative;
-  display: inline-block;
 }
 
 .color-display {
   width: 40px;
   height: 32px;
   border-radius: 8px;
-  /* rounded */
   border: 1px solid #ccc;
   cursor: pointer;
 }
@@ -642,39 +641,53 @@ button:hover {
   border: 1px solid #ddd;
   padding: 10px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  z-index: 9999;
-}
-
-.palette-section {
-  margin-bottom: 8px;
-}
-
-.palette-title {
-  font-size: 12px;
-  color: #666;
-  margin-bottom: 5px;
-}
-
-.palette-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 24px);
-  gap: 5px;
-}
-
-.palette-swatch {
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
-  cursor: pointer;
-  border: 1px solid #ccc;
-}
-
-.palette-swatch.selected {
-  outline: 2px solid #007BFF;
+  z-index: 1000;
+  width: 180px;
 }
 
 .hidden {
   display: none;
+}
+
+.palette-title {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #555;
+}
+
+.palette-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.palette-section{
+  margin-top: 10px;
+}
+
+.palette-swatch {
+  width: 32px;
+  height: 28px;
+  border-radius: 4px;
+  cursor: pointer;
+  position: relative;
+  border: 1px solid #ccc;
+}
+
+.palette-swatch.selected::after {
+  content: "✔";
+  color: white;
+  font-size: 14px;
+  position: absolute;
+  top: 4px;
+  left: 8px;
+}
+
+.add-filter-wrapper {
+  position: relative;
+  display: inline-block;
+  /* Prevent flex/grid stretching */
 }
 
 .add-filter-button {
@@ -701,10 +714,14 @@ button:hover {
 
 .add-filter-menu {
   position: absolute;
+  top: calc(100% + 4px);
+  /* just below button */
+  left: 0;
   background-color: white;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 10;
+  z-index: 9999999;
+  /* force above everything */
   width: 200px;
   overflow: hidden;
   padding: 8px 0;
