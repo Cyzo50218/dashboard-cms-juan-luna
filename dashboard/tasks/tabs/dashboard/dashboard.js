@@ -438,13 +438,16 @@ async function openAddCardModal(cardToEdit = null) {
             </div>
 
             <div class="form-group">
-              <label>Font Style</label>
-              <select id="font-style-select" class="modal-select">
-                <option value="normal">Normal</option>
-                <option value="bold">Bold</option>
-                <option value="italic">Italic</option>
-              </select>
-            </div>
+    <label>Font Style</label>
+    <select id="font-style-select" class="modal-select">
+      <option value="inherit">Default</option>
+      <option value="'Roboto', sans-serif">Roboto</option>
+      <option value="'Open Sans', sans-serif">Open Sans</option>
+      <option value="'Lato', sans-serif">Lato</option>
+      <option value="'Poppins', sans-serif">Poppins</option>
+      <option value="'Merriweather', serif">Merriweather</option>
+    </select>
+  </div>
           </div>
 
           <hr class="config-divider">
@@ -478,8 +481,12 @@ async function openAddCardModal(cardToEdit = null) {
     metric: isEditMode ? cardToEdit.metric || 'count' : 'count',
     costCalcType: isEditMode ? cardToEdit.costCalcType || 'sum' : 'sum', // NEW
     valueFormat: isEditMode ? cardToEdit.valueFormat || 'number' : 'number',
-    filters: isEditMode ? { ...(cardToEdit.baseFilters || {}) } : {}
+    filters: isEditMode ? { ...(cardToEdit.baseFilters || {}) } : {},
+    bgColor: isEditMode ? cardToEdit.bgColor || '#F5F9FF' : '#F5F9FF',
+    textColor: isEditMode ? cardToEdit.textColor || '#000000' : '#000000',
+    fontStyle: isEditMode ? cardToEdit.fontStyle || 'normal' : 'normal'
   };
+
 
   const titleInput = modalOverlay.querySelector('#preview-title-input');
   const metricSelect = modalOverlay.querySelector('#metric-type');
@@ -664,7 +671,6 @@ async function openAddCardModal(cardToEdit = null) {
 
   formatSelect.addEventListener('change', e => { cardConfig.valueFormat = e.target.value; updatePreview(); });
 
-  // Filters (unchanged)
   addFilterBtn.addEventListener('click', e => { e.stopPropagation(); addFilterMenu.classList.toggle('hidden'); });
 
   addFilterMenu.innerHTML = allFilterableColumns.map(col => `<a href="#" class="add-filter-menu-item" data-col-id="${col.id}">${col.name}</a>`).join('');
@@ -684,6 +690,18 @@ async function openAddCardModal(cardToEdit = null) {
     modalOverlay.remove();
     document.removeEventListener('click', globalClickHandler);
   };
+
+  const fontStyleSelect = modalOverlay.querySelector('#font-style-select');
+
+  fontStyleSelect.addEventListener('change', (e) => {
+    cardConfig.fontStyle = e.target.value;
+    updatePreviewStyle();
+  });
+
+  function updatePreviewStyle() {
+    const cardEl = modalOverlay.querySelector('.preview-card');
+    cardEl.style.fontFamily = cardConfig.fontStyle;
+  }
 
   modalOverlay.querySelector('#cancel-add-card').addEventListener('click', closeModal);
 
