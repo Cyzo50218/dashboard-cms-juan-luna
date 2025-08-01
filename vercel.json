@@ -2,10 +2,6 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/**/*.js",
-      "use": "@vercel/node"
-    },
-    {
       "src": "./**/*",
       "use": "@vercel/static"
     }
@@ -13,10 +9,6 @@
   "routes": [
     {
       "handle": "filesystem"
-    },
-    {
-      "src": "/attachments/downloadProxy",
-      "dest": "/api/downloadProxy.js"
     },
     {
       "src": "^/$",
@@ -46,10 +38,6 @@
     {
       "src": "/(.*)",
       "dest": "/index.html"
-    },
-    {
-      "src": "/admin-dashboard/database",
-      "dest": "/admin/admin.html"
     }
   ]
 }
