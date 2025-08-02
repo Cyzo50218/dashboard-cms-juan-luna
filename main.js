@@ -28,6 +28,10 @@ function parseRoute() {
     const pathParts = window.location.pathname.split('/').filter(p => p);
     const queryParams = new URLSearchParams(window.location.search);
 
+    if (window.location.pathname.startsWith("/attachments/")) {
+        return; // do nothing → browser will just load the file
+    }
+
     // Default home route
     if (pathParts.length === 0) {
         return { section: 'home' };
