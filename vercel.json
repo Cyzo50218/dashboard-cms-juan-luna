@@ -6,12 +6,6 @@
       "use": "@vercel/static"
     }
   ],
-  "rewrites": [
-    {
-      "source": "/attachments/(.*)",
-      "destination": "https://us-central1-juan-luna-db.cloudfunctions.net/attachments/$1"
-    }
-  ],
   "routes": [
     {
       "handle": "filesystem"
