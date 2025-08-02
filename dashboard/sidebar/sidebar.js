@@ -984,9 +984,8 @@ window.TaskSidebar = (function () {
                 const storageRef = ref(storage, storagePath);
                 const snapshot = await uploadBytes(storageRef, fileToUpload);
                 const relativeDownloadURL = `/attachments/downloadProxy?path=${encodeURIComponent(snapshot.metadata.fullPath)}`;
-                const finalDownloadURL = messageHasImage
-                    ? `${ABSOLUTE_BASE}${relativeDownloadURL}`
-                    : relativeDownloadURL;
+                const finalDownloadURL = `https://us-central1-juan-luna-db.cloudfunctions.net/downloadProxy?path=${encodeURIComponent(snapshot.metadata.fullPath)}`;
+
 
                 const attachmentHtml = messageHasImage
                     ? `<img src="${finalDownloadURL}" alt="${attachmentName}" class="scalable-image">`
