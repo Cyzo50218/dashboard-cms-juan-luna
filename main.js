@@ -316,91 +316,99 @@ document.addEventListener("DOMContentLoaded", () => {
 
     onAuthStateChanged(auth, async (user) => {
         if (user) {
-            console.log("✅ Authenticated user found. Initializing dashboard...");
-            messageIntervalId = setInterval(showNextMessage, 1000);
 
-            // 👇 Update online status to true and lastSeen timestamp
-            const userStatusRef = doc(db, "users", user.uid);
-            await setDoc(userStatusRef, {
-                online: true,
-                lastSeen: serverTimestamp()
-            }, { merge: true });
+            if (window.location.pathname.startsWith("/attachments/")) {
+                // If it's an attachment, do absolutely nothing.
+                // Let the browser handle the request to the proxy.
+                console.log("Attachment URL detected, letting browser handle it.");
+            } else {
+                console.log("✅ Authenticated user found. Initializing dashboard...");
+                messageIntervalId = setInterval(showNextMessage, 1000);
 
-            // 👇 Optional: set offline status on window unload
-            window.addEventListener("beforeunload", async () => {
-                try {
-                    await setDoc(userStatusRef, {
-                        online: false,
-                        lastSeen: serverTimestamp()
-                    }, { merge: true });
-                    console.log("🟡 User marked offline before unload.");
-                } catch (err) {
-                    console.warn("Failed to mark user offline:", err.message);
-                }
-            });
-            await Promise.all([
-                loadHTML("#top-header", "/dashboard/header/header.html"),
-                loadHTML("#rootdrawer", "/dashboard/drawer/drawer.html"),
-                loadHTML("#right-sidebar", "/dashboard/sidebar/sidebar.html"),
-            ]);
+                // 👇 Update online status to true and lastSeen timestamp
+                const userStatusRef = doc(db, "users", user.uid);
+                await setDoc(userStatusRef, {
+                    online: true,
+                    lastSeen: serverTimestamp()
+                }, { merge: true });
 
-            try {
-                const userDoc = await getDoc(doc(db, "users", user.uid));
-                const selectedWorkspace = userDoc.data()?.selectedWorkspace;
-                if (selectedWorkspace) {
-                    const memberRef = doc(db, `workspaces/${selectedWorkspace}/members/${user.uid}`);
-                    const memberSnap = await getDoc(memberRef);
-                    if (!memberSnap.exists()) {
-                        await setDoc(memberRef, {
-                            userId: user.uid,
-                            selectedProjectId: "",
-                            selectedProjectWorkspaceVisibility: "workspace",
-                            lastAccessed: serverTimestamp()
-                        });
-                        console.log(`✅ Member doc initialized in workspaces/${selectedWorkspace}/members/${user.uid}`);
-                    } else {
-                        console.log(`ℹ️ Member doc already exists.`);
+                // 👇 Optional: set offline status on window unload
+                window.addEventListener("beforeunload", async () => {
+                    try {
+                        await setDoc(userStatusRef, {
+                            online: false,
+                            lastSeen: serverTimestamp()
+                        }, { merge: true });
+                        console.log("🟡 User marked offline before unload.");
+                    } catch (err) {
+                        console.warn("Failed to mark user offline:", err.message);
                     }
-                } else {
-                    console.warn("⚠️ No selectedWorkspace found in user doc.");
-                }
-            } catch (err) {
-                console.error("❌ Error creating member doc:", err.message);
-            }
+                });
+                await Promise.all([
+                    loadHTML("#top-header", "/dashboard/header/header.html"),
+                    loadHTML("#rootdrawer", "/dashboard/drawer/drawer.html"),
+                    loadHTML("#right-sidebar", "/dashboard/sidebar/sidebar.html"),
+                ]);
 
-            const runAndLogBackfill = async () => {
                 try {
-                    const res = await runAlgoliaBackfill();
-                    console.log("✅ Periodic Backfill success:", res.data.message);
+                    const userDoc = await getDoc(doc(db, "users", user.uid));
+                    const selectedWorkspace = userDoc.data()?.selectedWorkspace;
+                    if (selectedWorkspace) {
+                        const memberRef = doc(db, `workspaces/${selectedWorkspace}/members/${user.uid}`);
+                        const memberSnap = await getDoc(memberRef);
+                        if (!memberSnap.exists()) {
+                            await setDoc(memberRef, {
+                                userId: user.uid,
+                                selectedProjectId: "",
+                                selectedProjectWorkspaceVisibility: "workspace",
+                                lastAccessed: serverTimestamp()
+                            });
+                            console.log(`✅ Member doc initialized in workspaces/${selectedWorkspace}/members/${user.uid}`);
+                        } else {
+                            console.log(`ℹ️ Member doc already exists.`);
+                        }
+                    } else {
+                        console.warn("⚠️ No selectedWorkspace found in user doc.");
+                    }
                 } catch (err) {
-                    console.error("❌ Periodic Backfill error:", err.message);
+                    console.error("❌ Error creating member doc:", err.message);
                 }
-            };
-            runAndLogBackfill();
-            backfillIntervalId = setInterval(runAndLogBackfill, 60_000);
 
-            document.body.addEventListener('click', e => {
-                const link = e.target.closest('a[data-link]');
-                if (link) {
-                    e.preventDefault();
-                    history.pushState(null, '', link.href);
-                    router();
-                }
-            });
+                const runAndLogBackfill = async () => {
+                    try {
+                        const res = await runAlgoliaBackfill();
+                        console.log("✅ Periodic Backfill success:", res.data.message);
+                    } catch (err) {
+                        console.error("❌ Periodic Backfill error:", err.message);
+                    }
+                };
+                runAndLogBackfill();
+                backfillIntervalId = setInterval(runAndLogBackfill, 60_000);
 
-            window.TaskSidebar?.init();
-            window.addEventListener('popstate', router);
+                document.body.addEventListener('click', e => {
+                    const link = e.target.closest('a[data-link]');
+                    if (link) {
+                        e.preventDefault();
+                        history.pushState(null, '', link.href);
+                        router();
+                    }
+                });
 
-            // --- 👇 CHANGE 3: Clear the interval right after hiding the loader ---
-            setTimeout(() => {
-                hideInitialLoader();
-                if (messageIntervalId) {
-                    clearInterval(messageIntervalId);
-                    console.log("✅ Loader hidden and message interval stopped.");
-                }
-            }, navigator.connection?.effectiveType === '4g' ? 1200 : 1800);
+                window.TaskSidebar?.init();
+                window.addEventListener('popstate', router);
 
-            router(); // Initial route load
+                // --- 👇 CHANGE 3: Clear the interval right after hiding the loader ---
+                setTimeout(() => {
+                    hideInitialLoader();
+                    if (messageIntervalId) {
+                        clearInterval(messageIntervalId);
+                        console.log("✅ Loader hidden and message interval stopped.");
+                    }
+                }, navigator.connection?.effectiveType === '4g' ? 1200 : 1800);
+
+                router(); // Initial route load
+
+            }
 
         } else {
             console.log("⛔ No authenticated user. Redirecting to login...");
