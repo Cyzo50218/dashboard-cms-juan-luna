@@ -563,14 +563,14 @@ function attachRealtimeListeners(userId) {
 
                         if (imgTag && imgTag.src) {
                             const originalUrl = imgTag.src;
-                            const uniqueImageUrl = `${originalUrl}&t=${Date.now()}`;
+                            const oldestImageUrl = taskImageMap[task.id];
 
                             const taskId = doc.ref.parent.parent.id;
                             const existing = newImageMap[taskId];
 
                             if (!existing || (data.timestamp && (!existing.timestamp || data.timestamp.toMillis() < existing.timestamp.toMillis()))) {
                                 newImageMap[taskId] = {
-                                    imageUrl: uniqueImageUrl, // Store the NEW, unique URL
+                                    imageUrl: uniqueImageUrl,
                                     timestamp: data.timestamp
                                 };
                             }
