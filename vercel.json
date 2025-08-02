@@ -8,8 +8,8 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!api/|attachments/).*)",
-      "destination": "/index.html"
+      "source": "/attachments/(.*)",
+      "destination": "https://us-central1-juan-luna-db.cloudfunctions.net/attachments/$1"
     }
   ],
   "routes": [
