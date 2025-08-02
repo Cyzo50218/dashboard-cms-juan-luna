@@ -28,10 +28,6 @@ function parseRoute() {
     const pathParts = window.location.pathname.split('/').filter(p => p);
     const queryParams = new URLSearchParams(window.location.search);
 
-    if (window.location.pathname.startsWith("/attachments/")) {
-        return; // do nothing → browser will just load the file
-    }
-
     // Default home route
     if (pathParts.length === 0) {
         return { section: 'home' };
@@ -71,12 +67,14 @@ function parseRoute() {
  * The main router function. It determines the current route and loads the appropriate section.
  */
 function router() {
-    const routeParams = parseRoute();
-    console.log("Routing to:", routeParams);
 
     if (window.location.pathname.startsWith("/attachments/")) {
-        return; // do nothing → browser will just load the file
+        console.log("Attachment URL detected, skipping SPA router.");
+        return; // This stops the function before it can do anything else.
     }
+
+    const routeParams = parseRoute();
+    console.log("Routing to:", routeParams);
 
     if (routeParams.redirectTo) {
         window.location.href = routeParams.redirectTo;
