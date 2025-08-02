@@ -125,32 +125,37 @@ export const acceptWorkspaceInvitation = onCall(async (request) => {
 });
 
 export const downloadProxy = onRequest(async (req, res) => {
-    const filePath = req.query.path;
+  const path = req.query.path;
 
-    if (!filePath) {
-        return res.status(400).send("A file path is required.");
-    }
+  console.log("[downloadProxy] Incoming request for path:", path);
 
-    try {
-        res.set('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+  if (!path) {
+    console.error("[downloadProxy] Missing 'path' parameter");
+    return res.status(400).send("Missing file path");
+  }
 
-        const bucket = getStorage().bucket();
-        const file = bucket.file(filePath);
+  try {
+    const bucket = getStorage().bucket();
+    const file = bucket.file(path);
 
-        const expires = new Date();
-        expires.setMinutes(expires.getMinutes() + 15);
+    // Short-lived signed URL (15 minutes)
+    const [signedUrl] = await file.getSignedUrl({
+      action: "read",
+      expires: Date.now() + 15 * 60 * 1000,
+    });
 
-        const [signedUrl] = await file.getSignedUrl({
-            action: 'read',
-            expires: expires,
-        });
+    console.log("[downloadProxy] Generated signed URL:", signedUrl);
 
-        return res.redirect(signedUrl);
+    // Prevent browser from caching the proxy URL
+    res.set("Cache-Control", "private, no-cache, no-store, must-revalidate");
 
-    } catch (error) {
-        console.error("[downloadProxy] Error generating signed URL:", error);
-        return res.status(404).send("File not found or access denied.");
-    }
+    // Redirect to the signed URL
+    return res.redirect(signedUrl);
+
+  } catch (err) {
+    console.error("[downloadProxy] Error generating signed URL:", err);
+    return res.status(500).send("Failed to generate signed URL");
+  }
 });
 
 
