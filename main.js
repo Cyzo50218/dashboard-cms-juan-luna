@@ -28,7 +28,6 @@ function parseRoute() {
     const pathParts = window.location.pathname.split('/').filter(p => p);
     const queryParams = new URLSearchParams(window.location.search);
 
-
     // Default home route
     if (pathParts.length === 0) {
         return { section: 'home' };
@@ -58,11 +57,7 @@ function parseRoute() {
         };
     }
 
-    if (pathParts[0] === 'attachments') {
-        window.location.href = window.location.href; // Let the browser handle it (full reload)
-        return;
-    }
-    
+
     return { section: 'home' };
 }
 
@@ -74,6 +69,10 @@ function parseRoute() {
 function router() {
     const routeParams = parseRoute();
     console.log("Routing to:", routeParams);
+
+    if (window.location.pathname.startsWith("/attachments/")) {
+        return; // do nothing → browser will just load the file
+    }
 
     if (routeParams.redirectTo) {
         window.location.href = routeParams.redirectTo;
