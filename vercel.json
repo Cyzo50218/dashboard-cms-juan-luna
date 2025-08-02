@@ -6,6 +6,12 @@
       "use": "@vercel/static"
     }
   ],
+  "rewrites": [
+    {
+      "source": "/((?!api/|attachments/).*)",
+      "destination": "/index.html"
+    }
+  ],
   "routes": [
     {
       "handle": "filesystem"
@@ -13,7 +19,9 @@
     {
       "src": "^/$",
       "status": 307,
-      "headers": { "Location": "/login/" }
+      "headers": {
+        "Location": "/login/"
+      }
     },
     {
       "src": "/register/(.*)",
@@ -41,4 +49,3 @@
     }
   ]
 }
-
