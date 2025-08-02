@@ -33,8 +33,10 @@ let masterDashboardData = []; // Stores ALL possible cards calculated once
 let activeDashboardFilters = {}; // Stores the current global filters
 let fullTasksSnapshot = null;    // Stores the complete, unfiltered task list
 let projectConfig = null;        // Stores the current project's configuration
+let allFilterableColumns = [];
 
 let projectDocRef = null;
+let sectionIdToName = {};
 
 async function fetchInitialData(projectId) {
   if (!projectId) {
@@ -63,36 +65,42 @@ function aggregateTaskData(tasksSnapshot) {
   if (!projectConfig || !tasksSnapshot) return [];
 
   const statusColumn = projectConfig.defaultColumns.find(c => c.id === 'status');
-  const sourceColumn = projectConfig.defaultColumns.find(c => c.id === 'priority');
   const costingColumns = projectConfig.customColumns.filter(c => c.type === 'Costing');
+
   const allSelectColumns = [
     ...projectConfig.defaultColumns.filter(c => c.options && c.options.length > 0),
     ...projectConfig.customColumns.filter(c => c.options && c.options.length > 0)
   ];
-  const completionStatusName = statusColumn?.options?.find(o => o.name.toLowerCase() === 'completed')?.name;
-  const cancelledStatusName = statusColumn?.options?.find(o => o.name.toLowerCase() === 'cancelled')?.name;
 
-  // --- Aggregation Logic ---
+  const completionStatusName = statusColumn?.options?.find(
+    o => o.name.toLowerCase() === 'completed'
+  )?.name;
+  const cancelledStatusName = statusColumn?.options?.find(
+    o => o.name.toLowerCase() === 'cancelled'
+  )?.name;
+
   let generalCounts = { completed: 0, incomplete: 0, overdue: 0 };
   let paymentMadeTotal = 0;
   let balanceTotal = 0;
   const selectOptionCounts = {};
+
   allSelectColumns.forEach(col => {
     selectOptionCounts[col.id] = {};
-    if (col.options) {
-      col.options.forEach(opt => selectOptionCounts[col.id][opt.name] = 0);
-    }
+    col.options.forEach(opt => {
+      selectOptionCounts[col.id][opt.name] = 0;
+    });
   });
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  tasksSnapshot.forEach((doc) => {
+  tasksSnapshot.forEach(doc => {
     const task = doc.data();
     let taskTotalCost = 0;
+
     costingColumns.forEach(col => {
       const costValue = task.customFields?.[col.id];
-      if (typeof costValue === 'number') { taskTotalCost += costValue; }
+      if (typeof costValue === 'number') taskTotalCost += costValue;
     });
 
     if (task.status === completionStatusName) {
@@ -108,48 +116,87 @@ function aggregateTaskData(tasksSnapshot) {
 
     allSelectColumns.forEach(col => {
       const isCustom = !projectConfig.defaultColumns.some(dc => dc.id === col.id);
-      const value = (isCustom ? task.customFields?.[col.id] : task[col.id]);
+      const value = isCustom ? task.customFields?.[col.id] : task[col.id];
       if (value && selectOptionCounts[col.id]?.hasOwnProperty(value)) {
         selectOptionCounts[col.id][value]++;
       }
     });
   });
 
-  // --- Build Card Lists ---
-  let allPossibleCards = [];
+  // --- Build one master filter set ---
   const cardFilterOptions = {};
-  const allColumns = [...projectConfig.defaultColumns, ...projectConfig.customColumns];
-  allColumns
-    .filter(col => col.options && col.options.length > 0)
-    .forEach(col => {
-      cardFilterOptions[col.name] = col.options.map(o => o.name);
-    });
 
-  // Populate SUMMARY cards (these get filters)
-  allPossibleCards.push({ id: 'totalTasks', title: 'Total Tasks', value: tasksSnapshot.size, filterOptions: cardFilterOptions });
-  allPossibleCards.push({ id: 'completedTasks', title: 'Completed Tasks', value: generalCounts.completed, filterOptions: cardFilterOptions });
-  allPossibleCards.push({ id: 'incompleteTasks', title: 'Incomplete Tasks', value: generalCounts.incomplete, filterOptions: cardFilterOptions });
-  allPossibleCards.push({ id: 'overdueTasks', title: 'Overdue Tasks', value: generalCounts.overdue, filterOptions: cardFilterOptions });
-  allPossibleCards.push({ id: 'totalPaymentMade', title: 'Total Payment Made', value: paymentMadeTotal, filterOptions: {} });
-  allPossibleCards.push({ id: 'cardBalance', title: 'Card Balance', value: balanceTotal, filterOptions: {} });
-
-  // Populate METRIC cards (these can be added by the user and have no filters)
+  // Add all select columns
   allSelectColumns.forEach(col => {
-    if (col.options) {
-      col.options.forEach(option => {
-        allPossibleCards.push({
-          id: `count-${col.id}-${option.name.replace(/\s+/g, '-')}`,
-          title: `${col.name}: ${option.name}`,
-          value: selectOptionCounts[col.id][option.name] || 0,
-          filterOptions: {} // Metric cards do not have filters
-        });
-      });
-    }
+    cardFilterOptions[col.name] = col.options.map(o => o.name);
   });
 
-  // **THE FIX**: Return a single, flat array of all possible cards.
+  // Always inject Sections
+  if (sectionIdToName && Object.keys(sectionIdToName).length > 0) {
+    cardFilterOptions["Sections"] = Object.values(sectionIdToName);
+  }
+
+  // Always inject Status
+  if (statusColumn?.options?.length > 0) {
+    cardFilterOptions["Status"] = statusColumn.options.map(o => o.name);
+  }
+
+  // --- Build cards ---
+  const allPossibleCards = [
+    { id: 'totalTasks', title: 'Total Tasks', metric: 'count', value: tasksSnapshot.size },
+    { id: 'completedTasks', title: 'Completed Tasks', metric: 'completedTasks', value: generalCounts.completed },
+    { id: 'incompleteTasks', title: 'Incomplete Tasks', metric: 'count', value: generalCounts.incomplete },
+    { id: 'overdueTasks', title: 'Overdue Tasks', metric: 'overdueTasks', value: generalCounts.overdue },
+    { id: 'totalPaymentMade', title: 'Total Payment Made', metric: 'cost-totalPaymentMade', value: paymentMadeTotal },
+    { id: 'cardBalance', title: 'Card Balance', metric: 'cardBalance', value: balanceTotal }
+  ].map(card => ({
+    ...card,
+    filterOptions: { ...cardFilterOptions }
+  }));
+
+  // Metric cards for each select option
+  allSelectColumns.forEach(col => {
+    col.options.forEach(option => {
+      allPossibleCards.push({
+        id: `count-${col.id}-${option.name.replace(/\s+/g, '-')}`,
+        title: `${col.name}: ${option.name}`,
+        metric: 'count',
+        value: selectOptionCounts[col.id][option.name] || 0,
+        filterOptions: { ...cardFilterOptions }
+      });
+    });
+  });
+
   return allPossibleCards;
 }
+
+
+async function fetchSections(projectId) {
+  try {
+    if (!projectDocRef) throw new Error("Project reference is not available.");
+
+    const sectionsQuery = query(collection(projectDocRef, 'sections'));
+    const sectionsSnapshot = await getDocs(sectionsQuery);
+
+    sectionIdToName = {};
+    const sectionOptions = sectionsSnapshot.docs.map(doc => {
+      const title = doc.data().title;
+      sectionIdToName[doc.id] = title; // store for later filtering
+      return { name: title };
+    });
+
+    if (sectionOptions.length > 0) {
+      allFilterableColumns.push({
+        id: 'sectionId', // ✅ match your filter key
+        name: 'Sections',
+        options: sectionOptions
+      });
+    }
+  } catch (error) {
+    console.error("Error fetching sections for filter:", error);
+  }
+}
+
 
 function createCards() {
   try {
@@ -160,7 +207,8 @@ function createCards() {
       const cardEl = document.createElement("div");
       cardEl.className = "card relative"; // Add relative for positioning
       cardEl.dataset.id = card.id;
-
+      if (card.bgColor) cardEl.style.backgroundColor = card.bgColor;
+      if (card.fontStyle) cardEl.style.fontFamily = card.fontStyle;
       const filterCount = card.localFilters ? Object.keys(card.localFilters).length : 0;
       const badgeHTML = filterCount > 0 ? `<span class="filter-count-badge">${filterCount}</span>` : '';
 
@@ -188,6 +236,26 @@ function createCards() {
     <div class="card-filter-container relative inline-block text-left w-full flex justify-center"></div>
   </div>
 `;
+
+      const titleEl = cardEl.querySelector("h2");
+      const valueEl = cardEl.querySelector("p");
+      const filterButtonEl = cardEl.querySelector(".filter-button svg");
+      const badgeEl = cardEl.querySelector(".filter-count-badge");
+
+      if (card.textColor) {
+        if (titleEl) titleEl.style.color = card.textColor;
+        if (valueEl) valueEl.style.color = card.textColor;
+
+        // Apply to filter icon
+        if (filterButtonEl) filterButtonEl.style.stroke = card.textColor;
+
+        // Apply to filter count badge
+        if (badgeEl) {
+          badgeEl.style.color = card.textColor;
+          // Optional: badge background can also be adjusted if needed:
+          // badgeEl.style.backgroundColor = card.textColor;
+        }
+      }
 
       const editBtn = cardEl.querySelector(".edit-card-btn");
       editBtn.addEventListener("click", (e) => {
@@ -290,20 +358,75 @@ function createCards() {
         return group;
       }
 
-      for (const filterTitle in card.filterOptions) {
-        const options = card.filterOptions[filterTitle];
-        const column = [...projectConfig.defaultColumns, ...projectConfig.customColumns].find(c => c.name === filterTitle);
-        if (!column) continue;
+      // Build section filter options from sectionIdToName
+      const sectionOptions = Object.entries(sectionIdToName || {});
+      // Now sectionOptions is an array like: [ [id, name], [id, name] ]
 
-        const isDefaultCol = projectConfig.defaultColumns.some(c => c.id === column.id);
-        const displayTitle = isDefaultCol ? filterTitle : "Custom Fields";
-        const showAll = true;
+      if (sectionOptions.length > 0) {
+        const sectionGroup = document.createElement("div");
+        sectionGroup.className = "px-3 py-2 border-b border-gray-300";
+        sectionGroup.innerHTML = `<p class="font-semibold mb-1">Sections</p>`;
+        const radioGroupName = `filter-${card.id}-sectionId`;
 
-        if (options && Array.isArray(options) && options.length > 0) {
-          dropdown.appendChild(createFilterGroup(displayTitle, options, column.id, showAll));
-        }
+        const handleSectionChange = (event) => {
+          const value = event.target.value;
+          const targetCard = dashboardData.find(c => c.id === card.id);
+          if (!targetCard) return;
+
+          if (!targetCard.localFilters) targetCard.localFilters = {};
+
+          if (value === 'all') {
+            delete targetCard.localFilters['sectionId'];
+          } else {
+            targetCard.localFilters['sectionId'] = value; // store actual sectionId
+          }
+
+          recalculateCardValue(targetCard);
+          renderDashboard();
+        };
+
+        const createSectionOption = (id, name, isChecked) => {
+          const label = document.createElement("label");
+          label.className = "flex items-center space-x-2 py-1 cursor-pointer";
+          const radio = document.createElement("input");
+          radio.type = "radio";
+          radio.name = radioGroupName;
+          radio.value = id; // ✅ store sectionId
+          radio.checked = isChecked;
+          radio.addEventListener('change', handleSectionChange);
+          label.appendChild(radio);
+          const textSpan = document.createElement('span');
+          textSpan.textContent = name; // show friendly name
+          label.appendChild(textSpan);
+          return label;
+        };
+
+        sectionGroup.appendChild(createSectionOption('all', 'All', !card.localFilters?.['sectionId']));
+        sectionOptions.forEach(([id, name]) => {
+          sectionGroup.appendChild(
+            createSectionOption(id, name, card.localFilters?.['sectionId'] === id)
+          );
+        });
+
+        dropdown.appendChild(sectionGroup);
       }
 
+      // Build status filter options from status column
+      const statusColumn = projectConfig.defaultColumns.find(c => c.id === 'status');
+      const statusOptions = statusColumn?.options?.map(o => o.name) || [];
+
+      // Existing filter groups from card.filterOptions
+      for (const filterTitle in card.filterOptions) {
+        const options = card.filterOptions[filterTitle];
+        const column = [...projectConfig.defaultColumns, ...projectConfig.customColumns]
+          .find(c => c.name === filterTitle);
+        if (!column) continue;
+
+        const displayTitle = filterTitle; // Keep original name
+        if (options && Array.isArray(options) && options.length > 0) {
+          dropdown.appendChild(createFilterGroup(displayTitle, options, column.id));
+        }
+      }
       filterContainer.appendChild(dropdown);
       filterButton.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -312,7 +435,6 @@ function createCards() {
         });
         dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
       });
-      //}
 
       cardsContainer.appendChild(cardEl);
     });
@@ -485,9 +607,10 @@ async function openAddCardModal(cardToEdit = null) {
     filters: isEditMode ? { ...(cardToEdit.baseFilters || {}) } : {},
     bgColor: isEditMode ? cardToEdit.bgColor || '#F5F9FF' : '#F5F9FF',
     textColor: isEditMode ? cardToEdit.textColor || '#000000' : '#000000',
-    fontStyle: isEditMode ? cardToEdit.fontStyle || 'normal' : 'normal'
+    fontStyle: isEditMode
+      ? cardToEdit.fontStyle || 'inherit'
+      : 'inherit'
   };
-
 
   const titleInput = modalOverlay.querySelector('#preview-title-input');
   const metricSelect = modalOverlay.querySelector('#metric-type');
@@ -513,7 +636,7 @@ async function openAddCardModal(cardToEdit = null) {
   const addFilterMenu = modalOverlay.querySelector('#add-filter-menu');
   const activeFiltersContainer = modalOverlay.querySelector('#active-filters-container');
 
-  const allFilterableColumns = [...projectConfig.defaultColumns, ...projectConfig.customColumns]
+  allFilterableColumns = [...projectConfig.defaultColumns, ...projectConfig.customColumns]
     .filter(c => c.options && c.options.length > 0);
 
   const allPossibleFilterOptions = {};
@@ -527,7 +650,12 @@ async function openAddCardModal(cardToEdit = null) {
     if (!projectDocRef) throw new Error("Project reference is not available.");
     const sectionsQuery = query(collection(projectDocRef, 'sections'));
     const sectionsSnapshot = await getDocs(sectionsQuery);
-    const sectionOptions = sectionsSnapshot.docs.map(doc => ({ name: doc.data().title }));
+
+    sectionIdToName = {};
+    const sectionOptions = sectionsSnapshot.docs.map(doc => {
+      sectionIdToName[doc.id] = doc.data().title; // mapping
+      return { name: doc.data().title };
+    });
 
     if (sectionOptions.length > 0) {
       allFilterableColumns.push({
@@ -541,94 +669,14 @@ async function openAddCardModal(cardToEdit = null) {
   }
 
   const updatePreview = () => {
-    const filteredDocs = fullTasksSnapshot.docs.filter(doc => {
-      const task = doc.data();
-      return Object.entries(cardConfig.filters).every(([colId, filterValue]) => {
-        if (!filterValue) return true;
-        if (colId === 'status') {
-          const isCurrentStatus = task.status === filterValue;
-          const wasPreviousAndIsNowCompleted =
-            task.previousStatus === filterValue && task.status === 'Completed';
-          return isCurrentStatus || wasPreviousAndIsNowCompleted;
-        }
-        let taskVal;
-        if (colId === 'sectionTitle') {
-          taskVal = task.sectionTitle;
-        } else {
-          const isCustom = !projectConfig.defaultColumns.some(c => c.id == colId);
-          taskVal = isCustom ? task.customFields?.[colId] : task[colId];
-        }
-        return taskVal === filterValue;
-      });
-    });
+    updatePreviewStyle();
 
-    const filteredSnapshot = { docs: filteredDocs, size: filteredDocs.length };
-    const statusColumn = projectConfig.defaultColumns.find(c => c.id === 'status');
-    const costingColumns = projectConfig.customColumns.filter(c => c.type === 'Costing' || c.type === 'Number');
-
-    const completionStatusName = statusColumn?.options?.find(o => o.name.toLowerCase() === 'completed')?.name;
-    const cancelledStatusName = statusColumn?.options?.find(o => o.name.toLowerCase() === 'cancelled')?.name;
-
-    let generalCounts = { completed: 0, overdue: 0 };
-    let paymentMadeTotal = 0;
-    let balanceTotal = 0;
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    filteredSnapshot.docs.forEach(doc => {
-      const task = doc.data();
-      let taskTotalCost = 0;
-      costingColumns.forEach(col => {
-        const costValue = task.customFields?.[col.id];
-        if (typeof costValue === 'number') taskTotalCost += costValue;
-      });
-
-      if (task.status === completionStatusName) {
-        generalCounts.completed++;
-        paymentMadeTotal += taskTotalCost;
-      } else if (task.status !== cancelledStatusName) {
-        balanceTotal += taskTotalCost;
-        if (task.dueDate && new Date(task.dueDate) < today) {
-          generalCounts.overdue++;
-        }
-      }
-    });
-
-    let value = 0;
-
-    // --- Cost-specific calculation ---
-    if (cardConfig.metric.startsWith('cost-')) {
-      const fieldId = cardConfig.metric.replace('cost-', '');
-      const nums = filteredSnapshot.docs
-        .map(doc => doc.data().customFields?.[fieldId])
-        .filter(v => typeof v === 'number');
-
-      switch (cardConfig.costCalcType) {
-        case 'sum':
-          value = nums.reduce((a, b) => a + b, 0);
-          break;
-        case 'avg':
-          value = nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : 0;
-          break;
-        case 'min':
-          value = nums.length ? Math.min(...nums) : 0;
-          break;
-        case 'max':
-          value = nums.length ? Math.max(...nums) : 0;
-          break;
-      }
-    }
-    else {
-      // --- Existing metric calculation ---
-      switch (cardConfig.metric) {
-        case 'count': value = filteredSnapshot.size; break;
-        case 'completedTasks': value = generalCounts.completed; break;
-        case 'overdueTasks': value = generalCounts.overdue; break;
-        case 'cardBalance': value = balanceTotal; break;
-        case 'totalPaymentMade': value = paymentMadeTotal; break;
-      }
-    }
+    // Calculate using shared helper so it matches saved card calculation
+    const value = calculateCardValue(
+      cardConfig.metric,
+      cardConfig.costCalcType,
+      cardConfig.filters
+    );
 
     // Apply display format
     if (cardConfig.valueFormat === 'currency') {
@@ -639,6 +687,7 @@ async function openAddCardModal(cardToEdit = null) {
       previewValueEl.textContent = formatNumber(value);
     }
   };
+
 
   let calculationOptions = [
     { id: 'count', name: 'Count of Tasks' },
@@ -684,36 +733,104 @@ async function openAddCardModal(cardToEdit = null) {
 
   addFilterBtn.addEventListener('click', e => { e.stopPropagation(); addFilterMenu.classList.toggle('hidden'); });
 
-  addFilterMenu.innerHTML = allFilterableColumns.map(col => `<a href="#" class="add-filter-menu-item" data-col-id="${col.id}">${col.name}</a>`).join('');
-  addFilterMenu.querySelectorAll('.add-filter-menu-item').forEach(item => {
-    item.addEventListener('click', e => {
-      e.preventDefault();
-      const colId = item.dataset.colId;
-      if (!cardConfig.filters.hasOwnProperty(colId)) {
-        cardConfig.filters[colId] = null;
-        renderActiveFilterPanels();
-      }
-      addFilterMenu.classList.add('hidden');
+  function renderAddFilterMenu() {
+    // Hide columns already in cardConfig.filters
+    const availableColumns = allFilterableColumns.filter(col => !cardConfig.filters.hasOwnProperty(col.id));
+
+    addFilterMenu.innerHTML = availableColumns.map(col =>
+      `<a href="#" class="add-filter-menu-item" data-col-id="${col.id}">${col.name}</a>`
+    ).join('');
+
+    // Hide "Add Filter" button if no filters left
+    if (availableColumns.length === 0) {
+      addFilterBtn.style.display = 'none';
+    } else {
+      addFilterBtn.style.display = '';
+    }
+
+    // Re-bind events
+    addFilterMenu.querySelectorAll('.add-filter-menu-item').forEach(item => {
+      item.addEventListener('click', e => {
+        e.preventDefault();
+        const colId = item.dataset.colId;
+        if (!cardConfig.filters.hasOwnProperty(colId)) {
+          cardConfig.filters[colId] = null;
+          renderActiveFilterPanels();
+          renderAddFilterMenu(); // refresh menu after adding
+        }
+        addFilterMenu.classList.add('hidden');
+      });
     });
-  });
+  }
+
+  renderAddFilterMenu();
 
   const closeModal = () => {
     modalOverlay.remove();
-    document.removeEventListener('click', globalClickHandler);
   };
 
   const fontStyleSelect = modalOverlay.querySelector('#font-style-select');
 
+
+  const savedFontStyle = localStorage.getItem('lastFontStyle');
   fontStyleSelect.addEventListener('change', (e) => {
     cardConfig.fontStyle = e.target.value;
+    localStorage.setItem('lastFontStyle', e.target.value);
     updatePreviewStyle();
   });
+  if (!isEditMode) {
+    const savedFontStyle = localStorage.getItem('lastFontStyle');
+    const savedBgColor = localStorage.getItem('lastBgColor');
+    const savedTextColor = localStorage.getItem('lastTextColor');
+
+    if (savedFontStyle) {
+      cardConfig.fontStyle = fontValueMap[savedFontStyle] || savedFontStyle;
+    }
+    if (savedBgColor) {
+      cardConfig.bgColor = savedBgColor;
+    }
+    if (savedTextColor) {
+      cardConfig.textColor = savedTextColor;
+    }
+  }
+  const fontValueMap = {
+    "Roboto": "'Roboto', sans-serif",
+    "'Roboto', sans-serif": "'Roboto', sans-serif",
+    "Open Sans": "'Open Sans', sans-serif",
+    "'Open Sans', sans-serif": "'Open Sans', sans-serif",
+    "Lato": "'Lato', sans-serif",
+    "'Lato', sans-serif": "'Lato', sans-serif",
+    "Poppins": "'Poppins', sans-serif",
+    "'Poppins', sans-serif": "'Poppins', sans-serif",
+    "Merriweather": "'Merriweather', serif",
+    "'Merriweather', serif": "'Merriweather', serif",
+    "inherit": "inherit",
+    "normal": "inherit"
+  };
+
+  // Determine base font style value
+  if (isEditMode) {
+    cardConfig.fontStyle = fontValueMap[cardToEdit.fontStyle] || cardToEdit.fontStyle || "inherit";
+  } else if (savedFontStyle) {
+    cardConfig.fontStyle = fontValueMap[savedFontStyle] || savedFontStyle;
+  } else {
+    cardConfig.fontStyle = "inherit";
+  }
+
+  // Apply to select
+  fontStyleSelect.value = cardConfig.fontStyle;
 
   function updatePreviewStyle() {
     const cardEl = modalOverlay.querySelector('.preview-card');
+    const titleEl = modalOverlay.querySelector('#preview-title-input');
+    const valueEl = modalOverlay.querySelector('#preview-value');
+
     cardEl.style.backgroundColor = cardConfig.bgColor;
-    cardEl.style.color = cardConfig.textColor;
     cardEl.style.fontFamily = cardConfig.fontStyle;
+
+    // Apply text color directly to elements
+    if (titleEl) titleEl.style.color = cardConfig.textColor;
+    if (valueEl) valueEl.style.color = cardConfig.textColor;
   }
 
   const relaxingColors = ["#F5F9FF", "#F2FFF5", "#FAF9F7", "#F5F5F5", "#FFFFFF", "#E3E3E3", "#FFD6D6", "#FFE7B8"];
@@ -734,38 +851,49 @@ async function openAddCardModal(cardToEdit = null) {
 
   function setBgColor(color) {
     cardConfig.bgColor = color;
+    localStorage.setItem('lastBgColor', color);
     bgButton.style.backgroundColor = color;
     updatePreviewStyle();
-    if (!recentBgColors.includes(color)) {
-      recentBgColors.unshift(color);
-      if (recentBgColors.length > 6) recentBgColors.pop();
-    }
+    updatePreview();
     renderPalette(bgRelaxing, relaxingColors, color, setBgColor);
     renderPalette(bgRecent, recentBgColors, color, setBgColor);
   }
 
   function setTextColor(color) {
     cardConfig.textColor = color;
+    localStorage.setItem('lastTextColor', color);
     textButton.style.backgroundColor = color;
     updatePreviewStyle();
-    if (!recentTextColors.includes(color)) {
-      recentTextColors.unshift(color);
-      if (recentTextColors.length > 6) recentTextColors.pop();
-    }
+    updatePreview();
     renderPalette(textRelaxing, relaxingColors, color, setTextColor);
     renderPalette(textRecent, recentTextColors, color, setTextColor);
   }
-
   setBgColor(cardConfig.bgColor);
   setTextColor(cardConfig.textColor);
 
   modalOverlay.querySelector('#cancel-add-card').addEventListener('click', closeModal);
   bgButton.addEventListener("click", () => bgPalette.classList.toggle("hidden"));
   textButton.addEventListener("click", () => textPalette.classList.toggle("hidden"));
-  bgPicker.addEventListener("input", e => { setBgColor(e.target.value); bgPalette.classList.add("hidden"); });
-  textPicker.addEventListener("input", e => { setTextColor(e.target.value); textPalette.classList.add("hidden"); });
+  bgPicker.addEventListener("input", e => {
+    // Provides a live preview as the user adjusts the color
+    setBgColor(e.target.value);
+  });
+  bgPicker.addEventListener("change", e => {
+    // Hides the palette only after the user confirms a color
+    bgPalette.classList.add("hidden");
+  });
 
-  let globalClickHandler = e => {
+  // Text Color Picker
+  textPicker.addEventListener("input", e => {
+    // Provides a live preview as the user adjusts the color
+    setTextColor(e.target.value);
+  });
+  textPicker.addEventListener("change", e => {
+    // Hides the palette only after the user confirms a color
+    textPalette.classList.add("hidden");
+  });
+  // Global click handler
+  document.addEventListener("click", e => {
     // --- Close Add Filter Menu ---
     if (!addFilterBtn.contains(e.target) && !addFilterMenu.contains(e.target)) {
       addFilterMenu.classList.add('hidden');
@@ -785,9 +913,7 @@ async function openAddCardModal(cardToEdit = null) {
     if (e.target === modalOverlay) {
       closeModal();
     }
-  };
-
-  document.addEventListener('click', globalClickHandler);
+  });
 
   modalOverlay.querySelector('#confirm-add-card').addEventListener('click', () => {
     if (isEditMode) {
@@ -799,8 +925,9 @@ async function openAddCardModal(cardToEdit = null) {
         cardToUpdate.baseFilters = cardConfig.filters;
         cardToUpdate.localFilters = { ...cardConfig.filters };
         cardToUpdate.costCalcType = cardConfig.costCalcType || 'sum';
-
-        console.log(cardToUpdate);
+        cardToUpdate.bgColor = cardConfig.bgColor;
+        cardToUpdate.textColor = cardConfig.textColor; // ✅ store text color
+        cardToUpdate.fontStyle = cardConfig.fontStyle; // ✅ store font style
         recalculateCardValue(cardToUpdate);
       }
     } else {
@@ -815,7 +942,10 @@ async function openAddCardModal(cardToEdit = null) {
         baseFilters: cardConfig.filters,
         filterOptions: allPossibleFilterOptions,
         localFilters: { ...cardConfig.filters },
-        costCalcType: cardConfig.costCalcType || 'sum'
+        costCalcType: cardConfig.costCalcType || 'sum',
+        bgColor: cardConfig.bgColor, // ✅ store bg color
+        textColor: cardConfig.textColor, // ✅ store text color
+        fontStyle: cardConfig.fontStyle // ✅ store font style
       });
     }
     saveCardLayout();
@@ -869,10 +999,116 @@ async function openAddCardModal(cardToEdit = null) {
         panelBody.appendChild(optLabel);
       });
 
+      panel.querySelector('.remove-filter-btn').addEventListener('click', (e) => {
+        const colId = e.currentTarget.dataset.colId;
+        delete cardConfig.filters[colId];
+
+        renderActiveFilterPanels();
+        renderAddFilterMenu();
+        updatePreview();
+      });
+
       panel.appendChild(panelBody);
       activeFiltersContainer.appendChild(panel);
     });
   }
+}
+
+function calculateCardValue(metric, costCalcType, filters) {
+  if (!fullTasksSnapshot) return 0;
+  if (!metric) return 0;
+  const statusColumn = projectConfig.defaultColumns.find(c => c.id === 'status');
+  const costingColumns = projectConfig.customColumns.filter(
+    c => c.type === 'Costing' || c.type === 'Number'
+  );
+
+  const completionStatusName = statusColumn?.options?.find(
+    o => o.name.toLowerCase() === 'completed'
+  )?.name;
+  const cancelledStatusName = statusColumn?.options?.find(
+    o => o.name.toLowerCase() === 'cancelled'
+  )?.name;
+
+  // Apply filters
+  const filteredDocs = fullTasksSnapshot.docs.filter(doc => {
+    const task = doc.data();
+    return Object.entries(filters || {}).every(([colId, filterValue]) => {
+      if (!filterValue) return true; // allow "All"
+
+      if (colId === 'status') {
+        const isCurrentStatus = task.status === filterValue;
+        const wasPreviousAndIsNowCompleted =
+          task.previousStatus === filterValue && task.status === completionStatusName;
+        return isCurrentStatus || wasPreviousAndIsNowCompleted;
+      }
+
+      if (colId === 'sectionId') {
+        return task.sectionId === filterValue;
+      }
+
+      if (colId === 'sectionTitle') { // legacy support
+        const sectionName = sectionIdToName[task.sectionId] || "";
+        return sectionName === filterValue;
+      }
+
+      const isCustom = !projectConfig.defaultColumns.some(c => c.id == colId);
+      const taskVal = isCustom ? task.customFields?.[colId] : task[colId];
+      return taskVal === filterValue;
+    });
+  });
+
+  let value = 0;
+
+  // --- Cost-specific calculation ---
+  if (metric.startsWith("cost-")) {
+    const fieldId = metric.replace("cost-", "");
+    const nums = filteredDocs
+      .map(doc => doc.data().customFields?.[fieldId])
+      .filter(v => typeof v === "number");
+
+    switch (costCalcType || "sum") {
+      case "sum": value = nums.reduce((a, b) => a + b, 0); break;
+      case "avg": value = nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : 0; break;
+      case "min": value = nums.length ? Math.min(...nums) : 0; break;
+      case "max": value = nums.length ? Math.max(...nums) : 0; break;
+    }
+  }
+  // --- Special handling for Card Balance ---
+  else if (metric === "cardBalance") {
+    filteredDocs.forEach(doc => {
+      const task = doc.data();
+      if (task.status !== completionStatusName && task.status !== cancelledStatusName) {
+        let taskTotalCost = 0;
+        costingColumns.forEach(col => {
+          const costValue = task.customFields?.[col.id];
+          if (typeof costValue === 'number') taskTotalCost += costValue;
+        });
+        value += taskTotalCost;
+      }
+    });
+  }
+  // --- Other metrics ---
+  else if (metric === "count") {
+    value = filteredDocs.length;
+  } else if (metric === "completedTasks") {
+    value = filteredDocs.filter(doc => doc.data().status === completionStatusName).length;
+  } else if (metric === "overdueTasks") {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    value = filteredDocs.filter(doc =>
+      doc.data().dueDate && new Date(doc.data().dueDate) < today
+    ).length;
+  }
+
+  return value;
+}
+
+function recalculateCardValue(targetCard) {
+  if (!targetCard || !fullTasksSnapshot) return 0;
+  const filters = { ...(targetCard.baseFilters || {}), ...(targetCard.localFilters || {}) };
+  const value = calculateCardValue(targetCard.metric, targetCard.costCalcType, filters);
+  targetCard.value = value;
+  return value;
 }
 
 function renderDashboard() {
@@ -890,69 +1126,6 @@ function formatNumber(num) {
   const sign = num < 0 ? "-" : "";
   const val = Math.abs(num).toLocaleString("en-US");
   return sign + val;
-}
-
-function recalculateCardValue(targetCard) {
-  if (!targetCard || !fullTasksSnapshot) return 0;
-  const metric = typeof targetCard.metric === "string" ? targetCard.metric : "count";
-
-  const baseFilters = targetCard.baseFilters || {};
-  const localFilters = targetCard.localFilters || {};
-  const combinedFilters = { ...baseFilters, ...localFilters };
-
-  const filteredDocs = fullTasksSnapshot.docs.filter(doc => {
-    const task = doc.data();
-    return Object.entries(combinedFilters).every(([colId, filterValue]) => {
-      if (!filterValue) return true; // allow "All"
-      if (colId === 'status') {
-        const isCurrentStatus = task.status === filterValue;
-        const wasPreviousAndIsNowCompleted =
-          task.previousStatus === filterValue && task.status === 'Completed';
-        return isCurrentStatus || wasPreviousAndIsNowCompleted;
-      }
-      const isCustom = !projectConfig.defaultColumns.some(c => c.id === colId);
-      const taskValue = isCustom ? task.customFields?.[colId] : task[colId];
-      return taskValue === filterValue;
-    });
-  });
-
-  let finalValue = 0;
-
-  // --- Handle cost-based metrics ---
-  if (metric.startsWith("cost-")) {
-    const fieldId = metric.replace("cost-", "");
-    const nums = filteredDocs
-      .map(doc => doc.data().customFields?.[fieldId])
-      .filter(v => typeof v === "number");
-
-    switch (targetCard.costCalcType || "sum") {
-      case "sum":
-        finalValue = nums.reduce((a, b) => a + b, 0);
-        break;
-      case "avg":
-        finalValue = nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : 0;
-        break;
-      case "min":
-        finalValue = nums.length ? Math.min(...nums) : 0;
-        break;
-      case "max":
-        finalValue = nums.length ? Math.max(...nums) : 0;
-        break;
-    }
-  }
-  // --- Handle normal metrics ---
-  else if (metric === "count") {
-    finalValue = filteredDocs.length;
-  } else if (metric === "completedTasks") {
-    finalValue = filteredDocs.filter(doc => doc.data().status === "Completed").length;
-  } else if (metric === "overdueTasks") {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    finalValue = filteredDocs.filter(doc => doc.data().dueDate && new Date(doc.data().dueDate) < today).length;
-  }
-
-  targetCard.value = finalValue;
-  return finalValue;
 }
 
 
@@ -1188,16 +1361,26 @@ function init() {
 
       const success = await fetchInitialData(projectId);
       if (success) {
+        // ✅ Fetch sections BEFORE building dashboardData
+        await fetchSections(projectId);
+
+        // Now sectionsIdToName is ready
+        masterDashboardData = aggregateTaskData(fullTasksSnapshot);
+
         const savedData = JSON.parse(localStorage.getItem(`dashboardLayout_${projectId}`));
 
         if (savedData && savedData.length > 0 && typeof savedData[0] === 'object' && savedData[0] !== null) {
-          // It's the new format (array of objects), so we can use it.
-          dashboardData = savedData;
-          console.log("Loaded card layout from new object format.");
+          dashboardData = savedData.map(savedCard => {
+            const updatedCardTemplate = masterDashboardData.find(c => c.id === savedCard.id);
+            if (updatedCardTemplate) {
+              return {
+                ...savedCard,
+                filterOptions: { ...updatedCardTemplate.filterOptions }
+              };
+            }
+            return savedCard;
+          });
         } else {
-          // It's the old string format or empty/invalid. Load a default layout.
-          console.log("Old layout format detected. Loading default cards.");
-          masterDashboardData = aggregateTaskData(fullTasksSnapshot);
           dashboardData = masterDashboardData.slice(0, 6);
           saveCardLayout();
         }
@@ -1205,8 +1388,15 @@ function init() {
         dashboardData.forEach(card => {
           if (!card.localFilters) card.localFilters = {};
           if (!card.baseFilters) card.baseFilters = {};
-          recalculateCardValue(card);
+
+          // Always recalc using the latest tasks + filters
+          card.value = calculateCardValue(
+            card.metric || 'count', // fallback
+            card.costCalcType || 'sum',
+            card.localFilters || {}
+          );
         });
+
 
         renderDashboard();
         setupDragAndDrop();
@@ -1260,20 +1450,7 @@ function init() {
 function saveCardLayout() {
   const projectId = getProjectIdFromUrl();
   if (!projectId) return;
-
-  const layoutToSave = dashboardData.map(card => ({
-    id: card.id,
-    title: card.title,
-    metric: card.metric,
-    valueFormat: card.valueFormat,
-    costCalcType: card.costCalcType || 'sum',
-    baseFilters: card.baseFilters || {},
-    localFilters: card.localFilters || {},
-    filterOptions: card.filterOptions
-  }));
-
-  localStorage.setItem(`dashboardLayout_${projectId}`, JSON.stringify(layoutToSave));
-  console.log("Dashboard layout saved to localStorage.");
+  localStorage.setItem(`dashboardLayout_${projectId}`, JSON.stringify(dashboardData));
 }
 
 export { init };

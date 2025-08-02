@@ -566,7 +566,8 @@ function attachRealtimeListeners(userId) {
                             const taskId = doc.ref.parent.parent.id;
                             const existing = newImageMap[taskId];
 
-                            if (!existing || (data.timestamp && data.timestamp.toMillis() < existing.timestamp.toMillis())) {
+                            // This condition robustly checks for timestamps before comparing them.
+                            if (!existing || (data.timestamp && (!existing.timestamp || data.timestamp.toMillis() < existing.timestamp.toMillis()))) {
                                 newImageMap[taskId] = {
                                     imageUrl: imageUrl,
                                     timestamp: data.timestamp
