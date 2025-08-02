@@ -1,29 +1,31 @@
 export default async function handler(req, res) {
   const { path } = req.query;
 
-  if (!path) {
-    return res.status(400).send('Missing file path');
-  }
+  if (!path) return res.status(400).send('Missing file path');
 
   const firebaseProxyURL = `https://us-central1-juan-luna-db.cloudfunctions.net/downloadProxy?path=${encodeURIComponent(path)}`;
 
   try {
-    const firebaseResponse = await fetch(firebaseProxyURL, { redirect: 'manual' });
-
-    if (firebaseResponse.status === 302 || firebaseResponse.status === 301) {
-      const finalImageUrl = firebaseResponse.headers.get('Location');
-
-      if (finalImageUrl) {
-        res.setHeader('Cache-Control', 'private, no-cache, no-store, must-revalidate');
-        return res.redirect(302, finalImageUrl);
-      }
+    const firebaseResponse = await fetch(firebaseProxyURL);
+    if (!firebaseResponse.ok) {
+      console.error("[vercel-proxy] Firebase response failed:", firebaseResponse.status);
+      return res.status(502).send("Bad response from upstream server.");
     }
 
-    // Error handling for when Firebase does not redirect
-    const errorText = await firebaseResponse.text();
-    console.error("[vercel-proxy] Firebase function failed to redirect. Status:", firebaseResponse.status);
-    console.error("[vercel-proxy] Firebase function response:", errorText);
-    return res.status(502).send("Bad response from upstream server.");
+    // Signed URL returned as plain text
+    const signedUrl = await firebaseResponse.text();
+
+    const imageResponse = await fetch(signedUrl);
+    if (!imageResponse.ok) {
+      console.error("[vercel-proxy] Failed to fetch signed URL:", imageResponse.status);
+      return res.status(502).send("Failed to fetch image from signed URL.");
+    }
+
+    // Set appropriate cache headers
+    res.setHeader('Cache-Control', 'no-store');
+
+    // Pipe image directly
+    imageResponse.body.pipe(res);
 
   } catch (error) {
     console.error("[vercel-proxy] Internal error:", error);
