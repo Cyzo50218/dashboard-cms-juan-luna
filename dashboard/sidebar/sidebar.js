@@ -960,6 +960,7 @@ window.TaskSidebar = (function () {
     async function handleCommentSubmit() {
         const commentInputEl = document.getElementById('comment-input');
         const fileToUpload = pastedFiles.length > 0 ? pastedFiles[0] : null;
+        const ABSOLUTE_BASE = "https://cms.juanlunacollections.com";
 
         // 1. Find the preview element BEFORE processing any text.
         const previewEl = commentInputEl.querySelector('.inline-file-preview');
@@ -982,7 +983,10 @@ window.TaskSidebar = (function () {
                 const storagePath = `workspaceProjects/${currentProject.id}/messages-attachments/${Date.now()}-${fileToUpload.name}`;
                 const storageRef = ref(storage, storagePath);
                 const snapshot = await uploadBytes(storageRef, fileToUpload);
-                const finalDownloadURL = `/attachments/downloadProxy?path=${encodeURIComponent(snapshot.metadata.fullPath)}`;
+                const relativeDownloadURL = `/attachments/downloadProxy?path=${encodeURIComponent(snapshot.metadata.fullPath)}`;
+                const finalDownloadURL = messageHasImage
+                    ? `${ABSOLUTE_BASE}${relativeDownloadURL}`
+                    : relativeDownloadURL;
 
                 const attachmentHtml = messageHasImage
                     ? `<img src="${finalDownloadURL}" alt="${attachmentName}" class="scalable-image">`
