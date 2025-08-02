@@ -127,26 +127,29 @@ export const acceptWorkspaceInvitation = onCall(async (request) => {
 export const downloadProxy = onRequest(async (req, res) => {
     const filePath = req.query.path;
 
-    console.log("[downloadProxy] Request received. filePath:", filePath);
-
     if (!filePath) {
-        return res.status(400).send("File path is required.");
+        return res.status(400).send("A file path is required.");
     }
 
     try {
+        res.set('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+
         const bucket = getStorage().bucket();
         const file = bucket.file(filePath);
 
-        const [metadata] = await file.getMetadata();
+        const expires = new Date();
+        expires.setMinutes(expires.getMinutes() + 15);
 
-        res.setHeader("Content-Type", metadata.contentType);
-        res.setHeader("Content-Disposition", `inline; filename="${metadata.name.split('/').pop()}"`);
+        const [signedUrl] = await file.getSignedUrl({
+            action: 'read',
+            expires: expires,
+        });
 
-        file.createReadStream().pipe(res);
+        return res.redirect(signedUrl);
 
     } catch (error) {
-        console.error("[downloadProxy] Error reading file:", error);
-        return res.status(404).send("File not found.");
+        console.error("[downloadProxy] Error generating signed URL:", error);
+        return res.status(404).send("File not found or access denied.");
     }
 });
 

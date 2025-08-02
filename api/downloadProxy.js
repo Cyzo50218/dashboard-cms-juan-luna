@@ -1,32 +1,35 @@
 export default async function handler(req, res) {
   const { path } = req.query;
 
-  if (!path) return res.status(400).send('Missing file path');
+  if (!path) {
+    return res.status(400).send('Missing file path');
+  }
 
   const firebaseProxyURL = `https://us-central1-juan-luna-db.cloudfunctions.net/downloadProxy?path=${encodeURIComponent(path)}`;
 
   try {
-    const response = await fetch(firebaseProxyURL);
+    // Fetch the Firebase function, but tell it NOT to follow redirects automatically
+    const firebaseResponse = await fetch(firebaseProxyURL, { redirect: 'manual' });
 
-    if (!response.ok) {
-      console.error("[vercel-proxy] Firebase returned:", response.statusText);
-      return res.status(response.status).send("File not found.");
+    // Check if Firebase responded with a redirect (status 301 or 302)
+    if (firebaseResponse.status === 302 || firebaseResponse.status === 301) {
+      // Get the real image URL from the 'Location' header
+      const finalImageUrl = firebaseResponse.headers.get('Location');
+
+      if (finalImageUrl) {
+        // Success! Redirect the user's browser to the actual image.
+        return res.redirect(302, finalImageUrl);
+      }
     }
 
-    const contentType = response.headers.get("Content-Type") || "application/octet-stream";
-    const rawFileName = decodeURIComponent(path).split('/').pop();
-    const cleanedFileName = rawFileName.replace(/_[\d.]+[kKmMgG][bB](?=\.\w+$)/, '');
+    // If we get here, it means Firebase did NOT redirect, which is an error.
+    const errorText = await firebaseResponse.text();
+    console.error("[vercel-proxy] Firebase function failed to redirect. Status:", firebaseResponse.status);
+    console.error("[vercel-proxy] Firebase function response:", errorText);
+    return res.status(502).send("Bad response from upstream server.");
 
-    res.setHeader("Content-Type", contentType);
-    res.setHeader("Content-Disposition", `inline; filename="${cleanedFileName}"`);
-
-    const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    res.setHeader("Content-Length", buffer.length);
-    res.end(buffer);
   } catch (error) {
-    console.error("[vercel-proxy] Error:", error);
-    return res.status(500).send("Proxy error.");
+    console.error("[vercel-proxy] Internal error:", error);
+    return res.status(500).send("Proxy encountered an internal error.");
   }
 }
