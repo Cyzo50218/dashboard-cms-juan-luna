@@ -562,14 +562,15 @@ function attachRealtimeListeners(userId) {
                         const imgTag = tempDiv.querySelector('img');
 
                         if (imgTag && imgTag.src) {
-                            const imageUrl = imgTag.src;
+                            const originalUrl = imgTag.src;
+                            const uniqueImageUrl = `${originalUrl}&t=${Date.now()}`;
+
                             const taskId = doc.ref.parent.parent.id;
                             const existing = newImageMap[taskId];
 
-                            // This condition robustly checks for timestamps before comparing them.
                             if (!existing || (data.timestamp && (!existing.timestamp || data.timestamp.toMillis() < existing.timestamp.toMillis()))) {
                                 newImageMap[taskId] = {
-                                    imageUrl: imageUrl,
+                                    imageUrl: uniqueImageUrl, // Store the NEW, unique URL
                                     timestamp: data.timestamp
                                 };
                             }
