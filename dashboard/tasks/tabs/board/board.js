@@ -563,7 +563,7 @@ function attachRealtimeListeners(userId) {
 
                         if (imgTag && imgTag.src) {
                             const originalUrl = imgTag.src;
-                            const oldestImageUrl = taskImageMap[task.id];
+                            const uniqueImageUrl = `${originalUrl}&t=${Date.now()}`;
 
                             const taskId = doc.ref.parent.parent.id;
                             const existing = newImageMap[taskId];
@@ -732,7 +732,7 @@ const renderTask = (task) => {
         return user ? `<img src="${user.avatar || 'https://via.placeholder.com/24'}" alt="${user.name}" class="boardtasks-assignee-avatar" title="${user.name}">` : '';
     }).join('');
 
-    const oldestImageUrl = task.chatuuid ? taskImageMap[task.chatuuid] : null;
+    const oldestImageUrl = taskImageMap[task.id];
     const isCompleted = task.status === 'Completed';
     const cardCompletedClass = isCompleted ? 'boardtasks-task-checked' : '';
     const hasLiked = task.likedBy && task.likedBy[currentUserId];
