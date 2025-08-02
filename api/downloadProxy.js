@@ -1,18 +1,32 @@
 export default async function handler(req, res) {
   const { path } = req.query;
 
-  if (!path) return res.status(400).send("Missing file path");
+  if (!path) return res.status(400).send('Missing file path');
+
+  const firebaseProxyURL = `https://us-central1-juan-luna-db.cloudfunctions.net/downloadProxy?path=${encodeURIComponent(path)}`;
 
   try {
-    const bucket = getStorage().bucket();
-    const file = bucket.file(path);
+    const response = await fetch(firebaseProxyURL);
 
-    const [metadata] = await file.getMetadata();
-    res.setHeader("Content-Type", metadata.contentType || "application/octet-stream");
+    if (!response.ok) {
+      console.error("[vercel-proxy] Firebase returned:", response.statusText);
+      return res.status(response.status).send("File not found.");
+    }
 
-    file.createReadStream().pipe(res);
-  } catch (err) {
-    console.error("Error streaming file:", err);
-    res.status(500).send("Failed to fetch file");
+    const contentType = response.headers.get("Content-Type") || "application/octet-stream";
+    const rawFileName = decodeURIComponent(path).split('/').pop();
+    const cleanedFileName = rawFileName.replace(/_[\d.]+[kKmMgG][bB](?=\.\w+$)/, '');
+
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Content-Disposition", `inline; filename="${cleanedFileName}"`);
+
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    res.setHeader("Content-Length", buffer.length);
+    res.end(buffer);
+  } catch (error) {
+    console.error("[vercel-proxy] Error:", error);
+    return res.status(500).send("Proxy error.");
   }
 }
