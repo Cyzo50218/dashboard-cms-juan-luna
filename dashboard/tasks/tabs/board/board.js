@@ -576,12 +576,19 @@ function attachRealtimeListeners(userId) {
                         }
                     });
 
+                    if (Object.keys(newImageMap).length > 0) {
+                        console.log("📷 Found images:", newImageMap);
+                    } else {
+                        console.log("❌ No images found in messages snapshot");
+                    }
+
                     taskImageMap = Object.fromEntries(
                         Object.entries(newImageMap).map(([key, value]) => [key, value.imageUrl])
                     );
 
                     renderBoard();
                 });
+
             });
 
         } catch (error) {
