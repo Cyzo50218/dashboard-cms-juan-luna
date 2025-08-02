@@ -58,6 +58,11 @@ function parseRoute() {
         };
     }
 
+    if (pathParts[0] === 'attachments') {
+        window.location.href = window.location.href; // Let the browser handle it (full reload)
+        return;
+    }
+    
     return { section: 'home' };
 }
 
