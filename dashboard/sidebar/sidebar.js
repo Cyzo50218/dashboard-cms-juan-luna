@@ -319,6 +319,12 @@ window.TaskSidebar = (function () {
         rightSidebarContainer.classList.add('sidebar-open');
 
         try {
+            // ✅ FIX: Normalize projectRef to a DocumentReference if it's a string path.
+            // This makes the function robust regardless of what the caller provides.
+            if (typeof projectRef === 'string') {
+                projectRef = doc(db, projectRef);
+            }
+
             let taskRef;
             let taskSnap;
 
@@ -367,6 +373,7 @@ window.TaskSidebar = (function () {
             currentProjectRef = projectRef;
 
             // ✅ STEP 2: Fetch project data manually from projectRef
+            // This call will now work correctly since projectRef is guaranteed to be a DocumentReference.
             const projectSnap = await getDoc(projectRef);
             if (!projectSnap.exists()) throw new Error("Project not found.");
             currentProject = { id: projectSnap.id, ...projectSnap.data() };
@@ -382,7 +389,6 @@ window.TaskSidebar = (function () {
             const eligibleProjects = results[1];
             const memberProfiles = results[2];
 
-
             if (!taskSnap.exists()) throw new Error("Task not found at indexed path.");
 
             currentTask = { id: taskSnap.id, ...taskSnap.data() };
@@ -393,7 +399,6 @@ window.TaskSidebar = (function () {
             updateUserPermissions(currentProject, currentUserId);
             sidebar.classList.remove('is-loading');
             renderSidebar(currentTask);
-
 
             // ✅ STEP 4: Defer recent history update
             setTimeout(async () => {
@@ -415,7 +420,7 @@ window.TaskSidebar = (function () {
                         name: currentTask.name,
                         status: currentTask.status,
                         assignees: assigneesForHistory,
-                        projectRef: projectRef,
+                        projectRef: projectRef, // This is now correctly a DocumentReference
                         projectName: currentProject.title,
                         projectColor: currentProject.color,
                         lastAccessed: serverTimestamp()
