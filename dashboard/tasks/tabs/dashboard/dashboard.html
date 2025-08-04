@@ -38,9 +38,14 @@
 
     <!-- Charts Section: Contains two columns for various charts -->
     <div class="chart-section">
-      <!-- Left Column for Charts -->
       <div class="chart-column">
-        <div class="bg-white rounded-xl shadow-lg p-6 chart-container" id="bar-chart-container">
+        <div class="rounded-xl shadow-lg p-6 chart-container relative" id="bar-chart-container">
+          <button class="edit-card-btn absolute top-2 right-8 text-gray-400 hover:text-blue-500">
+            <i class="fas fa-edit"></i>
+          </button>
+          <button class="remove-card-btn absolute top-2 right-2 text-gray-400 hover:text-red-500 hidden">
+            <i class="fas fa-times"></i>
+          </button>
           <h3 class="text-xl font-bold text-gray-900 mb-4">
             Task Completion Overview
           </h3>
@@ -49,7 +54,13 @@
           </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-lg p-6 chart-container" id="pie-chart-container">
+        <div class="rounded-xl shadow-lg p-6 chart-container relative" id="pie-chart-container">
+          <button class="edit-card-btn absolute top-2 right-8 text-gray-400 hover:text-blue-500">
+            <i class="fas fa-edit"></i>
+          </button>
+          <button class="remove-card-btn absolute top-2 right-2 text-gray-400 hover:text-red-500 hidden">
+            <i class="fas fa-times"></i>
+          </button>
           <h3 class="text-xl font-bold text-gray-900 mb-4">
             Task Distribution
           </h3>
@@ -59,9 +70,14 @@
         </div>
       </div>
 
-      <!-- Right Column for Charts -->
       <div class="chart-column">
-        <div class="bg-white rounded-xl shadow-lg p-6 chart-container" id="line-chart-container">
+        <div class="rounded-xl shadow-lg p-6 chart-container relative" id="line-chart-container">
+          <button class="edit-card-btn absolute top-2 right-8 text-gray-400 hover:text-blue-500">
+            <i class="fas fa-edit"></i>
+          </button>
+          <button class="remove-card-btn absolute top-2 right-2 text-gray-400 hover:text-red-500 hidden">
+            <i class="fas fa-times"></i>
+          </button>
           <h3 class="text-xl font-bold text-gray-900 mb-4">
             Task Timeline
           </h3>
@@ -70,7 +86,13 @@
           </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-lg p-6 chart-container" id="doughnut-chart-container">
+        <div class="rounded-xl shadow-lg p-6 chart-container relative" id="doughnut-chart-container">
+          <button class="edit-card-btn absolute top-2 right-8 text-gray-400 hover:text-blue-500">
+            <i class="fas fa-edit"></i>
+          </button>
+          <button class="remove-card-btn absolute top-2 right-2 text-gray-400 hover:text-red-500 hidden">
+            <i class="fas fa-times"></i>
+          </button>
           <h3 class="text-xl font-bold text-gray-900 mb-4">
             Priority Distribution
           </h3>
@@ -78,8 +100,15 @@
             <canvas id="doughnutChart"></canvas>
           </div>
         </div>
-      </div>
 
+        <div id="add-chart-placeholder"
+          class="bg-white rounded-xl shadow-lg p-6 chart-container chart-placeholder flex items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors">
+          <div class="text-center text-gray-400">
+            <i class="fas fa-plus fa-3x fa-plus-thin"></i>
+            <p class="mt-2 font-semibold">Add Chart</p>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="empty-placeholder">

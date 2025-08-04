@@ -38,6 +38,61 @@ let allFilterableColumns = [];
 let projectDocRef = null;
 let sectionIdToName = {};
 
+const STATIC_CHART_CONFIGS = {
+  'bar-chart-container': {
+    id: 'bar-chart-container',
+    title: 'Task Completion Overview',
+    cardType: 'bar',
+    metric: 'count',
+    isDefault: true,
+    // Add default styles
+    bgColor: '#FFFFFF',
+    textColor: '#111827',
+    fontStyle: 'inherit'
+  },
+  'pie-chart-container': {
+    id: 'pie-chart-container',
+    title: 'Task Distribution',
+    cardType: 'pie',
+    metric: 'count',
+    isDefault: true,
+    // Add default styles
+    bgColor: '#FFFFFF',
+    textColor: '#111827',
+    fontStyle: 'inherit'
+  },
+  'line-chart-container': {
+    id: 'line-chart-container',
+    title: 'Task Timeline',
+    cardType: 'line',
+    metric: 'count',
+    isDefault: true,
+    // Add default styles
+    bgColor: '#FFFFFF',
+    textColor: '#111827',
+    fontStyle: 'inherit'
+  },
+  'doughnut-chart-container': {
+    id: 'doughnut-chart-container',
+    title: 'Priority Distribution',
+    cardType: 'doughnut',
+    metric: 'count',
+    isDefault: true,
+    // Add default styles
+    bgColor: '#FFFFFF',
+    textColor: '#111827',
+    fontStyle: 'inherit'
+  }
+};
+
+const CALCULATION_OPTIONS = {
+  'count': 'Count of Tasks',
+  'completedTasks': 'Completed Tasks',
+  'overdueTasks': 'Overdue Tasks',
+  'cardBalance': 'Card Balance',
+  'totalPaymentMade': 'Total Payment Made'
+};
+
 async function fetchInitialData(projectId) {
   if (!projectId) {
     console.error("Project ID is required.");
@@ -197,13 +252,12 @@ async function fetchSections(projectId) {
   }
 }
 
-
 function createCards() {
   try {
     if (!cardsContainer) return;
     cardsContainer.innerHTML = "";
 
-    dashboardData.forEach((card) => {
+    dashboardData.filter(card => card.cardType === 'number').forEach((card) => {
       const cardEl = document.createElement("div");
       cardEl.className = "card relative"; // Add relative for positioning
       cardEl.dataset.id = card.id;
@@ -215,7 +269,8 @@ function createCards() {
       let formattedValue;
       switch (card.valueFormat) {
         case 'currency':
-          formattedValue = "₱" + formatNumber(card.value);
+          const symbol = card.currencySymbol || '₱';
+          formattedValue = symbol + formatNumber(card.value);
           break;
         case 'percent':
           formattedValue = (card.value || 0).toFixed(2) + "%";
@@ -489,6 +544,108 @@ async function openAddCardModal(cardToEdit = null) {
 
         <div class="modal-config-pane">
           <!-- Card Data Section -->
+
+          <div class="form-group">
+  <label for="card-type">Card Type</label>
+  <div id="card-type" class="custom-select modal-select">
+    <div class="selected">
+      <span class="text"># Number</span>
+      <span class="material-icons dropdown-icon">expand_more</span>
+    </div>
+    <div class="dropdown-list hidden">
+      <div class="dropdown-item" data-value="number">
+        <span class="material-icons">pin</span>
+        <span class="text">Number</span>
+      </div>
+      <div class="dropdown-item" data-value="bar">
+        <span class="material-icons">bar_chart</span>
+        <span class="text">Bar Chart</span>
+      </div>
+      <div class="dropdown-item" data-value="horizontalBar">
+        <span class="material-icons">stacked_bar_chart</span>
+        <span class="text">Horizontal Bar Chart</span>
+      </div>
+      <div class="dropdown-item" data-value="line">
+        <span class="material-icons">show_chart</span>
+        <span class="text">Line Chart</span>
+      </div>
+      <div class="dropdown-item" data-value="area">
+        <span class="material-icons">timeline</span>
+        <span class="text">Area Chart</span>
+      </div>
+      <div class="dropdown-item" data-value="scatter">
+        <span class="material-icons">scatter_plot</span>
+        <span class="text">Scatter Chart</span>
+      </div>
+      <div class="dropdown-item" data-value="bubble">
+        <span class="material-icons">bubble_chart</span>
+        <span class="text">Bubble Chart</span>
+      </div>
+      <div class="dropdown-item" data-value="pie">
+        <span class="material-icons">pie_chart</span>
+        <span class="text">Pie Chart</span>
+      </div>
+      <div class="dropdown-item" data-value="doughnut">
+        <span class="material-icons">donut_large</span>
+        <span class="text">Doughnut Chart</span>
+      </div>
+      <div class="dropdown-item" data-value="polarArea">
+        <span class="material-icons">track_changes</span>
+        <span class="text">Polar Area Chart</span>
+      </div>
+      <div class="dropdown-item" data-value="radar">
+        <span class="material-icons">radar</span>
+        <span class="text">Radar Chart</span>
+      </div>
+      <div class="dropdown-item" data-value="chart-mixed">
+        <span class="material-icons">layers</span>
+        <span class="text">Mixed Chart</span>
+      </div>
+      <div class="dropdown-item" data-value="bar-stacked">
+        <span class="material-icons">stacked_bar_chart</span>
+        <span class="text">Stacked Bar Chart</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="config-divider">
+
+<div id="chart-color-config-section" class="config-section" style="display: none;">
+  <h4 class="config-header">Chart Colors</h4>
+  
+  <div class="form-group">
+    <label for="chart-palette-select">Color Palette</label>
+    <select id="chart-palette-select" class="modal-select">
+      <option value="default">Default</option>
+      <option value="vibrant">Vibrant</option>
+      <option value="pastel">Pastel</option>
+      <option value="cool">Cool Blues</option>
+      <option value="warm">Warm Sunset</option>
+    </select>
+  </div>
+
+  <div class="color-palette-editor">
+    <div id="chart-colors-list" class="chart-colors-list"></div>
+    </div>
+  
+  <div id="chart-color-palette" class="color-palette hidden">
+    <div class="palette-section">
+      <div class="palette-title">Suggested Colors</div>
+      <div class="palette-grid" id="chart-relaxing-colors"></div>
+    </div>
+    <div class="palette-section">
+      <div class="palette-title">Recent Colors</div>
+      <div class="palette-grid" id="chart-recent-colors"></div>
+    </div>
+    <div class="palette-section">
+      <input type="color" id="chart-color-picker">
+    </div>
+  </div>
+</div>
+
+<hr class="config-divider">
+
           <div class="config-section">
             <h4 class="config-header">Card Data</h4>
             <div class="form-group">
@@ -506,13 +663,24 @@ async function openAddCardModal(cardToEdit = null) {
 
             <!-- Display Format -->
             <div class="form-group">
-              <label for="value-format">Display Format</label>
-              <select id="value-format" class="modal-select">
-                <option value="number">Plain Number</option>
-                <option value="currency">Currency</option>
-                <option value="percent">Percentage</option>
-              </select>
-            </div>
+  <label for="value-format">Display Format</label>
+  <div style="display: flex; gap: 8px;">
+    <select id="value-format" class="modal-select" style="flex: 1;">
+      <option value="number">Plain Number</option>
+      <option value="currency">Currency</option>
+      <option value="percent">Percentage</option>
+    </select>
+    <select id="currency-type" class="modal-select" style="width: 120px; display: none;">
+      <option value="₱">PHP</option>
+      <option value="$">USD</option>
+      <option value="A$">AUD</option>
+      <option value="€">EUR</option>
+      <option value="£">GBP</option>
+      <option value="¥">JPY</option>
+    </select>
+  </div>
+</div>
+            
           </div>
           
           <hr class="config-divider">
@@ -598,18 +766,37 @@ async function openAddCardModal(cardToEdit = null) {
   `;
 
   document.body.appendChild(modalOverlay);
+  const getDefaultChartColors = () => ['#4f46e5', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#3b82f6'];
+  let initialChartColors;
+
+  if (isEditMode) {
+    initialChartColors = cardToEdit.chartColors || (cardToEdit.chartColor ? [cardToEdit.chartColor] : getDefaultChartColors());
+  } else {
+    const savedColors = JSON.parse(localStorage.getItem('lastChartColors'));
+    initialChartColors = savedColors && savedColors.length > 0 ? savedColors : getDefaultChartColors();
+  }
+
+  const COLOR_PALETTES = {
+    default: ['#4f46e5', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#3b82f6', '#10b981', '#d946ef'],
+    vibrant: ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6'],
+    pastel: ['#fbb4ae', '#b3cde3', '#ccebc5', '#decbe4', '#fed9a6', '#ffffcc', '#e5d8bd', '#fddaec'],
+    cool: ['#003f5c', '#374c80', '#7a5195', '#bc5090', '#ef5675', '#ff764a', '#ffa600', '#58508d'],
+    warm: ['#692d5c', '#af4d98', '#d49ce8', '#7f5a83', '#a16e83', '#c38383', '#e8a883', '#ffcb83'],
+  };
 
   let cardConfig = {
     title: isEditMode ? cardToEdit.title : 'New Card',
     metric: isEditMode ? cardToEdit.metric || 'count' : 'count',
-    costCalcType: isEditMode ? cardToEdit.costCalcType || 'sum' : 'sum', // NEW
+    costCalcType: isEditMode ? cardToEdit.costCalcType || 'sum' : 'sum',
     valueFormat: isEditMode ? cardToEdit.valueFormat || 'number' : 'number',
     filters: isEditMode ? { ...(cardToEdit.baseFilters || {}) } : {},
+    currencySymbol: isEditMode ? cardToEdit.currencySymbol || '₱' : '₱',
     bgColor: isEditMode ? cardToEdit.bgColor || '#F5F9FF' : '#F5F9FF',
     textColor: isEditMode ? cardToEdit.textColor || '#000000' : '#000000',
-    fontStyle: isEditMode
-      ? cardToEdit.fontStyle || 'inherit'
-      : 'inherit'
+    fontStyle: isEditMode ? cardToEdit.fontStyle || 'inherit' : 'inherit',
+    cardType: isEditMode ? cardToEdit.cardType || 'number' : 'number',
+    chartColors: initialChartColors,
+    chartPalette: isEditMode ? cardToEdit.chartPalette || 'default' : 'default'
   };
 
   const titleInput = modalOverlay.querySelector('#preview-title-input');
@@ -624,7 +811,13 @@ async function openAddCardModal(cardToEdit = null) {
   const bgPicker = modalOverlay.querySelector('#bg-color-picker');
   const bgRelaxing = modalOverlay.querySelector('#bg-relaxing-colors');
   const bgRecent = modalOverlay.querySelector('#bg-recent-colors');
+  const chartColorPalette = modalOverlay.querySelector('#chart-color-palette');
+  const chartPicker = modalOverlay.querySelector('#chart-color-picker');
+  const chartColorConfigSection = modalOverlay.querySelector('#chart-color-config-section');
 
+  if (cardConfig.cardType !== 'number') {
+    chartColorConfigSection.style.display = 'block';
+  }
   const textButton = modalOverlay.querySelector('#text-color-button');
   const textPalette = modalOverlay.querySelector('#text-color-palette');
   const textPicker = modalOverlay.querySelector('#text-color-picker');
@@ -668,48 +861,36 @@ async function openAddCardModal(cardToEdit = null) {
     console.error("Error fetching sections for filter:", error);
   }
 
+
   const updatePreview = () => {
-    updatePreviewStyle();
+    // For number cards, handle currency format directly
+    if (cardConfig.cardType === 'number') {
+      const value = calculateCardValue(
+        cardConfig.metric,
+        cardConfig.costCalcType,
+        cardConfig.filters
+      );
 
-    // Calculate using shared helper so it matches saved card calculation
-    const value = calculateCardValue(
-      cardConfig.metric,
-      cardConfig.costCalcType,
-      cardConfig.filters
-    );
-
-    // Apply display format
-    if (cardConfig.valueFormat === 'currency') {
-      previewValueEl.textContent = "₱" + formatNumber(value);
-    } else if (cardConfig.valueFormat === 'percent') {
-      previewValueEl.textContent = value.toFixed(2) + "%";
+      if (cardConfig.valueFormat === 'currency') {
+        previewValueEl.textContent = cardConfig.currencySymbol + formatNumber(value);
+      } else if (cardConfig.valueFormat === 'percent') {
+        previewValueEl.textContent = value.toFixed(2) + "%";
+      } else {
+        previewValueEl.textContent = formatNumber(value);
+      }
     } else {
-      previewValueEl.textContent = formatNumber(value);
+      updatePreviewCardType();
     }
+    updatePreviewStyle();
   };
 
-
-  let calculationOptions = [
-    { id: 'count', name: 'Count of Tasks' },
-    { id: 'completedTasks', name: 'Completed Tasks' },
-    { id: 'overdueTasks', name: 'Overdue Tasks' },
-    { id: 'cardBalance', name: 'Card Balance' },
-    { id: 'totalPaymentMade', name: 'Total Payment Made' }
-  ];
-
-  // Add each costing column as a "Cost" type option
-  projectConfig.customColumns
-    .filter(c => c.type === 'Costing')
-    .forEach(c => {
-      calculationOptions.push({
-        id: `cost-${c.id}`, // unique per costing column
-        name: `${c.name}` // shows column name
-      });
-    });
+  projectConfig.customColumns.filter(c => c.type === 'Costing').forEach(c => {
+    CALCULATION_OPTIONS[`cost-${c.id}`] = c.name;
+  });
 
   // Fill metric select
-  metricSelect.innerHTML = calculationOptions
-    .map(opt => `<option value="${opt.id}">${opt.name}</option>`)
+  metricSelect.innerHTML = Object.entries(CALCULATION_OPTIONS)
+    .map(([id, name]) => `<option value="${id}">${name}</option>`)
     .join('');
 
   metricSelect.value = cardConfig.metric || 'count';
@@ -729,7 +910,23 @@ async function openAddCardModal(cardToEdit = null) {
     updatePreview();
   });
 
-  formatSelect.addEventListener('change', e => { cardConfig.valueFormat = e.target.value; updatePreview(); });
+  const currencySelect = modalOverlay.querySelector('#currency-type');
+  formatSelect.value = cardConfig.valueFormat;
+  currencySelect.value = cardConfig.currencySymbol;
+
+  if (cardConfig.valueFormat === 'currency') {
+    currencySelect.style.display = 'block';
+  }
+
+  formatSelect.addEventListener('change', e => {
+    cardConfig.valueFormat = e.target.value;
+    currencySelect.style.display = (e.target.value === 'currency') ? 'block' : 'none';
+    updatePreview();
+  });
+  currencySelect.addEventListener('change', e => {
+    cardConfig.currencySymbol = e.target.value;
+    updatePreview();
+  });
 
   addFilterBtn.addEventListener('click', e => { e.stopPropagation(); addFilterMenu.classList.toggle('hidden'); });
 
@@ -763,6 +960,106 @@ async function openAddCardModal(cardToEdit = null) {
     });
   }
 
+  let editingColorIndex = 0
+
+  const cardTypeDropdown = modalOverlay.querySelector('#card-type');
+  const selectedEl = cardTypeDropdown.querySelector('.selected');
+  const dropdownList = cardTypeDropdown.querySelector('.dropdown-list');
+  const selectedTextEl = selectedEl.querySelector('.text');
+  const selectedIconEl = selectedEl.querySelector('.material-icons.dropdown-icon');
+  const chartPaletteSelect = modalOverlay.querySelector('#chart-palette-select');
+  chartPaletteSelect.value = cardConfig.chartPalette;
+  chartPaletteSelect.addEventListener('change', (e) => {
+    cardConfig.chartPalette = e.target.value;
+    const newPalette = COLOR_PALETTES[cardConfig.chartPalette] || COLOR_PALETTES.default;
+    cardConfig.chartColors = newPalette.slice(0, cardConfig.chartColors.length);
+    localStorage.setItem('lastChartColors', JSON.stringify(cardConfig.chartColors));
+
+    updatePreview();
+  });
+
+  let expandIcon = selectedIconEl;
+  expandIcon.textContent = "expand_more";
+  let selectedTypeIcon = document.createElement('span');
+  selectedTypeIcon.classList.add('material-icons');
+  selectedTypeIcon.style.marginRight = "6px"; // spacing between icon and text
+  selectedEl.insertBefore(selectedTypeIcon, selectedTextEl);
+
+  selectedEl.addEventListener('click', (e) => {
+    e.stopPropagation();
+    dropdownList.classList.toggle('hidden');
+  });
+
+  dropdownList.querySelectorAll('.dropdown-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const value = item.getAttribute('data-value');
+      const text = item.querySelector('.text').textContent;
+      const icon = item.querySelector('.material-icons').textContent;
+
+      cardConfig.cardType = value;
+      selectedTextEl.textContent = text;
+      selectedTypeIcon.textContent = icon;
+      dropdownList.classList.add('hidden');
+
+      // FIX: Show/hide the chart color editor based on card type
+      chartColorConfigSection.style.display = (value !== 'number') ? 'block' : 'none';
+
+      const valueFormatSelect = modalOverlay.querySelector('#value-format');
+      const percentOption = valueFormatSelect.querySelector('option[value="percent"]');
+
+      if (value !== 'number') {
+        percentOption.disabled = true;
+        if (valueFormatSelect.value === 'percent') {
+          valueFormatSelect.value = 'number';
+          cardConfig.valueFormat = 'number';
+        }
+      } else {
+        percentOption.disabled = false;
+      }
+
+      updatePreview();
+    });
+  });
+
+  // Close when clicking outside
+  document.addEventListener("click", e => {
+    const chartColorsList = modalOverlay.querySelector('#chart-colors-list');
+
+    // --- Close Add Filter Menu ---
+    if (!addFilterBtn.contains(e.target) && !addFilterMenu.contains(e.target)) {
+      addFilterMenu.classList.add('hidden');
+    }
+
+    // --- Close Background Color Palette ---
+    if (!bgButton.contains(e.target) && !bgPalette.contains(e.target)) {
+      bgPalette.classList.add('hidden');
+    }
+
+    // --- Close Text Color Palette ---
+    if (!textButton.contains(e.target) && !textPalette.contains(e.target)) {
+      textPalette.classList.add('hidden');
+    }
+
+    // --- Close Chart Color Palette ---
+    if (chartColorPalette && chartColorsList && !chartColorPalette.contains(e.target) && !chartColorsList.contains(e.target)) {
+      chartColorPalette.classList.add('hidden');
+    }
+
+    // --- Close Modal if click outside ---
+    if (e.target === modalOverlay) {
+      closeModal();
+    }
+  });
+
+  // --- Set Default Selection on Modal Open ---
+  const defaultItem = cardTypeDropdown.querySelector(`.dropdown-item[data-value="${cardConfig.cardType}"]`);
+  if (defaultItem) {
+    const icon = defaultItem.querySelector('.material-icons').textContent;
+    const text = defaultItem.querySelector('.text').textContent;
+    selectedTypeIcon.textContent = icon;
+    selectedTextEl.textContent = text;
+    updatePreviewCardType();
+  }
   renderAddFilterMenu();
 
   const closeModal = () => {
@@ -778,21 +1075,7 @@ async function openAddCardModal(cardToEdit = null) {
     localStorage.setItem('lastFontStyle', e.target.value);
     updatePreviewStyle();
   });
-  if (!isEditMode) {
-    const savedFontStyle = localStorage.getItem('lastFontStyle');
-    const savedBgColor = localStorage.getItem('lastBgColor');
-    const savedTextColor = localStorage.getItem('lastTextColor');
 
-    if (savedFontStyle) {
-      cardConfig.fontStyle = fontValueMap[savedFontStyle] || savedFontStyle;
-    }
-    if (savedBgColor) {
-      cardConfig.bgColor = savedBgColor;
-    }
-    if (savedTextColor) {
-      cardConfig.textColor = savedTextColor;
-    }
-  }
   const fontValueMap = {
     "Roboto": "'Roboto', sans-serif",
     "'Roboto', sans-serif": "'Roboto', sans-serif",
@@ -807,6 +1090,29 @@ async function openAddCardModal(cardToEdit = null) {
     "inherit": "inherit",
     "normal": "inherit"
   };
+
+  if (!isEditMode) {
+    const savedFontStyle = localStorage.getItem('lastFontStyle');
+    const savedBgColor = localStorage.getItem('lastBgColor');
+    const savedTextColor = localStorage.getItem('lastTextColor');
+    const savedChartColor = localStorage.getItem('lastChartColor');
+
+    // Load saved preferences
+    if (savedFontStyle) {
+      cardConfig.fontStyle = fontValueMap[savedFontStyle] || savedFontStyle;
+    }
+    if (savedBgColor) {
+      cardConfig.bgColor = savedBgColor;
+    }
+    if (savedTextColor) {
+      cardConfig.textColor = savedTextColor;
+    }
+    if (savedChartColor) {
+      cardConfig.chartColor = savedChartColor;
+    } else {
+      cardConfig.chartColor = '#4f46e5'; // default chart color
+    }
+  }
 
   // Determine base font style value
   if (isEditMode) {
@@ -832,6 +1138,192 @@ async function openAddCardModal(cardToEdit = null) {
     if (titleEl) titleEl.style.color = cardConfig.textColor;
     if (valueEl) valueEl.style.color = cardConfig.textColor;
   }
+
+  function populateChartColorPopup(currentColor, index) {
+    const suggestedContainer = chartColorPalette.querySelector('#chart-relaxing-colors');
+    const recentContainer = chartColorPalette.querySelector('#chart-recent-colors');
+
+    const recentColorsObject = JSON.parse(localStorage.getItem('recentChartColorsByIndex') || '{}');
+    const recentColorsForThisIndex = recentColorsObject[index] || [];
+
+    const SUGGESTED_CHART_COLORS = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6'];
+
+    renderPalette(suggestedContainer, SUGGESTED_CHART_COLORS, currentColor, updateChartColor);
+    renderPalette(recentContainer, recentColorsForThisIndex, currentColor, updateChartColor);
+  }
+
+  function updatePreviewCardType() {
+    const previewValueEl = modalOverlay.querySelector('#preview-value');
+    const previewCardEl = modalOverlay.querySelector('.preview-card');
+    const oldCanvas = previewCardEl.querySelector('canvas');
+    if (oldCanvas) oldCanvas.remove();
+
+    const calculatedValue = calculateCardValue(cardConfig.metric, cardConfig.costCalcType, cardConfig.filters);
+
+    if (cardConfig.cardType === 'number') {
+      previewValueEl.style.display = 'block';
+      if (cardConfig.valueFormat === 'currency') {
+        previewValueEl.textContent = cardConfig.currencySymbol + formatNumber(calculatedValue);
+      } else if (cardConfig.valueFormat === 'percent') {
+        previewValueEl.textContent = calculatedValue.toFixed(2) + "%";
+      } else {
+        previewValueEl.textContent = formatNumber(calculatedValue);
+      }
+      return;
+    }
+
+    previewValueEl.style.display = 'none';
+    const canvas = document.createElement('canvas');
+    previewCardEl.appendChild(canvas);
+
+    let chartLabels = [];
+    let chartDataset = [];
+
+    // --- NEW FILTER-AWARE LOGIC ---
+    const hasSectionFilter = cardConfig.filters && cardConfig.filters.sectionTitle;
+
+    if (hasSectionFilter) {
+      // Case 1: A specific section is selected in the filters.
+      // The chart will only show data for this single section.
+      chartLabels = [cardConfig.filters.sectionTitle];
+      chartDataset = [calculateCardValue(cardConfig.metric, cardConfig.costCalcType, cardConfig.filters)];
+    } else if (sectionIdToName && Object.keys(sectionIdToName).length > 0) {
+      // Case 2: No section filter is active, so show all sections.
+      // It will still respect any OTHER filters that might be active.
+      chartLabels = Object.values(sectionIdToName);
+      chartDataset = chartLabels.map(sectionName => {
+        const sectionSpecificFilters = { ...cardConfig.filters, sectionTitle: sectionName };
+        return calculateCardValue(cardConfig.metric, cardConfig.costCalcType, sectionSpecificFilters);
+      });
+    } else {
+      chartLabels = ['This Week', 'Last Week', '2 Weeks Ago', '3 Weeks Ago'];
+      chartDataset = chartLabels.map((_, idx) => calculatedValue * (1 - idx * 0.1));
+    }
+
+    // --- AUTOMATIC COLOR SYNC LOGIC ---
+    const activePalette = COLOR_PALETTES[cardConfig.chartPalette] || COLOR_PALETTES.default;
+    const colorsNeeded = chartDataset.length;
+    const newChartColors = [];
+
+    for (let i = 0; i < colorsNeeded; i++) {
+      const existingColor = cardConfig.chartColors[i];
+      newChartColors.push(existingColor || activePalette[i % activePalette.length]);
+    }
+    cardConfig.chartColors = newChartColors;
+
+    let chartType = cardConfig.cardType;
+    let chartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: ['pie', 'doughnut', 'polarArea'].includes(chartType) // Show legend for these charts
+        }
+      }
+    };
+
+    let chartData = { labels: chartLabels, datasets: [] };
+
+    if (chartType === 'bubble') {
+      const bubbleData = chartDataset.map((value, index) => ({
+        x: (index + 1) * 10,
+        y: value,
+        r: Math.max(5, Math.abs(value / 5))
+      }));
+      chartData.datasets = [{ label: 'Tasks', data: bubbleData, backgroundColor: cardConfig.chartColors }];
+    } else if (chartType === 'bar-stacked' || chartType === 'horizontalBar') {
+      chartType = 'bar';
+      if (chartType === 'horizontalBar') chartOptions.indexAxis = 'y';
+      else chartOptions.scales = { x: { stacked: true }, y: { stacked: true } };
+      chartData.datasets = [{ label: 'Tasks', data: chartDataset, backgroundColor: cardConfig.chartColors }];
+    } else if (chartType === 'chart-mixed') {
+      chartType = 'bar';
+      chartData.datasets = [
+        { type: 'bar', label: 'Bar', data: chartDataset, backgroundColor: cardConfig.chartColors[0] || '#4f46e5' },
+        { type: 'line', label: 'Line', data: chartDataset, borderColor: cardConfig.chartColors[1] || '#ef4444', fill: false }
+      ];
+    } else if (chartType === 'area' || chartType === 'line') {
+      chartType = 'line'; // The actual type is 'line'
+      chartData.datasets.push({
+        label: 'Tasks',
+        data: chartDataset,
+        fill: true,
+        backgroundColor: hexToRgba(cardConfig.chartColors[0] || '#4f46e5', 0.2),
+        borderColor: cardConfig.chartColors[0] || '#4f46e5',
+        borderWidth: 2,
+        tension: 0.3
+      });
+    } else {
+      chartData.datasets = [{ label: 'Tasks', data: chartDataset, backgroundColor: cardConfig.chartColors }];
+    }
+
+    new Chart(canvas.getContext('2d'), { type: chartType, data: chartData, options: chartOptions });
+    renderChartColorSelector();
+  }
+
+  function previewChartColor(newColor) {
+    if (editingColorIndex < cardConfig.chartColors.length) {
+      cardConfig.chartColors[editingColorIndex] = newColor;
+    }
+    renderChartColorSelector();
+    updatePreviewCardType();
+    updatePreviewStyle();
+  }
+
+  function updateChartColor(newColor) {
+    if (editingColorIndex < cardConfig.chartColors.length) {
+      cardConfig.chartColors[editingColorIndex] = newColor;
+    }
+
+    const recentColorsObject = JSON.parse(localStorage.getItem('recentChartColorsByIndex') || '{}');
+    let recentColorsForThisIndex = recentColorsObject[editingColorIndex] || [];
+
+    if (!recentColorsForThisIndex.includes(newColor)) {
+      recentColorsForThisIndex.unshift(newColor);
+      if (recentColorsForThisIndex.length > 8) {
+        recentColorsForThisIndex.pop();
+      }
+    }
+    recentColorsObject[editingColorIndex] = recentColorsForThisIndex;
+    localStorage.setItem('recentChartColorsByIndex', JSON.stringify(recentColorsObject));
+
+    populateChartColorPopup(newColor, editingColorIndex);
+    updatePreview();
+  }
+
+  function renderChartColorSelector() {
+    const chartColorsList = modalOverlay.querySelector('#chart-colors-list');
+    chartColorsList.innerHTML = '';
+    cardConfig.chartColors.forEach((color, index) => {
+      const swatchWrapper = document.createElement('div');
+      swatchWrapper.className = 'chart-color-swatch-wrapper';
+      if (index === editingColorIndex) {
+        swatchWrapper.classList.add('active');
+      }
+
+      const swatch = document.createElement('button');
+      swatch.className = 'chart-color-swatch';
+      swatch.style.backgroundColor = color;
+      swatch.addEventListener('click', (e) => {
+        e.stopPropagation();
+        editingColorIndex = index;
+        populateChartColorPopup(color, index);
+        const topPosition = swatch.offsetTop + swatch.offsetHeight + 5; // 5px gap below
+        const leftPosition = swatch.offsetLeft;
+        chartColorPalette.style.top = `${topPosition}px`;
+        chartColorPalette.style.left = `${leftPosition}px`;
+
+        chartColorPalette.classList.remove('hidden');
+        renderChartColorSelector();
+      });
+
+      swatchWrapper.appendChild(swatch);
+      chartColorsList.appendChild(swatchWrapper);
+    });
+  }
+
+  chartPicker.addEventListener("input", e => previewChartColor(e.target.value)); // For live preview
+  chartPicker.addEventListener("change", e => updateChartColor(e.target.value));
 
   const relaxingColors = ["#F5F9FF", "#F2FFF5", "#FAF9F7", "#F5F5F5", "#FFFFFF", "#E3E3E3", "#FFD6D6", "#FFE7B8"];
   let recentBgColors = [];
@@ -868,6 +1360,7 @@ async function openAddCardModal(cardToEdit = null) {
     renderPalette(textRelaxing, relaxingColors, color, setTextColor);
     renderPalette(textRecent, recentTextColors, color, setTextColor);
   }
+
   setBgColor(cardConfig.bgColor);
   setTextColor(cardConfig.textColor);
 
@@ -916,38 +1409,36 @@ async function openAddCardModal(cardToEdit = null) {
   });
 
   modalOverlay.querySelector('#confirm-add-card').addEventListener('click', () => {
-    if (isEditMode) {
+    if (isEditMode && !cardToEdit.isDefault) {
       const cardToUpdate = dashboardData.find(c => c.id === cardToEdit.id);
       if (cardToUpdate) {
-        cardToUpdate.title = cardConfig.title;
-        cardToUpdate.metric = cardConfig.metric;
-        cardToUpdate.valueFormat = cardConfig.valueFormat;
-        cardToUpdate.baseFilters = cardConfig.filters;
-        cardToUpdate.localFilters = { ...cardConfig.filters };
-        cardToUpdate.costCalcType = cardConfig.costCalcType || 'sum';
-        cardToUpdate.bgColor = cardConfig.bgColor;
-        cardToUpdate.textColor = cardConfig.textColor; // ✅ store text color
-        cardToUpdate.fontStyle = cardConfig.fontStyle; // ✅ store font style
+        Object.assign(cardToUpdate, cardConfig, {
+          baseFilters: cardConfig.filters,
+          localFilters: { ...cardConfig.filters },
+        });
         recalculateCardValue(cardToUpdate);
       }
     } else {
-      const finalValue = parseFloat(previewValueEl.textContent.replace(/,/g, '').replace(/[₱%]/g, ''));
+      const numericString = previewValueEl.textContent.replace(/[^0-9.-]+/g, "");
+      const finalValue = parseFloat(numericString);
       const newCardId = `metric-${Date.now()}`;
+
       dashboardData.push({
         id: newCardId,
-        title: cardConfig.title,
         value: finalValue,
-        metric: cardConfig.metric,
-        valueFormat: cardConfig.valueFormat,
+        ...cardConfig,
+        isDefault: false, // Ensure it's now a custom card
         baseFilters: cardConfig.filters,
         filterOptions: allPossibleFilterOptions,
         localFilters: { ...cardConfig.filters },
-        costCalcType: cardConfig.costCalcType || 'sum',
-        bgColor: cardConfig.bgColor, // ✅ store bg color
-        textColor: cardConfig.textColor, // ✅ store text color
-        fontStyle: cardConfig.fontStyle // ✅ store font style
       });
+
+      if (isEditMode && cardToEdit.isDefault) {
+        const originalEl = document.getElementById(cardToEdit.id);
+        if (originalEl) originalEl.style.display = 'none';
+      }
     }
+
     saveCardLayout();
     renderDashboard();
     closeModal();
@@ -1115,6 +1606,9 @@ function renderDashboard() {
   console.log("Rendering dashboard from current state.");
   createCards();
   initCharts(projectConfig, fullTasksSnapshot);
+  initCustomCharts();
+  setupStaticChartControls();
+  setupChartPlaceholder();
 }
 
 function getProjectIdFromUrl() {
@@ -1128,88 +1622,355 @@ function formatNumber(num) {
   return sign + val;
 }
 
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function setupStaticChartControls() {
+  const staticChartContainers = document.querySelectorAll('.chart-section .chart-container');
+
+  staticChartContainers.forEach(container => {
+    if (container.dataset.controlsInitialized) return;
+
+    const editBtn = container.querySelector('.edit-card-btn');
+    const removeBtn = container.querySelector('.remove-card-btn');
+
+    if (editBtn) {
+      editBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const chartId = container.id;
+        const defaultConfig = STATIC_CHART_CONFIGS[chartId];
+        if (defaultConfig) {
+          // Open the modal with the pre-filled config for this default chart
+          openAddCardModal(defaultConfig);
+        }
+      });
+    }
+
+    if (removeBtn) {
+      removeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        container.style.display = 'none';
+      });
+    }
+    container.dataset.controlsInitialized = 'true';
+  });
+}
+
+function initCustomCharts() {
+  try {
+    const chartSection = document.querySelector('.chart-section');
+    if (!chartSection) return;
+
+    document.querySelectorAll('.custom-chart-container').forEach(el => el.remove());
+
+    const chartColumns = chartSection.querySelectorAll('.chart-column');
+    if (chartColumns.length === 0) return;
+
+    const chartDataFromConfig = dashboardData.filter(card => card.cardType !== 'number');
+
+    chartDataFromConfig.forEach((card, index) => {
+      const chartContainer = document.createElement('div');
+      chartContainer.className = 'rounded-xl shadow-lg p-6 chart-container custom-chart-container relative';
+      const containerId = `chart-container-${card.id}`;
+      const canvasId = `chart-canvas-${card.id}`;
+      chartContainer.id = containerId;
+
+      if (card.bgColor) chartContainer.style.backgroundColor = card.bgColor;
+      if (card.fontStyle) chartContainer.style.fontFamily = card.fontStyle;
+
+      chartContainer.innerHTML = `
+        <button class="edit-card-btn absolute top-2 right-8 text-gray-400 hover:text-blue-500">
+          <i class="fas fa-edit"></i>
+        </button>
+        <button class="remove-card-btn absolute top-2 right-2 text-gray-400 hover:text-red-500">
+          <i class="fas fa-times"></i>
+        </button>
+        <h3 class="text-xl font-bold text-gray-900 mb-4">${card.title}</h3>
+        <div class="chart-canvas-container">
+          <canvas id="${canvasId}"></canvas>
+        </div>
+      `;
+
+      const titleEl = chartContainer.querySelector('h3');
+      if (titleEl && card.textColor) titleEl.style.color = card.textColor;
+
+      const hasFilters = card.baseFilters && Object.keys(card.baseFilters).length > 0;
+      if (hasFilters) {
+        const indicator = document.createElement('span');
+        const indicatorColor = card.chartColors?.[0] || '#888';
+
+        // Style the indicator dot
+        indicator.style.display = 'inline-block';
+        indicator.style.width = '10px';
+        indicator.style.height = '10px';
+        indicator.style.borderRadius = '50%';
+        indicator.style.backgroundColor = indicatorColor;
+        indicator.style.marginRight = '8px';
+        indicator.title = 'Filters are active on this chart';
+
+        titleEl.prepend(indicator);
+      }
+      chartColumns[index % chartColumns.length].appendChild(chartContainer);
+
+      chartContainer.querySelector('.edit-card-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        openAddCardModal(card);
+      });
+
+      chartContainer.querySelector('.remove-card-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        dashboardData = dashboardData.filter(c => c.id !== card.id);
+        saveCardLayout();
+        renderDashboard();
+      });
+
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+
+      let chartLabels = [];
+      let chartDataset = [];
+      const hasSectionFilter = card.baseFilters && card.baseFilters.sectionTitle;
+
+      if (hasSectionFilter) {
+        chartLabels = [card.baseFilters.sectionTitle];
+        chartDataset = [calculateCardValue(card.metric, card.costCalcType, card.baseFilters)];
+      } else if (sectionIdToName && Object.keys(sectionIdToName).length > 0) {
+        chartLabels = Object.values(sectionIdToName);
+        chartDataset = chartLabels.map(sectionName => {
+          const sectionSpecificFilters = { ...card.baseFilters, sectionTitle: sectionName };
+          return calculateCardValue(card.metric, card.costCalcType, sectionSpecificFilters);
+        });
+      } else {
+        const totalValue = calculateCardValue(card.metric, card.costCalcType, card.baseFilters);
+        chartLabels = ['Data A', 'Data B', 'Data C'];
+        chartDataset = [totalValue * 0.5, totalValue * 0.3, totalValue * 0.2];
+      }
+
+      let chartType = card.cardType || 'bar';
+      let chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: ['pie', 'doughnut', 'polarArea', 'line'].includes(chartType),
+            labels: {
+              color: card.textColor || '#666',
+              font: {
+                family: card.fontStyle || 'inherit'
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            ticks: {
+              color: card.textColor || '#666',
+              font: {
+                family: card.fontStyle || 'inherit'
+              }
+            },
+            grid: { color: '#eee' }
+          },
+          y: {
+            ticks: {
+              color: card.textColor || '#666',
+              font: {
+                family: card.fontStyle || 'inherit'
+              }
+            },
+            grid: { color: '#eee' }
+          }
+        }
+      };
+
+      const datasetLabel = CALCULATION_OPTIONS[card.metric] || card.title;
+
+      let chartData = { labels: chartLabels, datasets: [] };
+
+      if (chartType === 'area' || chartType === 'line') {
+        chartType = 'line';
+        chartData.datasets.push({
+          label: datasetLabel,
+          data: chartDataset,
+          fill: true, // This adds the color fill
+          backgroundColor: hexToRgba(card.chartColors[0] || '#4f46e5', 0.2),
+          borderColor: card.chartColors[0] || '#4f46e5',
+          borderWidth: 2,
+          tension: 0.3
+        });
+      } else if (chartType === 'horizontalBar') {
+        chartType = 'bar'; // The actual type is 'bar'
+        chartOptions.indexAxis = 'y'; // This makes it horizontal
+        chartData.datasets.push({
+          label: datasetLabel,
+          data: chartDataset,
+          backgroundColor: card.chartColors
+        });
+      } else {
+        // Default case for most charts (pie, bar, doughnut, etc.)
+        chartData.datasets.push({
+          label: datasetLabel,
+          data: chartDataset,
+          backgroundColor: card.chartColors
+        });
+      }
+
+      new Chart(canvas, { type: chartType, data: chartData, options: chartOptions });
+    });
+  } catch (error) {
+    console.error("Error initializing custom charts:", error);
+  }
+}
+
+function setupChartPlaceholder() {
+  const addChartBtn = document.getElementById('add-chart-placeholder');
+  if (addChartBtn) {
+    addChartBtn.addEventListener('click', () => {
+      openAddCardModal({ cardType: 'bar' });
+    });
+  }
+}
 
 function initCharts(projectConfig, tasksSnapshot) {
   if (!projectConfig || !tasksSnapshot) return;
   try {
-    console.log("Initializing charts with data...");
-
-    const createChart = (id, config) => {
-      const ctx = document.getElementById(id);
-      if (!ctx) return;
-      if (charts[id]) charts[id].destroy();
-      charts[id] = new Chart(ctx, config);
-    };
-
-    // --- 1. Aggregate Data for Charts ---
+    // --- 1. Aggregate data once ---
     const statusCounts = {};
-    const sourceCounts = {};
+    const priorityCounts = {};
     tasksSnapshot.forEach(doc => {
       const task = doc.data();
       if (task.status) statusCounts[task.status] = (statusCounts[task.status] || 0) + 1;
-      if (task.priority) sourceCounts[task.priority] = (sourceCounts[task.priority] || 0) + 1;
+      if (task.priority) priorityCounts[task.priority] = (priorityCounts[task.priority] || 0) + 1;
     });
 
-    // --- 2. Create Bar & Pie Charts (Status Distribution) ---
-    const statusColumn = projectConfig.defaultColumns.find(c => c.id === 'status');
-    if (statusColumn && statusColumn.options) {
-      const labels = statusColumn.options.map(opt => opt.name);
-      const colors = statusColumn.options.map(opt => opt.color);
-      const data = labels.map(label => statusCounts[label] || 0);
-      createChart("barChart", { type: "bar", data: { labels, datasets: [{ label: "Tasks by Status", data, backgroundColor: colors }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
-      createChart("pieChart", { type: "pie", data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: '#fff' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "right" } } } });
-    }
+    // --- 2. Loop through default charts to create and style them ---
+    Object.values(STATIC_CHART_CONFIGS).forEach(config => {
+      const container = document.getElementById(config.id);
+      const canvas = container?.querySelector('canvas');
+      const titleEl = container?.querySelector('h3');
+      if (!container || !canvas) return;
 
-    // --- 3. Create Doughnut Chart (Source Distribution) ---
-    const sourceColumn = projectConfig.defaultColumns.find(c => c.id === 'priority');
-    if (sourceColumn && sourceColumn.options) {
-      const labels = sourceColumn.options.map(opt => opt.name);
-      const colors = sourceColumn.options.map(opt => opt.color);
-      const data = labels.map(label => sourceCounts[label] || 0);
-      createChart("doughnutChart", { type: "doughnut", data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: "#fff" }] }, options: { responsive: true, maintainAspectRatio: false, cutout: "70%", plugins: { legend: { position: "right" } } } });
-    }
+      // --- APPLY DEFAULT STYLES ---
+      container.style.backgroundColor = config.bgColor;
+      container.style.fontFamily = config.fontStyle;
+      if (titleEl) titleEl.style.color = config.textColor;
 
-    // --- 4. Create Line Chart (Task Trends) ---
-    const completionStatusName = statusColumn?.options?.find(o => o.name.toLowerCase() === 'completed')?.name;
-    const trendLabels = [];
-    const now = new Date();
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      trendLabels.push(d.toLocaleString('default', { month: 'short' }));
-    }
-    const newTasksData = new Array(7).fill(0);
-    const completedTasksData = new Array(7).fill(0);
-
-    tasksSnapshot.forEach(doc => {
-      const task = doc.data();
-      if (task.createdAt && task.createdAt.seconds) {
-        const createdAt = new Date(task.createdAt.seconds * 1000);
-        const monthDiff = (now.getFullYear() - createdAt.getFullYear()) * 12 + (now.getMonth() - createdAt.getMonth());
-        if (monthDiff >= 0 && monthDiff < 7) {
-          const index = 6 - monthDiff;
-          newTasksData[index]++;
-          if (task.status === completionStatusName) {
-            completedTasksData[index]++;
+      let chartData;
+      // --- APPLY TEXT COLOR TO CHART.JS OPTIONS ---
+      let chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false,
+            labels: {
+              color: config.textColor || '#666',
+              // Add font style to legend
+              font: {
+                family: config.fontStyle || 'inherit'
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            ticks: {
+              color: config.textColor || '#666',
+              font: {
+                family: config.fontStyle || 'inherit'
+              }
+            },
+            grid: { color: '#efefef' }
+          },
+          y: {
+            ticks: {
+              color: config.textColor || '#666',
+              font: {
+                family: config.fontStyle || 'inherit'
+              }
+            },
+            grid: { color: '#efefef' }
           }
         }
+      };
+
+      // --- 3. Prepare data based on chart ID ---
+      if (config.id === 'bar-chart-container' || config.id === 'pie-chart-container') {
+        const statusColumn = projectConfig.defaultColumns.find(c => c.id === 'status');
+        if (statusColumn?.options) {
+          const labels = statusColumn.options.map(opt => opt.name);
+          const colors = statusColumn.options.map(opt => opt.color);
+          const data = labels.map(label => statusCounts[label] || 0);
+          chartData = { labels, datasets: [{ data, backgroundColor: colors }] };
+          if (config.id === 'pie-chart-container') {
+            chartOptions.plugins.legend.display = true;
+            chartOptions.plugins.legend.position = 'right';
+          }
+        }
+      } else if (config.id === 'doughnut-chart-container') {
+        const priorityColumn = projectConfig.defaultColumns.find(c => c.id === 'priority');
+        if (priorityColumn?.options) {
+          const labels = priorityColumn.options.map(opt => opt.name);
+          const colors = priorityColumn.options.map(opt => opt.color);
+          const data = labels.map(label => priorityCounts[label] || 0);
+          chartData = { labels, datasets: [{ data, backgroundColor: colors }] };
+          chartOptions.plugins.legend.display = true;
+          chartOptions.plugins.legend.position = 'right';
+        }
+      } else if (config.id === 'line-chart-container') {
+        const trendLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+        const completedTasksData = [5, 7, 12, 15, 18, 22];
+        const newTasksData = [10, 12, 15, 18, 20, 25];
+        chartData = {
+          labels: trendLabels, datasets: [
+            { label: "Completed Tasks", data: completedTasksData, borderColor: "#4f46e5", backgroundColor: "rgba(79, 70, 229, 0.1)", tension: 0.3, fill: true },
+            { label: "New Tasks", data: newTasksData, borderColor: "#f59e0b", backgroundColor: "rgba(245, 158, 11, 0.1)", tension: 0.3, fill: true }
+          ]
+        };
+        chartOptions.plugins.legend.display = true; // Show legend for line chart
+      }
+
+      // --- 4. Create the chart ---
+      if (charts[canvas.id]) charts[canvas.id].destroy();
+      if (chartData) { // Only create chart if data was prepared
+        charts[canvas.id] = new Chart(canvas, {
+          type: config.cardType,
+          data: chartData,
+          options: chartOptions
+        });
       }
     });
-
-    createChart("lineChart", {
-      type: "line",
-      data: {
-        labels: trendLabels,
-        datasets: [
-          { label: "Completed Tasks", data: completedTasksData, borderColor: "#4f46e5", backgroundColor: "rgba(79, 70, 229, 0.1)", tension: 0.3, fill: true },
-          { label: "New Tasks", data: newTasksData, borderColor: "#f59e0b", backgroundColor: "rgba(245, 158, 11, 0.1)", tension: 0.3, fill: true }
-        ]
-      },
-      options: { responsive: true, maintainAspectRatio: false }
-    });
-
   } catch (error) {
     console.error("Error initializing charts:", error);
   }
+}
+
+function saveChartLayout() {
+  const columns = document.querySelectorAll(".chart-column");
+  const layout = Array.from(columns).map(column =>
+    Array.from(column.querySelectorAll(".chart-container")).map(el => el.id)
+  );
+  localStorage.setItem("chartLayout", JSON.stringify(layout));
+  console.log("Chart layout saved:", layout);
+}
+
+function loadChartLayout() {
+  const layout = JSON.parse(localStorage.getItem("chartLayout"));
+  if (!layout) return;
+  const columns = document.querySelectorAll(".chart-column");
+
+  layout.forEach((columnChartIds, index) => {
+    const column = columns[index];
+    if (!column) return;
+    columnChartIds.forEach(chartId => {
+      const chartEl = document.getElementById(chartId);
+      if (chartEl) column.appendChild(chartEl);
+    });
+  });
 }
 
 function setupDragAndDrop() {
@@ -1269,30 +2030,6 @@ function setupChartDragAndDrop() {
   } catch (error) {
     console.error("Error setting up chart drag and drop:", error);
   }
-}
-
-function saveChartLayout() {
-  const columns = document.querySelectorAll(".chart-column");
-  const layout = Array.from(columns).map(column =>
-    Array.from(column.querySelectorAll(".chart-container")).map(el => el.id)
-  );
-  localStorage.setItem("chartLayout", JSON.stringify(layout));
-  console.log("Chart layout saved:", layout);
-}
-
-function loadChartLayout() {
-  const layout = JSON.parse(localStorage.getItem("chartLayout"));
-  if (!layout) return;
-  const columns = document.querySelectorAll(".chart-column");
-
-  layout.forEach((columnChartIds, index) => {
-    const column = columns[index];
-    if (!column) return;
-    columnChartIds.forEach(chartId => {
-      const chartEl = document.getElementById(chartId);
-      if (chartEl) column.appendChild(chartEl);
-    });
-  });
 }
 
 function cleanup() {
@@ -1420,14 +2157,14 @@ function init() {
         chartOption.addEventListener('click', (event) => {
           event.preventDefault();
           console.log('Chart Widget option clicked!');
-          openAddCardModal();
+          openAddCardModal({ cardType: 'bar' });
           widgetDropdown.classList.add('hidden');
         });
 
         cardOption.addEventListener('click', (event) => {
           event.preventDefault();
           console.log('Card Widget option clicked!');
-
+          openAddCardModal();
           widgetDropdown.classList.add('hidden');
         });
 

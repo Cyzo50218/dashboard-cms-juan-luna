@@ -619,6 +619,61 @@ button:hover {
   line-height: 1;
 }
 
+.custom-select {
+  position: relative;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  height: 35px;
+  color: #000;
+  cursor: pointer;
+}
+
+.custom-select .selected {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  border: transparent;
+  color: #000;
+  background-color: transparent;
+  gap: 8px;
+}
+
+.custom-select .dropdown-icon {
+  margin-left: auto;
+  font-size: 20px;
+  transform: translateX(10px);
+}
+
+.dropdown-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: white;
+  border: 0.8px solid #060606;
+  border-radius: 6px;
+  width: 100%;
+  max-height: 250px;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  gap: 8px;
+}
+
+.dropdown-item:hover {
+  background: #f0f0f0;
+}
+
+.hidden {
+  display: none;
+}
+
 .color-picker-container {
   position: relative;
 }
@@ -629,6 +684,39 @@ button:hover {
   border-radius: 8px;
   border: 1px solid #ccc;
   cursor: pointer;
+}
+
+#chart-colors-list {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  gap: 8px;
+  width: 50px;
+  padding: 8px;
+  border-radius: 6px;
+}
+
+.chart-color-swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 20%;
+  border: 1px solid #9e9e9e;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+  padding: 0;
+}
+
+.fa-plus-thin {
+  font-size: 40px;
+  font-weight: 100;
+}
+
+.color-palette-editor {
+  position: relative;
+}
+
+#chart-color-config-section {
+  position: relative;
 }
 
 .color-palette {
@@ -661,7 +749,7 @@ button:hover {
   gap: 6px;
 }
 
-.palette-section{
+.palette-section {
   margin-top: 10px;
 }
 
@@ -676,7 +764,7 @@ button:hover {
 
 .palette-swatch.selected::after {
   content: "✔";
-  color: white;
+  color: rgb(255, 255, 255);
   font-size: 14px;
   position: absolute;
   top: 4px;
