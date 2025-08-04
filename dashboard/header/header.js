@@ -836,7 +836,9 @@ async function renderSearchResultItem(item) {
         }
 
         history.pushState({ path: href }, '', href);
-        //router();
+        if (window.location.pathname !== href) {
+          router();
+        }
         displaySearchResults([], [], [], []);
         closeSearchExpand();
         input.value = '';
@@ -984,7 +986,9 @@ async function renderSearchResultItem(item) {
 
         // Update the browser URL without reloading
         history.pushState({ path: href }, '', href);
-        //router();
+        if (window.location.pathname !== href) {
+          router();
+        }
         closeSearchExpand();
         input.value = '';
         lastInputValue = '';
