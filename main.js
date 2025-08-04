@@ -372,7 +372,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const link = e.target.closest('a[data-link]');
                 if (link) {
                     e.preventDefault();
-                    history.pushState(null, '', link.href);
+                    //history.pushState(null, '', link.href);
                     router();
                 }
             });

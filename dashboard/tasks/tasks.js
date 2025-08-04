@@ -1014,7 +1014,7 @@ export function init(params) {
     const existingQuery = window.location.search; // includes "?openTask=abc123" or ""
 
     const newUrl = `/tasks/${accountId}/${clickedTabId}/${projectId}${existingQuery}`;
-    //history.pushState({ path: newUrl }, '', newUrl);
+    history.pushState({ path: newUrl }, '', newUrl);
 
     setActiveTabLink(clickedTabId);
     loadTabContent(clickedTabId);
