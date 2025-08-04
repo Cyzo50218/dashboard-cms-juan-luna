@@ -1203,7 +1203,7 @@ export function init(params) {
             <form id="chat-form" class="flex items-center" onsubmit="return false">
 
               <div class="flex-1 bg-gray-100 rounded-full pr-1 flex items-center">
-                <input id="message-input" type="text" placeholder="Type your message..." class="flex-1 bg-transparent py-2 px-3 text-sm focus:outline-none" disabled>
+                <input id="message-input" type="text" placeholder="Type your message..." class="flex-1 bg-transparent py-2 px-3 text-sm focus:outline-none">
                 <input type="file" id="file-input" class="hidden" accept="image/*, .pdf, .doc, .docx">
                 <button type="button" id="file-button" class="text-gray-500 hover:text-gray-700 transition p-1">
                   <i class="fas fa-paperclip text-sm"></i>
@@ -3800,17 +3800,15 @@ export function init(params) {
       const chatBox = document.getElementById("chat-box");
       const chatButton = document.getElementById("chat-button");
       const minimizedBadge = document.getElementById("minimized-unread-badge");
+      const messageInput = document.getElementById("message-input");
 
       if (dragged) {
         dragged = false; // Reset the flag for the next click
         return;          // Exit the function
       }
       // --- 1. Reset the Chatbox from its Minimized State ---
-
-      // NEW: Remove the minimized class to reset its appearance.
       chatBox.classList.remove("minimized");
       minimizedBadge.classList.add("hidden");
-      // NEW: Clear any inline display styles from the minimize function.
       chatBox.style.display = '';
 
 
@@ -3864,6 +3862,11 @@ export function init(params) {
       } else {
         // Default: Align the left edge of the chatbox with the left edge of the button.
         chatBox.style.left = '0px';
+      }
+
+      if (chatState.activeRoom) {
+        messageInput.disabled = false;
+        messageInput.focus();
       }
 
       chatButton.classList.add("hidden");
