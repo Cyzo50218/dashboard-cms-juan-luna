@@ -836,7 +836,7 @@ async function renderSearchResultItem(item) {
         }
 
         history.pushState({ path: href }, '', href);
-        router();
+        //router();
         displaySearchResults([], [], [], []);
         closeSearchExpand();
         input.value = '';
@@ -984,7 +984,7 @@ async function renderSearchResultItem(item) {
 
         // Update the browser URL without reloading
         history.pushState({ path: href }, '', href);
-        router();
+        //router();
         closeSearchExpand();
         input.value = '';
         lastInputValue = '';
