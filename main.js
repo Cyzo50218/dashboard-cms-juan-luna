@@ -61,6 +61,11 @@ function parseRoute() {
     return { section: 'home' };
 }
 
+
+
+/**
+ * The main router function. It determines the current route and loads the appropriate section.
+ */
 function router() {
     const routeParams = parseRoute();
     console.log("Routing to:", routeParams);
@@ -372,7 +377,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const link = e.target.closest('a[data-link]');
                 if (link) {
                     e.preventDefault();
-                    //history.pushState(null, '', link.href);
+                    history.pushState(null, '', link.href);
                     router();
                 }
             });

@@ -525,6 +525,41 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
                 </div>
             `;
       recentContainerDiv.appendChild(itemDiv);
+
+      itemDiv.addEventListener('click', async (event) => {
+        event.preventDefault();
+
+        const href = `/tasks/${currentUserId}/list/${project.objectID}`;
+
+        try {
+          const userRef = doc(db, 'users', currentUserId);
+          const userSnap = await getDoc(userRef);
+
+          if (userSnap.exists() && userSnap.data().selectedWorkspace) {
+            const selectedWorkspaceId = userSnap.data().selectedWorkspace;
+            const workspaceRef = doc(db, `users/${currentUserId}/myworkspace/${selectedWorkspaceId}`);
+            const workspaceSnap = await getDoc(workspaceRef);
+
+            if (workspaceSnap.exists()) {
+              const workspaceData = workspaceSnap.data();
+              const currentSelectedProjectId = workspaceData.selectedProjectId;
+
+              if (currentSelectedProjectId !== project.objectID) {
+                await updateDoc(workspaceRef, { selectedProjectId: project.objectID });
+                console.log("📌 Updated selectedProjectId to:", project.objectID);
+              }
+            }
+          }
+        } catch (error) {
+          console.error("❌ Failed to update selectedProjectId:", error);
+        }
+
+        history.pushState({ path: href }, '', href);
+
+        if (window.location.pathname !== href) {
+          router();
+        }
+      });
     });
   }
 
@@ -532,7 +567,7 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
   const tasksToRender = taskLimit ? tasks.slice(0, taskLimit) : tasks;
   if (tasksToRender.length > 0) {
     hasAnyResults = true;
-    tasksToRender.forEach(item => { // 'item' is a task
+    tasksToRender.forEach(item => {
       const itemDiv = document.createElement('div');
       itemDiv.className = 'headersearches-tasks-recent-item';
       itemDiv.dataset.itemId = item.id;
@@ -571,6 +606,43 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
                 </div>
             `;
       recentContainerDiv.appendChild(itemDiv);
+
+      itemDiv.addEventListener('click', async (event) => {
+        event.preventDefault();
+
+        const href = `/tasks/${currentUserId}/list/${task.projectId}?openTask=${task.taskId}`;
+
+        try {
+          const userRef = doc(db, 'users', currentUserId);
+          const userSnap = await getDoc(userRef);
+
+          if (userSnap.exists() && userSnap.data().selectedWorkspace) {
+            const selectedWorkspaceId = userSnap.data().selectedWorkspace;
+            const workspaceRef = doc(db, `users/${currentUserId}/myworkspace/${selectedWorkspaceId}`);
+            const workspaceSnap = await getDoc(workspaceRef);
+
+            if (workspaceSnap.exists()) {
+              const workspaceData = workspaceSnap.data();
+              const currentSelectedProjectId = workspaceData.selectedProjectId;
+
+              if (currentSelectedProjectId !== task.projectId) {
+                await updateDoc(workspaceRef, { selectedProjectId: task.projectId });
+                console.log("📌 Updated selectedProjectId to:", task.projectId);
+              }
+            }
+          }
+        } catch (error) {
+          console.error("❌ Failed to update selectedProjectId:", error);
+        }
+
+        history.pushState({ path: href }, '', href);
+
+        // ✅ Only call router if URL changed
+        if (window.location.pathname !== `/tasks/${currentUserId}/list/${task.projectId}`) {
+          router();
+        }
+      });
+
     });
   }
 
