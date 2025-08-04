@@ -836,6 +836,7 @@ async function renderSearchResultItem(item) {
         }
 
         history.pushState({ path: href }, '', href);
+        router();
         displaySearchResults([], [], [], []);
         closeSearchExpand();
         input.value = '';
@@ -861,7 +862,7 @@ async function renderSearchResultItem(item) {
           showInviteButton: false
         });
         // Load the new section dynamically
-        
+
 
       });
 
@@ -980,14 +981,15 @@ async function renderSearchResultItem(item) {
         // Save the projectRef invisibly
         sessionStorage.setItem('pendingProjectRef', projectRef);
         displaySearchResults([], [], [], []);
-        
+
         // Update the browser URL without reloading
         history.pushState({ path: href }, '', href);
+        router();
         closeSearchExpand();
         input.value = '';
         lastInputValue = '';
         cancelIcon.classList.add('hidden');
-        
+
         halfQuery = resetHalfQueryContainer();
         halfQuery.classList.add("hidden");
         halfQuery.classList.remove("skeleton-active"); // also remove loading state
@@ -1792,6 +1794,8 @@ onAuthStateChanged(auth, async (user) => {
       profileToggle.classList.remove("hidden");
     }
   });
+
+
 
   optionBtns[0].addEventListener("click", async () => {
     const btn = optionBtns[0];
