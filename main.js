@@ -61,11 +61,6 @@ function parseRoute() {
     return { section: 'home' };
 }
 
-
-
-/**
- * The main router function. It determines the current route and loads the appropriate section.
- */
 function router() {
     const routeParams = parseRoute();
     console.log("Routing to:", routeParams);
