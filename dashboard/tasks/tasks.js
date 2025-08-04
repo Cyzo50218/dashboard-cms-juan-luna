@@ -3575,8 +3575,8 @@ export function init(params) {
         };
 
         // Save in local store
-        await addMessage(roomId, fileMessage);
-        renderMessages();
+        //await addMessage(roomId, fileMessage);
+        //renderMessages();
 
         // Optionally also send to Firestore (if sendMessage also handles uploads, skip this part)
         await ChatService.sendMessage(roomId, {
