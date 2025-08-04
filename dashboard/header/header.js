@@ -529,7 +529,7 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
       itemDiv.addEventListener('click', async (event) => {
         event.preventDefault();
 
-        const href = `/tasks/${currentUserId}/list/${project.objectID}`;
+        const href = `/tasks/${currentUserId}/list/${project.id}`;
 
         try {
           const userRef = doc(db, 'users', currentUserId);
@@ -544,9 +544,9 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
               const workspaceData = workspaceSnap.data();
               const currentSelectedProjectId = workspaceData.selectedProjectId;
 
-              if (currentSelectedProjectId !== project.objectID) {
-                await updateDoc(workspaceRef, { selectedProjectId: project.objectID });
-                console.log("📌 Updated selectedProjectId to:", project.objectID);
+              if (currentSelectedProjectId !== project.id) {
+                await updateDoc(workspaceRef, { selectedProjectId: project.id });
+                console.log("📌 Updated selectedProjectId to:", project.id);
               }
             }
           }
@@ -554,11 +554,35 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
           console.error("❌ Failed to update selectedProjectId:", error);
         }
 
-        history.pushState({ path: href }, '', href);
-
         if (window.location.pathname !== href) {
+          history.pushState({ path: href }, '', href);
           router();
         }
+
+        displaySearchResults([], [], [], []);
+        closeSearchExpand();
+        input.value = '';
+        lastInputValue = '';
+
+        cancelIcon.classList.add('hidden');
+        halfQuery = resetHalfQueryContainer();
+        halfQuery.classList.add("hidden");
+        halfQuery.classList.remove("skeleton-active"); // also remove loading state
+        recentContainer.classList.remove("hidden");
+        optionsQuery.classList.add("hidden");
+        savedContainer.classList.remove("hidden");
+        searchOptions.classList.remove("hidden");
+        emailContainerId.classList.add('hidden');
+        selectedOptionBtnIndex = -1;
+        fetchRecentItemsFromFirestore(renderRecentItems, {
+          showTasks: true,
+          showPeople: false,
+          showProjects: true,
+          showMessages: false,
+          taskLimit: 4, // Limit tasks
+          projectLimit: null,
+          showInviteButton: false
+        });
       });
     });
   }
@@ -567,7 +591,12 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
   const tasksToRender = taskLimit ? tasks.slice(0, taskLimit) : tasks;
   if (tasksToRender.length > 0) {
     hasAnyResults = true;
+
     tasksToRender.forEach(item => {
+      console.group("📌 Rendering Recent Task");
+      console.log("Full Item Data:", item);
+      console.groupEnd();
+
       const itemDiv = document.createElement('div');
       itemDiv.className = 'headersearches-tasks-recent-item';
       itemDiv.dataset.itemId = item.id;
@@ -584,33 +613,42 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
 
       const assigneesHtml = item.assignees.map(assignee => {
         const displayName = assignee.name || 'Unknown User';
-        const initials = assignee.initials || (displayName).substring(0, 2).toUpperCase();
+        const initials = assignee.initials || displayName.substring(0, 2).toUpperCase();
         return `
-                    <div class="headersearches-assignee-avatar" ${assignee.avatarUrl ? `style="background-image: url(${assignee.avatarUrl});"` : ''}>
-                        ${!assignee.avatarUrl ? initials : ''}
-                    </div>
-                `;
+        <div class="headersearches-assignee-avatar" ${assignee.avatarUrl ? `style="background-image: url(${assignee.avatarUrl});"` : ''}>
+          ${!assignee.avatarUrl ? initials : ''}
+        </div>
+      `;
       }).join('');
 
       itemDiv.innerHTML = `
-                <span class="material-icons-outlined headersearches-tasks-recent-status-icon ${statusClass}">${statusIcon}</span>
-                <div class="headersearches-tasks-recent-content">
-                    <div class="headersearches-tasks-recent-title">${item.name}</div>
-                    <div class="headersearches-tasks-recent-meta">
-                        <span class="headersearches-tasks-project-dot" style="background-color: ${item.project.color};"></span>
-                        <span class="headersearches-tasks-project-name">${item.project.name}</span>
-                    </div>
-                </div>
-                <div class="headersearches-assignee-list">
-                    ${assigneesHtml}
-                </div>
-            `;
+      <span class="material-icons-outlined headersearches-tasks-recent-status-icon ${statusClass}">${statusIcon}</span>
+      <div class="headersearches-tasks-recent-content">
+        <div class="headersearches-tasks-recent-title">${item.name}</div>
+        <div class="headersearches-tasks-recent-meta">
+          <span class="headersearches-tasks-project-dot" style="background-color: ${item.project.color};"></span>
+          <span class="headersearches-tasks-project-name">${item.project.name}</span>
+        </div>
+      </div>
+      <div class="headersearches-assignee-list">
+        ${assigneesHtml}
+      </div>
+    `;
+
       recentContainerDiv.appendChild(itemDiv);
 
+      // Click event
       itemDiv.addEventListener('click', async (event) => {
         event.preventDefault();
 
-        const href = `/tasks/${currentUserId}/list/${task.projectId}?openTask=${task.taskId}`;
+        // ✅ Extract projectId from projectRef
+        const projectId = item.projectRef?.id;
+        if (!projectId) {
+          console.error("❌ No projectId found for recent task:", item);
+          return;
+        }
+
+        const href = `/tasks/${currentUserId}/list/${projectId}?openTask=${item.id}`;
 
         try {
           const userRef = doc(db, 'users', currentUserId);
@@ -625,9 +663,9 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
               const workspaceData = workspaceSnap.data();
               const currentSelectedProjectId = workspaceData.selectedProjectId;
 
-              if (currentSelectedProjectId !== task.projectId) {
-                await updateDoc(workspaceRef, { selectedProjectId: task.projectId });
-                console.log("📌 Updated selectedProjectId to:", task.projectId);
+              if (currentSelectedProjectId !== projectId) {
+                await updateDoc(workspaceRef, { selectedProjectId: projectId });
+                console.log("📌 Updated selectedProjectId to:", projectId);
               }
             }
           }
@@ -635,14 +673,38 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
           console.error("❌ Failed to update selectedProjectId:", error);
         }
 
-        history.pushState({ path: href }, '', href);
-
-        // ✅ Only call router if URL changed
-        if (window.location.pathname !== `/tasks/${currentUserId}/list/${task.projectId}`) {
+        // ✅ Only reload router if the path is different
+        if (window.location.pathname !== `/tasks/${currentUserId}/list/${projectId}`) {
+          history.pushState({ path: href }, '', href);
           router();
         }
-      });
 
+        history.pushState({ path: href }, '', href);
+
+        closeSearchExpand();
+        input.value = '';
+        lastInputValue = '';
+        cancelIcon.classList.add('hidden');
+
+        halfQuery = resetHalfQueryContainer();
+        halfQuery.classList.add("hidden");
+        halfQuery.classList.remove("skeleton-active"); // also remove loading state
+        recentContainer.classList.remove("hidden");
+        optionsQuery.classList.add("hidden");
+        savedContainer.classList.remove("hidden");
+        searchOptions.classList.remove("hidden");
+        emailContainerId.classList.add('hidden');
+        selectedOptionBtnIndex = -1;
+        fetchRecentItemsFromFirestore(renderRecentItems, {
+          showTasks: true,
+          showPeople: false,
+          showProjects: true,
+          showMessages: false,
+          taskLimit: 4, // Limit tasks
+          projectLimit: null,
+          showInviteButton: false
+        });
+      });
     });
   }
 
