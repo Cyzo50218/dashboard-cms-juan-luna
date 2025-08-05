@@ -1212,7 +1212,7 @@ export function init(params) {
                   <i class="fas fa-smile text-sm"></i>
                 </button>
               </div>
-              <button id="send-button" type="submit" disabled class="ml-2 flex items-center justify-center transition text-gray-400 p-1">
+              <button id="send-button" type="button" disabled class="ml-2 flex items-center justify-center transition text-gray-400 p-1">
                 <i class="fas fa-paper-plane text-sm"></i>
               </button>
               <button id="confirm-edit-btn" type="button" class="hidden ml-2 edit-action-btn">
@@ -1262,6 +1262,47 @@ export function init(params) {
     color: #657786;
     margin-top: -22px;
     padding-bottom: 2px;
+}
+
+/* Default width (closed chat) */
+.message-bubble.user,
+.message-bubble.other {
+  width: 200px;
+  max-width: 200px;
+  transition: width 0.3s ease, max-width 0.3s ease;
+}
+
+/* Image inside bubble - start slightly smaller than bubble */
+.message-bubble.user .image-message img,
+.message-bubble.other .image-message img {
+  max-width: 180px; /* slightly smaller than bubble */
+  height: auto;
+  border-radius: 0.5rem;
+  transition: max-width 0.3s ease;
+}
+
+/* Chat box open → bubble grows, image grows slightly */
+.chat-box.open .message-bubble.user,
+.chat-box.open .message-bubble.other {
+  width: auto;
+  max-width: 230px;
+}
+
+.chat-box.open .message-bubble.user .image-message img,
+.chat-box.open .message-bubble.other .image-message img {
+  max-width: 200px; /* only slightly bigger */
+}
+
+/* Chat box maximized → bubble grows more, image grows a bit more */
+.chat-box.open.maximized .message-bubble.user,
+.chat-box.open.maximized .message-bubble.other {
+  width: auto;
+  max-width: 500px;
+}
+
+.chat-box.open.maximized .message-bubble.user .image-message img,
+.chat-box.open.maximized .message-bubble.other .image-message img {
+  max-width: 220px; /* not full bubble width */
 }
 
 /* Align the indicator correctly based on the message sender */
