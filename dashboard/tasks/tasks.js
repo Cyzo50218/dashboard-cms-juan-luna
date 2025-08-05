@@ -1145,7 +1145,7 @@ export function init(params) {
     <div id="image-preview-overlay" class="hidden fixed inset-0 bg-black bg-opacity-25 flex items-center justify-center z-[10000000]">
   <img id="image-preview-full" src="" alt="Preview" class="max-w-[90%] max-h-[90%] rounded-lg shadow-xl" />
 </div>
-
+<div id="message-preview-badge"></div>
       <button id="chat-button" class="chat-button">
         <i class="fas fa-comments"></i>
         <span id="unread-badge" class="unread-badge">0</span>
@@ -1300,6 +1300,7 @@ export function init(params) {
   max-width: 500px;
 }
 
+
 .chat-box.open.maximized .message-bubble.user .image-message img,
 .chat-box.open.maximized .message-bubble.other .image-message img {
   max-width: 220px; /* not full bubble width */
@@ -1311,6 +1312,47 @@ export function init(params) {
 }
 .message-wrapper.other .pinned-indicator {
     align-self: flex-start;
+}
+
+#message-preview-badge {
+    position: absolute;
+    bottom: 110%; /* Position it directly above the chat button */
+    right: 0;
+    background-color: #ffffff;
+    color: #333;
+    padding: 10px 15px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    max-width: 280px; /* Prevent it from being too wide */
+    font-size: 13px;
+    z-index: 10000;
+    cursor: pointer;
+    display: flex; /* Use flexbox for nice alignment */
+    align-items: center;
+    gap: 8px; /* Space between icon and text */
+
+    /* Initial hidden state for animation */
+    opacity: 0;
+    transform: translateY(10px) scale(0.95);
+    pointer-events: none; /* Not clickable when hidden */
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+#message-preview-badge.show {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto; /* Clickable when visible */
+}
+
+#message-preview-badge .sender-name {
+    font-weight: 600;
+    flex-shrink: 0; /* Prevent the name from shrinking */
+}
+
+#message-preview-badge .message-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* Add '...' for long messages */
 }
 
 .pinned-indicator i {
@@ -3171,6 +3213,7 @@ export function init(params) {
 
     let typingListener = null;
     let typingTimeout = null;
+    let previewTimeout = null;
     let statusInterval = null;
     let emojiPicker = null;
     let reactionPicker = null;
@@ -3234,6 +3277,30 @@ export function init(params) {
       } catch (error) {
         console.error("❌ Failed to mark messages as read:", error);
       }
+    }
+
+    function showUnreadMessagePreview(message) {
+      // If there's already a preview showing, clear its hide timer
+      if (previewTimeout) {
+        clearTimeout(previewTimeout);
+      }
+
+      const previewBadge = document.getElementById("message-preview-badge");
+      if (!previewBadge) return;
+
+      // Populate the badge with the new message content
+      previewBadge.innerHTML = `
+        <span class="sender-name">${message.senderName}:</span>
+        <span class="message-text">${message.isFile ? 'Sent a file' : message.text}</span>
+    `;
+
+      // Make the badge visible by adding the .show class
+      previewBadge.classList.add("show");
+
+      // Set a timer to automatically hide the badge after 6 seconds
+      previewTimeout = setTimeout(() => {
+        previewBadge.classList.remove("show");
+      }, 6000); // 6000 milliseconds = 6 seconds
     }
 
     // Replace the existing calculateUnreadCounts function
@@ -3454,6 +3521,18 @@ export function init(params) {
       // Attach message listeners for real-time updates
       rooms.forEach((room) => {
         ChatService.listenToMessages(room.id, (newMessages) => {
+          const oldMessageCount = (chatState.messages[room.id] || []).length;
+
+          if (newMessages.length > oldMessageCount) {
+            const lastMessage = newMessages[newMessages.length - 1];
+            if (
+              !chatState.isOpen && !chatState.isMinimized &&
+              chatState.activeRoom?.id === room.id &&
+              lastMessage.senderId !== currentUserId
+            ) {
+              showUnreadMessagePreview(lastMessage);
+            }
+          }
           chatState.messages[room.id] = newMessages;
           if (chatState.activeRoom?.id !== room.id) {
             const unreadCount = newMessages.filter(
@@ -3669,6 +3748,17 @@ export function init(params) {
       const container = document.getElementById("chat-container");
       const chatBox = document.getElementById("chat-box");
 
+      const previewBadge = document.getElementById("message-preview-badge");
+      if (previewBadge) {
+        previewBadge.addEventListener("click", () => {
+          toggleChat(); // Open the main chat window
+          previewBadge.classList.remove("show"); // Hide the preview immediately
+          if (previewTimeout) {
+            clearTimeout(previewTimeout); // Stop the auto-hide timer
+          }
+        });
+      }
+
       // Make draggable
       makeChatDraggable(currentUserId);
       minimizeChat();
@@ -3726,11 +3816,36 @@ export function init(params) {
         // Return to draggable position
         const savedX = localStorage.getItem(`${currentUserId}-chat-pos-x`);
         const savedY = localStorage.getItem(`${currentUserId}-chat-pos-y`);
+
         if (savedX && savedY) {
-          container.style.left = `${savedX}px`;
-          container.style.top = `${savedY}px`;
-          container.style.right = "auto";
-          container.style.bottom = "auto";
+          const x = parseInt(savedX, 10);
+          const y = parseInt(savedY, 10);
+          const viewportWidth = window.innerWidth;
+          const viewportHeight = window.innerHeight;
+
+          const isOutOfBounds =
+            x < 0 ||
+            y < 0 ||
+            x > viewportWidth - 50 ||
+            y > viewportHeight - 50;
+
+          if (isOutOfBounds) {
+            console.warn("Saved chat position is out of bounds. Resetting to default.");
+
+            container.style.left = "";
+            container.style.top = "";
+            container.style.right = ""; // Let CSS default take over
+            container.style.bottom = ""; // Let CSS default take over
+
+            localStorage.removeItem(`${currentUserId}-chat-pos-x`);
+            localStorage.removeItem(`${currentUserId}-chat-pos-y`);
+          } else {
+            // The saved position is valid, so we apply it.
+            container.style.left = `${x}px`;
+            container.style.top = `${y}px`;
+            container.style.right = "auto";
+            container.style.bottom = "auto";
+          }
         }
       });
 
