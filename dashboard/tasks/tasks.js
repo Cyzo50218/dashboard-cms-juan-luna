@@ -1289,8 +1289,7 @@ export function init(params) {
 .main-panel-list {
     display: flex;
     flex-direction: column;
-    margin-bottom: 16px;
-}
+  }
 
 .main-panel-item {
     display: flex;
@@ -1637,6 +1636,9 @@ export function init(params) {
      /* Darker red */
  }
 
+ button {
+ border-color: transparent;
+ }
  #pinned-message-nav button {
      background: rgba(0, 0, 0, 0.05);
      border: none;
@@ -3112,6 +3114,55 @@ export function init(params) {
      font-weight: 500;
  }
 
+ .workspace-button {
+    /* Layout & Sizing */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.75rem; /* 12px */
+    
+    /* Appearance */
+    background-color: #f3f4f6; /* gray-100 */
+    border-radius: 0.5rem;    /* rounded-lg */
+    border: none;             /* Removes default button border */
+    cursor: pointer;
+    
+    /* Transitions */
+    transition-property: background-color;
+    transition-duration: 200ms;
+}
+
+.workspace-button:hover {
+    background-color: #e5e7eb; /* gray-200 */
+}
+
+.workspace-button:focus {
+    outline: none;
+}
+
+.workspace-button .button-text-container {
+    text-align: left;
+}
+
+.workspace-button .button-title {
+    font-size: 0.875rem; /* 14px */
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.workspace-button .button-subtitle {
+    font-size: 0.75rem; /* 12px */
+    color: #64748b;
+}
+
+.workspace-button .button-icon-container {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem; /* Equivalent to space-x-3 */
+}
+
+
  .room-item .room-members {
      font-size: 0.8rem;
      color: #a1a1a6;
@@ -3707,15 +3758,22 @@ export function init(params) {
     }
 
     function renderActivePanel() {
+      if (!chatState.isPanelVisible) {
+        return;
+      }
+
       const backButton = document.getElementById('back-to-main-panel-btn');
       const headerInfo = document.getElementById('chat-header-info');
       const iconContainer = document.getElementById('chat-header-icon-container');
       const headerTitle = document.getElementById('active-room-title');
       const headerSubtitle = document.getElementById('active-room-name');
 
-      // Determine if we can go "back"
+      // Determine if we can go "back" in the panel hierarchy
       const canGoBack = chatState.panelHistory.length > 1;
-      if (backButton) backButton.style.display = canGoBack ? 'flex' : 'none';
+      if (backButton) {
+        // This JS style rule will correctly show/hide the button
+        backButton.style.display = canGoBack ? 'flex' : 'none';
+      }
 
       if (chatState.currentPanelView === 'projects') {
         // Project List View
@@ -4046,16 +4104,21 @@ export function init(params) {
         const projectRoom = rooms.find(r => r.id === currentProjectId);
         const initialRoom = projectRoom || rooms[0];
 
+        // --- FIX: Set the correct initial panel context based on the starting room ---
+        const initialPanelView = initialRoom.type === 'project' ? 'projects' : 'main';
+        const initialPanelHistory = initialRoom.type === 'project' ? ['main', 'projects'] : ['main'];
+
         setChatState({
           activeRoom: initialRoom,
           isPanelVisible: false, // Default to showing the conversation
-          initialRoomSet: true
+          initialRoomSet: true,
+          currentPanelView: initialPanelView, // Set the correct panel to return to
+          panelHistory: initialPanelHistory // Set the correct history for that panel
         });
 
         const displayData = getRoomDisplayData(initialRoom, currentUserId);
         document.getElementById("active-room-title").textContent = displayData.name;
         document.getElementById("active-room-name").textContent = displayData.details;
-        const headerIcon = document.querySelector('#chat-header-info i');
         const subtitleElement = document.getElementById('active-room-name');
         if (initialRoom.type === 'direct') {
           const otherUser = initialRoom.participants.find(p => p.id !== chatState.currentUserId);
@@ -4066,7 +4129,10 @@ export function init(params) {
 
         // Pre-load messages for the active room
         ChatService.listenToMessages(initialRoom.id, (newMessages) => {
-          const updatedMessages = { ...chatState.messages, [initialRoom.id]: newMessages };
+          const updatedMessages = {
+            ...chatState.messages,
+            [initialRoom.id]: newMessages
+          };
           setChatState({ messages: updatedMessages });
           renderAll(); // Render everything once messages are loaded
         });
@@ -4088,7 +4154,10 @@ export function init(params) {
       rooms.forEach((room) => {
         if (!chatState.activeRoom || room.id !== chatState.activeRoom.id) {
           ChatService.listenToMessages(room.id, (newMessages) => {
-            const updatedMessages = { ...chatState.messages, [room.id]: newMessages };
+            const updatedMessages = {
+              ...chatState.messages,
+              [room.id]: newMessages
+            };
             setChatState({ messages: updatedMessages });
             // Only calculate counts and re-render if the change is in a non-active room
             if (chatState.activeRoom && room.id !== chatState.activeRoom.id) {
@@ -4358,6 +4427,10 @@ export function init(params) {
       const headerTitle = document.getElementById('active-room-title');
       const headerSubtitle = document.getElementById('active-room-name');
 
+      if (iconContainer) {
+        iconContainer.innerHTML = `<i class="fas fa-users text-sm text-white"></i>`;
+      }
+
       if (backButton) backButton.style.display = 'none'; // Hide back button on the main view
       if (headerInfo) headerInfo.style.display = 'flex'; // Show the main header block
       if (iconContainer) iconContainer.style.display = 'flex'; // Show the people icon
@@ -4379,16 +4452,16 @@ export function init(params) {
 
       const workspaceButtonHtml = `
         <div class="p-2">
-            <button id="workspace-project-btn" class="w-full flex items-center justify-between bg-slate-100 hover:bg-slate-200 p-3 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black">
-                <div class="text-left">
-                    <div class="font-bold text-sm text-slate-800">Project Workspaces</div>
-                    <div class="text-xs text-slate-500">${projectCount} Projects</div>
-                </div>
-                <div class="flex items-center space-x-3">
-                    ${projectUnreadCount > 0 ? `<span class="bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">${projectUnreadCount}</span>` : ''}
-                    <i class="fas fa-chevron-right text-slate-400"></i>
-                </div>
-            </button>
+           <button id="workspace-project-btn" class="workspace-button">
+    <div class="text-left">
+        <div class="font-bold text-sm text-slate-800">Project Workspaces</div>
+        <div class="text-xs text-slate-500">${projectCount} Projects</div>
+    </div>
+    <div class="flex items-center space-x-3">
+        ${projectUnreadCount > 0 ? `<span class="bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">${projectUnreadCount}</span>` : ''}
+        <i class="fas fa-chevron-right text-slate-400"></i>
+    </div>
+</button>
         </div>
     `;
 
@@ -4494,6 +4567,11 @@ export function init(params) {
     }
 
     async function startDirectChat(otherUser) {
+      setChatState({
+        currentPanelView: 'main',
+        panelHistory: ['main']
+      });
+
       const { currentUserId, currentUserName, chatRooms } = chatState;
 
       const sortedUIDs = [currentUserId, otherUser.id].sort();
@@ -4577,16 +4655,23 @@ export function init(params) {
       const mainPanel = document.getElementById("chat-main-panel");
 
       backToMainPanelBtn.addEventListener("click", () => {
-        let history = [...chatState.panelHistory];
-        history.pop(); // Go back one step
-        if (history.length === 0) history = ['main']; // Failsafe
+        // If we're currently in a conversation view...
+        if (!chatState.isPanelVisible) {
+          // ...then simply switch back to showing the panel view.
+          // The state already correctly remembers which panel to show.
+          toggleMainPanel(true);
+        } else {
+          // Otherwise, we're already in a panel view, so navigate the panel history.
+          let history = [...chatState.panelHistory];
+          history.pop(); // Go back one level in the panel navigation
+          if (history.length === 0) history = ['main']; // Failsafe to prevent empty history
 
-        const previousView = history[history.length - 1];
-        setChatState({ panelHistory: history, currentPanelView: previousView });
-        renderActivePanel();
+          const previousView = history[history.length - 1];
+          setChatState({ panelHistory: history, currentPanelView: previousView });
+          renderActivePanel(); // Re-render the new, previous panel
+        }
       });
 
-      // Main Panel Click Logic (now uses history)
       mainPanel.addEventListener("click", (e) => {
         const workspaceBtn = e.target.closest('#workspace-project-btn');
         if (workspaceBtn) {
@@ -4598,6 +4683,11 @@ export function init(params) {
 
         const projectItem = e.target.closest('.project-list-item[data-room-id]');
         if (projectItem) {
+          // Set the "return-to" context BEFORE activating the room
+          setChatState({
+            currentPanelView: 'projects',
+            panelHistory: ['main', 'projects']
+          });
           const roomId = projectItem.dataset.roomId;
           const room = chatState.chatRooms.find(r => r.id === roomId);
           if (room) setActiveRoom(room);
@@ -4611,12 +4701,10 @@ export function init(params) {
             name: personItem.dataset.personName,
             avatar: personItem.dataset.personAvatar
           };
-          // Reset history to main before entering a DM
-          setChatState({ panelHistory: ['main'], currentPanelView: 'main' });
+          // This function will now set its own panel context
           startDirectChat(otherUser);
         }
       });
-
       const previewBadge = document.getElementById("message-preview-badge");
       if (previewBadge) {
         previewBadge.addEventListener("click", () => {
@@ -5286,13 +5374,13 @@ export function init(params) {
       const iconContainer = document.getElementById('chat-header-icon-container');
       const headerIcon = document.querySelector('#chat-header-info i');
       const subtitleElement = document.getElementById('active-room-name');
-
       const backButton = document.getElementById('back-to-main-panel-btn');
       const headerInfo = document.getElementById('chat-header-info');
 
       if (backButton) backButton.style.display = 'flex'; // Show back button in conversation
       if (headerInfo) headerInfo.style.display = 'flex';
       if (iconContainer) iconContainer.style.display = 'flex';
+
       // --- Stop the old typing listener if it exists ---
       if (typingListener) {
         typingListener(); // Unsubscribe from the previous room's typing status
@@ -5302,15 +5390,17 @@ export function init(params) {
       inputField.disabled = true;
       container.innerHTML = `<div class="text-center py-4 text-gray-400">Loading messages...</div>`;
 
+      // --- FIX: Update currentPanelView along with the history ---
       const previousView = room.type === 'project' ? 'projects' : 'main';
       setChatState({
         activeRoom: room,
         inputText: "",
         typingUsers: {},
-        panelHistory: ['main', previousView] // Set the correct back-path
+        currentPanelView: previousView, // Ensures the correct panel is remembered
+        panelHistory: ['main', previousView] // Sets the back-path for panel navigation
       });
-      renderChatRooms();
 
+      renderChatRooms();
       toggleMainPanel(false);
 
       if (room.type === 'direct') {
@@ -5366,16 +5456,16 @@ export function init(params) {
             const indicatorWrapper = document.createElement('div');
             indicatorWrapper.className = 'message-wrapper-typingindicator other typing-fade-in';
             indicatorWrapper.innerHTML = `
-                <div class="message-container other">
-                    <div class="message-bubble other" style="background-color: #f0f2f5;">
-                        <div class="flex items-center">
-                            <div class="typing-indicator">
-                                <span></span><span></span><span></span>
-                            </div>
-                            <span class="typing-text-span ml-2 text-xs text-gray-600">${typingText}</span>
-                        </div>
-                    </div>
-                </div>`;
+                <div class="message-container other">
+                    <div class="message-bubble other" style="background-color: #f0f2f5;">
+                        <div class="flex items-center">
+                            <div class="typing-indicator">
+                                <span></span><span></span><span></span>
+                            </div>
+                            <span class="typing-text-span ml-2 text-xs text-gray-600">${typingText}</span>
+                        </div>
+                    </div>
+                </div>`;
             typingContainer.appendChild(indicatorWrapper);
           } else {
             // Indicator already exists. Just update its text and ensure it's visible.
