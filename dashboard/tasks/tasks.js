@@ -1143,91 +1143,94 @@ export function init(params) {
     chatContainer.className = "chat-container";
     chatContainer.innerHTML = `
     <div id="image-preview-overlay" class="hidden fixed inset-0 bg-black bg-opacity-25 flex items-center justify-center z-[10000000]">
-  <img id="image-preview-full" src="" alt="Preview" class="max-w-[90%] max-h-[90%] rounded-lg shadow-xl" />
-</div>
-<div id="message-preview-badge"></div>
-      <button id="chat-button" class="chat-button">
+        <img id="image-preview-full" src="" alt="Preview" class="max-w-[90%] max-h-[90%] rounded-lg shadow-xl" />
+    </div>
+    <div id="message-preview-badge"></div>
+    <button id="chat-button" class="chat-button">
         <i class="fas fa-comments"></i>
         <span id="unread-badge" class="unread-badge">0</span>
-      </button>
-      <div id="chat-box" class="chat-box">
+    </button>
+    
+    <div id="chat-box" class="chat-box">
         <header id="chat-header">
-          <div class="flex items-center space-x-2">
-            <div class="bg-black w-8 h-8 rounded-full flex items-center justify-center">
-              <i class="fas fa-users text-sm text-white"></i>
-            </div>
-            <div>
-              <h3 class="font-bold text-sm text-white">Project Chats</h3>
-              <p id="active-room-name" class="text-gray-300 text-xs">Select a chat</p>
-            </div>
-          </div>
-          <div class="flex space-x-1">
-            <button id="toggle-minmax" class="text-white hover:text-gray-300 transition p-1">
-              <i id="toggle-minmax-icon" class="fas fa-expand text-sm"></i>
-            </button>
-            <button id="minimize-chat" class="text-white hover:text-gray-300 transition p-1">
-              <i class="fas fa-minus text-sm"></i>
-            </button>
-            <button id="close-chat" class="text-white hover:text-gray-300 transition p-1">
-              <i class="fas fa-times text-sm"></i>
-            </button>
-          </div>
-          <!-- Minimized icon for circle state -->
-          <div id="minimized-icon" class="minimized-icon hidden">
-            <i class="fas fa-comment text-white"></i>
-          </div>
-        </header>
-        <div id="chat-body" class="flex flex-col flex-1">
-          <!-- Added bottom margin to create space below selector -->
-          <nav id="chat-room-selector" class="border-b border-gray-300 bg-gray-100 px-2 py-2 flex flex-nowrap overflow-x-auto gap-1"></nav>
-
-          <div id="pinned-messages-container" class="hidden">
-    <div id="pinned-message-display">
-        </div>
-    <div id="pinned-message-nav">
-        <span id="pin-counter"></span>
-        <button id="pin-nav-prev" title="Previous Pin">
-        <i class="fas fa-chevron-left"></i>
-    </button>
-    <button id="pin-nav-next" title="Next Pin">
-        <i class="fas fa-chevron-right"></i>
-    </button>
+            <div class="flex items-center space-x-2 flex-1 min-w-0">
+                <button id="back-to-main-panel-btn" class="text-white hover:text-gray-300 transition p-1">
+                    <i class="fas fa-chevron-left text-lg"></i>
+                </button>
+                <div id="chat-header-info" style="display: flex;" class="flex items-center space-x-2 min-w-0">
+                    <div id="chat-header-icon-container" class="bg-black w-8 h-8 rounded-full flex items-center justify-center overflow-hidden">
+        <i class="fas fa-users text-sm text-white"></i>
     </div>
-</div>
-
-          <div id="messages-container" class="messages-container bg-gradient-to-b from-gray-50 to-gray-100 p-2 overflow-y-auto flex-1"></div>
-          <div id="typing-indicator-container"></div>
-          <div class="p-2 border-t border-gray-200 bg-white rounded-b-xl">
-          <div id="reply-context-bar" class="hidden"></div>
-
-            <form id="chat-form" class="flex items-center" onsubmit="return false">
-
-              <div class="flex-1 bg-gray-100 rounded-full pr-1 flex items-center">
-                <input id="message-input" type="text" placeholder="Type your message..." class="flex-1 bg-transparent py-2 px-3 text-sm focus:outline-none">
-                <input type="file" id="file-input" class="hidden" accept="image/*, .pdf, .doc, .docx">
-                <button type="button" id="file-button" class="text-gray-500 hover:text-gray-700 transition p-1">
-                  <i class="fas fa-paperclip text-sm"></i>
+                    <div class="min-w-0">
+                        <h3 id="active-room-title" class="font-bold text-sm text-white truncate">Project Chats</h3>
+                        <p id="active-room-name" class="text-gray-300 text-xs truncate">Select a chat</p>
+                    </div>
+                </div>
+            </div>
+            <div class="flex space-x-1">
+                <button id="toggle-minmax" class="text-white hover:text-gray-300 transition p-1">
+                    <i id="toggle-minmax-icon" class="fas fa-expand text-sm"></i>
                 </button>
-                <button type="button" id="emoji-button" class="text-gray-500 hover:text-gray-700 transition p-1">
-                  <i class="fas fa-smile text-sm"></i>
+                <button id="minimize-chat" class="text-white hover:text-gray-300 transition p-1">
+                    <i class="fas fa-minus text-sm"></i>
                 </button>
-              </div>
-              <button id="send-button" type="button" disabled class="ml-2 flex items-center justify-center transition text-gray-400 p-1">
-                <i class="fas fa-paper-plane text-sm"></i>
-              </button>
-              <button id="confirm-edit-btn" type="button" class="hidden ml-2 edit-action-btn">
-    <i class="fas fa-check"></i>
-</button>
-<button id="cancel-edit-btn" type="button" class="hidden ml-1 edit-action-btn">
-    <i class="fas fa-times"></i>
-</button>
-            </form>
-          </div>
+                <button id="close-chat" class="text-white hover:text-gray-300 transition p-1">
+                    <i class="fas fa-times text-sm"></i>
+                </button>
+            </div>
+            <div id="minimized-icon" class="minimized-icon hidden">
+                <i class="fas fa-comment text-white"></i>
+            </div>
+        </header>
+
+        <div id="chat-content-area" class="flex-1 min-h-0">
+            <div id="chat-main-panel">
+                </div>
+
+            <div id="conversation-view" class="flex flex-col flex-1 h-full">
+                <nav id="chat-room-selector" class="border-b border-gray-300 bg-gray-100 px-2 py-2 flex flex-nowrap overflow-x-auto gap-1"></nav>
+                <div id="pinned-messages-container" class="hidden">
+                    <div id="pinned-message-display"></div>
+                    <div id="pinned-message-nav">
+                        <span id="pin-counter"></span>
+                        <button id="pin-nav-prev" title="Previous Pin"><i class="fas fa-chevron-left"></i></button>
+                        <button id="pin-nav-next" title="Next Pin"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                </div>
+                <div class="flex-1 flex flex-col bg-gradient-to-b from-gray-50 to-gray-100 overflow-hidden">
+                    <div id="messages-container" class="flex-1 overflow-y-auto p-2"></div>
+                    <div id="typing-indicator-container"></div>
+                    <div id="new-message-indicator" style="margin-bottom: 20px;"></div>
+                </div>
+                <div class="p-2 border-t border-gray-200 bg-white rounded-b-xl">
+                    <div id="reply-context-bar" class="hidden"></div>
+                    <form id="chat-form" class="flex items-center" onsubmit="return false">
+                        <div class="flex-1 bg-gray-100 rounded-full pr-1 flex items-center">
+                            <input id="message-input" type="text" placeholder="Type your message..." class="flex-1 bg-transparent py-2 px-3 text-sm focus:outline-none">
+                            <input type="file" id="file-input" class="hidden" accept="image/*, .pdf, .doc, .docx">
+                            <button type="button" id="file-button" class="text-gray-500 hover:text-gray-700 transition p-1">
+                                <i class="fas fa-paperclip text-sm"></i>
+                            </button>
+                            <button type="button" id="emoji-button" class="text-gray-500 hover:text-gray-700 transition p-1">
+                                <i class="fas fa-smile text-sm"></i>
+                            </button>
+                        </div>
+                        <button id="send-button" type="button" disabled class="ml-2 flex items-center justify-center transition text-gray-400 p-1">
+                            <i class="fas fa-paper-plane text-sm"></i>
+                        </button>
+                        <button id="confirm-edit-btn" type="button" class="hidden ml-2 edit-action-btn">
+                            <i class="fas fa-check"></i>
+                        </button>
+                        <button id="cancel-edit-btn" type="button" class="hidden ml-1 edit-action-btn">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
         </div>
-        <!-- Unread badge for minimized circle state -->
         <div id="minimized-unread-badge" class="unread-badge hidden">0</div>
-      </div>
-    `;
+    </div>
+`;
     document.body.appendChild(chatContainer);
     const chatBox = document.getElementById("chat-box");
     chatBox.classList.remove("open", "minimized", "maximized");
@@ -1236,1503 +1239,1929 @@ export function init(params) {
     // 2. Inject chat styles
     const style = document.createElement("style");
     style.id = "chat-specific-style";
-    style.textContent = `
-      /* ================ Base Styles ================ */
-      :root {
-        --primary-color: #000000;
-        --secondary-color: #ffffff;
-        --accent-color: #ef4444;
-        --bg-color: #f3f4f6;
-        --text-color: #111827;
-        --text-muted: #6b7280;
-        --border-color: #e5e7eb;
-        --online-color: #10b981;
-        --typing-color: #3b82f6;
-          --z-chat-container: 10000;
-        --z-chat-box: 10010;
-        --z-chat-header: 10020;
-        --z-emoji-picker: 10030; /* Highest priority */
-        --z-reaction-picker: 10040; /* Even higher priority for reaction picker */
-      }
-        /* Container for the pinned indicator text and icon */
-.pinned-indicator {
+    style.textContent = ` /* ================ Base Styles ================ */
+ :root {
+     --primary-color: #000000;
+     --secondary-color: #ffffff;
+     --accent-color: #ef4444;
+     --bg-color: #f3f4f6;
+     --text-color: #111827;
+     --text-muted: #6b7280;
+     --border-color: #e5e7eb;
+     --online-color: #10b981;
+     --typing-color: #3b82f6;
+     --z-chat-container: 10000;
+     --z-chat-box: 10010;
+     --z-chat-header: 10020;
+     --z-emoji-picker: 10030;
+     /* Highest priority */
+     --z-reaction-picker: 10040;
+     /* Even higher priority for reaction picker */
+ }
+
+ #chat-content-area {
+    flex: 1;
+    min-height: 0; /* Prevents flexbox overflow bugs */
+    display: flex;
+    flex-direction: column;
+}
+
+#chat-main-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* Make it fill the content area */
+    background-color: #f8fafc;
+    overflow-y: auto;
+    padding: 12px 0;
+}
+#chat-main-panel::-webkit-scrollbar { width: 4px; }
+#chat-main-panel::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 0.5rem; }
+
+.main-panel-header {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #4b5563;
+    padding: 8px 16px 4px 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.main-panel-list {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 16px;
+}
+
+.main-panel-item {
     display: flex;
     align-items: center;
-    font-size: 11px;
-    color: #657786;
-    margin-top: -22px;
-    padding-bottom: 2px;
-}
-
-/* Default width (closed chat) */
-.message-bubble.user,
-.message-bubble.other {
-  width: 200px;
-  max-width: 200px;
-  transition: width 0.3s ease, max-width 0.3s ease;
-}
-
-/* Image inside bubble - start slightly smaller than bubble */
-.message-bubble.user .image-message img,
-.message-bubble.other .image-message img {
-  max-width: 180px; /* slightly smaller than bubble */
-  height: auto;
-  border-radius: 0.5rem;
-  transition: max-width 0.3s ease;
-}
-
-/* Chat box open → bubble grows, image grows slightly */
-.chat-box.open .message-bubble.user,
-.chat-box.open .message-bubble.other {
-  width: auto;
-  max-width: 230px;
-}
-
-.chat-box.open .message-bubble.user .image-message img,
-.chat-box.open .message-bubble.other .image-message img {
-  max-width: 200px; /* only slightly bigger */
-}
-
-/* Chat box maximized → bubble grows more, image grows a bit more */
-.chat-box.open.maximized .message-bubble.user,
-.chat-box.open.maximized .message-bubble.other {
-  width: auto;
-  max-width: 500px;
-}
-
-
-.chat-box.open.maximized .message-bubble.user .image-message img,
-.chat-box.open.maximized .message-bubble.other .image-message img {
-  max-width: 220px; /* not full bubble width */
-}
-
-/* Align the indicator correctly based on the message sender */
-.message-wrapper.user .pinned-indicator {
-    align-self: flex-end;
-}
-.message-wrapper.other .pinned-indicator {
-    align-self: flex-start;
-}
-
-#message-preview-badge {
-    position: absolute;
-    bottom: 110%; /* Position it directly above the chat button */
-    right: 0;
-    background-color: #ffffff;
-    color: #333;
-    padding: 10px 15px;
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-    max-width: 280px; /* Prevent it from being too wide */
-    font-size: 13px;
-    z-index: 10000;
+    padding: 10px 16px;
     cursor: pointer;
-    display: flex; /* Use flexbox for nice alignment */
-    align-items: center;
-    gap: 8px; /* Space between icon and text */
-
-    /* Initial hidden state for animation */
-    opacity: 0;
-    transform: translateY(10px) scale(0.95);
-    pointer-events: none; /* Not clickable when hidden */
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    transition: background-color 0.15s ease-in-out;
+}
+.main-panel-item:hover {
+    background-color: #f1f5f9;
 }
 
-#message-preview-badge.show {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-    pointer-events: auto; /* Clickable when visible */
+.panel-item-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 12px;
+    object-fit: cover;
+    background-color: #e2e8f0;
 }
 
-#message-preview-badge .sender-name {
-    font-weight: 600;
-    flex-shrink: 0; /* Prevent the name from shrinking */
+.panel-item-info {
+    flex: 1;
+    min-width: 0;
 }
 
-#message-preview-badge .message-text {
+.panel-item-name {
+    font-weight: 500;
+    color: #1e293b;
+    font-size: 0.9rem;
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis; /* Add '...' for long messages */
+    text-overflow: ellipsis;
 }
 
-.pinned-indicator i {
-    position: relative; /* Crucial for positioning the pseudo-element head */
-    z-index: 2; /* Ensures the needle is on top of the head */
-    font-size: 12px;
-    
-    /* A metallic color for the needle */
-    color: #4a5568; 
-    
-    /* The shadow cast by the entire pin */
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
-    
-    /* The iconic thumbtack angle */
-    transform: rotate(-25deg);
-    
-    /* Adjust spacing */
-    margin-right: 12px;
-    margin-left: 4px;
+.panel-item-details {
+    font-size: 0.8rem;
+    color: #64748b;
 }
 
-/* This pseudo-element creates the glossy red 'head' of the pin */
-.pinned-indicator i::before {
-    content: ''; /* Required for pseudo-elements */
-    position: absolute;
-    z-index: 1; /* Places the head behind the needle */
-    
-    /* Position and size the head relative to the icon */
-    top: -3px;
-    left: 0;
-    width: 11px;
-    height: 11px;
-    
-    /* A vibrant red gradient to simulate lighting */
-    background-image: linear-gradient(135deg, #ff7575 0%, #e53e3e 100%);
-    
-    /* Make it a perfect circle */
-    border-radius: 50%;
-    
-    /* The key to the 3D effect:
+.panel-item-icon {
+    color: #94a3b8;
+}
+
+/* Logic to show/hide the panel vs the conversation view */
+.chat-box.panel-visible #conversation-view,
+.chat-box:not(.panel-visible) #chat-header-info {
+    display: none;
+}
+
+.chat-box:not(.panel-visible) #chat-main-panel,
+.chat-box:not(.panel-visible){
+    display: none;
+}
+
+.chat-box.panel-visible #back-to-main-panel-btn,
+.chat-box.panel-visible #chat-header-info {
+    display: flex;
+}
+
+#back-to-main-panel-btn {
+    background: transparent !important;
+    border: none !important;
+}
+
+/* When the CONVERSATION is visible (panel is NOT visible) */
+.chat-box:not(.panel-visible) #back-to-main-panel-btn {
+    display: flex;
+}
+.chat-box:not(.panel-visible) #chat-main-panel {
+    display: none;
+}
+/* When the PANEL is visible */
+.chat-box.panel-visible #conversation-view {
+    display: none;
+}
+.chat-box.panel-visible #back-to-main-panel-btn {
+    display: none;
+}
+ /* Container for the pinned indicator text and icon */
+ .pinned-indicator {
+     display: flex;
+     align-items: center;
+     font-size: 11px;
+     color: #657786;
+     margin-top: -22px;
+     padding-bottom: 2px;
+ }
+
+ /* Default width (closed chat) */
+ .message-bubble.user,
+ .message-bubble.other {
+     width: 200px;
+     max-width: 200px;
+     transition: width 0.3s ease, max-width 0.3s ease;
+ }
+
+ /* Image inside bubble - start slightly smaller than bubble */
+ .message-bubble.user .image-message img,
+ .message-bubble.other .image-message img {
+     max-width: 180px;
+     /* slightly smaller than bubble */
+     height: auto;
+     border-radius: 0.5rem;
+     transition: max-width 0.3s ease;
+ }
+
+ /* Chat box open → bubble grows, image grows slightly */
+ .chat-box.open .message-bubble.user,
+ .chat-box.open .message-bubble.other {
+     width: auto;
+     max-width: 230px;
+ }
+
+ .chat-box.open .message-bubble.user .image-message img,
+ .chat-box.open .message-bubble.other .image-message img {
+     max-width: 200px;
+     /* only slightly bigger */
+ }
+
+ /* Chat box maximized → bubble grows more, image grows a bit more */
+ .chat-box.open.maximized .message-bubble.user,
+ .chat-box.open.maximized .message-bubble.other {
+     width: auto;
+     max-width: 500px;
+ }
+
+
+ .chat-box.open.maximized .message-bubble.user .image-message img,
+ .chat-box.open.maximized .message-bubble.other .image-message img {
+     max-width: 220px;
+     /* not full bubble width */
+ }
+
+ /* Align the indicator correctly based on the message sender */
+ .message-wrapper.user .pinned-indicator {
+     align-self: flex-end;
+ }
+
+ .message-wrapper.other .pinned-indicator {
+     align-self: flex-start;
+ }
+
+ #message-preview-badge {
+     position: absolute;
+     bottom: 110%;
+     /* Position it directly above the chat button */
+     right: 0;
+     background-color: #ffffff;
+     color: #333;
+     padding: 10px 15px;
+     border-radius: 12px;
+     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+     min-width: 133px;
+     max-width: 300px;
+     /* Prevent it from being too wide */
+     font-size: 13px;
+     z-index: 10000;
+     cursor: pointer;
+     display: flex;
+     /* Use flexbox for nice alignment */
+     align-items: center;
+     gap: 8px;
+     /* Space between icon and text */
+
+     /* Initial hidden state for animation */
+     opacity: 0;
+     transform: translateY(10px) scale(0.95);
+     pointer-events: none;
+     /* Not clickable when hidden */
+     transition: opacity 0.3s ease, transform 0.3s ease;
+ }
+
+ #message-preview-badge.show {
+     opacity: 1;
+     transform: translateY(0) scale(1);
+     pointer-events: auto;
+     /* Clickable when visible */
+ }
+
+ #message-preview-badge .sender-name {
+     font-weight: 600;
+     flex-shrink: 0;
+     /* This is correct, keeps the name from being cut off */
+ }
+
+ #message-preview-badge .message-text {
+     white-space: nowrap;
+     overflow: hidden;
+     text-overflow: ellipsis;
+     min-width: 0;
+     flex-grow: 1;
+ }
+
+ .pinned-indicator i {
+     position: relative;
+     /* Crucial for positioning the pseudo-element head */
+     z-index: 2;
+     /* Ensures the needle is on top of the head */
+     font-size: 12px;
+
+     /* A metallic color for the needle */
+     color: #4a5568;
+
+     /* The shadow cast by the entire pin */
+     text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+
+     /* The iconic thumbtack angle */
+     transform: rotate(-25deg);
+
+     /* Adjust spacing */
+     margin-right: 12px;
+     margin-left: 4px;
+ }
+
+ /* This pseudo-element creates the glossy red 'head' of the pin */
+ .pinned-indicator i::before {
+     content: '';
+     /* Required for pseudo-elements */
+     position: absolute;
+     z-index: 1;
+     /* Places the head behind the needle */
+
+     /* Position and size the head relative to the icon */
+     top: -3px;
+     left: 0;
+     width: 11px;
+     height: 11px;
+
+     /* A vibrant red gradient to simulate lighting */
+     background-image: linear-gradient(135deg, #ff7575 0%, #e53e3e 100%);
+
+     /* Make it a perfect circle */
+     border-radius: 50%;
+
+     /* The key to the 3D effect:
        - An outer shadow to lift it off the page.
        - An inset shadow to create a glossy highlight on the top edge. */
-    box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3), 
-                inset 0 -1px 1px rgba(0, 0, 0, 0.2), 
-                inset 0 1px 1px rgba(255, 255, 255, 0.4);
-}
-        #pinned-messages-container {
-    padding: 10px 15px;
-    background-color: rgba(230, 235, 245, 0.7);
-    backdrop-filter: blur(10px);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    animation: fadeInDown 0.3s ease-out;
-}
+     box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3),
+         inset 0 -1px 1px rgba(0, 0, 0, 0.2),
+         inset 0 1px 1px rgba(255, 255, 255, 0.4);
+ }
 
-#pinned-messages-container.hidden {
-    display: none;
-}
+ #pinned-messages-container {
+     padding: 10px 15px;
+     background-color: rgba(230, 235, 245, 0.7);
+     backdrop-filter: blur(10px);
+     display: flex;
+     justify-content: space-between;
+     align-items: center;
+     animation: fadeInDown 0.3s ease-out;
+ }
 
-@keyframes fadeInDown {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
+ #pinned-messages-container.hidden {
+     display: none;
+ }
 
-#pinned-message-display {
-    flex-grow: 1;
-    cursor: pointer;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: 13px;
-    color: #333;
-}
+ @keyframes fadeInDown {
+     from {
+         opacity: 0;
+         transform: translateY(-10px);
+     }
 
-#pinned-message-display .pin-icon {
-    color: #007aff;
-    margin-right: 8px;
-    font-size: 12px;
-}
+     to {
+         opacity: 1;
+         transform: translateY(0);
+     }
+ }
 
-#pinned-message-display .pinned-sender {
-    font-weight: 600;
-}
+ #pinned-message-display {
+     flex-grow: 1;
+     cursor: pointer;
+     white-space: nowrap;
+     overflow: hidden;
+     text-overflow: ellipsis;
+     font-size: 13px;
+     color: #333;
+ }
 
-#pinned-message-nav {
-    display: flex;
-    align-items: center;
-    color: #555;
-    font-size: 13px;
-}
+ #pinned-message-display .pin-icon {
+     color: #007aff;
+     margin-right: 8px;
+     font-size: 12px;
+ }
 
-#pin-counter {
-    margin-right: 8px;
-}
+ #pinned-message-display .pinned-sender {
+     font-weight: 600;
+ }
 
-/* Shared style for both the check and cancel buttons */
-.edit-action-btn {
-    width: 26px;
-    height: 26px;
-    border-radius: 50%; /* This makes the background circular */
-    border: none;      /* Removes the border */
-    
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    
-    cursor: pointer;
-    transition: background-color 0.2s ease, transform 0.1s ease;
-}
+ #pinned-message-nav {
+     display: flex;
+     align-items: center;
+     color: #555;
+     font-size: 13px;
+ }
 
-.edit-action-btn:hover {
-    transform: scale(1.05); /* Slight zoom on hover */
-}
+ #pin-counter {
+     margin-right: 8px;
+ }
 
-/* Specific color for the Confirm (check) button */
-#confirm-edit-btn {
-    background-color: #dfdfdfff; /* Green for confirm */
-    color: #267423ff;
-}
-#confirm-edit-btn:hover {
-    background-color: #dcf7e2ff; /* Darker green */
-}
+ /* Shared style for both the check and cancel buttons */
+ .edit-action-btn {
+     width: 26px;
+     height: 26px;
+     border-radius: 50%;
+     /* This makes the background circular */
+     border: none;
+     /* Removes the border */
 
-/* Specific color for the Cancel button */
-#cancel-edit-btn {
-    background-color: #dfdfdfff; /* Red for cancel */
-    color: #692828ff;
-}
-#cancel-edit-btn:hover {
-    background-color: #fff0f1ff; /* Darker red */
-}
-#pinned-message-nav button {
-    background: rgba(0, 0, 0, 0.05);
-    border: none;
-    border-radius: 50%;
-    width: 24px;
-    height: 24px;
-    margin-left: 4px;
-    cursor: pointer;
-    color: #333;
-    padding: 0;
-    transition: background-color 0.1s ease;
-    
-    /* Flexbox handles the perfect centering for the new <i> icons */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-#pinned-message-nav button i {
-    font-size: 12px;
-}
+     display: flex;
+     align-items: center;
+     justify-content: center;
 
-#pinned-message-nav button:hover {
-    background: rgba(0, 0, 0, 0.1);
-}
-     #chat-box.align-left {
-  transform: translateX(-20px);
-}
+     cursor: pointer;
+     transition: background-color 0.2s ease, transform 0.1s ease;
+ }
 
-#chat-box.align-right {
-  transform: translateX(20px);
-}
+ .edit-action-btn:hover {
+     transform: scale(1.05);
+     /* Slight zoom on hover */
+ }
 
-#chat-box.align-up {
-  transform: translateY(-20px);
-}
+ /* Specific color for the Confirm (check) button */
+ #confirm-edit-btn {
+     background-color: #dfdfdfff;
+     /* Green for confirm */
+     color: #267423ff;
+ }
 
-#chat-box.align-down {
-  transform: translateY(20px);
-}
+ #confirm-edit-btn:hover {
+     background-color: #dcf7e2ff;
+     /* Darker green */
+ }
+
+ /* Specific color for the Cancel button */
+ #cancel-edit-btn {
+     background-color: #dfdfdfff;
+     /* Red for cancel */
+     color: #692828ff;
+ }
+
+ #cancel-edit-btn:hover {
+     background-color: #fff0f1ff;
+     /* Darker red */
+ }
+
+ #pinned-message-nav button {
+     background: rgba(0, 0, 0, 0.05);
+     border: none;
+     border-radius: 50%;
+     width: 24px;
+     height: 24px;
+     margin-left: 4px;
+     cursor: pointer;
+     color: #333;
+     padding: 0;
+     transition: background-color 0.1s ease;
+
+     /* Flexbox handles the perfect centering for the new <i> icons */
+     display: flex;
+     align-items: center;
+     justify-content: center;
+ }
+
+ #pinned-message-nav button i {
+     font-size: 12px;
+ }
+
+ #pinned-message-nav button:hover {
+     background: rgba(0, 0, 0, 0.1);
+ }
+
+ #chat-box.align-left {
+     transform: translateX(-20px);
+ }
+
+ #chat-box.align-right {
+     transform: translateX(20px);
+ }
+
+ #chat-box.align-up {
+     transform: translateY(-20px);
+ }
+
+ #chat-box.align-down {
+     transform: translateY(20px);
+ }
 
 
-      .chat-container { z-index: var(--z-chat-container); }
-    #chat-header { z-index: var(--z-chat-header); }
-    .emoji-picker { z-index: var(--z-emoji-picker); }
-    .reaction-picker { z-index: var(--z-reaction-picker); }
+ .chat-container {
+     z-index: var(--z-chat-container);
+ }
+
+ #chat-header {
+     z-index: var(--z-chat-header);
+ }
+
+ .emoji-picker {
+     z-index: var(--z-emoji-picker);
+ }
+
+ .reaction-picker {
+     z-index: var(--z-reaction-picker);
+ }
 
 
-/* Add these to prevent clipping */
-.chat-container,
-.chat-box,
-#chat-body,
-#chat-header {
-  overflow: visible !important;
-  contain: none !important;
-}
+ /* Add these to prevent clipping */
+ .chat-container,
+ .chat-box,
+ #chat-body,
+ #chat-header {
+     overflow: visible !important;
+     contain: none !important;
+ }
 
-/* Ensure no parent clips content */
-.chat-box > * {
-  overflow: visible !important;
-}
+ /* Ensure no parent clips content */
+ .chat-box>* {
+     overflow: visible !important;
+ }
 
-      /* ================ Chat Container ================ */
-.chat-container {
-        position: absolute;
-        bottom: 20px;
-        right: 20px;
-        z-index: 10000; /* High z-index to stay on top */
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        cursor: grab;
-      }
-      .chat-container.scrolled {
-        transform: translateY(-3.125rem);
-      }
-        #chat-box {
-  display: none;
-}
+ /* ================ Chat Container ================ */
+ .chat-container {
+     position: absolute;
+     bottom: 20px;
+     right: 20px;
+     z-index: 10000;
+     /* High z-index to stay on top */
+     display: flex;
+     flex-direction: column;
+     align-items: flex-end;
+     cursor: grab;
+ }
 
-#chat-box.open {
-  display: block;
-}
+ .chat-container.scrolled {
+     transform: translateY(-3.125rem);
+ }
 
-#reply-context-bar {
-    padding: 8px 12px;
-    background-color: #f0f2f5;
-    border-top: 1px solid #e0e0e0;
-    font-size: 13px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
+ #chat-box {
+     display: none;
+ }
 
-#reply-context-bar.hidden {
-    display: none;
-}
+ #chat-box.open {
+     display: block;
+ }
 
-#reply-context-bar .reply-content {
-    border-left: 3px solid #3b82f6; /* Blue reply indicator */
-    padding-left: 8px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
+ #reply-context-bar {
+     padding: 8px 12px;
+     background-color: #f0f2f5;
+     border-top: 1px solid #e0e0e0;
+     font-size: 13px;
+     display: flex;
+     justify-content: space-between;
+     align-items: center;
+ }
 
-#reply-context-bar .reply-sender {
-    font-weight: 600;
-    display: block;
-}
+ #reply-context-bar.hidden {
+     display: none;
+ }
 
-#reply-context-bar .cancel-reply-btn {
-    background: none;
-    border: none;
-    color: #606770;
-    cursor: pointer;
-    font-size: 16px;
-}
+ #reply-context-bar .reply-content {
+     border-left: 3px solid #3b82f6;
+     /* Blue reply indicator */
+     padding-left: 8px;
+     white-space: nowrap;
+     overflow: hidden;
+     text-overflow: ellipsis;
+ }
 
-.message-reply-quote {
-    background-color: rgba(0, 0, 0, 0.05);
-    padding: 6px 10px;
-    border-radius: 8px;
-    margin-bottom: 6px;
-    font-size: 13px;
-    border-left: 3px solid rgba(0, 0, 0, 0.2);
-}
-.message-reply-quote .reply-text {
-    opacity: 0.8;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
+ #reply-context-bar .reply-sender {
+     font-weight: 600;
+     display: block;
+ }
 
-      /* ================ CHAT BUTTON ================ */
-      .chat-button {
-        position: relative;
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        background: #000;
-        color: white;
-        border: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        font-size: 20px;
-        z-index: 10001; /* Higher than container */
-      }
+ #reply-context-bar .cancel-reply-btn {
+     background: none;
+     border: none;
+     color: #606770;
+     cursor: pointer;
+     font-size: 16px;
+ }
 
-      .chat-button:hover {
-        transform: scale(1.08) translateY(-3px);
-        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
-        background: #333;
-      }
+ .message-reply-quote {
+     background-color: rgba(0, 0, 0, 0.05);
+     padding: 6px 10px;
+     border-radius: 8px;
+     margin-bottom: 6px;
+     font-size: 13px;
+     border-left: 3px solid rgba(0, 0, 0, 0.2);
+ }
 
-      .chat-button:active {
-        transform: scale(0.95);
-      }
+ .message-reply-quote .reply-text {
+     opacity: 0.8;
+     white-space: nowrap;
+     overflow: hidden;
+     text-overflow: ellipsis;
+ }
 
-      /* Unread badge */
-      .unread-badge {
-        position: absolute;
-        top: -8px; /* Adjusted position */
-        right: -8px; /* Adjusted position */
-        background-color: #ef4444;
-        color: white;
-        border-radius: 50%;
-        width: 20px;
-        height: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 10px;
-        font-weight: bold;
-        z-index: 100000000000;
-        padding: 2px; /* Added padding for better appearance */
-      }
+ /* ================ CHAT BUTTON ================ */
+ .chat-button {
+     position: relative;
+     width: 50px;
+     height: 50px;
+     border-radius: 50%;
+     background: #000;
+     color: white;
+     border: none;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+     cursor: pointer;
+     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+     font-size: 20px;
+     z-index: 10001;
+     /* Higher than container */
+ }
 
-      /* ================ Chat Box States ================ */
-      .chat-box {
-    position: absolute; /* This is CRITICAL for the JS to work */
-    width: 320px;
-    display: none; /* Controlled by JS */
-    flex-direction: column;
-    z-index: 1000;
-}
+ .chat-button:hover {
+     transform: scale(1.08) translateY(-3px);
+     box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+     background: #333;
+ }
 
-      .chat-box.open {
-        height: 450px; /* Default height */
-        opacity: 1;
-        transform: translateY(0);
-      }
+ .chat-button:active {
+     transform: scale(0.95);
+ }
 
-      .chat-box.open.maximized {
-        width: 90vw !important;
-        height: 90vh !important;
-        max-width: 90vw;
-        max-height: 90vh;
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%) !important;
-        z-index: 10010; /* Higher than before */
-        border-radius: 14px;
-      }
-        #minimized-unread-badge{
-           display: none;
-        }
-      /* REVISED: Minimized state - circular shape like Messenger */
-      .chat-box.minimized {
-        width: 3.5rem !important;
-        height: 3.5rem !important;
-        opacity: 1;
-        transform: translateY(0);
-        border-radius: 50% !important; /* Make it circular */
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-        position: relative;
-        overflow: visible;
-      }
+ /* Unread badge */
+ .unread-badge {
+     position: absolute;
+     top: -8px;
+     /* Adjusted position */
+     right: -8px;
+     /* Adjusted position */
+     background-color: #ef4444;
+     color: white;
+     border-radius: 50%;
+     width: 20px;
+     height: 20px;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     font-size: 10px;
+     font-weight: bold;
+     z-index: 100000000000;
+     padding: 2px;
+     /* Added padding for better appearance */
+ }
 
-      .chat-box.minimized #chat-body {
-        display: none;
-      }
+ /* ================ Chat Box States ================ */
+ .chat-box {
+     position: absolute;
+     /* This is CRITICAL for the JS to work */
+     width: 320px;
+     display: none;
+     /* Controlled by JS */
+     flex-direction: column;
+     z-index: 1000;
+ }
 
-      .chat-box.minimized #chat-header > div {
-        display: none !important;
-      }
+ .chat-box.open {
+     height: 450px;
+     /* Default height */
+     opacity: 1;
+     transform: translateY(0);
+ }
 
-      .chat-box.minimized #chat-header #minimized-icon {
-        display: flex !important;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        color: white;
-      }
+ .chat-box.open.maximized {
+     width: 90vw !important;
+     height: 90vh !important;
+     max-width: 90vw;
+     max-height: 90vh;
+     position: fixed;
+     top: 50%;
+     left: 50%;
+     transform: translate(-50%, -50%) !important;
+     z-index: 10010;
+     /* Higher than before */
+     border-radius: 14px;
+ }
 
-      #chat-body {
-        display: flex;
-        flex-direction: column;
-        flex: 1;
-        min-height: 0; /* Allow flex item to shrink */
-      }
+ #minimized-unread-badge {
+     display: none;
+ }
 
-      /* REVISED: Header styles for minimized circular state */
-      .chat-box.minimized #chat-header {
-        border-radius: 50% !important; /* Make header circular */
-        height: 100%;
-        width: 100%;
-        padding: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background-color: #000 !important;
-      }
+ /* REVISED: Minimized state - circular shape like Messenger */
+ .chat-box.minimized {
+     width: 3.5rem !important;
+     height: 3.5rem !important;
+     opacity: 1;
+     transform: translateY(0);
+     border-radius: 50% !important;
+     /* Make it circular */
+     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+     position: relative;
+     overflow: visible;
+ }
 
-      .chat-box:not(.minimized) #minimized-icon {
-        display: none !important;
-      }
+ .chat-box.minimized #chat-body {
+     display: none;
+ }
 
-/*
+ .chat-box.minimized #chat-header>div {
+     display: none !important;
+ }
+
+ .chat-box.minimized #chat-header #minimized-icon {
+     display: flex !important;
+     align-items: center;
+     justify-content: center;
+     font-size: 1.5rem;
+     color: white;
+ }
+
+ #chat-body {
+     display: flex;
+     flex-direction: column;
+     flex: 1;
+     min-height: 0;
+     /* Allow flex item to shrink */
+ }
+
+ /* REVISED: Header styles for minimized circular state */
+ .chat-box.minimized #chat-header #chat-content-area {
+     border-radius: 50% !important;
+     /* Make header circular */
+     height: 100%;
+     width: 100%;
+     padding: 0;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     background-color: #000 !important;
+ }
+
+ .chat-box:not(.minimized) #minimized-icon {
+     display: none !important;
+ }
+
+ /*
  * The main container for the floating menu.
  */
-.options-menu {
-    position: absolute;
-    z-index: 10050;
+ .options-menu {
+     position: absolute;
+     z-index: 10050;
 
-    /* NARROWER: Adjusted width for a more compact look. 
+     /* NARROWER: Adjusted width for a more compact look. 
        Note: 180px provides enough space for text like "Remove for you".
        You can adjust this value as needed. */
-    width: 180px;
+     width: 180px;
 
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1), 0 2px 5px rgba(0, 0, 0, 0.05);
-    padding: 6px;
-    overflow: hidden;
-    animation: menu-pop-in 0.15s ease-out forwards;
+     background: white;
+     border-radius: 12px;
+     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1), 0 2px 5px rgba(0, 0, 0, 0.05);
+     padding: 6px;
+     overflow: hidden;
+     animation: menu-pop-in 0.15s ease-out forwards;
 
-    /* SHIFT LEFT: This moves the entire menu to the left by 20px 
+     /* SHIFT LEFT: This moves the entire menu to the left by 20px 
        from its original position, making it feel less crowded. */
-    transform: translateX(-20px);
-}
+     transform: translateX(-20px);
+ }
 
-/*
+ /*
  * The pop-in animation keyframes.
  */
-@keyframes menu-pop-in {
-    from {
-        opacity: 0;
-        transform: scale(0.95) translateY(-5px) translateX(-20px); /* Keep transform consistent */
-    }
-    to {
-        opacity: 1;
-        transform: scale(1) translateY(0) translateX(-20px); /* Keep transform consistent */
-    }
-}
+ @keyframes menu-pop-in {
+     from {
+         opacity: 0;
+         transform: scale(0.95) translateY(-5px) translateX(-20px);
+         /* Keep transform consistent */
+     }
 
-/*
+     to {
+         opacity: 1;
+         transform: scale(1) translateY(0) translateX(-20px);
+         /* Keep transform consistent */
+     }
+ }
+
+ /*
  * Styling for each individual item within the menu.
  */
-.options-menu-item {
-    display: flex;
-    align-items: center;
-
-    /* ALIGN LEFT: Ensures the icon and text are always pushed to the left. */
-    justify-content: flex-start; 
-    
-    padding: 8px 10px; /* Adjusted padding for the new width */
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    color: #333;
-    border-radius: 8px;
-    transition: background-color 0.1s ease-in-out;
-}
-
-/* The hover effect for menu items */
-.options-menu-item:hover {
-    background-color: #f0f2f5;
-}
-
-/* Icon styling within the menu items */
-.options-menu-item i {
-    margin-right: 10px; /* Slightly reduced margin for a tighter look */
-    width: 16px;
-    text-align: center; /* Centering the icon within its own box looks cleaner */
-    color: #555;
-}
-
-/* The divider line between sections */
-.options-menu-divider {
-    height: 1px;
-    background-color: #f0f2f5;
-    margin: 4px 0;
-}
-
-      /* Unread badge for minimized circle state */
-      #minimized-unread-badge {
-        position: absolute;
-        top: -8px; /* Adjusted position */
-        right: -8px; /* Adjusted position */
-        background-color: #ef4444;
-        color: white;
-        border-radius: 50%;
-        width: 20px;
-        height: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 10px;
-        font-weight: bold;
-        padding: 2px; /* Added padding for better appearance */
-        z-index: 10002; /* Ensure it's above the minimized chat box */
-      }
-
-      /* ================ Chat Room Selector - Made Larger ================ */
-      #chat-room-selector {
-        height: 48px; /* Fixed height for consistency */
-        padding: 0.3rem 0.5rem; /* More padding */
-        background-color: #f8f9fa;
-        border-bottom: 1px solid #e9ecef;
-        display: flex;
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        overflow-y: hidden;
-        -ms-overflow-style: none;
-        scrollbar-width: thin;
-        scrollbar-color: #888 transparent;
-        gap: 0.4rem; /* Slightly larger gap */
-        align-items: center; /* Center items vertically */
-      }
-
-      #chat-room-selector::-webkit-scrollbar {
-        height: 5px; /* Slightly thicker scrollbar */
-      }
-
-      #chat-room-selector::-webkit-scrollbar-track {
-        background: transparent;
-        border-radius: 3px;
-      }
-
-      #chat-room-selector::-webkit-scrollbar-thumb {
-        background-color: #cbd5e1;
-        border-radius: 3px;
-      }
-
-      .chat-room-selector-item {
-        display: inline-flex;
-        min-width: fit-content;
-        padding: 0.4rem 0.9rem; /* More padding for larger items */
-        border-radius: 0.9rem; /* Slightly larger radius */
-        background-color: #e5e7eb;
-        cursor: pointer;
-        transition: background-color 0.2s;
-        font-size: 0.8rem; /* Larger font size */
-        font-weight: 500;
-        color: #4b5563;
-        flex-shrink: 0;
-        white-space: nowrap;
-        height: 32px; /* Fixed height for consistency */
-        align-items: center; /* Center text vertically */
-        border: none; /* Removed border */
-      }
-
-      .chat-room-selector-item:hover {
-        background-color: #d1d5db;
-      }
-
-      .chat-room-selector-item.selected {
-        background-color: #000000;
-        color: #ffffff;
-      }
-
-      .unread-count {
-        margin-left: 0.3rem; /* More spacing */
-        background-color: #ef4444;
-        color: white;
-        border-radius: 9999px;
-        padding: 0.15rem 0.4rem; /* Slightly larger */
-        font-size: 0.7rem; /* Slightly larger */
-        font-weight: 600;
-      }
-
-      /* ================ Messages Container ================ */
-      .messages-container {
-        flex: 1;
-        overflow-y: auto; /* Ensure vertical scrolling */
-        overflow-x: hidden;
-        min-height: 0; /* Allow flex item to shrink */
-        padding: 0.5rem;
-        background: #f8fafc;
-        font-size: 0.8rem;
-        box-shadow: inset 0 8px 6px -6px rgba(0, 0, 0, 0.1);
-      }
-
-      .messages-container::-webkit-scrollbar {
-        width: 4px;
-      }
-
-      .messages-container::-webkit-scrollbar-track {
-        background: transparent;
-      }
-
-      .messages-container::-webkit-scrollbar-thumb {
-        background-color: #cbd5e1;
-        border-radius: 0.5rem;
-      }
-
-      /* ================ Paperclip & Paper Plane Styles ================ */
-      #file-button, #send-button, #emoji-button {
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        padding: 0.4rem;
-        color: #6b7280;
-        cursor: pointer;
-        transition: color 0.2s;
-        font-size: 0.9rem;
-      }
-
-      #file-button:hover, #emoji-button:hover,
-      #send-button:hover:not([disabled]) {
-        color: #000;
-        background: transparent !important;
-        transform: scale(1.1);
-      }
-
-      #send-button[disabled] {
-        color: #9ca3af;
-        cursor: not-allowed;
-      }
-
-      #send-button:not([disabled]) {
-        color: #000;
-      }
-
-      /* ================ Enhanced Emoji Picker ================ */
-
-.emoji-picker {
-  position: absolute;
-  bottom: calc(100% + 10px);
-  right: 0;
-  width: 280px;
-  height: 320px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25);
-  z-index: var(--z-emoji-picker); /* Use CSS variable */
-  display: none;
-  border: 1px solid #e5e7eb;
-  transform: translateY(20px);
-  opacity: 0;
-  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  will-change: transform, opacity;
-}
-
-.emoji-picker.open {
-  display: block;
-  transform: translateY(0);
-  opacity: 1;
-}
-
-      .emoji-picker .emoji-header {
-        padding: 0.4rem 0.6rem;
-        border-bottom: 1px solid var(--border-color);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background-color: #f9fafb;
-        font-size: 0.75rem;
-      }
-
-      .emoji-picker .emoji-header span {
-        font-weight: 600;
-        color: var(--text-color);
-      }
-
-      .emoji-picker .emoji-container {
-        display: grid;
-        grid-template-columns: repeat(8, minmax(0, 1fr));
-        gap: 0.1rem;
-        padding: 0.1rem;
-        height: calc(100% - 2.5rem);
-        overflow-y: auto;
-      }
-
-      .emoji-picker .emoji-item {
-        font-size: 1.1rem;
-        cursor: pointer;
-        text-align: center;
-        padding: 0.1rem;
-        border-radius: 0.2rem;
-        transition: all 0.1s ease;
-        aspect-ratio: 1/1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      .emoji-picker .emoji-item:hover {
-        background-color: #f0f2f5;
-        transform: scale(1.1);
-      }
-
-      .emoji-picker .emoji-container::-webkit-scrollbar {
-        width: 4px;
-      }
-
-      .emoji-picker .emoji-container::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 3px;
-      }
-
-      .emoji-picker .emoji-container::-webkit-scrollbar-thumb {
-        background-color: #d1d5db;
-        border-radius: 3px;
-      }
-
-      /* ================ Typing Indicator ================ */
-      .typing-indicator {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      .typing-indicator span {
-        width: 0.35rem;
-        height: 0.35rem;
-        background-color: var(--primary-color);
-        border-radius: 50%;
-        display: inline-block;
-        margin: 0 0.08rem;
-        animation: typing 1.4s infinite ease-in-out;
-      }
-
-      .typing-indicator span:nth-child(2) {
-        animation-delay: 0.2s;
-      }
-
-      .typing-indicator span:nth-child(3) {
-        animation-delay: 0.4s;
-      }
-
-      @keyframes typing {
-        0%,
-        60%,
-        100% {
-          transform: translateY(0);
-        }
-        30% {
-          transform: translateY(-0.2rem);
-        }
-      }
-
-      /* ================ File Message Styles - Made Smaller ================ */
-      .file-message {
-        padding: 0.3rem !important; /* Reduced padding */
-      }
-
-      .file-message i {
-        font-size: 0.9rem !important; /* Smaller icon */
-      }
-
-      .file-message p {
-        font-size: 0.7rem !important; /* Smaller text */
-      }
-
-      /* ================ MESSAGE BUBBLES (MESSENGER STYLE) ================ */
-      .message-wrapper {
-        display: flex;
-        flex-direction: column;
-        max-width: 80%;
-        margin-bottom: 0.5rem;
-        position: relative;
-        padding-bottom: 25px; /* Increased padding to make space for reactions */
-      }
-
-      .message-wrapper.user {
-        align-items: flex-end;
-        margin-left: auto;
-        margin-right: 0.5rem;
-      }
-
-      .message-wrapper.other {
-        align-items: flex-start;
-        margin-left: 0.5rem;
-      }
-
-      .message-container {
-        display: flex;
-        align-items: center;
-        position: relative; /* For reaction picker positioning */
-      }
-
-      .message-container.user {
-        flex-direction: row-reverse; /* Reverse order for user messages */
-      }
-
-      .message-container.other {
-        flex-direction: row; /* Default order for other messages */
-      }
-
-      .message-bubble {
-        padding: 8px 12px;
-        border-radius: 18px;
-        position: relative;
-        word-wrap: break-word;
-        max-width: 100%;
-      }
-
-      .message-bubble.user {
-        background-color: #000000; /* Black */
-        color: white;
-        border-bottom-right-radius: 4px;
-      }
-      .unread-count {
-    margin-left: 0.4rem; 
-    background-color: #ef4444;
-    color: white;
-    border-radius: 9999px; 
-    padding: 0.15rem 0.45rem;
-    font-size: 0.7rem;
-    font-weight: 600; 
-    line-height: 1; /
-    display: inline-block; 
-}  
-      .message-bubble.user::after {
-        content: '';
-        position: absolute;
-        bottom: 0;
-        right: -8px;
-        width: 0;
-        height: 0;
-        border: 8px solid transparent;
-        border-left-color: #000000; /* Black */
-        border-right: 0;
-        border-bottom: 0;
-      }
-
-      .message-bubble.other {
-        background-color: #e5e7eb; /* Light Gray */
-        color: #111827; /* Dark text for contrast */
-        border: 1px solid #e5e7eb; /* Light Gray border */
-        border-bottom-left-radius: 4px;
-      }
-
-      .message-bubble.other::after {
-        content: '';
-        position: absolute;
-        bottom: 0;
-        left: -8px;
-        width: 0;
-        height: 0;
-        border: 8px solid transparent;
-        border-right-color: #e5e7eb; /* Light Gray */
-        border-left: 0;
-        border-bottom: 0;
-      }
-
-      .message-header {
-        font-weight: 500;
-        font-size: 0.65rem;
-        margin-bottom: 0.15rem;
-      }
-
-      .message-content {
-        font-size: 0.75rem;
-        line-height: 1.3;
-      }
-
-      .message-timestamp {
-        font-size: 0.6rem;
-        color: #6b7280;
-        margin-top: 0.1rem;
-        align-self: flex-end; /* Align timestamp to the right for user messages */
-        margin-right: 0.5rem; /* Adjust as needed */
-      }
-
-      .message-wrapper.other .message-timestamp {
-        align-self: flex-start; /* Align timestamp to the left for other messages */
-        margin-left: 0.5rem; /* Adjust as needed */
-      }
-
-      .status-icon {
-        margin-left: 4px;
-        transition: transform 0.3s ease-out; /* Animation for read status */
-      }
-
-      .status-icon.read {
-        transform: translateY(2px); /* Animate downwards if read */
-      }
-
-      /* ================ Reactions Button and Picker ================ */
-      .react-button {
-        background: none;
-        border: none;
-        font-size: 0.8rem;
-        cursor: pointer;
-        padding: 0 5px;
-        color: #6b7280;
-        opacity: 0; /* Hidden by default */
-        transition: opacity 0.2s ease-in-out;
-      }
-      .reply-btn {
-        background: none;
-        border: none;
-        font-size: 0.8rem;
-        cursor: pointer;
-        padding: 0 5px;
-        color: #6b7280;
-        opacity: 0; /* Hidden by default */
-        transition: opacity 0.2s ease-in-out;
-      }
-      .options-btn {
-        background: none;
-        border: none;
-        font-size: 0.8rem;
-        cursor: pointer;
-        padding: 0 5px;
-        color: #6b7280;
-        opacity: 0; /* Hidden by default */
-        transition: opacity 0.2s ease-in-out;
-      }
-
-      .message-container:hover .react-button {
-        opacity: 1; /* Show on hover */
-      }
-      .message-container:hover .reply-btn {
-        opacity: 1; /* Show on hover */
-      }  
-      .message-container:hover .options-btn {
-        opacity: 1; /* Show on hover */
-      } 
-      .message-container.user .react-button {
-        margin-right: 5px; /* Space for user messages */
-      }
-      .message-container.user .reply-btn {
-        margin-right: 5px; /* Space for user messages */
-      }
-      .message-container.other .options-btn {
-        margin-left: 5px; /* Space for other messages */
-      }
-
-      /* FIXED: Reaction picker positioning */
-      .reaction-picker {
-        position: absolute; /* Default to absolute */
-        bottom: calc(100% + 5px);
-        left: 50%;
-        transform: translateX(-50%) translateY(10px); /* Initial state for animation */
-        background: white;
-        border-radius: 20px;
-        padding: 5px 10px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        display: flex;
-        gap: 5px;
-        z-index: var(--z-reaction-picker); /* Use CSS variable */
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out; /* Add transform to transition */
-      }
-
-      .reaction-picker.open {
-        opacity: 1;
-        pointer-events: auto;
-        transform: translateX(-50%) translateY(0); /* Ensure transform is reset */
-      }
-
-      .reaction-picker .reaction-emoji {
-        font-size: 1.5rem;
-        cursor: pointer;
-        transition: transform 0.1s ease;
-      }
-
-      .reaction-picker .reaction-emoji:hover {
-        transform: scale(1.2);
-      }
-
-      /* FIXED: Message reactions positioning */
-      .message-reactions {
-        position: absolute;
-        bottom: 0px; /* Position at the very bottom of the message-wrapper padding */
-        display: flex;
-        gap: 3px;
-        background: rgba(255, 255, 255, 0.9);
-        border-radius: 10px;
-        padding: 2px 6px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-        font-size: 0.7rem;
-        z-index: 2;
-      }
-
-      .message-wrapper.user .message-reactions {
-        right: 5px; /* Position at bottom right for user messages */
-      }
-
-      .message-wrapper.other .message-reactions {
-        left: 5px; /* Position at bottom left for other messages */
-      }
-
-      .message-reactions .reaction-item {
-        display: flex;
-        align-items: center;
-      }
-
-      .message-reactions .reaction-count {
-        margin-left: 2px;
-        font-weight: bold;
-      }
-
-      .message-reactions .reaction-users {
-        display: none; /* Hidden by default */
-        position: absolute;
-        bottom: 100%;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(0,0,0,0.8);
-        color: white;
-        padding: 5px 10px;
-        border-radius: 5px;
-        white-space: nowrap;
-        font-size: 0.6rem;
-      }
-
-      .message-reactions .reaction-item:hover .reaction-users {
-        display: block; /* Show on hover */
-      }
-
-      /* ================ Responsive Adjustments ================ */
-      @media (max-width: 30rem) {
-        .chat-box.open {
-          height: 70vh;
-          width: 85vw;
-          right: 7.5vw;
-          bottom: 4rem;
-        }
-
-        .chat-box.open.maximized {
-          width: 95vw !important;
-          height: 95vh !important;
-          border-radius: 10px;
-        }
-
-        .chat-button {
-          bottom: 1rem;
-          right: 1rem;
-          width: 45px;
-          height: 45px;
-          font-size: 18px;
-        }
-
-        .messages-container {
-          height: calc(100% - 10rem);
-        }
-
-        .chat-box.minimized {
-          width: 3.5rem !important;
-          height: 3.5rem !important;
-        }
-
-        /* Larger selector on mobile */
-        #chat-room-selector {
-          height: 50px;
-          padding: 0.4rem 0.6rem;
-        }
-      }
-
-      /* ================ Accessibility Improvements ================ */
-      [aria-hidden="true"] {
-        pointer-events: none;
-      }
-
-      [aria-disabled="true"] {
-        opacity: 0.6;
-        cursor: not-allowed;
-      }
-
-      :focus-visible {
-        outline: 2px solid var(--primary-color);
-        outline-offset: 2px;
-      }
-
-      /* ================ Utility Classes ================ */
-      .sr-only {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        padding: 0;
-        margin: -1px;
-        overflow: hidden;
-        clip: rect(0, 0, 0, 0);
-        white-space: nowrap;
-        border-width: 0;
-      }
-
-      .transition-all {
-        transition-property: all;
-        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-        transition-duration: 150ms;
-      }
-
-      /* ===== REVISED: Hide chat button when minimized ===== */
-      .chat-button.hidden {
-        display: none;
-      }
-
-      /* ===== CHAT HEADER FIXES ===== */
-      #chat-header {
-        background-color: #000;
-        color: white;
-        padding: 0.75rem 1rem;
-        border-top-left-radius: 14px;
-        border-top-right-radius: 14px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-
-      /* Reaction picker animation */
-      .reaction-picker {
-        animation: react-picker-pop-in 0.15s ease-out forwards;
-      }
-
-      @keyframes react-picker-pop-in {
-        from {
-          transform: translate(-50%, 10px) scale(0.8);
-          opacity: 0;
-        }
-        to {
-          transform: translate(-50%, 0) scale(1);
-          opacity: 1;
-        }
-      }
-
-      .reaction-picker .reaction-emoji {
-        transition: transform 0.1s ease, background-color 0.1s ease;
-      }
-
-      .reaction-picker .reaction-emoji:hover {
-        background-color: #f0f2f5; /* Light background on hover */
-        border-radius: 50%; /* Make it circular on hover */
-      }
-
-      /* Fix for emoji picker container */
-      .chat-box > div:last-child {
-        position: relative;
-      }
-
-      /* Custom styles for the requested changes */
-      .chat-box.open #chat-body {
-        border-top-left-radius: 0;
-        border-top-right-radius: 0;
-      }
-
-      /* Specific styles for emoji picker when chat is maximized */
-      .chat-box.open.maximized .emoji-picker {
-        position: fixed; /* Change to fixed positioning */
-        bottom: auto; /* Reset bottom */
-        right: auto; /* Reset right */
-        left: 50%; /* Center horizontally */
-        transform: translateX(-50%); /* Adjust for its own width */
-        top: auto; /* Reset top */
-        margin-bottom: 10px; /* Add some margin from the bottom of the screen */
-      }
-
-      /* ===== Modern Confirmation Modal ===== */
-
-#modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    
-    /* The semi-transparent black background */
-    background-color: rgba(0, 0, 0, 0.6);
-    
-    /* High z-index to ensure it's on top of everything */
-    z-index: 10000000;
-    
-    /* Frosted glass effect for the background */
-    backdrop-filter: blur(5px);
-    
-    /* Center the modal content */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    
-    /* Fade-in animation */
-    animation: fadeIn 0.2s ease-out;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-.confirmation-modal {
-    background: #1c1c1e; /* Dark charcoal, looks more premium than pure black */
-    color: #f5f5f7;
-    border-radius: 16px;
-    padding: 24px 28px;
-    width: 90%;
-    max-width: 400px;
-    text-align: center;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-    
-    /* Pop-in and slide-up animation */
-    animation: popInUp 0.3s ease-out forwards;
-}
-
-@keyframes popInUp {
-    from {
-        opacity: 0;
-        transform: scale(0.9) translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-    }
-}
-
-.confirmation-modal .modal-icon {
-    font-size: 24px;
-    color: #f5b84f; /* A warning yellow */
-    margin-bottom: 12px;
-}
-
-.confirmation-modal .modal-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin: 0 0 8px 0;
-}
-
-.confirmation-modal .modal-message {
-    font-size: 0.9rem;
-    color: #a1a1a6; /* Lighter gray for the body text */
-    line-height: 1.5;
-    margin-bottom: 24px;
-}
-
-.confirmation-modal .modal-buttons {
-    display: flex;
-    gap: 12px;
-}
-
-.confirmation-modal .modal-btn {
-    flex-grow: 1;
-    padding: 12px;
-    border: none;
-    border-radius: 10px;
-    font-size: 1rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: transform 0.1s ease, background-color 0.1s ease;
-}
-
-.confirmation-modal .modal-btn:hover {
-    transform: scale(1.03);
-}
-
-.confirmation-modal .modal-btn-cancel {
-    background-color: #4a4a4e;
-    color: white;
-}
-
-.confirmation-modal .modal-btn-confirm {
-    background-color: #007aff; /* Default confirm is blue */
-    color: white;
-}
-
-/* Special style for destructive actions like "Unsend" or "Delete" */
-.confirmation-modal .modal-btn-confirm.destructive {
-    background-color: #e53e3e; /* Red for destructive actions */
-}
-
-.forward-modal {
-    background: #1c1c1e;
-    color: #f5f5f7;
-    border-radius: 16px;
-    width: 100%;
-    max-width: 620px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-    display: flex;
-    flex-direction: column;
-    max-height: 80vh;
-    animation: popInUp 0.3s ease-out forwards;
-}
-
-.forward-modal-header {
-    padding: 16px 20px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.forward-modal-header h2 {
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin: 0;
-}
-
-.close-modal-btn {
-    background: none;
-    border: none;
-    color: #a1a1a6;
-    font-size: 24px;
-    cursor: pointer;
-}
-
-.forward-modal-search {
-    position: relative;
-    padding: 12px 20px;
-}
-
-.forward-modal-search i {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    left: 35px;
-    color: #a1a1a6;
-}
-
-#room-search-input {
-    width: 100%;
-    padding: 12px 12px 12px 40px;
-    background-color: #3a3a3c;
-    border: 1px solid #4a4a4e;
-    border-radius: 10px;
-    color: white;
-    font-size: 1rem;
-}
-
-.forward-room-list {
-    flex-grow: 1;
-    overflow-y: auto;
-    padding: 0 20px;
-}
-
-.room-item {
-    display: flex;
-    align-items: center;
-    padding: 12px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    cursor: pointer;
-}
-.room-item:last-child {
-    border-bottom: none;
-}
-.room-item:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-}
-.room-item .room-info {
-    flex-grow: 1;
-}
-.room-item .room-name {
-    display: block;
-    font-weight: 500;
-}
-.room-item .room-members {
-    font-size: 0.8rem;
-    color: #a1a1a6;
-}
-.room-item input[type="checkbox"] {
-    width: 20px;
-    height: 20px;
-    accent-color: #007aff;
-}
-
-.forward-modal-footer {
-    padding: 16px 20px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-#forward-btn {
-    background-color: #f5f5f7; /* A clean, slightly off-white */
-    color: #1c1c1e;        
-    border: 1px solid #636363ff;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.2s ease-in-out, transform 0.1s ease;
-}
-
-/* Hover state for the enabled button */
-#forward-btn:not(:disabled):hover {
-    background-color: #e5e5e5;
-    border: 1px solid #636363ff;
-    transform: scale(1.03);
-}
-
-/* Disabled state */
-#forward-btn:disabled {
-    background-color: #4a4a4e; /* Dark gray for disabled */
-    color: #a1a1a6;
-    border: 1px solid #000000;
-    cursor: not-allowed;
-    transform: none;
-}
-.edited-status {
-    font-size: 10px;
-    color: #3d50ffff; /* A muted gray color */
-    margin-left: 5px;
-    font-style: bold;
-}
+ .options-menu-item {
+     display: flex;
+     align-items: center;
+
+     /* ALIGN LEFT: Ensures the icon and text are always pushed to the left. */
+     justify-content: flex-start;
+
+     padding: 8px 10px;
+     /* Adjusted padding for the new width */
+     cursor: pointer;
+     font-size: 14px;
+     font-weight: 500;
+     color: #333;
+     border-radius: 8px;
+     transition: background-color 0.1s ease-in-out;
+ }
+
+ /* The hover effect for menu items */
+ .options-menu-item:hover {
+     background-color: #f0f2f5;
+ }
+
+ /* Icon styling within the menu items */
+ .options-menu-item i {
+     margin-right: 10px;
+     /* Slightly reduced margin for a tighter look */
+     width: 16px;
+     text-align: center;
+     /* Centering the icon within its own box looks cleaner */
+     color: #555;
+ }
+
+ /* The divider line between sections */
+ .options-menu-divider {
+     height: 1px;
+     background-color: #f0f2f5;
+     margin: 4px 0;
+ }
+
+ .message-area-wrapper {
+     position: relative;
+     /* Crucial for positioning the child indicator */
+ }
+
+ @keyframes floatAnimation {
+     0% {
+         transform: translateX(-50%) translateY(0);
+     }
+
+     50% {
+         transform: translateX(-50%) translateY(-6px);
+         /* Float up */
+     }
+
+     100% {
+         transform: translateX(-50%) translateY(0);
+         /* Return down */
+     }
+ }
+
+ #new-message-indicator {
+     position: absolute;
+     bottom: 45px;
+     left: 50%;
+     transform: translateX(-50%) translateY(10px);
+     opacity: 0;
+     z-index: 50;
+     pointer-events: none;
+     transition: opacity 0.3s ease, transform 0.3s ease;
+ }
+
+ #new-message-indicator.show {
+     opacity: 1;
+     transform: translateX(-50%) translateY(0);
+     pointer-events: auto;
+     cursor: pointer;
+     animation: floatAnimation 2.5s ease-in-out infinite;
+     animation-delay: 0.3s;
+ }
+
+ /* UPDATED: Styling for the multi-avatar "pill" container */
+ .new-message-indicator-content {
+     display: flex;
+     align-items: center;
+     padding: 3px;
+     background-color: rgba(249, 250, 251, 0.8);
+     border-radius: 20px;
+     /* This creates the pill shape */
+     backdrop-filter: blur(4px);
+     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+ }
+
+ #new-message-indicator img {
+     width: 32px;
+     height: 32px;
+     border-radius: 50%;
+     /* This makes every avatar a circle */
+     border: 2px solid white;
+     object-fit: cover;
+ }
+
+ /* Overlap effect for multiple avatars inside the pill */
+ .new-message-indicator-content img:not(:first-child) {
+     margin-left: -14px;
+ }
+
+ /* Styling for the three-dots icon */
+ .new-message-dots {
+     width: 28px;
+     height: 28px;
+     border-radius: 50%;
+     background-color: #e5e7eb;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     gap: 2px;
+     margin-left: 4px;
+     border: 2px solid white;
+ }
+
+ .new-message-dots span {
+     width: 3px;
+     height: 3px;
+     background-color: #6b7280;
+     border-radius: 50%;
+ }
+
+ /* Unread badge for minimized circle state */
+ #minimized-unread-badge {
+     position: absolute;
+     top: -8px;
+     /* Adjusted position */
+     right: -8px;
+     /* Adjusted position */
+     background-color: #ef4444;
+     color: white;
+     border-radius: 50%;
+     width: 20px;
+     height: 20px;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     font-size: 10px;
+     font-weight: bold;
+     padding: 2px;
+     /* Added padding for better appearance */
+     z-index: 10002;
+     /* Ensure it's above the minimized chat box */
+ }
+
+ /* ================ Chat Room Selector - Made Larger ================ */
+ #chat-room-selector {
+     height: 48px;
+     /* Fixed height for consistency */
+     padding: 0.3rem 0.5rem;
+     /* More padding */
+     background-color: #f8f9fa;
+     border-bottom: 1px solid #e9ecef;
+     display: flex;
+     flex-wrap: nowrap;
+     overflow-x: auto;
+     overflow-y: hidden;
+     -ms-overflow-style: none;
+     scrollbar-width: thin;
+     scrollbar-color: #888 transparent;
+     gap: 0.4rem;
+     /* Slightly larger gap */
+     align-items: center;
+     /* Center items vertically */
+ }
+
+ #chat-room-selector::-webkit-scrollbar {
+     height: 5px;
+     /* Slightly thicker scrollbar */
+ }
+
+ #chat-room-selector::-webkit-scrollbar-track {
+     background: transparent;
+     border-radius: 3px;
+ }
+
+ #chat-room-selector::-webkit-scrollbar-thumb {
+     background-color: #cbd5e1;
+     border-radius: 3px;
+ }
+
+ .chat-room-selector-item {
+     display: inline-flex;
+     min-width: fit-content;
+     padding: 0.4rem 0.9rem;
+     /* More padding for larger items */
+     border-radius: 0.9rem;
+     /* Slightly larger radius */
+     background-color: #e5e7eb;
+     cursor: pointer;
+     transition: background-color 0.2s;
+     font-size: 0.8rem;
+     /* Larger font size */
+     font-weight: 500;
+     color: #4b5563;
+     flex-shrink: 0;
+     white-space: nowrap;
+     height: 32px;
+     /* Fixed height for consistency */
+     align-items: center;
+     /* Center text vertically */
+     border: none;
+     /* Removed border */
+ }
+
+ .chat-room-selector-item:hover {
+     background-color: #d1d5db;
+ }
+
+ .chat-room-selector-item.selected {
+     background-color: #000000;
+     color: #ffffff;
+ }
+
+ .unread-count {
+     margin-left: 0.3rem;
+     /* More spacing */
+     background-color: #ef4444;
+     color: white;
+     border-radius: 9999px;
+     padding: 0.15rem 0.4rem;
+     /* Slightly larger */
+     font-size: 0.7rem;
+     /* Slightly larger */
+     font-weight: 600;
+ }
+
+ /* ================ Messages Container ================ */
+ .messages-container {
+     flex: 1;
+     overflow-y: auto;
+     /* Ensure vertical scrolling */
+     overflow-x: hidden;
+     min-height: 0;
+     /* Allow flex item to shrink */
+     padding: 0.5rem;
+     background: #f8fafc;
+     font-size: 0.8rem;
+     box-shadow: inset 0 8px 6px -6px rgba(0, 0, 0, 0.1);
+ }
+
+ .messages-container::-webkit-scrollbar {
+     width: 4px;
+ }
+
+ .messages-container::-webkit-scrollbar-track {
+     background: transparent;
+ }
+
+ .messages-container::-webkit-scrollbar-thumb {
+     background-color: #cbd5e1;
+     border-radius: 0.5rem;
+ }
+
+ /* ================ Paperclip & Paper Plane Styles ================ */
+ #file-button,
+ #send-button,
+ #emoji-button {
+     background: transparent !important;
+     border: none !important;
+     box-shadow: none !important;
+     padding: 0.4rem;
+     color: #6b7280;
+     cursor: pointer;
+     transition: color 0.2s;
+     font-size: 0.9rem;
+ }
+
+ #file-button:hover,
+ #emoji-button:hover,
+ #send-button:hover:not([disabled]) {
+     color: #000;
+     background: transparent !important;
+     transform: scale(1.1);
+ }
+
+ #send-button[disabled] {
+     color: #9ca3af;
+     cursor: not-allowed;
+ }
+
+ #send-button:not([disabled]) {
+     color: #000;
+ }
+
+ /* ================ Enhanced Emoji Picker ================ */
+
+ .emoji-picker {
+     position: absolute;
+     bottom: calc(100% + 10px);
+     right: 0;
+     width: 280px;
+     height: 320px;
+     background: white;
+     border-radius: 12px;
+     box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25);
+     z-index: var(--z-emoji-picker);
+     /* Use CSS variable */
+     display: none;
+     border: 1px solid #e5e7eb;
+     transform: translateY(20px);
+     opacity: 0;
+     transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+     will-change: transform, opacity;
+ }
+
+ .emoji-picker.open {
+     display: block;
+     transform: translateY(0);
+     opacity: 1;
+ }
+
+ .emoji-picker .emoji-header {
+     padding: 0.4rem 0.6rem;
+     border-bottom: 1px solid var(--border-color);
+     display: flex;
+     justify-content: space-between;
+     align-items: center;
+     background-color: #f9fafb;
+     font-size: 0.75rem;
+ }
+
+ .emoji-picker .emoji-header span {
+     font-weight: 600;
+     color: var(--text-color);
+ }
+
+ .emoji-picker .emoji-container {
+     display: grid;
+     grid-template-columns: repeat(8, minmax(0, 1fr));
+     gap: 0.1rem;
+     padding: 0.1rem;
+     height: calc(100% - 2.5rem);
+     overflow-y: auto;
+ }
+
+ .emoji-picker .emoji-item {
+     font-size: 1.1rem;
+     cursor: pointer;
+     text-align: center;
+     padding: 0.1rem;
+     border-radius: 0.2rem;
+     transition: all 0.1s ease;
+     aspect-ratio: 1/1;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+ }
+
+ .emoji-picker .emoji-item:hover {
+     background-color: #f0f2f5;
+     transform: scale(1.1);
+ }
+
+ .emoji-picker .emoji-container::-webkit-scrollbar {
+     width: 4px;
+ }
+
+ .emoji-picker .emoji-container::-webkit-scrollbar-track {
+     background: #f1f1f1;
+     border-radius: 3px;
+ }
+
+ .emoji-picker .emoji-container::-webkit-scrollbar-thumb {
+     background-color: #d1d5db;
+     border-radius: 3px;
+ }
+
+ /* ================ Typing Indicator ================ */
+ .typing-indicator {
+     display: flex;
+     align-items: center;
+     justify-content: center;
+ }
+
+ .typing-indicator span {
+     width: 0.35rem;
+     height: 0.35rem;
+     background-color: var(--primary-color);
+     border-radius: 50%;
+     display: inline-block;
+     margin: 0 0.08rem;
+     animation: typing 1.4s infinite ease-in-out;
+ }
+
+ .typing-indicator span:nth-child(2) {
+     animation-delay: 0.2s;
+ }
+
+ .typing-indicator span:nth-child(3) {
+     animation-delay: 0.4s;
+ }
+
+ @keyframes typing {
+
+     0%,
+     60%,
+     100% {
+         transform: translateY(0);
+     }
+
+     30% {
+         transform: translateY(-0.2rem);
+     }
+ }
+
+ /* ================ File Message Styles - Made Smaller ================ */
+ .file-message {
+     padding: 0.3rem !important;
+     /* Reduced padding */
+ }
+
+ .file-message i {
+     font-size: 0.9rem !important;
+     /* Smaller icon */
+ }
+
+ .file-message p {
+     font-size: 0.7rem !important;
+     /* Smaller text */
+ }
+
+ /* ================ MESSAGE BUBBLES (MESSENGER STYLE) ================ */
+ .message-wrapper {
+     display: flex;
+     flex-direction: column;
+     max-width: 80%;
+     margin-bottom: 0.1rem;
+     position: relative;
+     padding-bottom: 10px;
+     /* Increased padding to make space for reactions */
+ }
+
+ message-wrapper-typingindicator {
+     display: flex;
+     background-color: transparent;
+     height: 12px;
+     margin-left: 6px;
+     flex-direction: column;
+     max-width: 80%;
+     margin-bottom: 4px;
+     position: relative;
+ }
+
+ .typing-fade-in {
+     animation: fadeInTyping 0.3s ease-out forwards;
+ }
+
+ .typing-fade-out {
+     animation: fadeOutTyping 0.3s ease-out forwards;
+ }
+
+ @keyframes fadeInTyping {
+     from {
+         opacity: 0;
+         transform: translateY(5px);
+     }
+
+     to {
+         opacity: 1;
+         transform: translateY(0);
+     }
+ }
+
+ @keyframes fadeOutTyping {
+     from {
+         opacity: 1;
+         transform: translateY(0);
+     }
+
+     to {
+         opacity: 0;
+         transform: translateY(5px);
+     }
+ }
+
+ .message-wrapper.user {
+     align-items: flex-end;
+     margin-left: auto;
+     margin-right: 0.5rem;
+ }
+
+ .message-wrapper.other {
+     align-items: flex-start;
+     margin-left: 0.5rem;
+ }
+
+ .message-container {
+     display: flex;
+     align-items: center;
+     position: relative;
+     /* For reaction picker positioning */
+ }
+
+ .message-container.user {
+     flex-direction: row-reverse;
+     /* Reverse order for user messages */
+ }
+
+ .message-container.other {
+     flex-direction: row;
+     /* Default order for other messages */
+ }
+
+ .message-bubble {
+     padding: 8px 12px;
+     border-radius: 18px;
+     position: relative;
+     word-wrap: break-word;
+     max-width: 100%;
+ }
+
+ .message-bubble.user {
+     background-color: #000000;
+     /* Black */
+     color: white;
+     border-bottom-right-radius: 4px;
+ }
+
+ .unread-count {
+     margin-left: 0.4rem;
+     background-color: #ef4444;
+     color: white;
+     border-radius: 9999px;
+     padding: 0.15rem 0.45rem;
+     font-size: 0.7rem;
+     font-weight: 600;
+     line-height: 1;
+     display: inline-block;
+ }
+
+ .message-bubble.user::after {
+     content: '';
+     position: absolute;
+     bottom: 0;
+     right: -8px;
+     width: 0;
+     height: 0;
+     border: 8px solid transparent;
+     border-left-color: #000000;
+     /* Black */
+     border-right: 0;
+     border-bottom: 0;
+ }
+
+ .message-bubble.other {
+     background-color: #e5e7eb;
+     /* Light Gray */
+     color: #111827;
+     /* Dark text for contrast */
+     border: 1px solid #e5e7eb;
+     /* Light Gray border */
+     border-bottom-left-radius: 4px;
+ }
+
+ .message-bubble.other::after {
+     content: '';
+     position: absolute;
+     bottom: 0;
+     left: -8px;
+     width: 0;
+     height: 0;
+     border: 8px solid transparent;
+     border-right-color: #e5e7eb;
+     /* Light Gray */
+     border-left: 0;
+     border-bottom: 0;
+ }
+
+ .message-header {
+     font-weight: 500;
+     font-size: 0.65rem;
+     margin-bottom: 0.15rem;
+ }
+
+ .message-content {
+     font-size: 0.75rem;
+     line-height: 1.3;
+ }
+
+ .message-timestamp {
+     font-size: 0.6rem;
+     color: #6b7280;
+     margin-top: 0.1rem;
+     align-self: flex-end;
+     /* Align timestamp to the right for user messages */
+     margin-right: 0.5rem;
+     /* Adjust as needed */
+ }
+
+ .message-wrapper.other .message-timestamp {
+     align-self: flex-start;
+     /* Align timestamp to the left for other messages */
+     margin-left: 0.5rem;
+     /* Adjust as needed */
+ }
+
+ .status-icon {
+     margin-left: 4px;
+     transition: transform 0.3s ease-out;
+     /* Animation for read status */
+ }
+
+ .status-icon.read {
+     transform: translateY(2px);
+     /* Animate downwards if read */
+ }
+
+ /* ================ Reactions Button and Picker ================ */
+ .react-button {
+     background: none;
+     border: none;
+     font-size: 0.8rem;
+     cursor: pointer;
+     padding: 0 5px;
+     color: #6b7280;
+     opacity: 0;
+     /* Hidden by default */
+     transition: opacity 0.2s ease-in-out;
+ }
+
+ .reply-btn {
+     background: none;
+     border: none;
+     font-size: 0.8rem;
+     cursor: pointer;
+     padding: 0 5px;
+     color: #6b7280;
+     opacity: 0;
+     /* Hidden by default */
+     transition: opacity 0.2s ease-in-out;
+ }
+
+ .options-btn {
+     background: none;
+     border: none;
+     font-size: 0.8rem;
+     cursor: pointer;
+     padding: 0 5px;
+     color: #6b7280;
+     opacity: 0;
+     /* Hidden by default */
+     transition: opacity 0.2s ease-in-out;
+ }
+
+ .message-container:hover .react-button {
+     opacity: 1;
+     /* Show on hover */
+ }
+
+ .message-container:hover .reply-btn {
+     opacity: 1;
+     /* Show on hover */
+ }
+
+ .message-container:hover .options-btn {
+     opacity: 1;
+     /* Show on hover */
+ }
+
+ .message-container.user .react-button {
+     margin-right: 5px;
+     /* Space for user messages */
+ }
+
+ .message-container.user .reply-btn {
+     margin-right: 5px;
+     /* Space for user messages */
+ }
+
+ .message-container.other .options-btn {
+     margin-left: 5px;
+     /* Space for other messages */
+ }
+
+ /* FIXED: Reaction picker positioning */
+ .reaction-picker {
+     position: absolute;
+     /* Default to absolute */
+     bottom: calc(100% + 5px);
+     left: 50%;
+     transform: translateX(-50%) translateY(10px);
+     /* Initial state for animation */
+     background: white;
+     border-radius: 20px;
+     padding: 5px 10px;
+     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+     display: flex;
+     gap: 5px;
+     z-index: var(--z-reaction-picker);
+     /* Use CSS variable */
+     opacity: 0;
+     pointer-events: none;
+     transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+     /* Add transform to transition */
+ }
+
+ .reaction-picker.open {
+     opacity: 1;
+     pointer-events: auto;
+     transform: translateX(-50%) translateY(0);
+     /* Ensure transform is reset */
+ }
+
+ .reaction-picker .reaction-emoji {
+     font-size: 1.5rem;
+     cursor: pointer;
+     transition: transform 0.1s ease;
+ }
+
+ .reaction-picker .reaction-emoji:hover {
+     transform: scale(1.2);
+ }
+
+ /* FIXED: Message reactions positioning */
+ .message-reactions {
+     position: absolute;
+     bottom: 0px;
+     /* Position at the very bottom of the message-wrapper padding */
+     display: flex;
+     gap: 3px;
+     background: rgba(255, 255, 255, 0.9);
+     border-radius: 10px;
+     padding: 2px 6px;
+     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+     font-size: 0.7rem;
+     z-index: 2;
+ }
+
+ .message-wrapper.user .message-reactions {
+     right: 5px;
+     /* Position at bottom right for user messages */
+ }
+
+ .message-wrapper.other .message-reactions {
+     left: 5px;
+     /* Position at bottom left for other messages */
+ }
+
+ .message-reactions .reaction-item {
+     display: flex;
+     align-items: center;
+ }
+
+ .message-reactions .reaction-count {
+     margin-left: 2px;
+     font-weight: bold;
+ }
+
+ .message-reactions .reaction-users {
+     display: none;
+     /* Hidden by default */
+     position: absolute;
+     bottom: 100%;
+     left: 50%;
+     transform: translateX(-50%);
+     background: rgba(0, 0, 0, 0.8);
+     color: white;
+     padding: 5px 10px;
+     border-radius: 5px;
+     white-space: nowrap;
+     font-size: 0.6rem;
+ }
+
+ .message-reactions .reaction-item:hover .reaction-users {
+     display: block;
+     /* Show on hover */
+ }
+
+ /* ================ Responsive Adjustments ================ */
+ @media (max-width: 30rem) {
+     .chat-box.open {
+         height: 70vh;
+         width: 85vw;
+         right: 7.5vw;
+         bottom: 4rem;
+     }
+
+     .chat-box.open.maximized {
+         width: 95vw !important;
+         height: 95vh !important;
+         border-radius: 10px;
+     }
+
+     .chat-button {
+         bottom: 1rem;
+         right: 1rem;
+         width: 45px;
+         height: 45px;
+         font-size: 18px;
+     }
+
+     .messages-container {
+         height: calc(100% - 10rem);
+     }
+
+     .chat-box.minimized {
+         width: 3.5rem !important;
+         height: 3.5rem !important;
+     }
+
+     /* Larger selector on mobile */
+     #chat-room-selector {
+         height: 50px;
+         padding: 0.4rem 0.6rem;
+     }
+ }
+
+ /* ================ Accessibility Improvements ================ */
+ [aria-hidden="true"] {
+     pointer-events: none;
+ }
+
+ [aria-disabled="true"] {
+     opacity: 0.6;
+     cursor: not-allowed;
+ }
+
+ :focus-visible {
+     outline: 2px solid var(--primary-color);
+     outline-offset: 2px;
+ }
+
+ /* ================ Utility Classes ================ */
+ .sr-only {
+     position: absolute;
+     width: 1px;
+     height: 1px;
+     padding: 0;
+     margin: -1px;
+     overflow: hidden;
+     clip: rect(0, 0, 0, 0);
+     white-space: nowrap;
+     border-width: 0;
+ }
+
+ .transition-all {
+     transition-property: all;
+     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+     transition-duration: 150ms;
+ }
+
+ /* ===== REVISED: Hide chat button when minimized ===== */
+ .chat-button.hidden {
+     display: none;
+ }
+
+ /* ===== CHAT HEADER FIXES ===== */
+ #chat-header {
+     background-color: #000;
+     color: white;
+     padding: 0.75rem 1rem;
+     border-top-left-radius: 14px;
+     border-top-right-radius: 14px;
+     display: flex;
+     justify-content: space-between;
+     align-items: center;
+ }
+
+ #chat-main-panel{
+     border-bottom-left-radius: 14px;
+     border-bottom-right-radius: 14px;
+ }
+ /* Reaction picker animation */
+ .reaction-picker {
+     animation: react-picker-pop-in 0.15s ease-out forwards;
+ }
+
+ @keyframes react-picker-pop-in {
+     from {
+         transform: translate(-50%, 10px) scale(0.8);
+         opacity: 0;
+     }
+
+     to {
+         transform: translate(-50%, 0) scale(1);
+         opacity: 1;
+     }
+ }
+
+ .reaction-picker .reaction-emoji {
+     transition: transform 0.1s ease, background-color 0.1s ease;
+ }
+
+ .reaction-picker .reaction-emoji:hover {
+     background-color: #f0f2f5;
+     /* Light background on hover */
+     border-radius: 50%;
+     /* Make it circular on hover */
+ }
+
+ /* Fix for emoji picker container */
+ .chat-box>div:last-child {
+     position: relative;
+ }
+
+ /* Custom styles for the requested changes */
+ .chat-box.open #chat-body {
+     border-top-left-radius: 0;
+     border-top-right-radius: 0;
+ }
+
+ /* Specific styles for emoji picker when chat is maximized */
+ .chat-box.open.maximized .emoji-picker {
+     position: fixed;
+     /* Change to fixed positioning */
+     bottom: auto;
+     /* Reset bottom */
+     right: auto;
+     /* Reset right */
+     left: 50%;
+     /* Center horizontally */
+     transform: translateX(-50%);
+     /* Adjust for its own width */
+     top: auto;
+     /* Reset top */
+     margin-bottom: 10px;
+     /* Add some margin from the bottom of the screen */
+ }
+
+ /* ===== Modern Confirmation Modal ===== */
+
+ #modal-overlay {
+     position: fixed;
+     top: 0;
+     left: 0;
+     width: 100%;
+     height: 100%;
+
+     /* The semi-transparent black background */
+     background-color: rgba(0, 0, 0, 0.6);
+
+     /* High z-index to ensure it's on top of everything */
+     z-index: 10000000;
+
+     /* Frosted glass effect for the background */
+     backdrop-filter: blur(5px);
+
+     /* Center the modal content */
+     display: flex;
+     align-items: center;
+     justify-content: center;
+
+     /* Fade-in animation */
+     animation: fadeIn 0.2s ease-out;
+ }
+
+ @keyframes fadeIn {
+     from {
+         opacity: 0;
+     }
+
+     to {
+         opacity: 1;
+     }
+ }
+
+ .confirmation-modal {
+     background: #1c1c1e;
+     /* Dark charcoal, looks more premium than pure black */
+     color: #f5f5f7;
+     border-radius: 16px;
+     padding: 24px 28px;
+     width: 90%;
+     max-width: 400px;
+     text-align: center;
+     border: 1px solid rgba(255, 255, 255, 0.1);
+     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+
+     /* Pop-in and slide-up animation */
+     animation: popInUp 0.3s ease-out forwards;
+ }
+
+ @keyframes popInUp {
+     from {
+         opacity: 0;
+         transform: scale(0.9) translateY(10px);
+     }
+
+     to {
+         opacity: 1;
+         transform: scale(1) translateY(0);
+     }
+ }
+
+ .confirmation-modal .modal-icon {
+     font-size: 24px;
+     color: #f5b84f;
+     /* A warning yellow */
+     margin-bottom: 12px;
+ }
+
+ .confirmation-modal .modal-title {
+     font-size: 1.25rem;
+     font-weight: 600;
+     margin: 0 0 8px 0;
+ }
+
+ .confirmation-modal .modal-message {
+     font-size: 0.9rem;
+     color: #a1a1a6;
+     /* Lighter gray for the body text */
+     line-height: 1.5;
+     margin-bottom: 24px;
+ }
+
+ .confirmation-modal .modal-buttons {
+     display: flex;
+     gap: 12px;
+ }
+
+ .confirmation-modal .modal-btn {
+     flex-grow: 1;
+     padding: 12px;
+     border: none;
+     border-radius: 10px;
+     font-size: 1rem;
+     font-weight: 500;
+     cursor: pointer;
+     transition: transform 0.1s ease, background-color 0.1s ease;
+ }
+
+ .confirmation-modal .modal-btn:hover {
+     transform: scale(1.03);
+ }
+
+ .confirmation-modal .modal-btn-cancel {
+     background-color: #4a4a4e;
+     color: white;
+ }
+
+ .confirmation-modal .modal-btn-confirm {
+     background-color: #007aff;
+     /* Default confirm is blue */
+     color: white;
+ }
+
+ /* Special style for destructive actions like "Unsend" or "Delete" */
+ .confirmation-modal .modal-btn-confirm.destructive {
+     background-color: #e53e3e;
+     /* Red for destructive actions */
+ }
+
+ .forward-modal {
+     background: #1c1c1e;
+     color: #f5f5f7;
+     border-radius: 16px;
+     width: 100%;
+     max-width: 620px;
+     border: 1px solid rgba(255, 255, 255, 0.1);
+     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+     display: flex;
+     flex-direction: column;
+     max-height: 80vh;
+     animation: popInUp 0.3s ease-out forwards;
+ }
+
+ .forward-modal-header {
+     padding: 16px 20px;
+     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+     display: flex;
+     justify-content: space-between;
+     align-items: center;
+ }
+
+ .forward-modal-header h2 {
+     font-size: 1.1rem;
+     font-weight: 600;
+     margin: 0;
+ }
+
+ .close-modal-btn {
+     background: none;
+     border: none;
+     color: #a1a1a6;
+     font-size: 24px;
+     cursor: pointer;
+ }
+
+ .forward-modal-search {
+     position: relative;
+     padding: 12px 20px;
+ }
+
+ .forward-modal-search i {
+     position: absolute;
+     top: 50%;
+     transform: translateY(-50%);
+     left: 35px;
+     color: #a1a1a6;
+ }
+
+ #room-search-input {
+     width: 100%;
+     padding: 12px 12px 12px 40px;
+     background-color: #3a3a3c;
+     border: 1px solid #4a4a4e;
+     border-radius: 10px;
+     color: white;
+     font-size: 1rem;
+ }
+
+ .forward-room-list {
+     flex-grow: 1;
+     overflow-y: auto;
+     padding: 0 20px;
+ }
+
+ .room-item {
+     display: flex;
+     align-items: center;
+     padding: 12px 0;
+     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+     cursor: pointer;
+ }
+
+ .room-item:last-child {
+     border-bottom: none;
+ }
+
+ .room-item:hover {
+     background-color: rgba(255, 255, 255, 0.05);
+ }
+
+ .room-item .room-info {
+     flex-grow: 1;
+ }
+
+ .room-item .room-name {
+     display: block;
+     font-weight: 500;
+ }
+
+ .room-item .room-members {
+     font-size: 0.8rem;
+     color: #a1a1a6;
+ }
+
+ .room-item input[type="checkbox"] {
+     width: 20px;
+     height: 20px;
+     accent-color: #007aff;
+ }
+
+ .forward-modal-footer {
+     padding: 16px 20px;
+     border-top: 1px solid rgba(255, 255, 255, 0.1);
+ }
+
+ #forward-btn {
+     background-color: #f5f5f7;
+     /* A clean, slightly off-white */
+     color: #1c1c1e;
+     border: 1px solid #636363ff;
+     font-weight: 600;
+     cursor: pointer;
+     transition: background-color 0.2s ease-in-out, transform 0.1s ease;
+ }
+
+ /* Hover state for the enabled button */
+ #forward-btn:not(:disabled):hover {
+     background-color: #e5e5e5;
+     border: 1px solid #636363ff;
+     transform: scale(1.03);
+ }
+
+ /* Disabled state */
+ #forward-btn:disabled {
+     background-color: #4a4a4e;
+     /* Dark gray for disabled */
+     color: #a1a1a6;
+     border: 1px solid #000000;
+     cursor: not-allowed;
+     transform: none;
+ }
+
+ .edited-status {
+     font-size: 10px;
+     color: #3d50ffff;
+     /* A muted gray color */
+     margin-left: 5px;
+     font-style: bold;
+ }
     `;
     document.head.appendChild(style);
 
@@ -2807,6 +3236,27 @@ export function init(params) {
         getChatRooms: async () => {
           const snapshot = await getDocs(collection(db, "chatRooms"));
           return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        },
+
+        createDirectChatRoom: async (roomData) => {
+          const roomRef = doc(db, "chatRooms", roomData.id);
+          const messagesRoomRef = doc(db, "MessagesChatRooms", roomData.id);
+
+          try {
+            // Use a transaction to ensure both documents are created successfully
+            await runTransaction(db, async (transaction) => {
+              transaction.set(roomRef, roomData);
+              transaction.set(messagesRoomRef, {
+                roomId: roomData.id,
+                createdAt: serverTimestamp()
+              });
+            });
+            console.log(`✅ Direct chat room created: ${roomData.id}`);
+            return roomData;
+          } catch (error) {
+            console.error("❌ Failed to create direct chat room:", error);
+            throw error; // Re-throw the error to be handled by the caller
+          }
         },
 
         getMessages: (roomId) =>
@@ -3199,8 +3649,11 @@ export function init(params) {
       isOpen: false,
       unreadCounts: {},
       isTyping: false,
+      currentPanelView: 'main',
+      panelHistory: ['main'],
       participantStatus: {},
       totalUnread: 0,
+      isPanelVisible: false,
       isMinimized: true,
       isMaximized: false,
       currentUserId: currentUserId,
@@ -3208,8 +3661,10 @@ export function init(params) {
       typingUsers: {},
       replyingTo: null,
       initialRoomSet: false,
+      newMessagesWhileScrolled: [],
       currentPinIndex: 0,
     };
+
 
     let typingListener = null;
     let typingTimeout = null;
@@ -3229,6 +3684,17 @@ export function init(params) {
       return chatState;
     }
 
+    function hideUnreadMessagePreview() {
+      if (previewTimeout) {
+        clearTimeout(previewTimeout);
+        previewTimeout = null;
+      }
+      const previewBadge = document.getElementById("message-preview-badge");
+      if (previewBadge) {
+        previewBadge.classList.remove("show");
+      }
+    }
+
     async function updateRoomMessagesFromService(roomId) {
       const messages = await ChatService.getMessages(roomId);
       const updatedMessages = { ...chatState.messages, [roomId]: messages };
@@ -3240,7 +3706,36 @@ export function init(params) {
       await updateRoomMessagesFromService(roomId);
     }
 
-    // Add this new, more efficient markRoomAsRead function
+    function renderActivePanel() {
+      const backButton = document.getElementById('back-to-main-panel-btn');
+      const headerInfo = document.getElementById('chat-header-info');
+      const iconContainer = document.getElementById('chat-header-icon-container');
+      const headerTitle = document.getElementById('active-room-title');
+      const headerSubtitle = document.getElementById('active-room-name');
+
+      // Determine if we can go "back"
+      const canGoBack = chatState.panelHistory.length > 1;
+      if (backButton) backButton.style.display = canGoBack ? 'flex' : 'none';
+
+      if (chatState.currentPanelView === 'projects') {
+        // Project List View
+        if (headerInfo) headerInfo.style.display = 'flex';
+        if (iconContainer) iconContainer.style.display = 'none';
+        if (headerTitle) headerTitle.textContent = 'Project Workspaces';
+        if (headerSubtitle) headerSubtitle.style.display = 'none';
+        renderProjectListPanel();
+      } else {
+        // Main Panel View (default)
+        if (headerInfo) headerInfo.style.display = 'flex';
+        if (iconContainer) iconContainer.style.display = 'flex';
+        if (headerTitle) headerTitle.textContent = 'Project Chats';
+        if (headerSubtitle) {
+          headerSubtitle.textContent = 'Select a workspace or person';
+          headerSubtitle.style.display = 'block';
+        }
+        renderMainPanel();
+      }
+    }
 
     async function markRoomAsRead(roomId) {
       const { messages, currentUserId } = chatState;
@@ -3301,6 +3796,60 @@ export function init(params) {
       previewTimeout = setTimeout(() => {
         previewBadge.classList.remove("show");
       }, 6000); // 6000 milliseconds = 6 seconds
+    }
+
+    function isScrolledToBottom(element) {
+      if (!element) return false;
+      // Using a buffer of 10px to account for variations
+      return element.scrollHeight - element.scrollTop <= element.clientHeight + 10;
+    }
+
+    function hideNewMessageIndicator() {
+      const indicator = document.getElementById("new-message-indicator");
+      if (indicator) {
+        indicator.classList.remove("show");
+      }
+    }
+
+    function showNewMessageIndicator() {
+      const indicator = document.getElementById("new-message-indicator");
+      const messagesContainer = document.getElementById("messages-container");
+      const { newMessagesWhileScrolled, activeRoom } = chatState;
+
+      if (!indicator || !messagesContainer || !activeRoom || newMessagesWhileScrolled.length === 0) {
+        return; // Do nothing if there are no new messages to show
+      }
+
+      // Get the last message from each unique sender
+      const uniqueSenderMessages = [...new Map(newMessagesWhileScrolled.map(item => [item.senderId, item])).values()];
+      const senderCount = uniqueSenderMessages.length;
+
+      let avatarsHTML = '';
+      // We will show a maximum of 2 avatars
+      const sendersToShow = uniqueSenderMessages.slice(0, 2);
+
+      for (const senderMessage of sendersToShow) {
+        const sender = activeRoom.participants.find(p => p.id === senderMessage.senderId);
+        const avatarUrl = sender?.avatar || `https://ui-avatars.com/api/?name=${senderMessage.senderName}&background=random`;
+        avatarsHTML += `<img src="${avatarUrl}" alt="${senderMessage.senderName}'s profile picture">`;
+      }
+
+      let dotsHTML = '';
+      if (senderCount > 2) {
+        dotsHTML = `
+                <div class="new-message-dots">
+                    <span></span><span></span><span></span>
+                </div>
+            `;
+      }
+
+      indicator.innerHTML = `<div class="new-message-indicator-content">${avatarsHTML}${dotsHTML}</div>`;
+      indicator.classList.add("show");
+
+      indicator.onclick = () => {
+        // The scroll action will trigger the scroll listener, which handles all cleanup.
+        scrollToBottom(messagesContainer, true);
+      };
     }
 
     // Replace the existing calculateUnreadCounts function
@@ -3391,6 +3940,25 @@ export function init(params) {
       setupEmojiPicker();
     }
 
+    function getRoomDisplayData(room, currentUserId) {
+      if (!room) return { name: 'Project Chats', details: 'Select a chat' };
+
+      // For one-on-one chats
+      if (room.type === 'direct') {
+        const otherUser = room.participants.find(p => p.id !== currentUserId);
+        return {
+          name: otherUser ? otherUser.name : 'Direct Message',
+          details: otherUser ? 'Direct Message' : ''
+        };
+      }
+
+      // For group/project chats
+      return {
+        name: room.name,
+        details: `${room.participantUIDs.length} members`
+      };
+    }
+
     async function ensureChatRoomExistsForProject(currentProjectId, currentLoadedProjectData) {
       const chatRoomRef = collection(db, "chatRooms");
       const existingRoomRef = doc(chatRoomRef, currentProjectId);
@@ -3399,157 +3967,139 @@ export function init(params) {
       const memberUIDs = currentLoadedProjectData.memberUIDs || [];
 
       if (memberUIDs.length === 0) {
-        console.log("No members found in currentLoadedProjectData. Skipping chat room creation.");
+        console.log("No members found. Skipping chat room creation.");
         return;
       }
 
-      const participantUIDsSorted = [...memberUIDs].sort(); // Always keep sorted for comparison
+      const participantUIDsSorted = [...memberUIDs].sort();
 
       if (existingSnap.exists()) {
         const existingData = existingSnap.data();
         const existingUIDs = (existingData.participantUIDs || []).sort();
 
-        // Check if member list has changed
         const isSame =
           participantUIDsSorted.length === existingUIDs.length &&
           participantUIDsSorted.every((uid, idx) => uid === existingUIDs[idx]);
 
         if (isSame) {
-          console.log("Chat room already exists and participants are unchanged. Skipping update.");
+          console.log("Chat room already exists and participants are unchanged.");
+          // OPTIONAL: You could add logic here to update the color if it has changed
           return;
         }
-
-        console.log("Participants changed. Updating chat room for project:", currentProjectId);
-      } else {
-        console.log("No existing chat room found for project:", currentProjectId);
       }
 
-      // Fetch full participant data
+      // Fetch full participant data (this part remains the same)
       const userPromises = memberUIDs.map(async (uid) => {
         const userRef = doc(db, "users", uid);
         const userSnap = await getDoc(userRef);
-
         if (userSnap.exists()) {
           const userData = userSnap.data();
-          const name = userData.name || userData.displayName || "";
-          const email = userData.email || "";
-          const avatar = userData.avatar || "";
-          const status = {
-            online: userData.online || false,
-            lastSeen: userData.lastSeen?.toDate?.() || null,
-            name
-          };
-
           return {
             id: uid,
-            name,
-            email,
-            avatar,
-            status
+            name: userData.name || "Unknown User",
+            avatar: userData.avatar || ""
           };
-        } else {
-          console.log("User not found in database:", uid);
-          return null;
         }
+        return null;
       });
-
       const participants = (await Promise.all(userPromises)).filter(p => p !== null);
 
-      // Set or update chat room
+      // --- NEW LOGIC: Get the project color ---
+      // Get the color from the loaded project data, with a fallback default color
+      const projectColor = currentLoadedProjectData.color || 'hsl(210, 50%, 60%)';
+
+      // Set or update the chat room document, now including the color
       await setDoc(existingRoomRef, {
         projectId: currentProjectId,
         name: currentLoadedProjectData.title,
         participants,
+        type: 'project',
+        color: projectColor, // <-- Store the color here
         participantUIDs: participantUIDsSorted,
-        createdAt: Date.now(),
+        createdAt: serverTimestamp(),
         lastMessage: null
-      });
+      }, { merge: true }); // Use merge to avoid overwriting existing fields unnecessarily
 
-      // Ensure MessageChatRoom exists too
+      // Ensure the corresponding document in MessagesChatRooms exists
       const messageChatRoomRef = doc(db, "MessagesChatRooms", currentProjectId);
       const messageRoomSnap = await getDoc(messageChatRoomRef);
       if (!messageRoomSnap.exists()) {
         await setDoc(messageChatRoomRef, {
           roomId: currentProjectId,
-          createdAt: Date.now()
+          createdAt: serverTimestamp()
         });
       }
 
-      console.log("Chat room (and MessageChatRoom if new) created/updated with ID:", currentProjectId);
+      console.log(`Chat room ${currentProjectId} created/updated with color: ${projectColor}`);
     }
 
     async function loadChatData() {
       const rooms = await ChatService.getRoomsForUser(currentUserId);
-      const container = document.getElementById("chat-container");
       const messagesData = {};
 
       for (const room of rooms) {
         messagesData[room.id] = await ChatService.getMessages(room.id);
       }
 
-      const statusData = {};
-
+      // Set the initial active room when data first loads
       if (rooms.length > 0 && !chatState.initialRoomSet) {
         const projectRoom = rooms.find(r => r.id === currentProjectId);
+        const initialRoom = projectRoom || rooms[0];
 
-        if (projectRoom) {
-          await setActiveRoom(projectRoom);
-        } else {
-          await setActiveRoom(rooms[0]);
+        setChatState({
+          activeRoom: initialRoom,
+          isPanelVisible: false, // Default to showing the conversation
+          initialRoomSet: true
+        });
+
+        const displayData = getRoomDisplayData(initialRoom, currentUserId);
+        document.getElementById("active-room-title").textContent = displayData.name;
+        document.getElementById("active-room-name").textContent = displayData.details;
+        const headerIcon = document.querySelector('#chat-header-info i');
+        const subtitleElement = document.getElementById('active-room-name');
+        if (initialRoom.type === 'direct') {
+          const otherUser = initialRoom.participants.find(p => p.id !== chatState.currentUserId);
+          const avatarUrl = otherUser?.avatar || `https://ui-avatars.com/api/?name=${otherUser?.name.replace(/\s/g, '+')}&background=random`;
+          document.getElementById('chat-header-icon-container').innerHTML = `<img src="${avatarUrl}" class="w-full h-full object-cover">`;
+          subtitleElement.style.display = 'none';
         }
-        setChatState({ initialRoomSet: true });
+
+        // Pre-load messages for the active room
+        ChatService.listenToMessages(initialRoom.id, (newMessages) => {
+          const updatedMessages = { ...chatState.messages, [initialRoom.id]: newMessages };
+          setChatState({ messages: updatedMessages });
+          renderAll(); // Render everything once messages are loaded
+        });
       }
 
       ChatService.listenToChatRooms(currentUserId, (updatedRooms) => {
-
-        // When the listener fires, update the chat state with the latest room data.
         setChatState({ chatRooms: updatedRooms });
-
-        // If there's an active room, find its latest version to keep the state fresh.
+        // Find the latest version of the active room to keep data fresh
         if (chatState.activeRoom) {
           const updatedActiveRoom = updatedRooms.find(r => r.id === chatState.activeRoom.id);
           if (updatedActiveRoom) {
             setChatState({ activeRoom: updatedActiveRoom });
           }
         }
-
-        // Now that the room data is fresh, render the UI that depends on it.
-        renderPinnedMessages();
-        renderChatRooms(); // Re-render the room tabs
+        renderAll();
       });
 
-      // Attach message listeners for real-time updates
+      // Attach listeners for other rooms
       rooms.forEach((room) => {
-        ChatService.listenToMessages(room.id, (newMessages) => {
-          const oldMessageCount = (chatState.messages[room.id] || []).length;
-
-          if (newMessages.length > oldMessageCount) {
-            const lastMessage = newMessages[newMessages.length - 1];
-            if (
-              !chatState.isOpen && !chatState.isMinimized &&
-              chatState.activeRoom?.id === room.id &&
-              lastMessage.senderId !== currentUserId
-            ) {
-              showUnreadMessagePreview(lastMessage);
+        if (!chatState.activeRoom || room.id !== chatState.activeRoom.id) {
+          ChatService.listenToMessages(room.id, (newMessages) => {
+            const updatedMessages = { ...chatState.messages, [room.id]: newMessages };
+            setChatState({ messages: updatedMessages });
+            // Only calculate counts and re-render if the change is in a non-active room
+            if (chatState.activeRoom && room.id !== chatState.activeRoom.id) {
+              renderAll();
             }
-          }
-          chatState.messages[room.id] = newMessages;
-          if (chatState.activeRoom?.id !== room.id) {
-            const unreadCount = newMessages.filter(
-              (msg) => msg.senderId !== currentUserId && !msg.read
-            ).length;
-            chatState.messages[room.id].unreadCount = unreadCount;
-          }
-
-          updateUnreadBadge(calculateUnreadCounts());
-
-          renderAll();
-        });
+          });
+        }
       });
-      updateUnreadBadge(calculateUnreadCounts());
+
       renderAll();
     }
-
 
     function setupFilePicker() {
       const fileButton = document.getElementById("file-button");
@@ -3744,9 +4294,328 @@ export function init(params) {
       }, 30000);
     }
 
+    function validateAndCorrectChatPosition() {
+      const container = document.getElementById("chat-container");
+      // Only run if the container has been positioned manually (i.e., dragged)
+      if (!container || !container.style.left || !container.style.top) {
+        return;
+      }
+
+      const rect = container.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      let x = rect.left;
+      let y = rect.top;
+      let needsCorrection = false;
+
+      // Check and correct the position if it's out of bounds
+      if (rect.right > viewportWidth) {
+        x = viewportWidth - rect.width;
+        needsCorrection = true;
+      }
+      if (rect.bottom > viewportHeight) {
+        y = viewportHeight - rect.height;
+        needsCorrection = true;
+      }
+      if (rect.left < 0) {
+        x = 0;
+        needsCorrection = true;
+      }
+      if (rect.top < 0) {
+        y = 0;
+        needsCorrection = true;
+      }
+
+      if (needsCorrection) {
+        console.log("Chat position corrected to stay within viewport.");
+        container.style.left = `${x}px`;
+        container.style.top = `${y}px`;
+
+        // IMPORTANT: Update localStorage with the corrected position
+        // so it's correct for the next page load.
+        localStorage.setItem(`${chatState.currentUserId}-chat-pos-x`, x);
+        localStorage.setItem(`${chatState.currentUserId}-chat-pos-y`, y);
+      }
+    }
+
+    function toggleMainPanel(show) {
+      const chatBox = document.getElementById("chat-box");
+      setChatState({ isPanelVisible: show });
+
+      if (show) {
+        chatBox.classList.add("panel-visible");
+        renderActivePanel(); // This will render the correct panel based on state
+      } else {
+        chatBox.classList.remove("panel-visible");
+      }
+    }
+
+    async function renderMainPanel() {
+      const backButton = document.getElementById('back-to-main-panel-btn');
+      const headerInfo = document.getElementById('chat-header-info');
+      const iconContainer = document.getElementById('chat-header-icon-container');
+      const headerTitle = document.getElementById('active-room-title');
+      const headerSubtitle = document.getElementById('active-room-name');
+
+      if (backButton) backButton.style.display = 'none'; // Hide back button on the main view
+      if (headerInfo) headerInfo.style.display = 'flex'; // Show the main header block
+      if (iconContainer) iconContainer.style.display = 'flex'; // Show the people icon
+      if (headerTitle) headerTitle.textContent = 'Project Chats';
+      if (headerSubtitle) {
+        headerSubtitle.textContent = 'Select a workspace or person';
+        headerSubtitle.style.display = 'block';
+      }
+
+      const { chatRooms, unreadCounts } = chatState;
+      const panel = document.getElementById("chat-main-panel");
+      if (!panel) return;
+
+      // --- 1. Workspace Projects Button HTML ---
+      const projectRooms = chatRooms.filter(r => r.type === 'project');
+      const projectCount = projectRooms.length;
+      // Calculate unread count ONLY for project rooms
+      const projectUnreadCount = projectRooms.reduce((acc, room) => acc + (unreadCounts[room.id] || 0), 0);
+
+      const workspaceButtonHtml = `
+        <div class="p-2">
+            <button id="workspace-project-btn" class="w-full flex items-center justify-between bg-slate-100 hover:bg-slate-200 p-3 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-black">
+                <div class="text-left">
+                    <div class="font-bold text-sm text-slate-800">Project Workspaces</div>
+                    <div class="text-xs text-slate-500">${projectCount} Projects</div>
+                </div>
+                <div class="flex items-center space-x-3">
+                    ${projectUnreadCount > 0 ? `<span class="bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">${projectUnreadCount}</span>` : ''}
+                    <i class="fas fa-chevron-right text-slate-400"></i>
+                </div>
+            </button>
+        </div>
+    `;
+
+      // --- 2. Fetch and Render People from the Active Workspace ---
+      let peopleHtml = '<p class="text-xs text-gray-500 px-4">Loading members...</p>';
+      try {
+        const userRef = doc(db, 'users', currentUserId);
+        const userSnap = await getDoc(userRef);
+        const selectedWorkspaceId = userSnap.exists() ? userSnap.data().selectedWorkspace : null;
+
+        if (selectedWorkspaceId) {
+          const q = query(collectionGroup(db, 'myworkspace'), where('workspaceId', '==', selectedWorkspaceId), limit(1));
+          const workspaceQuerySnap = await getDocs(q);
+
+          if (!workspaceQuerySnap.empty) {
+            const memberUIDs = workspaceQuerySnap.docs[0].data().members || [];
+            const memberPromises = memberUIDs
+              .filter(uid => uid !== currentUserId)
+              .map(uid => getDoc(doc(db, 'users', uid)));
+            const memberSnaps = await Promise.all(memberPromises);
+            const members = memberSnaps.map(snap => snap.exists() ? { id: snap.id, ...snap.data() } : null).filter(Boolean);
+
+            if (members.length > 0) {
+              peopleHtml = members.map(p => {
+                const avatarUrl = p.avatar || `https://ui-avatars.com/api/?name=${p.name.replace(/\s/g, '+')}&background=random`;
+                return `
+                            <div class="main-panel-item" data-person-id="${p.id}" data-person-name="${p.name}" data-person-avatar="${avatarUrl}">
+                                <img src="${avatarUrl}" alt="${p.name}" class="panel-item-avatar">
+                                <div class="panel-item-info">
+                                    <div class="panel-item-name">${p.name}</div>
+                                    <div class="panel-item-details">Workspace Member</div>
+                                </div>
+                                <i class="fas fa-chevron-right panel-item-icon"></i>
+                            </div>`;
+              }).join('');
+            } else {
+              peopleHtml = '<p class="text-xs text-gray-500 px-4">You are the only member.</p>';
+            }
+          } else {
+            peopleHtml = '<p class="text-xs text-gray-500 px-4">No workspace selected.</p>';
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching workspace members:", error);
+        peopleHtml = '<p class="text-xs text-red-500 px-4">Error loading members.</p>';
+      }
+
+      // --- 3. Combine and Render HTML ---
+      panel.innerHTML = `
+        <div class="main-panel-list">
+            ${workspaceButtonHtml}
+        </div>
+        <div class="main-panel-list">
+            <h3 class="main-panel-header">People</h3>
+            ${peopleHtml}
+        </div>
+    `;
+    }
+
+    function renderProjectListPanel() {
+      const backButton = document.getElementById('back-to-main-panel-btn');
+      const headerInfo = document.getElementById('chat-header-info');
+      const iconContainer = document.getElementById('chat-header-icon-container');
+      const headerTitle = document.getElementById('active-room-title');
+      const headerSubtitle = document.getElementById('active-room-name');
+
+      if (backButton) backButton.style.display = 'flex'; // Show the back button
+      if (headerInfo) headerInfo.style.display = 'flex'; // Ensure the container is visible
+      if (iconContainer) iconContainer.style.display = 'none'; // Hide the people icon
+      if (headerTitle) headerTitle.textContent = 'Project Workspaces'; // Set the new title
+      if (headerSubtitle) headerSubtitle.style.display = 'none'; // Hide the subtitle
+
+      const { chatRooms, unreadCounts } = chatState;
+      const panel = document.getElementById("chat-main-panel");
+      if (!panel) return;
+
+      const projectRooms = chatRooms.filter(r => r.type === 'project');
+
+      const projectListHtml = projectRooms.map(room => {
+        const colorHsl = room.color ? room.color.match(/\d+/g).map(Number) : [210, 90, 55];
+        const colorRgb = hslToRgb(colorHsl[0], colorHsl[1] / 100, colorHsl[2] / 100);
+        const unread = unreadCounts[room.id] || 0;
+
+        return `
+            <div class="project-list-item main-panel-item" data-room-id="${room.id}">
+                <div class="w-1.5 h-10 rounded-full" style="background-color: ${colorRgb};"></div>
+                <div class="panel-item-info ml-3">
+                    <div class="panel-item-name">${room.name}</div>
+                    <div class="panel-item-details">${room.participantUIDs.length} members</div>
+                </div>
+                <div class="flex items-center space-x-3 ml-auto">
+                    ${unread > 0 ? `<span class="bg-red-500 text-white text-xs font-semibold rounded-full h-5 w-5 flex items-center justify-center">${unread}</span>` : ''}
+                </div>
+            </div>
+        `;
+      }).join('');
+
+      panel.innerHTML = `
+        <div class="main-panel-list">
+            ${projectListHtml || '<p class="text-xs text-gray-500 px-4">No workspace projects found.</p>'}
+        </div>
+    `;
+    }
+
+    async function startDirectChat(otherUser) {
+      const { currentUserId, currentUserName, chatRooms } = chatState;
+
+      const sortedUIDs = [currentUserId, otherUser.id].sort();
+      const roomId = sortedUIDs.join('_');
+
+      const existingRoom = chatRooms.find(room => room.id === roomId);
+      if (existingRoom) {
+        setActiveRoom(existingRoom);
+        return;
+      }
+
+      try {
+        const currentUserParticipant = {
+          id: currentUserId,
+          name: currentUserName,
+          avatar: document.querySelector('.user-avatar')?.src || ''
+        };
+
+        const newRoomData = {
+          id: roomId,
+          name: `DM with ${otherUser.name}`,
+          type: 'direct',
+          participantUIDs: sortedUIDs,
+          participants: [currentUserParticipant, otherUser],
+          createdAt: serverTimestamp()
+        };
+
+        await ChatService.createDirectChatRoom(newRoomData);
+
+        // Wait for the realtime listener to add the new room to our local state
+        const createdRoom = await new Promise(resolve => {
+          const interval = setInterval(() => {
+            const room = chatState.chatRooms.find(r => r.id === roomId);
+            if (room) {
+              clearInterval(interval);
+              resolve(room);
+            }
+          }, 50);
+        });
+
+        setActiveRoom(createdRoom);
+
+      } catch (error) {
+        console.error("Could not start chat:", error);
+        alert("Could not start chat. Please try again.");
+      }
+    }
+
+    function hslToRgb(h, s, l) {
+      let r, g, b;
+      h /= 360; // Convert hue to the range [0, 1]
+
+      if (s === 0) {
+        r = g = b = l; // Achromatic (gray)
+      } else {
+        const hue2rgb = (p, q, t) => {
+          if (t < 0) t += 1;
+          if (t > 1) t -= 1;
+          if (t < 1 / 6) return p + (q - p) * 6 * t;
+          if (t < 1 / 2) return q;
+          if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+          return p;
+        };
+
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1 / 3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1 / 3);
+      }
+
+      return `rgb(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)})`;
+    }
+
     function setupEventListeners(currentUserId) {
       const container = document.getElementById("chat-container");
+
+      const messagesContainer = document.getElementById("messages-container");
       const chatBox = document.getElementById("chat-box");
+      const backToMainPanelBtn = document.getElementById("back-to-main-panel-btn");
+      const mainPanel = document.getElementById("chat-main-panel");
+
+      backToMainPanelBtn.addEventListener("click", () => {
+        let history = [...chatState.panelHistory];
+        history.pop(); // Go back one step
+        if (history.length === 0) history = ['main']; // Failsafe
+
+        const previousView = history[history.length - 1];
+        setChatState({ panelHistory: history, currentPanelView: previousView });
+        renderActivePanel();
+      });
+
+      // Main Panel Click Logic (now uses history)
+      mainPanel.addEventListener("click", (e) => {
+        const workspaceBtn = e.target.closest('#workspace-project-btn');
+        if (workspaceBtn) {
+          const newHistory = [...chatState.panelHistory, 'projects'];
+          setChatState({ currentPanelView: 'projects', panelHistory: newHistory });
+          renderActivePanel();
+          return;
+        }
+
+        const projectItem = e.target.closest('.project-list-item[data-room-id]');
+        if (projectItem) {
+          const roomId = projectItem.dataset.roomId;
+          const room = chatState.chatRooms.find(r => r.id === roomId);
+          if (room) setActiveRoom(room);
+          return;
+        }
+
+        const personItem = e.target.closest('.main-panel-item[data-person-id]');
+        if (personItem) {
+          const otherUser = {
+            id: personItem.dataset.personId,
+            name: personItem.dataset.personName,
+            avatar: personItem.dataset.personAvatar
+          };
+          // Reset history to main before entering a DM
+          setChatState({ panelHistory: ['main'], currentPanelView: 'main' });
+          startDirectChat(otherUser);
+        }
+      });
 
       const previewBadge = document.getElementById("message-preview-badge");
       if (previewBadge) {
@@ -3756,6 +4625,23 @@ export function init(params) {
           if (previewTimeout) {
             clearTimeout(previewTimeout); // Stop the auto-hide timer
           }
+        });
+      }
+
+      if (messagesContainer) {
+        messagesContainer.addEventListener("scroll", () => {
+          if (messagesContainer) {
+            messagesContainer.addEventListener("scroll", () => {
+              if (isScrolledToBottom(messagesContainer)) {
+                hideNewMessageIndicator();
+                setChatState({ newMessagesWhileScrolled: [] }); // Clear the tracked messages
+                if (chatState.activeRoom) {
+                  markRoomAsRead(chatState.activeRoom.id);
+                }
+              }
+            });
+          }
+
         });
       }
 
@@ -3816,38 +4702,17 @@ export function init(params) {
         // Return to draggable position
         const savedX = localStorage.getItem(`${currentUserId}-chat-pos-x`);
         const savedY = localStorage.getItem(`${currentUserId}-chat-pos-y`);
-
         if (savedX && savedY) {
-          const x = parseInt(savedX, 10);
-          const y = parseInt(savedY, 10);
-          const viewportWidth = window.innerWidth;
-          const viewportHeight = window.innerHeight;
+          container.style.left = `${savedX}px`;
+          container.style.top = `${savedY}px`;
+          container.style.right = "auto";
+          container.style.bottom = "auto";
 
-          const isOutOfBounds =
-            x < 0 ||
-            y < 0 ||
-            x > viewportWidth - 50 ||
-            y > viewportHeight - 50;
-
-          if (isOutOfBounds) {
-            console.warn("Saved chat position is out of bounds. Resetting to default.");
-
-            container.style.left = "";
-            container.style.top = "";
-            container.style.right = ""; // Let CSS default take over
-            container.style.bottom = ""; // Let CSS default take over
-
-            localStorage.removeItem(`${currentUserId}-chat-pos-x`);
-            localStorage.removeItem(`${currentUserId}-chat-pos-y`);
-          } else {
-            // The saved position is valid, so we apply it.
-            container.style.left = `${x}px`;
-            container.style.top = `${y}px`;
-            container.style.right = "auto";
-            container.style.bottom = "auto";
-          }
+          requestAnimationFrame(validateAndCorrectChatPosition);
         }
       });
+
+      window.addEventListener('resize', validateAndCorrectChatPosition);
 
       document.getElementById("toggle-minmax").addEventListener("click", (e) => {
         e.stopPropagation();
@@ -3928,6 +4793,8 @@ export function init(params) {
     }
 
     function minimizeChat() {
+      hideUnreadMessagePreview();
+
       const chatBox = document.getElementById("chat-box");
       const toggleIcon = document.getElementById("toggle-minmax-icon");
       chatBox.classList.remove("open");
@@ -3952,6 +4819,8 @@ export function init(params) {
     }
 
     function toggleChat() {
+      hideUnreadMessagePreview();
+
       const container = document.getElementById("chat-container");
       const chatBox = document.getElementById("chat-box");
       const chatButton = document.getElementById("chat-button");
@@ -4023,12 +4892,28 @@ export function init(params) {
       if (chatState.activeRoom) {
         messageInput.disabled = false;
         messageInput.focus();
+
+        markRoomAsRead(chatState.activeRoom.id);
+      }
+
+      if (!chatState.isPanelVisible) {
+        // If opening to a conversation, make sure the back button is visible
+        const backButton = document.getElementById('back-to-main-panel-btn');
+        if (backButton) backButton.style.display = 'flex';
+      } else {
+        // If opening to the main panel, render it to set the correct header
+        renderMainPanel();
       }
 
       chatButton.classList.add("hidden");
       chatBox.style.visibility = "visible";
       setChatState({ isOpen: true, isMinimized: false });
-      scrollToBottom(document.getElementById("messages-container"), true);
+      toggleMainPanel(chatState.isPanelVisible);
+      if (chatState.activeRoom && !chatState.isPanelVisible) {
+        document.getElementById("message-input").focus();
+        markRoomAsRead(chatState.activeRoom.id);
+        scrollToBottom(document.getElementById("messages-container"), true);
+      }
     }
 
     function expandChat() {
@@ -4398,7 +5283,16 @@ export function init(params) {
     async function setActiveRoom(room) {
       const container = document.getElementById("messages-container");
       const inputField = document.getElementById("message-input");
+      const iconContainer = document.getElementById('chat-header-icon-container');
+      const headerIcon = document.querySelector('#chat-header-info i');
+      const subtitleElement = document.getElementById('active-room-name');
 
+      const backButton = document.getElementById('back-to-main-panel-btn');
+      const headerInfo = document.getElementById('chat-header-info');
+
+      if (backButton) backButton.style.display = 'flex'; // Show back button in conversation
+      if (headerInfo) headerInfo.style.display = 'flex';
+      if (iconContainer) iconContainer.style.display = 'flex';
       // --- Stop the old typing listener if it exists ---
       if (typingListener) {
         typingListener(); // Unsubscribe from the previous room's typing status
@@ -4408,11 +5302,27 @@ export function init(params) {
       inputField.disabled = true;
       container.innerHTML = `<div class="text-center py-4 text-gray-400">Loading messages...</div>`;
 
+      const previousView = room.type === 'project' ? 'projects' : 'main';
       setChatState({
         activeRoom: room,
         inputText: "",
-        typingUsers: {}
-      }); // Reset typing users on room change
+        typingUsers: {},
+        panelHistory: ['main', previousView] // Set the correct back-path
+      });
+      renderChatRooms();
+
+      toggleMainPanel(false);
+
+      if (room.type === 'direct') {
+        const otherUser = room.participants.find(p => p.id !== chatState.currentUserId);
+        const avatarUrl = otherUser?.avatar || `https://ui-avatars.com/api/?name=${otherUser?.name.replace(/\s/g, '+')}&background=random`;
+
+        iconContainer.innerHTML = `<img src="${avatarUrl}" class="w-full h-full object-cover rounded-full">`;
+        subtitleElement.style.display = 'none';
+      } else {
+        iconContainer.innerHTML = `<i class="fas fa-users text-sm text-white"></i>`;
+        subtitleElement.style.display = 'block';
+      }
 
       // --- Start new listeners for the new room ---
       // Listener for messages
@@ -4430,26 +5340,77 @@ export function init(params) {
         inputField.focus();
       });
 
+      // UPDATED: Typing listener with fade-in/fade-out logic
       typingListener = ChatService.listenToTypingStatus(room.id, (typingData) => {
         const typingContainer = document.getElementById('typing-indicator-container');
+        if (!typingContainer) return; // Safety check
+
         const otherTypingUsers = Object.entries(typingData).filter(([id]) => id !== currentUserId);
+        const existingIndicator = typingContainer.querySelector('.message-wrapper-typingindicator');
 
         if (otherTypingUsers.length > 0) {
+          // At least one person is typing.
           const typingNames = otherTypingUsers.map(([, name]) => name);
-          typingContainer.innerHTML = renderTypingIndicator(typingNames);
+          let typingText = "";
+          if (typingNames.length === 1) {
+            typingText = `<strong>${typingNames[0]}</strong> is typing...`;
+          } else if (typingNames.length === 2) {
+            typingText = `<strong>${typingNames[0]}</strong> and <strong>${typingNames[1]}</strong> are typing...`;
+          } else {
+            const otherCount = typingNames.length - 1;
+            typingText = `<strong>${typingNames[0]}</strong> and ${otherCount} others are typing...`;
+          }
+
+          if (!existingIndicator) {
+            // No indicator exists, create and fade it in.
+            const indicatorWrapper = document.createElement('div');
+            indicatorWrapper.className = 'message-wrapper-typingindicator other typing-fade-in';
+            indicatorWrapper.innerHTML = `
+                <div class="message-container other">
+                    <div class="message-bubble other" style="background-color: #f0f2f5;">
+                        <div class="flex items-center">
+                            <div class="typing-indicator">
+                                <span></span><span></span><span></span>
+                            </div>
+                            <span class="typing-text-span ml-2 text-xs text-gray-600">${typingText}</span>
+                        </div>
+                    </div>
+                </div>`;
+            typingContainer.appendChild(indicatorWrapper);
+          } else {
+            // Indicator already exists. Just update its text and ensure it's visible.
+            existingIndicator.querySelector('.typing-text-span').innerHTML = typingText;
+            if (existingIndicator.classList.contains('typing-fade-out')) {
+              existingIndicator.classList.remove('typing-fade-out');
+              existingIndicator.classList.add('typing-fade-in');
+            }
+          }
         } else {
-          typingContainer.innerHTML = '';
+          // No one is typing.
+          if (existingIndicator) {
+            // An indicator exists, so fade it out and remove it.
+            existingIndicator.classList.remove('typing-fade-in');
+            existingIndicator.classList.add('typing-fade-out');
+
+            // Remove the element from the DOM after the animation completes.
+            existingIndicator.addEventListener('animationend', (e) => {
+              if (e.animationName === 'fadeOutTyping') {
+                existingIndicator.remove();
+              }
+            }, { once: true });
+          }
         }
       });
 
-
       await markRoomAsRead(room.id);
       updateUnreadBadge(chatState.totalUnread);
-
-      document.getElementById("active-room-name").textContent = room.name;
+      const displayData = getRoomDisplayData(room, chatState.currentUserId);
+      document.getElementById("active-room-title").textContent = displayData.name;
+      document.getElementById("active-room-name").textContent = displayData.details;
     }
 
     function renderAll() {
+      renderActivePanel();
       renderChatRooms();
       renderMessages();
       calculateUnreadCounts();
@@ -4457,37 +5418,35 @@ export function init(params) {
     }
 
     function renderChatRooms() {
-      const { chatRooms, activeRoom, unreadCounts } = chatState;
+      const { chatRooms, activeRoom, unreadCounts, currentUserId } = chatState;
       const selector = document.getElementById("chat-room-selector");
+      if (!selector) return;
       selector.innerHTML = "";
 
       chatRooms.forEach((room) => {
+        const displayName = getRoomDisplayData(room, currentUserId).name;
         const roomButton = document.createElement("button");
-        roomButton.className = `chat-room-selector-item ${activeRoom?.id === room.id ? "selected" : ""
-          }`;
-        const unreadCount = unreadCounts[room.id] || 0;
-        const isSelected = activeRoom?.id === room.id;
-        let buttonHTML = room.name;
+        roomButton.className = `chat-room-selector-item ${activeRoom?.id === room.id ? "selected" : ""}`;
 
-        // If there are unread messages, add the badge
-        if (unreadCount > 0 && !isSelected) {
+        const unreadCount = unreadCounts[room.id] || 0;
+        let buttonHTML = displayName;
+
+        if (unreadCount > 0 && activeRoom?.id !== room.id) {
           buttonHTML += `<span class="unread-count">${unreadCount}</span>`;
         }
 
         roomButton.innerHTML = buttonHTML;
-
         roomButton.addEventListener("click", () => {
           setActiveRoom(room);
-          document
-            .querySelectorAll(".chat-room-selector-item")
-            .forEach((item) => {
-              item.classList.remove("selected");
-            });
-          roomButton.classList.add("selected");
         });
 
         selector.appendChild(roomButton);
       });
+
+      const selectedButton = selector.querySelector('.selected');
+      if (selectedButton) {
+        selectedButton.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      }
     }
 
     function formatTimestamp(timestamp) {
@@ -4580,12 +5539,6 @@ export function init(params) {
       let messagesHTML = visibleMessages
         .map((msg) => renderMessage(msg, chatState.participantStatus))
         .join("");
-
-      const otherTypingUsers = Object.entries(typingUsers).filter(([id]) => id !== currentUserId);
-      if (otherTypingUsers.length > 0) {
-        const typingNames = otherTypingUsers.map(([, name]) => name);
-        messagesHTML += renderTypingIndicator(typingNames); // Pass names to the renderer
-      }
 
       container.innerHTML = messagesHTML;
       if (wasScrolledToBottom) {
@@ -4912,7 +5865,10 @@ ${isPinned ? `
             message: 'This will be permanently removed for everyone. You can\'t undo this.',
             confirmText: 'Unsend',
             isDestructive: true,
-            onConfirm: () => ChatService.deleteMessage(activeRoom.id, msg.id)
+            onConfirm: async () => {
+              await ChatService.deleteMessage(activeRoom.id, msg.id);
+              validatePinnedMessages(activeRoom, currentUserId);
+            }
           });
           break;
 
@@ -4921,7 +5877,10 @@ ${isPinned ? `
             title: 'Remove Message',
             message: 'This message will be removed for you. Other people in the chat will still be able to see it.',
             confirmText: 'Remove',
-            onConfirm: () => ChatService.hideMessageForUser(activeRoom.id, msg.id, currentUserId)
+            onConfirm: async () => {
+              await ChatService.hideMessageForUser(activeRoom.id, msg.id, currentUserId);
+              validatePinnedMessages(activeRoom, currentUserId);
+            }
           });
           break;
 
@@ -4957,37 +5916,102 @@ ${isPinned ? `
       }
     }
 
-    // Add this new function to your chat controller script
+    async function validatePinnedMessages(room, currentUserId) { // <-- 1. ADD currentUserId as an argument
+      const { id: roomId, pinnedMessages } = room;
+
+      if (!pinnedMessages || pinnedMessages.length === 0) {
+        return;
+      }
+
+      console.log(`🔍 Validating ${pinnedMessages.length} pinned messages for room ${roomId}...`);
+
+      const existenceChecks = pinnedMessages.map(pin => {
+        const messageRef = doc(db, "MessagesChatRooms", roomId, "messages", pin.id);
+        return getDoc(messageRef);
+      });
+
+      try {
+        const messageSnapshots = await Promise.all(existenceChecks);
+        const pinsToRemove = [];
+
+        messageSnapshots.forEach((snapshot, index) => {
+          const pin = pinnedMessages[index];
+
+          // --- 2. ENHANCED LOGIC ---
+          // A pin is invalid for the current user if:
+          // a) The message document itself was deleted (unsent).
+          // b) The message document's 'removeForMe' list includes the current user.
+          if (!snapshot.exists() || snapshot.data()?.removeForMe?.includes(currentUserId)) {
+            pinsToRemove.push(pin);
+          }
+        });
+
+        if (pinsToRemove.length > 0) {
+          console.warn(`🧹 Found ${pinsToRemove.length} invalid/removed pinned messages. Removing them...`, pinsToRemove);
+          const roomRef = doc(db, "chatRooms", roomId);
+
+          await updateDoc(roomRef, {
+            pinnedMessages: arrayRemove(...pinsToRemove)
+          });
+          console.log("✅ Invalid pins removed successfully.");
+        } else {
+          console.log("👍 All pinned messages are valid for the current user.");
+        }
+      } catch (error) {
+        console.error("❌ Error validating pinned messages:", error);
+      }
+    }
 
     function renderPinnedMessages() {
-      const { activeRoom, currentPinIndex } = chatState;
+      // Get the full message list and the current pin index from the state
+      const { activeRoom, messages, currentPinIndex } = chatState;
       const container = document.getElementById("pinned-messages-container");
       const display = document.getElementById("pinned-message-display");
       const counter = document.getElementById("pin-counter");
       const btnPrev = document.getElementById("pin-nav-prev");
       const btnNext = document.getElementById("pin-nav-next");
 
-      const pins = activeRoom?.pinnedMessages || [];
+      const originalPins = activeRoom?.pinnedMessages || [];
 
-      if (pins.length === 0) {
+      // --- THE INSTANT UPDATE FIX ---
+      // Get a Set of all current, valid message IDs for this room for fast lookup.
+      const allMessageIdsInChat = new Set((messages[activeRoom?.id] || []).map(msg => msg.id));
+
+      // Filter the original pins to only include ones that still exist in the live chat.
+      const validPins = originalPins.filter(pin => allMessageIdsInChat.has(pin.id));
+      // --- END OF FIX ---
+
+      if (validPins.length === 0) {
         container.classList.add("hidden");
         return;
       }
 
+      // --- Index Correction Logic ---
+      // If the current index is now out of bounds (because a pin was removed), reset it to 0.
+      let correctedPinIndex = currentPinIndex;
+      if (correctedPinIndex >= validPins.length) {
+        correctedPinIndex = 0;
+        // Also update the global state so it's correct for the next render
+        if (chatState.currentPinIndex !== 0) {
+          setChatState({ currentPinIndex: 0 });
+        }
+      }
+
       container.classList.remove("hidden");
-      const currentPin = pins[currentPinIndex];
+      // Use the validated list and corrected index from now on
+      const currentPin = validPins[correctedPinIndex];
 
       // Display the pinned message content
       display.innerHTML = `
-        <i class="fas fa-thumbtack pin-icon"></i>
-        <span class="pinned-sender">${currentPin.senderName}:</span>
-        <span>${currentPin.text}</span>
-    `;
+            <i class="fas fa-thumbtack pin-icon"></i>
+            <span class="pinned-sender">${currentPin.senderName}:</span>
+            <span>${currentPin.text}</span>
+        `;
 
-      // Update the counter and navigation visibility
-      counter.textContent = `Pin ${currentPinIndex + 1} of ${pins.length}`;
-      btnPrev.style.display = pins.length > 1 ? 'block' : 'none';
-      btnNext.style.display = pins.length > 1 ? 'block' : 'none';
+      // Update the counter and navigation visibility using the validated list length
+      counter.textContent = `Pin ${correctedPinIndex + 1} of ${validPins.length}`;
+      btnPrev.style.display = validPins.length > 1 ? 'block' : 'none';
+      btnNext.style.display = validPins.length > 1 ? 'block' : 'none';
 
       // Event listener to jump to the message in the chat
       display.onclick = () => {
@@ -5004,14 +6028,14 @@ ${isPinned ? `
 
       // Event listener for the "Next" button
       btnNext.onclick = () => {
-        const nextIndex = (currentPinIndex + 1) % pins.length;
+        const nextIndex = (correctedPinIndex + 1) % validPins.length;
         setChatState({ currentPinIndex: nextIndex });
         renderPinnedMessages();
       };
 
       // Event listener for the "Previous" button
       btnPrev.onclick = () => {
-        const prevIndex = (currentPinIndex - 1 + pins.length) % pins.length;
+        const prevIndex = (correctedPinIndex - 1 + validPins.length) % validPins.length;
         setChatState({ currentPinIndex: prevIndex });
         renderPinnedMessages();
       };
@@ -5065,7 +6089,7 @@ ${isPinned ? `
       }
 
       return `
-        <div class="message-wrapper other">
+        <div class="message-wrapper-typingindicator other">
             <div class="message-container other">
                 <div class="message-bubble other" style="background-color: #f0f2f5;">
                     <div class="flex items-center">
