@@ -99,6 +99,7 @@ let currentProjectId = null;
 let activeFilters = {}; // Will hold { visibleSections: [id1, id2] }
 let activeSortState = 'default'; // 'default', 'asc' (oldest), 'desc' (newest)
 let lastOpenedTaskId = null;
+let pendingTaskId = null;
 
 let allUsers = [];
 
@@ -282,6 +283,8 @@ function attachRealtimeListeners(userId) {
             currentProjectId = projectDoc.id;
             currentProjectRef = projectRef;
             currentWorkspaceId = projectData.workspaceId;
+
+            sessionStorage.setItem('pendingProjectRef', projectRef.path);
 
             console.log(`[DEBUG] Found project: ${projectRef.path}`);
             console.log(`[DEBUG] workspaceId of this project: ${currentWorkspaceId}`);
@@ -474,23 +477,39 @@ function startOpenTaskPolling() {
         const urlParams = new URLSearchParams(window.location.search);
         const taskIdToOpen = urlParams.get('openTask');
 
-        if (taskIdToOpen && taskIdToOpen !== lastOpenedTaskId) {
-            const projectRefPath = sessionStorage.getItem('pendingProjectRef') || '';
+        const projectRefPath = sessionStorage.getItem('pendingProjectRef') || '';
+        const isSidebarReady = window.TaskSidebar && typeof window.TaskSidebar.open === 'function';
 
-            if (window.TaskSidebar && typeof window.TaskSidebar.open === 'function') {
-                console.log(`🔁 Detected openTask change. Opening sidebar: ${taskIdToOpen}`);
+        // --- CASE 1: New task ID is found in the URL ---
+        if (taskIdToOpen && taskIdToOpen !== lastOpenedTaskId) {
+
+            // If project path and sidebar are ready, open it immediately.
+            if (projectRefPath && isSidebarReady) {
+                console.log(`✅ Project ref path found. Opening task from URL: ${taskIdToOpen}`);
                 window.TaskSidebar.open(taskIdToOpen, projectRefPath);
                 lastOpenedTaskId = taskIdToOpen;
-            } else {
-                console.warn('TaskSidebar.open not available.');
+                pendingTaskId = null; // Success, so clear any pending task.
+            }
+            // If project path is not ready, store the task ID for later.
+            else {
+                console.log(`⏳ Project ref path not ready. Storing task ID to open later: ${taskIdToOpen}`);
+                pendingTaskId = taskIdToOpen;
             }
         }
 
-        // Optional: If openTask param was removed from the URL
-        if (!taskIdToOpen && lastOpenedTaskId !== null) {
-            // You could optionally close the sidebar here
-            console.log("🔁 openTask param removed. Consider closing the sidebar.");
+        // --- CASE 2: A task was pending, check if we can open it now ---
+        else if (pendingTaskId && projectRefPath && isSidebarReady) {
+            console.log(`✅ Project ref path is now available. Opening pending task: ${pendingTaskId}`);
+            window.TaskSidebar.open(pendingTaskId, projectRefPath);
+            lastOpenedTaskId = pendingTaskId;
+            pendingTaskId = null; // The pending task is now open, so clear it.
+        }
+
+        // --- CASE 3: The 'openTask' parameter was removed from the URL ---
+        else if (!taskIdToOpen && lastOpenedTaskId !== null) {
+            console.log("🔁 openTask param removed. Resetting state.");
             lastOpenedTaskId = null;
+            pendingTaskId = null; // Also clear any pending task if the URL no longer specifies one.
         }
     }, 1000); // Check every 1 second
 }
@@ -3688,19 +3707,14 @@ async function _updateTaskInFirebase(taskId, sectionId, propertiesToUpdate, full
  * @param {object} taskData - An object containing the initial data for the task (e.g., { name: 'My new task' }).
  */
 async function addTaskToFirebase(sectionId, taskData) {
-    // ✅ Log 1: Announce that the function has been called and show the initial data.
     console.log("[addTaskToFirebase] Function called with:", { sectionId, taskData });
-
-    // ✅ Log 2: Check the critical context variables needed for the operation.
     console.log("[addTaskToFirebase] Checking context state:", {
         currentProjectRef_path: currentProjectRef?.path,
         currentProjectId,
         currentUserId
     });
 
-    // 1. Ensure we have the necessary context to build the path.
     if (!currentProjectRef || !sectionId || !currentProjectId || !currentUserId) {
-        // ✅ Log 3: If any context is missing, log a critical error and stop.
         console.error("❌ CRITICAL ERROR: Cannot add task because essential context is missing.", {
             hasProjectRef: !!currentProjectRef,
             hasSectionId: !!sectionId,
@@ -3710,17 +3724,20 @@ async function addTaskToFirebase(sectionId, taskData) {
         return;
     }
 
-    // Build the path to the 'tasks' subcollection.
     const sectionRef = doc(currentProjectRef, 'sections', sectionId);
     const tasksCollectionRef = collection(sectionRef, 'tasks');
-
-    // ✅ Log 4: Show the exact path we are trying to write to.
-    console.log(`[addTaskToFirebase] Attempting to write to path: ${tasksCollectionRef.path}`);
+    console.log(`[addTaskToFirebase] Target collection path: ${tasksCollectionRef.path}`);
 
     try {
-        const newTaskRef = doc(tasksCollectionRef); // Create a reference to get the ID
+        // ✅ Use a batch for an atomic write
+        const batch = writeBatch(db);
 
-        // Prepare the complete data object that will be saved.
+        // Create a reference for the new task to get its ID in advance
+        const newTaskRef = doc(tasksCollectionRef);
+
+        // Create a reference for the new task's entry in the index
+        const taskIndexRef = doc(db, "taskIndex", newTaskRef.id);
+
         const fullTaskData = {
             ...taskData,
             id: newTaskRef.id,
@@ -3730,23 +3747,32 @@ async function addTaskToFirebase(sectionId, taskData) {
             createdAt: serverTimestamp()
         };
 
-        // ✅ Log 5: Display the final data object just before the save attempt.
-        console.log("[addTaskToFirebase] Preparing to save final data object:", fullTaskData);
+        // Prepare the data for the taskIndex document
+        const taskIndexData = {
+            path: newTaskRef.path
+        };
 
-        // The actual save operation.
-        await setDoc(newTaskRef, fullTaskData);
+        console.log("[addTaskToFirebase] Preparing to save task and index:", {
+            taskPath: newTaskRef.path,
+            indexPath: taskIndexRef.path
+        });
 
-        // ✅ Log 6: This will ONLY run if the await setDoc() line completes without throwing an error.
-        console.log(`✅ SUCCESS: Firestore reported success for adding task with ID: ${newTaskRef.id}`);
-        const tempTaskRefForLog = doc(db, tasksCollectionRef.path, newTaskRef.id);
+        // 1. Create the new task document
+        batch.set(newTaskRef, fullTaskData);
+        // 2. Create the new taskIndex document
+        batch.set(taskIndexRef, taskIndexData);
+        await batch.commit();
+
+        console.log(`✅ SUCCESS: Atomically added task ${newTaskRef.id} and its index.`);
+
+        // Logging activity remains the same
         logActivity({
             action: 'created this task',
-            taskRef: tempTaskRefForLog // Pass the reference
+            taskRef: newTaskRef
         });
 
     } catch (error) {
-        // ✅ Log 7: If `await setDoc()` fails for any reason (e.g., security rules), this block will run.
-        console.error("❌ FIRESTORE ERROR: Error adding task:", error);
+        console.error("❌ FIRESTORE BATCH ERROR: Error adding task and its index:", error);
         alert("A database error occurred while trying to save the task. Please check the console and your security rules.");
     }
 }

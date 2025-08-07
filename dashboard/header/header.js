@@ -467,6 +467,14 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
     console.error("renderRecentItems: Recent container div not found!");
     return;
   }
+  const input = document.querySelector('.search-input');
+  const cancelIcon = document.querySelector('.cancel-search-icon');
+  let halfQuery = document.getElementById('half-query');
+  const recentContainer = document.getElementById('recent-container');
+  const savedContainer = document.getElementById('saved-container');
+  const searchOptions = document.querySelector('.search-options');
+  const emailContainerId = document.getElementById('email-container-id');
+  const optionsQuery = document.getElementById('options-query');
 
   recentContainerDiv.innerHTML = ''; // Clear previous content
 
@@ -554,9 +562,15 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
           console.error("❌ Failed to update selectedProjectId:", error);
         }
 
-        if (window.location.pathname !== href) {
+        const path = window.location.pathname;
+        const listPath = `/tasks/${currentUserId}/list/${project.id}`;
+        const boardPath = `/tasks/${currentUserId}/board/${project.id}`;
+        const dashboardPath = `/tasks/${currentUserId}/dashboard/${project.id}`;
+
+        if (path !== listPath && path !== boardPath && path !== dashboardPath) {
           history.pushState({ path: href }, '', href);
           router();
+          console.log('Router called because path changed. New location:', window.location);
         }
 
         displaySearchResults([], [], [], []);
@@ -672,14 +686,16 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
         } catch (error) {
           console.error("❌ Failed to update selectedProjectId:", error);
         }
+        const path = window.location.pathname;
+        const listPath = `/tasks/${currentUserId}/list/${projectId}`;
+        const boardPath = `/tasks/${currentUserId}/board/${projectId}`;
+        const dashboardPath = `/tasks/${currentUserId}/dashboard/${projectId}`;
 
-        // ✅ Only reload router if the path is different
-        if (window.location.pathname !== `/tasks/${currentUserId}/list/${projectId}`) {
+        if (path !== listPath && path !== boardPath && path !== dashboardPath) {
           history.pushState({ path: href }, '', href);
           router();
+          console.log('Router called because path changed. New location:', window.location);
         }
-
-        history.pushState({ path: href }, '', href);
 
         closeSearchExpand();
         input.value = '';
@@ -704,6 +720,8 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
           projectLimit: null,
           showInviteButton: false
         });
+        history.pushState({ path: href }, '', href);
+
       });
     });
   }
@@ -970,7 +988,11 @@ async function renderSearchResultItem(item) {
         }
 
         history.pushState({ path: href }, '', href);
-        if (window.location.pathname !== href) {
+        if (window.location.pathname !== `/tasks/${currentUserId}/list/${project.objectID}`) {
+          router();
+        } else if (window.location.pathname !== `/tasks/${currentUserId}/board/${project.objectID}`) {
+          router();
+        } else if (window.location.pathname !== `/tasks/${currentUserId}/dashboard/${project.objectID}`) {
           router();
         }
         displaySearchResults([], [], [], []);
@@ -1120,9 +1142,14 @@ async function renderSearchResultItem(item) {
 
         // Update the browser URL without reloading
         history.pushState({ path: href }, '', href);
-        if (window.location.pathname !== href) {
+        if (window.location.pathname !== `/tasks/${currentUserId}/list/${task.projectId}`) {
+          router();
+        } else if (window.location.pathname !== `/tasks/${currentUserId}/board/${task.projectId}`) {
+          router();
+        } else if (window.location.pathname !== `/tasks/${currentUserId}/dashboard/${task.projectId}`) {
           router();
         }
+
         closeSearchExpand();
         input.value = '';
         lastInputValue = '';

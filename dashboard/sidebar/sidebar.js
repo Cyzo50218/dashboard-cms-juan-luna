@@ -319,7 +319,6 @@ window.TaskSidebar = (function () {
         rightSidebarContainer.classList.add('sidebar-open');
 
         try {
-            // ✅ FIX: Normalize projectRef to a DocumentReference if it's a string path.
             // This makes the function robust regardless of what the caller provides.
             if (typeof projectRef === 'string') {
                 projectRef = doc(db, projectRef);
@@ -328,7 +327,6 @@ window.TaskSidebar = (function () {
             let taskRef;
             let taskSnap;
 
-            // ✅ STEP 1: Load taskIndex for fast direct path
             try {
                 const indexSnap = await getDoc(doc(db, "taskIndex", taskId));
                 if (indexSnap.exists()) {
@@ -389,7 +387,12 @@ window.TaskSidebar = (function () {
             const eligibleProjects = results[1];
             const memberProfiles = results[2];
 
-            if (!taskSnap.exists()) throw new Error("Task not found at indexed path.");
+            if (!taskSnap.exists()) {
+                console.warn(`Stale entry found in taskIndex for deleted task ${taskId}. Removing it.`);
+                const taskIndexRef = doc(db, "taskIndex", taskId);
+                await deleteDoc(taskIndexRef); // Delete the bad index entry
+                throw new Error("Task not found at indexed path."); // Then throw error
+            }
 
             currentTask = { id: taskSnap.id, ...taskSnap.data() };
             currentTaskRef = taskRef;
@@ -2482,7 +2485,11 @@ window.TaskSidebar = (function () {
 
         try {
             // Perform the delete operation on the current task's document reference
-            await deleteDoc(currentTaskRef);
+            const batch = writeBatch(db);
+            const taskIndexRef = doc(db, "taskIndex", currentTask.id);
+            batch.delete(currentTaskRef);
+            batch.delete(taskIndexRef);
+            await batch.commit();
 
             console.log(`Task "${currentTask.name}" (${currentTask.id}) was successfully deleted.`);
 
