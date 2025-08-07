@@ -60,136 +60,136 @@ let recentPeopleData = [];
 let recentMessagesData = [];
 
 const exampleRecentTasks = [
-  {
-    id: 'task_abc1',
-    name: 'lol',
-    project: { name: 'Shop Barongg', color: '#66bb6a' },
-    assignees: [],
-    status: 'completed' // Added status
-  },
-  {
-    id: 'task_abc2',
-    name: 'Draft project brief',
-    project: { name: 'Shop Barongg', color: '#66bb6a' },
-    assignees: [{ id: 'user_cl', initials: 'CI' }],
-    status: 'on track' // Added status
-  },
-  {
-    id: 'task_abc3',
-    name: 'Alert: Asana invitation could not be delivered to jezz@gmail....',
-    project: { name: 'Shop Barongg', color: '#66bb6a' },
-    assignees: [{ id: 'user_cl', initials: 'CI' }],
-    status: 'at risk' // Added status (or you can use 'error' or 'attention')
-  },
-  {
-    id: 'task_abc4',
-    name: 'Schedule kickoff meeting',
-    project: { name: 'Shop Barongg', color: '#66bb6a' },
-    assignees: [{ id: 'user_jw', initials: 'JW' }],
-    status: 'completed' // Added status
-  },
-  {
-    id: 'task_abc5',
-    name: 'Share timeline with teammates',
-    project: { name: 'Shop Barongg', color: '#66bb6a' },
-    assignees: [],
-    status: 'on track' // Added status
-  }];
+{
+  id: 'task_abc1',
+  name: 'lol',
+  project: { name: 'Shop Barongg', color: '#66bb6a' },
+  assignees: [],
+  status: 'completed' // Added status
+},
+{
+  id: 'task_abc2',
+  name: 'Draft project brief',
+  project: { name: 'Shop Barongg', color: '#66bb6a' },
+  assignees: [{ id: 'user_cl', initials: 'CI' }],
+  status: 'on track' // Added status
+},
+{
+  id: 'task_abc3',
+  name: 'Alert: Asana invitation could not be delivered to jezz@gmail....',
+  project: { name: 'Shop Barongg', color: '#66bb6a' },
+  assignees: [{ id: 'user_cl', initials: 'CI' }],
+  status: 'at risk' // Added status (or you can use 'error' or 'attention')
+},
+{
+  id: 'task_abc4',
+  name: 'Schedule kickoff meeting',
+  project: { name: 'Shop Barongg', color: '#66bb6a' },
+  assignees: [{ id: 'user_jw', initials: 'JW' }],
+  status: 'completed' // Added status
+},
+{
+  id: 'task_abc5',
+  name: 'Share timeline with teammates',
+  project: { name: 'Shop Barongg', color: '#66bb6a' },
+  assignees: [],
+  status: 'on track' // Added status
+}];
 
 const exampleRecentPeople = [
-  {
-    id: 'user_jw_email',
-    name: 'john wick',
-    email: 'twicekgamers@gmail.com',
-    initials: 'JW'
-  },
-  {
-    id: 'user_jezz_email',
-    name: 'jezz@gmail.com',
-    email: 'jezz@gmail.com',
-    initials: 'JE'
-  },
-  {
-    id: 'user_cl_email',
-    name: 'clinton.ihegoro120@gmail.com',
-    email: 'clinton.ihegoro120@gmail.com',
-    initials: 'CI'
-  }];
+{
+  id: 'user_jw_email',
+  name: 'john wick',
+  email: 'twicekgamers@gmail.com',
+  initials: 'JW'
+},
+{
+  id: 'user_jezz_email',
+  name: 'jezz@gmail.com',
+  email: 'jezz@gmail.com',
+  initials: 'JE'
+},
+{
+  id: 'user_cl_email',
+  name: 'clinton.ihegoro120@gmail.com',
+  email: 'clinton.ihegoro120@gmail.com',
+  initials: 'CI'
+}];
 
 const exampleRecentMessages = [
-  {
-    id: 'msg_001',
-    title: 'Project Alpha Weekly Sync Notes',
-    sender: { name: 'John Doe', initials: 'JD' },
-    date: '2025-06-28',
-    preview: 'Key decisions from the meeting: Resource allocation, deadline adjustments...'
-  },
-  {
-    id: 'msg_002',
-    title: 'Team Vacation Schedule - July',
-    sender: { name: 'Jane Smith', initials: 'JS' },
-    date: '2025-06-25',
-    preview: 'Please submit your vacation requests by end of week. Reminder about policy changes.'
-  },
-  {
-    id: 'msg_003',
-    title: 'Urgent: Server Maintenance Tonight',
-    sender: { name: 'Admin', initials: 'AD' },
-    date: '2025-07-02',
-    preview: 'Expected downtime 10 PM - 12 AM PST. Please save all your work.'
-  }];
+{
+  id: 'msg_001',
+  title: 'Project Alpha Weekly Sync Notes',
+  sender: { name: 'John Doe', initials: 'JD' },
+  date: '2025-06-28',
+  preview: 'Key decisions from the meeting: Resource allocation, deadline adjustments...'
+},
+{
+  id: 'msg_002',
+  title: 'Team Vacation Schedule - July',
+  sender: { name: 'Jane Smith', initials: 'JS' },
+  date: '2025-06-25',
+  preview: 'Please submit your vacation requests by end of week. Reminder about policy changes.'
+},
+{
+  id: 'msg_003',
+  title: 'Urgent: Server Maintenance Tonight',
+  sender: { name: 'Admin', initials: 'AD' },
+  date: '2025-07-02',
+  preview: 'Expected downtime 10 PM - 12 AM PST. Please save all your work.'
+}];
 
 const exampleRecentProjects = [
+{
+  id: 'project_req_track_001',
+  name: 'Request tracking',
+  color: '#2196F3', // Blue color matching Asana's project icon
+  tasksCount: 40,
+  assignees: [
   {
-    id: 'project_req_track_001',
-    name: 'Request tracking',
-    color: '#2196F3', // Blue color matching Asana's project icon
-    tasksCount: 40,
-    assignees: [
-      {
-        id: 'user_john', // Corresponds to user_john's UID
-        initials: 'JW',
-        avatarUrl: 'https://i.pravatar.cc/150?img=68', // Loadable avatar URL
-        role: 'project_lead' // Role within this specific project's context
-      },
-      {
-        id: 'user_cl', // Corresponds to user_clinton's UID
-        initials: 'CI',
-        avatarUrl: 'https://i.pravatar.cc/150?img=33', // Another loadable avatar URL
-        role: 'designer'
-      },
-      {
-        id: 'user_jezz', // Corresponds to user_jezz's UID
-        initials: 'JE',
-        avatarUrl: 'https://i.pravatar.cc/150?img=12',
-        role: 'developer'
-      },
-      { // This assignee will trigger the 'more_horiz' icon if there are more than 3
-        id: 'user_jane',
-        initials: 'JD',
-        avatarUrl: 'https://i.pravatar.cc/150?img=47',
-        role: 'qa_engineer'
-      }]
+    id: 'user_john', // Corresponds to user_john's UID
+    initials: 'JW',
+    avatarUrl: 'https://i.pravatar.cc/150?img=68', // Loadable avatar URL
+    role: 'project_lead' // Role within this specific project's context
   },
   {
-    id: 'project_website_redesign_002',
-    name: 'Website Redesign',
-    color: '#FF9800', // Example Orange project color
-    tasksCount: 15,
-    assignees: [
-      {
-        id: 'user_jezz',
-        initials: 'JE',
-        avatarUrl: 'https://i.pravatar.cc/150?img=12',
-        role: 'frontend_dev'
-      },
-      {
-        id: 'user_alex',
-        initials: 'AS',
-        avatarUrl: 'https://i.pravatar.cc/150?img=7',
-        role: 'project_manager'
-      }]
-  }];
+    id: 'user_cl', // Corresponds to user_clinton's UID
+    initials: 'CI',
+    avatarUrl: 'https://i.pravatar.cc/150?img=33', // Another loadable avatar URL
+    role: 'designer'
+  },
+  {
+    id: 'user_jezz', // Corresponds to user_jezz's UID
+    initials: 'JE',
+    avatarUrl: 'https://i.pravatar.cc/150?img=12',
+    role: 'developer'
+  },
+  { // This assignee will trigger the 'more_horiz' icon if there are more than 3
+    id: 'user_jane',
+    initials: 'JD',
+    avatarUrl: 'https://i.pravatar.cc/150?img=47',
+    role: 'qa_engineer'
+  }]
+},
+{
+  id: 'project_website_redesign_002',
+  name: 'Website Redesign',
+  color: '#FF9800', // Example Orange project color
+  tasksCount: 15,
+  assignees: [
+  {
+    id: 'user_jezz',
+    initials: 'JE',
+    avatarUrl: 'https://i.pravatar.cc/150?img=12',
+    role: 'frontend_dev'
+  },
+  {
+    id: 'user_alex',
+    initials: 'AS',
+    avatarUrl: 'https://i.pravatar.cc/150?img=7',
+    role: 'project_manager'
+  }]
+}];
 
 const mockUsersCollection = [
   {
@@ -231,41 +231,41 @@ const mockUsersCollection = [
 ];
 
 const mockMyWorkspaceCollection = [
-  {
-    id: 'workspace_dev_team_001',
-    name: 'Development Team',
-    isSelected: true,
-    members: [
-      { uid: 'user_john', role: 'admin' },
-      { uid: 'user_jezz', role: 'member' },
-      { uid: 'user_clinton', role: 'guest' }
-    ]
-  },
-  {
-    id: 'workspace_marketing_002',
-    name: 'Marketing Campaigns',
-    isSelected: false,
-    members: [
-      { uid: 'user_jezz', role: 'admin' }, // Jezz is admin here, member in 'Development Team'
-      { uid: 'user_jane', role: 'member' }
-    ]
-  },
-  {
-    id: 'workspace_hr_portal_003',
-    name: 'HR Portal',
-    isSelected: true,
-    members: [
-      { uid: 'user_alex', role: 'owner' } // Alex is the owner of this one
-    ]
-  },
-  {
-    id: 'workspace_personal_004', // A workspace where only the current user (if they are 'user_current_user') is a member
-    name: 'My Personal Workspace',
-    isSelected: false,
-    members: [
-      { uid: 'user_john', role: 'owner' } // John is owner here
-    ]
-  }];
+{
+  id: 'workspace_dev_team_001',
+  name: 'Development Team',
+  isSelected: true,
+  members: [
+    { uid: 'user_john', role: 'admin' },
+    { uid: 'user_jezz', role: 'member' },
+    { uid: 'user_clinton', role: 'guest' }
+  ]
+},
+{
+  id: 'workspace_marketing_002',
+  name: 'Marketing Campaigns',
+  isSelected: false,
+  members: [
+    { uid: 'user_jezz', role: 'admin' }, // Jezz is admin here, member in 'Development Team'
+    { uid: 'user_jane', role: 'member' }
+  ]
+},
+{
+  id: 'workspace_hr_portal_003',
+  name: 'HR Portal',
+  isSelected: true,
+  members: [
+    { uid: 'user_alex', role: 'owner' } // Alex is the owner of this one
+  ]
+},
+{
+  id: 'workspace_personal_004', // A workspace where only the current user (if they are 'user_current_user') is a member
+  name: 'My Personal Workspace',
+  isSelected: false,
+  members: [
+    { uid: 'user_john', role: 'owner' } // John is owner here
+  ]
+}];
 
 function createRecentsInviteEmailButton() {
   const inviteBtn = document.createElement('div');
@@ -286,21 +286,21 @@ function createRecentsInviteEmailButton() {
 
 async function updateProfileDisplay(user) {
   if (!user) return;
-
+  
   const mainProfileImg = document.getElementById("profileToggle"); // assuming <img id="profileToggle" />
   const expandProfileImg = document.getElementById("profile-picture-expand"); // class, so use querySelector
   const expandEmail = document.getElementById("account-email");
-
+  
   if (expandEmail) {
     expandEmail.textContent = user.email;
   }
-
+  
   let avatarUrl = user.avatar;
-
+  
   try {
     const userDocRef = doc(db, "users", user.uid);
     const userSnap = await getDoc(userDocRef);
-
+    
     if (userSnap.exists()) {
       const userData = userSnap.data();
       if (userData.avatar) {
@@ -317,23 +317,23 @@ async function updateProfileDisplay(user) {
 function renderAllPeople(people, peopleQueryDiv, peopleEmptyState, emailContainerPeopleId) {
   // Note: No need for `getElementById` calls inside this function anymore.
   // The elements are passed as arguments.
-
+  
   if (!peopleQueryDiv || !peopleEmptyState || !emailContainerPeopleId) {
     console.error("One or more people display elements passed as arguments are null or undefined!");
     return;
   }
-
+  
   // 1. Clear any *previously rendered dynamic list items* from peopleQueryDiv
   Array.from(peopleQueryDiv.children).forEach(child => {
     if (child.classList.contains('headersearches-tasks-recent-item')) {
       peopleQueryDiv.removeChild(child);
     }
   });
-
+  
   // 2. Hide static elements initially before deciding their visibility
   peopleEmptyState.classList.add("hidden");
   emailContainerPeopleId.classList.add("hidden");
-
+  
   // 3. Render the dynamic people list or show empty state
   if (people.length === 0) {
     // Show empty state if no people found
@@ -343,7 +343,7 @@ function renderAllPeople(people, peopleQueryDiv, peopleEmptyState, emailContaine
     // Hide empty state
     emailContainerPeopleId.classList.remove('hidden');
     peopleEmptyState.classList.add("hidden");
-
+    
     const fragment = document.createDocumentFragment();
     people.forEach(person => {
       const personDiv = document.createElement('div');
@@ -367,7 +367,7 @@ function renderAllPeople(people, peopleQueryDiv, peopleEmptyState, emailContaine
             `;
       fragment.appendChild(personDiv); // Add to fragment
     });
-
+    
     // Append all new items at once, before the static elements if they exist
     // This ensures dynamic list appears above empty state and invite button
     if (peopleQueryDiv.querySelector('#people-empty-state')) {
@@ -375,8 +375,8 @@ function renderAllPeople(people, peopleQueryDiv, peopleEmptyState, emailContaine
     } else {
       peopleQueryDiv.appendChild(fragment); // Fallback if structure somehow changes
     }
-
-
+    
+    
   }
 }
 
@@ -385,23 +385,23 @@ export function fetchRecentItemsFromFirestore(renderFn, displayOptions) {
     console.warn("fetchRecentItemsFromFirestore: No user ID available. Skipping listener setup.");
     return null;
   }
-
+  
   // Unsubscribe from any previous single listener for recent items
   if (recentItemsUnsubscribe) {
     recentItemsUnsubscribe();
     console.log("fetchRecentItemsFromFirestore: Unsubscribed from previous unified listener.");
   }
-
+  
   const recentHistoryRef = collection(db, `users/${currentUserId}/recenthistory`);
   const q = query(recentHistoryRef, orderBy('lastAccessed', 'desc'), limit(15)); // Fetch a reasonable number to cover both tasks & projects
-
+  
   recentItemsUnsubscribe = onSnapshot(q, (querySnapshot) => {
     const fetchedTasks = [];
     const fetchedProjects = [];
     // Add other types here if you decide to store them in recenthistory
     // const fetchedPeople = [];
     // const fetchedMessages = [];
-
+    
     querySnapshot.forEach((docSnap) => {
       const itemData = docSnap.data();
       if (itemData.type === 'task') {
@@ -428,16 +428,16 @@ export function fetchRecentItemsFromFirestore(renderFn, displayOptions) {
       }
       // Add else if for 'people' or 'message' if you decide to store them in recenthistory
     });
-
+    
     // Update global module-level arrays
     recentTasksData = fetchedTasks;
     recentProjectsData = fetchedProjects;
     // recentPeopleData = fetchedPeople; // If fetched from recenthistory
     // recentMessagesData = fetchedMessages; // If fetched from recenthistory
-
+    
     console.log("fetchRecentItemsFromFirestore: Real-time update.");
     console.log("Tasks:", recentTasksData.length, "Projects:", recentProjectsData.length);
-
+    
     // Call the rendering function with filtered global data based on displayOptions
     renderFn(
       displayOptions.showTasks ? recentTasksData : [],
@@ -449,7 +449,7 @@ export function fetchRecentItemsFromFirestore(renderFn, displayOptions) {
       displayOptions.showInviteButton,
       displayOptions.showMessages
     );
-
+    
   }, (error) => {
     console.error("fetchRecentItemsFromFirestore: Error fetching real-time data:", error);
     const recentContainerDiv = document.querySelector("#recent-container > div");
@@ -457,7 +457,7 @@ export function fetchRecentItemsFromFirestore(renderFn, displayOptions) {
       recentContainerDiv.innerHTML = `<div class="search-no-results"><p>Error loading recent items: ${error.message}</p></div>`;
     }
   });
-
+  
   return recentItemsUnsubscribe;
 }
 
@@ -477,9 +477,9 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
   const optionsQuery = document.getElementById('options-query');
 
   recentContainerDiv.innerHTML = ''; // Clear previous content
-
+  
   let hasAnyResults = false; // Flag to track if any section has results
-
+  
   // --- Render Projects (from the 'projects' array) ---
   if (projects && projects.length > 0) {
     hasAnyResults = true;
@@ -488,16 +488,16 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
       itemDiv.className = 'headersearches-tasks-recent-item';
       itemDiv.dataset.itemId = project.id; // Use project.id
       itemDiv.dataset.projectRefPath = project.projectRef?.path;
-
+      
       const maxDisplayAvatars = 3;
       let visibleAssignees = project.assignees.slice(0, maxDisplayAvatars);
       let overflowCount = project.assignees.length - maxDisplayAvatars;
-
+      
       const assigneesHtml = visibleAssignees.map((member, index) => {
         const zIndex = 50 - index;
         const displayName = member.displayName || member.name || 'Unknown User';
         const initials = member.initials || (displayName).split(' ').map(n => n[0]).join('').substring(0, 2);
-
+        
         if (member.avatarUrl && member.avatarUrl.startsWith('https://')) {
           return `
                         <div class="headersearches-assignee-avatar" title="${displayName}" style="z-index: ${zIndex};">
@@ -513,12 +513,12 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
           return `<div class="headersearches-assignee-avatar" title="${displayName}" style="background-color: ${bgColor}; color: white; z-index: ${zIndex};">${initials}</div>`;
         }
       }).join('');
-
+      
       const moreAssigneesHtml = overflowCount > 0 ?
         `<div class="headersearches-assignee-list project-more-icon" title="${overflowCount} more members" style="z-index: ${50 - maxDisplayAvatars};">
                     <span class="material-icons-outlined">more_horiz</span>
                 </div>` : '';
-
+      
       itemDiv.innerHTML = `
                 <span class="headersearches-project-square-icon" style="background-color: ${project.color};"></span>
                 <div class="headersearches-tasks-recent-content">
@@ -533,25 +533,25 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
                 </div>
             `;
       recentContainerDiv.appendChild(itemDiv);
-
+      
       itemDiv.addEventListener('click', async (event) => {
         event.preventDefault();
-
+        
         const href = `/tasks/${currentUserId}/list/${project.id}`;
-
+        
         try {
           const userRef = doc(db, 'users', currentUserId);
           const userSnap = await getDoc(userRef);
-
+          
           if (userSnap.exists() && userSnap.data().selectedWorkspace) {
             const selectedWorkspaceId = userSnap.data().selectedWorkspace;
             const workspaceRef = doc(db, `users/${currentUserId}/myworkspace/${selectedWorkspaceId}`);
             const workspaceSnap = await getDoc(workspaceRef);
-
+            
             if (workspaceSnap.exists()) {
               const workspaceData = workspaceSnap.data();
               const currentSelectedProjectId = workspaceData.selectedProjectId;
-
+              
               if (currentSelectedProjectId !== project.id) {
                 await updateDoc(workspaceRef, { selectedProjectId: project.id });
                 console.log("📌 Updated selectedProjectId to:", project.id);
@@ -572,12 +572,12 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
           router();
           console.log('Router called because path changed. New location:', window.location);
         }
-
+        
         displaySearchResults([], [], [], []);
         closeSearchExpand();
         input.value = '';
         lastInputValue = '';
-
+        
         cancelIcon.classList.add('hidden');
         halfQuery = resetHalfQueryContainer();
         halfQuery.classList.add("hidden");
@@ -600,22 +600,22 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
       });
     });
   }
-
+  
   // --- Render Tasks (from the 'tasks' array) ---
   const tasksToRender = taskLimit ? tasks.slice(0, taskLimit) : tasks;
   if (tasksToRender.length > 0) {
     hasAnyResults = true;
-
+    
     tasksToRender.forEach(item => {
       console.group("📌 Rendering Recent Task");
       console.log("Full Item Data:", item);
       console.groupEnd();
-
+      
       const itemDiv = document.createElement('div');
       itemDiv.className = 'headersearches-tasks-recent-item';
       itemDiv.dataset.itemId = item.id;
       itemDiv.dataset.projectRefPath = item.projectRef?.path;
-
+      
       let statusIcon;
       let statusClass = '';
       if (item.status === 'Completed') {
@@ -624,7 +624,7 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
       } else {
         statusIcon = 'radio_button_unchecked';
       }
-
+      
       const assigneesHtml = item.assignees.map(assignee => {
         const displayName = assignee.name || 'Unknown User';
         const initials = assignee.initials || displayName.substring(0, 2).toUpperCase();
@@ -634,7 +634,7 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
         </div>
       `;
       }).join('');
-
+      
       itemDiv.innerHTML = `
       <span class="material-icons-outlined headersearches-tasks-recent-status-icon ${statusClass}">${statusIcon}</span>
       <div class="headersearches-tasks-recent-content">
@@ -648,35 +648,35 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
         ${assigneesHtml}
       </div>
     `;
-
+      
       recentContainerDiv.appendChild(itemDiv);
-
+      
       // Click event
       itemDiv.addEventListener('click', async (event) => {
         event.preventDefault();
-
+        
         // ✅ Extract projectId from projectRef
         const projectId = item.projectRef?.id;
         if (!projectId) {
           console.error("❌ No projectId found for recent task:", item);
           return;
         }
-
+        
         const href = `/tasks/${currentUserId}/list/${projectId}?openTask=${item.id}`;
-
+        
         try {
           const userRef = doc(db, 'users', currentUserId);
           const userSnap = await getDoc(userRef);
-
+          
           if (userSnap.exists() && userSnap.data().selectedWorkspace) {
             const selectedWorkspaceId = userSnap.data().selectedWorkspace;
             const workspaceRef = doc(db, `users/${currentUserId}/myworkspace/${selectedWorkspaceId}`);
             const workspaceSnap = await getDoc(workspaceRef);
-
+            
             if (workspaceSnap.exists()) {
               const workspaceData = workspaceSnap.data();
               const currentSelectedProjectId = workspaceData.selectedProjectId;
-
+              
               if (currentSelectedProjectId !== projectId) {
                 await updateDoc(workspaceRef, { selectedProjectId: projectId });
                 console.log("📌 Updated selectedProjectId to:", projectId);
@@ -701,7 +701,7 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
         input.value = '';
         lastInputValue = '';
         cancelIcon.classList.add('hidden');
-
+        
         halfQuery = resetHalfQueryContainer();
         halfQuery.classList.add("hidden");
         halfQuery.classList.remove("skeleton-active"); // also remove loading state
@@ -725,7 +725,7 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
       });
     });
   }
-
+  
   // --- Render People ---
   if (people.length > 0 && !hidePeopleContent) {
     hasAnyResults = true;
@@ -733,9 +733,9 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
       const personDiv = document.createElement('div');
       personDiv.className = 'headersearches-tasks-recent-item';
       personDiv.dataset.itemId = person.id;
-
+      
       const displayName = person.displayName || person.name;
-
+      
       personDiv.innerHTML = `
                 <span class="material-icons-outlined headersearches-tasks-recent-status-icon">person</span>
                 <div class="headersearches-tasks-recent-content">
@@ -752,7 +752,7 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
       recentContainerDiv.appendChild(personDiv);
     });
   }
-
+  
   // --- Render Recent Messages ---
   if (showRecentMessages && messages.length > 0) {
     hasAnyResults = true;
@@ -760,7 +760,7 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
       const itemDiv = document.createElement('div');
       itemDiv.className = 'headersearches-tasks-recent-item';
       itemDiv.dataset.itemId = message.id;
-
+      
       itemDiv.innerHTML = `
                 <span class="material-icons-outlined headersearches-tasks-recent-status-icon">message</span>
                 <div class="headersearches-tasks-recent-content">
@@ -778,7 +778,7 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
       recentContainerDiv.appendChild(itemDiv);
     });
   }
-
+  
   // --- Consolidated Empty State Check ---
   if (!hasAnyResults) {
     const noResultsDiv = document.createElement('div');
@@ -786,7 +786,7 @@ export function renderRecentItems(tasks, people, projects, messages, taskLimit =
     noResultsDiv.innerHTML = `<p>No recent items to display. Start working on a task or project!</p>`;
     recentContainerDiv.appendChild(noResultsDiv);
   }
-
+  
   // --- Render Invite Button (always at the end if applicable) ---
   if (showInviteButton) {
     recentContainerDiv.appendChild(createRecentsInviteEmailButton());
@@ -804,33 +804,33 @@ function enterSearchResults() {
             Press <span class="enter-key-indicator">Enter</span> to view all results
         </div>
     `;
-
+  
   // Add click listener to the entire hint container
   containerDiv.addEventListener('click', () => {
     // Get the current value from the main search input field
     const input = document.querySelector('.search-input');
     const value = input ? input.value.trim() : ''; // Get value, handle if input not found
-
+    
     // Only redirect if there's actually a search query
     if (value !== '') {
       window.location.href = '/searchresults';
     }
   });
-
+  
   return containerDiv;
 }
 
 function hslToRgb(h, s, l) {
   s /= 100;
   l /= 100;
-
+  
   let c = (1 - Math.abs(2 * l - 1)) * s,
     x = c * (1 - Math.abs((h / 60) % 2 - 1)),
     m = l - c / 2,
     r = 0,
     g = 0,
     b = 0;
-
+  
   if (0 <= h && h < 60) {
     r = c;
     g = x;
@@ -859,7 +859,7 @@ function hslToRgb(h, s, l) {
   r = Math.round((r + m) * 255);
   g = Math.round((g + m) * 255);
   b = Math.round((b + m) * 255);
-
+  
   return [r, g, b];
 }
 
@@ -882,16 +882,16 @@ async function renderSearchResultItem(item) {
   const searchOptions = document.querySelector('.search-options');
   const emailContainerId = document.getElementById('email-container-id');
   const optionsQuery = document.getElementById('options-query');
-
+  
   switch (item.type) {
     case 'project':
       const project = item.data;
       itemDiv = document.createElement('div');
       itemDiv.className = 'headersearches-tasks-recent-item search-result-item';
       itemDiv.dataset.itemId = project.objectID;
-
+      
       let memberUIDs = project.memberUIDs || [];
-
+      
       // 🔄 Try to load fresh memberUIDs from Firestore if projectRef exists
       if (project.projectRef) {
         try {
@@ -905,11 +905,11 @@ async function renderSearchResultItem(item) {
           console.error(`Failed to fetch project ${project.projectRef} for members`, err);
         }
       }
-
+      
       const MAX_VISIBLE_ASSIGNEES = 3;
       const assigneesToDisplay = memberUIDs.slice(0, MAX_VISIBLE_ASSIGNEES);
       const remainingAssigneesCount = memberUIDs.length - assigneesToDisplay.length;
-
+      
       let projectHexColor = project.color || '#cccccc';
       if (project.color) {
         const hslValues = project.color.match(/\d+(\.\d+)?/g)?.map(Number);
@@ -917,7 +917,7 @@ async function renderSearchResultItem(item) {
           projectHexColor = hslToHex(hslValues[0], hslValues[1], hslValues[2]);
         }
       }
-
+      
       const assigneesHtmlPromises = assigneesToDisplay.map(async (uid) => {
         try {
           const userDocRef = doc(db, 'users', uid);
@@ -928,7 +928,7 @@ async function renderSearchResultItem(item) {
             const initials = userData.name ?
               userData.name.substring(0, 2).toUpperCase() :
               uid.substring(0, 2).toUpperCase();
-
+            
             return avatarUrl ?
               `<div class="headersearches-assignee-avatar" style="background-image: url(${avatarUrl});"></div>` :
               `<div class="headersearches-assignee-avatar">${initials}</div>`;
@@ -936,17 +936,17 @@ async function renderSearchResultItem(item) {
         } catch (err) {
           console.error(`Could not fetch user ${uid}`, err);
         }
-
+        
         // Fallback
         return `<div class="headersearches-assignee-avatar">${uid.substring(0, 2).toUpperCase()}</div>`;
       });
-
+      
       const assigneesHtml = (await Promise.all(assigneesHtmlPromises)).join('');
       const moreAssigneesHtml = remainingAssigneesCount > 0 ?
         `<div class="headersearches-assignee-avatar project-more-icon" title="${remainingAssigneesCount} more members">
                     <span class="material-icons-outlined">more_horiz</span>
                 </div>` : '';
-
+      
       itemDiv.innerHTML = `
     <span class="headersearches-project-square-icon" style="background-color: ${projectHexColor};"></span>
     <div class="headersearches-tasks-recent-content">
@@ -960,22 +960,22 @@ async function renderSearchResultItem(item) {
   `;
       itemDiv.addEventListener('click', async (event) => {
         event.preventDefault(); // Prevent full page reload
-
+        
         const href = `/tasks/${currentUserId}/list/${project.objectID}`;
-
+        
         try {
           const userRef = doc(db, 'users', currentUserId);
           const userSnap = await getDoc(userRef);
-
+          
           if (userSnap.exists() && userSnap.data().selectedWorkspace) {
             const selectedWorkspaceId = userSnap.data().selectedWorkspace;
             const workspaceRef = doc(db, `users/${currentUserId}/myworkspace/${selectedWorkspaceId}`);
             const workspaceSnap = await getDoc(workspaceRef);
-
+            
             if (workspaceSnap.exists()) {
               const workspaceData = workspaceSnap.data();
               const currentSelectedProjectId = workspaceData.selectedProjectId;
-
+              
               if (currentSelectedProjectId !== project.objectID) {
                 await updateDoc(workspaceRef, { selectedProjectId: project.objectID });
                 console.log("📌 Updated selectedProjectId to:", project.objectID);
@@ -986,7 +986,7 @@ async function renderSearchResultItem(item) {
         } catch (error) {
           console.error("❌ Failed to update selectedProjectId:", error);
         }
-
+        
         history.pushState({ path: href }, '', href);
         if (window.location.pathname !== `/tasks/${currentUserId}/list/${project.objectID}`) {
           router();
@@ -999,7 +999,7 @@ async function renderSearchResultItem(item) {
         closeSearchExpand();
         input.value = '';
         lastInputValue = '';
-
+        
         cancelIcon.classList.add('hidden');
         halfQuery = resetHalfQueryContainer();
         halfQuery.classList.add("hidden");
@@ -1020,35 +1020,35 @@ async function renderSearchResultItem(item) {
           showInviteButton: false
         });
         // Load the new section dynamically
-
-
+        
+        
       });
-
+      
       break;
-
+      
     case 'task':
       const task = item.data;
       itemDiv = document.createElement('div');
       itemDiv.className = 'headersearches-tasks-recent-item search-result-item';
       itemDiv.dataset.itemId = task.objectID;
-
+      
       let statusIcon = (task.status === 'Completed') ? 'check_circle' : 'radio_button_unchecked';
       let statusClass = (task.status === 'Completed') ? 'status-completed' : '';
-
+      
       // --- FIX IS HERE: LOOKUP FOR TASK ASSIGNEES ---
       const taskAssigneeUIDs = task.assignee || [];
-
+      
       // Use Promise.all to fetch all assignee avatars concurrently
       const taskAssigneesHtmlPromises = taskAssigneeUIDs.map(async (uid) => {
         try {
           const userDocRef = doc(db, 'users', uid);
           const userSnap = await getDoc(userDocRef);
-
+          
           if (userSnap.exists()) {
             const userData = userSnap.data();
             const avatarUrl = userData.avatar;
             const initials = userData.name ? userData.name.substring(0, 2).toUpperCase() : uid.substring(0, 2).toUpperCase();
-
+            
             if (avatarUrl) {
               return `<div class="headersearches-assignee-avatar" style="background-image: url(${avatarUrl});"></div>`;
             } else {
@@ -1061,14 +1061,14 @@ async function renderSearchResultItem(item) {
         // Fallback for users not found or with errors
         return `<div class="headersearches-assignee-avatar">${uid.substring(0, 2).toUpperCase()}</div>`;
       });
-
+      
       // Wait for all the avatar lookups to finish
       const taskAssigneesHtml = (await Promise.all(taskAssigneesHtmlPromises)).join('');
-
+      
       // --- LOOKUP FOR PROJECT NAME AND COLOR ---
       let projectName = 'Unknown Project';
       let projectColor = '#cccccc';
-
+      
       if (task.projectRef) {
         try {
           const projectDocRef = doc(db, task.projectRef);
@@ -1082,7 +1082,7 @@ async function renderSearchResultItem(item) {
           console.error(`Could not fetch project ${task.projectRef}`, err);
         }
       }
-
+      
       let taskProjectHexColor = projectColor || '#cccccc';
       if (projectColor) {
         const hslValues = projectColor.match(/\d+(\.\d+)?/g).map(Number);
@@ -1090,7 +1090,7 @@ async function renderSearchResultItem(item) {
           taskProjectHexColor = hslToHex(hslValues[0], hslValues[1], hslValues[2]);
         }
       }
-
+      
       itemDiv.innerHTML = `
           <span class="material-icons-outlined headersearches-tasks-recent-status-icon ${statusClass}">${statusIcon}</span>
           <div class="headersearches-tasks-recent-content">
@@ -1104,27 +1104,27 @@ async function renderSearchResultItem(item) {
               ${taskAssigneesHtml}
           </div>
         `;
-
+      
       itemDiv.addEventListener('click', async (event) => {
         event.preventDefault(); // Prevent full page reload
-
-
+        
+        
         const projectRef = task.projectRef || '';
         const href = `/tasks/${currentUserId}/list/${task.projectId}?openTask=${task.taskId}`;
-
+        
         try {
           const userRef = doc(db, 'users', currentUserId);
           const userSnap = await getDoc(userRef);
-
+          
           if (userSnap.exists() && userSnap.data().selectedWorkspace) {
             const selectedWorkspaceId = userSnap.data().selectedWorkspace;
             const workspaceRef = doc(db, `users/${currentUserId}/myworkspace/${selectedWorkspaceId}`);
             const workspaceSnap = await getDoc(workspaceRef);
-
+            
             if (workspaceSnap.exists()) {
               const workspaceData = workspaceSnap.data();
               const currentSelectedProjectId = workspaceData.selectedProjectId;
-
+              
               if (currentSelectedProjectId !== task.projectId) {
                 await updateDoc(workspaceRef, { selectedProjectId: task.projectId });
                 console.log("📌 Updated selectedProjectId to:", task.projectId);
@@ -1135,11 +1135,11 @@ async function renderSearchResultItem(item) {
         } catch (error) {
           console.error("❌ Failed to update selectedProjectId:", error);
         }
-
+        
         // Save the projectRef invisibly
         sessionStorage.setItem('pendingProjectRef', projectRef);
         displaySearchResults([], [], [], []);
-
+        
         // Update the browser URL without reloading
         history.pushState({ path: href }, '', href);
         if (window.location.pathname !== `/tasks/${currentUserId}/list/${task.projectId}`) {
@@ -1154,7 +1154,7 @@ async function renderSearchResultItem(item) {
         input.value = '';
         lastInputValue = '';
         cancelIcon.classList.add('hidden');
-
+        
         halfQuery = resetHalfQueryContainer();
         halfQuery.classList.add("hidden");
         halfQuery.classList.remove("skeleton-active"); // also remove loading state
@@ -1173,21 +1173,21 @@ async function renderSearchResultItem(item) {
           projectLimit: null,
           showInviteButton: false
         });
-
+        
       });
-
+      
       break;
-
+      
     case 'person':
       const person = item.data;
       itemDiv = document.createElement('div');
       itemDiv.className = 'headersearches-tasks-recent-item search-result-item';
       itemDiv.dataset.itemId = person.id;
-
+      
       const roleOrEmailHtml = person.workspaceRole ?
         `<div class="headersearches-person-roles">${person.workspaceRole.charAt(0).toUpperCase() + person.workspaceRole.slice(1)}</div>` :
         `<div class="headersearches-person-email">${person.email}</div>`;
-
+      
       itemDiv.innerHTML = `
                             <span class="material-icons-outlined headersearches-tasks-recent-status-icon">person</span>
                             <div class="headersearches-tasks-recent-content">
@@ -1202,13 +1202,13 @@ async function renderSearchResultItem(item) {
                             </div>
                         `;
       break;
-
+      
     case 'message':
       const message = item.data;
       itemDiv = document.createElement('div');
       itemDiv.className = 'headersearches-tasks-recent-item search-result-item';
       itemDiv.dataset.itemId = message.id;
-
+      
       itemDiv.innerHTML = `
                 <span class="material-icons-outlined headersearches-tasks-recent-status-icon">message</span>
                 <div class="headersearches-tasks-recent-content">
@@ -1248,41 +1248,41 @@ async function displaySearchResults(tasks, projects, people, messages) {
     console.error("half-query div not found for displaying search results!");
     return;
   }
-
+  
   displayOffset = 0;
-
+  
   const newHalfQueryDiv = halfQueryDiv.cloneNode(false);
   newHalfQueryDiv.id = 'half-query'; // Re-assign ID
-
+  
   halfQueryDiv.parentNode.replaceChild(newHalfQueryDiv, halfQueryDiv);
-
+  
   newHalfQueryDiv.innerHTML = '';
   newHalfQueryDiv.classList.remove("skeleton-active");
   newHalfQueryDiv.classList.remove('hidden');
-
+  
   const allResultsMap = new Map();
   [...projects, ...tasks, ...people, ...messages].forEach((item) => {
     const id = item.objectID || item.id;
     if (!allResultsMap.has(id)) {
       const type =
         projects.includes(item) ? 'project' :
-          tasks.includes(item) ? 'task' :
-            people.includes(item) ? 'person' :
-              'message';
+        tasks.includes(item) ? 'task' :
+        people.includes(item) ? 'person' :
+        'message';
       allResultsMap.set(id, { type, data: item });
     }
   });
-
+  
   const filteredResults = Array.from(allResultsMap.values());
   const hasResults = filteredResults.length > 0;
-
+  
   if (hasResults) {
     await displayNextBatch(filteredResults, newHalfQueryDiv);
-
+    
     if (filteredResults.length > pageSize) {
       newHalfQueryDiv.appendChild(enterSearchResults());
     }
-
+    
     newHalfQueryDiv.addEventListener('scroll', async function onScroll() {
       const scrollBottom = newHalfQueryDiv.scrollTop + newHalfQueryDiv.clientHeight;
       if (scrollBottom >= newHalfQueryDiv.scrollHeight - 10) {
@@ -1293,7 +1293,7 @@ async function displaySearchResults(tasks, projects, people, messages) {
         }
       }
     });
-
+    
   } else {
     const noResultsDiv = document.createElement('div');
     noResultsDiv.className = 'search-no-results';
@@ -1308,19 +1308,19 @@ async function displaySearchResults(tasks, projects, people, messages) {
 async function runSearch(value) {
   const halfQuery = document.getElementById('half-query');
   console.groupCollapsed('🔍 runSearch started');
-
+  
   const isTaskSearch = selectedOptionBtnIndex === 0 || selectedOptionBtnIndex === -1;
   const isProjectSearch = selectedOptionBtnIndex === 1 || selectedOptionBtnIndex === -1;
-
+  
   const isInQuery = value.toLowerCase().startsWith('in:');
   const isAssigneeQuery = value.toLowerCase().startsWith('assignee:');
-
+  
   const inQueryTitle = isInQuery ? value.slice(3).trim().toLowerCase() : null;
   const assigneeQuery = isAssigneeQuery ? value.slice(9).trim().toLowerCase() : null;
-
+  
   const searchTasks = isTaskSearch || isInQuery || isAssigneeQuery;
   const searchProjects = !isInQuery && !isAssigneeQuery;
-
+  
   console.table({
     'Selected Option Index': selectedOptionBtnIndex,
     'Is Task Search': isTaskSearch,
@@ -1332,7 +1332,7 @@ async function runSearch(value) {
     'inQueryTitle': inQueryTitle,
     'assigneeQuery': assigneeQuery,
   });
-
+  
   halfQuery.classList.remove("hidden");
   halfQuery.classList.add("skeleton-active");
   halfQuery.innerHTML = `
@@ -1340,7 +1340,7 @@ async function runSearch(value) {
   <div class="skeleton-loader" style="width: 500px;"></div>
   <div class="skeleton-loader" style="width: 400px;"></div>
 `;
-
+  
   const queries = [];
   if (searchProjects) {
     queries.push({ indexName: 'projects', query: value, params: { hitsPerPage: 50 } });
@@ -1348,9 +1348,9 @@ async function runSearch(value) {
   if (searchTasks) {
     queries.push({ indexName: 'tasks', query: (isInQuery || isAssigneeQuery) ? '' : value, params: { hitsPerPage: 50 } });
   }
-
+  
   console.log('Algolia Query Payload:', JSON.stringify(queries, null, 2));
-
+  
   let results;
   try {
     const response = await searchClient.search(queries);
@@ -1360,16 +1360,16 @@ async function runSearch(value) {
     console.error('Algolia Search Failed:', err);
     return;
   }
-
+  
   let projects = searchProjects ? results.shift()?.hits || [] : [];
   let tasks = searchTasks ? results.shift()?.hits || [] : [];
-
+  
   console.groupCollapsed('🗂 Project Filtering');
   const filteredProjects = [];
   for (const p of projects) {
     let memberUIDs = p.memberUIDs || [];
     console.log(`Project "${p.name || p.title}" (ID: ${p.objectID}) initial members:`, memberUIDs);
-
+    
     if (p.projectRef) {
       try {
         const snap = await getDoc(doc(db, p.projectRef));
@@ -1383,7 +1383,7 @@ async function runSearch(value) {
         console.warn(`Failed to fetch projectRef for project ID ${p.objectID}`, e);
       }
     }
-
+    
     if (memberUIDs.includes(currentUserId)) {
       console.log(`✔ Project allowed for current user: ${p.name || p.title}`);
       filteredProjects.push(p);
@@ -1392,22 +1392,22 @@ async function runSearch(value) {
     }
   }
   console.groupEnd();
-
+  
   console.groupCollapsed('📋 Task Filtering');
   const filteredTasks = [];
   for (const t of tasks) {
     console.group(`Task "${t.title || t.name}" (ID: ${t.objectID})`);
-
+    
     if (!t.projectRef) {
       console.warn('Skipped: No projectRef found.');
       console.groupEnd();
       continue;
     }
-
+    
     let allow = false;
     let projectData = {};
     let memberUIDs = [];
-
+    
     try {
       const snap = await getDoc(doc(db, t.projectRef));
       if (!snap.exists()) {
@@ -1415,16 +1415,16 @@ async function runSearch(value) {
         console.groupEnd();
         continue;
       }
-
+      
       projectData = snap.data();
       memberUIDs = Array.isArray(projectData.memberUIDs) ? projectData.memberUIDs : [];
-
+      
       if (!memberUIDs.includes(currentUserId)) {
         console.warn(`Skipped: User not part of project ${t.projectRef}`);
         console.groupEnd();
         continue;
       }
-
+      
       allow = true;
       console.log('✔ User is member of project');
     } catch (e) {
@@ -1432,16 +1432,16 @@ async function runSearch(value) {
       console.groupEnd();
       continue;
     }
-
+    
     if (!allow) {
       console.groupEnd();
       continue;
     }
-
+    
     if (isInQuery) {
       const projectTitle = projectData.title.toLowerCase();
       console.log(`Checking "in:" project title: "${projectTitle}" vs "${inQueryTitle}"`);
-
+      
       if (!projectTitle.includes(inQueryTitle)) {
         console.warn('Skipped: Project title does not match "in:"');
         console.groupEnd();
@@ -1450,12 +1450,12 @@ async function runSearch(value) {
         console.log('✔ "in:" match');
       }
     }
-
+    
     if (isAssigneeQuery) {
       const assignees = Array.isArray(t.assignee) ? t.assignee : [];
       console.log('Checking assignees:', assignees);
       let matched = false;
-
+      
       for (const uid of assignees) {
         try {
           const snap = await getDoc(doc(db, 'users', uid));
@@ -1473,36 +1473,36 @@ async function runSearch(value) {
           console.warn('Error loading user for assignee:', uid, e);
         }
       }
-
+      
       if (!matched) {
         console.warn('Skipped: No assignee matched');
         console.groupEnd();
         continue;
       }
     }
-
+    
     console.log(`✔ Task added to results: "${t.title || t.name}"`);
     filteredTasks.push(t);
     console.groupEnd();
   }
   console.groupEnd();
-
+  
   console.log('✅ Final Filtered Projects:', filteredProjects.map(p => p.name || p.title));
   console.log('✅ Final Filtered Tasks:', filteredTasks.map(t => t.title || t.name));
-
+  
   displaySearchResults(
     isTaskSearch ? filteredTasks : [],
     isProjectSearch ? filteredProjects : [],
     [],
     []
   );
-
+  
   console.groupEnd(); // runSearch
 }
 
 async function getProcessedWorkspacePeopleData() {
   const processedPeopleMap = new Map(); // Map to store unique PersonData objects by UID
-
+  
   // 1. First, populate the map with all known users from mockUsersCollection.
   //    Initialize their roles as null, which will be updated if they are found in a workspace.
   mockUsersCollection.forEach(user => {
@@ -1515,7 +1515,7 @@ async function getProcessedWorkspacePeopleData() {
       workspaceRole: null // Initialize role as null
     });
   });
-
+  
   // 2. Iterate through `mockMyWorkspaceCollection` to extract members and their roles.
   //    Update the `workspaceRole` for users already in `processedPeopleMap`.
   mockMyWorkspaceCollection.forEach(workspace => {
@@ -1544,7 +1544,7 @@ async function getProcessedWorkspacePeopleData() {
   let workspacePeople = Array.from(processedPeopleMap.values());
   workspacePeople = workspacePeople.filter(person => person.workspaceRole !== null);
   workspacePeople.sort((a, b) => a.displayName.localeCompare(b.displayName));
-
+  
   return workspacePeople;
 }
 /**
@@ -1566,18 +1566,18 @@ async function handleNewWorkspace() {
     alert("You must be logged in to create a workspace.");
     return;
   }
-
+  
   const newWorkspaceName = prompt("Enter a name for your new workspace:");
   if (!newWorkspaceName || newWorkspaceName.trim() === "") {
     return;
   }
-
+  
   const myWorkspaceCollectionRef = collection(
     db,
     `users/${currentUser.uid}/myworkspace`
   );
   const newWorkspaceRef = doc(myWorkspaceCollectionRef); // Create a reference for the new workspace first to get the ID
-
+  
   try {
     await runTransaction(db, async (transaction) => {
       // 1. Create the new workspace document
@@ -1589,14 +1589,14 @@ async function handleNewWorkspace() {
         selectedProjectId: "",
         workspaceId: newWorkspaceRef.id,
       });
-
+      
       // 2. Update the user's selectedWorkspace field
       const userDocRef = doc(db, "users", currentUser.uid);
       transaction.update(userDocRef, {
         selectedWorkspace: newWorkspaceRef,
       });
     });
-
+    
     alert(`Workspace "${newWorkspaceName.trim()}" created successfully!`);
     window.location.replace("/");
   } catch (error) {
@@ -1608,14 +1608,14 @@ async function handleNewWorkspace() {
 function resetHalfQueryContainer() {
   const old = document.getElementById('half-query');
   if (!old) return null;
-
+  
   const replacement = old.cloneNode(false);
   replacement.id = 'half-query';
-
+  
   replacement.innerHTML = '';
   replacement.classList.add('hidden');
   replacement.classList.remove('skeleton-active');
-
+  
   old.parentNode.replaceChild(replacement, old);
   return document.getElementById('half-query'); // return fresh reference
 }
@@ -1632,7 +1632,7 @@ function showErrorUI() {
 function closeSearchExpand() {
   const searchExpand = document.querySelector(".search-expand");
   const searchToggle = document.getElementById("searchToggle");
-
+  
   if (!searchExpand.classList.contains("hidden")) {
     searchExpand.classList.add("hidden");
     searchToggle.classList.remove("hidden");
@@ -1647,7 +1647,7 @@ onAuthStateChanged(auth, async (user) => {
     recentItemsUnsubscribe();
     recentItemsUnsubscribe = null;
   }
-
+  
   if (!user) {
     currentUserId = null;
     recentItemsUnsubscribe = null;
@@ -1656,12 +1656,12 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
   currentUserId = user.uid;
-
+  
   const menuToggle = document.getElementById("menuToggle");
   const rootdrawer = document.getElementById("rootdrawer");
   const filterToggleMenu = document.getElementById("filter-icon");
   const searchFilterMenu = document.getElementById("search-filter");
-
+  
   const drawer = document.getElementById("dashboardDrawer");
   const createToggle = document.getElementById("createToggle");
   const createExpand = document.querySelector(".create-expand");
@@ -1670,7 +1670,7 @@ onAuthStateChanged(auth, async (user) => {
   const profileToggle = document.getElementById("profileToggle");
   const profileExpand = document.querySelector(".account-expand");
   const optionBtns = document.querySelectorAll(".option-btn");
-
+  
   const cancelIcon = document.querySelector('.cancel-search-icon');
   const mytaskdisplay = document.getElementById("mytask-display");
   mytaskdisplay.classList.add("hidden");
@@ -1686,7 +1686,7 @@ onAuthStateChanged(auth, async (user) => {
   const optionsQuery = document.getElementById('options-query');
   const searchOptions = document.querySelector('.search-options');
   const recentContainerTitle = document.querySelector("#recent-container h4");
-
+  
   const emailContainerId = document.getElementById('email-container-id');
   const emailContainerPeopleId = document.getElementById('email-container-id-people');
   const emailContainer = document.querySelectorAll('.email-container');
@@ -1696,7 +1696,7 @@ onAuthStateChanged(auth, async (user) => {
   const inputFilter = document.querySelector('.search-input-filter');
   const moreTypeInput = document.getElementById("typeInput");
   const dropdown = document.getElementById("typeDropdown");
-
+  
   const plusField = document.getElementById("plus-field");
   const newExtraInput = document.getElementById("new-extra-input");
   const inputExtraDropdown = document.getElementById('dateSelectorDropdown');
@@ -1704,22 +1704,22 @@ onAuthStateChanged(auth, async (user) => {
   const inputRangeStartDropdown = document.getElementById('dateRangeOneDropdown');
   const inputRangeEndDropdown = document.getElementById('dateRangeTwoDropdown');
   const peopleQueryDiv = document.getElementById('people-query');
-
+  
   const calendar = document.getElementById('calendar');
   const calendar1 = document.getElementById('calendar1');
   const calendar2 = document.getElementById('calendar2');
   const closeIcon = plusField.querySelector(".close-icon");
-
+  
   const searchHint = document.querySelector('.search-hint');
   const clearIcon = document.querySelector('.clear-icon');
-
+  
   const isSelected3 = optionBtns[3].classList.contains("selected");
   const isSelected2 = optionBtns[2].classList.contains("selected");
-
+  
   let selected = false;
   let searchEmpty = false;
-
-
+  
+  
   /* search filter */
   /* global */
   let selectedType = "";
@@ -1732,16 +1732,16 @@ onAuthStateChanged(auth, async (user) => {
   let currentMonth = dayjs();
   let rangeStartDate = null;
   let rangeEndDate = null;
-
-
-
-
+  
+  
+  
+  
   function isMobile() {
     return window.matchMedia("(max-width: 768px)").matches;
   }
-
+  
   lucide.createIcons();
-
+  
   function updateClearIconVisibility() {
     if (searchHint.textContent.trim() !== "Search...") {
       clearIcon.classList.remove('hidden');
@@ -1749,15 +1749,15 @@ onAuthStateChanged(auth, async (user) => {
       clearIcon.classList.add('hidden');
     }
   }
-
-
+  
+  
   const renderCalendar = (month) => {
     const calendars = [calendar, calendar1, calendar2];
-
+    
     calendars.forEach((cal, index) => {
       cal.innerHTML = ''; // Clear previous content
       const localMonth = month.clone();
-
+      
       // Header
       const header = document.createElement('div');
       header.className = 'calendar-header';
@@ -1769,7 +1769,7 @@ onAuthStateChanged(auth, async (user) => {
       <span id="${nextId}">&#x232A;</span>
     `;
       cal.appendChild(header);
-
+      
       // Days row
       const days = document.createElement('div');
       days.className = 'calendar-days';
@@ -1779,27 +1779,27 @@ onAuthStateChanged(auth, async (user) => {
         days.appendChild(el);
       });
       cal.appendChild(days);
-
+      
       // Dates grid
       const dates = document.createElement('div');
       dates.className = 'calendar-dates';
-
+      
       const startOfMonth = localMonth.startOf('month');
       const daysInMonth = localMonth.daysInMonth();
       const startDay = startOfMonth.day();
-
+      
       for (let i = 0; i < startDay; i++) {
         dates.appendChild(document.createElement('div'));
       }
-
+      
       for (let d = 1; d <= daysInMonth; d++) {
         const dateEl = document.createElement('div');
         const thisDate = localMonth.date(d);
-
+        
         dateEl.textContent = d;
-
+        
         if (thisDate.isSame(dayjs(), 'day')) dateEl.classList.add('today');
-
+        
         // Highlight selected dates
         if (index === 1 && rangeStartDate && thisDate.isSame(rangeStartDate, 'day')) {
           dateEl.classList.add('selected');
@@ -1807,7 +1807,7 @@ onAuthStateChanged(auth, async (user) => {
         if (index === 2 && rangeEndDate && thisDate.isSame(rangeEndDate, 'day')) {
           dateEl.classList.add('selected');
         }
-
+        
         // Optional: highlight dates in range
         if (
           rangeStartDate &&
@@ -1817,7 +1817,7 @@ onAuthStateChanged(auth, async (user) => {
         ) {
           dateEl.classList.add('in-range'); // Define this class in CSS if needed
         }
-
+        
         dateEl.onclick = () => {
           if (index === 1) {
             // Start date calendar
@@ -1834,7 +1834,7 @@ onAuthStateChanged(auth, async (user) => {
             selectedDate = thisDate;
             openCalendar = false;
             const formatted = thisDate.format('YYYY-MM-DD');
-
+            
             if (['Yesterday', 'Today', 'Tomorrow', 'Specific Date'].includes(selectedDueDate)) {
               inputExtraDropdown.textContent = formatted;
             } else if (
@@ -1843,15 +1843,15 @@ onAuthStateChanged(auth, async (user) => {
               inputDueDateWithin.textContent = formatted;
             }
           }
-
+          
           renderCalendar(currentMonth); // Refresh
         };
-
+        
         dates.appendChild(dateEl);
       }
-
+      
       cal.appendChild(dates);
-
+      
       // Navigation handlers
       document.getElementById(prevId).onclick = () => {
         currentMonth = currentMonth.subtract(1, 'month');
@@ -1863,24 +1863,24 @@ onAuthStateChanged(auth, async (user) => {
       };
     });
   };
-
-  inputDueDateWithin.addEventListener('input', function () {
+  
+  inputDueDateWithin.addEventListener('input', function() {
     this.value = this.value.replace(/[^0-9]/g, '');
   });
-
+  
   renderCalendar(currentMonth);
   updateClearIconVisibility();
-
+  
   halfQuery.classList.add("hidden");
   closeIcon.style.display = "none";
   optionsQuery.classList.add("hidden");
-
+  
   rootdrawer.style.width = "260px";
   menuToggle.addEventListener("click", (e) => {
     e.stopPropagation();
-
+    
     const isClosed = drawer.classList.toggle("close");
-
+    
     if (isClosed) {
       // If drawer is now closed, remove open class
       drawer.classList.remove("open");
@@ -1891,53 +1891,53 @@ onAuthStateChanged(auth, async (user) => {
       drawer.classList.add("open");
     }
   });
-
-
-
+  
+  
+  
   searchToggle.addEventListener("click", (e) => {
     e.stopPropagation();
     searchExpand.classList.remove("hidden");
     searchToggle.classList.add("hidden");
   });
-
+  
   createToggle.addEventListener("click", (e) => {
     e.stopPropagation();
     createExpand.classList.remove("hidden");
     createExpand.classList.add("show");
   });
-
+  
   profileToggle.addEventListener("click", (e) => {
     e.stopPropagation();
     profileExpand.classList.remove("hidden");
     profileExpand.classList.add("show");
   });
-
+  
   filterToggleMenu.addEventListener('click', () => {
     searchFilterMenu.classList.remove("hidden");
     searchExpand.classList.add("hidden");
   });
-
-  calendar.addEventListener('click', function (e) {
+  
+  calendar.addEventListener('click', function(e) {
     e.stopPropagation();
     openCalendar = true;
   });
-
+  
   document.addEventListener("click", (e) => {
-
+    
     const clickedOutsideFilterMenu = !searchFilterMenu.contains(e.target) && !filterToggleMenu.contains(e.target);
     const clickedOutsideCreate = !createExpand.contains(e.target) && !createToggle.contains(e.target);
     const clickedOutsideAccount = !profileExpand.contains(e.target) && !profileToggle.contains(e.target);
     const clickedOutsideSearch = !searchExpand.contains(e.target) && !searchToggle.contains(e.target);
-
+    
     // Check if the clicked element is part of a calendar date
     const isCalendarDateClick = e.target.closest('.calendar-dates div');
-
-
+    
+    
     if (clickedOutsideCreate && !createExpand.classList.contains("hidden")) {
       createExpand.classList.add("hidden");
       createExpand.classList.remove("show");
     }
-
+    
     // Modified condition for searchFilterMenu
     if (clickedOutsideFilterMenu && !searchFilterMenu.classList.contains("hidden") && !isCalendarDateClick) {
       searchFilterMenu.classList.add("hidden");
@@ -1948,26 +1948,26 @@ onAuthStateChanged(auth, async (user) => {
         searchToggle.classList.add("hidden");
       }
     }
-
-
+    
+    
     if (clickedOutsideSearch && !searchExpand.classList.contains("hidden")) {
       closeSearchExpand();
     }
-
+    
     if (clickedOutsideAccount && !profileExpand.classList.contains("hidden")) {
       profileExpand.classList.add("hidden");
       profileToggle.classList.remove("hidden");
     }
   });
-
-
-
+  
+  
+  
   optionBtns[0].addEventListener("click", async () => {
     const btn = optionBtns[0];
     const isSelected = btn.classList.contains("selected");
-
+    
     if (isSelected) {
-
+      
       // --- Was selected, now deselecting --
       selectedOptionBtnIndex = -1;
       btn.classList.remove("selected");
@@ -1985,9 +1985,9 @@ onAuthStateChanged(auth, async (user) => {
         projectLimit: null,
         showInviteButton: false
       });
-
+      
     } else {
-
+      
       // --- Is NOT selected, now selecting "My Tasks" ---
       selectedOptionBtnIndex = 0;
       btn.classList.add("selected");
@@ -2011,7 +2011,7 @@ onAuthStateChanged(auth, async (user) => {
         showInviteButton: false
       });
     }
-
+    
     input.value = ''; // Clear input on option selection
     cancelIcon.classList.add('hidden'); // Hide cancel icon
     searchOptions.classList.remove("hidden"); // Always show filter buttons
@@ -2020,12 +2020,12 @@ onAuthStateChanged(auth, async (user) => {
     messagesEmptyState.classList.add("hidden"); // Hide messages empty state
     peopleEmptyState.classList.add("hidden"); // Hide people empty state
   });
-
+  
   optionBtns[1].addEventListener("click", async () => {
     const btn = optionBtns[1];
     const isSelected = btn.classList.contains("selected");
-
-
+    
+    
     if (isSelected) {
       fetchRecentItemsFromFirestore(renderRecentItems, {
         showTasks: true,
@@ -2078,12 +2078,12 @@ onAuthStateChanged(auth, async (user) => {
     peopleEmptyState.classList.add("hidden"); // Hide people empty state
     mytaskdisplay.classList.add("hidden"); // Hide mytask display
   });
-
+  
   optionBtns[2].addEventListener("click", async () => { // <<< Ensure 'async' is here!
     const btn = optionBtns[2];
     const isSelected = btn.classList.contains("selected");
     //halfQuery.classList.remove("skeleton-active"); // Remove skeleton if it was active
-
+    
     if (isSelected) {
       fetchRecentItemsFromFirestore(renderRecentItems, {
         showTasks: true,
@@ -2094,7 +2094,7 @@ onAuthStateChanged(auth, async (user) => {
         projectLimit: null,
         showInviteButton: false
       });
-
+      
       selectedOptionBtnIndex = -1;
       btn.classList.remove("selected");
       savedSearchText.classList.remove("hidden");
@@ -2105,10 +2105,10 @@ onAuthStateChanged(auth, async (user) => {
       emailContainerPeopleId.classList.remove('hidden');
       searchOptions.classList.remove("hidden"); // Ensure the row of filter buttons is visible
       if (peopleQueryDiv) peopleQueryDiv.classList.add('hidden'); // This hides the entire #people-query div
-
+      
       if (peopleEmptyState) peopleEmptyState.classList.add("hidden");
-
-
+      
+      
       if (recentContainerTitle) {
         recentContainerTitle.classList.remove("hidden");
       }
@@ -2116,9 +2116,9 @@ onAuthStateChanged(auth, async (user) => {
         b.classList.remove("hide"); // Ensure no option button is hidden
         b.classList.remove("selected");
       });
-
+      
     } else {
-
+      
       selectedOptionBtnIndex = 2;
       btn.classList.add("selected");
       savedSearchText.classList.add("hidden");
@@ -2177,12 +2177,12 @@ onAuthStateChanged(auth, async (user) => {
     mytaskdisplay.classList.add("hidden"); // Hide mytask display
     projectdisplay.classList.add("hidden"); // Hide project display
   });
-
+  
   optionBtns[3].addEventListener("click", async () => {
     const btn = optionBtns[3];
     const isSelected = btn.classList.contains("selected");
     // halfQuery.classList.remove("skeleton-active");
-
+    
     if (isSelected) {
       fetchRecentItemsFromFirestore(renderRecentItems, {
         showTasks: true,
@@ -2193,7 +2193,7 @@ onAuthStateChanged(auth, async (user) => {
         projectLimit: null,
         showInviteButton: false
       });
-
+      
       selectedOptionBtnIndex = -1;
       btn.classList.remove("selected");
       optionBtns.forEach(b => b.classList.remove("hide"));
@@ -2206,10 +2206,10 @@ onAuthStateChanged(auth, async (user) => {
       searchOptions.classList.remove("hidden");
       recentContainer.classList.remove("hidden");
       emailContainerId.classList.add('hidden');
-
-
+      
+      
     } else {
-
+      
       selectedOptionBtnIndex = 3;
       btn.classList.add("selected");
       savedSearchText.classList.add("hidden");
@@ -2241,7 +2241,7 @@ onAuthStateChanged(auth, async (user) => {
     projectdisplay.classList.add("hidden"); // Hide project display
     peopleEmptyState.classList.add("hidden"); // Hide people empty state
   });
-
+  
   //Tasks
   taskOptionBtns[0].addEventListener('click', () => {
     cancelIcon.classList.remove('hidden');
@@ -2251,7 +2251,7 @@ onAuthStateChanged(auth, async (user) => {
     input.value = 'in: '; // in_project
     input.focus();
   });
-
+  
   taskOptionBtns[1].addEventListener('click', () => {
     cancelIcon.classList.remove('hidden');
     input.value = 'assignee: '; // assigned_to
@@ -2262,7 +2262,7 @@ onAuthStateChanged(auth, async (user) => {
     searchOptions.classList.add("hidden");
     input.focus();
   });
-
+  
   taskOptionBtns[2].addEventListener('click', () => {
     cancelIcon.classList.remove('hidden');
     input.value = 'with: '; // with_collaborator
@@ -2273,7 +2273,7 @@ onAuthStateChanged(auth, async (user) => {
     searchOptions.classList.add("hidden");
     input.focus();
   });
-
+  
   //Projects
   projectOptionBtns[0].addEventListener('click', () => {
     cancelIcon.classList.remove('hidden');
@@ -2286,7 +2286,7 @@ onAuthStateChanged(auth, async (user) => {
     input.value = 'assignee: '; // owner
     input.focus();
   });
-
+  
   projectOptionBtns[1].addEventListener('click', () => {
     cancelIcon.classList.remove('hidden');
     emailContainerId.classList.remove('hidden');
@@ -2297,7 +2297,7 @@ onAuthStateChanged(auth, async (user) => {
     input.value = 'with: '; // with members
     input.focus();
   });
-
+  
   /*
   input.addEventListener('keydown', (event) => {
   // Check if the "Enter" key was pressed
@@ -2309,28 +2309,28 @@ onAuthStateChanged(auth, async (user) => {
     }
   }
 });*/
-
+  
   input.addEventListener('input', async () => {
     const value = input.value.trim();
-
+    
     clearTimeout(searchTimeout);
-
+    
     if (value !== '') {
       cancelIcon.classList.remove('hidden');
       savedContainer.classList.add("hidden");
       recentContainer.classList.add("hidden");
       searchOptions.classList.add("hidden");
       mytaskdisplay.classList.add("hidden");
-
+      
       // 🆕 If the value has changed, reset the halfQuery
       if (value !== lastInputValue) {
         lastInputValue = value;
-
+        
         // ❌ Clear existing results immediately
         halfQuery = resetHalfQueryContainer();
         halfQuery.classList.remove("hidden");
         halfQuery.classList.add("skeleton-active");
-
+        
         // Reset pagination state
         displayOffset = 0;
         halfQuery.innerHTML = `
@@ -2339,7 +2339,7 @@ onAuthStateChanged(auth, async (user) => {
         <div class="skeleton-loader" style="width: 400px;"></div>
       `;
       }
-
+      
       // ⏳ Show loading placeholders
       if (halfQuery.innerHTML.trim() === '') {
         halfQuery = resetHalfQueryContainer();
@@ -2349,18 +2349,18 @@ onAuthStateChanged(auth, async (user) => {
         <div class="skeleton-loader" style="width: 400px;"></div>
       `;
       }
-
+      
       // 🔁 Debounced search
       searchTimeout = setTimeout(async () => {
         try {
           await runSearch(value); // your main async search trigger
         } catch (err) {
           console.error("Algolia search error:", err);
-
+          
           if (err.name === 'RetryError' && err.message.includes('Unreachable hosts')) {
             console.warn("Retrying search after network failure...");
             halfQuery.classList.add("skeleton-active");
-
+            
             setTimeout(async () => {
               try {
                 await runSearch(value);
@@ -2374,7 +2374,7 @@ onAuthStateChanged(auth, async (user) => {
           }
         }
       }, DEBOUNCE_DELAY);
-
+      
     } else {
       // 🔁 Reset everything back if input is cleared
       lastInputValue = '';
@@ -2388,7 +2388,7 @@ onAuthStateChanged(auth, async (user) => {
       optionsQuery.classList.add("hidden");
       savedContainer.classList.remove("hidden");
       searchOptions.classList.remove("hidden");
-
+      
       if (selectedOptionBtnIndex === 0) {
         mytaskdisplay.classList.remove("hidden");
         fetchRecentItemsFromFirestore(renderRecentItems, {
@@ -2447,7 +2447,7 @@ onAuthStateChanged(auth, async (user) => {
       }
     }
   });
-
+  
   cancelIcon.addEventListener('click', async () => {
     input.value = '';
     lastInputValue = '';
@@ -2456,15 +2456,15 @@ onAuthStateChanged(auth, async (user) => {
     halfQuery.classList.add("hidden");
     halfQuery.classList.remove("skeleton-active"); // also remove loading state
     recentContainer.classList.remove("hidden");
-
+    
     optionsQuery.classList.add("hidden");
     savedContainer.classList.remove("hidden");
     searchOptions.classList.remove("hidden");
-
+    
     input.focus(); // Keep focus on the input after clearing
     emailContainerId.classList.add('hidden');
-
-
+    
+    
     if (selectedOptionBtnIndex === 0) { // Tasks
       mytaskdisplay.classList.remove("hidden");
       fetchRecentItemsFromFirestore(renderRecentItems, {
@@ -2522,44 +2522,44 @@ onAuthStateChanged(auth, async (user) => {
       });
     }
   });
-
-
-  document.querySelector('.clear-text').addEventListener('click', function () {
+  
+  
+  document.querySelector('.clear-text').addEventListener('click', function() {
     inputFilter.value = '';
     document.querySelector('.search-input-filter').focus(); // Optional: refocus the input
   });
-
-
+  
+  
   emailContainer.forEach(el => {
     el.addEventListener('click', () => {
       emailContainer.forEach(item => item.classList.remove('selected'));
       el.classList.add('selected');
     });
   });
-
+  
   document.querySelectorAll(".dropdown-menu .dropdown-item").forEach(item => {
-    item.addEventListener("click", function (e) {
+    item.addEventListener("click", function(e) {
       e.preventDefault();
-
+      
       // Exclude span icon from selected text
       const selectedText = Array.from(this.childNodes)
         .filter(node => node.nodeType === Node.TEXT_NODE)
         .map(node => node.textContent.trim())
         .join("");
-
+      
       const dropdownMenu = this.closest(".dropdown-menu");
       const buttonId = dropdownMenu.getAttribute("aria-labelledby");
       const button = document.getElementById(buttonId);
-
+      
       if (button) {
         button.textContent = selectedText;
       }
-
+      
       // Store the selected value based on which dropdown was used
       if (buttonId === "typeDropdown") {
         selectedType = selectedText;
         console.log("Selected Type:", selectedType);
-
+        
         if (selectedType == 'Any') {
           document.getElementById('authors').classList.add("hidden");
           document.getElementById('locatedGlobal').classList.remove("hidden");
@@ -2614,7 +2614,7 @@ onAuthStateChanged(auth, async (user) => {
           document.getElementById('authors').classList.add("hidden");
           document.getElementById('members').classList.remove("hidden");
           document.getElementById('status-project-field').classList.add("hidden");
-
+          
         } else if (selectedType === 'Messages') {
           document.getElementById('extra-field-projectdropdown').classList.add("hidden");
           document.getElementById('locatedGlobal').classList.remove("hidden");
@@ -2630,7 +2630,7 @@ onAuthStateChanged(auth, async (user) => {
           document.getElementById('authors').classList.remove("hidden");
           document.getElementById('members').classList.add("hidden");
           document.getElementById('status-project-field').classList.add("hidden");
-
+          
         } else {
           document.getElementById('authors').classList.add("hidden");
           document.getElementById('extra-field-projectdropdown').classList.add("hidden");
@@ -2646,12 +2646,12 @@ onAuthStateChanged(auth, async (user) => {
           document.getElementById('owners').classList.add("hidden");
           document.getElementById('members').classList.add("hidden");
           document.getElementById('status-project-field').classList.add("hidden");
-
+          
         }
-
+        
       } else if (buttonId === "locatedDropdown") {
         selectedLocation = selectedText;
-
+        
         if (selectedType === 'Any' || selectedType === 'Tasks' || selectedType === 'Portfolio' || selectedType === 'Messages') {
           if (selectedLocation === 'In any of these projects' || selectedLocation === 'In all of these projects') {
             document.getElementById('plus-field').classList.remove("hidden");
@@ -2664,28 +2664,28 @@ onAuthStateChanged(auth, async (user) => {
             document.getElementById('extra-field').classList.remove("hidden");
           }
         }
-
+        
       } else if (buttonId === "locatedDropdownProjects") {
         selectedLocation = selectedText;
-
+        
         if (selectedLocation === 'In portfolios' || selectedLocation === 'In teams') {
           document.getElementById('extra-field-projectdropdown').classList.remove("hidden");
-
+          
         } else {
-
+          
           document.getElementById('extra-field-projectdropdown').classList.add("hidden");
-
+          
         }
       } else if (buttonId === "dueDateDropdown") {
         document.getElementById('dueDateDropdownExtra').textContent = selectedText;
         selectedDueDate = selectedText;
-
+        
         if (selectedDueDate === 'Yesterday' || selectedDueDate === 'Today' ||
           selectedDueDate === 'Tomorrow' || selectedDueDate === 'Specific Date') {
           document.getElementById('duedate-field').classList.add("hidden");
           document.getElementById('duedate-dropdown-extra').classList.remove("hidden");
           document.getElementById('duedate-dropdown-within').classList.add("hidden");
-
+          
           document.getElementById('duedate-dropdown-date-range').classList.add("hidden");
           rangeStartDate = '';
           rangeEndDate = '';
@@ -2699,7 +2699,7 @@ onAuthStateChanged(auth, async (user) => {
           document.getElementById('duedate-dropdown-extra').classList.add("hidden");
           document.getElementById('duedate-dropdown-date-range').classList.add("hidden");
           document.getElementById('duedate-dropdown-within').classList.remove("hidden");
-
+          
           rangeStartDate = '';
           rangeEndDate = '';
           inputRangeStartDropdown.textContent = 'Start';
@@ -2710,7 +2710,7 @@ onAuthStateChanged(auth, async (user) => {
           document.getElementById('duedate-field').classList.remove("hidden");
           document.getElementById('duedate-dropdown-extra').classList.add("hidden");
           document.getElementById('duedate-dropdown-within').classList.add("hidden");
-
+          
           document.getElementById('duedate-dropdown-date-range').classList.remove("hidden");
           inputExtraDropdown.textContent = '../../..';
           inputDueDateWithin.textContent = '';
@@ -2719,12 +2719,12 @@ onAuthStateChanged(auth, async (user) => {
           document.getElementById('duedate-field').classList.remove("hidden");
           document.getElementById('duedate-dropdown-extra').classList.add("hidden");
         }
-
+        
       } else if (buttonId === "dueDateDropdownExtra") {
         document.getElementById('dueDateDropdown').textContent = selectedText;
         selectedDueDate = selectedText;
-
-
+        
+        
         if (selectedDueDate === 'Yesterday' || selectedDueDate === 'Today' ||
           selectedDueDate === 'Tomorrow' || selectedDueDate === 'Specific Date') {
           document.getElementById('duedate-field').classList.add("hidden");
@@ -2733,81 +2733,81 @@ onAuthStateChanged(auth, async (user) => {
           selectedDueDate === 'Through the next') {
           document.getElementById('duedate-field').classList.remove("hidden");
           document.getElementById('duedate-dropdown-extra').classList.add("hidden");
-
+          
           document.getElementById('duedate-dropdown-within').classList.remove("hidden");
-
+          
         } else if (selectedDueDate === 'Date Range') {
           document.getElementById('duedate-field').classList.remove("hidden");
           document.getElementById('duedate-dropdown-extra').classList.add("hidden");
-
+          
           document.getElementById('duedate-dropdown-date-range').classList.remove("hidden");
-
+          
         } else {
           document.getElementById('duedate-field').classList.remove("hidden");
           document.getElementById('duedate-dropdown-extra').classList.add("hidden");
         }
-
+        
       } else if (buttonId === "dueDateDropdownWithin") {
         selectedWithinDaysWeeksMonths = selectedText;
-
+        
       } else if (buttonId === "statusDropdown") {
         selectedStatus = selectedText;
-
+        
       } else if (buttonId === "statusProjectDropdown") {
         selectedStatusProject = selectedText;
-
+        
       } else {
         document.getElementById('status-field').classList.add("hidden");
         document.getElementById('due-date-field').classList.add("hidden");
       }
-
+      
     });
   });
-
-  plusField.addEventListener("click", function () {
+  
+  plusField.addEventListener("click", function() {
     newExtraInput.classList.remove("hidden");
     document.getElementById('plus').classList.add("hidden");
     closeIcon.style.display = "inline";
   });
-
-  closeIcon.addEventListener("click", function (event) {
+  
+  closeIcon.addEventListener("click", function(event) {
     event.stopPropagation(); // Prevent triggering the plusField click
     newExtraInput.classList.add("hidden");
     document.getElementById('plus').classList.remove("hidden");
     closeIcon.style.display = "none";
-
+    
   });
-
+  
   const inviteBtnPeople = document.getElementById('email-container-id-people');
   const inviteBtnGeneric = document.getElementById('email-container-id');
-
-
+  
+  
   // 2. Attach the event listener using an 'async' arrow function
   if (inviteBtnPeople) {
     inviteBtnPeople.addEventListener('click', async () => {
       console.log("Invite button clicked, opening modal...");
-
+      
       // 3. Call the function and 'await' the result
       const result = await showInviteModal();
-
+      
       // 4. This code will only run AFTER the modal is closed
       if (result) {
         // This block runs if the user clicked "Send"
         console.log("Invitation details:", result);
         console.log("Emails to invite:", result.emails);
         console.log("Add to projects:", result.projects);
-
+        
         // Now you can do something with the data, for example:
         // sendInvitesToFirestore(result.emails, result.projects);
-
+        
       } else {
         // This block runs if the user clicked the '×' to close the modal
         console.log("Modal was closed without sending an invitation.");
       }
     });
   }
-
-
+  
+  
   // Do the same for the other button if it has the same behavior
   if (inviteBtnGeneric) {
     inviteBtnGeneric.addEventListener('click', async () => {
@@ -2820,12 +2820,12 @@ onAuthStateChanged(auth, async (user) => {
       }
     });
   }
-
+  
   // --- USER IS LOGGED IN, PROCEED WITH INITIALIZATION ---
   console.log("Header script running for user:", user.uid);
-
+  
   updateProfileDisplay(user);
-
+  
   fetchRecentItemsFromFirestore(renderRecentItems, {
     showTasks: true,
     showPeople: true,
@@ -2835,7 +2835,7 @@ onAuthStateChanged(auth, async (user) => {
     projectLimit: null,
     showInviteButton: false
   });
-
+  
   document.addEventListener("click", (e) => {
     // --- NEW: Handle Logout and New Workspace clicks ---
     if (e.target.closest('#logout-btn')) {
@@ -2846,7 +2846,7 @@ onAuthStateChanged(auth, async (user) => {
       handleNewWorkspace();
       return;
     }
-
+    
   });
-
+  
 });
