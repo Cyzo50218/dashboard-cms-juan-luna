@@ -64,7 +64,7 @@ const VISIBLE_ROW_BUFFER = 5; // Render 5 extra rows above and below the viewpor
 // --- STATE ---
 let flatListOfItems = []; // A flattened array of all sections and tasks.
 let isScrolling = false; // For throttling scroll events.
-
+let currentlyOpenTaskId = null;
 
 // State variables to track the drag operation
 let draggedElement = null;
@@ -168,6 +168,39 @@ function detachAllListeners() {
     });
     // Clear the tracking object
     Object.keys(activeListeners).forEach(key => activeListeners[key] = null);
+}
+
+export function setCurrentlyOpenTask(taskId) {
+    // 1. Clean Slate: Find ALL elements that currently have the highlight and remove the class.
+    // This is robust because it doesn't need to know which task was open before.
+    
+
+    // 2. Add highlight to the new task, if a new one is being opened.
+    if (taskId) {
+        const newTaskRow = document.querySelector(`.task-row-wrapper[data-task-id="${taskId}"]`);
+
+        // Safety check: Only try to add the class if the task row is currently in the DOM.
+        if (newTaskRow) {
+            const newLeftPane = newTaskRow.querySelector('.juanlunacms-spreadsheetlist-left-sticky-pane');
+            if (newLeftPane) {
+                newLeftPane.classList.add('is-open-task');
+            }
+        }
+    }
+
+    // 3. Update the state variable for the next operation.
+    currentlyOpenTaskId = taskId;
+    console.log(`[ListView] Active task highlight set to: ${currentlyOpenTaskId}`);
+}
+
+export function closeHighlight(){
+    const currentlyHighlighted = document.querySelectorAll('.is-open-task');
+    if (currentlyHighlighted.length > 0) {
+        console.log(`[ListView] Found ${currentlyHighlighted.length} highlighted task(s). Clearing now.`);
+        currentlyHighlighted.forEach(el => {
+            el.classList.remove('is-open-task');
+        });
+    }
 }
 
 function detachProjectSpecificListeners() {
@@ -472,47 +505,6 @@ function initializeListView(params) {
     startOpenTaskPolling();
 }
 
-function startOpenTaskPolling() {
-    setInterval(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const taskIdToOpen = urlParams.get('openTask');
-
-        const projectRefPath = sessionStorage.getItem('pendingProjectRef') || '';
-        const isSidebarReady = window.TaskSidebar && typeof window.TaskSidebar.open === 'function';
-
-        // --- CASE 1: New task ID is found in the URL ---
-        if (taskIdToOpen && taskIdToOpen !== lastOpenedTaskId) {
-
-            // If project path and sidebar are ready, open it immediately.
-            if (projectRefPath && isSidebarReady) {
-                console.log(`✅ Project ref path found. Opening task from URL: ${taskIdToOpen}`);
-                window.TaskSidebar.open(taskIdToOpen, projectRefPath);
-                lastOpenedTaskId = taskIdToOpen;
-                pendingTaskId = null; // Success, so clear any pending task.
-            }
-            // If project path is not ready, store the task ID for later.
-            else {
-                console.log(`⏳ Project ref path not ready. Storing task ID to open later: ${taskIdToOpen}`);
-                pendingTaskId = taskIdToOpen;
-            }
-        }
-
-        // --- CASE 2: A task was pending, check if we can open it now ---
-        else if (pendingTaskId && projectRefPath && isSidebarReady) {
-            console.log(`✅ Project ref path is now available. Opening pending task: ${pendingTaskId}`);
-            window.TaskSidebar.open(pendingTaskId, projectRefPath);
-            lastOpenedTaskId = pendingTaskId;
-            pendingTaskId = null; // The pending task is now open, so clear it.
-        }
-
-        // --- CASE 3: The 'openTask' parameter was removed from the URL ---
-        else if (!taskIdToOpen && lastOpenedTaskId !== null) {
-            console.log("🔁 openTask param removed. Resetting state.");
-            lastOpenedTaskId = null;
-            pendingTaskId = null; // Also clear any pending task if the URL no longer specifies one.
-        }
-    }, 1000); // Check every 1 second
-}
 
 export function getHeaderRight() {
     if (!headerRight) {
@@ -2212,6 +2204,12 @@ function render() {
             leftTaskCell.className = 'group sticky left-0 w-80 md:w-96 lg:w-[400px] flex-shrink-0 flex items-center border-r border-transparent group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg juanlunacms-spreadsheetlist-dynamic-border py-0.2';
             leftTaskCell.dataset.control = 'open-sidebar';
 
+            const isOpen = task.id === currentlyOpenTaskId;
+            if (isOpen) {
+                console.log(`[Render] Applying highlight to open task: ${task.id}`);
+
+                leftTaskCell.classList.add('is-open-task');
+            }
             // --- FIX 1: Reduce the top and bottom padding of the entire cell ---
             leftTaskCell.style.paddingTop = '0px';
             leftTaskCell.style.paddingBottom = '0px';
@@ -3597,27 +3595,101 @@ async function logActivity({ action, field, from, to, taskRef }) {
 }
 
 async function displaySideBarTasks(taskId) {
-    console.log(`Task name clicked. Opening sidebar for task ID: ${taskId}`);
+    // Log 1: Announce the function was called and with which ID.
+    console.log(`[DisplaySidebar] 1. Function called for taskId: ${taskId}`);
 
+    // Log 2: Check if the sidebar module is available on the window.
     if (!window.TaskSidebar) {
-        console.error("TaskSidebar module is not available.");
+        console.error("[DisplaySidebar] 2. CRITICAL ERROR: TaskSidebar module is not available.");
         return;
     }
+    console.log("[DisplaySidebar] 2. TaskSidebar module is available.");
 
     try {
-        const indexSnap = await getDoc(doc(db, "taskIndex", taskId));
+        // Log 3: Announce the search for the task and show the data being searched.
+        console.log(`[DisplaySidebar] 3. Searching for task in 'allTasksFromSnapshot' (cache has ${allTasksFromSnapshot.length} items).`);
+        const task = allTasksFromSnapshot.find(t => t.id === taskId);
 
-        if (!indexSnap.exists()) {
-            console.warn(`TaskIndex not found for task ID: ${taskId}`);
-            window.TaskSidebar.open(taskId, currentProjectRef);
+        // Log 4: Report the result of the search.
+        if (!task) {
+            console.error(`[DisplaySidebar] 4. ERROR: Could not find task with ID ${taskId} in the local cache.`);
             return;
         }
-        window.TaskSidebar.open(taskId, currentProjectRef);
+        console.log("[DisplaySidebar] 4. Task found successfully in local cache:", task);
+
+        // Log 5: Check the state of the data that will be bundled into the context.
+        console.log("[DisplaySidebar] 5. Preparing sidebar context. Current state:", {
+            isProjectLoaded: !!project,
+            userCount: allUsers.length,
+            projectRefPath: currentProjectRef?.path
+        });
+
+        const sidebarContext = {
+            task: task,
+            project: project,
+            users: allUsers,
+            projectRefPath: currentProjectRef.path
+        };
+
+        // Log 6: Display the final, complete context object before sending it.
+        console.log("[DisplaySidebar] 6. Final context object created:", sidebarContext);
+
+        // ✅ THIS LINE IS RESTORED
+        currentlyOpenTaskId = taskId;
+        setCurrentlyOpenTask(taskId);
+
+        console.log("[DisplaySidebar] 6.5. Open task id:", currentlyOpenTaskId);
+        // Log 7: Announce the final action.
+        console.log("[DisplaySidebar] 7. Calling window.TaskSidebar.open() with the context.");
+        window.TaskSidebar.open(sidebarContext);
+
     } catch (err) {
-        console.error("Failed to load sidebar via taskIndex:", err);
+        // Log 8: Catch any unexpected errors during the process.
+        console.error("[DisplaySidebar] 8. UNEXPECTED ERROR in try block:", err);
     }
 }
 
+function startOpenTaskPolling() {
+    setInterval(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const taskIdToOpen = urlParams.get('openTask');
+
+        const projectRefPath = sessionStorage.getItem('pendingProjectRef') || '';
+        const isSidebarReady = window.TaskSidebar && typeof window.TaskSidebar.open === 'function';
+
+        // --- CASE 1: New task ID is found in the URL ---
+        if (taskIdToOpen && taskIdToOpen !== lastOpenedTaskId) {
+
+            // If project path and sidebar are ready, open it immediately.
+            if (projectRefPath && isSidebarReady) {
+                console.log(`✅ Project ref path found. Opening task from URL: ${taskIdToOpen}`);
+                window.TaskSidebar.open(taskIdToOpen, projectRefPath);
+                lastOpenedTaskId = taskIdToOpen;
+                pendingTaskId = null; // Success, so clear any pending task.
+            }
+            // If project path is not ready, store the task ID for later.
+            else {
+                console.log(`⏳ Project ref path not ready. Storing task ID to open later: ${taskIdToOpen}`);
+                pendingTaskId = taskIdToOpen;
+            }
+        }
+
+        // --- CASE 2: A task was pending, check if we can open it now ---
+        else if (pendingTaskId && projectRefPath && isSidebarReady) {
+            console.log(`✅ Project ref path is now available. Opening pending task: ${pendingTaskId}`);
+            window.TaskSidebar.open(pendingTaskId, projectRefPath);
+            lastOpenedTaskId = pendingTaskId;
+            pendingTaskId = null; // The pending task is now open, so clear it.
+        }
+
+        // --- CASE 3: The 'openTask' parameter was removed from the URL ---
+        else if (!taskIdToOpen && lastOpenedTaskId !== null) {
+            console.log("🔁 openTask param removed. Resetting state.");
+            lastOpenedTaskId = null;
+            pendingTaskId = null; // Also clear any pending task if the URL no longer specifies one.
+        }
+    }, 1000); // Check every 1 second
+}
 
 function updateTask(taskId, sectionId, newProperties) {
     updateTaskInFirebase(taskId, sectionId, newProperties);

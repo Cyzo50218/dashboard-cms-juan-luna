@@ -44,7 +44,7 @@ import {
 import {
     firebaseConfig
 } from "/services/firebase-config.js";
-import { getHeaderRight } from '/dashboard/tasks/tabs/list/list.js';
+import { setCurrentlyOpenTask, getHeaderRight, closeHighlight } from '/dashboard/tasks/tabs/list/list.js';
 
 window.TaskSidebar = (function () {
     let app, auth, db, storage;
@@ -307,165 +307,153 @@ window.TaskSidebar = (function () {
         return null;
     }
 
-    async function open(taskId, projectRef) {
+    async function open(contextOrTaskId, projectRef) {
         if (!isInitialized) init();
-        if (!taskId || !currentUser) return;
 
+        const isContextProvided = typeof contextOrTaskId === 'object' && contextOrTaskId !== null && contextOrTaskId.task;
+        const isFallback = typeof contextOrTaskId === 'string';
+
+        if (!isContextProvided && !isFallback) {
+            return console.error("Sidebar `open` called with invalid arguments.");
+        }
+
+        // --- Common Setup ---
         detachAllListeners();
-        close();
-
+        close(true);
         sidebar.classList.add('is-loading', 'is-visible');
-        loadingSpinner.classList.add('is-loading');
         rightSidebarContainer.classList.add('sidebar-open');
 
-        try {
-            // This makes the function robust regardless of what the caller provides.
-            if (typeof projectRef === 'string') {
-                projectRef = doc(db, projectRef);
-            }
-
-            let taskRef;
-            let taskSnap;
-
+        // --- Path A: Instant Render with Pre-loaded Context (from list.js) ---
+        if (isContextProvided) {
+            console.log("🚀 Opening sidebar with pre-loaded context.");
             try {
-                const indexSnap = await getDoc(doc(db, "taskIndex", taskId));
-                if (indexSnap.exists()) {
-                    const indexData = indexSnap.data();
-                    taskRef = doc(db, indexData.path);
-                } else {
-                    throw new Error(`Task ${taskId} not indexed.`);
-                }
+                // 1. Synchronously set state and render UI
+                const context = contextOrTaskId;
+                currentTask = context.task;
+                currentProject = context.project;
+                allUsers = context.users;
+                currentUserId = currentUser?.id;
+                currentProjectRef = doc(db, context.projectRefPath);
+
+                updateUserPermissions(currentProject, currentUserId);
+                renderSidebar(currentTask);
+                sidebar.classList.remove('is-loading');
+
+                // 2. Asynchronously set up background listeners
+                setupBackgroundListeners();
+
             } catch (error) {
-                console.warn("Task not found in index, attempting to query collection groups...", error);
-
-                const taskQuery = query(
-                    collectionGroup(db, 'tasks'),
-                    where(documentId(), '==', `projects/${projectRef.id}/tasks/${taskId}`)
-                );
-                const querySnapshot = await getDocs(taskQuery);
-
-                if (!querySnapshot.empty) {
-                    taskSnap = querySnapshot.docs[0];
-                    taskRef = taskSnap.ref;
-                } else {
-                    // Fallback to searching in sections if not found directly under the project
-                    const sectionsTaskQuery = query(
-                        collectionGroup(db, 'tasks'),
-                        where('projectId', '==', projectRef.id),
-                        where('id', '==', taskId)
-                    );
-
-                    const sectionsQuerySnapshot = await getDocs(sectionsTaskQuery);
-
-                    if (!sectionsQuerySnapshot.empty) {
-                        // Success! We found the document.
-                        taskSnap = sectionsQuerySnapshot.docs[0];
-                        taskRef = taskSnap.ref;
-                    } else {
-                        // This error is now accurate, as we have properly searched the project.
-                        throw new Error(`Task ${taskId} not found in project ${projectRef.id} via collection group query.`);
-                    }
-                }
+                console.error("Error opening sidebar with context:", error);
+                close();
             }
+        }
+        // --- Path B: Fallback Fetching with taskId and projectRef ---
+        else if (isFallback) {
+            console.log("🔍 Opening sidebar with fallback data fetching.");
+            const taskId = contextOrTaskId;
+            try {
+                // This is the complete fetching logic you provided.
+                if (typeof projectRef === 'string') {
+                    projectRef = doc(db, projectRef);
+                }
 
-            currentProjectRef = projectRef;
+                currentProjectRef = projectRef; // Set the module-level ref
 
-            // ✅ STEP 2: Fetch project data manually from projectRef
-            // This call will now work correctly since projectRef is guaranteed to be a DocumentReference.
-            const projectSnap = await getDoc(projectRef);
-            if (!projectSnap.exists()) throw new Error("Project not found.");
-            currentProject = { id: projectSnap.id, ...projectSnap.data() };
+                // Fetch Project, Sections, and Task data
+                const projectSnap = await getDoc(projectRef);
+                if (!projectSnap.exists()) throw new Error("Project not found.");
+                currentProject = { id: projectSnap.id, ...projectSnap.data() };
 
-            // ✅ STEP 3: Fire off task + async extras in parallel
-            const results = await Promise.all([
-                taskSnap ? Promise.resolve(taskSnap) : getDoc(taskRef),
-                fetchEligibleMoveProjects(currentUserId),
-                fetchMemberProfiles(currentProject.members?.map(m => m.uid) || [])
-            ]);
+                const sectionsQuery = query(collection(projectRef, 'sections'));
+                const sectionsSnapshot = await getDocs(sectionsQuery);
+                currentProject.sections = sectionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-            taskSnap = results[0];
-            const eligibleProjects = results[1];
-            const memberProfiles = results[2];
+                const indexSnap = await getDoc(doc(db, "taskIndex", taskId));
+                if (!indexSnap.exists()) throw new Error(`Task ${taskId} not indexed.`);
+                const taskRef = doc(db, indexSnap.data().path);
 
-            if (!taskSnap.exists()) {
-                console.warn(`Stale entry found in taskIndex for deleted task ${taskId}. Removing it.`);
-                const taskIndexRef = doc(db, "taskIndex", taskId);
-                await deleteDoc(taskIndexRef); // Delete the bad index entry
-                throw new Error("Task not found at indexed path."); // Then throw error
+                // Fetch Task and other parallel data
+                const results = await Promise.all([
+                    getDoc(taskRef),
+                    fetchEligibleMoveProjects(currentUserId),
+                    fetchMemberProfiles(currentProject.members?.map(m => m.uid) || [])
+                ]);
+
+                const taskSnap = results[0];
+                workspaceProjects = results[1];
+                allUsers = results[2];
+
+                if (!taskSnap.exists()) {
+                    await deleteDoc(doc(db, "taskIndex", taskId));
+                    throw new Error("Task not found at indexed path.");
+                }
+
+                currentTask = { id: taskSnap.id, ...taskSnap.data() };
+                currentTaskRef = taskRef;
+
+                // Render UI and attach listeners
+                updateUserPermissions(currentProject, currentUserId);
+                sidebar.classList.remove('is-loading');
+                setCurrentlyOpenTask(taskSnap.id);
+
+                renderSidebar(currentTask);
+
+                listenToTaskUpdates();
+                listenToActivity();
+                listenToMessages();
+
+            } catch (error) {
+                console.error("TaskSidebar: A critical error occurred during fallback open.", error);
+                close();
             }
-
-            currentTask = { id: taskSnap.id, ...taskSnap.data() };
-            currentTaskRef = taskRef;
-            workspaceProjects = eligibleProjects;
-            allUsers = memberProfiles;
-
-            updateUserPermissions(currentProject, currentUserId);
-            sidebar.classList.remove('is-loading');
-            renderSidebar(currentTask);
-
-            // ✅ STEP 4: Defer recent history update
-            setTimeout(async () => {
-                try {
-                    const historyRef = doc(db, `users/${currentUserId}/recenthistory/${taskId}`);
-                    let assigneesForHistory = [];
-
-                    if (currentTask.assignees?.length > 0) {
-                        const assigneeProfiles = await fetchMemberProfiles(currentTask.assignees);
-                        assigneesForHistory = assigneeProfiles.map(p => ({
-                            uid: p.id,
-                            name: p.name,
-                            avatarUrl: p.avatar
-                        }));
-                    }
-
-                    const recentHistoryData = {
-                        type: 'task',
-                        name: currentTask.name,
-                        status: currentTask.status,
-                        assignees: assigneesForHistory,
-                        projectRef: projectRef, // This is now correctly a DocumentReference
-                        projectName: currentProject.title,
-                        projectColor: currentProject.color,
-                        lastAccessed: serverTimestamp()
-                    };
-
-                    await setDoc(historyRef, recentHistoryData, { merge: true });
-                } catch (err) {
-                    console.warn("Could not update recent history:", err);
-                }
-            }, 300);
-
-            // ✅ STEP 5: Setup realtime listeners
-            taskListenerUnsubscribe = onSnapshot(taskRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    const updatedTask = { id: docSnap.id, ...docSnap.data() };
-                    if (JSON.stringify(updatedTask) !== JSON.stringify(currentTask)) {
-                        currentTask = updatedTask;
-                        updateUserPermissions(currentProject, currentUserId);
-                        renderSidebar(currentTask);
-                    }
-                } else {
-                    console.warn("Task was deleted in real-time. Closing sidebar.");
-                    close();
-                }
-            }, (error) => {
-                console.error("Error in task listener:", error);
-            });
-
-            listenToActivity();
-            listenToMessages();
-
-        } catch (error) {
-            console.error("TaskSidebar: A critical error occurred while opening the task.", error);
-            close();
         }
     }
 
-    function close() {
+    // This helper is primarily for the "Instant Render" path
+    async function setupBackgroundListeners() {
+        if (!currentTask) return;
+        try {
+            const indexSnap = await getDoc(doc(db, "taskIndex", currentTask.id));
+            if (!indexSnap.exists()) throw new Error("Task index not found.");
+
+            currentTaskRef = doc(db, indexSnap.data().path);
+
+            listenToTaskUpdates();
+            listenToActivity();
+            listenToMessages();
+        } catch (error) {
+            console.error("Failed to set up background listeners:", error);
+        }
+    }
+
+    // This helper is for both paths to listen for real-time changes
+    function listenToTaskUpdates() {
+        if (taskListenerUnsubscribe) taskListenerUnsubscribe();
+        if (!currentTaskRef) return;
+
+        taskListenerUnsubscribe = onSnapshot(currentTaskRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const updatedTask = { id: docSnap.id, ...docSnap.data() };
+                if (JSON.stringify(updatedTask) !== JSON.stringify(currentTask)) {
+                    currentTask = updatedTask;
+                    renderSidebar(currentTask);
+                }
+            } else {
+                close();
+            }
+        });
+    }
+
+    function close(isInternalCall = false) {
         if (sidebar) sidebar.classList.remove('is-visible', 'is-loading');
         currentTask = currentTaskRef = currentProject = null;
         workspaceProjects = allUsers = allMessages = allActivities = [];
         clearImagePreview();
+        if (!isInternalCall && setCurrentlyOpenTask) {
+            console.log('[Sidebar] close() called. Notifying list view to remove task highlight.');
+            setCurrentlyOpenTask(null);
+            closeHighlight();
+        }
         scrolledTaskNameEl.textContent = 'Mark Complete';
         loadingSpinner.classList.remove('hide');
         loadingSpinner.classList.add('is-loading');
