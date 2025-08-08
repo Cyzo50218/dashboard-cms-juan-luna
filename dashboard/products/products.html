@@ -7,54 +7,61 @@
   </div>
 </div>
 <div id="savingOverlay" class="saving-overlay hidden">
-    <div class="saving-content">
-        <div class="spinner"></div>
-        <p>Saving...</p>
-    </div>
+  <div class="saving-content">
+    <div class="spinner"></div>
+    <p>Saving...</p>
+  </div>
 </div>
 <div class="product-list-container">
   <div class="flex pt-16 h-screen w-full">
-
     <div class="flex-1 h-full flex flex-col">
-
       <div class="search-container1 p-6 mt-3">
         <span class="search-icon">
           <i class="material-icons text-gray-500 text-[20px]">search</i>
         </span>
 
-        <input type="text" id="searchInput" placeholder="Search by name or SKU..." class="search-input" />
+        <input
+          type="text"
+          id="searchInput"
+          placeholder="Search by name or SKU..."
+          class="search-input"
+        />
         <button id="clearSearchBtn" class="clear-search-btn hidden">✕</button>
       </div>
 
       <section class="flex-grow overflow-y-auto px-6 scrollbar">
         <div class="flex flex-wrap gap-2 pb-32" id="productGridList"></div>
       </section>
-
     </div>
-    <!-- Sidebar -->
-    <aside class="w-[300px] right-0  bottom-0 bg-white border-l border-gray-200 overflow-y-auto">
+
+    <aside
+      class="w-[300px] right-0 bottom-0 border-l overflow-y-auto"
+      style="background-color: var(--card-bg); border-color: var(--border-color);"
+    >
       <div class="flex flex-col h-full">
         <div class="sidebar-header flex justify-between items-center">
           <button id="closeBtn" class="close-btn"></button>
         </div>
 
-        <div id="productContent" class="p-8 text-center" style="color: #d3d3d3">
+        <div
+          id="productContent"
+          class="p-8 text-center"
+          style="color: var(--search-placeholder);"
+        >
           Click on a product card to view details
         </div>
 
         <div id="productSettings" class="hidden"></div>
-        <br>
-        <br>
+        <br />
+        <br />
       </div>
     </aside>
   </div>
 
-  <!-- Notification -->
   <div class="notification" id="notification">
     <div id="notificationMessage"></div>
   </div>
 
-  <!-- Modal -->
   <div class="modal-overlay hidden" id="productModal">
     <div class="modal-container">
       <div class="modal-header">
@@ -73,30 +80,52 @@
           </div>
           <div class="form-group">
             <label class="form-label">Cost</label>
-            <input type="number" class="form-input" id="productCost" min="0" step="0.01" required />
+            <input
+              type="number"
+              class="form-input"
+              id="productCost"
+              min="0"
+              step="0.01"
+              required
+            />
           </div>
           <div class="form-group">
             <label class="form-label">Supplier</label>
 
-            <input type="hidden" id="productSupplierValue">
+            <input type="hidden" id="productSupplierValue" />
 
             <div class="custom-select-container" id="supplierDropdownContainer">
-
               <div class="custom-select-trigger" id="supplierDropdownTrigger">
                 <span class="selected-text">Select a supplier...</span>
-                <svg class="arrow" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                  fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg
+                  class="arrow"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
                   <path d="m6 9 6 6 6-6" />
                 </svg>
               </div>
 
-              <div class="custom-options hidden" id="supplierDropdownOptions">
-              </div>
+              <div
+                class="custom-options hidden"
+                id="supplierDropdownOptions"
+              ></div>
             </div>
           </div>
           <div class="form-group">
             <label class="form-label">Description</label>
-            <textarea class="form-input" id="productDescription" rows="3"></textarea>
+            <textarea
+              class="form-input"
+              id="productDescription"
+              rows="3"
+            ></textarea>
           </div>
           <div class="form-group">
             <label class="form-label">Product Image</label>
@@ -108,7 +137,12 @@
                 <p>or</p>
                 <p>Paste (Ctrl+V)</p>
               </div>
-              <input type="file" class="hidden" id="productImageFile" accept="image/*" />
+              <input
+                type="file"
+                class="hidden"
+                id="productImageFile"
+                accept="image/*"
+              />
             </div>
             <div class="image-preview" id="imagePreview"></div>
             <input type="hidden" id="productImage" />
@@ -123,10 +157,13 @@
   </div>
 
   <div
-    class="productlist-header fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-4 bg-white border-b border-gray-200">
-
-    <!-- Title centered -->
-    <h1 class="text-xl font-600 tracking-tight flex-grow text-center" style="color: #000000">
+    class="productlist-header fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-4 border-b"
+    style="background-color: var(--card-bg); border-color: var(--border-color);"
+  >
+    <h1
+      class="text-xl font-600 tracking-tight flex-grow text-center"
+      style="color: var(--text-color);"
+    >
       Juan Luna Collections
     </h1>
     <div class="flex items-center gap-3 flex-shrink-0">
@@ -139,6 +176,5 @@
         Add Product
       </button>
     </div>
-
   </div>
 </div>

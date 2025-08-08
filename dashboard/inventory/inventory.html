@@ -1,61 +1,74 @@
 <div id="image-overlay" class="image-overlay hidden">
-    <span id="close-overlay" class="close-overlay-btn">&times;</span>
-    <img id="overlay-image-src" class="overlay-image" src="" alt="Product Image">
+  <span id="close-overlay" class="close-overlay-btn">&times;</span>
+  <img
+    id="overlay-image-src"
+    class="overlay-image"
+    src=""
+    alt="Product Image"
+  />
 </div>
 <div id="restricted-overlay" class="restricted-overlay hidden">
-    <div class="restricted-content">
-        <i class="fas fa-lock fa-3x"></i>
-        <h2>Restricted Access</h2>
-        <p class="message">You are not allowed to view this inventory.</p>
-        <button id="restricted-ok-btn" class="restricted-ok-btn">OK</button>
-    </div>
+  <div class="restricted-content">
+    <i class="fas fa-lock fa-3x"></i>
+    <h2>Restricted Access</h2>
+    <p class="message">You are not allowed to view this inventory.</p>
+    <button id="restricted-ok-btn" class="restricted-ok-btn">OK</button>
+  </div>
 </div>
 
 <div class="list-view-container">
-
-    <div class="inventory-header">
-        <div class="inventory-header-top">
-            <h1 class="inventory-title">
-                <i class="fas fa-boxes"></i>
-                Inventory Management <span class="dot-separator">·</span> <span id="inventory-subtitle">PH Stocks</span>
-            </h1>
-            <div class="inventory-actions">
-                <div class="avatar-stack" id="project-header-members"></div>
-                <button class="inventory-btn hidden" id="inventory-settings-btn">
-                    <span class="material-icons">inventory_2</span>
-                    Settings
-                </button>
-                <button class="inventory-btn icon-btn" id="notification-btn">
-                    <span class="material-icons">notifications</span>
-                    <span class="notification-badge hidden" id="notification-badge"></span>
-                </button>
-                <button class="inventory-btn icon-btn" id="backorders-btn">
-                    <span class="material-icons">receipt_long</span>
-                    <span class="notification-badge hidden" id="backorders-badge"></span>
-                </button>
-            </div>
-        </div>
-        <div class="inventory-tabs">
-            <button class="tab-item active">PH Stocks</button>
-            <button class="tab-item">US Stocks</button>
-        </div>
+  <div class="inventory-header">
+    <div class="inventory-header-top">
+      <h1 class="inventory-title">
+        <i class="fas fa-boxes"></i>
+        Inventory Management <span class="dot-separator">·</span>
+        <span id="inventory-subtitle">PH Stocks</span>
+      </h1>
+      <div class="inventory-actions">
+        <div class="avatar-stack" id="project-header-members"></div>
+        <button class="inventory-btn hidden" id="inventory-settings-btn">
+          <span class="material-icons">inventory_2</span>
+          Settings
+        </button>
+        <button class="inventory-btn icon-btn" id="notification-btn">
+          <span class="material-icons">notifications</span>
+          <span
+            class="notification-badge hidden"
+            id="notification-badge"
+          ></span>
+        </button>
+        <button class="inventory-btn icon-btn" id="backorders-btn">
+          <span class="material-icons">receipt_long</span>
+          <span class="notification-badge hidden" id="backorders-badge"></span>
+        </button>
+      </div>
     </div>
-
-    <div class="listview-header">
-        <button class="add-task-header-btn hidden"><i class="fas fa-plus"></i> Add product</button>
-
-        <div class="header-controls-right" id="header-right">
-            <button id="move-products-btn" class="transfer-header-btn hidden">
-                Transfer
-            </button>
-            <button id="filter-btn" class="hidden"><i class="fas fa-filter"></i> Filter</button>
-            <button id="sort-btn" class="hidden"><i class="fas fa-sort"></i> Sort</button>
-        </div>
+    <div class="inventory-tabs">
+      <button class="tab-item active">PH Stocks</button>
+      <button class="tab-item">US Stocks</button>
     </div>
+  </div>
 
-    <div id="task-list-header"></div>
-    <div id="task-list-body" class="h-full w-full"></div>
+  <div class="listview-header">
+    <button class="add-task-header-btn hidden">
+      <i class="fas fa-plus"></i> Add product
+    </button>
 
-    <div class="custom-scrollbar-placeholder"></div>
+    <div class="header-controls-right" id="header-right">
+      <button id="move-products-btn" class="transfer-header-btn hidden">
+        Transfer
+      </button>
+      <button id="filter-btn" class="hidden">
+        <i class="fas fa-filter"></i> Filter
+      </button>
+      <button id="sort-btn" class="hidden">
+        <i class="fas fa-sort"></i> Sort
+      </button>
+    </div>
+  </div>
 
+  <div id="task-list-header"></div>
+  <div id="task-list-body" class="h-full w-full"></div>
+
+  <div class="custom-scrollbar-placeholder"></div>
 </div>

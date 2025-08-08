@@ -1,431 +1,486 @@
-     /* --- UPDATED STYLES --- */
+:root {
+  --bg-color: #ffffff;
+  --text-color: #020202;
+  --card-bg: #ffffff;
+  --border-color: #e1e4e6;
+  --primary-color: #2196f3;
+  --secondary-color: #f06a6a;
+}
 
-     /* 1. The Outer Header: This is now full-width and sticky */
-     .header-myworkspace {
-         position: sticky;
-         top: 0;
-         z-index: 100;
-         border-bottom: 1px solid #e8e8e8;
-         padding: 0 32px;
-         /* Adds padding on the far left/right of the screen */
-     }
+[data-theme="dark"] {
+  --bg-color: #1a1a1a;
+  --text-color: #f0f0f0;
+  --card-bg: #2d2d2d;
+  --border-color: #444;
+  --primary-color: #d32f2f;
+  --secondary-color: #e53935;
+}
 
-     /* 2. The New Inner Wrapper: This constrains and centers the content */
-     .header-content-wrapper {
-         display: flex;
-         align-items: center;
-         justify-content: space-between;
-         /* Pushes left and right sides apart */
-         margin: 0 auto;
-         /* Centers the content */
-         padding: 16px 0;
-         /* Vertical padding from your old header */
-     }
+html[data-theme="dark"],
+html[data-theme="dark"] body,
+html[data-theme="dark"] .workspace-container {
+  background-color: var(--bg-color);
+}
 
-     /* 3. The Main Content Container: Adjusted for the new layout */
-     .main-header-myworkspace {
-         display: flex;
-         justify-content: space-between;
-         align-items: center;
-         flex-wrap: wrap;
-     }
+[data-theme="dark"] .header-myworkspace {
+  background-color: var(--bg-color);
+  border-bottom-color: var(--border-color);
+}
 
-     .workspace-container {
-         margin-left: 40px;
-         margin-right: 20px;
-     }
+[data-theme="dark"] .workspace-title,
+[data-theme="dark"] .workspace-description,
+[data-theme="dark"] .nav-tab-myworkspace,
+[data-theme="dark"] .star-icon,
+[data-theme="dark"] .card-header-myworkspace h2,
+[data-theme="dark"] .card-header-myworkspace a,
+[data-theme="dark"] .send-feedback,
+[data-theme="dark"] .main-column h1,
+[data-theme="dark"] .user-avatar-myworkspace {
+  color: var(--text-color);
+}
 
-     .header-myworkspace-left {
-         display: flex;
-         align-items: center;
-         flex-grow: 1;
-     }
+[data-theme="dark"] .card {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+}
 
-     .workspace-icon {
-         height: 32px;
-         width: 32px;
-         background-color: #7b6f8f;
-         border-radius: 5px;
-         display: flex;
-         align-items: center;
-         justify-content: center;
-         color: white;
-         font-size: 20px;
-         font-weight: bold;
-         margin-right: 12px;
-     }
+[data-theme="dark"] .nav-tab-myworkspace.active {
+  background-color: #444;
+  color: var(--text-color);
+}
 
-     .workspace-title {
-         font-size: 20px;
-         font-weight: 600;
-         margin-top: 4px;
-         margin-right: 8px;
-     }
+[data-theme="dark"] .btn-myworkspace-secondary {
+  background-color: var(--card-bg);
+  color: var(--text-color);
+  border-color: var(--border-color);
+}
 
-     .star-icon {
-         color: #6d6e70;
-         cursor: pointer;
-     }
+[data-theme="dark"] .btn-myworkspace-secondary-subtle {
+  color: var(--text-color);
+}
 
-     .nav-tabs-myworkspace {
-         display: flex;
-         align-items: center;
-         margin-left: 24px;
-     }
+[data-theme="dark"] .btn-myworkspace-secondary-subtle:hover {
+  background-color: #444;
+}
 
-     .nav-tab-myworkspace {
-         padding: 8px 12px;
-         margin-right: 8px;
-         font-size: 14px;
-         color: #6d6e70;
-         cursor: pointer;
-         border-radius: 6px;
-     }
+[data-theme="dark"] .workspace-dropdown {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+}
 
-     .nav-tab-myworkspace.active {
-         font-weight: 500;
-         background-color: #edebe9;
-         color: #1e1f21;
-     }
+[data-theme="dark"] .workspace-dropdown-item {
+  color: var(--text-color);
+}
 
-     .nav-tab-myworkspace-add {
-         border-left: 1px solid #e8e8e8;
-         margin-left: 8px;
-         padding-left: 16px;
-         color: #6d6e70;
-         cursor: pointer;
-     }
+[data-theme="dark"] .workspace-dropdown-item:hover {
+  background-color: #444;
+}
 
+.header-myworkspace {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid #e8e8e8;
+  padding: 0 32px;
+}
 
-     .header-myworkspace-right {
-         display: flex;
-         align-items: center;
-     }
+.header-content-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 
-     .btn-myworkspace {
-         padding: 8px 16px;
-         border-radius: 8px;
-         font-size: 14px;
-         font-weight: 500;
-         cursor: pointer;
-         border: 1px solid transparent;
-     }
+  margin: 0 auto;
 
-     .btn-myworkspace-primary {
-         background-color: #3F7EEB;
-         color: white;
-     }
+  padding: 16px 0;
+}
 
-     .btn-myworkspace-secondary {
-         background-color: white;
-         color: #1e1f21;
-         border: 1px solid #c7c7c7;
-     }
+.main-header-myworkspace {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
 
-     .btn-myworkspace-secondary-subtle {
-         background-color: transparent;
-         color: #6d6e70;
-         padding: 6px 12px;
-     }
+.workspace-container {
+  margin-left: 40px;
+  margin-right: 20px;
+}
 
-     .btn-myworkspace-secondary-subtle:hover {
-         background-color: #edebe9;
-     }
+.header-myworkspace-left {
+  display: flex;
+  align-items: center;
+  flex-grow: 1;
+}
 
+.workspace-icon {
+  height: 32px;
+  width: 32px;
+  background-color: #7b6f8f;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 20px;
+  font-weight: bold;
+  margin-right: 12px;
+}
 
-     /* Main Content Grid */
-     .main-content {
-         display: grid;
-         grid-template-columns: 2fr 1fr;
-         gap: 24px;
-         padding: 24px 0;
-     }
+.workspace-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-top: 4px;
+  margin-right: 8px;
+}
 
-     .main-column h1 {
-         font-size: 28px;
-         margin: 0;
-     }
+.star-icon {
+  color: #6d6e70;
+  cursor: pointer;
+}
 
-     .workspace-description.placeholder {
-         color: #888;
-         font-style: italic;
-     }
+.nav-tabs-myworkspace {
+  display: flex;
+  align-items: center;
+  margin-left: 24px;
+}
 
-     .workspace-description {
-         color: #6d6e70;
-         margin: 4px 0 24px 0;
-         cursor: pointer;
-         min-height: 20px;
-     }
+.nav-tab-myworkspace {
+  padding: 8px 12px;
+  margin-right: 8px;
+  font-size: 14px;
+  color: #6d6e70;
+  cursor: pointer;
+  border-radius: 6px;
+}
 
-     #description-editor {
-         width: 95%;
-         padding: 8px;
-         font-family: inherit;
-         font-size: 14px;
-         border: 1px solid #c7c7c7;
-         border-radius: 6px;
-         resize: vertical;
-         margin: 4px 0 24px 0;
-     }
+.nav-tab-myworkspace.active {
+  font-weight: 500;
+  background-color: #edebe9;
+  color: #1e1f21;
+}
 
-     .main-header-myworkspace {
-         display: flex;
-         justify-content: space-between;
-         align-items: flex-start;
-         margin-bottom: 24px;
-     }
+.nav-tab-myworkspace-add {
+  border-left: 1px solid #e8e8e8;
+  margin-left: 8px;
+  padding-left: 16px;
+  color: #6d6e70;
+  cursor: pointer;
+}
 
-     .card {
-         background-color: white;
-         border: 1px solid #e8e8e8;
-         border-radius: 8px;
-         padding: 24px;
-         margin-bottom: 24px;
-     }
+.header-myworkspace-right {
+  display: flex;
+  align-items: center;
+}
 
-     .card-header-myworkspace {
-         display: flex;
-         justify-content: space-between;
-         align-items: center;
-         margin-bottom: 16px;
-     }
+.btn-myworkspace {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
 
-     .card-header-myworkspace h2 {
-         font-size: 16px;
-         font-weight: 600;
-         margin: 0;
-     }
+.btn-myworkspace-primary {
+  background-color: #3f7eeb;
+  color: white;
+}
 
-     .card-header-myworkspace a {
-         font-size: 14px;
-         color: #6d6e70;
-         text-decoration: none;
-     }
+.btn-myworkspace-secondary {
+  background-color: white;
+  color: #1e1f21;
+  border: 1px solid #c7c7c7;
+}
 
-     /* Curated Work Section */
-     .curated-work-item {
-         display: flex;
-         align-items: center;
-         padding: 12px 0;
-         border-bottom: 1px solid #e8e8e8;
-     }
+.btn-myworkspace-secondary-subtle {
+  background-color: transparent;
+  color: #6d6e70;
+  padding: 6px 12px;
+}
 
-     .curated-work-item:last-child {
-         border-bottom: none;
-     }
+.btn-myworkspace-secondary-subtle:hover {
+  background-color: #edebe9;
+}
 
-     .work-item-icon {
-         width: 32px;
-         height: 32px;
-         border-radius: 4px;
-         margin-right: 16px;
-     }
+.main-content {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+  padding: 24px 0;
+}
 
-     .work-item-icon.blue {
-         background-color: #e9f3ff;
-     }
+.main-column h1 {
+  font-size: 28px;
+  margin: 0;
+}
 
-     .work-item-icon.green {
-         background-color: #e7f5e8;
-     }
+.workspace-description.placeholder {
+  color: #888;
+  font-style: italic;
+}
 
-     .work-item-icon.purple {
-         background-color: #f4eefc;
-     }
+.workspace-description {
+  color: #6d6e70;
+  margin: 4px 0 24px 0;
+  cursor: pointer;
+  min-height: 20px;
+}
 
-     .work-item-details .line-1 {
-         background-color: #e0e0e0;
-         height: 10px;
-         width: 150px;
-         border-radius: 4px;
-         margin-bottom: 8px;
-     }
+#description-editor {
+  width: 95%;
+  padding: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  border: 1px solid #c7c7c7;
+  border-radius: 6px;
+  resize: vertical;
+  margin: 4px 0 24px 0;
+}
 
-     .work-item-details .line-2 {
-         background-color: #f0f0f0;
-         height: 8px;
-         width: 100px;
-         border-radius: 4px;
-     }
+.main-header-myworkspace {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
 
-     .add-work-prompt {
-         text-align: center;
-         padding: 32px 16px;
-     }
+.card {
+  background-color: white;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
 
-     .add-work-prompt p {
-         color: #6d6e70;
-         font-size: 14px;
-         max-width: 400px;
-         margin: 0 auto 16px;
-         line-height: 1.5;
-     }
+.card-header-myworkspace {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
 
-     .send-feedback {
-         font-size: 12px;
-         color: #6d6e70;
-         text-decoration: underline;
-         cursor: pointer;
-     }
+.card-header-myworkspace h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
 
-     /* Sidebar Column */
-     .sidebar-column .card {
-         padding: 16px;
-     }
+.card-header-myworkspace a {
+  font-size: 14px;
+  color: #6d6e70;
+  text-decoration: none;
+}
 
-     /* NEW/MODIFIED STYLES FOR STAFF LIST */
-     .staff-list {
-         display: flex;
-         align-items: center;
-     }
+.curated-work-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #e8e8e8;
+}
 
-     .user-avatar-myworkspace {
-         height: 28px;
-         width: 28px;
-         border-radius: 50%;
-         display: flex;
-         align-items: center;
-         justify-content: center;
-         font-size: 12px;
-         font-weight: bold;
-         cursor: pointer;
-         border: 2px solid white;
-         /* Creates separation for stacked look */
-         transition: margin 0.3s ease;
-         /* Smooth transition */
-     }
+.curated-work-item:last-child {
+  border-bottom: none;
+}
 
-     /* This applies the stacking to every avatar except the first one */
-     .user-avatar-myworkspace:not(:first-child) {
-         margin-left: -10px;
-     }
+.work-item-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  margin-right: 16px;
+}
 
-     .add-staff-icon {
-         height: 28px;
-         width: 28px;
-         border: 1px dashed #c7c7c7;
-         border-radius: 50%;
-         display: flex;
-         align-items: center;
-         justify-content: center;
-         color: #6d6e70;
-         font-size: 16px;
-         cursor: pointer;
-         margin-left: 8px;
-         background-color: #f9f8f7;
-         transition: opacity 0.3s ease;
-     }
+.work-item-icon.blue {
+  background-color: #e9f3ff;
+}
 
-     .add-staff-icon.disabled {
-         opacity: 0.5;
-         cursor: not-allowed;
-     }
+.work-item-icon.green {
+  background-color: #e7f5e8;
+}
 
-     .goals-prompt p {
-         font-size: 14px;
-         color: #6d6e70;
-         line-height: 1.5;
-         margin-top: 0;
-     }
+.work-item-icon.purple {
+  background-color: #f4eefc;
+}
 
-     .progress-bar-container {
-         margin-top: 16px;
-     }
+.work-item-details .line-1 {
+  background-color: #e0e0e0;
+  height: 10px;
+  width: 150px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
 
-     .progress-bar-label {
-         font-size: 12px;
-         color: #6d6e70;
-         margin-bottom: 8px;
-     }
+.work-item-details .line-2 {
+  background-color: #f0f0f0;
+  height: 8px;
+  width: 100px;
+  border-radius: 4px;
+}
 
-     .progress-bar {
-         width: 100%;
-         height: 6px;
-         background-color: #edebe9;
-         border-radius: 3px;
-     }
+.add-work-prompt {
+  text-align: center;
+  padding: 32px 16px;
+}
 
-     .progress {
-         width: 0%;
-         height: 100%;
-         background-color: #b0b0b0;
-     }
+.add-work-prompt p {
+  color: #6d6e70;
+  font-size: 14px;
+  max-width: 400px;
+  margin: 0 auto 16px;
+  line-height: 1.5;
+}
 
-     /* Style the dropdown container */
-     .workspace-dropdown {
-         display: none;
-         /* Hidden by default */
-         position: absolute;
-         top: 100%;
-         /* Position below the header */
-         left: 0;
-         background-color: white;
-         border: 1px solid #ddd;
-         border-radius: 8px;
-         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-         min-width: 250px;
-         z-index: 1000;
-         overflow: hidden;
-         margin-top: 8px;
-     }
+.send-feedback {
+  font-size: 12px;
+  color: #6d6e70;
+  text-decoration: underline;
+  cursor: pointer;
+}
 
-     /* Class to show the dropdown */
-     .workspace-dropdown.visible {
-         display: block;
-     }
+.sidebar-column .card {
+  padding: 16px;
+}
 
-     /* Style individual items in the dropdown */
-     .workspace-dropdown-item {
-         display: block;
-         padding: 12px 16px;
-         color: #333;
-         text-decoration: none;
-         font-size: 1rem;
-         font-weight: 500;
-     }
+.staff-list {
+  display: flex;
+  align-items: center;
+}
 
-     .workspace-dropdown-item:hover {
-         background-color: #f5f5f5;
-     }
+.user-avatar-myworkspace {
+  height: 28px;
+  width: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  border: 2px solid white;
 
-     /* Add a pointer and an indicator to show the title is clickable */
-     .workspace-title.is-switchable {
-         cursor: pointer;
-         position: relative;
-         padding-right: 20px;
-     }
+  transition: margin 0.3s ease;
+}
 
-     .workspace-title.is-switchable::after {
-         content: '\f0d7';
-         /* Font Awesome down arrow */
-         font-family: 'Font Awesome 5 Free';
-         font-weight: 900;
-         position: absolute;
-         right: 0;
-         top: 50%;
-         transform: translateY(-50%);
-         font-size: 0.8em;
-         color: #888;
-     }
+.user-avatar-myworkspace:not(:first-child) {
+  margin-left: -10px;
+}
 
-     /* Add a visual indicator to editable fields */
-     .is-editable {
-         outline: none;
-         transition: box-shadow 0.2s;
-     }
+.add-staff-icon {
+  height: 28px;
+  width: 28px;
+  border: 1px dashed #c7c7c7;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6d6e70;
+  font-size: 16px;
+  cursor: pointer;
+  margin-left: 8px;
+  background-color: #f9f8f7;
+  transition: opacity 0.3s ease;
+}
 
-     .is-editable:hover {
-         box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-         /* Subtle blue glow on hover */
-     }
+.add-staff-icon.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
-     .is-editable:focus {
-         box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.5);
-         /* Stronger glow when editing */
-     }
+.goals-prompt p {
+  font-size: 14px;
+  color: #6d6e70;
+  line-height: 1.5;
+  margin-top: 0;
+}
 
-     /* Style for the dynamically added Save button */
-     .btn-save-changes {
-         margin-left: 1rem;
-     }
+.progress-bar-container {
+  margin-top: 16px;
+}
+
+.progress-bar-label {
+  font-size: 12px;
+  color: #6d6e70;
+  margin-bottom: 8px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background-color: #edebe9;
+  border-radius: 3px;
+}
+
+.progress {
+  width: 0%;
+  height: 100%;
+  background-color: #b0b0b0;
+}
+
+.workspace-dropdown {
+  display: none;
+
+  position: absolute;
+  top: 100%;
+
+  left: 0;
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  min-width: 250px;
+  z-index: 1000;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.workspace-dropdown.visible {
+  display: block;
+}
+
+.workspace-dropdown-item {
+  display: block;
+  padding: 12px 16px;
+  color: #333;
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.workspace-dropdown-item:hover {
+  background-color: #f5f5f5;
+}
+
+.workspace-title.is-switchable {
+  cursor: pointer;
+  position: relative;
+  padding-right: 20px;
+}
+
+.workspace-title.is-switchable::after {
+  content: "\f0d7";
+
+  font-family: "Font Awesome 5 Free";
+  font-weight: 900;
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.8em;
+  color: #888;
+}
+
+.is-editable {
+  outline: none;
+  transition: box-shadow 0.2s;
+}
+
+.is-editable:hover {
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.is-editable:focus {
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.5);
+}
+
+.btn-save-changes {
+  margin-left: 1rem;
+}
