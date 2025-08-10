@@ -173,7 +173,7 @@ function detachAllListeners() {
 export function setCurrentlyOpenTask(taskId) {
     // 1. Clean Slate: Find ALL elements that currently have the highlight and remove the class.
     // This is robust because it doesn't need to know which task was open before.
-    
+
 
     // 2. Add highlight to the new task, if a new one is being opened.
     if (taskId) {
@@ -193,7 +193,7 @@ export function setCurrentlyOpenTask(taskId) {
     console.log(`[ListView] Active task highlight set to: ${currentlyOpenTaskId}`);
 }
 
-export function closeHighlight(){
+export function closeHighlight() {
     const currentlyHighlighted = document.querySelectorAll('.is-open-task');
     if (currentlyHighlighted.length > 0) {
         console.log(`[ListView] Found ${currentlyHighlighted.length} highlighted task(s). Clearing now.`);
@@ -2066,10 +2066,11 @@ function render() {
         });
 
         const emptyAddCell = document.createElement('div');
-        emptyAddCell.className = 'w-12 flex-shrink-0 h-full hover:bg-slate-50';
+        emptyAddCell.className = 'w-12 flex-shrink-0 h-full hover:bg-slate-50/20';
         rightSectionCell.appendChild(emptyAddCell);
+
         const emptyEndSpacer = document.createElement('div');
-        emptyEndSpacer.className = 'w-4 flex-shrink-0 h-full hover:bg-slate-50';
+        emptyEndSpacer.className = 'w-4 flex-shrink-0 h-full hover:bg-slate-50/20';
         rightSectionCell.appendChild(emptyEndSpacer);
 
         sectionRow.appendChild(leftSectionCell);
@@ -2187,7 +2188,7 @@ function render() {
         // Render task rows`
         section.tasks.forEach(task => {
             const taskRow = document.createElement('div');
-            taskRow.className = 'task-row-wrapper flex group border-b border-slate-200';
+            taskRow.className = 'task-row-wrapper flex group border-b border-slate-200 dark:border-slate-700 dark:hover:bg-slate-800';
             taskRow.dataset.taskId = task.id;
             taskRow.dataset.sectionId = section.id;
 
@@ -2201,7 +2202,7 @@ function render() {
 
 
             const leftTaskCell = document.createElement('div');
-            leftTaskCell.className = 'group sticky left-0 w-80 md:w-96 lg:w-[400px] flex-shrink-0 flex items-center border-r border-transparent group-hover:bg-slate-50 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg juanlunacms-spreadsheetlist-dynamic-border py-0.2';
+            leftTaskCell.className = 'group sticky left-0 w-80 md:w-96 lg:w-[400px] flex-shrink-0 flex items-center border-r border-transparent group-hover:bg-slate-50 dark:group-hover:bg-slate-50/20 juanlunacms-spreadsheetlist-left-sticky-pane juanlunacms-spreadsheetlist-sticky-pane-bg juanlunacms-spreadsheetlist-dynamic-border py-0.2';
             leftTaskCell.dataset.control = 'open-sidebar';
 
             const isOpen = task.id === currentlyOpenTaskId;
@@ -2254,7 +2255,7 @@ function render() {
 `;
 
             const rightTaskCells = document.createElement('div');
-            rightTaskCells.className = 'flex-grow flex group-hover:bg-slate-50';
+            rightTaskCells.className = 'flex-grow flex group-hover:bg-slate-50 dark:group-hover:bg-slate-50/20';
 
             // This loop creates the cells for a single task row.
             allColumns.forEach((col, i) => {
@@ -2675,11 +2676,11 @@ function render() {
         });
 
         const emptyAddCellLast = document.createElement('div');
-        emptyAddCellLast.className = 'w-12 flex-shrink-0 h-full';
-        rightAddCells.appendChild(emptyAddCellLast);
+        emptyAddCell.className = 'w-12 flex-shrink-0 h-full hover:bg-slate-50/20';
+        rightSectionCell.appendChild(emptyAddCellLast);
 
         const emptyEndSpacerLast = document.createElement('div');
-        emptyEndSpacerLast.className = 'w-4 flex-shrink-0 h-full';
+        emptyEndSpacer.className = 'w-4 flex-shrink-0 h-full hover:bg-slate-50/20';
         rightAddCells.appendChild(emptyEndSpacerLast);
 
         addRow.appendChild(leftAddCell);

@@ -64,9 +64,8 @@ html[data-theme="dark"] .section-group .flex-grow:hover .flex-shrink-0:hover {
 html[data-theme="dark"] .section-group .flex-grow:hover {
 }
 
-html[data-theme="dark"] .task-row-wrapper:hover {
-    color: #000000;
-    opacity: 1;
+html[data-theme="dark"] .task-row-wrapper {
+    opacity:  1;
 }
 
 html[data-theme="dark"] .section-toggle{
