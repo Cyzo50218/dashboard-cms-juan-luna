@@ -27,7 +27,7 @@
     },
     {
       "src": "/mainpage/([^/]+)",
-      "dest": "/landingpage/index.html"
+      "dest": "/landingpage/$1"
     },
     {
       "src": "/workspace-invite/([^/]+)",
