@@ -287,7 +287,10 @@ function formatCurrency(amount) {
 }
 
 function renderFilteredProducts(filteredProducts) {
-  renderProducts(filteredProducts);
+  if (!filteredProducts) {
+    return [...productList];
+  }
+  return filteredProducts;
 }
 
 function loadMoreProducts() {
@@ -674,6 +677,16 @@ function renderProducts(productsToRender, shouldAppend = false) {
               ${renderSupplierInfo(product.supplier)}
               </div>
         `;
+
+    // Add click event for image overlay
+    const productImage = card.querySelector(".product-image img");
+    if (productImage) {
+      productImage.addEventListener("click", (e) => {
+        e.stopPropagation();
+        showImageOverlay(product.image);
+      });
+    }
+
     if (!canUserModify) {
       const editIcon = card.querySelector(".edit-icon");
       const deleteIcon = card.querySelector(".delete-icon");
@@ -695,6 +708,29 @@ function renderProducts(productsToRender, shouldAppend = false) {
       img.classList.remove("loading");
     };
   });
+}
+
+function showImageOverlay(imageUrl) {
+  const overlay = document.createElement("div");
+  overlay.className = "image-overlay";
+  overlay.innerHTML = `
+    <div class="image-overlay-content">
+      <img src="${imageUrl}" alt="Full size product image" draggable="false" />
+      <button class="close-overlay-btn">✕</button>
+    </div>
+  `;
+
+  overlay.querySelector(".close-overlay-btn").addEventListener("click", () => {
+    document.body.removeChild(overlay);
+  });
+
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) {
+      document.body.removeChild(overlay);
+    }
+  });
+
+  document.body.appendChild(overlay);
 }
 
 function showNotification(message, duration = 3000) {
@@ -799,13 +835,13 @@ function renderProductSidebar(product) {
         </div>
         <div class="settings-section">
             <span class="settings-label">Cost</span>
-            <div class="settings-value">${cost}</div>
+            <div class="settings-value">${formattedCost}</div>
         </div>
         <div class="settings-section">
             <span class="settings-label">Supplier</span>
             <div class="settings-value">${supplierDisplayHtml}</div>
         </div>
-        <div class="settings-section" style="display: none;">
+        <div class="settings-section">
             <span class="settings-label">Description</span>
             <div class="settings-value">${
               description || "No description available"
@@ -813,8 +849,11 @@ function renderProductSidebar(product) {
         </div>
         <div class="settings-section">
             <span class="settings-label">Product image</span>
-            <div class="product-image-container">
-                <img src="${image}" alt="${name}" class="w-[80%] h-[80%] object-contain">
+            <div class="product-image-container" style="cursor: pointer;">
+                <img src="${image}" alt="${name}" class="w-[80%] h-[80%] object-contain" 
+                     style="background-color: transparent; cursor: grab;" 
+                     draggable="false"
+                     onclick="showImageOverlay('${image}')">
             </div>
         </div>
     `;
@@ -829,6 +868,20 @@ function updateSidebar(product) {
   }
 
   productSettings.innerHTML = renderProductSidebar(product);
+
+  // Add event listener for the draggable image
+  const sidebarImage = productSettings.querySelector(
+    ".product-image-container img"
+  );
+  if (sidebarImage) {
+    sidebarImage.addEventListener("mousedown", (e) => {
+      e.preventDefault(); // Prevent text selection while dragging
+    });
+
+    sidebarImage.addEventListener("click", (e) => {
+      showImageOverlay(product.image);
+    });
+  }
 
   productContent.classList.add("hidden");
   productSettings.classList.remove("hidden");
@@ -1411,20 +1464,8 @@ export function init(params) {
   console.log("[Products Module] Initializing...");
   let popstateListener = null;
 
-  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  if (prefersDark) {
-    document.documentElement.setAttribute("data-theme", "dark");
-  }
-
-  window
-    .matchMedia("(prefers-color-scheme: dark)")
-    .addEventListener("change", (event) => {
-      if (event.matches) {
-        document.documentElement.setAttribute("data-theme", "dark");
-      } else {
-        document.documentElement.removeAttribute("data-theme");
-      }
-    });
+  // Theme detection is now handled by inline script in products.html
+  // to prevent white flash on page load
 
   onAuthStateChanged(auth, (user) => {
     if (user) {

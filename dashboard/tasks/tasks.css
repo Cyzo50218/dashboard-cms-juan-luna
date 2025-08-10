@@ -1,455 +1,454 @@
 /* Base styles for all SVGs used as icons */
 svg {
-    vertical-align: middle;
-    stroke-width: 2;
+  vertical-align: middle;
+  stroke-width: 2;
 }
 
 /* --- AFTER --- */
 .project-container {
-    border-radius: 8px;
-    width: 100%;
-    height: 100%;
-    /* Add this */
-    display: flex;
-    /* And this */
-    flex-direction: column;
-    /* And this */
+  border-radius: 8px;
+  width: 100%;
+  height: 100%;
+  /* Add this */
+  display: flex;
+  /* And this */
+  flex-direction: column;
+  /* And this */
 }
 
 .project-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 16px;
-    /* Reduced */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  /* Reduced */
 }
 
 .project-title-group {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    /* Reduced */
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  /* Reduced */
 }
 
 .project-icon {
-    width: 28px;
-    /* Reduced */
-    height: 28px;
-    /* Reduced */
+  width: 28px;
+  /* Reduced */
+  height: 28px;
+  /* Reduced */
 
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .project-icon-glyph {
-    width: 16px;
-    /* Slightly larger for better visibility */
-    height: 16px;
-    color: #FFFFFF;
-    stroke-width: 2.5;
-    /* Lucide icons look great with a thicker stroke */
+  width: 16px;
+  /* Slightly larger for better visibility */
+  height: 16px;
+  color: #ffffff;
+  stroke-width: 2.5;
+  /* Lucide icons look great with a thicker stroke */
 }
 
 .display-none {
-    display: none;
+  display: none;
 }
 
 h1 {
-    font-size: 18px;
-    /* Reduced */
-    font-weight: 500;
-    margin: 0;
+  font-size: 18px;
+  /* Reduced */
+  font-weight: 500;
+  margin: 0;
 }
 
 .project-title-group .chevron-icon {
-    color: #6f6f6f;
-    cursor: pointer;
+  color: #6f6f6f;
+  cursor: pointer;
 }
 
 button {
-    border: 1px solid #c9c9c9;
-    background-color: #fff;
-    border-radius: 6px;
-    padding: 4px 10px;
-    /* Reduced */
-    font-size: 13px;
-    /* Reduced */
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    /* Reduced */
+  border: 1px solid #c9c9c9;
+  background-color: #fff;
+  border-radius: 6px;
+  padding: 4px 10px;
+  /* Reduced */
+  font-size: 13px;
+  /* Reduced */
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  /* Reduced */
 }
 
 button:hover {
-    background-color: #f0f0f0;
+  background-color: #f0f0f0;
 }
 
 .set-status {
-    color: #6f6f6f;
+  color: #6f6f6f;
 }
 
 .project-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    /* Reduced */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* Reduced */
 }
 
 .user-avatars .avatar {
-    width: 28px;
-    /* Reduced */
-    height: 28px;
-    /* Reduced */
-    background-color: #f4d76a;
-    border-radius: 50%;
-    display: inline-block;
-    border: 2px solid #fff;
+  width: 28px;
+  /* Reduced */
+  height: 28px;
+  /* Reduced */
+  background-color: #f4d76a;
+  border-radius: 50%;
+  display: inline-block;
+  border: 2px solid #fff;
 }
 
 .share-btn {
-    background-color: #2779bd;
-    color: #fff;
-    border-color: #2779bd;
+  background-color: #2779bd;
+  color: #fff;
+  border-color: #2779bd;
 }
 
 .share-btn svg {
-    stroke: #fff;
+  stroke: #fff;
 }
 
 .share-btn:hover {
-    background-color: #1e629a;
+  background-color: #1e629a;
 }
 
 /* Tabs Styling */
 .project-tabs ul {
-    list-style: none;
-    margin: 0;
-    padding: 0 16px;
-    /* Reduced */
-    display: flex;
-    border-bottom: 1px solid #e8e8e8;
-    gap: 12px;
-    /* Reduced */
+  list-style: none;
+  margin: 0;
+  padding: 0 16px;
+  /* Reduced */
+  display: flex;
+  border-bottom: 1px solid #e8e8e8;
+  gap: 12px;
+  /* Reduced */
 }
 
 .project-tabs a {
-    text-decoration: none;
-    color: #6f6f6f;
-    padding: 8px 2px;
-    /* Reduced */
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    /* Reduced */
-    border-bottom: 2px solid transparent;
-    font-size: 14px;
-    transition: color 0.2s ease;
+  text-decoration: none;
+  color: #6f6f6f;
+  padding: 8px 2px;
+  /* Reduced */
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  /* Reduced */
+  border-bottom: 2px solid transparent;
+  font-size: 14px;
+  transition: color 0.2s ease;
 }
 
 .project-tabs a svg {
-    color: #6f6f6f;
-    transition: color 0.2s ease;
+  color: #6f6f6f;
+  transition: color 0.2s ease;
 }
 
 .project-tabs a:hover,
 .project-tabs a:hover svg {
-    color: #151515;
+  color: #151515;
 }
 
 .project-tabs a.active {
-    color: #151515;
-    font-weight: 500;
-    border-bottom: 2px solid #151515;
+  color: #151515;
+  font-weight: 500;
+  border-bottom: 2px solid #151515;
 }
 
 .project-tabs a.active svg {
-    color: #151515;
+  color: #151515;
 }
 
 /* tasks.css */
 .tabs-fragments {
-    flex: 1;
-    /* Allows this container to grow and fill #content */
-    display: flex;
-    /* Make it a flex container to control its child's height */
-    flex-direction: column;
-    /* Arrange tab content vertically */
-    min-height: 0;
-    /* Important: Prevents flexbox from shrinking issues */
+  flex: 1;
+  /* Allows this container to grow and fill #content */
+  display: flex;
+  /* Make it a flex container to control its child's height */
+  flex-direction: column;
+  /* Arrange tab content vertically */
+  min-height: 0;
+  /* Important: Prevents flexbox from shrinking issues */
 }
 
 .tab-content {
-    display: none;
+  display: none;
 }
 
 .tab-content.active {
-    display: block;
+  display: block;
 }
 
 /* Add this to your main stylesheet, e.g., style.css */
 .section-loader {
-    border: 4px solid rgba(0, 0, 0, 0.1);
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    border-left-color: #2B2B2B;
-    /* Or your preferred brand color */
-    animation: spin 1s ease infinite;
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border-left-color: #2b2b2b;
+  /* Or your preferred brand color */
+  animation: spin 1s ease infinite;
 
-    /* This helps center it nicely within the tab container */
-    position: absolute;
-    top: 40%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+  /* This helps center it nicely within the tab container */
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
 @keyframes spin {
-    0% {
-        transform: rotate(0deg);
-    }
+  0% {
+    transform: rotate(0deg);
+  }
 
-    100% {
-        transform: rotate(360deg);
-    }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
-
 .user-avatar-tasks.overflow-dots {
-    background-color: #f0f0f0;
-    /* Lighter background for the dots */
-    color: #888;
-    /* Color for the dots icon */
-    font-size: 1.2em;
-    /* Make the icon slightly larger */
-    padding: 0;
-    /* Remove padding if any */
+  background-color: #f0f0f0;
+  /* Lighter background for the dots */
+  color: #888;
+  /* Color for the dots icon */
+  font-size: 1.2em;
+  /* Make the icon slightly larger */
+  padding: 0;
+  /* Remove padding if any */
 }
 
 .user-avatar-tasks.overflow-dots .material-icons-outlined {
-    font-size: 1.2em;
-    /* Ensure the icon itself is sized correctly */
+  font-size: 1.2em;
+  /* Ensure the icon itself is sized correctly */
 }
 
 .avatar-stack {
-    display: flex;
-    align-items: center;
+  display: flex;
+  align-items: center;
 }
 
 .user-avatar-tasks {
-    height: 28px;
-    width: 28px;
-    border-radius: 50%;
-    border: 2px solid white;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    font-weight: 600;
-    overflow: hidden;
-    /* CRITICAL: This clips the square image to the parent's circle. */
-    background-color: #e2e8f0;
-    /* A default background for the initials fallback */
-    transition: margin 0.2s ease, transform 0.2s ease;
+  height: 28px;
+  width: 28px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  overflow: hidden;
+  /* CRITICAL: This clips the square image to the parent's circle. */
+  background-color: #e2e8f0;
+  /* A default background for the initials fallback */
+  transition: margin 0.2s ease, transform 0.2s ease;
 }
 
 .user-avatar-tasks img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .user-avatar-tasks:not(:first-child) {
-    margin-left: -12px;
+  margin-left: -12px;
 }
 
 /* Style for the overflow count indicator */
 .user-avatar-tasks.overflow {
-    background-color: #f1f5f9;
-    color: #475569;
+  background-color: #f1f5f9;
+  color: #475569;
 }
 
 /* Interactive hover effect */
 .avatar-stack:hover .user-avatar-tasks {
-    margin-left: -4px;
+  margin-left: -4px;
 }
 
 .avatar-stack .user-avatar-tasks:hover {
-    z-index: 10;
-    transform: scale(1.1);
+  z-index: 10;
+  transform: scale(1.1);
 }
 
 /* Hide the edit icon by default */
-.tab-options-btn{
-    font-size: 24px;
-    margin-left: 2px;
-    color: #888;
-    visibility: hidden;
-    /* Use visibility to prevent layout shifts */
-    opacity: 0;
-    transition: opacity 0.2s ease-in-out;
+.tab-options-btn {
+  font-size: 24px;
+  margin-left: 2px;
+  color: #888;
+  visibility: hidden;
+  /* Use visibility to prevent layout shifts */
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
 }
 
 /* Show the edit icon when hovering over the tab link */
 .tab-link:hover .tab-options-btn {
-    visibility: visible;
-    opacity: 1;
-    cursor: pointer;
+  visibility: visible;
+  opacity: 1;
+  cursor: pointer;
 }
 
 /* Style for the tab name when it's being edited */
 .tab-name[contenteditable="true"] {
-    outline: 2px solid #0d6efd;
-    /* A clear indicator for editing */
-    border-radius: 4px;
-    padding: 2px 5px;
-    background-color: #fff;
-    color: #000;
+  outline: 2px solid #0d6efd;
+  /* A clear indicator for editing */
+  border-radius: 4px;
+  padding: 2px 5px;
+  background-color: #fff;
+  color: #000;
 }
 
 /* Ensure the icon inside the editable area is also targeted */
 .tab-label[contenteditable="true"] .material-icons {
-    color: #333;
+  color: #333;
 }
 
 .project-tabs li.dragging {
-    opacity: 0.5;
-    background: #eff3ff;
-    /* A light blue to indicate a draggable state */
+  opacity: 0.5;
+  background: #eff3ff;
+  /* A light blue to indicate a draggable state */
 }
 
 /* A visual indicator for where the tab will be dropped */
 .project-tabs li.drag-over-indicator {
-    border-bottom: 3px solid #000000;
-    /* A solid purple line */
+  border-bottom: 3px solid #000000;
+  /* A solid purple line */
 }
 
 /* --- Tab Navigation Bar --- */
 
 /* Main navigation container */
 .project-tabs {
-    width: 100%;
-    border-bottom: 1px solid #e0e0e0;
-    margin-left: 12px;
+  width: 100%;
+  border-bottom: 1px solid #e0e0e0;
+  margin-left: 12px;
 }
 
 /* Flex container for the tabs */
 .project-tabs ul {
-    display: flex;
-    margin: 0;
-    padding: 0;
+  display: flex;
+  margin: 0;
+  padding: 0;
 }
 
-.tab-name{
-    font-weight: 450;
-    padding-left: 3px;
+.tab-name {
+  font-weight: 450;
+  padding-left: 3px;
 }
 
 /* Tab link styling */
 .project-tabs .tab-link {
-    display: flex;
-    align-items: center;
-    text-decoration: none;
-    color: #6c757d;
-    
-    font-size: 15px;
-    /* Muted color for inactive tabs */
-    border-bottom: 3px solid transparent;
-    /* Placeholder for active indicator */
-    transition: all 0.2s ease-in-out;
-    white-space: nowrap;
-    /* Prevents text from wrapping */
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: #6c757d;
+
+  font-size: 15px;
+  /* Muted color for inactive tabs */
+  border-bottom: 3px solid transparent;
+  /* Placeholder for active indicator */
+  transition: all 0.2s ease-in-out;
+  white-space: nowrap;
+  /* Prevents text from wrapping */
 }
 
 /* Hover effect for interactivity */
 .project-tabs .tab-link:not(.active):hover {
-    color: #000000;
+  color: #000000;
 }
 
 /* Active tab styling */
 .project-tabs .tab-link.active {
-    color: #030303;
-    /* Primary color for the active tab */
-    border-bottom: 3px solid #000000;
+  color: #030303;
+  /* Primary color for the active tab */
+  border-bottom: 3px solid #000000;
 }
 
 /* Styling for the editable label container */
 .project-tabs .tab-label {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    /* Space between icon and text */
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  /* Space between icon and text */
 }
 
 /* --- Dropdown Menu Styling --- */
 
 /* Main container for the dropdown menu */
 .tab-options-menu {
-    /* Core positioning */
-    position: absolute; /* This makes the menu float relative to the nearest positioned ancestor */
-    z-index: 1050;      /* A high z-index ensures the menu appears on top of other content */
-    
-    /* Appearance & Feel */
-    background-color: #ffffff;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.12);
-    min-width: 200px;
-    padding: 6px;
-    
-    /* Animation for a smooth entrance */
-    animation: fadeInMenu 0.15s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+  /* Core positioning */
+  position: absolute; /* This makes the menu float relative to the nearest positioned ancestor */
+  z-index: 1050; /* A high z-index ensures the menu appears on top of other content */
+
+  /* Appearance & Feel */
+  background-color: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.12);
+  min-width: 200px;
+  padding: 6px;
+
+  /* Animation for a smooth entrance */
+  animation: fadeInMenu 0.15s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
 }
 
 /* Animation keyframes */
 @keyframes fadeInMenu {
-    from {
-        opacity: 0;
-        transform: scale(0.95) translateY(-5px);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-    }
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 /* Styling for the clickable items (buttons) inside the menu */
 .tab-options-menu button {
-    display: flex;
-    align-items: center;
-    width: 100%;
-    justify-content: flex-start;
-    background: none;
-    border: none;
-    padding: 8px 12px;
-    text-align: left;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 16px;
-    color: #343a40;
-    transition: background-color 0.2s ease, color 0.2s ease;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  justify-content: flex-start;
+  background: none;
+  border: none;
+  padding: 8px 12px;
+  text-align: left;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  color: #343a40;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* Hover effect for menu items */
 .tab-options-menu button:hover {
-    background-color: #f0f2f5;
-    color: #000;
+  background-color: #f0f2f5;
+  color: #000;
 }
 
 /* Icons inside the menu buttons */
 .tab-options-menu button .material-icons {
-    font-size: 18px;
-    margin-right: 12px;
-    color: #6c757d;
+  font-size: 18px;
+  margin-right: 12px;
+  color: #6c757d;
 }
 
 /* A simple divider line for separating groups of actions */
 .tab-options-menu .menu-divider {
-    height: 1px;
-    background-color: #e9ecef;
-    margin: 6px 0;
+  height: 1px;
+  background-color: #e9ecef;
+  margin: 6px 0;
 }

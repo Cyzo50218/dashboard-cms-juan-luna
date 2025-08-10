@@ -1,24 +1,29 @@
-/* Reset and Base Styles */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-
 }
 
-html.dark body {
-  background-color: #111827;
-  /* Dark blue-gray background */
-  color: #f9fafb;
-  /* Light text */
+html[data-theme="dark"] {
+  --primary-bg: #1a1a1a;
+  --secondary-bg: #2d2d2d;
+  --border-color: #404040;
+  --text-color: #f9fafb;
+  --text-secondary-color: #a1a1aa;
 }
 
-html.dark a {
+html[data-theme="dark"] body {
+  background-color: var(--primary-bg);
+  color: var(--text-color);
+}
+
+html[data-theme="dark"] a {
   color: #818cf8;
 }
 
 body {
-  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
   background: transparent;
   color: #151b26;
   font-size: 14px;
@@ -27,6 +32,17 @@ body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    background-color: #1a1a1a;
+  }
+
+  body {
+    background-color: #1a1a1a;
+    color: #f9fafb;
+  }
 }
 
 #initial-loader {
@@ -59,25 +75,23 @@ body {
 }
 
 .loader-text {
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
   font-size: 14px;
   color: #333;
   font-weight: 500;
 }
 
 .loader-text span {
-  /* Start hidden and ready to animate in */
   opacity: 0;
   transform: translateY(0px);
   transition: opacity 0.4s ease-out, transform 1s ease-out, transform 5s ease-in;
-  position: absolute; 
+  position: absolute;
   left: 0;
   right: 0;
   text-align: center;
 }
 
 .loader-text span.active {
-  /* Animate to fully visible and in position */
   opacity: 1;
   transform: translateY(0);
 }
@@ -96,7 +110,6 @@ body {
   }
 }
 
-/* Fixed Header */
 #top-header {
   height: 60px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
@@ -104,7 +117,6 @@ body {
   z-index: 1100;
 }
 
-/* Main Layout Container */
 #main-container {
   display: flex;
   background: transparent;
@@ -115,48 +127,36 @@ body {
   min-height: 0;
 }
 
-/* dashboard.css */
 #content {
   display: flex;
-  /* Make it a flex container */
   flex-direction: column;
-  /* Arrange children (tabs) vertically */
   flex: 1;
-  /* Keep this to take available space in its parent */
   overflow: hidden;
   transition: margin 0.3s ease;
 }
 
-/* Drawer (Left Sidebar) */
 #drawer {
   width: 260px;
   transition: width 0.3s ease;
   z-index: 5;
   overflow: auto;
-
 }
 
 #drawer.closed {
   width: 60px;
 }
 
-
-/* Optional Right Sidebar */
 #right-sidebar {
   width: 0;
   flex-shrink: 0;
-  /* Prevents the container from being squeezed */
   overflow: hidden;
-  /* Hides content and scrollbars when closed */
   transition: width 0.3s ease;
-  /* Smooth animation for opening/closing */
   z-index: 1000;
 }
 
 #right-sidebar.sidebar-open {
   width: 600px;
   overflow: auto;
-  /* Show scrollbar only when open */
 }
 
 .section-loader {
@@ -164,11 +164,9 @@ body {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  border-left-color: #2B2B2B;
-  /* Or your preferred color */
+  border-left-color: #2b2b2b;
   animation: spin 1s ease infinite;
 
-  /* Center it within the content area */
   position: absolute;
   top: 40%;
   left: 50%;

@@ -3487,6 +3487,11 @@ body.is-dragging * {
   color: #166534;
 }
 
+[data-theme="dark"] .status-completed {
+  background-color: #064e3b;
+  color: #d1fae5;
+}
+
 .status-partial {
   background-color: #feefc3;
   color: #c27803;
