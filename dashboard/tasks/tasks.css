@@ -47,7 +47,7 @@ svg {
   width: 16px;
   /* Slightly larger for better visibility */
   height: 16px;
-  color: #ffffff;
+  color: #FFFFFF;
   stroke-width: 2.5;
   /* Lucide icons look great with a thicker stroke */
 }
@@ -195,7 +195,7 @@ button:hover {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  border-left-color: #2b2b2b;
+  border-left-color: #2B2B2B;
   /* Or your preferred brand color */
   animation: spin 1s ease infinite;
 
@@ -215,6 +215,7 @@ button:hover {
     transform: rotate(360deg);
   }
 }
+
 
 .user-avatar-tasks.overflow-dots {
   background-color: #f0f0f0;
@@ -389,8 +390,10 @@ button:hover {
 /* Main container for the dropdown menu */
 .tab-options-menu {
   /* Core positioning */
-  position: absolute; /* This makes the menu float relative to the nearest positioned ancestor */
-  z-index: 1050; /* A high z-index ensures the menu appears on top of other content */
+  position: absolute;
+  /* This makes the menu float relative to the nearest positioned ancestor */
+  z-index: 1050;
+  /* A high z-index ensures the menu appears on top of other content */
 
   /* Appearance & Feel */
   background-color: #ffffff;
@@ -410,6 +413,7 @@ button:hover {
     opacity: 0;
     transform: scale(0.95) translateY(-5px);
   }
+
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
