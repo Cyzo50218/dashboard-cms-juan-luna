@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OrbTasks - Premium Task Management</title>
+    <meta
+      name="description"
+      content="Premium task management solution blending productivity with modern design. Perfect for teams and individuals."
+    />
+    <meta
+      name="keywords"
+      content="task management, productivity, OrbTasks, project management"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/landing.css" />
+    <link rel="stylesheet" href="css/pricing.css" />
+    <link rel="stylesheet" href="css/about.css" />
+    <link rel="stylesheet" href="css/contact.css" />
+    <style>
+      @font-face {
+        font-family: 'Montserrat-Bold';
+        src: url('Fonts/Montserrat-Bold.ttf') format('truetype');
+      }
+      .brand-font {
+        font-family: 'Montserrat-Bold', Montserrat, sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="header">
+      <div class="container header-container">
+        <a
+          href="#home"
+          class="logo brand-font"
+          style="display: flex; align-items: center; gap: 10px;"
+        >
+          <img src="images/logo.png" alt="OrbTasks" class="logo-img" />
+          <span>OrbTasks</span>
+        </a>
+        <nav class="nav-links">
+          <a href="#home" class="active">Home</a>
+          <a href="#features">Features</a>
+          <a href="#about">About</a>
+          <a href="#contact">Contact</a>
+          <div class="login-container">
+            <a href="#" class="btn btn-login" id="loginBtn">
+              <i class="fas fa-user"></i> Log In
+            </a>
+          </div>
+        </nav>
+      </div>
+    </header>
+
+    <section id="home" class="hero">
+      <div class="container">
+        <div class="hero-content">
+          <h1 style="color: white !important;">
+            Powerful Task Management for Modern Teams
+          </h1>
+          <p class="hero-subtitle" style="color: white !important;">
+            OrbTasks offers premium productivity tools that blend powerful
+            features with intuitive design.
+          </p>
+          <div class="hero-buttons">
+            <a href="#features" class="btn btn-primary">View Features</a>
+            <a
+              href="#pricing"
+              class="btn btn-secondary"
+              style="color: white !important; border-color: var(--primary) !important;"
+              >See Pricing</a
+            >
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="features">
+      <div class="container">
+        <h2 class="section-title">Our Key Features</h2>
+        <p class="section-subtitle">
+          Each feature is designed to boost your productivity and streamline
+          workflow
+        </p>
+        <div class="features-grid">
+          <div class="feature-card">
+            <div class="feature-icon">
+              <i class="fas fa-tasks"></i>
+            </div>
+            <h3>Task Management</h3>
+            <p>
+              Intuitive interface for creating, organizing and tracking tasks
+              with multiple views.
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <i class="fas fa-users"></i>
+            </div>
+            <h3>Team Collaboration</h3>
+            <p>
+              Real-time collaboration features to keep your team aligned and
+              productive.
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <i class="fas fa-chart-line"></i>
+            </div>
+            <h3>Progress Tracking</h3>
+            <p>
+              Visual reports and analytics to monitor project progress and team
+              performance.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="testimonials">
+      <div class="container">
+        <h2 class="section-title">Trusted By Teams</h2>
+        <div class="testimonial-slider">
+          <div class="testimonial">
+            <p class="testimonial-text">
+              "OrbTasks has transformed how our team works. We're 40% more
+              productive since we started using it!"
+            </p>
+            <div class="testimonial-author">
+              <img src="images/testimonial1.jpg" alt="Sarah Johnson" />
+              <div>
+                <h4>Sarah Johnson</h4>
+                <p>Project Manager, TechCorp</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="pricing" class="pricing-hero">
+      <div class="container">
+        <h1 class="section-title" style="color: white;">Our Plans</h1>
+        <p class="section-subtitle" style="color: white; font-size: 0.9rem;">
+          Flexible pricing options for teams of all sizes
+        </p>
+      </div>
+    </section>
+
+    <section class="pricing-plans">
+      <div class="container">
+        <div class="plans-grid">
+          <div class="plan-card">
+            <div class="plan-header">
+              <h3>Starter</h3>
+              <div class="price">
+                <span class="amount">$9</span>
+                <span class="period">per user/month</span>
+              </div>
+              <p>Perfect for individuals and small teams</p>
+            </div>
+            <ul class="plan-features">
+              <li><i class="fas fa-check"></i> Up to 5 team members</li>
+              <li><i class="fas fa-check"></i> Basic task management</li>
+              <li><i class="fas fa-check"></i> 5GB storage</li>
+              <li><i class="fas fa-check"></i> Email support</li>
+            </ul>
+            <a href="#contact" class="btn btn-secondary">Get Started</a>
+          </div>
+
+          <div class="plan-card popular">
+            <div class="popular-badge">Most Popular</div>
+            <div class="plan-header">
+              <h3>Professional</h3>
+              <div class="price">
+                <span class="amount">$19</span>
+                <span class="period">per user/month</span>
+              </div>
+              <p>For growing teams needing more power</p>
+            </div>
+            <ul class="plan-features">
+              <li><i class="fas fa-check"></i> Up to 20 team members</li>
+              <li><i class="fas fa-check"></i> Advanced features</li>
+              <li><i class="fas fa-check"></i> 50GB storage</li>
+              <li><i class="fas fa-check"></i> Priority support</li>
+            </ul>
+            <a href="#contact" class="btn btn-primary">Get Started</a>
+          </div>
+
+          <div class="plan-card">
+            <div class="plan-header">
+              <h3>Enterprise</h3>
+              <div class="price">
+                <span class="amount">$29</span>
+                <span class="period">per user/month</span>
+              </div>
+              <p>For large organizations</p>
+            </div>
+            <ul class="plan-features">
+              <li><i class="fas fa-check"></i> Unlimited members</li>
+              <li><i class="fas fa-check"></i> All features included</li>
+              <li><i class="fas fa-check"></i> 1TB storage</li>
+              <li><i class="fas fa-check"></i> 24/7 dedicated support</li>
+            </ul>
+            <a href="#contact" class="btn btn-secondary">Contact Sales</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="faq">
+      <div class="container">
+        <h2 class="section-title">Frequently Asked Questions</h2>
+        <div class="faq-grid">
+          <div class="faq-item">
+            <h3>Is there a free trial?</h3>
+            <p>
+              Yes! We offer a 14-day free trial with full access to all
+              Professional plan features.
+            </p>
+          </div>
+          <div class="faq-item">
+            <h3>Can I change plans later?</h3>
+            <p>
+              Absolutely. You can upgrade, downgrade or cancel your plan at any
+              time.
+            </p>
+          </div>
+          <div class="faq-item">
+            <h3>How secure is my data?</h3>
+            <p>
+              We use enterprise-grade security including encryption and regular
+              backups.
+            </p>
+          </div>
+          <div class="faq-item">
+            <h3>Do you offer discounts?</h3>
+            <p>
+              We offer annual billing discounts and special pricing for
+              non-profits.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="about" class="about-hero">
+      <div class="container">
+        <h1 class="section-title" style="color: white !important;">
+          Our Mission
+        </h1>
+        <p class="section-subtitle" style="color: white !important;">
+          Making Productivity Simple
+        </p>
+      </div>
+    </section>
+
+    <section class="mission">
+      <div class="container">
+        <div class="mission-content">
+          <h2 class="section-title">Our Story</h2>
+          <p class="section-subtitle">
+            OrbTasks was founded with a simple goal: to create task management
+            software that people actually enjoy using. We believe productivity
+            tools should be powerful yet intuitive, feature-rich yet simple.
+          </p>
+          <p class="section-subtitle">
+            Our team of designers, developers and productivity experts have
+            built a platform that combines cutting-edge technology with
+            thoughtful design. The result is software that helps teams
+            accomplish more with less stress.
+          </p>
+          <p class="section-subtitle">
+            Whether you're a solo entrepreneur or part of a large enterprise,
+            OrbTasks adapts to your workflow and helps you focus on what matters
+            most.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="values">
+      <div class="container">
+        <h2 class="section-title">Our Principles</h2>
+        <div class="values-grid">
+          <div class="value-card">
+            <div class="value-icon">
+              <i class="fas fa-lightbulb"></i>
+            </div>
+            <h3>Simplicity</h3>
+            <p>
+              We believe productivity tools should be intuitive and easy to use,
+              not overwhelming.
+            </p>
+          </div>
+          <div class="value-card">
+            <div class="value-icon">
+              <i class="fas fa-shield-alt"></i>
+            </div>
+            <h3>Security</h3>
+            <p>
+              Your data's safety is our top priority with enterprise-grade
+              security measures.
+            </p>
+          </div>
+          <div class="value-card">
+            <div class="value-icon">
+              <i class="fas fa-heart"></i>
+            </div>
+            <h3>Customer Focus</h3>
+            <p>
+              We listen to our users and continuously improve based on your
+              feedback.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="team">
+      <div class="container">
+        <h2 class="section-title">Our Team</h2>
+        <div class="team-grid">
+          <div class="team-member">
+            <div class="team-member-image">
+              <img src="images/team1.jpg" alt="Alex Chen" />
+            </div>
+            <div class="team-member-info">
+              <h3>Alex Chen</h3>
+              <p>Founder & CEO</p>
+            </div>
+          </div>
+          <div class="team-member">
+            <div class="team-member-image">
+              <img src="images/team2.jpg" alt="Maria Rodriguez" />
+            </div>
+            <div class="team-member-info">
+              <h3>Maria Rodriguez</h3>
+              <p>Head of Product</p>
+            </div>
+          </div>
+          <div class="team-member">
+            <div class="team-member-image">
+              <img src="images/team3.jpg" alt="James Wilson" />
+            </div>
+            <div class="team-member-info">
+              <h3>James Wilson</h3>
+              <p>Lead Developer</p>
+            </div>
+          </div>
+          <div class="team-member">
+            <div class="team-member-image">
+              <img src="images/team4.jpg" alt="Sarah Kim" />
+            </div>
+            <div class="team-member-info">
+              <h3>Sarah Kim</h3>
+              <p>UX Designer</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="contact" class="contact-hero">
+      <div class="container">
+        <h1 class="section-title" style="color: white !important;">
+          Get In Touch
+        </h1>
+        <p
+          class="section-subtitle"
+          style="color: white !important; font-size: 0.9rem !important; max-width: 600px; margin: 0 auto;"
+        >
+          Have questions? Our team is here to help you get the most out of
+          OrbTasks.
+        </p>
+      </div>
+    </section>
+
+    <section class="contact-main">
+      <div class="container">
+        <div class="contact-grid">
+          <div class="contact-form">
+            <h2>Send Us a Message</h2>
+            <form id="contactForm">
+              <div class="form-group">
+                <label for="name" class="required">Your Name</label>
+                <input type="text" id="name" name="name" required />
+              </div>
+              <div class="form-group">
+                <label for="email" class="required">Email Address</label>
+                <input type="email" id="email" name="email" required />
+              </div>
+              <div class="form-group">
+                <label for="subject" class="required">Subject</label>
+                <input type="text" id="subject" name="subject" required />
+              </div>
+              <div class="form-group">
+                <label for="message" class="required">Message</label>
+                <textarea
+                  id="message"
+                  name="message"
+                  rows="5"
+                  required
+                ></textarea>
+              </div>
+              <button type="submit" class="btn btn-primary">
+                Send Message
+              </button>
+            </form>
+          </div>
+          <div class="contact-info">
+            <h2>Contact Information</h2>
+            <div class="info-item">
+              <div class="info-icon">
+                <i class="fas fa-map-marker-alt"></i>
+              </div>
+              <div class="info-content">
+                <h3>Address</h3>
+                <p>123 Tech Street, San Francisco, CA</p>
+              </div>
+            </div>
+            <div class="info-item">
+              <div class="info-icon">
+                <i class="fas fa-phone-alt"></i>
+              </div>
+              <div class="info-content">
+                <h3>Phone</h3>
+                <p>+1 (555) 123-4567</p>
+              </div>
+            </div>
+            <div class="info-item">
+              <div class="info-icon">
+                <i class="fas fa-envelope"></i>
+              </div>
+              <div class="info-content">
+                <h3>Email</h3>
+                <p>hello@orbtasks.com</p>
+              </div>
+            </div>
+            <div class="info-item">
+              <div class="info-icon">
+                <i class="fas fa-clock"></i>
+              </div>
+              <div class="info-content">
+                <h3>Business Hours</h3>
+                <p>Monday - Friday: 9:00 AM - 6:00 PM</p>
+                <p>Saturday: 10:00 AM - 3:00 PM</p>
+              </div>
+            </div>
+            <div class="social-links">
+              <a href="https://instagram.com/orbtasks" target="_blank"
+                ><i class="fab fa-instagram"></i> @orbtasks</a
+              >
+              <a href="https://facebook.com/orbtasks" target="_blank"
+                ><i class="fab fa-facebook-f"></i> OrbTasks</a
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="map-section">
+      <div class="container">
+        <div class="map-container">
+          <iframe
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3153.158372889625!2d-122.4194155846822!3d37.77492997975938!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x80859a6d00690021%3A0x4a501367f076adff!2sSan%20Francisco%2C%20CA!5e0!3m2!1sen!2sus!4v1234567890123"
+            width="100%"
+            height="450"
+            style="border:0;"
+            allowfullscreen=""
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+          >
+          </iframe>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta">
+      <div class="container">
+        <h2>Ready to boost your team's productivity?</h2>
+        <a href="#pricing" class="btn btn-primary">View Plans</a>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div class="footer-col">
+            <a href="index.html" class="footer-logo brand-font"
+              >Orb<span>Tasks</span></a
+            >
+            <p>
+              Powerful task management solution that helps teams accomplish more
+              with less stress.
+            </p>
+            <div class="social-links">
+              <a href="https://instagram.com/orbtasks" target="_blank"
+                ><i class="fab fa-instagram"></i
+              ></a>
+              <a href="https://facebook.com/orbtasks" target="_blank"
+                ><i class="fab fa-facebook-f"></i
+              ></a>
+            </div>
+          </div>
+          <div class="footer-col">
+            <h4>Product</h4>
+            <ul>
+              <li><a href="#features">Features</a></li>
+              <li><a href="#pricing">Pricing</a></li>
+              <li><a href="#pricing">Integrations</a></li>
+            </ul>
+          </div>
+          <div class="footer-col">
+            <h4>Company</h4>
+            <ul>
+              <li><a href="#about">About Us</a></li>
+              <li><a href="#about">Careers</a></li>
+              <li><a href="#about">Press</a></li>
+            </ul>
+          </div>
+          <div class="footer-col">
+            <h4>Support</h4>
+            <ul>
+              <li><a href="#contact">Contact Us</a></li>
+              <li><a href="#contact">Help Center</a></li>
+              <li><a href="#contact">API Docs</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <p>&copy; 2025 OrbTasks. All rights reserved.</p>
+        </div>
+      </div>
+    </footer>
+
+    <script src="js/main.js"></script>
+    <script src="js/landing.js"></script>
+    <script src="js/contact.js"></script>
+  </body>
+</html>

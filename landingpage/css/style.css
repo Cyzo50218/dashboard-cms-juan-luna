@@ -1,0 +1,374 @@
+:root {
+  --primary: #d32f2f;
+  --secondary: #d32f2f;
+  --dark: #000000;
+  --dark-card: #111111;
+  --text: #ffffff;
+  --text-secondary: #cccccc;
+  --danger: #ff4d4f;
+  --success: #4caf50;
+  --warning: #ff9800;
+  --info: #2196f3;
+  --border: #333333;
+  --light-bg: #000000;
+  --light-text: #ffffff;
+  --light-border: #333333;
+  --accent: #8b0000;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Montserrat", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+  background-color: var(--dark);
+  color: var(--text);
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.btn {
+  display: inline-block;
+  padding: 10px 22px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #b71c1c;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: var(--primary);
+  border: 1.5px solid var(--primary);
+}
+
+.btn-secondary:hover {
+  background-color: rgba(211, 47, 47, 0.1);
+}
+
+.btn-login {
+  background-color: transparent;
+  color: white;
+  border: 1.5px solid white;
+  margin-left: 15px;
+  padding: 8px 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-login:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.btn-login i {
+  font-size: 0.9rem;
+}
+
+.login-container {
+  margin-left: 15px;
+}
+
+section {
+  padding: 60px 0;
+}
+
+.section-title {
+  text-align: center;
+  margin-bottom: 30px;
+  font-size: 1.8rem;
+  color: var(--text);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.section-subtitle {
+  text-align: center;
+  max-width: 700px;
+  margin: 0 auto 40px;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 15px 0;
+  background-color: transparent;
+  z-index: 1000;
+  box-shadow: none;
+  transition: all 0.3s ease;
+}
+
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: white;
+  text-decoration: none;
+  letter-spacing: 1px;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
+  transition: all 0.3s ease;
+}
+
+.logo-img {
+  height: 50px;
+  width: auto;
+  filter: drop-shadow(0 0 2px white)
+    drop-shadow(0 0 4px rgba(255, 255, 255, 0.5));
+}
+
+.logo span {
+  color: var(--primary);
+}
+
+.nav-links {
+  display: flex;
+  gap: 25px;
+  align-items: center;
+}
+
+.nav-links a {
+  color: white;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+  letter-spacing: 0.5px;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.nav-links a:hover {
+  color: var(--primary);
+}
+
+.nav-links a.active {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.footer {
+  background-color: var(--dark-card);
+  padding: 50px 0 20px;
+  border-top: 1px solid var(--border);
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 30px;
+  margin-bottom: 30px;
+}
+
+.footer-logo {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 15px;
+  display: inline-block;
+  letter-spacing: 1px;
+}
+
+.footer-logo span {
+  color: var(--primary);
+}
+
+.footer p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.footer-links h4 {
+  font-size: 1.1rem;
+  margin-bottom: 15px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.footer-links ul {
+  list-style: none;
+}
+
+.footer-links li {
+  margin-bottom: 10px;
+}
+
+.footer-links a {
+  color: var(--text);
+  text-decoration: none;
+  transition: color 0.3s;
+  font-size: 0.9rem;
+}
+
+.footer-links a:hover {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.social-links {
+  display: flex;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.social-links a {
+  color: var(--text);
+  font-size: 1.2rem;
+  transition: color 0.3s;
+}
+
+.social-links a:hover {
+  color: var(--primary);
+}
+
+.footer-bottom {
+  text-align: center;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.features {
+  background-color: var(--dark-card);
+}
+
+.features .section-title,
+.features .section-subtitle,
+.feature-card h3,
+.feature-card p {
+  color: var(--text);
+}
+
+.testimonial-text,
+.testimonial-author h4,
+.testimonial-author p {
+  color: var(--text);
+}
+
+.values .section-title,
+.values .section-subtitle,
+.value-card h3,
+.value-card p {
+  color: var(--text);
+}
+
+.team .section-title,
+.team .section-subtitle,
+.team-member-info h3,
+.team-member-info p {
+  color: var(--text);
+}
+
+.faq .section-title,
+.faq-item h3,
+.faq-item p {
+  color: var(--text);
+}
+
+.feature-card,
+.value-card,
+.team-member,
+.faq-item,
+.plan-card,
+.contact-form,
+.contact-info {
+  background-color: var(--dark-card);
+  border-color: var(--border);
+}
+
+@media (max-width: 768px) {
+  .section-title {
+    font-size: 1.6rem;
+  }
+
+  section {
+    padding: 50px 0;
+  }
+
+  .header {
+    padding: 10px 0;
+    background-color: rgba(0, 0, 0, 0.9);
+  }
+
+  .logo {
+    font-size: 1.3rem;
+  }
+
+  .nav-links {
+    gap: 15px;
+  }
+
+  .btn-login {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-container {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .nav-links {
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .login-container {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .btn-login {
+    width: 100%;
+    justify-content: center;
+  }
+}

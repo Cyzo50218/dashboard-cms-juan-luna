@@ -1,0 +1,194 @@
+.pricing-hero {
+  background: linear-gradient(
+      135deg,
+      rgba(211, 47, 47, 0.1) 0%,
+      rgba(0, 0, 0, 0.9) 100%
+    ),
+    url("../images/collections-bg.jpg") no-repeat center center/cover;
+  padding: 100px 0;
+  text-align: center;
+  color: white;
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+}
+
+.pricing-plans {
+  padding: 60px 0;
+  background-color: var(--dark-card);
+}
+
+.plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  margin-top: 30px;
+}
+
+.plan-card {
+  background-color: var(--dark-card);
+  border-radius: 8px;
+  padding: 25px;
+  position: relative;
+  border: 1px solid var(--border);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.plan-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.plan-card.popular {
+  border: 2px solid var(--primary);
+}
+
+.popular-badge {
+  position: absolute;
+  top: -12px;
+  right: 15px;
+  background-color: var(--primary);
+  color: white;
+  padding: 5px 15px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.plan-header {
+  text-align: center;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.plan-header h3 {
+  font-size: 1.5rem;
+  margin-bottom: 10px;
+  color: var(--text);
+}
+
+.price {
+  margin: 15px 0;
+}
+
+.price .amount {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.price .period {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  display: block;
+  margin-top: 5px;
+}
+
+.plan-header p {
+  color: var(--text-secondary);
+  font-size: 1rem;
+}
+
+.plan-features {
+  list-style: none;
+  margin-bottom: 25px;
+}
+
+.plan-features li {
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.plan-features i {
+  width: 18px;
+  text-align: center;
+  font-size: 1rem;
+}
+
+.plan-features .fa-check {
+  color: var(--success);
+}
+
+.plan-features .fa-times {
+  color: var(--danger);
+}
+
+.plan-card .btn {
+  width: 100%;
+  text-align: center;
+  padding: 10px;
+  font-size: 0.9rem;
+}
+
+.faq {
+  background-color: var(--dark-card);
+  padding: 60px 0;
+}
+
+.faq-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  margin-top: 30px;
+}
+
+.faq-item {
+  background-color: var(--dark-card);
+  border-radius: 8px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+  transition: transform 0.3s;
+}
+
+.faq-item:hover {
+  transform: translateY(-3px);
+}
+
+.faq-item h3 {
+  font-size: 1.2rem;
+  margin-bottom: 12px;
+  color: var(--text);
+}
+
+.faq-item p {
+  color: var(--text-secondary);
+  line-height: 1.6;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 992px) {
+  .plans-grid,
+  .faq-grid {
+    grid-template-columns: 1fr;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .pricing-hero {
+    padding: 80px 0;
+    min-height: 250px;
+  }
+
+  .plan-card {
+    padding: 20px;
+  }
+
+  .plan-header h3 {
+    font-size: 1.4rem;
+  }
+
+  .price .amount {
+    font-size: 2rem;
+  }
+}

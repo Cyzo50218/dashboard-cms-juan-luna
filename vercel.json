@@ -26,6 +26,10 @@
       "dest": "/registration/register.html"
     },
     {
+      "src": "/mainpage/([^/]+)",
+      "dest": "/landingpage/index.html"
+    },
+    {
       "src": "/workspace-invite/([^/]+)",
       "dest": "/registration/register.html"
     },
