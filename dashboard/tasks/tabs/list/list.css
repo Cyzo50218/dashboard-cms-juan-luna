@@ -208,17 +208,16 @@ html[data-theme="dark"] .juanlunacms-spreadsheetlist-custom-checkbox {
 }
 
 html[data-theme="dark"] .task-row-wrapper .table-cell{
-    background-color: #121313 !important;
+    background-color: #1A1A1A !important;
     color: (--text-color);
 }
 
 html[data-theme="dark"] .task-row-wrapper .cell-content{
-    background-color: #121313 !important;
+    background-color: #1A1A1A !important;
     color: #e7e7e7;
 }
 
 html[data-theme="dark"] .task-row-wrapper .assignee-name{
-    background-color: #121313 !important;
     color: #e7e7e7;
 }
 
