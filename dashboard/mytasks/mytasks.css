@@ -70,6 +70,10 @@ html[data-theme="dark"] .progress-loading-container {
   color: var(--text-color) !important;
 }
 
+html[data-theme="dark"] .task-sidebar {
+  background-color: var(--primary-bg) !important;
+}
+
 html[data-theme="dark"] .sidebar-content-task {
   background-color: var(--primary-bg) !important;
   color: var(--text-color) !important;
@@ -594,24 +598,16 @@ html[data-theme="dark"] .list-view-container {
   border-color: var(--border-color);
 }
 
-[data-theme="dark"]
-  .juanlunacms-spreadsheetlist-custom-checkbox-container:hover
-  input
-  ~ .juanlunacms-spreadsheetlist-custom-checkbox {
+[data-theme="dark"] .juanlunacms-spreadsheetlist-custom-checkbox-container:hover input~.juanlunacms-spreadsheetlist-custom-checkbox {
   border-color: var(--accent-color);
 }
 
-[data-theme="dark"]
-  .juanlunacms-spreadsheetlist-custom-checkbox-container
-  input:checked
-  ~ .juanlunacms-spreadsheetlist-custom-checkbox {
+[data-theme="dark"] .juanlunacms-spreadsheetlist-custom-checkbox-container input:checked~.juanlunacms-spreadsheetlist-custom-checkbox {
   background-color: #22c55e !important;
   border-color: #22c55e !important;
 }
 
-.juanlunacms-spreadsheetlist-custom-checkbox-container
-  input:checked
-  ~ .juanlunacms-spreadsheetlist-custom-checkbox {
+.juanlunacms-spreadsheetlist-custom-checkbox-container input:checked~.juanlunacms-spreadsheetlist-custom-checkbox {
   background-color: #22c55e;
   border-color: #22c55e;
 }
@@ -1139,6 +1135,7 @@ button:hover {
 .section-block {
   display: contents;
 }
+
 .grid-row-wrapper,
 .section-wrapper {
   transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
@@ -1146,12 +1143,8 @@ button:hover {
   will-change: transform, opacity;
 }
 
-body.is-dragging
-  > *
-  .grid-row-wrapper:not(.dragging):not(.drag-placeholder-ghost),
-body.is-dragging
-  > *
-  .section-wrapper:not(.dragging):not(.drag-placeholder-ghost) {
+body.is-dragging>* .grid-row-wrapper:not(.dragging):not(.drag-placeholder-ghost),
+body.is-dragging>* .section-wrapper:not(.dragging):not(.drag-placeholder-ghost) {
   opacity: 0.8;
 }
 
@@ -1185,7 +1178,7 @@ body.is-dragging
   height: auto;
 }
 
-.drag-placeholder-ghost > * {
+.drag-placeholder-ghost>* {
   visibility: hidden;
 }
 
@@ -1245,6 +1238,7 @@ body.is-dragging * {
   padding-left: 8px;
   transition: opacity 0.2s ease-in-out;
 }
+
 .task-row-wrapper:hover .task-hover-actions {
   opacity: 1;
 }
@@ -2190,15 +2184,11 @@ body.is-dragging * {
   transition: all 0.2s ease;
 }
 
-.juanlunacms-spreadsheetlist-custom-checkbox-container:hover
-  input
-  ~ .juanlunacms-spreadsheetlist-custom-checkbox {
+.juanlunacms-spreadsheetlist-custom-checkbox-container:hover input~.juanlunacms-spreadsheetlist-custom-checkbox {
   border-color: #999;
 }
 
-.juanlunacms-spreadsheetlist-custom-checkbox-container
-  input:checked
-  ~ .juanlunacms-spreadsheetlist-custom-checkbox {
+.juanlunacms-spreadsheetlist-custom-checkbox-container input:checked~.juanlunacms-spreadsheetlist-custom-checkbox {
   background-color: #22c55e;
   border-color: #22c55e;
 }
@@ -2209,14 +2199,11 @@ body.is-dragging * {
   display: none;
 }
 
-.juanlunacms-spreadsheetlist-custom-checkbox-container
-  input:checked
-  ~ .juanlunacms-spreadsheetlist-custom-checkbox::after {
+.juanlunacms-spreadsheetlist-custom-checkbox-container input:checked~.juanlunacms-spreadsheetlist-custom-checkbox::after {
   display: block;
 }
 
-.juanlunacms-spreadsheetlist-custom-checkbox-container
-  .juanlunacms-spreadsheetlist-custom-checkbox::after {
+.juanlunacms-spreadsheetlist-custom-checkbox-container .juanlunacms-spreadsheetlist-custom-checkbox::after {
   left: 5px;
   top: 2px;
   width: 5px;
@@ -2312,8 +2299,7 @@ body.is-dragging * {
   color: #94a3b8;
 }
 
-.juanlunacms-spreadsheetlist-custom-checkbox-container
-  input[type="checkbox"]:hover {
+.juanlunacms-spreadsheetlist-custom-checkbox-container input[type="checkbox"]:hover {
   border-color: #2563eb;
 }
 
