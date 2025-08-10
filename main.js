@@ -28,7 +28,6 @@ function parseRoute() {
     const pathParts = window.location.pathname.split('/').filter(p => p);
     const queryParams = new URLSearchParams(window.location.search);
 
-
     // Default home route
     if (pathParts.length === 0) {
         return { section: 'home' };
@@ -46,7 +45,18 @@ function parseRoute() {
         };
     }
 
-    const simpleRoutes = ['home', 'mytasks', 'myworkspace', 'inbox', 'inventory', 'reports', 'products', 'searchresults', 'settings'];
+    // ✅ Handle /mainpage/:id → landing page
+    if (resourceType === 'mainpage') {
+        return {
+            section: 'landingpage',
+            id: pathParts[1] || null
+        };
+    }
+
+    const simpleRoutes = [
+        'home', 'mytasks', 'myworkspace', 'inbox',
+        'inventory', 'reports', 'products', 'searchresults', 'settings'
+    ];
     if (simpleRoutes.includes(resourceType)) {
         return { section: resourceType };
     }
@@ -60,7 +70,6 @@ function parseRoute() {
 
     return { section: 'home' };
 }
-
 
 
 /**
