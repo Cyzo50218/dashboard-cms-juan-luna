@@ -336,7 +336,7 @@ function createTaskRowForMyTasks(task) {
               task.name || "Untitled Task"
             }</span>
             
-            <div class="task-controls absolute right-2 top-0 bottom-0 h-full flex items-center gap-x-2 bg-slate-50 pl-2 opacity-1">
+            <div class="task-controls absolute right-2 top-0 bottom-0 h-full flex items-center gap-x-2 pl-2 opacity-1">
                 ${
                   commentCount > 0
                     ? `<span class="text-xs text-slate-500 font-sans">${commentCount}</span>`

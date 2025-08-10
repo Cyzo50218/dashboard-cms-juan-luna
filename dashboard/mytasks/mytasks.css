@@ -65,6 +65,11 @@ html[data-theme="dark"] .comment-header {
   border-bottom: 1px solid var(--border-color) !important;
 }
 
+html[data-theme="dark"] .progress-loading-container {
+  background-color: var(--primary-bg) !important;
+  color: var(--text-color) !important;
+}
+
 html[data-theme="dark"] .sidebar-content-task {
   background-color: var(--primary-bg) !important;
   color: var(--text-color) !important;
