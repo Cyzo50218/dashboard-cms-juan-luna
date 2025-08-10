@@ -19,6 +19,210 @@
     --task-row-padding: 0px 4px;
 }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    --primary-bg: #161616;
+    --secondary-bg: #161616;
+    --border-color: #1b1b1b;
+    --accent-color: #60a5fa;
+    --high-priority: #f87171;
+    --medium-priority: #fbbf24;
+    --low-priority: #34d399;
+    --header-border-color: #525252;
+    --border-color: #525252;
+    --text-color: #f9fafb;
+    --text-secondary-color: #a1a1aa;
+  }
+}
+/* dark mode tehemes */
+html[data-theme="dark"] .add-task-row-wrapper:hover {
+    opacity: 0.20;
+}
+
+html[data-theme="dark"] .task-list-body {
+        background: #1e1f1f;
+}
+html[data-theme="dark"] .juanlunacms-spreadsheetlist-custom-scrollbar::-webkit-scrollbar-track {
+    background: #1e1f1f;
+}
+
+html[data-theme="dark"] .juanlunacms-spreadsheetlist-custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #3d3d3d;
+    border-radius: 10px;
+    border: 2px solid rgb(90, 90, 90);
+}
+
+html[data-theme="dark"] .juanlunacms-spreadsheetlist-custom-scrollbar::-webkit-scrollbar-track:vertical {
+    margin-top: 35px;
+    background: #1e1f1f;
+}
+
+html[data-theme="dark"] .section-group .flex-grow:hover .flex-shrink-0:hover {
+    opacity: 0.20;
+}
+
+html[data-theme="dark"] .section-group .flex-grow:hover {
+}
+
+html[data-theme="dark"] .task-row-wrapper:hover {
+    color: #000000;
+    opacity: 1;
+}
+
+html[data-theme="dark"] .section-toggle{
+    margin-left: 0px;
+    margin-right: 0px;
+}
+
+html[data-theme="dark"] .section-title{
+    margin-left: 0px;
+    opacity: 1;
+    color: #e0e0e0;
+}
+
+html[data-theme="dark"] .header-cell-content{
+    margin-left: 0px;
+    opacity: 1;
+    color: #ffffff;
+}
+
+html[data-theme="dark"] .juanlunacms-spreadsheetlist-sticky-pane-bg{
+    margin-left: 0px;
+    opacity: 1;
+    color: #ffffff;
+}
+
+html[data-theme="dark"] .border-e {
+  border-right-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .border-r {
+  border-right-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .border-t {
+  border-top-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .border-b {
+  border-bottom-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .border-l {
+  border-left-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .border {
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .border-gray-200 {
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .border-gray-300 {
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .border-gray-400 {
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .border-gray-100 {
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .border-gray-50 {
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .border-gray-600 {
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .border-gray-700 {
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .border-gray-800 {
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .border-gray-900 {
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .border-gray-500 {
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .border-gray-400 {
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .border-gray-300 {
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .border-gray-200 {
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .border-gray-100 {
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .border-gray-50 {
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .border-gray-600 {
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .border-gray-700 {
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .border-gray-800 {
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .border-gray-900 {
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="dark"] .bg-white {
+  background-color: var(--primary-bg) !important;
+}
+
+html[data-theme="dark"] .bg-slate-50 {
+  background-color: var(--secondary-bg) !important;
+}
+
+html[data-theme="dark"] .juanlunacms-spreadsheetlist-sticky-pane-bg {
+  background-color: var(--primary-bg) !important;
+}
+
+html[data-theme="dark"] .juanlunacms-spreadsheetlist-custom-checkbox {
+  background-color: var(--primary-bg) !important;
+}
+
+html[data-theme="dark"] .task-row-wrapper .table-cell{
+    background-color: #121313 !important;
+    color: (--text-color);
+}
+
+html[data-theme="dark"] .task-row-wrapper .cell-content{
+    background-color: #121313 !important;
+    color: #e7e7e7;
+}
+
+html[data-theme="dark"] .task-row-wrapper .assignee-name{
+    background-color: #121313 !important;
+    color: #e7e7e7;
+}
+
 /* --- Core App Layout --- */
 .list-view-container {
     display: flex;
@@ -345,7 +549,6 @@ button:hover {
     font-size: 14px;
     align-items: center;
     border-top: none;
-
     gap: 8px;
 }
 
@@ -1764,6 +1967,7 @@ Custom class
 
 .juanlunacms-spreadsheetlist-custom-scrollbar::-webkit-scrollbar-thumb:vertical {
     margin-top: 35px;
+    
 }
 
 /* The hover effect applies to both scrollbars, which is good. */

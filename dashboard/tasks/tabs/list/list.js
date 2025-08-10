@@ -1899,7 +1899,7 @@ function render() {
 
     // --- HTML STRUCTURE ---
     const container = document.createElement('div');
-    container.className = 'w-full h-full bg-white overflow-auto juanlunacms-spreadsheetlist-custom-scrollbar border border-slate-200 rounded-none shadow-sm';
+    container.className = 'w-full h-full bg-white overflow-auto border border-slate-200 rounded-none shadow-sm'; // jcustom-scrollbar: uanlunacms-spreadsheetlist-custom-scrollbar
 
     const table = document.createElement('div');
     table.className = 'min-w-max relative';

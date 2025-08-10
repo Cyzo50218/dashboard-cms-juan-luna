@@ -9,6 +9,483 @@
     --low-priority: #34C759;       /* Green for the 'today' date */
 }
 
+html[data-theme="dark"] {
+  background-color: var(--primary-bg) !important;
+}
+
+html[data-theme="dark"] body {
+  background-color: var(--primary-bg) !important;
+  color: var(--text-color) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --primary-bg: #1a1a1a;
+    --secondary-bg: #2d2d2d;
+    --border-color: #404040;
+    --accent-color: #60a5fa;
+    --high-priority: #f87171;
+    --medium-priority: #fbbf24;
+    --low-priority: #34d399;
+    --header-border-color: #525252;
+    --text-color: #f9fafb;
+    --text-secondary-color: #a1a1aa;
+  }
+}
+
+html[data-theme="dark"],
+html[data-theme="dark"] body,
+html[data-theme="dark"] .list-view-container {
+  background-color: var(--primary-bg);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .project-header {
+  background-color: var(--primary-bg);
+  border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] .project-title-group h1 {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] h1,
+[data-theme="dark"] #project-name {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .project-icon {
+  background-color: var(--accent-color);
+}
+
+[data-theme="dark"] button {
+  color: var(--text-color);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] button:hover {
+  background-color: var(--secondary-bg);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .task-row-wrapper {
+  background-color: var(--primary-bg);
+  border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] .task-row-wrapper:hover {
+  background-color: var(--secondary-bg);
+}
+
+[data-theme="dark"] .task-cell {
+  background-color: var(--primary-bg);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .task-cell:hover {
+  background-color: var(--secondary-bg);
+}
+
+[data-theme="dark"] .header-cell {
+  background-color: var(--primary-bg);
+  color: var(--text-secondary-color);
+  border-bottom-color: var(--header-border-color);
+}
+
+[data-theme="dark"] .header-cell:hover {
+  background-color: var(--secondary-bg);
+}
+
+[data-theme="dark"] .status-tag {
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .priority-High {
+  background-color: rgba(248, 113, 113, 0.2);
+  color: var(--high-priority);
+}
+
+[data-theme="dark"] .priority-Medium {
+  background-color: rgba(251, 191, 36, 0.2);
+  color: var(--medium-priority);
+}
+
+[data-theme="dark"] .priority-Low {
+  background-color: rgba(52, 211, 153, 0.2);
+  color: var(--low-priority);
+}
+
+[data-theme="dark"] .status-On-track {
+  background-color: rgba(52, 211, 153, 0.2);
+  color: #34d399;
+}
+
+[data-theme="dark"] .status-At-risk {
+  background-color: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+}
+
+[data-theme="dark"] .status-Off-track {
+  background-color: rgba(248, 113, 113, 0.2);
+  color: #f87171;
+}
+
+[data-theme="dark"] .status-Completed {
+  background-color: rgba(163, 163, 163, 0.2);
+  color: #a3a3a3;
+}
+
+[data-theme="dark"] .task-name {
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .task-name-completed {
+  color: var(--text-secondary-color);
+}
+
+[data-theme="dark"] .date-red {
+  color: #f87171;
+}
+
+[data-theme="dark"] .date-yellow {
+  color: #fbbf24;
+}
+
+[data-theme="dark"] .date-green {
+  color: #34d399;
+}
+
+[data-theme="dark"] .date-default {
+  color: var(--text-secondary-color);
+}
+
+[data-theme="dark"] .assignee-name {
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .assignee-email {
+  color: var(--text-secondary-color);
+}
+
+[data-theme="dark"] .like-count,
+[data-theme="dark"] .comment-count {
+  color: var(--text-secondary-color);
+}
+
+[data-theme="dark"] .material-icons {
+  color: var(--text-secondary-color);
+}
+
+[data-theme="dark"] .material-icons:hover {
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .juanlunacms-spreadsheetlist-left-sticky-pane {
+  background-color: var(--primary-bg);
+}
+
+[data-theme="dark"] .juanlunacms-spreadsheetlist-sticky-header {
+  background-color: var(--primary-bg);
+}
+
+[data-theme="dark"] .juanlunacms-spreadsheetlist-custom-checkbox {
+  background-color: var(--secondary-bg);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .juanlunacms-spreadsheetlist-custom-checkbox-container:hover input~.juanlunacms-spreadsheetlist-custom-checkbox {
+  border-color: var(--accent-color);
+}
+
+[data-theme="dark"] .juanlunacms-spreadsheetlist-custom-checkbox-container input:checked~.juanlunacms-spreadsheetlist-custom-checkbox {
+  background-color: #22c55e !important;
+  border-color: #22c55e !important;
+}
+
+.juanlunacms-spreadsheetlist-custom-checkbox-container input:checked~.juanlunacms-spreadsheetlist-custom-checkbox {
+  background-color: #22c55e;
+  border-color: #22c55e;
+}
+
+[data-theme="dark"] .no-results-message {
+  color: var(--text-secondary-color);
+}
+
+[data-theme="dark"] .loading-text {
+  color: var(--text-secondary-color);
+}
+
+[data-theme="dark"] .progress-spinner {
+  border-top-color: var(--accent-color);
+}
+
+html[data-theme="dark"] .icon-action.is-liked .fa-heart {
+  color: #e2264d !important;
+}
+
+html[data-theme="dark"] .date-red {
+  color: #f87171 !important;
+}
+
+html[data-theme="dark"] .text-slate-600 {
+  color: #f9fafb !important;
+}
+
+html[data-theme="dark"] .header-cell {
+  color: #f9fafb !important;
+}
+
+html[data-theme="dark"] div[data-control="open-sidebar"].w-56 {
+  color: #f9fafb !important;
+  background-color: var(--primary-bg) !important;
+  border-left: 1px solid var(--border-color) !important;
+}
+
+html[data-theme="dark"] .sidebar-header-task {
+  background-color: var(--primary-bg) !important;
+  color: var(--text-color) !important;
+  border-bottom: 1px solid var(--primary-bg) !important;
+}
+
+html[data-theme="dark"] #task-name {
+  background-color: var(--primary-bg) !important;
+  color: var(--text-color) !important;
+}
+
+html[data-theme="dark"] #task-fields-container.task-fields {
+  background-color: var(--primary-bg) !important;
+  color: var(--text-color) !important;
+}
+
+html[data-theme="dark"] #task-fields-container.task-fields label,
+html[data-theme="dark"] #task-fields-container.task-fields div {
+  color: var(--text-color) !important;
+}
+
+html[data-theme="dark"] .sidebar-task-btn-tab {
+  background-color: var(--secondary-bg) !important;
+  color: var(--text-color) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+html[data-theme="dark"] .comment-display-area {
+  background-color: var(--primary-bg) !important;
+  color: var(--text-color) !important;
+  border-top: 1px solid var(--border-color) !important;
+}
+
+html[data-theme="dark"] #comment-input {
+  background-color: var(--primary-bg) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+html[data-theme="dark"] .comment-header {
+  background-color: var(--secondary-bg) !important;
+  color: var(--text-secondary-color) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+html[data-theme="dark"] .progress-loading-container {
+  background-color: var(--primary-bg) !important;
+  color: var(--text-color) !important;
+}
+
+html[data-theme="dark"] .task-sidebar {
+  background-color: var(--primary-bg) !important;
+}
+
+html[data-theme="dark"] .sidebar-content-task {
+  background-color: var(--primary-bg) !important;
+  color: var(--text-color) !important;
+}
+
+html[data-theme="dark"] .flatpickr-input {
+  background-color: var(--primary-bg) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+html[data-theme="dark"] .tag {
+  background-color: var(--secondary-bg) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+html[data-theme="dark"] #task-description-text {
+  background-color: var(--primary-bg) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+html[data-theme="dark"] .field-label {
+  color: var(--text-secondary-color) !important;
+}
+
+html[data-theme="dark"] #activity-log-container {
+  background-color: var(--primary-bg) !important;
+  color: var(--text-color) !important;
+  border-top: 1px solid var(--border-color) !important;
+}
+
+html[data-theme="dark"] #comment-tabs-container.comment-tabs {
+  background-color: var(--primary-bg) !important;
+  color: var(--text-color) !important;
+  border-bottom: 1px solid var(--primary-bg) !important;
+}
+
+html[data-theme="dark"] #add-comment-form.add-comment {
+  background-color: var(--primary-bg) !important;
+  color: var(--text-color) !important;
+  border-top: 1px solid var(--border-color) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+html[data-theme="dark"] .sidebar-task-btn-tab {
+  background-color: var(--secondary-bg) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+  margin-right: 4px;
+  padding: 6px 12px;
+  border-radius: 4px 4px 0 0;
+  cursor: pointer;
+  font-weight: 600;
+  user-select: none;
+}
+
+html[data-theme="dark"] .sidebar-task-btn-tab.active {
+  background-color: var(--primary-bg) !important;
+  color: var(--text-color) !important;
+  border-bottom: 1px solid var(--primary-bg) !important;
+}
+
+html[data-theme="dark"] .comment-section {
+  background-color: var(--primary-bg) !important;
+  border-top: 1px solid var(--border-color) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  padding: 12px;
+  color: var(--text-color) !important;
+}
+
+html[data-theme="dark"] .comment-header {
+  color: var(--text-color) !important;
+  font-weight: 700;
+  background-color: var(--primary-bg) !important;
+  border-bottom: var(--primary-bg) !important;
+  padding: 8px 12px;
+}
+
+html[data-theme="dark"] .comment-timestamp {
+  border-top: none !important;
+  border-bottom: none !important;
+}
+
+html[data-theme="dark"] #add-comment-form.add-comment {
+  border-top: none !important;
+  border-bottom: none !important;
+}
+
+html[data-theme="dark"] #task-description-text {
+  border: none !important;
+  box-shadow: none !important;
+  background-color: var(--primary-bg) !important;
+  color: var(--text-color) !important;
+}
+
+html[data-theme="dark"] #task-description-text:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border-bottom: 2px solid #ffffff !important;
+}
+
+html[data-theme="dark"] .comment-timestamp {
+  border-top: none !important;
+  border-bottom: none !important;
+}
+
+html[data-theme="dark"] .comment-header {
+  border-bottom: none !important;
+}
+
+html[data-theme="dark"] .sidebar-task-btn-tab {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--text-color) !important;
+  margin-right: 0;
+  padding: 8px 16px;
+  border-radius: 0 !important;
+  cursor: pointer;
+  font-weight: 600;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+}
+
+html[data-theme="dark"] .sidebar-task-btn-tab.active {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--text-color) !important;
+  border-bottom: 2px solid var(--text-color) !important;
+  border-radius: 0 !important;
+  margin-right: 0;
+  padding: 8px 16px;
+}
+
+html[data-theme="dark"] #add-comment-form.add-comment {
+  border-top: none !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="dark"] #add-comment-form.add-comment:focus-within {
+  border-bottom: 2px solid transparent !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="dark"] #add-comment-form.add-comment:focus-within textarea {
+  border-bottom: 2px solid #ffffff !important;
+}
+
+html[data-theme="dark"] #add-comment-form.add-comment textarea {
+  border-bottom: none !important;
+}
+
+html[data-theme="dark"] #task-description-text {
+  border: none !important;
+  box-shadow: none !important;
+  background-color: var(--primary-bg) !important;
+  color: var(--text-color) !important;
+}
+
+html[data-theme="dark"] #task-description-text:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="dark"] .comment-timestamp {
+  border-top: none !important;
+  border-bottom: none !important;
+}
+
+html[data-theme="dark"] .comment-header {
+  border-bottom: none !important;
+}
+
+html[data-theme="dark"] #toggle-full-view-btn,
+html[data-theme="dark"] #close-sidebar-btn {
+  color: #ffffff !important;
+  cursor: pointer;
+}
+
+html[data-theme="dark"] #toggle-full-view-btn:hover,
+html[data-theme="dark"] #close-sidebar-btn:hover {
+  color: #dddddd !important;
+}
+
 
 /* --- NEW: flatpickr Theme Overrides --- */
 /* Add this new block to your sidebar.css file */
