@@ -148,8 +148,7 @@ section {
 .logo-img {
   height: 50px;
   width: auto;
-  filter: drop-shadow(0 0 2px white)
-    drop-shadow(0 0 4px rgba(255, 255, 255, 0.5));
+  filter: grayscale(100%) sepia(100%) saturate(9000%) hue-rotate(20deg);
 }
 
 .logo span {
