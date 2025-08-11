@@ -1,0 +1,127 @@
+:root {
+    --bg-color: #f0f2f5;
+    --card-bg: #ffffff;
+    --text-color: #333333;
+    --text-secondary: #666666;
+    --border-color: #e0e0e0;
+    --accent-color: #007bff;
+    --unread-bg: #eaf2ff;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg-color: #121212;
+        --card-bg: #1e1e1e;
+        --text-color: #e0e0e0;
+        --text-secondary: #b0b0b0;
+        --border-color: #2e2e2e;
+        --accent-color: #8ab4f8;
+        --unread-bg: #2c2c2c;
+    }
+}
+.notification-inbox {
+    width: 100%;
+    max-width: 600px;
+    background-color: var(--card-bg);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.inbox-header {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.inbox-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.notification-list {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    list-style: none;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.notification-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.2s ease-in-out;
+    cursor: pointer;
+}
+
+.notification-item:last-child {
+    border-bottom: none;
+}
+
+.notification-item.unread {
+    background-color: var(--unread-bg);
+}
+
+.notification-item:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+@media (prefers-color-scheme: dark) {
+    .notification-item:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+}
+
+.notification-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--accent-color);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    font-weight: 500;
+    flex-shrink: 0;
+    margin-right: 16px;
+}
+
+.notification-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.notification-text {
+    font-size: 1rem;
+    line-height: 1.4;
+    margin-bottom: 4px;
+}
+
+.notification-time {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+/* Scrollbar styling */
+.notification-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.notification-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.notification-list::-webkit-scrollbar-thumb {
+    background-color: var(--border-color);
+    border-radius: 4px;
+    border: 2px solid var(--card-bg);
+}
+
+@media (prefers-color-scheme: dark) {
+    .notification-list::-webkit-scrollbar-thumb {
+        border: 2px solid var(--card-bg);
+    }
+}

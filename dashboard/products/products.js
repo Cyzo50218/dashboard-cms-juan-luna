@@ -47,38 +47,33 @@ const storage = getStorage(app);
 console.log("Initialized Firebase on Dashboard.");
 
 const products = [
-  {
-    id: 1,
-    name: "Phone 16 Pro Max",
-    sku: "PHN-16PM",
-    cost: 62093.5,
-    supplier: "Apple Inc.",
-    description: "Flagship smartphone with advanced camera system and A18 chip",
-    image:
-      "https://img.freepik.com/free-photo/shirt-hanger-with-green-background_23-2150264156.jpg?semt=ais_hybrid&w=740",
-  },
-  {
-    id: 2,
-    name: "Predator Helios 16 AI",
-    sku: "LAP-PH16AI",
-    cost: 107293.5,
-    supplier: "Acer Corporation",
-    description: "Gaming laptop with AI-enhanced performance and cooling",
-    image:
-      "https://d1csarkz8obe9u.cloudfront.net/posterpreviews/plain-dark-green-t-shirt-mock-up-instagram-po-design-template-93bc81ccc943b866ffa3e1003b523c79_screen.jpg?ts=1723107646",
-  },
-  {
-    id: 3,
-    name: "Närro V 17",
-    sku: "LAP-NV17",
-    cost: 73393.5,
-    supplier: "Närro Technologies",
-    description:
-      "Ultra-slim laptop with 17-inch OLED display and all-day battery",
-    image:
-      "https://png.pngtree.com/thumb_back/fh260/background/20241030/pngtree-plain-white-t-shirt-on-hanger-image_16329568.jpg",
-  },
-];
+{
+  id: 1,
+  name: "Phone 16 Pro Max",
+  sku: "PHN-16PM",
+  cost: 62093.5,
+  supplier: "Apple Inc.",
+  description: "Flagship smartphone with advanced camera system and A18 chip",
+  image: "https://img.freepik.com/free-photo/shirt-hanger-with-green-background_23-2150264156.jpg?semt=ais_hybrid&w=740",
+},
+{
+  id: 2,
+  name: "Predator Helios 16 AI",
+  sku: "LAP-PH16AI",
+  cost: 107293.5,
+  supplier: "Acer Corporation",
+  description: "Gaming laptop with AI-enhanced performance and cooling",
+  image: "https://d1csarkz8obe9u.cloudfront.net/posterpreviews/plain-dark-green-t-shirt-mock-up-instagram-po-design-template-93bc81ccc943b866ffa3e1003b523c79_screen.jpg?ts=1723107646",
+},
+{
+  id: 3,
+  name: "Närro V 17",
+  sku: "LAP-NV17",
+  cost: 73393.5,
+  supplier: "Närro Technologies",
+  description: "Ultra-slim laptop with 17-inch OLED display and all-day battery",
+  image: "https://png.pngtree.com/thumb_back/fh260/background/20241030/pngtree-plain-white-t-shirt-on-hanger-image_16329568.jpg",
+}, ];
 
 let selectedProductId = null;
 let isEditing = false;
@@ -146,94 +141,94 @@ function detachAllListeners() {
 function attachProductListListener(userId) {
   detachAllListeners();
   currentUserId = userId;
-
+  
   const userDocRef = doc(db, "users", userId);
-
+  
   onSnapshot(
     userDocRef,
     async (userSnap) => {
-      if (!userSnap.exists()) {
-        console.error(`❌ User document not found for ID: ${userId}`);
-        showRestrictedAccessUI("User profile not found.");
-        return;
-      }
-
-      const userData = userSnap.data();
-      const selectedWorkspaceId = userData.selectedWorkspace;
-
-      if (!selectedWorkspaceId || selectedWorkspaceId === currentWorkspaceId) {
-        if (!selectedWorkspaceId) {
-          console.warn(
-            "%c⚠️ No selected workspace found for user.",
-            "color: #ffc107;"
-          );
-          showRestrictedAccessUI("No workspace selected.");
+        if (!userSnap.exists()) {
+          console.error(`❌ User document not found for ID: ${userId}`);
+          showRestrictedAccessUI("User profile not found.");
+          return;
         }
-        return;
-      }
-
-      currentWorkspaceId = selectedWorkspaceId;
-      console.log(
-        `%c🚀 Switching to workspace: ${currentWorkspaceId}`,
-        "color: #8a2be2; font-weight: bold;"
-      );
-      updateUrl({ workspace: currentWorkspaceId });
-
-      if (productListUnsub) productListUnsub();
-
-      const workspaceDocRef = doc(
-        db,
-        "ProductListWorkspace",
-        currentWorkspaceId
-      );
-
-
-      await checkUserPermissions(userId, currentWorkspaceId, userData.role);
-
-      const productListRef = collection(workspaceDocRef, "ProductList");
-      const q = query(productListRef);
-
-      productListUnsub = onSnapshot(
-        q,
-        async (snapshot) => {
-          productList = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          console.log(
-            "%c📦 Product List Updated:",
-            "color: #4caf50;",
-            productList
-          );
-
-          await fetchDropdownOptions(userId, currentWorkspaceId);
-
-          activeProductList = [...productList];
-          productsCurrentlyShown = 0;
-          const initialBatch = activeProductList.slice(0, INITIAL_LOAD_COUNT);
-          renderProducts(initialBatch, false);
-          productsCurrentlyShown = initialBatch.length;
-
-          applyStateFromUrl();
-        },
-        (error) => {
-          console.error(
-            `%c❌ Error listening to product list for workspace ${currentWorkspaceId}:`,
-            "color: #dc3545;",
-            error
-          );
-          showRestrictedAccessUI("Could not load products for this workspace.");
+        
+        const userData = userSnap.data();
+        const selectedWorkspaceId = userData.selectedWorkspace;
+        
+        if (!selectedWorkspaceId || selectedWorkspaceId === currentWorkspaceId) {
+          if (!selectedWorkspaceId) {
+            console.warn(
+              "%c⚠️ No selected workspace found for user.",
+              "color: #ffc107;"
+            );
+            showRestrictedAccessUI("No workspace selected.");
+          }
+          return;
         }
-      );
-    },
-    (error) => {
-      console.error(
-        "%c❌ Error loading user snapshot.",
-        "color: #dc3545;",
-        error
-      );
-      showRestrictedAccessUI("An error occurred while loading your profile.");
-    }
+        
+        currentWorkspaceId = selectedWorkspaceId;
+        console.log(
+          `%c🚀 Switching to workspace: ${currentWorkspaceId}`,
+          "color: #8a2be2; font-weight: bold;"
+        );
+        updateUrl({ workspace: currentWorkspaceId });
+        
+        if (productListUnsub) productListUnsub();
+        
+        const workspaceDocRef = doc(
+          db,
+          "ProductListWorkspace",
+          currentWorkspaceId
+        );
+        
+        
+        await checkUserPermissions(userId, currentWorkspaceId, userData.role);
+        
+        const productListRef = collection(workspaceDocRef, "ProductList");
+        const q = query(productListRef);
+        
+        productListUnsub = onSnapshot(
+          q,
+          async (snapshot) => {
+              productList = snapshot.docs.map((doc) => ({
+                id: doc.id,
+                ...doc.data(),
+              }));
+              console.log(
+                "%c📦 Product List Updated:",
+                "color: #4caf50;",
+                productList
+              );
+              
+              await fetchDropdownOptions(userId, currentWorkspaceId);
+              
+              activeProductList = [...productList];
+              productsCurrentlyShown = 0;
+              const initialBatch = activeProductList.slice(0, INITIAL_LOAD_COUNT);
+              renderProducts(initialBatch, false);
+              productsCurrentlyShown = initialBatch.length;
+              
+              applyStateFromUrl();
+            },
+            (error) => {
+              console.error(
+                `%c❌ Error listening to product list for workspace ${currentWorkspaceId}:`,
+                "color: #dc3545;",
+                error
+              );
+              showRestrictedAccessUI("Could not load products for this workspace.");
+            }
+        );
+      },
+      (error) => {
+        console.error(
+          "%c❌ Error loading user snapshot.",
+          "color: #dc3545;",
+          error
+        );
+        showRestrictedAccessUI("An error occurred while loading your profile.");
+      }
   );
 }
 
@@ -243,25 +238,25 @@ async function checkUserPermissions(userId, workspaceId, userRole) {
     console.warn("Cannot check permissions without User ID and Workspace ID.");
     return;
   }
-
+  
   try {
     const myWorkspaceRef = doc(
       db,
       `users/${userId}/myworkspace/${workspaceId}`
     );
     const myWorkspaceSnap = await getDoc(myWorkspaceRef);
-    const workspaceData = myWorkspaceSnap.exists()
-      ? myWorkspaceSnap.data()
-      : null;
-
+    const workspaceData = myWorkspaceSnap.exists() ?
+      myWorkspaceSnap.data() :
+      null;
+    
     const ownerRef = workspaceData?.ownerWorkspaceRef;
     const ownerPath = typeof ownerRef === "string" ? ownerRef : ownerRef?.path;
     const isOwner = ownerPath?.includes(currentUserId);
-
+    
     const isAdminOrDev = userRole === 3 || userRole === 0;
-
+    
     canUserModify = isOwner || isAdminOrDev;
-
+    
     if (canUserModify) {
       console.log(
         `%c✅ Permission Granted: User is ${isOwner ? "Owner" : ""}${
@@ -297,23 +292,23 @@ function renderFilteredProducts(filteredProducts) {
 
 function loadMoreProducts() {
   if (isLoading) return;
-
+  
   const remainingProducts = activeProductList.length - productsCurrentlyShown;
   if (remainingProducts <= 0) {
     console.log("All products loaded.");
     return;
   }
-
+  
   isLoading = true;
   console.log("Loading more products...");
-
+  
   const nextBatch = activeProductList.slice(
     productsCurrentlyShown,
     productsCurrentlyShown + PRODUCTS_PER_LOAD
   );
-
+  
   renderProducts(nextBatch, true);
-
+  
   productsCurrentlyShown += nextBatch.length;
   isLoading = false;
 }
@@ -339,21 +334,21 @@ async function fetchDropdownOptions(userId, workspaceId) {
       `users/${userId}/myworkspace/${workspaceId}/projects`
     );
     const projectDocsSnap = await getDocs(projectsRef);
-
+    
     if (projectDocsSnap.empty) {
       console.log("No projects found in the subcollection.");
       populateSupplierDropdown([]);
       return;
     }
-
+    
     const allMemberUids = new Set();
-
+    
     const projectSuppliers = projectDocsSnap.docs.map((doc) => {
       const projectData = doc.data();
-
+      
       const members = projectData.memberUIDs || [];
       members.forEach((uid) => allMemberUids.add(uid));
-
+      
       let hexColor = "#cccccc";
       console.log(`original color: ${projectData.color}`);
       if (projectData.color && typeof projectData.color === "string") {
@@ -375,10 +370,10 @@ async function fetchDropdownOptions(userId, workspaceId) {
         type: "Project",
       };
     });
-
+    
     let userSuppliers = [];
     const uniqueMemberUidsArray = [...allMemberUids];
-
+    
     if (uniqueMemberUidsArray.length > 0) {
       const usersRef = collection(db, "users");
       const userQuery = query(
@@ -394,10 +389,10 @@ async function fetchDropdownOptions(userId, workspaceId) {
         type: "User",
       }));
     }
-
+    
     supplierList = [...projectSuppliers];
     supplierList.sort((a, b) => a.name.localeCompare(b.name));
-
+    
     console.log(
       "%c✅ All options loaded and sorted:",
       "color: #28a745;",
@@ -414,14 +409,14 @@ async function fetchDropdownOptions(userId, workspaceId) {
 function hslToRgb(h, s, l) {
   s /= 100;
   l /= 100;
-
+  
   let c = (1 - Math.abs(2 * l - 1)) * s,
     x = c * (1 - Math.abs(((h / 60) % 2) - 1)),
     m = l - c / 2,
     r = 0,
     g = 0,
     b = 0;
-
+  
   if (0 <= h && h < 60) {
     r = c;
     g = x;
@@ -450,7 +445,7 @@ function hslToRgb(h, s, l) {
   r = Math.round((r + m) * 255);
   g = Math.round((g + m) * 255);
   b = Math.round((b + m) * 255);
-
+  
   return [r, g, b];
 }
 
@@ -467,14 +462,14 @@ function createSupplierDisplayHTML(supplierData, fallbackName) {
   if (!supplierData) {
     return fallbackName;
   }
-
+  
   let iconContent = "";
   let detailsContent = "";
-
+  
   if (supplierData.type === "User") {
-    const bgImage = supplierData.avatar
-      ? `url('${supplierData.avatar}')`
-      : "none";
+    const bgImage = supplierData.avatar ?
+      `url('${supplierData.avatar}')` :
+      "none";
     iconContent = `<div class="option-icon" style="background-image: ${bgImage}; background-size: cover;"></div>`;
     detailsContent = `
       <div class="option-details">
@@ -491,7 +486,7 @@ function createSupplierDisplayHTML(supplierData, fallbackName) {
       </div>
     `;
   }
-
+  
   return `<div class="supplier-display">${iconContent} ${detailsContent}</div>`;
 }
 
@@ -500,19 +495,19 @@ function populateSupplierDropdown(options) {
     "#supplierDropdownTrigger .selected-text"
   );
   if (!optionsContainer || !triggerText) return;
-
+  
   optionsContainer.innerHTML = "";
-
+  
   if (options.length === 0) {
     triggerText.textContent = "No suppliers available";
     return;
   }
-
+  
   options.forEach((option) => {
     const optionEl = document.createElement("div");
     optionEl.className = "custom-option";
     optionEl.dataset.value = option.name;
-
+    
     let iconContent = "";
     if (option.type === "User") {
       const bgImage = option.avatar ? `url('${option.avatar}')` : "none";
@@ -521,11 +516,11 @@ function populateSupplierDropdown(options) {
       const color = option.color || "#cccccc";
       iconContent = `<div class="option-icon" style="background-color: ${color};"></div>`;
     }
-
-    const emailText = option.email
-      ? `<div class="option-email">${option.email}</div>`
-      : "";
-
+    
+    const emailText = option.email ?
+      `<div class="option-email">${option.email}</div>` :
+      "";
+    
     optionEl.innerHTML = `
       ${iconContent}
       <div class="option-details">
@@ -533,12 +528,12 @@ function populateSupplierDropdown(options) {
         ${emailText}
       </div>
     `;
-
+    
     optionEl.addEventListener("click", () => {
       selectSupplier(option.name);
       optionsContainer.classList.add("hidden");
     });
-
+    
     optionsContainer.appendChild(optionEl);
   });
 }
@@ -561,17 +556,17 @@ function selectSupplier(supplierName) {
   const selectedOptionData = supplierList.find(
     (opt) => opt.name === supplierName
   );
-
+  
   if (selectedOptionData && productSupplierInput && trigger) {
     productSupplierInput.value = supplierName;
-
+    
     let iconContent = "";
     let detailsContent = "";
-
+    
     if (selectedOptionData.type === "User") {
-      const bgImage = selectedOptionData.avatar
-        ? `url('${selectedOptionData.avatar}')`
-        : "none";
+      const bgImage = selectedOptionData.avatar ?
+        `url('${selectedOptionData.avatar}')` :
+        "none";
       iconContent = `<div class="option-icon" style="background-image: ${bgImage}; background-size: cover;"></div>`;
       detailsContent = `
         <div class="option-details">
@@ -588,11 +583,11 @@ function selectSupplier(supplierName) {
         </div>
       `;
     }
-
+    
     trigger.querySelector(
       ".selected-text"
     ).innerHTML = `${iconContent} ${detailsContent}`;
-
+    
     allOptions.forEach((opt) => {
       opt.classList.toggle("selected", opt.dataset.value === supplierName);
     });
@@ -604,10 +599,10 @@ function selectSupplier(supplierName) {
 
 function renderSupplierInfo(supplier) {
   if (!supplier || !supplier.name) return "";
-
+  
   let icon = "";
   let details = "";
-
+  
   if (supplier.type === "User") {
     const bgImage = supplier.avatar ? `url('${supplier.avatar}')` : "none";
     icon = `<div class="option-icon" style="background-image: ${bgImage}; background-size: cover;"></div>`;
@@ -628,7 +623,7 @@ function renderSupplierInfo(supplier) {
   } else {
     return supplier.name;
   }
-
+  
   return `<div class="supplier-display">${icon}${details}</div>`;
 }
 
@@ -636,14 +631,14 @@ function renderProducts(productsToRender, shouldAppend = false) {
   if (!shouldAppend) {
     grid.innerHTML = "";
   }
-
+  
   if (!productsToRender || productsToRender.length === 0) {
     if (!shouldAppend) {
       grid.innerHTML = `<p class="col-span-full text-center text-gray-500">No products found.</p>`;
     }
     return;
   }
-
+  
   if (!canUserModify) {
     if (addBtn) {
       addBtn.classList.add("hidden");
@@ -679,8 +674,8 @@ function renderProducts(productsToRender, shouldAppend = false) {
               ${renderSupplierInfo(product.supplier)}
               </div>
         `;
-
-
+    
+    
     const productImage = card.querySelector(".product-image img");
     if (productImage) {
       productImage.addEventListener("click", (e) => {
@@ -688,11 +683,11 @@ function renderProducts(productsToRender, shouldAppend = false) {
         showImageOverlay(product.image);
       });
     }
-
+    
     if (!canUserModify) {
       const editIcon = card.querySelector(".edit-icon");
       const deleteIcon = card.querySelector(".delete-icon");
-
+      
       if (editIcon) editIcon.classList.add("hidden");
       if (deleteIcon) deleteIcon.classList.add("hidden");
     }
@@ -702,7 +697,7 @@ function renderProducts(productsToRender, shouldAppend = false) {
     }
     grid.appendChild(card);
   });
-
+  
   const images = document.querySelectorAll(".product-image img");
   images.forEach((img) => {
     img.classList.add("loading");
@@ -721,17 +716,17 @@ function showImageOverlay(imageUrl) {
       <button class="close-overlay-btn">✕</button>
     </div>
   `;
-
+  
   overlay.querySelector(".close-overlay-btn").addEventListener("click", () => {
     document.body.removeChild(overlay);
   });
-
+  
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) {
       document.body.removeChild(overlay);
     }
   });
-
+  
   document.body.appendChild(overlay);
 }
 
@@ -746,11 +741,11 @@ function showNotification(message, duration = 3000) {
 function showModal(product = null) {
   const modalTitle = document.getElementById("modalTitle");
   const imagePreview = document.getElementById("imagePreview");
-
+  
   document.getElementById("productForm").reset();
   imagePreview.innerHTML = "";
   productImageInput.value = "";
-
+  
   const isDarkMode =
     document.documentElement.getAttribute("data-theme") === "dark";
   if (isDarkMode) {
@@ -778,7 +773,7 @@ function showModal(product = null) {
       .querySelector(".image-upload-container")
       .classList.remove("dark-mode");
   }
-
+  
   if (product) {
     modalTitle.textContent = "Edit Product";
     productNameInput.value = product.name;
@@ -787,20 +782,20 @@ function showModal(product = null) {
     productSupplierInput.value = product.supplier;
     productDescriptionInput.value = product.description || "";
     productImageInput.value = product.image;
-
+    
     if (product.image) {
       imagePreview.innerHTML = `
         <img src="${product.image}" alt="Preview" style="max-width: 100px; max-height: 100px; margin-top: 10px;" />
       `;
     }
-
+    
     isEditing = true;
   } else {
     modalTitle.textContent = "Add New Product";
     updateUrl({ workspace: currentWorkspaceId, selected: null, action: "new" });
     isEditing = false;
   }
-
+  
   modal.classList.remove("hidden");
 }
 
@@ -820,7 +815,7 @@ function renderProductSidebar(product) {
     supplier,
     supplier.name
   );
-
+  
   return `
         <div class="settings-section">
             <span class="settings-label">Product Name</span>
@@ -868,10 +863,10 @@ function updateSidebar(product) {
     productSettings.classList.add("hidden");
     return;
   }
-
+  
   productSettings.innerHTML = renderProductSidebar(product);
-
-
+  
+  
   const sidebarImage = productSettings.querySelector(
     ".product-image-container img"
   );
@@ -879,19 +874,19 @@ function updateSidebar(product) {
     sidebarImage.addEventListener("mousedown", (e) => {
       e.preventDefault();
     });
-
+    
     sidebarImage.addEventListener("click", (e) => {
       showImageOverlay(product.image);
     });
   }
-
+  
   productContent.classList.add("hidden");
   productSettings.classList.remove("hidden");
 }
 
 function handleImageFile(file) {
   const reader = new FileReader();
-  reader.onload = function (event) {
+  reader.onload = function(event) {
     const dataURL = event.target.result;
     productImageInput.value = dataURL;
     const preview = document.getElementById("imagePreview");
@@ -919,19 +914,19 @@ async function addProduct() {
     showNotification("Permission Denied: You cannot add products.", 5000);
     return;
   }
-
+  
   showSavingDialog();
-
+  
   const supplierName = productSupplierInput.value;
   const supplierData = supplierList.find((s) => s.name === supplierName);
-
+  
   const supplierInfoToSave = {
     name: supplierData?.name || supplierName,
     avatar: supplierData?.avatar || null,
     email: supplierData?.email || null,
     type: supplierData?.type || "Unknown",
   };
-
+  
   if (
     supplierInfoToSave.type === "Project" &&
     !supplierData?.avatar &&
@@ -939,23 +934,23 @@ async function addProduct() {
   ) {
     supplierInfoToSave.color = supplierData?.color || "#cccccc";
   }
-
+  
   let imageUrl = "";
   const file = fileInput.files[0];
-
+  
   if (file) {
     const uniqueId = uuidv4();
-
+    
     const storageRef = ref(
       storage,
       `productListWorkspace/${uniqueId}/${file.name}`
     );
-
+    
     await uploadBytes(storageRef, file);
-
+    
     imageUrl = await getDownloadURL(storageRef);
   }
-
+  
   const newProduct = {
     name: productNameInput.value,
     sku: productSkuInput.value,
@@ -966,7 +961,7 @@ async function addProduct() {
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
-
+  
   try {
     const productListRef = collection(
       db,
@@ -990,20 +985,20 @@ async function updateProduct() {
     showNotification("Permission Denied: You cannot edit products.", 5000);
     return;
   }
-
+  
   if (!selectedProductId) return;
   showSavingDialog();
-
+  
   const supplierName = productSupplierInput.value;
   const supplierData = supplierList.find((s) => s.name === supplierName);
-
+  
   const supplierInfoToSave = {
     name: supplierData?.name || supplierName,
     avatar: supplierData?.avatar || null,
     email: supplierData?.email || null,
     type: supplierData?.type || "Unknown",
   };
-
+  
   if (
     supplierInfoToSave.type === "Project" &&
     !supplierData?.avatar &&
@@ -1011,10 +1006,10 @@ async function updateProduct() {
   ) {
     supplierInfoToSave.color = supplierData?.color || "#cccccc";
   }
-
+  
   let imageUrl = productImageInput.value;
   const file = fileInput.files[0];
-
+  
   if (file) {
     const uniqueId = uuidv4();
     const storageRef = ref(
@@ -1024,7 +1019,7 @@ async function updateProduct() {
     await uploadBytes(storageRef, file);
     imageUrl = await getDownloadURL(storageRef);
   }
-
+  
   const productDocRef = doc(
     db,
     "ProductListWorkspace",
@@ -1041,7 +1036,7 @@ async function updateProduct() {
     image: imageUrl,
     updatedAt: serverTimestamp(),
   };
-
+  
   try {
     await updateDoc(productDocRef, updatedData);
     const updatedProduct = { id: selectedProductId, ...updatedData };
@@ -1061,7 +1056,7 @@ async function deleteProduct(productId) {
     showNotification("Permission Denied: You cannot delete products.", 5000);
     return;
   }
-
+  
   const productDocRef = doc(
     db,
     "ProductListWorkspace",
@@ -1069,20 +1064,20 @@ async function deleteProduct(productId) {
     "ProductList",
     productId
   );
-
+  
   try {
     const docSnap = await getDoc(productDocRef);
-
+    
     if (!docSnap.exists()) {
       console.error("Product document not found, cannot delete.");
       showNotification("Error: Product not found.", 5000);
       return;
     }
-
+    
     const productData = docSnap.data();
     const imageUrl = productData.image;
     const productName = productData.name || "The product";
-
+    
     if (imageUrl) {
       try {
         const imageRef = ref(storage, imageUrl);
@@ -1095,14 +1090,14 @@ async function deleteProduct(productId) {
         );
       }
     }
-
+    
     await deleteDoc(productDocRef);
-
+    
     if (selectedProductId === productId) {
       selectedProductId = null;
       updateSidebar(null);
     }
-
+    
     showNotification(`"${productName}" has been deleted.`);
   } catch (error) {
     console.error("Error during product deletion process: ", error);
@@ -1114,12 +1109,12 @@ async function handleGridClick(e) {
   const card = e.target.closest(".product-card");
   const editBtn = e.target.closest(".edit-icon");
   const deleteBtn = e.target.closest(".delete-icon");
-
+  
   if (!card) {
     handleCloseClick();
     return;
   }
-
+  
   if (editBtn) {
     e.stopPropagation();
     const productId = editBtn.dataset.id;
@@ -1130,7 +1125,7 @@ async function handleGridClick(e) {
     }
     return;
   }
-
+  
   if (deleteBtn) {
     e.stopPropagation();
     const productId = deleteBtn.dataset.id;
@@ -1139,22 +1134,22 @@ async function handleGridClick(e) {
     }
     return;
   }
-
+  
   if (!card) return;
-
+  
   selectedProductId = card.dataset.id;
-
+  
   updateUrl({
     workspace: currentWorkspaceId,
     selected: selectedProductId,
     action: null,
   });
-
+  
   document
     .querySelectorAll(".product-card")
     .forEach((c) => c.classList.remove("selected"));
   card.classList.add("selected");
-
+  
   const product = productList.find((p) => p.id === selectedProductId);
   if (product) {
     updateSidebar(product);
@@ -1163,7 +1158,7 @@ async function handleGridClick(e) {
 
 function updateUrl(state) {
   const params = new URLSearchParams(window.location.search);
-
+  
   for (const key in state) {
     if (state[key]) {
       params.set(key, state[key]);
@@ -1171,9 +1166,9 @@ function updateUrl(state) {
       params.delete(key);
     }
   }
-
+  
   const newUrl = `/products?${params.toString()}`;
-
+  
   if (window.location.href !== window.location.origin + newUrl) {
     history.pushState(state, "", newUrl);
     console.log(`%cURL updated: ${newUrl}`, "color: #007bff;");
@@ -1185,13 +1180,13 @@ function applyStateFromUrl() {
   const workspaceId = params.get("workspace");
   const selectedId = params.get("selected");
   const action = params.get("action");
-
+  
   if (workspaceId !== currentWorkspaceId) {
     console.log(
       `URL specifies workspace ${workspaceId}. Waiting for listener to switch.`
     );
   }
-
+  
   if (selectedId) {
     const product = productList.find((p) => p.id === selectedId);
     if (product) {
@@ -1205,7 +1200,7 @@ function applyStateFromUrl() {
       }, 100);
     }
   }
-
+  
   if (action === "new") {
     showModal();
   }
@@ -1215,16 +1210,16 @@ function handleOutsideClick(e) {
   if (selectedProductId === null) {
     return;
   }
-
+  
   const isClickInGrid = e.target.closest("#productGridList");
   const isClickInSidebar = e.target.closest("#productSettings");
   const isClickOnAddButton = e.target.closest("#addBtn");
   const isModalOpen = !modal.classList.contains("hidden");
-
+  
   if (isClickInGrid || isClickInSidebar || isClickOnAddButton || isModalOpen) {
     return;
   }
-
+  
   handleCloseClick();
 }
 
@@ -1272,7 +1267,7 @@ function handleFileInputChange(e) {
 
 function handlePaste(e) {
   if (modal.classList.contains("hidden")) return;
-
+  
   const items = e.clipboardData.items;
   for (let i = 0; i < items.length; i++) {
     if (items[i].type.indexOf("image") !== -1) {
@@ -1301,15 +1296,15 @@ function filterProducts(searchTerm) {
   const term = searchTerm.toLowerCase();
   return productList.filter(
     (product) =>
-      product.name.toLowerCase().includes(term) ||
-      product.sku.toLowerCase().includes(term)
+    product.name.toLowerCase().includes(term) ||
+    product.sku.toLowerCase().includes(term)
   );
 }
 
 function handleSearchInput(e) {
   const term = e.target.value.trim();
   clearSearchBtn.classList.toggle("hidden", !term);
-
+  
   activeProductList = filterProducts(term);
   productsCurrentlyShown = 0;
   const initialBatch = activeProductList.slice(0, INITIAL_LOAD_COUNT);
@@ -1335,7 +1330,7 @@ function initElements() {
   overlay = document.getElementById("restricted-overlay");
   searchInput = document.getElementById("searchInput");
   clearSearchBtn = document.getElementById("clearSearchBtn");
-
+  
   grid = document.getElementById("productGridList");
   console.log("grid:", grid);
   addBtn = document.getElementById("addBtn");
@@ -1348,7 +1343,7 @@ function initElements() {
   console.log("productContent:", productContent);
   productSettings = document.getElementById("productSettings");
   console.log("productSettings:", productSettings);
-
+  
   modal = document.getElementById("productModal");
   console.log("modal:", modal);
   closeModalBtn = document.getElementById("closeModalBtn");
@@ -1357,17 +1352,17 @@ function initElements() {
   console.log("cancelBtn:", cancelBtn);
   saveBtn = document.getElementById("saveBtn");
   console.log("saveBtn:", saveBtn);
-
+  
   notification = document.getElementById("notification");
   console.log("notification:", notification);
   notificationMessage = document.getElementById("notificationMessage");
   console.log("notificationMessage:", notificationMessage);
-
+  
   imageUploadContainer = document.getElementById("imageUploadContainer");
   console.log("imageUploadContainer:", imageUploadContainer);
   fileInput = document.getElementById("productImageFile");
   console.log("fileInput:", fileInput);
-
+  
   console.log("%c--- Initializing Form Inputs ---", "color: cyan;");
   productNameInput = document.getElementById("productName");
   console.log("productNameInput:", productNameInput);
@@ -1382,10 +1377,10 @@ function initElements() {
   console.log("productSupplierInput:", productSupplierInput);
   productDescriptionInput = document.getElementById("productDescription");
   console.log("productDescriptionInput:", productDescriptionInput);
-
+  
   productImageInput = document.getElementById("productImage");
   console.log("productImageInput:", productImageInput);
-
+  
   console.log(
     "%c--- DOM Element Initialization Complete ---",
     "color: yellow; font-weight: bold;"
@@ -1400,14 +1395,14 @@ function setupEventListeners() {
   closeModalBtn.addEventListener("click", hideModal);
   cancelBtn.addEventListener("click", hideModal);
   saveBtn.addEventListener("click", handleSaveClick);
-
+  
   imageUploadContainer.addEventListener("click", () => fileInput.click());
   imageUploadContainer.addEventListener("dragover", handleDragOver);
   imageUploadContainer.addEventListener("dragleave", handleDragLeave);
   imageUploadContainer.addEventListener("drop", handleDrop);
   fileInput.addEventListener("change", handleFileInputChange);
   document.addEventListener("paste", handlePaste);
-
+  
   searchInput.addEventListener("input", handleSearchInput);
   clearSearchBtn.addEventListener("click", handleClearSearch);
   trigger.addEventListener("click", toggleSupplierDropdown);
@@ -1417,9 +1412,9 @@ function setupEventListeners() {
 
 function cleanup() {
   console.log("[Products Module] Cleaning up old event listeners.");
-
+  
   detachAllListeners();
-
+  
   if (grid) grid.removeEventListener("click", handleGridClick);
   if (addBtn) addBtn.removeEventListener("click", handleAddClick);
   if (settingsBtn)
@@ -1440,7 +1435,7 @@ function cleanup() {
   if (clearSearchBtn)
     clearSearchBtn.removeEventListener("click", handleClearSearch);
   document.removeEventListener("paste", handlePaste);
-
+  
   window.removeEventListener("scroll", handleScroll);
 }
 
@@ -1450,10 +1445,10 @@ function showRestrictedAccessUI(message) {
       message || "Restricted Access";
     overlay.classList.remove("hidden");
   }
-
+  
   const container = document.querySelector(".product-list-container");
   if (container) container.classList.add("hidden");
-
+  
   const okBtn = document.getElementById("restricted-ok-btn");
   if (okBtn) {
     okBtn.onclick = () => {
@@ -1465,7 +1460,7 @@ function showRestrictedAccessUI(message) {
 export function init(params) {
   console.log("[Products Module] Initializing...");
   let popstateListener = null;
-
+  
   onAuthStateChanged(auth, (user) => {
     if (user) {
       console.log(`User ${user.uid} signed in. Attaching listeners.`);
@@ -1474,20 +1469,20 @@ export function init(params) {
       setupEventListeners();
       renderProducts([]);
       updateSidebar(null);
-
-
+      
+      
       const allowAccessBtn = document.getElementById("allowAccessBtn");
       if (allowAccessBtn) {
         allowAccessBtn.addEventListener("click", async (e) => {
           e.preventDefault();
           console.log("Allow access button clicked");
-
+          
           if (!currentWorkspaceId) {
             console.error("No currentWorkspaceId available");
             showNotification("Please select a workspace first", 3000);
             return;
           }
-
+          
           try {
             openShareProductListModal(currentWorkspaceId, () => {
               console.log("Share access modal closed");
@@ -1498,7 +1493,7 @@ export function init(params) {
           }
         });
       }
-
+      
       popstateListener = () => {
         console.log("Popstate triggered. Applying state from URL.");
         applyStateFromUrl();
@@ -1521,7 +1516,7 @@ export function init(params) {
       updateSidebar(null);
     }
   });
-
+  
   const loadingScreen = document.getElementById("loadingScreen");
   if (loadingScreen) {
     setTimeout(() => {
