@@ -751,7 +751,7 @@ export function init(params) {
         }
 
         // Determine user's edit permission
-        const isMemberWithEditPermission = data.members?.some(m => m.uid === user.uid && m.role === "Project Admin" || m.role === "Project Owner Admin");
+        const isMemberWithEditPermission = data.members?.some(m => m.uid === user.uid && (m.role === "Project Admin" || m.role === "Project Owner Admin")); 
         const isSuperAdmin = data.project_super_admin_uid === user.uid; // Assuming this field exists
         const isAdminUser = data.project_admin_user === user.uid; // Assuming this field exists
         const userCanEdit = isMemberWithEditPermission || isSuperAdmin || isAdminUser;

@@ -102,8 +102,12 @@ export async function openShareModal(projectRef) {
     );
     const workspacesSnap = await getDocs(allWorkspacesQuery);
     let allWorkspaceCollaboratorUIDs = [];
+    let selectedWorkspaceId = null;
     workspacesSnap.forEach(doc => {
       allWorkspaceCollaboratorUIDs.push(...(doc.data().members || []));
+      if (!selectedWorkspaceId) {
+        selectedWorkspaceId = doc.id;
+      }
     });
 
     // --- Step 2: Fetch all necessary user profiles ONCE ---
@@ -140,7 +144,8 @@ export async function openShareModal(projectRef) {
         projectData,
         userProfilesMap,
         currentUserId: user.uid,
-        workspaceMemberCount: allWorkspaceCollaboratorUIDs.length
+        workspaceMemberCount: allWorkspaceCollaboratorUIDs.length,
+        selectedWorkspaceId: selectedWorkspaceId
       });
 
       if (!listenersAttached) {
@@ -290,6 +295,10 @@ function toggleDropdown(dropdownBtn, modal) {
  * @param {DocumentReference} projectRef A Firestore reference to the current project.
  */
 function setupEventListeners(modal, projectRef) {
+  const userProfilesMap = JSON.parse(modal.dataset.userProfilesMap || "{}");
+  const user = auth.currentUser;
+  const userProfile = userProfilesMap[user.uid];
+
   modal.addEventListener('click', async (e) => {
     const target = e.target;
     // 1. Check for the MOST specific case first: the WORKSPACE role change.
@@ -729,7 +738,7 @@ function renderDynamicContent(
 
   if (state.accessLevel === "workspace") {
     const workspaceId = "workspace-item";
-    const workspaceIconHTML = `<div class="shareproject-profile-pic" style="background-color:#e5e7eb;color:#4b5563;"><i class="material-icons">people</i></div>`;
+    const workspaceIconHTML = `<div class="shareproject-profile-pic"><i class="material-icons">people</i></div>`;
     membersHTML += `<div class="shareproject-member-item" data-id="${workspaceId}">${workspaceIconHTML}<div class="shareproject-member-info"><strong>My Workspace</strong><p>${workspaceMemberCount} members</p></div>${createRoleDropdownButtonHTML(
       workspaceId,
       state.workspaceRole,
@@ -861,7 +870,7 @@ async function handleEmailSearch(modal) {
     const membersCount = group.memberUIDs.length;
     return `
             <a href="#" class="shareproject-user-search-result" data-group-id="${group.id}">
-                <div class="shareproject-profile-pic" style="background-color:#e5e7eb;color:#4b5563;"><i class="material-icons">group</i></div>
+                <div class="shareproject-profile-pic"><i class="material-icons">group</i></div>
                 <div class="shareproject-member-info">
                     <strong>${group.name}</strong>
                     <p>${membersCount} members</p>
