@@ -2516,7 +2516,7 @@ export function init(params) {
      content: '';
      position: absolute;
      bottom: 0;
-     right: -8px;
+     right: -6px;
      width: 0;
      height: 0;
      border: 8px solid transparent;
@@ -2540,7 +2540,7 @@ export function init(params) {
      content: '';
      position: absolute;
      bottom: 0;
-     left: -8px;
+     left: -6px;
      width: 0;
      height: 0;
      border: 8px solid transparent;

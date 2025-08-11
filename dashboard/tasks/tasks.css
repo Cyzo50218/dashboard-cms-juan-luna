@@ -53,7 +53,87 @@ html[data-theme="dark"] .shareproject-modal {
   background: var(--primary-bg);
 }
 
+html[data-theme="dark"] #messages-container, #chat-main-panel {
+  background: var(--primary-bg);
+}
 
+html[data-theme="dark"] #chat-room-selector {
+  background: var(--primary-bg);
+}
+
+html[data-theme="dark"] .project-list-item:hover {
+  background: var(--secondary-bg);
+}
+html[data-theme="dark"] .chat-room-selector-item{
+  background: var(--secondary-bg);
+}
+html[data-theme="dark"] #workspace-project-btn{
+  background: var(--secondary-bg);
+}
+html[data-theme="dark"] #chat-form .text-sm{
+  color: #bdbdbd;
+}
+html[data-theme="dark"] #chat-form .text-sm:hover{
+  color: #ebebeb;
+}
+html[data-theme="dark"] #chat-form #send-button .fa-paper-plane {
+  color: #4e5f81;
+}
+#chat-form #send-button .fa-paper-plane:hover {
+  color: #2867db;
+}
+html[data-theme="dark"] #chat-form .bg-gray-100{
+  background: var(--secondary-bg);
+}
+html[data-theme="dark"] #workspace-project-btn:hover{
+  background: #353535;
+}
+
+html[data-theme="dark"] .main-panel-item:hover{
+  background: #272727;
+}
+
+html[data-theme="dark"] #workspace-project-btn .text-sm{
+  color: #e6e6e6;
+}
+
+html[data-theme="dark"] #workspace-project-btn .text-xs{
+  color: #777777;
+}
+
+html[data-theme="dark"] .panel-item-name {
+  color: #f7f7f7;
+}
+
+html[data-theme="dark"] .panel-item-details {
+  color: #a5a5a5;
+}
+
+html[data-theme="dark"] .chat-room-selector-item.selected {
+  background: #151515;
+  border: 1px solid #777777;
+}
+
+#toggle-minmax,#minimize-chat,#close-chat {
+  border-color: transparent; 
+}
+
+html[data-theme="dark"] .message-bubble.user {
+  background: #333333;
+}
+
+html[data-theme="dark"] .message-bubble.other {
+  background: #f0f0f0;
+  color: #313131;
+  border: 1px solid transparent;
+}
+
+html[data-theme="dark"] .message-bubble.other::after {
+  border-right-color: #f0f0f0;
+}
+html[data-theme="dark"] .message-bubble.user::after {
+  border-left-color: #333333;
+}
 
 html[data-theme="dark"] .shareproject-modal-footer {
   background: var(--primary-bg);
