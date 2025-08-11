@@ -26,7 +26,7 @@ const lottieAnim = lottie.loadAnimation({
     renderer: 'svg',
     loop: true,
     autoplay: false,
-    path: 'assets/Empty Notifications.json' // sample "success" animation
+    path: 'https://assets2.lottiefiles.com/packages/lf20_qp1q7mct.json' // sample "success" animation
 });
 
 // Show empty state with animation
@@ -426,7 +426,6 @@ const renderNotifications = (notificationsData) => {
         // Show and animate the empty state message
         if (emptyStateContainer) {
             emptyStateContainer.classList.add('show');
-            showEmptyState();
             inboxLayout.classList.add('hidden');
         }
         updateHeaderCounts(0, 0);
@@ -436,7 +435,6 @@ const renderNotifications = (notificationsData) => {
     // If notifications exist, hide the empty state message
     if (emptyStateContainer) {
         emptyStateContainer.classList.remove('show');
-        hideEmptyState();
         inboxLayout.classList.remove('hidden');
     }
     notificationList.style.display = 'block';
