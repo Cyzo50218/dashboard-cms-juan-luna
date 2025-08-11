@@ -1,6 +1,12 @@
-<div class="notification-inbox">
+<div id="empty-state-container">
+    <div id="lottie-empty" style="width:150px; height:150px; margin-bottom:1rem;"></div>
+    <h3>You're all caught up!</h3>
+    <p>No new notifications to show at the moment.</p>
+</div>
+
+<div class="notification-inbox" id="notification-inbox">
     <header class="inbox-header">
-        <h1 class="inbox-title">Notifications <span id="total-count">0</span> <span id="total-unread-count"
+        <h1 class="inbox-title">My Inbox <span id="total-count">0</span> <span id="total-unread-count"
                 class="unread-count">0</span>
         </h1>
         <div class="header-actions">
@@ -21,12 +27,6 @@
         </div>
     </header>
 
-    <div id="empty-state-container">
-        <span class="material-icons">task_alt</span>
-        <h3>You're all caught up!</h3>
-        <p>No new notifications to show at the moment.</p>
-    </div>
-    
     <div class="pinned-notifications" id="pinned-notifications">
         <h2 class="pinned-header">Pinned</h2>
     </div>

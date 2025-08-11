@@ -20,6 +20,29 @@ const sortLabels = {
     'unread_oldest': 'Unread Oldest'
 };
 
+// Initialize Lottie animation
+const lottieAnim = lottie.loadAnimation({
+    container: document.getElementById('lottie-empty'), // the DOM element
+    renderer: 'svg',
+    loop: true,
+    autoplay: false,
+    path: 'https://lottie.host/embed/f6dd3a68-9000-46c0-b199-793e316ce22d/jmNgR5UWON.lottie' // sample "success" animation
+});
+
+// Show empty state with animation
+function showEmptyState() {
+    const emptyState = document.getElementById('empty-state-container');
+    emptyState.classList.add('show');
+    lottieAnim.goToAndPlay(0, true);
+}
+
+// Hide empty state
+function hideEmptyState() {
+    const emptyState = document.getElementById('empty-state-container');
+    emptyState.classList.remove('show');
+    lottieAnim.stop();
+}
+
 const defaultNotifications = [
     {
         id: 1,
@@ -377,6 +400,7 @@ const updateSortUI = () => {
 
 // New function to update header counts
 const updateHeaderCounts = (totalCount, unreadCount) => {
+
     const totalCountSpan = document.getElementById('total-count');
     const totalUnreadCountSpan = document.getElementById('total-unread-count');
     if (totalCountSpan) totalCountSpan.textContent = totalCount;
@@ -384,6 +408,7 @@ const updateHeaderCounts = (totalCount, unreadCount) => {
 };
 
 const renderNotifications = (notificationsData) => {
+    const inboxLayout = document.getElementById('notification-inbox');
     const pinnedNotificationsList = document.getElementById('pinned-notifications');
     const notificationList = document.getElementById('notification-list');
     const emptyStateContainer = document.getElementById('empty-state-container');
@@ -400,8 +425,9 @@ const renderNotifications = (notificationsData) => {
         notificationList.style.display = 'none';
         // Show and animate the empty state message
         if (emptyStateContainer) {
-            emptyStateContainer.style.display = 'flex';
             emptyStateContainer.classList.add('show');
+            showEmptyState();
+            inboxLayout.classList.add('hidden');
         }
         updateHeaderCounts(0, 0);
         return;
@@ -409,8 +435,9 @@ const renderNotifications = (notificationsData) => {
 
     // If notifications exist, hide the empty state message
     if (emptyStateContainer) {
-        emptyStateContainer.style.display = 'none';
         emptyStateContainer.classList.remove('show');
+        hideEmptyState();
+        inboxLayout.classList.remove('hidden');
     }
     notificationList.style.display = 'block';
 

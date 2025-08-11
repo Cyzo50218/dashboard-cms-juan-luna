@@ -690,50 +690,30 @@ body {
     color: #555;
 }
 
-.empty-state-container {
+/* Add a class to hide the inbox content when the empty state is active */
+.notification-inbox.hidden {
     display: none;
-    /* Initially hide the container */
+}
+
+#empty-state-container {
+    display: none;
+    position: absolute;
+    inset: 0;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     text-align: center;
     padding: 4rem 2rem;
-    color: #555;
-    background-color: #f8f9fa;
+    color: #f5f5f5;
     border-radius: 8px;
     border: 1px solid #e0e0e0;
-    margin-top: 2rem;
-    min-height: 200px;
-    /* Ensures a good amount of vertical space */
-    transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
     opacity: 0;
-    transform: translateY(20px);
+    transform: scale(0.9);
+    transition: opacity 0.5s ease, transform 0.4s ease;
 }
 
-/* Class to trigger the animation */
-.empty-state-container.show {
+#empty-state-container.show {
+    display: flex;
     opacity: 1;
-    transform: translateY(0);
-}
-
-/* Style for the icon */
-.empty-state-container .material-icons {
-    font-size: 3rem;
-    color: #4CAF50;
-    /* A friendly, success color */
-    margin-bottom: 1rem;
-}
-
-/* Style for the main message text */
-.empty-state-container h3 {
-    font-size: 1.5rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-}
-
-/* Style for the subtext */
-.empty-state-container p {
-    font-size: 1rem;
-    margin: 0;
-    color: #777;
+    transform: scale(1);
 }
