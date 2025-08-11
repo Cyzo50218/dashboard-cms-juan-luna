@@ -20,6 +20,7 @@ const sortLabels = {
     'unread_oldest': 'Unread Oldest'
 };
 
+/*
 const defaultNotifications = [
     {
         id: 1,
@@ -104,7 +105,7 @@ const defaultNotifications = [
         profileUrl: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?q=80&w=150&h=150&fit=crop',
         pinned: false
     }
-];
+];*/
 
 const getIconText = (type) => {
     switch (type) {
