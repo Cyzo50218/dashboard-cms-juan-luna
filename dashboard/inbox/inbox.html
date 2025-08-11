@@ -1,7 +1,46 @@
 <div class="notification-inbox">
     <header class="inbox-header">
-        <h1 class="inbox-title">My Inbox</h1>
+        <h1 class="inbox-title">Notifications <span id="total-count">0</span> <span id="total-unread-count"
+                class="unread-count">0</span>
+        </h1>
+        <div class="header-actions">
+            <div class="sort-dropdown">
+                <button class="sort-btn">
+                    <span id="sort-label">Sort By</span>
+                    <span class="material-icons">sort</span>
+                </button>
+                <div class="sort-options" id="sort-options">
+                    <a href="#" data-sort="timestamp_desc">Newest First</a>
+                    <a href="#" data-sort="timestamp_asc">Oldest First</a>
+                    <a href="#" data-sort="unread_first">Unread First</a>
+                    <a href="#" data-sort="read_oldest">Read Oldest</a>
+                    <a href="#" data-sort="unread_oldest">Unread Oldest</a>
+                </div>
+            </div>
+            <button class="mark-all-read" id="mark-all-read">Mark All as Read</button>
+        </div>
     </header>
+
+    <div class="pinned-notifications" id="pinned-notifications">
+        <h2 class="pinned-header">Pinned</h2>
+    </div>
+
     <div class="notification-list" id="notification-list">
+    </div>
+</div>
+
+<div class="customization-modal" id="customization-modal">
+    <div class="modal-content">
+        <button class="close-modal material-icons">close</button>
+        <h3 class="modal-title">Customize Pinned Note</h3>
+        <div class="color-picker-container">
+            <label for="color-picker">Border Color:</label>
+            <input type="color" id="color-picker" class="color-picker-input">
+        </div>
+        <div class="note-editor-container">
+            <label for="note-editor">Pinned Note:</label>
+            <textarea id="note-editor" class="note-editor-textarea" placeholder="Add a custom note..."></textarea>
+        </div>
+        <button id="save-note" class="save-btn">Save</button>
     </div>
 </div>

@@ -19,19 +19,33 @@
         --unread-bg: #2c2c2c;
     }
 }
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    /* Removed centering properties */
+    min-height: 100vh;
+    width: 100%;
+    /* Ensure body takes full width */
+    padding: 0;
+    /* Remove default padding */
+}
+
 .notification-inbox {
     width: 100%;
-    max-width: 600px;
+    /* Removed max-width to allow it to fill the container */
     background-color: var(--card-bg);
-    border-radius: 12px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     overflow: hidden;
     display: flex;
     flex-direction: column;
-}
-
-.inbox-header {
-    border-bottom: 1px solid var(--border-color);
 }
 
 .inbox-title {
@@ -44,7 +58,6 @@
     flex-direction: column;
     padding: 0;
     list-style: none;
-    max-height: 70vh;
     overflow-y: auto;
 }
 
@@ -89,15 +102,25 @@
     margin-right: 16px;
 }
 
+.notification-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* This makes the image fill the container without distortion */
+}
+
 .notification-content {
     display: flex;
     flex-direction: column;
+    flex-grow: 1;
 }
 
 .notification-text {
     font-size: 1rem;
     line-height: 1.4;
     margin-bottom: 4px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .notification-time {
@@ -105,23 +128,564 @@
     color: var(--text-secondary);
 }
 
-/* Scrollbar styling */
-.notification-list::-webkit-scrollbar {
-    width: 8px;
+.notification-group {
+    border-bottom: 1px solid var(--border-color);
 }
 
-.notification-list::-webkit-scrollbar-track {
-    background: transparent;
+.notification-group:last-child {
+    border-bottom: none;
 }
 
-.notification-list::-webkit-scrollbar-thumb {
-    background-color: var(--border-color);
-    border-radius: 4px;
-    border: 2px solid var(--card-bg);
+.group-header {
+    width: 100%;
+    text-align: left;
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    padding: 16px 24px;
+    background-color: var(--card-bg);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.group-header:hover {
+    background-color: rgba(0, 0, 0, 0.03);
 }
 
 @media (prefers-color-scheme: dark) {
-    .notification-list::-webkit-scrollbar-thumb {
-        border: 2px solid var(--card-bg);
+    .group-header:hover {
+        background-color: rgba(255, 255, 255, 0.03);
     }
+}
+
+.inbox-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.mark-all-read {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background-color: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.mark-all-read:hover {
+    background-color: var(--border-color);
+    color: var(--text-color);
+}
+
+/* Updated Drag and Drop styles */
+.notification-group[draggable="true"] {
+    cursor: move;
+}
+
+.notification-group.dragging {
+    opacity: 0.7;
+}
+
+.notification-item[draggable="true"] {
+    cursor: grab;
+}
+
+.notification-item.dragging {
+    opacity: 0.5;
+    background-color: var(--accent-color);
+    transform: scale(1.01);
+}
+
+.group-list {
+    min-height: 20px;
+    /* Allows dropping into empty groups */
+}
+
+.notification-group.closed .group-list {
+    max-height: 0;
+    opacity: 0;
+}
+
+.arrow-icon {
+    font-size: 0.8rem;
+    transition: transform 0.3s ease;
+}
+
+.notification-group.closed .arrow-icon {
+    transform: rotate(-90deg);
+}
+
+/* Drag and Drop styles */
+.notification-item[draggable="true"] {
+    cursor: grab;
+}
+
+.notification-item.dragging {
+    opacity: 0.5;
+    background-color: var(--accent-color);
+    transform: scale(1.01);
+}
+
+.group-header {
+    width: 100%;
+    text-align: left;
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    padding: 16px 24px;
+    background-color: var(--card-bg);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    /* Aligns title and button to opposite ends */
+    align-items: center;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.group-header:hover {
+    background-color: rgba(0, 0, 0, 0.03);
+}
+
+@media (prefers-color-scheme: dark) {
+    .group-header:hover {
+        background-color: rgba(255, 255, 255, 0.03);
+    }
+}
+
+.group-title-btn {
+    background: none;
+    border: none;
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--text-color);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0;
+}
+
+.mark-group-read-btn {
+    padding: 4px 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--accent-color);
+    background-color: transparent;
+    border: 1px solid var(--accent-color);
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.mark-group-read-btn:hover {
+    background-color: var(--accent-color);
+    color: #fff;
+}
+
+.notification-group.closed .group-list {
+    display: none;
+}
+
+.notification-group .arrow-icon {
+    transition: transform 0.2s ease;
+}
+
+.notification-group.closed .arrow-icon {
+    transform: rotate(-90deg);
+}
+
+.inbox-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#total-count {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+
+.group-count {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+
+.group-title-btn {
+    background: none;
+    border: none;
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0;
+}
+
+.group-header .arrow-icon {
+    font-size: 1.5rem;
+    transition: transform 0.3s ease-in-out;
+}
+
+.notification-group.closed .group-header .arrow-icon {
+    transform: rotate(-90deg);
+}
+
+.inbox-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.sort-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.sort-btn {
+    background: none;
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 8px 16px;
+    cursor: pointer;
+    color: var(--text-color);
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.2s;
+}
+
+.sort-btn:hover {
+    background-color: var(--border-color);
+}
+
+.sort-options {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    z-index: 20;
+    flex-direction: column;
+    width: 150px;
+    margin-top: 8px;
+    overflow: hidden;
+}
+
+.sort-btn:focus+.sort-options,
+.sort-options:hover {
+    display: flex;
+}
+
+.sort-options a {
+    padding: 12px 16px;
+    text-decoration: none;
+    color: var(--text-color);
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.sort-options a:hover {
+    background-color: var(--unread-bg);
+}
+
+/* Pinned notifications section */
+.pinned-notifications {
+    display: block;
+    background-color: var(--card-bg);
+    border-bottom: 1px solid var(--border-color);
+    padding: 8px 0;
+}
+
+.pinned-header {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    padding: 0 24px 8px;
+}
+
+.notification-item.pinned {
+    background-color: var(--unread-bg);
+    /* Or a specific pinned color */
+    border-left: 3px solid var(--accent-color);
+}
+
+.notification-item.pinned .pin-toggle-btn {
+    color: var(--accent-color);
+}
+
+.notification-item .notification-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.pin-toggle-btn,
+.read-toggle {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px;
+    font-size: 1.25rem;
+    transition: color 0.2s;
+}
+
+.pin-toggle-btn:hover,
+.read-toggle:hover {
+    color: var(--accent-color);
+}
+
+.notification-item.pinned {
+    background-color: var(--card-bg);
+    border-left: 4px solid #fbc02d;
+    padding-left: 20px;
+}
+
+.notification-item.pinned .pinned-note {
+    background-color: #333333;
+    color: #fff;
+    margin-top: 16px;
+    font-size: 0.75rem;
+    width: fit-content;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.notification-item.pinned .pin-toggle-btn {
+    color: #f93e25;
+}
+
+/* Customization Modal Styles */
+.customization-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.3s, visibility 0.3s;
+    z-index: 100;
+}
+
+.customization-modal.open {
+    visibility: visible;
+    opacity: 1;
+}
+
+.modal-content {
+    background-color: var(--card-bg);
+    padding: 24px;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 400px;
+    position: relative;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.close-modal {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 1.5rem;
+}
+
+.modal-title {
+    font-size: 1.25rem;
+    font-weight: 500;
+    margin-bottom: 8px;
+}
+
+.color-picker-container,
+.note-editor-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.color-picker-input {
+    width: 100%;
+    height: 40px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 0;
+}
+
+.note-editor-textarea {
+    width: 100%;
+    min-height: 80px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 10px;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    resize: vertical;
+}
+
+.save-btn {
+    align-self: flex-end;
+    padding: 10px 20px;
+    background-color: #121212;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.save-btn:hover {
+    background-color: #277fdf;
+}
+
+.customize-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px;
+    font-size: 1.25rem;
+    transition: color 0.2s;
+}
+
+.customize-btn:hover {
+    color: var(--accent-color);
+}
+
+.pinned-notifications {
+    display: block;
+    background-color: var(--card-bg);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.pinned-header-title {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    padding: 2px 24px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.pinned-header-title:hover {
+    background-color: rgba(0, 0, 0, 0.03);
+}
+
+.pinned-header-title .arrow-icon {
+    font-size: 1.5rem;
+    transition: transform 0.3s ease-in-out;
+}
+
+.pinned-notifications.closed .pinned-header-title .arrow-icon {
+    transform: rotate(-90deg);
+}
+
+.pinned-list-wrapper {
+    transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+    max-height: 500px;
+    overflow: hidden;
+}
+
+.pinned-notifications.closed .pinned-list-wrapper {
+    max-height: 0;
+    opacity: 0;
+}
+
+.pinned-count {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+
+.sort-options a.active {
+    background-color: var(--accent-color);
+    color: #fff;
+    font-weight: 500;
+}
+
+#total-unread-count {
+    font-size: 18px;
+    color: #ff3b30;
+    font-weight: 700;
+    margin-left: -5px;
+}
+
+.group-unread-count {
+    font-size: 0.9rem;
+    color: #ff3b30;
+    font-weight: 700;
+}
+
+.notification-actions .delete-btn:hover {
+    color: #ef5350;
+}
+
+.empty-message {
+    text-align: center;
+    padding: 2rem 0;
+    color: #888;
+    font-size: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.empty-message::before {
+    content: '🎉';
+    font-size: 2rem;
+    line-height: 1;
+}
+
+.notification-group[data-group-title="Older"] .empty-message::before {
+    content: '😴';
+}
+
+.empty-message:hover {
+    color: #555;
 }

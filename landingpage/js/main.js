@@ -103,8 +103,8 @@ document.addEventListener("DOMContentLoaded", () => {
   if (loginBtn) {
     loginBtn.addEventListener("click", (e) => {
       e.preventDefault();
-      alert("Login functionality would be implemented here");
-      // In a real app, this would show a login modal or similar
+      window.location.replace("/");
     });
   }
+
 });
