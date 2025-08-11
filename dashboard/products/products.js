@@ -3,6 +3,8 @@ import {
   getAuth,
   onAuthStateChanged,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { openShareProductListModal } from "/dashboard/components/shareProductListModal.js";
+
 import {
   getFirestore,
   doc,
@@ -1464,9 +1466,6 @@ export function init(params) {
   console.log("[Products Module] Initializing...");
   let popstateListener = null;
 
-  // Theme detection is now handled by inline script in products.html
-  // to prevent white flash on page load
-
   onAuthStateChanged(auth, (user) => {
     if (user) {
       console.log(`User ${user.uid} signed in. Attaching listeners.`);
@@ -1475,6 +1474,31 @@ export function init(params) {
       setupEventListeners();
       renderProducts([]);
       updateSidebar(null);
+
+      // Add Allow Access button handler here
+      const allowAccessBtn = document.getElementById("allowAccessBtn");
+      if (allowAccessBtn) {
+        allowAccessBtn.addEventListener("click", async (e) => {
+          e.preventDefault();
+          console.log("Allow access button clicked");
+
+          if (!currentWorkspaceId) {
+            console.error("No currentWorkspaceId available");
+            showNotification("Please select a workspace first", 3000);
+            return;
+          }
+
+          try {
+            openShareProductListModal(currentWorkspaceId, () => {
+              console.log("Share access modal closed");
+            });
+          } catch (error) {
+            console.error("Error opening share modal:", error);
+            showNotification("Failed to open share modal", 3000);
+          }
+        });
+      }
+
       popstateListener = () => {
         console.log("Popstate triggered. Applying state from URL.");
         applyStateFromUrl();

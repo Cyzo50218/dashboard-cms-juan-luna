@@ -34,12 +34,57 @@
   --loading-screen-bg: #1a1a1a;
 }
 
-.product-list-container {
-  display: flex;
-  flex-direction: column;
-  background-color: var(--bg-color);
-  color: var(--text-color);
+/* Dark mode background color change for button elements */
+[data-theme="dark"] .bg-white {
+  background-color: var(--card-bg) !important;
 }
+
+/* Custom background color for existing members in Allow Access modal */
+.existing-member-bg {
+  background-color: #f3f3f3 !important;
+  color: #000000 !important;
+  border-color: #cccccc !important;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+[data-theme="dark"] .existing-member-bg {
+  background-color: #333333 !important;
+  color: #ffffff !important;
+  border-color: #555555 !important;
+}
+
+[data-theme="dark"] .hover\:bg-white:hover {
+  background-color: var(--card-bg) !important;
+}
+
+[data-theme="dark"] .border-white {
+  border-color: var(--border-color) !important;
+}
+
+/* Specific styles for change role and remove member buttons in dark mode */
+[data-theme="dark"] .change-role-btn,
+[data-theme="dark"] .remove-member-btn {
+  background-color: var(--card-bg) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+[data-theme="dark"] .change-role-btn:hover,
+[data-theme="dark"] .remove-member-btn:hover {
+  background-color: var(--border-color) !important;
+}
+
+/* Modal specific styles for dark mode */
+[data-theme="dark"] .modal-container {
+  background-color: var(--card-bg) !important;
+  color: var(--text-color) !important;
+}
+
 .container {
   max-width: 1200px;
   margin: 70px auto;
@@ -327,7 +372,7 @@
 .modal-close {
   background: none;
   border: none;
-  font-size: 1.5rem;
+  font-size: 1rem;
   cursor: pointer;
   color: var(--text-color);
   opacity: 0.7;
@@ -355,9 +400,16 @@
   border: 1px solid var(--border-color);
   border-radius: 8px;
   font-size: 0.875rem;
-  background-color: var(--card-bg);
+  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(6px);
   color: var(--text-color);
   transition: border-color 0.2s;
+  -webkit-text-security: none !important;
+  text-security: none !important;
+}
+
+[data-theme="dark"] .form-input {
+  background-color: rgba(45, 45, 45, 0.6);
 }
 textarea.form-input {
   min-height: 80px;
@@ -653,7 +705,7 @@ textarea.form-input {
   border-radius: 6px;
   max-height: 250px;
   overflow-y: auto;
-  z-index: 50;
+  z-index: 1000;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.168);
 }
 
@@ -832,7 +884,6 @@ textarea.form-input {
   cursor: pointer;
   padding: 10px;
 }
-
 @keyframes spin {
   0% {
     transform: rotate(0deg);
@@ -840,4 +891,167 @@ textarea.form-input {
   100% {
     transform: rotate(360deg);
   }
+}
+
+#allowAccessBtn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  box-sizing: border-box;
+  background-color: #020202;
+  color: white;
+  border: none;
+}
+
+#allowAccessBtn:hover {
+  background-color: #2d2d2d;
+  transform: translateY(-2px);
+}
+
+[data-theme="dark"] #allowAccessBtn {
+  background-color: #d32f2f;
+  color: white;
+}
+
+[data-theme="dark"] #allowAccessBtn:hover {
+  background-color: #e53935;
+}
+
+#allowAccessBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Members list styles */
+.members-list {
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 8px;
+  background-color: var(--card-bg);
+}
+
+.members-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.members-list::-webkit-scrollbar-track {
+  background: var(--border-color);
+}
+
+.members-list::-webkit-scrollbar-thumb {
+  background: var(--primary-color);
+  border-radius: 3px;
+}
+
+.member-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px;
+  margin-bottom: 8px;
+  background-color: var(--action-btn-bg);
+  border-radius: 6px;
+}
+
+.member-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.member-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.member-email {
+  font-size: 0.875rem;
+  color: var(--text-color);
+}
+
+.member-role {
+  font-size: 0.75rem;
+  color: var(--search-placeholder);
+}
+
+.member-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.member-action-btn {
+  background: none;
+  border: none;
+  color: var(--text-color);
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.member-action-btn:hover {
+  opacity: 1;
+}
+
+/* New styles for share modal */
+.modal-container {
+  max-width: 500px;
+  width: 90%;
+}
+
+.members-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.member-menu {
+  z-index: 1000;
+}
+
+/* Align email and role inputs */
+.flex.gap-4.items-end {
+  margin-bottom: 16px;
+}
+
+/* Dark mode fixes for member items */
+[data-theme="dark"] .member-item {
+  background-color: var(--card-bg);
+}
+
+[data-theme="dark"] .member-menu {
+  background-color: var(--card-bg);
+}
+
+/* Change role prompt styling */
+.prompt-container {
+  background-color: var(--card-bg);
+  padding: 20px;
+  border-radius: 8px;
+  max-width: 400px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.prompt-input {
+  width: 100%;
+  margin: 10px 0;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  background-color: var(--card-bg);
+  color: var(--text-color);
 }
