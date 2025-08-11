@@ -20,7 +20,6 @@ const sortLabels = {
     'unread_oldest': 'Unread Oldest'
 };
 
-/*
 const defaultNotifications = [
     {
         id: 1,
@@ -105,7 +104,7 @@ const defaultNotifications = [
         profileUrl: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?q=80&w=150&h=150&fit=crop',
         pinned: false
     }
-];*/
+];
 
 const getIconText = (type) => {
     switch (type) {
@@ -387,19 +386,42 @@ const updateHeaderCounts = (totalCount, unreadCount) => {
 const renderNotifications = (notificationsData) => {
     const pinnedNotificationsList = document.getElementById('pinned-notifications');
     const notificationList = document.getElementById('notification-list');
+    const emptyStateContainer = document.getElementById('empty-state-container');
+
     pinnedNotificationsList.innerHTML = '';
     notificationList.innerHTML = '';
 
     notifications = notificationsData;
 
-    // Calculate all counts first
+    // Check if there are no notifications at all
+    if (notifications.length === 0) {
+        // Hide the notification sections
+        pinnedNotificationsList.style.display = 'none';
+        notificationList.style.display = 'none';
+        // Show and animate the empty state message
+        if (emptyStateContainer) {
+            emptyStateContainer.style.display = 'flex';
+            emptyStateContainer.classList.add('show');
+        }
+        updateHeaderCounts(0, 0);
+        return;
+    }
+
+    // If notifications exist, hide the empty state message
+    if (emptyStateContainer) {
+        emptyStateContainer.style.display = 'none';
+        emptyStateContainer.classList.remove('show');
+    }
+    notificationList.style.display = 'block';
+
+    // Calculate and update counts
     const totalCount = notifications.length;
     const totalUnreadCount = notifications.filter(n => !n.read).length;
     updateHeaderCounts(totalCount, totalUnreadCount);
 
+    // Handle Pinned Notifications
     const pinnedNotifications = notifications.filter(n => n.pinned);
 
-    // Render the pinned header and list
     if (pinnedNotifications.length > 0) {
         pinnedNotificationsList.style.display = 'block';
         const pinnedHeaderContainer = document.createElement('div');
@@ -421,7 +443,7 @@ const renderNotifications = (notificationsData) => {
         pinnedNotificationsList.style.display = 'none';
     }
 
-    // Sort ALL notifications together for the main list
+    // Render the main list of all notifications, including pinned ones in their original place
     const allNotificationsSorted = sortNotifications(notifications);
 
     const groupTitles = ['Today', 'Yesterday', 'This Week', 'This Month', 'Older'];
@@ -429,7 +451,6 @@ const renderNotifications = (notificationsData) => {
         const notificationsInGroup = allNotificationsSorted.filter(n => getGroupTitle(n.timestamp.toDate()) === group);
         const unreadInGroup = notificationsInGroup.filter(n => !n.read).length;
 
-        // Skip rendering an empty group
         if (notificationsInGroup.length === 0) continue;
 
         const groupContainer = document.createElement('div');
@@ -499,8 +520,7 @@ export function init() {
                     const fetchedNotifications = docSnap.data().items;
                     renderNotifications(fetchedNotifications);
                 } else {
-                    console.log("No notifications found, restoring default data...");
-                    await setDoc(userNotificationsRef, { items: defaultNotifications });
+                    renderNotifications([]);
                 }
             });
         } else {
