@@ -34,12 +34,12 @@
   --loading-screen-bg: #1a1a1a;
 }
 
-/* Dark mode background color change for button elements */
+
 [data-theme="dark"] .bg-white {
   background-color: var(--card-bg) !important;
 }
 
-/* Custom background color for existing members in Allow Access modal */
+
 .existing-member-bg {
   background-color: #f3f3f3 !important;
   color: #000000 !important;
@@ -66,7 +66,7 @@
   border-color: var(--border-color) !important;
 }
 
-/* Specific styles for change role and remove member buttons in dark mode */
+
 [data-theme="dark"] .change-role-btn,
 [data-theme="dark"] .remove-member-btn {
   background-color: var(--card-bg) !important;
@@ -929,7 +929,7 @@ textarea.form-input {
   opacity: 0.5;
 }
 
-/* Members list styles */
+
 .members-list {
   max-height: 200px;
   overflow-y: auto;
@@ -1007,7 +1007,7 @@ textarea.form-input {
   opacity: 1;
 }
 
-/* New styles for share modal */
+
 .modal-container {
   max-width: 500px;
   width: 90%;
@@ -1022,12 +1022,12 @@ textarea.form-input {
   z-index: 1000;
 }
 
-/* Align email and role inputs */
+
 .flex.gap-4.items-end {
   margin-bottom: 16px;
 }
 
-/* Dark mode fixes for member items */
+
 [data-theme="dark"] .member-item {
   background-color: var(--card-bg);
 }
@@ -1036,7 +1036,7 @@ textarea.form-input {
   background-color: var(--card-bg);
 }
 
-/* Change role prompt styling */
+
 .prompt-container {
   background-color: var(--card-bg);
   padding: 20px;

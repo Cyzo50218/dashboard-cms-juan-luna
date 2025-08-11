@@ -187,7 +187,7 @@ function attachProductListListener(userId) {
         currentWorkspaceId
       );
 
-      // ** NEW: Permission Check Logic **
+
       await checkUserPermissions(userId, currentWorkspaceId, userData.role);
 
       const productListRef = collection(workspaceDocRef, "ProductList");
@@ -680,7 +680,7 @@ function renderProducts(productsToRender, shouldAppend = false) {
               </div>
         `;
 
-    // Add click event for image overlay
+
     const productImage = card.querySelector(".product-image img");
     if (productImage) {
       productImage.addEventListener("click", (e) => {
@@ -871,13 +871,13 @@ function updateSidebar(product) {
 
   productSettings.innerHTML = renderProductSidebar(product);
 
-  // Add event listener for the draggable image
+
   const sidebarImage = productSettings.querySelector(
     ".product-image-container img"
   );
   if (sidebarImage) {
     sidebarImage.addEventListener("mousedown", (e) => {
-      e.preventDefault(); // Prevent text selection while dragging
+      e.preventDefault();
     });
 
     sidebarImage.addEventListener("click", (e) => {
@@ -1475,7 +1475,7 @@ export function init(params) {
       renderProducts([]);
       updateSidebar(null);
 
-      // Add Allow Access button handler here
+
       const allowAccessBtn = document.getElementById("allowAccessBtn");
       if (allowAccessBtn) {
         allowAccessBtn.addEventListener("click", async (e) => {

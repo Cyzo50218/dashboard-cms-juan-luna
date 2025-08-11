@@ -15,20 +15,17 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "/services/firebase-config.js";
 
-// Firebase initialization
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app, "juanluna-cms-01");
 
 export function openShareProductListModal(inventoryId, onClose) {
-  // Ensure modal doesn't exist already
   if (document.getElementById("shareProductListModal")) {
     document.getElementById("shareProductListModal").remove();
   }
 
   generateShareModal();
 
-  // Use setTimeout to ensure modal is in DOM before querying elements
   setTimeout(() => {
     const modal = document.getElementById("shareProductListModal");
     const emailInput = document.getElementById("shareEmail");
@@ -51,14 +48,11 @@ export function openShareProductListModal(inventoryId, onClose) {
       return;
     }
 
-    // Load existing members
     loadExistingMembers(inventoryId, membersList);
 
-    // Show modal
     modal.classList.remove("hidden");
     document.body.classList.add("overflow-hidden");
 
-    // Event listeners
     shareBtn.onclick = () => {
       handleShareAccess(
         inventoryId,
@@ -73,7 +67,6 @@ export function openShareProductListModal(inventoryId, onClose) {
       modal.classList.add("hidden");
       document.body.classList.remove("overflow-hidden");
 
-      // Remove the click listener for dropdowns
       document.removeEventListener("click", handleClickOutside);
 
       if (typeof onClose === "function") {
@@ -85,14 +78,12 @@ export function openShareProductListModal(inventoryId, onClose) {
     cancelBtn.onclick = closeHandler;
     closeBtn.onclick = closeHandler;
 
-    // Close on overlay click
     modal.addEventListener("click", (e) => {
       if (e.target === modal) {
         closeHandler();
       }
     });
 
-    // Add keyboard listener for Escape key
     document.addEventListener("keydown", function handleEscape(e) {
       if (e.key === "Escape") {
         closeHandler();
@@ -136,7 +127,6 @@ async function loadExistingMembers(inventoryId, container) {
       return;
     }
 
-    // Fetch user details for all members
     const usersRef = collection(db, "users");
     const userEmails = members.map((member) => member.email);
     const userQuery = query(usersRef, where("email", "in", userEmails));
@@ -184,7 +174,7 @@ async function loadExistingMembers(inventoryId, container) {
           </div>
         </div>
         <div class="relative ml-2">
-          <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1" 
+          <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 border-0 focus:outline-none focus:ring-0" 
                   onclick="window.toggleMemberMenu('member-menu-${index}')">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
@@ -247,7 +237,6 @@ async function handleShareAccess(
       const data = inventorySnap.data();
       const sharedWith = data.sharedWith || [];
 
-      // Check if email already exists
       const existingMember = sharedWith.find(
         (member) => member.email === email
       );
@@ -256,7 +245,6 @@ async function handleShareAccess(
         return;
       }
 
-      // Add new member
       await updateDoc(inventoryRef, {
         sharedWith: arrayUnion({
           email,
@@ -265,10 +253,8 @@ async function handleShareAccess(
         }),
       });
 
-      // Reload members list
       await loadExistingMembers(inventoryId, membersList);
 
-      // Clear form
       emailInput.value = "";
       roleSelect.value = "";
 
@@ -293,7 +279,6 @@ async function removeMember(inventoryId, email, role) {
       const data = inventorySnap.data();
       const sharedWith = data.sharedWith || [];
 
-      // Find the exact member object to remove (including any additional fields)
       const memberToRemove = sharedWith.find(
         (member) => member.email === email && member.role === role
       );
@@ -303,7 +288,6 @@ async function removeMember(inventoryId, email, role) {
           sharedWith: arrayRemove(memberToRemove),
         });
 
-        // Reload the modal
         const membersList = document.getElementById("membersList");
         if (membersList) {
           await loadExistingMembers(inventoryId, membersList);
@@ -370,13 +354,11 @@ async function changeMemberRole(inventoryId, email, oldRole, newRole) {
       const data = inventorySnap.data();
       const sharedWith = data.sharedWith || [];
 
-      // Find the exact member object to remove
       const memberToUpdate = sharedWith.find(
         (member) => member.email === email && member.role === oldRole
       );
 
       if (memberToUpdate) {
-        // Remove old role and add new role
         await updateDoc(inventoryRef, {
           sharedWith: arrayRemove(memberToUpdate),
         });
@@ -465,17 +447,13 @@ function generateShareModal() {
     </div>
   `;
 
-  // Add global functions for member management
   window.toggleMemberMenu = function (menuId) {
     const menu = document.getElementById(menuId);
     if (menu) {
-      // Close all other dropdowns first
       closeAllMemberMenus();
 
-      // Toggle the clicked menu
       menu.classList.toggle("hidden");
 
-      // Prevent the click from bubbling up to document
       event.stopPropagation();
     }
   };
@@ -483,7 +461,6 @@ function generateShareModal() {
   window.removeMember = removeMember;
   window.openChangeRoleModal = openChangeRoleModal;
 
-  // Function to close all member dropdown menus
   function closeAllMemberMenus() {
     const allMenus = document.querySelectorAll('[id^="member-menu-"]');
     allMenus.forEach((menu) => {
@@ -491,7 +468,6 @@ function generateShareModal() {
     });
   }
 
-  // Add click listener to close dropdowns when clicking outside
   document.addEventListener("click", function handleClickOutside(event) {
     // Check if click is outside any dropdown menu and outside any menu trigger button
     const isClickInsideMenu = event.target.closest('[id^="member-menu-"]');
@@ -504,11 +480,9 @@ function generateShareModal() {
     }
   });
 
-  // Add modal to DOM
   document.body.insertAdjacentHTML("beforeend", modalHtml);
 }
 
-// Debug helper
 console.log("ShareProductListModal module loaded");
 window.debugShareModal = {
   open: openShareProductListModal,
