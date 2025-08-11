@@ -26,7 +26,7 @@ const lottieAnim = lottie.loadAnimation({
     renderer: 'svg',
     loop: true,
     autoplay: false,
-    path: 'https://lottie.host/embed/f6dd3a68-9000-46c0-b199-793e316ce22d/jmNgR5UWON.lottie' // sample "success" animation
+    path: 'assets/Empty Notifications.json' // sample "success" animation
 });
 
 // Show empty state with animation
