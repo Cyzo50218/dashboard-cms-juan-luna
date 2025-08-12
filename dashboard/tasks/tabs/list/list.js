@@ -2193,6 +2193,8 @@ function render() {
             taskRow.dataset.sectionId = section.id;
 
             const canEditThisTask = canUserEditTask(task);
+            console.log(`Task ${task.id}: canEditThisTask = ${canEditThisTask}`);
+            
             const taskNameEditableClass = canEditThisTask ? 'focus:bg-white focus:ring-1 focus:ring-slate-300' : 'cursor-text';
 
             const likeCount = task.likedAmount || 0;
