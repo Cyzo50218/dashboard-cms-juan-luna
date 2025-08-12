@@ -103,6 +103,11 @@ body {
   }
 }
 
+:root[data-theme="dark"] input[type="color"] {
+  color-scheme: dark;
+  border: #5b6366;
+}
+
 #initial-loader {
   position: fixed;
   z-index: 9999;

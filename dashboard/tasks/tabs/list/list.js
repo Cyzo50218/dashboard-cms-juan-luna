@@ -4435,9 +4435,10 @@ function openAddColumnDialog(columnType) {
     const dialogOverlay = document.createElement('div');
     dialogOverlay.className = 'dialog-overlay';
     console.log('opened');
+
     let previewHTML = '';
     if (columnType === 'Costing') {
-        previewHTML = `<div class="preview-value">$1,234.56</div><p>Formatted as currency. The sum will be shown in the footer.</p>`;
+        previewHTML = `<div class="preview-value"><span id="preview-currency-symbol">$</span>1,234.56</div><p>Formatted as currency. The sum will be shown in the footer.</p>`;
     } else if (columnType === 'Numbers') {
         previewHTML = `<div class="preview-value">1,234</div><p>Track plain number values. Sum will be shown in footer.</p>`;
     } else {
@@ -4447,31 +4448,47 @@ function openAddColumnDialog(columnType) {
     let typeSpecificFields = '';
     if (columnType === 'Tracking') {
         typeSpecificFields = `
-        <div class="dialog-info-box">
-            <div>
-                <i class="fas fa-info-circle"></i>
-                <span>This column connects to the official USPS API and will only display status for valid **United States Postal Service** tracking numbers.</span>
+            <div class="dialog-info-box">
+                <div>
+                    <i class="fas fa-info-circle"></i>
+                    <span>This column connects to the official USPS API and will only display status for valid **United States Postal Service** tracking numbers.</span>
+                </div>
+                
+                <div class="status-explainer">
+                    <p>Common statuses include:</p>
+                    <ul>
+                        <li><i class="fas fa-check-circle text-green-500"></i> Delivered</li>
+                        <li><i class="fas fa-truck-loading text-blue-500"></i> Out for Delivery</li>
+                        <li><i class="fas fa-truck text-sky-500"></i> In Transit</li>
+                        <li><i class="fas fa-box-open text-slate-500"></i> Acceptance</li>
+                    </ul>
+                </div>
             </div>
-            
-            <div class="status-explainer">
-                <p>Common statuses include:</p>
-                <ul>
-                    <li><i class="fas fa-check-circle text-green-500"></i> Delivered</li>
-                    <li><i class="fas fa-truck-loading text-blue-500"></i> Out for Delivery</li>
-                    <li><i class="fas fa-truck text-sky-500"></i> In Transit</li>
-                    <li><i class="fas fa-box-open text-slate-500"></i> Acceptance</li>
-                </ul>
-            </div>
-        </div>
-    `;
+        `;
     } else if (columnType === 'Costing') {
         typeSpecificFields = `
             <div class="form-group">
                 <label>Currency</label>
                 <select id="column-currency">
-                    <option value="$">USD ($)</option>
-                    <option value="₱">PHP (₱)</option>
-                    <option value="A$">AUD (A$)</option>
+                    <option value="">Select Currency</option>
+                    <option value="$">USD ($) - United States Dollar</option>
+                    <option value="€">EUR (€) - Euro</option>
+                    <option value="£">GBP (£) - British Pound Sterling</option>
+                    <option value="¥">JPY (¥) - Japanese Yen</option>
+                    <option value="₱">PHP (₱) - Philippine Peso</option>
+                    <option value="A$">AUD (A$) - Australian Dollar</option>
+                    <option value="C$">CAD (C$) - Canadian Dollar</option>
+                    <option value="CHF">CHF (CHF) - Swiss Franc</option>
+                    <option value="¥">CNY (¥) - Chinese Yuan</option>
+                    <option value="HK$">HKD (HK$) - Hong Kong Dollar</option>
+                    <option value="₹">INR (₹) - Indian Rupee</option>
+                    <option value="₩">KRW (₩) - South Korean Won</option>
+                    <option value="S$">SGD (S$) - Singapore Dollar</option>
+                    <option value="R">ZAR (R) - South African Rand</option>
+                    <option value="kr">SEK (kr) - Swedish Krona</option>
+                    <option value="kr">NOK (kr) - Norwegian Krone</option>
+                    <option value="₪">ILS (₪) - Israeli New Shekel</option>
+                    <option value="฿">THB (฿) - Thai Baht</option>
                 </select>
             </div>`;
     }
@@ -4499,12 +4516,24 @@ function openAddColumnDialog(columnType) {
 
     // Focus input on open
     const inputEl = document.getElementById('column-name');
+
+    const currencySelect = document.getElementById('column-currency');
+    const previewSymbol = document.getElementById('preview-currency-symbol');
     if (inputEl) inputEl.focus();
 
     // Close function
     const closeDialog = () => {
         dialogOverlay.remove();
     };
+
+    if (currencySelect && previewSymbol) {
+        currencySelect.addEventListener('change', (e) => {
+            previewSymbol.textContent = e.target.value;
+        });
+
+        // Initial setup to display the default selected value (e.g., "₱")
+        previewSymbol.textContent = currencySelect.value;
+    }
 
     // Cancel Button
     document.getElementById('cancel-add-column').addEventListener('click', closeDialog);
@@ -4580,10 +4609,27 @@ function openCustomColumnCreatorDialog() {
                 <div class="form-group">
                     <label>Currency</label>
                     <select id="column-currency">
-                        <option value="$">USD ($)</option>
-                        <option value="€">EUR (€)</option>
-                        <option value="₱">PHP (₱)</option>
-                    </select>
+    <option value="$">USD ($) - United States Dollar</option>
+    <option value="€">EUR (€) - Euro</option>
+    <option value="£">GBP (£) - British Pound Sterling</option>
+    <option value="¥">JPY (¥) - Japanese Yen</option>
+    <option value="A$">AUD (A$) - Australian Dollar</option>
+    <option value="C$">CAD (C$) - Canadian Dollar</option>
+    <option value="CHF">CHF (CHF) - Swiss Franc</option>
+    <option value="¥">CNY (¥) - Chinese Yuan</option>
+    <option value="HK$">HKD (HK$) - Hong Kong Dollar</option>
+    <option value="₹">INR (₹) - Indian Rupee</option>
+    <option value="₩">KRW (₩) - South Korean Won</option>
+    <option value="R$">BRL (R$) - Brazilian Real</option>
+    <option value="₽">RUB (₽) - Russian Ruble</option>
+    <option value="S$">SGD (S$) - Singapore Dollar</option>
+    <option value="ZAR">ZAR (R) - South African Rand</option>
+    <option value="kr">SEK (kr) - Swedish Krona</option>
+    <option value="kr">NOK (kr) - Norwegian Krone</option>
+    <option value="₱">PHP (₱) - Philippine Peso</option>
+    <option value="₪">ILS (₪) - Israeli New Shekel</option>
+    <option value="฿">THB (฿) - Thai Baht</option>
+</select>
                 </div>`;
         }
         specificOptionsContainer.innerHTML = extraFields;

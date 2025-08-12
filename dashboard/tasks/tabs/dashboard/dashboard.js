@@ -670,14 +670,22 @@ async function openAddCardModal(cardToEdit = null) {
       <option value="currency">Currency</option>
       <option value="percent">Percentage</option>
     </select>
-    <select id="currency-type" class="modal-select" style="width: 120px; display: none;">
-      <option value="₱">PHP</option>
-      <option value="$">USD</option>
-      <option value="A$">AUD</option>
-      <option value="€">EUR</option>
-      <option value="£">GBP</option>
-      <option value="¥">JPY</option>
-    </select>
+    <select id="currency-type" class="modal-select" style="width: 120px;">
+    <option value="₱">PHP (₱) - Philippine Peso</option>
+    <option value="$">USD ($) - United States Dollar</option>
+    <option value="A$">AUD (A$) - Australian Dollar</option>
+    <option value="€">EUR (€) - Euro</option>
+    <option value="£">GBP (£) - British Pound Sterling</option>
+    <option value="¥">JPY (¥) - Japanese Yen</option>
+    <option value="C$">CAD (C$) - Canadian Dollar</option>
+    <option value="¥">CNY (¥) - Chinese Yuan</option>
+    <option value="HK$">HKD (HK$) - Hong Kong Dollar</option>
+    <option value="₹">INR (₹) - Indian Rupee</option>
+    <option value="₩">KRW (₩) - South Korean Won</option>
+    <option value="S$">SGD (S$) - Singapore Dollar</option>
+    <option value="฿">THB (฿) - Thai Baht</option>
+    <option value="kr">SEK (kr) - Swedish Krona</option>
+</select>
   </div>
 </div>
             
