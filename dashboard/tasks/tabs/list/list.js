@@ -2497,7 +2497,7 @@ function render() {
                             // --- Logic for other column types (Text, Costing, etc.) ---
                         } else { // This "else" is for columns that are NOT "Select" type
 
-                            if (canEditThisCell) {
+                            if (canEditThisTask && canEditThisCell) {
                                 cell.addEventListener('click', (e) => {
                                     // Stop the click from opening the task details sidebar
                                     e.stopPropagation();
