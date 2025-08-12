@@ -526,6 +526,12 @@ async function openAddCardModal(cardToEdit = null) {
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'widget-modal-overlay';
 
+  const initialTitle = isEditMode && cardToEdit.title
+    ? cardToEdit.title
+    : cardToEdit?.cardType !== 'number'
+      ? 'New Chart'
+      : 'New Metric Card';
+
   modalOverlay.innerHTML = `
     <div class="add-card-modal">
       <div class="modal-header">
@@ -536,7 +542,7 @@ async function openAddCardModal(cardToEdit = null) {
         <div class="modal-preview-pane">
           <div class="preview-card-container">
             <div class="card relative preview-card">
-              <input type="text" id="preview-title-input" class="preview-title-input" value="New Metric Card">
+              <input type="text" id="preview-title-input" class="preview-title-input" value="${initialTitle}">
               <p id="preview-value" class="preview-value-text">0</p>
             </div>
           </div>
@@ -793,7 +799,7 @@ async function openAddCardModal(cardToEdit = null) {
   };
 
   let cardConfig = {
-    title: isEditMode ? cardToEdit.title : 'New Card',
+    title: initialTitle,
     metric: isEditMode ? cardToEdit.metric || 'count' : 'count',
     costCalcType: isEditMode ? cardToEdit.costCalcType || 'sum' : 'sum',
     valueFormat: isEditMode ? cardToEdit.valueFormat || 'number' : 'number',
@@ -871,24 +877,7 @@ async function openAddCardModal(cardToEdit = null) {
 
 
   const updatePreview = () => {
-    // For number cards, handle currency format directly
-    if (cardConfig.cardType === 'number') {
-      const value = calculateCardValue(
-        cardConfig.metric,
-        cardConfig.costCalcType,
-        cardConfig.filters
-      );
-
-      if (cardConfig.valueFormat === 'currency') {
-        previewValueEl.textContent = cardConfig.currencySymbol + formatNumber(value);
-      } else if (cardConfig.valueFormat === 'percent') {
-        previewValueEl.textContent = value.toFixed(2) + "%";
-      } else {
-        previewValueEl.textContent = formatNumber(value);
-      }
-    } else {
-      updatePreviewCardType();
-    }
+    updatePreviewCardType();
     updatePreviewStyle();
   };
 
@@ -922,8 +911,8 @@ async function openAddCardModal(cardToEdit = null) {
   formatSelect.value = cardConfig.valueFormat;
   currencySelect.value = cardConfig.currencySymbol;
 
-  if (cardConfig.valueFormat === 'currency') {
-    currencySelect.style.display = 'block';
+  if (formatSelect.value !== 'currency') {
+    currencySelect.style.display = 'none';
   }
 
   formatSelect.addEventListener('change', e => {
@@ -1164,14 +1153,21 @@ async function openAddCardModal(cardToEdit = null) {
     const previewValueEl = modalOverlay.querySelector('#preview-value');
     const previewCardEl = modalOverlay.querySelector('.preview-card');
     const oldCanvas = previewCardEl.querySelector('canvas');
-    if (oldCanvas) oldCanvas.remove();
+
+    // Always destroy the old chart before rendering
+    if (oldCanvas) {
+      const existingChart = Chart.getChart(oldCanvas);
+      if (existingChart) existingChart.destroy();
+      oldCanvas.remove();
+    }
 
     const calculatedValue = calculateCardValue(cardConfig.metric, cardConfig.costCalcType, cardConfig.filters);
 
     if (cardConfig.cardType === 'number') {
       previewValueEl.style.display = 'block';
       if (cardConfig.valueFormat === 'currency') {
-        previewValueEl.textContent = cardConfig.currencySymbol + formatNumber(calculatedValue);
+        const currencySymbol = modalOverlay.querySelector('#currency-type').value;
+        previewValueEl.textContent = currencySymbol + formatNumber(calculatedValue);
       } else if (cardConfig.valueFormat === 'percent') {
         previewValueEl.textContent = calculatedValue.toFixed(2) + "%";
       } else {
@@ -1187,17 +1183,11 @@ async function openAddCardModal(cardToEdit = null) {
     let chartLabels = [];
     let chartDataset = [];
 
-    // --- NEW FILTER-AWARE LOGIC ---
     const hasSectionFilter = cardConfig.filters && cardConfig.filters.sectionTitle;
-
     if (hasSectionFilter) {
-      // Case 1: A specific section is selected in the filters.
-      // The chart will only show data for this single section.
       chartLabels = [cardConfig.filters.sectionTitle];
       chartDataset = [calculateCardValue(cardConfig.metric, cardConfig.costCalcType, cardConfig.filters)];
     } else if (sectionIdToName && Object.keys(sectionIdToName).length > 0) {
-      // Case 2: No section filter is active, so show all sections.
-      // It will still respect any OTHER filters that might be active.
       chartLabels = Object.values(sectionIdToName);
       chartDataset = chartLabels.map(sectionName => {
         const sectionSpecificFilters = { ...cardConfig.filters, sectionTitle: sectionName };
@@ -1208,7 +1198,6 @@ async function openAddCardModal(cardToEdit = null) {
       chartDataset = chartLabels.map((_, idx) => calculatedValue * (1 - idx * 0.1));
     }
 
-    // --- AUTOMATIC COLOR SYNC LOGIC ---
     const activePalette = COLOR_PALETTES[cardConfig.chartPalette] || COLOR_PALETTES.default;
     const colorsNeeded = chartDataset.length;
     const newChartColors = [];
@@ -1225,33 +1214,33 @@ async function openAddCardModal(cardToEdit = null) {
       maintainAspectRatio: false,
       plugins: {
         legend: {
-          display: ['pie', 'doughnut', 'polarArea'].includes(chartType) // Show legend for these charts
+          display: ['pie', 'doughnut', 'polarArea', 'line'].includes(chartType),
         }
       }
     };
 
     let chartData = { labels: chartLabels, datasets: [] };
 
-    if (chartType === 'bubble') {
+    if (cardConfig.cardType === 'bubble') {
       const bubbleData = chartDataset.map((value, index) => ({
         x: (index + 1) * 10,
         y: value,
         r: Math.max(5, Math.abs(value / 5))
       }));
       chartData.datasets = [{ label: 'Tasks', data: bubbleData, backgroundColor: cardConfig.chartColors }];
-    } else if (chartType === 'bar-stacked' || chartType === 'horizontalBar') {
+    } else if (cardConfig.cardType === 'bar-stacked' || cardConfig.cardType === 'horizontalBar') {
       chartType = 'bar';
-      if (chartType === 'horizontalBar') chartOptions.indexAxis = 'y';
+      if (cardConfig.cardType === 'horizontalBar') chartOptions.indexAxis = 'y';
       else chartOptions.scales = { x: { stacked: true }, y: { stacked: true } };
       chartData.datasets = [{ label: 'Tasks', data: chartDataset, backgroundColor: cardConfig.chartColors }];
-    } else if (chartType === 'chart-mixed') {
+    } else if (cardConfig.cardType === 'chart-mixed') {
       chartType = 'bar';
       chartData.datasets = [
         { type: 'bar', label: 'Bar', data: chartDataset, backgroundColor: cardConfig.chartColors[0] || '#4f46e5' },
         { type: 'line', label: 'Line', data: chartDataset, borderColor: cardConfig.chartColors[1] || '#ef4444', fill: false }
       ];
-    } else if (chartType === 'area' || chartType === 'line') {
-      chartType = 'line'; // The actual type is 'line'
+    } else if (cardConfig.cardType === 'area' || cardConfig.cardType === 'line') {
+      chartType = 'line';
       chartData.datasets.push({
         label: 'Tasks',
         data: chartDataset,
