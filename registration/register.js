@@ -549,7 +549,7 @@ async function handleProjectInvitationAcceptance(user, invId) {
     
     const numericUserId = stringToNumericString(user.uid);
     const numericProjectId = stringToNumericString(projectId);
-    window.location.href = `/tasks/${numericUserId}/list/${numericProjectId}`;
+    window.location.href = `/tasks/${user.uid}/list/${projectId}`;
     
   } catch (error) {
     console.error("❌ Error accepting project invitation:", error);
