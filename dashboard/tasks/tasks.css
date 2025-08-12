@@ -101,6 +101,14 @@ html[data-theme="dark"] #workspace-project-btn .text-xs{
   color: #777777;
 }
 
+html[data-theme="dark"] .project-tabs {
+  border-bottom: 1px solid var(--border-color);
+}
+
+html[data-theme="dark"] .tab-link.active {
+  border-bottom: 3px solid #494949;
+}
+
 html[data-theme="dark"] .panel-item-name {
   color: #f7f7f7;
 }

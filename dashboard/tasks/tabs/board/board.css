@@ -14,6 +14,172 @@
     --overdue-color: var(--high-priority-color);
 }
 
+@media (prefers-color-scheme: dark) {
+    :root {
+        --primary-bg: #161616;
+        --secondary-bg: #161616;
+        --border-color: #1b1b1b;
+        --completed-color: #a3a3a3;
+        --completed-bg: #3f3f3f;
+        --accent-color: #60a5fa;
+        --high-priority: #f87171;
+        --medium-priority: #fbbf24;
+        --low-priority: #34d399;
+        --header-border-color: #525252;
+        --border-color: #525252;
+        --text-color: #f9fafb;
+        --text-secondary-color: #a1a1aa;
+    }
+}
+
+html[data-theme="dark"] .boardtasks-board-header {
+    background: var(--primary-bg);
+}
+
+html[data-theme="dark"] .inline-tag-editor{
+    background: var(--secondary-bg);
+    border: 1px solid #444444;
+    color: #f3f3f3;
+}
+html[data-theme="dark"] .advanced-dropdown{
+    background: var(--secondary-bg);
+    border: 1px solid #444444;
+    color: #f3f3f3;
+}
+html[data-theme="dark"] .editor-row span {
+    color: #bebebe;
+}
+html[data-theme="dark"] .dropdown-item span {
+    color: #cfcfcf;
+}
+html[data-theme="dark"] .dropdown-item:hover span {
+    color: #bebebe;
+}
+html[data-theme="dark"] .dropdown-item:hover {
+    background-color: #353535;
+    color: #e6e6e6;
+}
+html[data-theme="dark"] .editor-row:hover {
+    background-color: #353535;
+    color: #e6e6e6;
+}
+
+html[data-theme="dark"] .editor-no-fields {
+    color: #a1a1a1;
+}
+
+html[data-theme="dark"] .boardtasks-edit-fields-btn:hover {
+    background-color: #2b2b2b;
+    border-color: #3b3b3b;
+    color: #a3a3a3;
+}
+
+html[data-theme="dark"] .boardtasks-section-menu-btn {
+    color: #acacac;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+html[data-theme="dark"] .boardtasks-section-menu-btn:hover {
+    background-color: #3f3f3f;
+    color: #969696;
+}
+
+html[data-theme="dark"] #boardtasks-add-section-btn {
+    background-color: transparent;
+    color: #ffffff;
+    border: 1px solid #444444;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+html[data-theme="dark"] #boardtasks-tools-btn {
+    background-color: transparent;
+    color: #ffffff;
+    border: 1px solid #444444;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+html[data-theme="dark"] #boardtasks-add-task-btn-main {
+    color: #ffffff;
+    border: 1px solid #444444;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+html[data-theme="dark"] #boardtasks-add-task-btn-main:hover {
+    background-color: #353535;
+}
+
+html[data-theme="dark"] #boardtasks-tools-btn:hover {
+    background-color: #353535;
+}
+
+html[data-theme="dark"] #boardtasks-add-section-btn:hover {
+    background-color: #353535;
+}
+
+html[data-theme="dark"] .boardtasks-add-section-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: rgb(116, 116, 116);
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+html[data-theme="dark"] .boardtasks-add-section-content:hover {
+    background-color: #2e2e2e;
+    /* Light gray on hover */
+    color: #afafaf;
+}
+
+html[data-theme="dark"] .boardtasks-task-count {
+    background-color: var(--secondary-bg);
+    color: #d6d6d6;
+}
+
+html[data-theme="dark"] .boardtasks-task-checked .boardtasks-tag {
+    background-color: var(--completed-bg) !important;
+    color: var(--completed-color) !important;
+}
+
+html[data-theme="dark"] .boardtasks-kanban-column {
+    background: #252525;
+    border-radius: 8px;
+    border: 1px solid #252525;
+}
+
+html[data-theme="dark"] .boardtasks-column-header {
+    border: 1px solid rgb(63, 63, 63);
+    border-bottom: 0;
+    /* This removes the bottom border from the initial `border: 1px solid #333` declaration */
+    border-radius: 8px 8px 0 0;
+    /* Top-left, top-right, bottom-right, bottom-left */
+    background: #333333;
+}
+
+html[data-theme="dark"] .boardtasks-add-task-btn {
+    border-top: 1px solid #5c5c5c;
+}
+
+html[data-theme="dark"] .boardtasks-task-card {
+    background: #333333;
+    border: 1px solid rgb(63, 63, 63)
+}
+
+html[data-theme="dark"] .boardtasks-task-cover-container {
+    position: relative;
+    width: 100%;
+    background-color: #292929;
+}
+
+html[data-theme="dark"] .boardtasks-assignee-avatar {
+    border: 2px solid #666666;
+    background-color: #292929;
+}
+
 .boardtasks-add-task-btn-main {
     background-color: transparent;
     border: 1px solid #000000;
@@ -32,6 +198,7 @@
     justify-content: center;
     gap: 0.4rem;
 }
+
 #boardtasks-add-section-btn {
     background-color: transparent;
     border: 1px solid #000000;
@@ -53,7 +220,7 @@
 
 .boardtasks-add-section-placeholder {
     flex-shrink: 0;
-    width: 220px; 
+    width: 220px;
     padding: 1px;
 }
 
@@ -65,15 +232,17 @@
     border-radius: 8px;
     font-size: 14px;
     font-weight: 500;
-    color: #718096; 
+    color: #718096;
     cursor: pointer;
     transition: background-color 0.2s, color 0.2s;
 }
 
 .boardtasks-add-section-content:hover {
-    background-color: #f4f5f7; /* Light gray on hover */
+    background-color: #f4f5f7;
+    /* Light gray on hover */
     color: #2d3748;
 }
+
 #boardtasks-tools-btn {
     background-color: transparent;
     border: 1px solid #000000;
@@ -92,18 +261,22 @@
     justify-content: center;
     gap: 0.4rem;
 }
-#boardtasks-add-section-btn:hover{
+
+#boardtasks-add-section-btn:hover {
     background-color: #000000;
     color: #fff;
 }
-#boardtasks-tools-btn:hover{
+
+#boardtasks-tools-btn:hover {
     background-color: #000000;
     color: #fff;
 }
-.boardtasks-add-task-btn-main:hover{
+
+.boardtasks-add-task-btn-main:hover {
     background-color: #000000;
     color: #fff;
 }
+
 /* --- Task Completion Styles --- */
 .boardtasks-task-checked .boardtasks-task-check {
     color: var(--on-track-color);
@@ -260,7 +433,8 @@
 .boardtasks-column-header {
     display: flex;
     align-items: center;
-    gap: 8px; /* Adds a little space between elements */
+    gap: 8px;
+    /* Adds a little space between elements */
     width: 100%;
     padding: 8px 12px;
     cursor: move;
@@ -284,7 +458,8 @@
     align-items: center;
     gap: 8px;
     font-size: 14px;
-    flex-shrink: 0; /* Prevents this group from shrinking */
+    flex-shrink: 0;
+    /* Prevents this group from shrinking */
 }
 
 .boardtasks-add-task-btn button {
@@ -301,12 +476,13 @@
 }
 
 .lucide-icon-delete {
-    stroke: currentColor; 
+    stroke: currentColor;
     transition: stroke 0.2s ease-in-out;
 }
 
 .lucide-icon-delete:hover {
-    stroke: #ef4444; /* A standard red color */
+    stroke: #ef4444;
+    /* A standard red color */
 }
 
 .boardtasks-task-count {
@@ -396,19 +572,22 @@
 .boardtasks-header-right {
     display: flex;
     align-items: center;
-    gap: 8px; /* Space between the count and the icon */
+    gap: 8px;
+    /* Space between the count and the icon */
 }
 
 .boardtasks-section-menu-btn {
     cursor: pointer;
-    color: #a0aec0; /* A neutral gray color */
+    color: #a0aec0;
+    /* A neutral gray color */
     padding: 4px;
     border-radius: 4px;
     transition: background-color 0.2s, color 0.2s;
 }
 
 .boardtasks-section-menu-btn:hover {
-    background-color: #edf2f7; /* Light gray background on hover */
+    background-color: #edf2f7;
+    /* Light gray background on hover */
     color: #4a5568;
 }
 
@@ -603,14 +782,17 @@
     /* Darker text color */
     font-size: 1.1em;
 }
+
 /* --- Inline Tag Editor --- */
 /* Container for tags and the new edit button */
 .boardtasks-tags-container {
     display: flex;
     align-items: center;
-    gap: 8px; /* Space between tags and button */
+    gap: 8px;
+    /* Space between tags and button */
     margin-top: 8px;
-    min-height: 24px; /* Ensures consistent card height */
+    min-height: 24px;
+    /* Ensures consistent card height */
 }
 
 /* Let the tags container grow to push the button to the end */
@@ -626,13 +808,15 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    border: 1px dashed #cbd5e0; /* Dashed border */
+    border: 1px dashed #cbd5e0;
+    /* Dashed border */
     border-radius: 4px;
     padding: 2px 8px;
     font-size: 12px;
     color: #4a5568;
     cursor: pointer;
-    flex-shrink: 0; /* Prevent the button from shrinking on small cards */
+    flex-shrink: 0;
+    /* Prevent the button from shrinking on small cards */
     transition: all 0.2s ease-in-out;
 }
 
@@ -644,11 +828,13 @@
 
 /* Deprecated styles for old hover icon - can be removed or kept for safety */
 .boardtasks-tags-wrapper {
-   position: static;
+    position: static;
 }
+
 .boardtasks-edit-tags-icon {
-   display: none !important;
+    display: none !important;
 }
+
 .inline-tag-editor {
     position: fixed;
     background-color: white;
@@ -714,10 +900,12 @@
     flex-direction: column;
     gap: 2px;
 }
+
 .advanced-dropdown.visible {
     opacity: 1;
     transform: translateY(0);
 }
+
 .dropdown-list {
     list-style: none;
     margin: 0;
@@ -725,6 +913,7 @@
     max-height: 250px;
     overflow-y: auto;
 }
+
 .dropdown-item {
     display: flex;
     align-items: center;
@@ -733,9 +922,11 @@
     cursor: pointer;
     border-radius: 4px;
 }
+
 .dropdown-item:hover {
     background-color: #f4f5f7;
 }
+
 .dropdown-color-swatch {
     width: 14px;
     height: 14px;
@@ -743,17 +934,19 @@
     margin-right: 10px;
     flex-shrink: 0;
 }
+
 .editor-no-fields {
     padding: 12px 16px;
     font-size: 13px;
     color: #718096;
     text-align: center;
 }
+
 /* The main container for both tags and the button */
 .boardtasks-tags-container {
     display: flex;
-    justify-content: space-between; 
-    align-items: flex-end; 
+    justify-content: space-between;
+    align-items: flex-end;
     gap: 8px;
     min-height: 24px;
 }
@@ -777,7 +970,8 @@
     color: #a0aec0;
     opacity: 0;
     cursor: pointer;
-    flex-shrink: 0; /* Prevents the button from shrinking */
+    flex-shrink: 0;
+    /* Prevents the button from shrinking */
     transition: all 0.2s ease-in-out;
 }
 
@@ -787,6 +981,7 @@
     opacity: 1;
     color: #4a5568;
 }
+
 /* Container for the cover image and its menu */
 .boardtasks-task-cover-container {
     position: relative;
@@ -807,7 +1002,8 @@
 /* The placeholder for tasks without an image */
 .boardtasks-task-cover-placeholder {
     width: 100%;
-    height: 40px; /* A smaller height for the empty placeholder */
+    height: 40px;
+    /* A smaller height for the empty placeholder */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -830,7 +1026,8 @@
     justify-content: center;
     font-size: 12px;
     cursor: pointer;
-    opacity: 0; /* Hidden by default */
+    opacity: 0;
+    /* Hidden by default */
     transition: opacity 0.2s ease-in-out;
 }
 
@@ -841,7 +1038,8 @@
 
 .boardtasks-meta-container {
     display: flex;
-    justify-content: space-between; /* Pushes left and right groups apart */
+    justify-content: space-between;
+    /* Pushes left and right groups apart */
     align-items: center;
     margin-top: 12px;
 }
@@ -850,7 +1048,8 @@
     display: flex;
     font-size: 12px;
     align-items: center;
-    gap: 4px; /* Creates space between assignees and the due date */
+    gap: 4px;
+    /* Creates space between assignees and the due date */
 }
 
 /* Assignees container */
@@ -862,5 +1061,6 @@
 .boardtasks-task-actions {
     display: flex;
     font-size: 14px;
-    gap: 6px; /* Space between the like and comment icons */
+    gap: 6px;
+    /* Space between the like and comment icons */
 }
