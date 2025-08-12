@@ -454,32 +454,30 @@ function showWelcome(name, photoURL, email = '', user) {
     photo.src = generateAvatar(initials, getRandomColor());
   }
   
-  // --- THIS IS THE CORRECTED PART ---
-  // Attach the click listener to call the new handler correctly.
   acceptInvitationBtn.onclick = async () => {
-    const auth = getAuth(); // Make sure you have access to the auth instance
+    const auth = getAuth();
     const currentUser = auth.currentUser;
     console.log("Current user at time of click:", currentUser);
     
     if (!currentUser) {
       alert("Your session has expired. Please refresh the page and sign in again.");
       acceptInvitationBtn.disabled = false;
-      return; // Stop before calling the function
+      return;
     }
-    // The 'invitationId' should be a string that was captured when the page loaded.
+    
     if (!invitationId) {
       alert("No invitation ID found. Cannot accept invitation.");
       return;
     }
     
-    // Call the appropriate handler, passing ONLY the invitation ID.
+    // Call the appropriate handler, passing BOTH the user and the invitation ID.
     if (path.includes('/workspace-invite/')) {
       console.log("Accepting WORKSPACE invitation via Cloud Function...");
       await handleWorkspaceInvitationAcceptance(currentUser.uid, invitationId);
     } else if (path.includes('/invitation/')) {
       console.log("Accepting PROJECT invitation via Cloud Function...");
-      // Assuming you have a handleProjectInvitationAcceptance function
-      await handleProjectInvitationAcceptance(invitationId);
+      // This is the line that needs to be fixed.
+      await handleProjectInvitationAcceptance(currentUser, invitationId);
     } else {
       alert("Could not determine invitation type from URL.");
     }
@@ -551,7 +549,7 @@ async function handleProjectInvitationAcceptance(user, invId) {
     
     const numericUserId = stringToNumericString(user.uid);
     const numericProjectId = stringToNumericString(projectId);
-    window.location.href = `/tasks/${numericUserId}/list/${numericProjectId}`;
+    window.location.href = `/tasks/${user.uid}/list/${projectId}`;
     
   } catch (error) {
     console.error("❌ Error accepting project invitation:", error);
@@ -728,7 +726,6 @@ async function saveUserData(user, fullName, email, provider, photoURL = null) {
     selectedWorkspace: newWorkspaceRef, // Changed from ID to a full reference
   };
   
-  // --- MODIFIED SECTION END ---
   
   batch.set(userRef, newUserData);
   batch.set(newWorkspaceRef, newWorkspaceData);
