@@ -2969,7 +2969,7 @@ function updateCellWithStatus(trackingNumber, apiResponse) {
 
 function createFloatingInput(targetCell, task, column) {
     console.log("createFloatingInput is called", { targetCell, task, column });
-    const scrollContainer = targetCell.closest('.juanlunacms-spreadsheetlist-custom-scrollbar');
+    const scrollContainer = targetCell.closest('.overflow-auto');
 
     const cellRect = targetCell.getBoundingClientRect();
     const currentValue = task.customFields?.[column.id] || '';
