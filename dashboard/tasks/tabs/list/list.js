@@ -2967,20 +2967,8 @@ function updateCellWithStatus(trackingNumber, apiResponse) {
     `;
 }
 
-/**
- * Creates a floating input/textarea over a target cell for editing.
- * @param {HTMLElement} targetCell The grid cell that was clicked.
- * @param {object} task The task object being edited.
- * @param {object} column The column definition for the cell.
- */
-/**
- * Creates a single, robust floating input for Text, Numbers, and Tracking columns.
- * @param {HTMLElement} targetCell The cell element that was clicked.
- * @param {object} task The task object being edited.
- * @param {object} column The full column configuration object.
- */
 function createFloatingInput(targetCell, task, column) {
-    
+    console.log("createFloatingInput is called", { targetCell, task, column });
     const scrollContainer = targetCell.closest('.juanlunacms-spreadsheetlist-custom-scrollbar');
 
     const cellRect = targetCell.getBoundingClientRect();
