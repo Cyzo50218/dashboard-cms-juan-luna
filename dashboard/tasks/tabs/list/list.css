@@ -49,7 +49,7 @@ html[data-theme="dark"] .dialog-box input {
 
 html[data-theme="dark"] .floating-input-wrapper{
     background: var(--primary-bg);
-    color: #090909;
+    color: #EAEAEA;
     border: 1px solid var(--border-color);
 }
 
