@@ -35,7 +35,7 @@
     }
 }
 
-/* dark mode tehemes */
+/* dark mode themes */
 
 html[data-theme="dark"] .dialog-box {
     background: var(--primary-bg);
@@ -45,6 +45,12 @@ html[data-theme="dark"] .dialog-box {
 html[data-theme="dark"] .dialog-box input {
     background: var(--primary-bg);
     color: #606060;
+}
+
+html[data-theme="dark"] .floating-input-wrapper{
+    background: var(--primary-bg);
+    color: #B0B0B0;
+    border: 1px solid var(--border-color);
 }
 
 html[data-theme="dark"] .dialog-box input {
