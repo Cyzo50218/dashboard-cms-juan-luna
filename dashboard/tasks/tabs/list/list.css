@@ -49,18 +49,18 @@ html[data-theme="dark"] .dialog-box input {
 
 html[data-theme="dark"] .floating-input-wrapper{
     background: var(--primary-bg);
-    color: #B0B0B0;
+    color: #090909;
     border: 1px solid var(--border-color);
 }
 
 html[data-theme="dark"] .dialog-box input {
     background: var(--primary-bg);
-    border: 1px oslid transparent;
+    border: 1px solid transparent;
     color: #f1f1f1;
 }
 
 html[data-theme="dark"] .dialog-box input:hover {
-    border: 1px oslid #d6d6d6;
+    border: 1px solid #d6d6d6;
     /* Optionally, change the border color as well */
 }
 
