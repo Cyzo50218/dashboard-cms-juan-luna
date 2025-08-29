@@ -36,7 +36,7 @@ export function init(params) {
   const workspaceSection = document.querySelector(
     'div[data-section="myworkspace"]'
   );
-  if (!workspaceSection) return () => {};
+  if (!workspaceSection) return () => { };
 
   // --- Element Selectors ---
   const headerLeft = workspaceSection.querySelector(".header-myworkspace-left");

@@ -14,6 +14,9 @@ import logger from "firebase-functions/logger";
 import { getStorage } from "firebase-admin/storage";
 import axios from "axios";
 import corsLib from "cors";
+import crypto from "crypto";
+
+const MAYA_WEBHOOK_SECRET = "IPXgDMQzsbWdwklT";
 
 const cors = corsLib({ origin: true });
 
@@ -158,6 +161,79 @@ export const downloadProxy = onRequest(async (req, res) => {
   }
 });
 
+export const mayaWebhook = onRequest(async (req, res) => {
+  try {
+    console.log("Received body:", req.body);
+    console.log("Headers:", req.headers);
+    console.log("Method:", req.method);
+
+    // Only allow POST
+    if (req.method !== "POST") {
+      return res.status(405).send("Method Not Allowed");
+    }
+
+    // Raw body string
+    const rawBody = JSON.stringify(req.body);
+
+    // Verify signature
+    const mayaSignature = req.get("X-Maya-Signature");
+    if (!mayaSignature) {
+      return res.status(400).send("Missing signature");
+    }
+
+    const computedSignature = crypto
+      .createHmac("sha256", MAYA_WEBHOOK_SECRET)
+      .update(rawBody)
+      .digest("hex");
+
+    if (mayaSignature !== computedSignature) {
+      console.error("❌ Invalid signature", {
+        received: mayaSignature,
+        expected: computedSignature,
+        rawBody: rawBody,
+        parsedBody: req.body
+      });
+      return res.status(401).send("Invalid signature");
+    }
+
+    console.log("✅ Webhook verified");
+
+    // Extract main data
+    const data = req.body;
+
+    console.log(`📦 Payment ID: ${data.id}`);
+    console.log(`💳 Payment Status: ${data.status} | ${data.paymentStatus}`);
+    console.log(`💰 Total Amount: ${data.totalAmount?.value} ${data.totalAmount?.currency}`);
+    console.log(`🛒 Items:`);
+    data.items?.forEach((item, index) => {
+      console.log(
+        `  ${index + 1}. ${item.name} x${item.quantity} - ${item.amount?.value} ${data.totalAmount?.currency}`
+      );
+    });
+
+    console.log(`👤 Buyer: ${data.buyer?.firstName} ${data.buyer?.lastName}`);
+    console.log(`📧 Buyer Email: ${data.buyer?.contact?.email}`);
+    console.log(`📱 Buyer Phone: ${data.buyer?.contact?.phone}`);
+
+    console.log(`🏦 Payment Details:`, JSON.stringify(data.paymentDetails, null, 2));
+
+    // Example: handle specific statuses
+    if (data.status === "COMPLETED" && data.paymentStatus === "PAYMENT_SUCCESS") {
+      console.log(`✅ Payment completed successfully for ${data.id}`);
+      // TODO: fulfill order, update DB, send emails, etc.
+    } else if (data.status === "FAILED") {
+      console.log(`❌ Payment failed for ${data.id}`);
+    } else {
+      console.log(`ℹ️ Unhandled status: ${data.status}`);
+    }
+
+    // Always return 200 OK
+    return res.status(200).send("OK");
+  } catch (error) {
+    console.error("Webhook error:", error);
+    return res.status(500).send("Server error");
+  }
+});
 
 async function backfillTaskCounts() {
   console.log("🚀 Starting global task count backfill for all users...");

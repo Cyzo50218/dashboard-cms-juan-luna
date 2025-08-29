@@ -68,6 +68,24 @@ html[data-theme="dark"] .dialog-header {
     border-bottom: 1px solid var(--border-color);
 }
 
+html[data-theme="dark"] .datepicker-picker, .floating-panel.visible {
+    background: #242424;
+    border-color: #656565;
+}
+
+html[data-theme="dark"] .datepicker-controls button {
+    border-color: transparent;
+}
+
+html[data-theme="dark"] .datepicker-cell:hover {
+    background: #414141;
+}
+
+html[data-theme="dark"] #chat-content-area {
+    background: #1b1b1b;
+}
+
+
 html[data-theme="dark"] .add-task-row-wrapper:hover {
     opacity: 0.20;
 }

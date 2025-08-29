@@ -34,11 +34,96 @@
   --loading-screen-bg: #1a1a1a;
 }
 
+/*
+ * Main Invite Button Styles
+ * Targets: .shareproject-btn-primary
+ */
+.shareproject-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  /* Vertical and horizontal padding */
+  border: none;
+  border-radius: 6px;
+  /* Rounded corners */
+  background-color: #d32f2f;
+  color: white;
+  font-size: 14px;
+  margin-top: 0;
+  font-weight: 600;
+  /* Semi-bold text */
+  cursor: pointer;
+  text-align: center;
+  transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  /* Subtle shadow */
+}
+
+/* Hover state for the button */
+.shareproject-btn-primary:hover {
+  background-color: #0056b3;
+  /* A darker blue on hover */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+  /* Slightly more prominent shadow */
+}
+
+/* Disabled state for the button (e.g., when processing) */
+.shareproject-btn-primary:disabled {
+  background-color: #a0c7f0;
+  /* Lighter, muted blue */
+  color: #e9f2fa;
+  cursor: not-allowed;
+  /* Indicates the button is not clickable */
+  box-shadow: none;
+}
+
 
 [data-theme="dark"] .bg-white {
   background-color: var(--card-bg) !important;
 }
 
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  /* Position it right below the parent container */
+  right: 0;
+  /* Align it to the right edge of the parent container */
+  margin-top: 4px;
+  /* Small gap below the icon */
+
+  display: flex;
+  flex-direction: column;
+  /* Stack items vertically */
+
+  background-color: var(--card-bg) !important;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  /* Modern shadow effect */
+
+  width: 200px;
+  /* Consistent width */
+  z-index: 5000000000;
+  /* Always above other elements */
+  overflow: hidden;
+  /* Keep rounded corners */
+
+  transition: opacity 0.1s ease-in-out, transform 0.1s ease-in-out;
+}
+
+.dropdown-divider {
+  height: 2px;
+  margin-left: 8px;
+  margin-right: 8px;
+  background-color: var(--border-color) !important;
+  /* Light gray line */
+}
+
+.dropdown-item .material-icons {
+    font-size: 18px; /* Slightly smaller icon size */
+    margin-right: 8px; /* Space between icon and text */
+    vertical-align: middle; /* Aligns the icon with the text */
+}
 
 .existing-member-bg {
   background-color: #f3f3f3 !important;
@@ -89,6 +174,7 @@
   max-width: 1200px;
   margin: 70px auto;
 }
+
 .search-bar {
   width: 50%;
   max-width: 500px;
@@ -132,6 +218,7 @@
   background-color: var(--card-bg);
   border-bottom-color: var(--border-color);
 }
+
 .productlist-header h1 {
   font-size: 1.5rem;
   font-weight: 600;
@@ -145,6 +232,7 @@
   gap: 12px;
   padding-bottom: 10rem;
 }
+
 .product-card {
   width: 100% !important;
   height: auto;
@@ -162,14 +250,17 @@
   flex-direction: column;
   margin-bottom: 10px;
 }
+
 .product-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
 }
+
 .product-card.selected {
   border: 2px solid var(--border-color);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
 }
+
 .product-image {
   width: auto;
   background-color: var(--card-bg);
@@ -190,10 +281,12 @@
   border-radius: 8px;
   background-color: transparent;
 }
+
 .product-image img.loading {
   filter: blur(10px);
   background-color: var(--card-bg);
 }
+
 .product-name {
   font-weight: 500;
   color: var(--text-color);
@@ -202,12 +295,14 @@
   line-height: 1.2;
   text-align: left;
 }
+
 .product-sku {
   color: #666666;
   font-size: 0.75rem;
   margin-bottom: 4px;
   text-align: left;
 }
+
 .product-cost {
   color: var(--text-color);
   font-size: 0.875rem;
@@ -215,12 +310,14 @@
   margin-bottom: 4px;
   text-align: left;
 }
+
 .product-supplier {
   color: #666666;
   font-size: 0.75rem;
   margin-bottom: 4px;
   text-align: left;
 }
+
 .loading-screen {
   position: fixed;
   top: 0;
@@ -233,45 +330,56 @@
   align-items: center;
   z-index: 1000;
 }
+
 .loading-screen.hidden {
   display: none;
 }
+
 .scrollbar::-webkit-scrollbar {
   width: 6px;
 }
+
 .scrollbar::-webkit-scrollbar-track {
   background: #d3d3d3;
 }
+
 .scrollbar::-webkit-scrollbar-thumb {
   background: #000000;
   border-radius: 3px;
 }
+
 .scrollbar::-webkit-scrollbar-thumb:hover {
   background: #333333;
 }
+
 .sidebar-header {
   border-bottom: 1px solid var(--border-color);
 }
+
 .settings-section {
   padding: 16px;
   border-bottom: 1px solid var(--border-color);
 }
+
 .settings-label {
   color: #666;
   font-size: 0.75rem;
   margin-bottom: 8px;
   display: block;
 }
+
 .settings-value {
   font-weight: 500;
   color: var(--text-color);
   font-size: 1rem;
 }
+
 #settingsProductDescription {
   white-space: pre-wrap;
   line-height: 1.5;
   font-size: 0.875rem;
 }
+
 .important-tag {
   background-color: #e0e0e0;
   color: #000000;
@@ -282,6 +390,7 @@
   align-items: center;
   margin-top: 8px;
 }
+
 .product-image-container {
   background-color: transparent;
   border-radius: 8px;
@@ -292,11 +401,13 @@
   margin: 16px 0;
   overflow: hidden;
 }
+
 .stock-info {
   padding: 16px;
   color: #666;
   font-size: 0.875rem;
 }
+
 .close-btn {
   background: none;
   border: none;
@@ -306,6 +417,7 @@
   margin: -8px;
   color: #666;
 }
+
 .nav-btn {
   padding: 8px 16px;
   border-radius: 8px;
@@ -319,21 +431,26 @@
   background-color: #d3d3d3;
   color: #000;
 }
+
 .nav-btn:hover {
   background-color: #c0c0c0;
   transform: translateY(-2px);
 }
+
 .nav-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
 .add-btn {
   background-color: var(--primary-color);
   color: white;
 }
+
 .add-btn:hover:not(:disabled) {
   background-color: var(--secondary-color);
 }
+
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -346,6 +463,7 @@
   align-items: center;
   z-index: 2000;
 }
+
 .modal-container {
   background-color: var(--card-bg);
   border-radius: 12px;
@@ -356,6 +474,7 @@
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   color: var(--text-color);
 }
+
 .modal-header {
   padding: 20px;
   border-bottom: 1px solid var(--border-color);
@@ -363,12 +482,14 @@
   justify-content: space-between;
   align-items: center;
 }
+
 .modal-title {
   font-size: 1.25rem;
   font-weight: 600;
   color: var(--text-color);
   margin: 0;
 }
+
 .modal-close {
   background: none;
   border: none;
@@ -378,15 +499,20 @@
   opacity: 0.7;
   transition: opacity 0.2s;
 }
+
 .modal-close:hover {
   opacity: 1;
 }
+
 .modal-body {
   padding: 20px;
 }
+
 .form-group {
+  gap: 4px;
   margin-bottom: 16px;
 }
+
 .form-label {
   display: block;
   margin-bottom: 8px;
@@ -394,6 +520,7 @@
   color: var(--text-color);
   opacity: 0.8;
 }
+
 .form-input {
   width: 100%;
   padding: 10px 12px;
@@ -411,14 +538,17 @@
 [data-theme="dark"] .form-input {
   background-color: rgba(45, 45, 45, 0.6);
 }
+
 textarea.form-input {
   min-height: 80px;
   resize: vertical;
 }
+
 .form-input:focus {
   outline: none;
   border-color: var(--primary-color);
 }
+
 .modal-footer {
   padding: 20px;
   display: flex;
@@ -426,6 +556,7 @@ textarea.form-input {
   gap: 12px;
   border-top: 1px solid var(--border-color);
 }
+
 .btn {
   padding: 10px 20px;
   border-radius: 8px;
@@ -433,23 +564,28 @@ textarea.form-input {
   cursor: pointer;
   transition: all 0.2s;
 }
+
 .btn-cancel {
   background-color: var(--action-btn-bg);
   color: var(--text-color);
   border: 1px solid var(--action-btn-border);
 }
+
 .btn-cancel:hover {
   background-color: var(--action-btn-bg);
   opacity: 0.9;
 }
+
 .btn-primary {
   border-color: transparent;
   background-color: var(--primary-color);
   color: white;
 }
+
 .btn-primary:hover {
   background-color: var(--secondary-color);
 }
+
 .notification {
   position: fixed;
   bottom: 20px;
@@ -466,10 +602,12 @@ textarea.form-input {
   opacity: 0;
   transition: all 0.3s ease;
 }
+
 .notification.show {
   transform: translateY(0);
   opacity: 1;
 }
+
 .product-actions {
   position: absolute;
   top: 16px;
@@ -478,6 +616,7 @@ textarea.form-input {
   gap: 8px;
   z-index: 1;
 }
+
 .action-btn {
   width: 28px;
   height: 28px;
@@ -490,16 +629,20 @@ textarea.form-input {
   cursor: pointer;
   transition: all 0.2s;
 }
+
 .action-btn:hover {
   transform: scale(1.1);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
+
 .edit-icon {
   color: var(--text-color);
 }
+
 .delete-icon {
   color: var(--text-color);
 }
+
 .important-tag {
   background-color: #e0e0e0;
   color: #000000;
@@ -510,18 +653,22 @@ textarea.form-input {
   align-items: center;
   margin-top: 8px;
 }
+
 .hidden {
   display: none !important;
 }
+
 .image-preview {
   margin-top: 10px;
 }
+
 .image-preview img {
   max-width: 100px;
   max-height: 100px;
   border: 1px solid var(--border-color);
   border-radius: 4px;
 }
+
 .image-upload-container {
   border: 2px dashed var(--border-color);
   border-radius: 8px;
@@ -531,13 +678,16 @@ textarea.form-input {
   transition: border-color 0.3s;
   background-color: var(--card-bg);
 }
+
 .image-upload-container:hover {
   border-color: var(--primary-color);
 }
+
 .image-upload-container.dragover {
   border-color: var(--primary-color);
   background-color: rgba(0, 0, 0, 0.05);
 }
+
 .upload-instructions {
   color: var(--text-color);
   opacity: 0.7;
@@ -548,6 +698,7 @@ textarea.form-input {
   position: relative;
   width: 420px;
 }
+
 .search-container1 .search-icon {
   position: absolute;
   top: 50%;
@@ -602,6 +753,7 @@ textarea.form-input {
 .clear-search-btn.hidden {
   display: none;
 }
+
 .restricted-overlay {
   position: absolute;
   top: 0;
@@ -623,9 +775,11 @@ textarea.form-input {
 .restricted-overlay.hidden {
   display: none;
 }
+
 .hidden {
   display: none;
 }
+
 .restricted-content {
   background: #1c1c1e;
   padding: 40px;
@@ -650,6 +804,7 @@ textarea.form-input {
   font-size: 16px;
   color: #ccc;
 }
+
 .restricted-ok-btn {
   margin-top: 20px;
   padding: 10px 24px;
@@ -712,6 +867,7 @@ textarea.form-input {
 .custom-options.hidden {
   display: none;
 }
+
 .settings-value .supplier-display {
   display: flex;
   align-items: center;
@@ -749,6 +905,7 @@ textarea.form-input {
   font-size: 10px;
   max-width: 100%;
 }
+
 .option-icon-smaller {
   width: 16px;
   height: 16px;
@@ -781,11 +938,13 @@ textarea.form-input {
   display: flex;
   flex-direction: column;
 }
+
 .option-name-smaller {
   color: var(--text-color);
   margin-left: 4px;
   font-size: 14px;
 }
+
 .option-name {
   color: var(--text-color);
   margin-left: 4px;
@@ -808,9 +967,11 @@ textarea.form-input {
   align-items: center;
   gap: 12px;
 }
+
 .custom-option.hidden {
   display: none;
 }
+
 .saving-overlay {
   position: fixed;
   top: 0;
@@ -884,10 +1045,12 @@ textarea.form-input {
   cursor: pointer;
   padding: 10px;
 }
+
 @keyframes spin {
   0% {
     transform: rotate(0deg);
   }
+
   100% {
     transform: rotate(360deg);
   }
@@ -954,7 +1117,7 @@ textarea.form-input {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px;
+  padding: 2px;
   margin-bottom: 8px;
   background-color: var(--action-btn-bg);
   border-radius: 6px;
@@ -967,15 +1130,14 @@ textarea.form-input {
 }
 
 .member-avatar {
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
-  background-color: var(--primary-color);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 18px;
   font-weight: bold;
 }
 
@@ -1009,8 +1171,8 @@ textarea.form-input {
 
 
 .modal-container {
-  max-width: 500px;
-  width: 90%;
+  height: auto;
+  width: 2000px;
 }
 
 .members-list {
@@ -1054,4 +1216,99 @@ textarea.form-input {
   border: 1px solid var(--border-color);
   background-color: var(--card-bg);
   color: var(--text-color);
+}
+
+.relative {
+  position: relative;
+}
+
+/*
+ * 2. The dropdown menu itself.
+ */
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  /* Position it right below the parent container */
+  right: 0;
+  /* Align it to the right edge of the parent container */
+  margin-top: 4px;
+  /* Small gap below the icon */
+
+  display: flex;
+  flex-direction: column;
+  /* Stack items vertically */
+
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  /* Modern shadow effect */
+
+  width: 200px;
+  /* Consistent width */
+  z-index: 5000000000;
+  /* Always above other elements */
+  overflow: hidden;
+  /* Keep rounded corners */
+
+  transition: opacity 0.1s ease-in-out, transform 0.1s ease-in-out;
+}
+
+.dropdown-menu.hidden {
+  display: none;
+}
+
+.dropdown-section-title {
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6B7280;
+  /* Muted gray */
+  text-transform: uppercase;
+}
+
+.dropdown-item {
+  display: block;
+  /* Ensure full-width clickable area */
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: #1F2937;
+  /* Dark text */
+  text-align: left;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.dropdown-item:hover {
+  background-color: #F3F4F6;
+  /* Light gray hover */
+}
+
+.dropdown-item-danger:hover {
+  background-color: #FEE2E2;
+  /* Light red hover */
+  color: #DC2626;
+  /* Red text */
+}
+
+.dropdown-divider {
+  height: 1px;
+  margin: 6px 0;
+  background-color: #E5E7EB;
+  /* Light gray line */
+}
+
+
+.member-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* Adjust space between role text and icon */
+}
+
+.member-current-role {
+  font-size: 14px;
+  color: #838383;
+  /* Gray text color */
 }
