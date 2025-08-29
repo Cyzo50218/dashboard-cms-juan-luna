@@ -1,27 +1,22 @@
 :root {
-  /* Variables */
   --primary-bg: #ffffff;
   --secondary-bg: #f9fafb;
-  /* Used for hover and section rows */
   --border-color: #e5e7eb;
   --accent-color: #4c6ef5;
   --high-priority: #ff4d4f;
   --medium-priority: #ffa940;
   --low-priority: #52c41a;
   --header-border-color: #d1d5db;
-  /* A slightly darker border for the header */
   --header-height: 35px;
   --task-row-padding: 0px 4px;
 }
 
-/* Card Styling */
 .card {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   align-items: center;
   padding: 1rem 1rem;
-  /* Increased left and right padding */
   border-radius: 0.75rem;
   background-color: #fcfcfc;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
@@ -38,24 +33,20 @@
   font-size: 1.2rem;
   font-weight: 600;
   color: #1f2937;
-  /* Dark gray text */
   margin-bottom: 0.25rem;
   text-align: center;
   line-height: 1.2;
-  /* Tighter line height for titles */
 }
 
 .card p {
   font-size: 1.8rem;
   font-weight: 700;
   color: #353535;
-  /* Very dark gray text */
   margin-bottom: 0.5rem;
   text-align: center;
   line-height: 1.2;
 }
 
-/* Filter Button Styling */
 .filter-button {
   display: flex;
   align-items: center;
@@ -75,7 +66,6 @@
   transition: all 0.2s ease;
 }
 
-/* While dragging */
 .dragging-active {
   opacity: 0.8;
   transform: rotate(3deg) scale(1.05);
@@ -84,22 +74,16 @@
   z-index: 9999;
 }
 
-/* Card when picked up */
 .drag-chosen {
   border: 2px solid #3b82f6;
-  /* Tailwind blue-500 */
   background-color: #f0f9ff;
-  /* light blue background */
   transition: all 0.2s ease;
 }
 
-/* Placeholder position during drag */
 .drag-ghost {
   opacity: 0.4;
   background-color: #e5e7eb;
-  /* gray-200 */
   border: 2px dashed #9ca3af;
-  /* gray-400 */
   transform: scale(0.95);
 }
 
@@ -113,7 +97,6 @@
 
 .chart-drag-chosen {
   border: 2px solid #3b82f6;
-  /* blue-500 */
   background-color: #f0f9ff;
 }
 
@@ -140,7 +123,6 @@
 .add-card-modal .modal-select {
   border: 1px solid #ccc;
   border-radius: 6px;
-  /* Rounded edges */
   padding: 6px 10px;
   background-color: white;
   color: #333;
@@ -155,7 +137,6 @@
   cursor: pointer;
 }
 
-/* Make the form-group spacing consistent */
 .add-card-modal .form-group {
   margin-bottom: 16px;
 }
@@ -167,14 +148,12 @@
   display: block;
 }
 
-/* Align the metric + calc type neatly */
-.add-card-modal .form-group>div {
+.add-card-modal .form-group > div {
   display: flex;
   gap: 8px;
   align-items: center;
 }
 
-/* Make the second dropdown fixed width */
 .add-card-modal #calc-type {
   min-width: 140px;
 }
@@ -206,11 +185,8 @@
 
 .filter-button:hover {
   background-color: #e5e7eb;
-  /* Lighter background on hover */
   border-color: #9ca3af;
-  /* Darker border on hover */
   color: #1f2937;
-  /* Darker text on hover */
 }
 
 .filter-button svg {
@@ -218,44 +194,29 @@
   padding-left: 4px;
   height: 25px;
   color: #6b7280;
-  /* Icon color */
 }
 
-/* Dropdown Menu Styling - Absolute position for proper scrolling behavior */
 .origin-top-left {
   width: 16rem;
-  /* Fixed width for dropdown */
   border-radius: 0.5rem;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
     0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  /* Larger shadow for dropdown */
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
   z-index: 1000;
-  /* High z-index to ensure it appears on top */
   max-height: 20rem;
-  /* Max height with scrollbar */
   overflow-y: auto;
-  /* Enable vertical scrolling */
   position: absolute;
-  /* Position relative to the filter-container */
   display: none;
-  /* Hidden by default, shown by JavaScript */
   top: 100%;
-  /* Position below the button */
   left: 50%;
-  /* Center horizontally */
   transform: translateX(-50%);
-  /* Adjust horizontal centering */
   margin-top: 4px;
-  /* Small gap from button */
 }
 
 .origin-top-left .px-3.py-2 {
   padding: 0.5rem 0.75rem;
-  /* Padding for filter groups */
   border-color: #edf2f7;
-  /* Border color between groups */
 }
 
 .origin-top-left .font-semibold {
@@ -274,7 +235,6 @@
 .origin-top-left input[type="checkbox"] {
   margin-right: 0.4rem;
   accent-color: #4f46e5;
-  /* Accent color for checkboxes */
 }
 
 .origin-top-left .text-sm {
@@ -286,11 +246,9 @@
   color: #6b7280;
 }
 
-/* Chart Containers */
 .chart-container {
   border-radius: 0.75rem;
   cursor: grab;
-  /* Indicates draggable */
   border: 1px solid #e5e7eb;
   background-color: #ffffff;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
@@ -300,20 +258,121 @@
   flex-direction: column;
 }
 
-/* Remove hover animations for cards and chart containers to prevent visual glitches during drag */
+@media (prefers-color-scheme: dark) {
+  .chart-container {
+    background-color: #1e1e1e;
+    border-color: #2f3437;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3),
+      0 4px 6px -2px rgba(0, 0, 0, 0.2);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    position: relative;
+  }
+
+  .chart-container,
+  .chart-container * {
+    color: #ffffff !important;
+  }
+
+  .add-card-modal .modal-select,
+  .custom-select,
+  .dropdown-list {
+    background-color: #1e1e1e;
+    border-color: #2f3437;
+    color: #ffffff;
+  }
+
+  .preview-title-input {
+    background-color: #f4f8ff !important;
+    color: #374151 !important;
+    border: none !important;
+  }
+
+  .preview-title-input:focus {
+    background-color: #e5e7eb !important;
+    color: #374151 !important;
+  }
+
+  .add-card-modal {
+    background-color: #1a1a1a;
+    color: #ffffff;
+  }
+
+  .modal-header,
+  .modal-preview-pane,
+  .modal-config-pane,
+  .modal-footer {
+    background-color: #1e1e1e;
+    border-color: #2f3437;
+  }
+
+  .modal-header h3,
+  .config-header,
+  .text-xl.font-bold.text-gray-900.mb-4 {
+    color: #ffffff;
+  }
+
+  .modal-footer button {
+    color: #ffffff !important;
+    background-color: #2f3437 !important;
+    border: 1px solid #4b4f52 !important;
+  }
+
+  .modal-footer button:hover {
+    background-color: #4b4f52 !important;
+  }
+
+  .preview-card {
+    background-color: #1e1e1e;
+    border: 1px solid #2f3437;
+    border-radius: 0.75rem;
+    color: #ffffff;
+  }
+
+  .origin-top-left {
+    background-color: #1e1e1e;
+    border-color: #2f3437;
+  }
+
+  .origin-top-left .font-semibold {
+    color: #e2e8f0;
+  }
+
+  .origin-top-left .text-sm {
+    color: #9ca3af;
+  }
+
+  .filter-button {
+    color: #e2e8f0;
+  }
+
+  .filter-button:hover {
+    background-color: #2f3437;
+  }
+
+  .add-chart-placeholder {
+    background-color: #1e1e1e;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3),
+      0 4px 6px -2px rgba(0, 0, 0, 0.2);
+    padding: 1.5rem;
+    border: 1px solid #2f3437;
+  }
+
+  .add-chart-placeholder:hover {
+    background-color: #374151;
+  }
+}
+
 .card:hover,
 .chart-container:hover {
   transform: none;
-  /* No scaling or movement on hover */
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
     0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  /* Maintain original shadow */
 }
 
-/* Drag and Drop specific styling */
 .dragging {
   opacity: 0.8;
-  /* Reduce opacity of the dragged item */
 }
 
 .card-grid {
@@ -342,7 +401,6 @@
   }
 }
 
-/* Responsive grid for chart sections */
 .chart-section {
   display: grid;
   grid-template-columns: 1fr;
@@ -356,29 +414,23 @@
   }
 }
 
-/* Flex column for charts within each section */
 .chart-column {
   display: flex;
   flex-direction: column;
   gap: 2rem;
 }
 
-/* Ensure charts have proper height */
 .chart-canvas-container {
   position: relative;
   height: 288px;
-  /* Fixed height for charts */
   width: 100%;
   min-height: 250px;
-  /* Ensure minimum height */
 }
 
-/* Make sure canvas fills its container */
 .chart-canvas-container canvas {
   width: 100% !important;
   height: 100% !important;
   display: block;
-  /* Fix canvas rendering */
 }
 
 .projecttask-header h1 {
@@ -430,7 +482,8 @@ button:hover {
   border-bottom: 1px solid transparent;
   border-radius: 12px;
   --tw-ring-color: rgba(0, 0, 0, 0);
-  --tw-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.176), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --tw-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.176),
+    0 4px 6px -4px rgba(0, 0, 0, 0.1);
   box-shadow: 5px 0 5px 1px var(--tw-ring-color), var(--tw-shadow);
 }
 
@@ -445,28 +498,19 @@ button:hover {
 .projecttask-header {
   width: 100%;
   padding-top: 0.625rem;
-  /* 10px, from py-2.5 */
   padding-bottom: 0.625rem;
-  /* 10px, from py-2.5 */
   margin-bottom: 1rem;
-  /* 16px, from mb-4 */
   border-bottom: 1px solid #e5e7eb;
-  /* from border-b and border-gray-200 */
 }
 
 .dashboard-container {
-
   align-items: flex-start;
   padding-bottom: 1rem;
   flex-grow: 1;
   padding-left: 8px;
-  /* Allows this element to expand and fill the remaining height */
-
   overflow-y: auto;
-  /* Prevents vertical scrolling on the board itself */
 }
 
-/* --- Add Card Modal Style Overhaul --- */
 .widget-modal-overlay {
   position: fixed;
   top: 0;
@@ -481,15 +525,12 @@ button:hover {
   backdrop-filter: blur(5px);
 }
 
-/* --- Add Card Modal Layout Refinements --- */
 .add-card-modal {
   display: flex;
   flex-direction: column;
-  /* Stack header, body, footer vertically */
   width: 800px;
   max-width: 90vw;
   height: 680px;
-  /* Slightly increased height */
   background-color: #f9fafb;
   border-radius: 16px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
@@ -497,12 +538,10 @@ button:hover {
   animation: modal-fade-in 0.3s ease-out;
 }
 
-/* New Modal Header */
 .modal-header {
   padding: 16px 24px;
   border-bottom: 1px solid #e5e7eb;
   flex-shrink: 0;
-  /* Prevent header from shrinking */
 }
 
 .modal-header h3 {
@@ -512,16 +551,12 @@ button:hover {
   margin: 0;
 }
 
-/* New Modal Body Wrapper */
 .modal-body {
   display: flex;
   flex-grow: 1;
-  /* Allow body to fill all available space */
   overflow: hidden;
-  /* Important for child scrolling */
 }
 
-/* Panes are now children of .modal-body */
 .modal-preview-pane {
   flex-basis: 45%;
   background-color: #ffffff;
@@ -534,11 +569,9 @@ button:hover {
   flex-basis: 55%;
   padding: 24px;
   overflow-y: auto;
-  /* Allow this pane to scroll if content overflows */
   border-left: 1px solid #e5e7eb;
 }
 
-/* New Modal Footer */
 .modal-footer {
   padding: 16px 24px;
   border-top: 1px solid #e5e7eb;
@@ -548,18 +581,13 @@ button:hover {
   background-color: #ffffff;
   flex-shrink: 0;
   z-index: 0;
-  /* Prevent footer from shrinking */
 }
 
-/* Filter Section Refinement */
 .add-filter-wrapper {
   margin-top: 12px;
-  /* Space between header and button */
   margin-bottom: 20px;
-  /* Space between button and active filter panels */
 }
 
-/* --- Right Pane Enhancements --- */
 .config-header {
   font-size: 1.1rem;
   font-weight: 600;
@@ -774,7 +802,6 @@ button:hover {
 .add-filter-wrapper {
   position: relative;
   display: inline-block;
-  /* Prevent flex/grid stretching */
 }
 
 .add-filter-button {
@@ -802,13 +829,11 @@ button:hover {
 .add-filter-menu {
   position: absolute;
   top: calc(100% + 4px);
-  /* just below button */
   left: 0;
   background-color: white;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   z-index: 9999999;
-  /* force above everything */
   width: 200px;
   overflow: hidden;
   padding: 8px 0;
@@ -826,7 +851,6 @@ button:hover {
   background-color: #f3f4f6;
 }
 
-/* --- Active Filter Panel Styles --- */
 #active-filters-container {
   display: flex;
   flex-direction: column;
@@ -889,4 +913,230 @@ button:hover {
   width: 16px;
   height: 16px;
   accent-color: #2563eb;
+}
+
+@media (prefers-color-scheme: dark) {
+  .add-card-modal {
+    background-color: #1a1a1a;
+    color: #e2e8f0;
+  }
+
+  #add-chart-placeholder {
+    background-color: #1e1e1e !important;
+    border: 1px solid #2f3437 !important;
+  }
+
+  #add-chart-placeholder:hover {
+    background-color: #4b5563 !important;
+  }
+
+  .modal-header {
+    background-color: #161616;
+    border-bottom-color: #2f3437;
+  }
+
+  .modal-header h3 {
+    color: #e2e8f0;
+  }
+
+  .modal-body {
+    background-color: #1a1a1a;
+  }
+
+  .modal-preview-pane {
+    background-color: #1e1e1e;
+    border-color: #2f3437;
+  }
+
+  .modal-config-pane {
+    background-color: #1a1a1a;
+    border-color: #2f3437;
+  }
+
+  .modal-footer {
+    background-color: #161616;
+    border-top-color: #2f3437;
+  }
+
+  .filter-panel {
+    background-color: #1e1e1e;
+    border-color: #2f3437;
+  }
+
+  .filter-panel-header {
+    background-color: #161616;
+    border-bottom-color: #2f3437;
+    color: #e2e8f0;
+  }
+
+  .filter-panel-body {
+    background-color: #1e1e1e;
+  }
+
+  .add-card-modal .modal-select {
+    background-color: #1e1e1e;
+    border-color: #2f3437;
+    color: #ffffff;
+  }
+
+  .add-card-modal .modal-select:hover {
+    border-color: #4b4f52;
+  }
+
+  .preview-title-input {
+    background-color: #ffffff;
+    color: #e2e8f0;
+  }
+
+  .preview-title-input:focus {
+    background-color: #2f3437;
+  }
+
+  .add-filter-button {
+    color: #60a5fa;
+  }
+
+  .add-filter-button:hover {
+    background-color: #1e3a8a;
+  }
+
+  .checkbox-label {
+    color: #e2e8f0;
+  }
+
+  .color-display {
+    border-color: #4b4f52;
+  }
+
+  .custom-select {
+    background-color: #1e1e1e;
+    border-color: #2f3437;
+    color: #ffffff;
+  }
+
+  .dropdown-list {
+    background-color: #1e1e1e;
+    border-color: #2f3437;
+  }
+
+  .dropdown-item {
+    color: #ffffff;
+  }
+
+  .dropdown-item:hover {
+    background-color: #2f3437;
+    color: #ffffff !important;
+  }
+
+  .card {
+    background-color: #1e1e1e;
+    border-color: #2f3437;
+    color: #e2e8f0;
+  }
+
+  .card h2 {
+    color: #e2e8f0;
+  }
+
+  .config-header {
+    color: #ffffff;
+  }
+
+  .text-xl.font-bold.text-gray-900.mb-4 {
+    color: #ffffff;
+  }
+
+  .add-chart-placeholder {
+    background-color: #1e1e1e;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3),
+      0 4px 6px -2px rgba(0, 0, 0, 0.2);
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    border: 1px solid #2f3437;
+  }
+
+  .add-chart-placeholder:hover {
+    background-color: #374151;
+  }
+
+  .card p {
+    color: #e2e8f0;
+  }
+
+  .chart-container {
+    background-color: #1e1e1e;
+    border-color: #2f3437;
+  }
+
+  .filter-button {
+    color: #e2e8f0;
+  }
+
+  .filter-button:hover {
+    background-color: #2f3437;
+  }
+
+  .origin-top-left {
+    background-color: #1e1e1e;
+    border-color: #2f3437;
+  }
+
+  .origin-top-left .font-semibold {
+    color: #e2e8f0;
+  }
+
+  .origin-top-left .text-sm {
+    color: #9ca3af;
+  }
+
+  .modal-preview-pane .chartjs-render-monitor {
+    color: #e2e8f0 !important;
+  }
+
+  .modal-footer button {
+    color: #ffffff !important;
+    background-color: #2f3437 !important;
+    border: 1px solid #4b4f52 !important;
+    border-radius: 6px;
+    padding: 6px 12px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  .modal-footer button:hover {
+    color: #ffffff !important;
+    background-color: #4b4f52 !important;
+  }
+
+  .modal-select .selected .text {
+    color: #ffffff !important;
+  }
+
+  .preview-card {
+    background-color: #1e1e1e;
+    border: 1px solid #2f3437;
+    border-radius: 0.75rem;
+    color: #ffffff;
+  }
+
+  .preview-card .preview-title-input {
+    background-color: #1e1e1e;
+    color: #ffffff;
+  }
+
+  .preview-card .preview-title-input:focus {
+    background-color: #2f3437;
+  }
+
+  .preview-card .preview-value-text {
+    color: #ffffff;
+  }
+
+  .preview-card * {
+    color: #ffffff;
+  }
 }
